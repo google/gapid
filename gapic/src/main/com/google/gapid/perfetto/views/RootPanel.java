@@ -103,6 +103,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     double topHeight = top.getPreferredHeight();
     Area clip = ctx.getClip();
     if (clip.y < topHeight) {
+      preTopUiRender(ctx, repainter);
       top.render(ctx, repainter);
     }
     if (clip.y + clip.h > topHeight) {
@@ -177,6 +178,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     }
   }
 
+  protected abstract void preTopUiRender(RenderContext ctx, Repainter repainter);
   protected abstract void preMainUiRender(RenderContext ctx, Repainter repainter);
 
   @Override
@@ -386,13 +388,20 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     }
 
     @Override
-    protected void preMainUiRender(RenderContext ctx, Repainter repainter) {
+    protected void preTopUiRender(RenderContext ctx, Repainter repainter) {
       if (state.hasData() && state.getVSync().hasData()) {
-        renderVSync(ctx, repainter, state.getVSync());
+        renderVSync(ctx, repainter, top, state.getVSync());
       }
     }
 
-    private void renderVSync(RenderContext ctx, Repainter repainter, VSync vsync) {
+    @Override
+    protected void preMainUiRender(RenderContext ctx, Repainter repainter) {
+      if (state.hasData() && state.getVSync().hasData()) {
+        renderVSync(ctx, repainter, bottom, state.getVSync());
+      }
+    }
+
+    private void renderVSync(RenderContext ctx, Repainter repainter, Panel panel, VSync vsync) {
       ctx.trace("VSync", () -> {
         VSync.Data data = vsync.getData(state.toRequest(), (future, consumer) -> {
           state.thenOnUiThread(future, result -> {
@@ -408,7 +417,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
         ctx.setBackgroundColor(colors().vsyncBackground);
         boolean fill = !data.fillFirst;
         double lastX = LABEL_WIDTH;
-        double h = bottom.getPreferredHeight();
+        double h = panel.getPreferredHeight();
         for (long time : data.ts) {
           fill = !fill;
           if (time < visible.start) {
