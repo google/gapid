@@ -175,6 +175,10 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
           }
           break;
         }
+        case 'v':
+          rootPanel.toggleVSync();
+          redraw = true;
+          break;
         case 'z':
         case '0':
           redraw = state.setVisibleTime(state.getTraceTime());
