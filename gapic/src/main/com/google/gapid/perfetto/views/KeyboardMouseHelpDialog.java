@@ -15,20 +15,17 @@
  */
 package com.google.gapid.perfetto.views;
 
-import com.google.common.io.Resources;
-import static java.util.logging.Level.SEVERE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static com.google.gapid.widgets.Widgets.withSizeHints;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.logging.Level.SEVERE;
 
+import com.google.common.io.Resources;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.Info;
 import com.google.gapid.proto.service.Service.ClientAction;
-import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.OS;
 import com.google.gapid.widgets.DialogBase;
-import com.google.gapid.widgets.Widgets;
+import com.google.gapid.widgets.Theme;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -52,9 +49,9 @@ public class KeyboardMouseHelpDialog {
 
   private static final Logger LOG = Logger.getLogger(KeyboardMouseHelpDialog.class.getName());
 
-  public static void showHelp(Shell shell, Analytics analytics, Widgets widgets) {
+  public static void showHelp(Shell shell, Analytics analytics, Theme theme) {
     analytics.postInteraction(View.Help, ClientAction.Show);
-    new DialogBase(shell, widgets.theme) {
+    new DialogBase(shell, theme) {
       @Override
       public String getTitle() {
         return Messages.KEYBOARD_MOUSE_HELP_TITLE;
