@@ -45,7 +45,7 @@ sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb ffmpeg
 # Install swiftshader
 mkdir $BUILD_ROOT/swiftshader
 cd $BUILD_ROOT/swiftshader
-SWIFTSHADER_SHA=663dcefa22ea5eec1b108feebaf40a683fb104ff
+SWIFTSHADER_SHA=b0ca2a89e255446237d92ffbd76ef3bf97bfd6cd
 SWIFTSHADER_URL="https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F${SWIFTSHADER_SHA}/gfbuild-swiftshader-${SWIFTSHADER_SHA}-Linux_x64_Debug.zip"
 curl -L -o swiftshader.zip ${SWIFTSHADER_URL}
 unzip swiftshader.zip
