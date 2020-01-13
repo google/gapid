@@ -15,7 +15,6 @@
  */
 package com.google.gapid.perfetto;
 
-import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Perfetto;
@@ -41,7 +40,7 @@ public class TraceView extends Composite
     implements Capture.Listener, Perfetto.Listener, State.Listener {
   private final Models models;
   private final LoadablePanel<DrawerComposite> loading;
-  private final TraceUi traceUi;
+  private final TraceComposite<State.ForSystemTrace> traceUi;
 
   public TraceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -54,7 +53,7 @@ public class TraceView extends Composite
 
     DrawerComposite container = loading.getContents();
     container.setText("Selection");
-    traceUi = new TraceUi(container.getMain(), models.analytics, widgets.theme);
+    traceUi = createTraceUi(container.getMain(), models, widgets.theme);
     new SelectionView(container.getDrawer(), traceUi.getState());
 
     models.capture.addListener(this);
@@ -69,6 +68,21 @@ public class TraceView extends Composite
     if (!models.perfetto.isLoaded()) {
       loading.startLoading();
     }
+  }
+
+  private static TraceComposite<State.ForSystemTrace> createTraceUi(
+      Composite parent, Models models, Theme theme) {
+    return new TraceComposite<State.ForSystemTrace>(parent, models.analytics, theme) {
+      @Override
+      protected State.ForSystemTrace createState() {
+        return new State.ForSystemTrace(this);
+      }
+
+      @Override
+      protected RootPanel<State.ForSystemTrace> createRootPanel() {
+        return new RootPanel.ForSystemTrace(state, models.settings);
+      }
+    };
   }
 
   @Override
@@ -101,21 +115,5 @@ public class TraceView extends Composite
   @Override
   public void onSelectionChanged(Selection.MultiSelection selection) {
     loading.getContents().setExpanded(selection != null);
-  }
-
-  private static class TraceUi extends TraceComposite<State.ForSystemTrace> {
-    public TraceUi(Composite parent, Analytics analytics, Theme theme) {
-      super(parent, analytics, theme);
-    }
-
-    @Override
-    protected State.ForSystemTrace createState() {
-      return new State.ForSystemTrace(this);
-    }
-
-    @Override
-    protected RootPanel<State.ForSystemTrace> createRootPanel() {
-      return new RootPanel.ForSystemTrace(state);
-    }
   }
 }
