@@ -130,10 +130,12 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Failed to create trace processor")
 	}
-	gpu := t.b.Instance().GetConfiguration().GetHardware().GetGPU()
+	conf := t.b.Instance().GetConfiguration()
+	gpu := conf.GetHardware().GetGPU()
+	desc := conf.GetPerfettoCapability().GetGpuProfiling().GetGpuCounterDescriptor()
 	gpuName := gpu.GetName()
 	if strings.Contains(gpuName, "Adreno") {
-		return adreno.ProcessProfilingData(ctx, processor, handleMappings)
+		return adreno.ProcessProfilingData(ctx, processor, desc, handleMappings)
 	}
 	return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
 }
