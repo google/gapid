@@ -22,6 +22,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.Unit;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
@@ -165,7 +166,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     long t = data.ts[idx];
     double startX = state.timeToPx(data.ts[idx]);
     double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
-    hovered = new HoverCard(m, data.values[idx], startX, endX);
+    hovered = new HoverCard(m, track.getCounter().unit, data.values[idx], startX, endX);
     mouseXpos = x;
 
     return new Hover() {
@@ -199,29 +200,17 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   }
 
   private static class HoverCard {
-    private static final double MIN_DOUBLE_AS_LONG = 100_000.0;
-    private static final double MAX_DOUBLE_AS_LONG = 9.2233720368547748E18;
-
     public final double value;
     public final double startX, endX;
     public final String label;
     public final Size size;
 
-    public HoverCard(Fonts.TextMeasurer tm, double value, double startX, double endX) {
+    public HoverCard(Fonts.TextMeasurer tm, Unit unit, double value, double startX, double endX) {
       this.value = value;
       this.startX = startX;
       this.endX = endX;
-      this.label = "Value: " + format(value);
+      this.label = "Value: " + unit.format(value);
       this.size = tm.measure(Fonts.Style.Normal, label);
-    }
-
-    private static String format(double v) {
-      double abs = Math.abs(v);
-      if (abs >= MIN_DOUBLE_AS_LONG && abs <= MAX_DOUBLE_AS_LONG) {
-        return String.format("%,d", Math.round(v));
-      } else {
-        return String.format("%,g", v);
-      }
     }
   }
 }
