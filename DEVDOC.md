@@ -8,23 +8,23 @@ The `cmd/gofuse` utility enables to re-create the file hierarchy expected by Go
 tools:
 
 ```sh
-# We assume GAPID has been checked out under ~/gapid
-cd ${HOME}/gapid
 # Make sure to build to have all compile-time generated files
-bazel build //pkg
-# Prepare a gapid-gofuse directory **outside of the gapid checkout directory**
-mkdir ${HOME}/gapid-gofuse
-# Run gofuse with the previous directory as a target, and the bazel-specific OS identifier
-OS=k8 # Pick up the right option: k8 (linux) / darwin (macos) / x64_windows (windows)
-bazel run //cmd/gofuse -- -bazelout ${OS}-fastbuild --dir ${HOME}/gapid-gofuse
+cd <path-to-gapid-source>
+bazel build pkg
 
-## In your shell init script, e.g. ~/.bashrc, set up your GOPATH:
-export GOPATH=${HOME}/gapid-gofuse
+# Prepare a gapid-gofuse directory **outside of the gapid checkout directory**
+mkdir <path-outside-gapid-source>/gapid-gofuse
+
+# Run gofuse with the previous directory as a target
+bazel run //cmd/gofuse -- -dir <path-to-gapid-gofuse>
+
+## In your shell init script, e.g. ~/.bashrc, add the gofuse directory to GOPATH:
+export GOPATH="${GOPATH}:<path-to-gapid-gofuse>"
 ```
 
-After setting up the gofuse directory as your GOPATH, you should be good to go
-by editing files under the newly populated gofuse directory. You should still
-compile under the original checkout directory of GAPID.
+After adding the gofuse directory to your GOPATH, Go tools should work as
+expected. You can edit files under the newly populated gofuse directory. You
+should still compile under the original checkout directory of GAPID.
 
 > Despite its name, the gofuse command does NOT use FUSE (filesystem in userspace).
 > It just creates directories and links to source files, including generated files.
