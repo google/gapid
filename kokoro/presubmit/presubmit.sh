@@ -101,6 +101,27 @@ function run_gazelle() {
   $BAZEL run gazelle
 }
 
+function run_commit_message() {
+  echo
+  currentbranch=`git symbolic-ref HEAD | sed -E 's/refs\/heads\/(.*)/\1/'`
+  upstream=`git config branch.${currentbranch}.merge`
+  remote=`git config branch.${currentbranch}.remote`
+  if [[ ${upstream} != *"refs/heads/"* ]]; then
+    upstream="refs/heads/${upstream}"
+  fi
+  remoteupstream=`echo ${upstream} | sed -E "s/heads/remotes\/${remote}/"`
+  allcommits=`git log ${remoteupstream}.. --format=%H`
+  commits=($(echo $allcommits))
+  IFS=
+  commit=`git log --format=%B ${commits[${#commits[@]} - 1]}^!`
+  bugline=`echo ${commit} | awk '/^[Bb][Uu][Gg]:.*$/ { print tolower($0) }'`
+  if [ -z $bugline ]; then
+    echo "Commit message is missing a 'Bug:' line."
+    return 1
+  fi
+  return 0
+}
+
 # Ensure we are clean to start out with.
 check "git workspace must be clean" true
 
@@ -124,6 +145,8 @@ check "//:tests contains all tests" run_enumerate_tests
 
 # Check gazelle.
 check "gazelle" run_gazelle
+
+check "commit message" run_commit_message
 
 echo
 echo "${green}All check completed successfully.$normal"
