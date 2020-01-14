@@ -54,12 +54,15 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
   private static final String SLICES_SQL =
       "select ts, dur, utid, row_id from %s where cpu = %d and utid != 0";
   private static final String SLICE_SQL =
-      "select row_id, ts, dur, cpu, utid, end_state, priority from sched where row_id = %d";
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) where row_id = %d";
   private static final String SLICE_RANGE_SQL =
-      "select row_id, ts, dur, cpu, utid, end_state, priority from sched " +
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) " +
       "where cpu = %d and utid != 0 and ts < %d and ts_end >= %d";
   private static final String SLICE_RANGE_FOR_THREAD_SQL =
-      "select row_id, ts, dur, cpu, utid, end_state, priority from sched " +
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) " +
       "where utid = %d and ts < %d and ts_end >= %d";
 
   private final CpuInfo.Cpu cpu;
@@ -201,23 +204,26 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     public final long dur;
     public final int cpu;
     public final long utid;
+    public final long upid;
     public final ThreadState endState;
     public final int priority;
 
     public Slice(
-        long id, long time, long dur, int cpu, long utid, ThreadState endState, int priority) {
+        long id, long time, long dur, int cpu, long utid, long upid, ThreadState endState, int priority) {
       this.id = id;
       this.time = time;
       this.dur = dur;
       this.cpu = cpu;
       this.utid = utid;
+      this.upid = upid;
       this.endState = endState;
       this.priority = priority;
     }
 
     public Slice(QueryEngine.Row row) {
-      this(row.getLong(0), row.getLong(1), row.getLong(2), row.getInt(3), row.getLong(4),
-          ThreadState.of(row.getString(5)), row.getInt(6));
+      this(row.getLong(0), row.getLong(1), row.getLong(2),
+          row.getInt(3), row.getLong(4), row.getLong(5),
+          ThreadState.of(row.getString(6)), row.getInt(7));
     }
 
     @Override
@@ -259,11 +265,9 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     private final Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
     private final Set<Long> sliceKeys = Sets.newHashSet();
 
-    public Slices(State state, List<Slice> slices) {
+    public Slices(List<Slice> slices) {
       for (Slice slice : slices) {
-        ThreadInfo ti = state.getThreadInfo(slice.utid);
-        long pid = (ti == null) ? 0 : ti.upid;
-        processes.computeIfAbsent(pid, ByProcess.Builder::new).add(slice);
+        processes.computeIfAbsent(slice.upid, ByProcess.Builder::new).add(slice);
         sliceKeys.add(slice.id);
       }
     }
