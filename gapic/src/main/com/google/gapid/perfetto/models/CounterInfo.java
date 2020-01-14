@@ -41,6 +41,7 @@ public class CounterInfo {
         "left join process_counter_track using (id) " +
         "left join thread_counter_track using (id) " +
         "left join counter on (track_id = ct.id) " +
+      "where (value + 1 > value or value - 1 < value) " +
       "group by ct.id";
 
   private static final ImmutableMap<Integer, Unit> UNITS = ImmutableMap.<Integer, Unit> builder()
