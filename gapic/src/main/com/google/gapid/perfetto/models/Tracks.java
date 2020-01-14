@@ -166,7 +166,7 @@ public class Tracks {
       data.tracks.addGroup(parent, summary.getId(), process.getDisplay(),
           group(state -> new ProcessSummaryPanel(state, summary), false));
 
-      // For each process, add Vulkan memory usage counters if any exist
+      // For each process, add Vulkan memory usage counters if any exist.
       List<CounterInfo> counters = data.getCounters().values().stream()
           .filter(c -> c.type == CounterInfo.Type.Process && c.ref == process.upid &&
               c.count > 0 && c.name.startsWith("vulkan"))
@@ -179,6 +179,25 @@ public class Tracks {
           CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack(groupId, track.getId(), counter.name,
               single(state -> new VulkanCounterPanel(state, track), false));
+        }
+      }
+
+      // For each process, add any other process counters if any exist.
+      counters = data.getCounters().values().stream()
+          .filter(c -> c.type == CounterInfo.Type.Process && c.ref == process.upid &&
+              c.count > 0 && shouldShowProcessCounter(c))
+          .collect(toList());
+      if (!counters.isEmpty()) {
+        String parentId = summary.getId();
+        if (counters.size() > 3) {
+          parentId = "proc_counters_" + process.upid;
+          data.tracks.addLabelGroup(summary.getId(), parentId, "Process Counters",
+              group(state -> new TitlePanel("Process Counters"), false));
+        }
+        for (CounterInfo counter : counters) {
+          CounterTrack track = new CounterTrack(data.qe, counter);
+          data.tracks.addTrack(parentId, track.getId(), counter.name,
+              single(state -> new CounterPanel(state, track), false));
         }
       }
 
@@ -236,6 +255,26 @@ public class Tracks {
           group(state -> new TitlePanel(idleCount + " Idle Processes (< 0.1%)"), false));
     }
     return data;
+  }
+
+  private static boolean shouldShowProcessCounter(CounterInfo counter) {
+    if (counter.name.startsWith("vulkan")) {
+      // Shown in the vulkan memory usage group.
+      return false;
+    }
+
+    if (counter.name.startsWith("mem.rss.") || counter.name.startsWith("mem.ion.") ||
+        "mem.swap".equals(counter.name) ||  "Heap size (KB)".equals(counter.name)) {
+      // Memory counters get their own UI.
+      return false;
+    }
+
+    if ("VSYNC-app".equals(counter.name)) {
+      // VSync has a custom UI.
+      return false;
+    }
+
+    return true;
   }
 
   public static Perfetto.Data.Builder enumerateVSync(Perfetto.Data.Builder data) {
