@@ -1,0 +1,185 @@
+<!-- Copyright (C) 2019 Google Inc.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<!DOCTYPE html>
+<html>
+<head i18n-values="dir:textdirection;">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta charset="utf-8"/>
+<title>Keyboard/Mouse Help</title>
+<body>
+   <style>
+    :host {
+      flex: 1 1 auto;
+      flex-direction: row;
+      display: flex;
+      width: 700px;
+    }
+
+    table.centered{
+	margin-left:auto; margin-right:auto;
+    }
+    .column {
+      padding: 0 40px 40px 0;
+      vertical-align:top;
+    }
+    .command {
+      font-family: monospace;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    .action {
+      font-size: 0.8em;
+    }
+    h2 {
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+    h4 {
+      padding: 3 0 0 0;
+      font-size: 0.9em;
+    }
+
+    </style>
+
+    <table class="centered">
+    <tr>
+
+    <td class="column">
+      <table>
+      <tr><td colspan=2><h2>General</h2></td></tr>
+
+      <tr class="pair">
+        <td class="command">1-4</td>
+        <td class="action">Switch mouse mode</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">shift-drag</td>
+        <td class="action">Box-select</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">ctrl-drag</td>
+        <td class="action">Time-select</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">space-drag</td>
+        <td class="action">Pan</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">f</td>
+        <td class="action">Zoom into selection</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">z/0</td>
+        <td class="action">Reset zoom and pan</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">v</td>
+        <td class="action">Highlight VSync</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">m</td>
+        <td class="action">Mark current selection</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">h/?</td>
+        <td class="action">Show help</td>
+      </tr>
+
+      <tr><td colspan=2><h2>Navigation</h2></td></tr>
+      <tr class="pair">
+        <td class="command">w/s (or Ctrl +/-) </td><td class="action">Zoom in/out (+shift: faster)</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">a/d</td>
+        <td class="action">Pan left/right (+shift: faster)</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">q/e</td>
+        <td class="action">Pan up/down (+shift: faster)</td>
+      </tr>
+
+
+      <tr><td colspan=2><h2>Mouse Controls</h2></td></tr>
+      <tr class="pair">
+        <td class="command">click</td>
+        <td class="action">Select event</td>
+      </tr>
+      <tr class="pair">
+        <td class="command">ctrl-mousewheel</td>
+        <td class="action">Zoom in/out</td>
+      </tr>
+      </table>
+
+    </td>
+
+     <td class="column">
+
+      <table>
+      <tr><td colspan=2><h2>
+        Modes
+      </h2></td></tr>
+
+      <tr><td colspan=2><h4> Select Mode </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Box select</td>
+      </tr>
+
+<!--      <tr class="pair">
+        <td class="command"><span class="mod"></span>-click/drag</td>
+        <td class="action">Add events to the current selection</td>
+      </tr>
+-->
+
+      <tr><td colspan=2><h4>
+        Pan mode
+      </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Pan the view</td>
+      </tr>
+
+      <tr><td colspan=2><h4>
+        Zoom mode
+      </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Zoom in/out by dragging up/down</td>
+      </tr>
+
+      <tr><td colspan=2><h4>
+        Timing mode
+      </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Create or move markers</td>
+      </tr>
+      </table>
+    </td>
+    </tr>
+   </table>
+</body>
+</html>
+

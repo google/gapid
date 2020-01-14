@@ -33,8 +33,11 @@ using namespace std::chrono;
 
 namespace memory_tracker {
 
+using scoped_read_lock = layer_helpers::threading::scoped_read_lock;
+using scoped_write_lock = layer_helpers::threading::scoped_write_lock;
+
 MemoryTracker memory_tracker_instance;
-rwlock m_global_unique_handles;
+rwlock rwl_global_unique_handles;
 std::unordered_map<uint64_t, uint64_t> global_unique_handles;
 
 template <typename T, typename... Args>
@@ -49,9 +52,10 @@ uint64_t UniqueHandleGenerator::Hash64(uint64_t handle, uint64_t counter) {
   concat.push_back(handle);
   concat.push_back(counter);
   auto unique_handle = CityHash64((const char*)(concat.data()), 16);
-  m_global_unique_handles.wlock();
-  global_unique_handles[handle] = unique_handle;
-  m_global_unique_handles.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_global_unique_handles);
+    global_unique_handles[handle] = unique_handle;
+  }
   return unique_handle;
 }
 
@@ -95,20 +99,20 @@ AllocationCallbacksTracker::AllocationCallbacksTracker(
     const VkAllocationCallbacks* user_allocator,
     const std::string& caller_api) {
   if (user_allocator) {
-    rwl_global_user_data_mapping.wlock();
-    global_user_data_mapping[(uintptr_t)this] =
-        (uintptr_t)(user_allocator->pUserData);
-    rwl_global_user_data_mapping.wunlock();
-
-    rwl_global_callback_mapping.wlock();
-    global_callback_mapping[(uintptr_t)this] = user_allocator;
-    rwl_global_callback_mapping.wunlock();
+    {
+      scoped_write_lock wlock(&rwl_global_user_data_mapping);
+      global_user_data_mapping[(uintptr_t)this] =
+          (uintptr_t)(user_allocator->pUserData);
+    }
+    {
+      scoped_write_lock wlock(&rwl_global_callback_mapping);
+      global_callback_mapping[(uintptr_t)this] = user_allocator;
+    }
   }
-
-  rwl_global_caller_api_mapping.wlock();
-  global_caller_api_mapping[(uintptr_t)this] = caller_api;
-  rwl_global_caller_api_mapping.wunlock();
-
+  {
+    scoped_write_lock wlock(&rwl_global_caller_api_mapping);
+    global_caller_api_mapping[(uintptr_t)this] = caller_api;
+  }
   tracked_allocator.pUserData = this;
   tracked_allocator.pfnAllocation = &TrackedAllocationFunction;
   tracked_allocator.pfnReallocation = &TrackedReallocationFunction;
@@ -125,6 +129,7 @@ AllocationCallbacksTracker::GetAllocationCallbacksHandle(
     const VkAllocationCallbacks* allocator, const std::string& caller) {
   std::stringstream stream;
   if (allocator) {
+    stream << (uint64_t)(allocator->pUserData);
     stream << (uint64_t)(allocator->pfnAllocation);
     stream << (uint64_t)(allocator->pfnReallocation);
     stream << (uint64_t)(allocator->pfnFree);
@@ -139,11 +144,29 @@ AllocationCallbacksTracker::GetAllocationCallbacksHandle(
 void* AllocationCallbacksTracker::TrackedAllocationFunction(
     void* pUserData, size_t size, size_t alignment,
     VkSystemAllocationScope allocationScope) {
-  auto user_allocator = global_callback_mapping[(uintptr_t)pUserData];
   void* ptr = nullptr;
-  AllocatorType allocator_type = atUser;
-  if (user_allocator) {
-    void* user_data = (void*)(global_user_data_mapping[(uintptr_t)pUserData]);
+  void* user_data = nullptr;
+  const VkAllocationCallbacks* user_allocator = nullptr;
+  AllocatorType allocator_type = atDefault;
+
+  {
+    scoped_read_lock rlock(&rwl_global_user_data_mapping);
+    if (global_user_data_mapping.find((uintptr_t)pUserData) !=
+        global_user_data_mapping.end()) {
+      user_data = (void*)(global_user_data_mapping[(uintptr_t)pUserData]);
+    }
+  }
+
+  {
+    scoped_read_lock rlock(&rwl_global_callback_mapping);
+    if (global_callback_mapping.find((uintptr_t)pUserData) !=
+        global_callback_mapping.end()) {
+      user_allocator = global_callback_mapping[(uintptr_t)pUserData];
+    }
+  }
+
+  if (user_allocator && user_allocator->pfnAllocation) {
+    allocator_type = atUser;
     ptr = user_allocator->pfnAllocation(user_data, size, alignment,
                                         allocationScope);
   } else {
@@ -151,83 +174,151 @@ void* AllocationCallbacksTracker::TrackedAllocationFunction(
     ptr = _aligned_malloc(size, alignment);
 #else
     auto corrected_alignment = std::max(alignment, sizeof(void*));
-    if (posix_memalign(&ptr, corrected_alignment, size) == 0) {
-      rwl_global_allocation_size_mapping.wlock();
-      global_allocation_size_mapping[(uintptr_t)ptr] = size;
-      rwl_global_allocation_size_mapping.wunlock();
-    } else {
-      ptr = nullptr;
-      rwl_global_allocation_size_mapping.wlock();
-      global_allocation_size_mapping[(uintptr_t)ptr] = 0;
-      rwl_global_allocation_size_mapping.wunlock();
+    if (posix_memalign(&ptr, corrected_alignment, size) != 0) {
+      return ptr;
     }
 #endif
-    allocator_type = atDefault;
   }
-  auto caller_api = global_caller_api_mapping[(uintptr_t)pUserData];
-  memory_tracker::memory_tracker_instance.ProcessHostMemoryAllocationEvent(
-      (uintptr_t)ptr, size, alignment, allocationScope, caller_api,
-      allocator_type);
+  if (ptr) {
+    {
+      scoped_write_lock wlock(&rwl_global_allocation_size_mapping);
+      global_allocation_size_mapping[(uintptr_t)ptr] = size;
+    }
+    std::string caller_api = "Unknown";
+    {
+      scoped_read_lock rlock(&rwl_global_caller_api_mapping);
+      if (global_caller_api_mapping.find((uintptr_t)pUserData) !=
+          global_caller_api_mapping.end()) {
+        caller_api = global_caller_api_mapping[(uintptr_t)pUserData];
+      }
+    }
+    memory_tracker::memory_tracker_instance.ProcessHostMemoryAllocationEvent(
+        (uintptr_t)ptr, size, alignment, allocationScope, caller_api,
+        allocator_type);
+  }
   return ptr;
 }
 
 void* AllocationCallbacksTracker::TrackedReallocationFunction(
     void* pUserData, void* pOriginal, size_t size, size_t alignment,
     VkSystemAllocationScope allocationScope) {
-  auto user_allocator = global_callback_mapping[(uintptr_t)pUserData];
+  if (!pOriginal) {
+    return TrackedAllocationFunction(pUserData, size, alignment,
+                                     allocationScope);
+  }
+  if (size == 0) {
+    TrackedFreeFunction(pUserData, pOriginal);
+    return nullptr;
+  }
+  size_t osize = 0;
+  {
+    scoped_read_lock rlock(&rwl_global_allocation_size_mapping);
+    osize = (global_allocation_size_mapping.find((uintptr_t)pOriginal) ==
+             global_allocation_size_mapping.end())
+                ? 0
+                : global_allocation_size_mapping[(uintptr_t)pOriginal];
+  }
+  if (osize == 0) {
+    return TrackedAllocationFunction(pUserData, size, alignment,
+                                     allocationScope);
+  }
+  if (osize == size) return pOriginal;
+
   void* ptr = nullptr;
-  AllocatorType allocator_type = atUser;
-  if (user_allocator) {
-    void* user_data = (void*)(global_user_data_mapping[(uintptr_t)pUserData]);
+  void* user_data = nullptr;
+  const VkAllocationCallbacks* user_allocator = nullptr;
+  AllocatorType allocator_type = atDefault;
+
+  {
+    scoped_read_lock rlock(&rwl_global_user_data_mapping);
+    if (global_user_data_mapping.find((uintptr_t)pUserData) !=
+        global_user_data_mapping.end()) {
+      user_data = (void*)(global_user_data_mapping[(uintptr_t)pUserData]);
+    }
+  }
+
+  {
+    scoped_read_lock rlock(&rwl_global_callback_mapping);
+    if (global_callback_mapping.find((uintptr_t)pUserData) !=
+        global_callback_mapping.end()) {
+      user_allocator = global_callback_mapping[(uintptr_t)pUserData];
+    }
+  }
+
+  if (user_allocator && user_allocator->pfnReallocation) {
+    allocator_type = atUser;
     ptr = user_allocator->pfnReallocation(user_data, pOriginal, size, alignment,
                                           allocationScope);
   } else {
 #if defined(WIN32)
-    ptr = _aligned_realloc(ptr, size, alignment);
+    ptr = _aligned_realloc(pOriginal, size, alignment);
 #else
-    rwl_global_allocation_size_mapping.rlock();
-    size_t osize = (global_allocation_size_mapping.find((uintptr_t)pOriginal) ==
-                    global_allocation_size_mapping.end())
-                       ? 0
-                       : global_allocation_size_mapping[(uintptr_t)pOriginal];
-    rwl_global_allocation_size_mapping.runlock();
     auto corrected_alignment = std::max(alignment, sizeof(void*));
-    if (posix_memalign(&ptr, corrected_alignment, size) == 0) {
-      size_t cpsize = osize < size ? osize : size;
-      memcpy(ptr, pOriginal, cpsize);
-      free(pOriginal);
-      rwl_global_allocation_size_mapping.wlock();
-      global_allocation_size_mapping.erase((uintptr_t)pOriginal);
-      global_allocation_size_mapping[(uintptr_t)ptr] = size;
-      rwl_global_allocation_size_mapping.wunlock();
-    } else {
-      ptr = pOriginal;
+    if (posix_memalign(&ptr, corrected_alignment, size) != 0) {
+      return ptr;
     }
 #endif
-    allocator_type = atDefault;
+    if (ptr) {
+      size_t cpsize = osize < size ? osize : size;
+      memcpy(ptr, pOriginal, cpsize);
+#if defined(WIN32)
+      _aligned_free(pOriginal);
+#else
+      free(pOriginal);
+#endif
+    }
   }
-  auto caller_api = global_caller_api_mapping[(uintptr_t)pUserData];
-  memory_tracker::memory_tracker_instance.ProcessHostMemoryReallocationEvent(
-      (uintptr_t)ptr, (uintptr_t)pOriginal, size, alignment, allocationScope,
-      caller_api, allocator_type);
+  if (ptr) {
+    {
+      scoped_write_lock wlock(&rwl_global_allocation_size_mapping);
+      global_allocation_size_mapping[(uintptr_t)ptr] = size;
+    }
+    std::string caller_api = "Unknown";
+    {
+      scoped_read_lock rlock(&rwl_global_caller_api_mapping);
+      if (global_caller_api_mapping.find((uintptr_t)pUserData) !=
+          global_caller_api_mapping.end()) {
+        caller_api = global_caller_api_mapping[(uintptr_t)pUserData];
+      }
+    }
+    memory_tracker::memory_tracker_instance.ProcessHostMemoryReallocationEvent(
+        (uintptr_t)ptr, (uintptr_t)pOriginal, size, alignment, allocationScope,
+        caller_api, allocator_type);
+  }
   return ptr;
 }
 
 void AllocationCallbacksTracker::TrackedFreeFunction(void* pUserData,
                                                      void* pMemory) {
-  const VkAllocationCallbacks* user_allocator =
-      global_callback_mapping[(uintptr_t)pUserData];
+  const VkAllocationCallbacks* user_allocator = nullptr;
+  {
+    scoped_read_lock rlock(&rwl_global_callback_mapping);
+    if (global_callback_mapping.find((uintptr_t)pUserData) !=
+        global_callback_mapping.end()) {
+      user_allocator = global_callback_mapping[(uintptr_t)pUserData];
+    }
+  }
+
   memory_tracker::memory_tracker_instance.ProcessHostMemoryFreeEvent(
       (uintptr_t)pMemory);
-  if (user_allocator) {
-    void* user_data = (void*)(global_user_data_mapping[(uintptr_t)pUserData]);
+
+  if (user_allocator && user_allocator->pfnFree) {
+    void* user_data = nullptr;
+    {
+      scoped_read_lock rlock(&rwl_global_user_data_mapping);
+      if (global_user_data_mapping.find((uintptr_t)pUserData) !=
+          global_user_data_mapping.end()) {
+        user_data = (void*)(global_user_data_mapping[(uintptr_t)pUserData]);
+      }
+    }
     user_allocator->pfnFree(user_data, pMemory);
-  }
+  } else {
 #if defined(WIN32)
-  _aligned_free(pMemory);
+    _aligned_free(pMemory);
 #else
-  free(pMemory);
+    free(pMemory);
 #endif
+  }
 }
 
 // ------------------------ Bookkeeping memory events --------------------------
@@ -269,8 +360,11 @@ CreateBufferInfo::CreateBufferInfo(VkBufferCreateInfo const* create_buffer_info,
   size = create_buffer_info->size;
   usage = create_buffer_info->usage;
   sharing_mode = create_buffer_info->sharingMode;
-  for (uint32_t i = 0; i < create_buffer_info->queueFamilyIndexCount; i++)
-    queue_family_indices.push_back(create_buffer_info->pQueueFamilyIndices[i]);
+  if (sharing_mode == VK_SHARING_MODE_CONCURRENT) {
+    for (uint32_t i = 0; i < create_buffer_info->queueFamilyIndexCount; i++)
+      queue_family_indices.push_back(
+          create_buffer_info->pQueueFamilyIndices[i]);
+  }
 }
 
 VulkanMemoryEventPtr CreateBufferInfo::GetVulkanMemoryEvent() {
@@ -349,8 +443,10 @@ CreateImageInfo::CreateImageInfo(VkImageCreateInfo const* create_image_info,
   tiling = create_image_info->tiling;
   usage = create_image_info->usage;
   sharing_mode = create_image_info->sharingMode;
-  for (uint32_t i = 0; i < create_image_info->queueFamilyIndexCount; i++)
-    queue_family_indices.push_back(create_image_info->pQueueFamilyIndices[i]);
+  if (sharing_mode == VK_SHARING_MODE_CONCURRENT) {
+    for (uint32_t i = 0; i < create_image_info->queueFamilyIndexCount; i++)
+      queue_family_indices.push_back(create_image_info->pQueueFamilyIndices[i]);
+  }
   initial_layout = create_image_info->initialLayout;
 }
 
@@ -468,179 +564,189 @@ Heap::Heap(VkDeviceSize size_, VkMemoryHeapFlags flags_)
     : size(size_), flags(flags_) {}
 
 void Heap::AddDeviceMemory(DeviceMemoryPtr device_memory) {
-  rwl_device_memories.wlock();
+  scoped_write_lock wlock(&rwl_device_memories);
   device_memories[device_memory->GetVkHandle()] = std::move(device_memory);
-  rwl_device_memories.wunlock();
 }
 
 void Heap::DestroyDeviceMemory(VkDeviceMemory vk_device_memory) {
   DeviceMemoryPtr device_memory = nullptr;
-  rwl_device_memories.rlock();
-  auto device_memory_found =
-      (device_memories.find(vk_device_memory) != device_memories.end());
-  rwl_device_memories.runlock();
-  if (!device_memory_found) return;
-
-  rwl_device_memories.wlock();
-  device_memory = std::move(device_memories[vk_device_memory]);
-  device_memories.erase(vk_device_memory);
-  rwl_device_memories.wunlock();
-
-  rwl_buffers.wlock();
-  rwl_invalid_buffers.wlock();
-  // Move all non-destroyed bound buffers to invalid container
-  for (const auto& vk_buffer : device_memory->GetBoundBuffers()) {
-    auto unique_handle = buffers[vk_buffer]->GetUniqueHandle();
-    invalid_buffers[unique_handle] = std::move(buffers[vk_buffer]);
-    buffers.erase(vk_buffer);
-    device_memory->EmplaceInvalidBuffer(unique_handle);
+  {
+    scoped_read_lock rlock(&rwl_device_memories);
+    if (device_memories.find(vk_device_memory) == device_memories.end()) return;
   }
-  rwl_buffers.wunlock();
-  rwl_invalid_buffers.wunlock();
 
-  rwl_images.wlock();
-  rwl_invalid_images.wlock();
-  // Move all non-destroyed bound images to invalid container
-  for (const auto& vk_image : device_memory->GetBoundImages()) {
-    auto unique_handle = images[vk_image]->GetUniqueHandle();
-    invalid_images[unique_handle] = std::move(images[vk_image]);
-    images.erase(vk_image);
-    device_memory->EmplaceInvalidImage(unique_handle);
+  {
+    scoped_write_lock wlock(&rwl_device_memories);
+    device_memory = std::move(device_memories[vk_device_memory]);
+    device_memories.erase(vk_device_memory);
   }
-  rwl_images.wunlock();
-  rwl_invalid_images.wunlock();
+
+  {
+    scoped_write_lock wlockb(&rwl_buffers);
+    scoped_write_lock wlocki(&rwl_invalid_buffers);
+    // Move all non-destroyed bound buffers to invalid container
+    for (const auto& vk_buffer : device_memory->GetBoundBuffers()) {
+      auto unique_handle = buffers[vk_buffer]->GetUniqueHandle();
+      invalid_buffers[unique_handle] = std::move(buffers[vk_buffer]);
+      buffers.erase(vk_buffer);
+      device_memory->EmplaceInvalidBuffer(unique_handle);
+    }
+  }
+
+  {
+    scoped_write_lock wlockim(&rwl_images);
+    scoped_write_lock wlockin(&rwl_invalid_images);
+    // Move all non-destroyed bound images to invalid container
+    for (const auto& vk_image : device_memory->GetBoundImages()) {
+      auto unique_handle = images[vk_image]->GetUniqueHandle();
+      invalid_images[unique_handle] = std::move(images[vk_image]);
+      images.erase(vk_image);
+      device_memory->EmplaceInvalidImage(unique_handle);
+    }
+  }
 
   device_memory->ClearBoundBuffers();
   device_memory->ClearBoundImages();
-  rwl_invalid_device_memories.wlock();
-  invalid_device_memories[device_memory->GetUniqueHandle()] =
-      std::move(device_memory);
-  rwl_invalid_device_memories.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_invalid_device_memories);
+    invalid_device_memories[device_memory->GetUniqueHandle()] =
+        std::move(device_memory);
+  }
 }
 
 void Heap::BindBuffer(BufferPtr buffer, VkDeviceMemory device_memory,
                       VkDeviceSize memory_offset) {
   uint32_t memory_type = UINT32_MAX;
-  rwl_device_memories.rlock();
-  if (device_memories.find(device_memory) != device_memories.end())
+  UniqueHandle device_memory_handle = UINT64_MAX;
+  {
+    scoped_read_lock rlock(&rwl_device_memories);
+    if (device_memories.find(device_memory) == device_memories.end()) return;
+    device_memory_handle = device_memories[device_memory]->GetUniqueHandle();
     memory_type = device_memories[device_memory]->GetMemoryType();
-  rwl_device_memories.runlock();
+  }
 
   buffer->SetBound();
   buffer->SetBindBufferInfo(make_unique<BindMemoryInfo>(
-      device_memory, device_memories[device_memory]->GetUniqueHandle(),
-      memory_offset, memory_type));
+      device_memory, device_memory_handle, memory_offset, memory_type));
   // Add to the device memory list of bound buffers
-  rwl_device_memories.wlock();
-  device_memories[device_memory]->EmplaceBoundBuffer(buffer->GetVkBuffer());
-  rwl_device_memories.wunlock();
-  rwl_buffers.wlock();
-  buffers[buffer->GetVkBuffer()] = std::move(buffer);
-  rwl_buffers.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_device_memories);
+    device_memories[device_memory]->EmplaceBoundBuffer(buffer->GetVkBuffer());
+  }
+  {
+    scoped_write_lock wlock(&rwl_buffers);
+    buffers[buffer->GetVkBuffer()] = std::move(buffer);
+  }
 }
 
 void Heap::DestroyBuffer(VkBuffer vk_buffer) {
-  rwl_buffers.rlock();
-  auto buffer_found = (buffers.find(vk_buffer) != buffers.end());
-  rwl_buffers.runlock();
-  if (!buffer_found) return;
+  {
+    scoped_read_lock rlock(&rwl_buffers);
+    if (buffers.find(vk_buffer) == buffers.end()) return;
+  }
 
-  rwl_buffers.wlock();
-  auto buffer = std::move(buffers[vk_buffer]);
-  buffers.erase(vk_buffer);
-  rwl_buffers.wunlock();
+  BufferPtr buffer = nullptr;
+  {
+    scoped_write_lock wlock(&rwl_buffers);
+    buffer = std::move(buffers[vk_buffer]);
+    buffers.erase(vk_buffer);
+  }
 
   // Remove buffer from the device memory list of bound buffers
   if (buffer && buffer->Bound()) {
-    rwl_device_memories.wlock();
+    scoped_write_lock wlock(&rwl_device_memories);
     device_memories[buffer->GetDeviceMemory()]->EraseBoundBuffer(vk_buffer);
-    rwl_device_memories.wunlock();
   }
 }
 
 void Heap::BindImage(ImagePtr image, VkDeviceMemory device_memory,
                      VkDeviceSize memory_offset) {
   uint32_t memory_type = UINT32_MAX;
-  rwl_device_memories.rlock();
-  if (device_memories.find(device_memory) != device_memories.end())
+  UniqueHandle device_memory_handle = UINT64_MAX;
+  {
+    scoped_read_lock rlock(&rwl_device_memories);
+    if (device_memories.find(device_memory) == device_memories.end()) return;
+    device_memory_handle = device_memories[device_memory]->GetUniqueHandle();
     memory_type = device_memories[device_memory]->GetMemoryType();
-  rwl_device_memories.runlock();
-
+  }
   image->SetBound();
   image->SetBindImageInfo(make_unique<BindMemoryInfo>(
-      device_memory, device_memories[device_memory]->GetUniqueHandle(),
-      memory_offset, memory_type));
+      device_memory, device_memory_handle, memory_offset, memory_type));
   // Add to the device memory list of bound images
-  rwl_device_memories.wlock();
-  device_memories[device_memory]->EmplaceBoundImage(image->GetVkImage());
-  rwl_device_memories.wunlock();
-  rwl_images.wlock();
-  images[image->GetVkImage()] = std::move(image);
-  rwl_images.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_device_memories);
+    device_memories[device_memory]->EmplaceBoundImage(image->GetVkImage());
+  }
+  {
+    scoped_write_lock wlock(&rwl_images);
+    images[image->GetVkImage()] = std::move(image);
+  }
 }
 
 void Heap::DestroyImage(VkImage vk_image) {
-  rwl_images.rlock();
-  auto image_found = (images.find(vk_image) != images.end());
-  rwl_images.runlock();
-  if (!image_found) return;
-
-  rwl_images.wlock();
-  auto image = std::move(images[vk_image]);
-  images.erase(vk_image);
-  rwl_images.wunlock();
+  {
+    scoped_read_lock rlock(&rwl_images);
+    if (images.find(vk_image) == images.end()) return;
+  }
+  ImagePtr image = nullptr;
+  {
+    scoped_write_lock wlock(&rwl_images);
+    image = std::move(images[vk_image]);
+    images.erase(vk_image);
+  }
   // Remove image from the device memory list of bound images
   if (image && image->Bound()) {
-    rwl_device_memories.wlock();
+    scoped_write_lock wlock(&rwl_device_memories);
     device_memories[image->GetDeviceMemory()]->EraseBoundImage(vk_image);
-    rwl_device_memories.wunlock();
   }
 }
 
 VulkanMemoryEventContainerPtr Heap::GetVulkanMemoryEvents(VkDevice device,
                                                           uint32_t heap_index) {
   auto events = make_unique<VulkanMemoryEventContainer>();
-
-  // Device memories
-  rwl_device_memories.rlock();
-  for (auto it = device_memories.begin(); it != device_memories.end(); it++) {
-    events->push_back(it->second->GetVulkanMemoryEvent());
-    events->back()->has_device = true;
-    events->back()->device = (uint64_t)(device);
-    events->back()->has_heap = true;
-    events->back()->heap = heap_index;
-  }
-  rwl_device_memories.runlock();
-
-  // Bound buffers
-  rwl_buffers.wlock();
-  for (auto it = buffers.begin(); it != buffers.end(); it++) {
-    auto buffer_events = it->second->GetVulkanMemoryEvents();
-    for (auto itt = buffer_events->begin(); itt != buffer_events->end();) {
-      events->push_back(std::move(*itt));
+  {
+    // Device memories
+    scoped_read_lock rlock(&rwl_device_memories);
+    for (auto it = device_memories.begin(); it != device_memories.end(); it++) {
+      events->push_back(it->second->GetVulkanMemoryEvent());
       events->back()->has_device = true;
       events->back()->device = (uint64_t)(device);
       events->back()->has_heap = true;
       events->back()->heap = heap_index;
-      itt = buffer_events->erase(itt);
     }
   }
-  rwl_buffers.wunlock();
 
-  // Bound images
-  rwl_images.wlock();
-  for (auto it = images.begin(); it != images.end(); it++) {
-    auto image_events = it->second->GetVulkanMemoryEvents();
-    for (auto itt = image_events->begin(); itt != image_events->end();) {
-      events->push_back(std::move(*itt));
-      events->back()->has_device = true;
-      events->back()->device = (uint64_t)(device);
-      events->back()->has_heap = true;
-      events->back()->heap = heap_index;
-      itt = image_events->erase(itt);
+  {
+    // Bound buffers
+    scoped_read_lock rlock(&rwl_buffers);
+    for (auto it = buffers.begin(); it != buffers.end(); it++) {
+      auto buffer_events = it->second->GetVulkanMemoryEvents();
+      for (auto itt = buffer_events->begin(); itt != buffer_events->end();) {
+        events->push_back(std::move(*itt));
+        events->back()->has_device = true;
+        events->back()->device = (uint64_t)(device);
+        events->back()->has_heap = true;
+        events->back()->heap = heap_index;
+        itt = buffer_events->erase(itt);
+      }
     }
   }
-  rwl_images.wunlock();
+
+  {
+    // Bound images
+    scoped_read_lock rlock(&rwl_images);
+    for (auto it = images.begin(); it != images.end(); it++) {
+      auto image_events = it->second->GetVulkanMemoryEvents();
+      for (auto itt = image_events->begin(); itt != image_events->end();) {
+        events->push_back(std::move(*itt));
+        events->back()->has_device = true;
+        events->back()->device = (uint64_t)(device);
+        events->back()->has_heap = true;
+        events->back()->heap = heap_index;
+        itt = image_events->erase(itt);
+      }
+    }
+  }
   return events;
 }
 
@@ -668,56 +774,58 @@ void PhysicalDevice::AddDeviceMemory(VkDevice device,
   auto heap_index =
       memory_type_index_to_heap_index[device_memory->GetMemoryType()];
   auto vk_handle = device_memory->GetVkHandle();
-  rwl_heaps.wlock();
-  heaps[heap_index]->AddDeviceMemory(std::move(device_memory));
-  rwl_heaps.wunlock();
-  rwl_device_to_device_memory_set.wlock();
-  if (device_to_device_memory_set.find(device) ==
-      device_to_device_memory_set.end()) {
-    DeviceMemorySet device_memory_set =
-        make_unique<std::unordered_set<VkDeviceMemory>>();
-    device_to_device_memory_set[device] = std::move(device_memory_set);
+  {
+    scoped_write_lock wlock(&rwl_heaps);
+    heaps[heap_index]->AddDeviceMemory(std::move(device_memory));
   }
-  device_to_device_memory_set[device]->emplace(vk_handle);
-  rwl_device_to_device_memory_set.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_device_to_device_memory_set);
+    if (device_to_device_memory_set.find(device) ==
+        device_to_device_memory_set.end()) {
+      DeviceMemorySet device_memory_set =
+          make_unique<std::unordered_set<VkDeviceMemory>>();
+      device_to_device_memory_set[device] = std::move(device_memory_set);
+    }
+    device_to_device_memory_set[device]->emplace(vk_handle);
+  }
 };
 
 void PhysicalDevice::DestroyDeviceMemory(
     VkDevice device, VkDeviceMemory device_memory,
     bool erase_from_device_memory_set = true) {
   auto heap_index = -1;
-  rwl_device_memory_to_heap_index.wlock();
-  if (device_memory_to_heap_index.find(device_memory) !=
-      device_memory_to_heap_index.end()) {
-    heap_index = device_memory_to_heap_index[device_memory];
-    device_memory_to_heap_index.erase(device_memory);
+  {
+    scoped_write_lock wlock(&rwl_device_memory_to_heap_index);
+    if (device_memory_to_heap_index.find(device_memory) !=
+        device_memory_to_heap_index.end()) {
+      heap_index = device_memory_to_heap_index[device_memory];
+      device_memory_to_heap_index.erase(device_memory);
+    }
   }
-  rwl_device_memory_to_heap_index.wunlock();
   if (heap_index < 0) return;
-
-  rwl_heaps.rlock();
-  heaps[heap_index]->DestroyDeviceMemory(device_memory);
-  rwl_heaps.runlock();
-
+  {
+    scoped_read_lock rlock(&rwl_heaps);
+    heaps[heap_index]->DestroyDeviceMemory(device_memory);
+  }
   if (erase_from_device_memory_set) {
-    rwl_device_to_device_memory_set.wlock();
+    scoped_write_lock wlock(&rwl_device_to_device_memory_set);
     if (device_to_device_memory_set.find(device) !=
-        device_to_device_memory_set.end())
+        device_to_device_memory_set.end()) {
       device_to_device_memory_set[device]->erase(device_memory);
-    rwl_device_to_device_memory_set.wunlock();
+    }
   }
 }
 
 void PhysicalDevice::DestroyAllDeviceMemories(VkDevice device) {
   DeviceMemorySet device_memory_set = nullptr;
-  rwl_device_to_device_memory_set.wlock();
-  if (device_to_device_memory_set.find(device) !=
-      device_to_device_memory_set.end()) {
-    device_memory_set = std::move(device_to_device_memory_set[device]);
-    device_to_device_memory_set.erase(device);
+  {
+    scoped_write_lock wlock(&rwl_device_to_device_memory_set);
+    if (device_to_device_memory_set.find(device) !=
+        device_to_device_memory_set.end()) {
+      device_memory_set = std::move(device_to_device_memory_set[device]);
+      device_to_device_memory_set.erase(device);
+    }
   }
-  rwl_device_to_device_memory_set.wunlock();
-
   if (device_memory_set)
     for (auto& it : *device_memory_set) DestroyDeviceMemory(device, it, false);
 }
@@ -725,57 +833,61 @@ void PhysicalDevice::DestroyAllDeviceMemories(VkDevice device) {
 void PhysicalDevice::BindBuffer(BufferPtr buffer, VkDeviceMemory device_memory,
                                 VkDeviceSize size) {
   auto vk_buffer = buffer->GetVkBuffer();
-  rwl_buffer_to_heap_index.rlock();
-  auto buffer_found =
-      (buffer_to_heap_index.find(vk_buffer) != buffer_to_heap_index.end());
-  rwl_buffer_to_heap_index.runlock();
-  if (!buffer_found) return;
-
-  rwl_heaps.rlock();
-  heaps[buffer_to_heap_index[vk_buffer]]->BindBuffer(std::move(buffer),
-                                                     device_memory, size);
-  rwl_heaps.runlock();
+  uint32_t heap_index = 0;
+  {
+    scoped_read_lock rlock(&rwl_buffer_to_heap_index);
+    if (buffer_to_heap_index.find(vk_buffer) == buffer_to_heap_index.end())
+      return;
+    heap_index = buffer_to_heap_index[vk_buffer];
+  }
+  {
+    scoped_write_lock wlock(&rwl_heaps);
+    heaps[heap_index]->BindBuffer(std::move(buffer), device_memory, size);
+  }
 }
 
 void PhysicalDevice::DestroyBuffer(VkBuffer vk_buffer) {
-  rwl_buffer_to_heap_index.rlock();
-  auto buffer_found =
-      (buffer_to_heap_index.find(vk_buffer) != buffer_to_heap_index.end());
-  buffer_to_heap_index.erase(vk_buffer);
-  rwl_buffer_to_heap_index.runlock();
-  if (!buffer_found) return;
-
-  rwl_heaps.rlock();
-  heaps[buffer_to_heap_index[vk_buffer]]->DestroyBuffer(vk_buffer);
-  rwl_heaps.runlock();
+  uint32_t heap_index = 0;
+  {
+    scoped_read_lock rlock(&rwl_buffer_to_heap_index);
+    if (buffer_to_heap_index.find(vk_buffer) == buffer_to_heap_index.end())
+      return;
+    heap_index = buffer_to_heap_index[vk_buffer];
+    buffer_to_heap_index.erase(vk_buffer);
+  }
+  {
+    scoped_read_lock rlock(&rwl_heaps);
+    heaps[heap_index]->DestroyBuffer(vk_buffer);
+  }
 }
 
 void PhysicalDevice::BindImage(ImagePtr image, VkDeviceMemory device_memory,
                                VkDeviceSize size) {
   auto vk_image = image->GetVkImage();
-  rwl_image_to_heap_index.rlock();
-  auto image_found =
-      (image_to_heap_index.find(vk_image) != image_to_heap_index.end());
-  rwl_image_to_heap_index.runlock();
-  if (!image_found) return;
-
-  rwl_heaps.rlock();
-  heaps[image_to_heap_index[vk_image]]->BindImage(std::move(image),
-                                                  device_memory, size);
-  rwl_heaps.runlock();
+  uint32_t heap_index = 0;
+  {
+    scoped_read_lock rlock(&rwl_image_to_heap_index);
+    if (image_to_heap_index.find(vk_image) == image_to_heap_index.end()) return;
+    heap_index = image_to_heap_index[vk_image];
+  }
+  {
+    scoped_read_lock rlock(&rwl_heaps);
+    heaps[heap_index]->BindImage(std::move(image), device_memory, size);
+  }
 }
 
 void PhysicalDevice::DestroyImage(VkImage vk_image) {
-  rwl_image_to_heap_index.rlock();
-  auto image_found =
-      (image_to_heap_index.find(vk_image) != image_to_heap_index.end());
-  image_to_heap_index.erase(vk_image);
-  rwl_image_to_heap_index.runlock();
-  if (!image_found) return;
-
-  rwl_heaps.rlock();
-  heaps[image_to_heap_index[vk_image]]->DestroyImage(vk_image);
-  rwl_heaps.runlock();
+  uint32_t heap_index = 0;
+  {
+    scoped_read_lock rlock(&rwl_image_to_heap_index);
+    if (image_to_heap_index.find(vk_image) == image_to_heap_index.end()) return;
+    heap_index = image_to_heap_index[vk_image];
+    image_to_heap_index.erase(vk_image);
+  }
+  {
+    scoped_read_lock rlock(&rwl_heaps);
+    heaps[heap_index]->DestroyImage(vk_image);
+  }
 }
 
 VulkanMemoryEventPtr PhysicalDevice::GetVulkanMemoryEvent(VkDevice device) {
@@ -788,28 +900,28 @@ VulkanMemoryEventPtr PhysicalDevice::GetVulkanMemoryEvent(VkDevice device) {
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
 
-  rwl_heaps.rlock();
-  for (auto it = heaps.begin(); it != heaps.end(); it++) {
-    event->annotations.push_back(VulkanMemoryEventAnnotation(
-        "heap_" + std::to_string(it->first) + "_size",
-        (int64_t)(it->second->GetSize())));
-    event->annotations.push_back(VulkanMemoryEventAnnotation(
-        "heap_" + std::to_string(it->first) + "_flags",
-        (int64_t)(it->second->GetFlags())));
+  {
+    scoped_read_lock rlock(&rwl_heaps);
+    for (auto it = heaps.begin(); it != heaps.end(); it++) {
+      event->annotations.push_back(VulkanMemoryEventAnnotation(
+          "heap_" + std::to_string(it->first) + "_size",
+          (int64_t)(it->second->GetSize())));
+      event->annotations.push_back(VulkanMemoryEventAnnotation(
+          "heap_" + std::to_string(it->first) + "_flags",
+          (int64_t)(it->second->GetFlags())));
+    }
   }
-  rwl_heaps.runlock();
   return event;
 }
 
 VulkanMemoryEventContainerSetPtr PhysicalDevice::GetVulkanMemoryEventsForHeaps(
     VkDevice device) {
   auto events = make_unique<VulkanMemoryEventContainerSet>();
-  rwl_heaps.rlock();
-  for (auto it = heaps.begin(); it != heaps.end();) {
-    events->push_back(it->second->GetVulkanMemoryEvents(device, it->first));
-    it = heaps.erase(it);
+  {
+    scoped_read_lock rlock(&rwl_heaps);
+    for (auto it = heaps.begin(); it != heaps.end(); it++)
+      events->push_back(it->second->GetVulkanMemoryEvents(device, it->first));
   }
-  rwl_heaps.runlock();
   return events;
 }
 
@@ -833,64 +945,64 @@ void Device::DestroyAllDeviceMemories() {
 }
 
 void Device::AddBuffer(BufferPtr buffer_) {
-  rwl_buffers.wlock();
+  scoped_write_lock wlock(&rwl_buffers);
   buffers[buffer_->GetVkBuffer()] = std::move(buffer_);
-  rwl_buffers.wunlock();
 }
 
 void Device::BindBuffer(VkBuffer vk_buffer, VkDeviceMemory device_memory,
                         VkDeviceSize size) {
-  rwl_buffers.rlock();
-  auto buffer_found = buffers.find(vk_buffer) != buffers.end();
-  rwl_buffers.runlock();
-  if (!buffer_found) return;
-
-  rwl_buffers.wlock();
-  BufferPtr buffer = std::move(buffers[vk_buffer]);
-  buffers.erase(vk_buffer);
-  rwl_buffers.wunlock();
-  physical_device->BindBuffer(std::move(buffer), device_memory, size);
+  {
+    scoped_read_lock rlock(&rwl_buffers);
+    if (buffers.find(vk_buffer) == buffers.end()) return;
+  }
+  {
+    scoped_write_lock wlock(&rwl_buffers);
+    BufferPtr buffer = std::move(buffers[vk_buffer]);
+    buffers.erase(vk_buffer);
+    physical_device->BindBuffer(std::move(buffer), device_memory, size);
+  }
 }
 
 void Device::DestroyBuffer(VkBuffer vk_buffer) {
   bool buffer_destroyed = false;
-  rwl_buffers.wlock();
-  if (buffers.find(vk_buffer) != buffers.end()) {
-    buffers.erase(vk_buffer);
-    buffer_destroyed = true;
+  {
+    scoped_write_lock wlock(&rwl_buffers);
+    if (buffers.find(vk_buffer) != buffers.end()) {
+      buffers.erase(vk_buffer);
+      buffer_destroyed = true;
+    }
   }
-  rwl_buffers.wunlock();
   if (!buffer_destroyed) physical_device->DestroyBuffer(vk_buffer);
 }
 
 void Device::AddImage(ImagePtr image_) {
-  rwl_images.wlock();
+  scoped_write_lock wlock(&rwl_images);
   images[image_->GetVkImage()] = std::move(image_);
-  rwl_images.wunlock();
 }
 
 void Device::BindImage(VkImage vk_image, VkDeviceMemory device_memory,
                        VkDeviceSize size) {
-  rwl_images.rlock();
-  auto image_found = images.find(vk_image) != images.end();
-  rwl_images.runlock();
-  if (!image_found) return;
-
-  rwl_images.wlock();
-  ImagePtr image = std::move(images[vk_image]);
-  images.erase(vk_image);
-  rwl_images.wunlock();
-  physical_device->BindImage(std::move(image), device_memory, size);
+  {
+    scoped_read_lock rlock(&rwl_images);
+    if (images.find(vk_image) == images.end()) return;
+  }
+  {
+    scoped_write_lock wlock(&rwl_images);
+    ImagePtr image = std::move(images[vk_image]);
+    images.erase(vk_image);
+    physical_device->BindImage(std::move(image), device_memory, size);
+  }
 }
 
 void Device::DestroyImage(VkImage vk_image) {
   bool image_destroyed = false;
-  rwl_images.wlock();
-  if (images.find(vk_image) != images.end()) {
-    images.erase(vk_image);
-    image_destroyed = true;
+  {
+    scoped_write_lock wlock(&rwl_images);
+    if (images.find(vk_image) != images.end()) {
+      images.erase(vk_image);
+      image_destroyed = true;
+    }
   }
-  rwl_images.wunlock();
   if (!image_destroyed) physical_device->DestroyImage(vk_image);
 }
 
@@ -922,29 +1034,31 @@ VulkanMemoryEventContainerSetPtr Device::GetVulkanMemoryEvents() {
   events->push_back(physical_device->GetVulkanMemoryEvent(device));
 
   // Add unbound images and buffers
-  rwl_buffers.rlock();
-  for (auto it = buffers.begin(); it != buffers.end(); it++) {
-    auto buffer_events = it->second->GetVulkanMemoryEvents();
-    for (auto itt = buffer_events->begin(); itt != buffer_events->end();) {
-      events->push_back(std::move(*itt));
-      events->back()->has_device = true;
-      events->back()->device = (uint64_t)(device);
-      itt = buffer_events->erase(itt);
+  {
+    scoped_read_lock rlock(&rwl_buffers);
+    for (auto it = buffers.begin(); it != buffers.end(); it++) {
+      auto buffer_events = it->second->GetVulkanMemoryEvents();
+      for (auto itt = buffer_events->begin(); itt != buffer_events->end();) {
+        events->push_back(std::move(*itt));
+        events->back()->has_device = true;
+        events->back()->device = (uint64_t)(device);
+        itt = buffer_events->erase(itt);
+      }
     }
   }
-  rwl_buffers.runlock();
 
-  rwl_images.rlock();
-  for (auto it = images.begin(); it != images.end(); it++) {
-    auto image_events = it->second->GetVulkanMemoryEvents();
-    for (auto itt = image_events->begin(); itt != image_events->end();) {
-      events->push_back(std::move(*itt));
-      events->back()->has_device = true;
-      events->back()->device = (uint64_t)(device);
-      itt = image_events->erase(itt);
+  {
+    scoped_read_lock rlock(&rwl_images);
+    for (auto it = images.begin(); it != images.end(); it++) {
+      auto image_events = it->second->GetVulkanMemoryEvents();
+      for (auto itt = image_events->begin(); itt != image_events->end();) {
+        events->push_back(std::move(*itt));
+        events->back()->has_device = true;
+        events->back()->device = (uint64_t)(device);
+        itt = image_events->erase(itt);
+      }
     }
   }
-  rwl_images.runlock();
 
   // Get events for  device memories, bound buffers and bound images
   auto events_set = physical_device->GetVulkanMemoryEventsForHeaps(device);
@@ -987,21 +1101,14 @@ const VkAllocationCallbacks* MemoryTracker::GetTrackedAllocator(
 
   auto cb_handle = AllocationCallbacksTracker::GetAllocationCallbacksHandle(
       pUserAllocator, caller);
-  const VkAllocationCallbacks* allocator = nullptr;
-  rwl_allocation_trackers.rlock();
+  scoped_write_lock wlock(&rwl_allocation_trackers);
   auto it = m_allocation_callbacks_trackers.find(cb_handle);
   if (it != m_allocation_callbacks_trackers.end())
-    allocator = it->second->TrackedAllocator();
-  rwl_allocation_trackers.runlock();
-  if (allocator) return allocator;
-
+    return it->second->TrackedAllocator();
   auto allocation_cb_tracker =
       make_unique<AllocationCallbacksTracker>(pUserAllocator, caller);
-  rwl_allocation_trackers.wlock();
   m_allocation_callbacks_trackers[cb_handle] = std::move(allocation_cb_tracker);
-  allocator = m_allocation_callbacks_trackers[cb_handle]->TrackedAllocator();
-  rwl_allocation_trackers.wunlock();
-  return allocator;
+  return m_allocation_callbacks_trackers[cb_handle]->TrackedAllocator();
 }
 
 // --------------- Storing the events in the state of the memory ---------------
@@ -1009,27 +1116,30 @@ const VkAllocationCallbacks* MemoryTracker::GetTrackedAllocator(
 void MemoryTracker::StoreCreateDeviceEvent(
     VkPhysicalDevice physical_device, VkDeviceCreateInfo const* create_info,
     VkDevice device) {
-  rwl_physical_devices.wlock();
-  if (physical_devices.find(physical_device) == physical_devices.end()) {
-    physical_devices[physical_device] =
-        make_unique<PhysicalDevice>(physical_device);
+  {
+    scoped_write_lock wlock(&rwl_physical_devices);
+    if (physical_devices.find(physical_device) == physical_devices.end()) {
+      physical_devices[physical_device] =
+          make_unique<PhysicalDevice>(physical_device);
+    }
   }
-  rwl_physical_devices.wunlock();
 
-  rwl_devices.wlock();
-  devices[device] =
-      make_unique<Device>(device, physical_devices[physical_device]);
-  rwl_devices.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_devices);
+    devices[device] =
+        make_unique<Device>(device, physical_devices[physical_device]);
+  }
 }
 
 void MemoryTracker::StoreDestoryDeviceEvent(VkDevice vk_device) {
   DevicePtr device = nullptr;
-  rwl_devices.wlock();
-  if (devices.find(vk_device) != devices.end()) {
-    device = std::move(devices[vk_device]);
-    devices.erase(vk_device);
+  {
+    scoped_write_lock wlock(&rwl_devices);
+    if (devices.find(vk_device) != devices.end()) {
+      device = std::move(devices[vk_device]);
+      devices.erase(vk_device);
+    }
   }
-  rwl_devices.wunlock();
   if (device) device->DestroyAllDeviceMemories();
 }
 
@@ -1037,21 +1147,22 @@ void MemoryTracker::StoreAllocateMemoryEvent(
     VkDevice device, VkDeviceMemory memory,
     VkMemoryAllocateInfo const* allocate_info) {
   auto device_memory = make_unique<DeviceMemory>(memory, allocate_info);
-  rwl_devices.rlock();
-  if (devices.find(device) != devices.end())
-    devices[device]->AddDeviceMemory(std::move(device_memory));
-  rwl_devices.runlock();
-  rwl_device_memory_type_map.wlock();
-  device_memory_type_map[memory] = allocate_info->memoryTypeIndex;
-  rwl_device_memory_type_map.wunlock();
+  {
+    scoped_read_lock rlock(&rwl_devices);
+    if (devices.find(device) != devices.end())
+      devices[device]->AddDeviceMemory(std::move(device_memory));
+  }
+  {
+    scoped_write_lock wlock(&rwl_device_memory_type_map);
+    device_memory_type_map[memory] = allocate_info->memoryTypeIndex;
+  }
 }
 
 void MemoryTracker::StoreFreeMemoryEvent(VkDevice device,
                                          VkDeviceMemory device_memory) {
-  rwl_devices.rlock();
+  scoped_read_lock rlock(&rwl_devices);
   if (devices.find(device) != devices.end())
     devices[device]->DestroyDeviceMemory(device_memory);
-  rwl_devices.runlock();
 }
 
 void MemoryTracker::StoreCreateBufferEvent(
@@ -1060,22 +1171,22 @@ void MemoryTracker::StoreCreateBufferEvent(
       make_unique<CreateBufferInfo>(create_info, device);
   BufferPtr buffer_ptr =
       make_unique<Buffer>(buffer, std::move(create_info_ptr));
-  rwl_devices.rlock();
+  scoped_read_lock rlock(&rwl_devices);
   if (devices.find(device) != devices.end())
     devices[device]->AddBuffer(std::move(buffer_ptr));
-  rwl_devices.runlock();
 }
 
 void MemoryTracker::StoreBindBufferEvent(VkDevice device, VkBuffer buffer,
                                          VkDeviceMemory memory, size_t offset) {
-  devices[device]->BindBuffer(buffer, memory, offset);
+  scoped_read_lock rlock(&rwl_devices);
+  if (devices.find(device) != devices.end())
+    devices[device]->BindBuffer(buffer, memory, offset);
 }
 
 void MemoryTracker::StoreDestroyBufferEvent(VkDevice device, VkBuffer buffer) {
-  rwl_devices.rlock();
+  scoped_read_lock rlock(&rwl_devices);
   if (devices.find(device) != devices.end())
     devices[device]->DestroyBuffer(buffer);
-  rwl_devices.runlock();
 }
 
 void MemoryTracker::StoreCreateImageEvent(
@@ -1083,25 +1194,22 @@ void MemoryTracker::StoreCreateImageEvent(
   CreateImageInfoPtr create_info_ptr =
       make_unique<CreateImageInfo>(create_info, device);
   ImagePtr image_ptr = make_unique<Image>(image, std::move(create_info_ptr));
-  rwl_devices.rlock();
+  scoped_read_lock rlock(&rwl_devices);
   if (devices.find(device) != devices.end())
     devices[device]->AddImage(std::move(image_ptr));
-  rwl_devices.runlock();
 }
 
 void MemoryTracker::StoreBindImageEvent(VkDevice device, VkImage image,
                                         VkDeviceMemory memory, size_t offset) {
-  rwl_devices.rlock();
+  scoped_read_lock rlock(&rwl_devices);
   if (devices.find(device) != devices.end())
     devices[device]->BindImage(image, memory, offset);
-  rwl_devices.runlock();
 }
 
 void MemoryTracker::StoreDestroyImageEvent(VkDevice device, VkImage image) {
-  rwl_devices.rlock();
+  scoped_read_lock rlock(&rwl_devices);
   if (devices.find(device) != devices.end())
     devices[device]->DestroyImage(image);
-  rwl_devices.runlock();
 }
 
 void MemoryTracker::StoreHostMemoryAllocationEvent(
@@ -1110,9 +1218,8 @@ void MemoryTracker::StoreHostMemoryAllocationEvent(
   auto timestamp = perfetto::base::GetBootTimeNs().count();
   HostAllocationPtr allocation = make_unique<HostAllocation>(
       timestamp, ptr, size, alignment, scope, caller_api, allocator_type);
-  rwl_host_allocations.wlock();
+  scoped_write_lock wlock(&rwl_host_allocations);
   host_allocations[ptr] = std::move(allocation);
-  rwl_host_allocations.wunlock();
 }
 
 void MemoryTracker::StoreHostMemoryReallocationEvent(
@@ -1122,48 +1229,47 @@ void MemoryTracker::StoreHostMemoryReallocationEvent(
   auto timestamp = perfetto::base::GetBootTimeNs().count();
   HostAllocationPtr allocation = make_unique<HostAllocation>(
       timestamp, ptr, size, alignment, scope, caller_api, allocator_type);
-  rwl_host_allocations.wlock();
+  scoped_write_lock wlock(&rwl_host_allocations);
   host_allocations[ptr] = std::move(allocation);
-  if (original != ptr) {
+  if (original != ptr &&
+      host_allocations.find(original) != host_allocations.end()) {
     host_allocations[original].reset(nullptr);
     host_allocations.erase(original);
   }
-  rwl_host_allocations.wunlock();
 }
 
 void MemoryTracker::StoreHostMemoryFreeEvent(uintptr_t ptr) {
-  rwl_host_allocations.wlock();
-  host_allocations.erase(ptr);
-  rwl_host_allocations.wunlock();
+  scoped_write_lock wlock(&rwl_host_allocations);
+  if (host_allocations.find(ptr) != host_allocations.end()) {
+    host_allocations[ptr].reset(nullptr);
+    host_allocations.erase(ptr);
+  }
 }
 
 void MemoryTracker::EmitAndClearAllStoredEvents() {
-  // Device information also includes physical device and heaps information.
-  // Emit and clear device memory events
-  // Get a lock on devices and physical devices to make sure every other thread
-  // has finished their event store operations.
-  rwl_devices.wlock();
-  for (auto it = devices.begin(); it != devices.end(); ++it) {
-    auto event_container_set = it->second->GetVulkanMemoryEvents();
-    for (auto& events : *event_container_set) {
-      for (auto& event : *events)
-        Emit().EmitVulkanMemoryUsageEvent(event.get());
-      events->clear();
+  // Emit and clear GPU memory events. Device information also includes physical
+  // device and heaps information.
+  if (Emit().CategoryEnabled("Device")) {
+    scoped_read_lock rlock(&rwl_devices);
+    for (auto it = devices.begin(); it != devices.end(); ++it) {
+      auto event_container_set = it->second->GetVulkanMemoryEvents();
+      for (auto& events : *event_container_set) {
+        for (auto& event : *events)
+          Emit().EmitVulkanMemoryUsageEvent(event.get());
+        events->clear();
+      }
+      event_container_set->clear();
     }
-    event_container_set->clear();
   }
-  rwl_devices.wunlock();
 
   // Emit and clear host memory events
   if (Emit().CategoryEnabled("Driver")) {
-    rwl_host_allocations.wlock();
+    scoped_read_lock rlock(&rwl_host_allocations);
     for (auto it = host_allocations.begin(); it != host_allocations.end();
          it++) {
       Emit().EmitVulkanMemoryUsageEvent(
           it->second->GetVulkanMemoryEvent().get());
     }
-    host_allocations.clear();
-    rwl_host_allocations.wunlock();
   }
 }
 
@@ -1185,20 +1291,22 @@ void MemoryTracker::EmitCreateDeviceEvent(VkPhysicalDevice physical_device,
   EmitAllStoredEventsIfNecessary();
 
   VulkanMemoryEventPtr pdevice_event = nullptr;
-  rwl_physical_devices.wlock();
-  if (physical_devices.find(physical_device) == physical_devices.end()) {
-    physical_devices[physical_device] =
-        make_unique<PhysicalDevice>(physical_device);
-    pdevice_event =
-        physical_devices[physical_device]->GetVulkanMemoryEvent(device);
+  {
+    scoped_write_lock wlock(&rwl_physical_devices);
+    if (physical_devices.find(physical_device) == physical_devices.end()) {
+      physical_devices[physical_device] =
+          make_unique<PhysicalDevice>(physical_device);
+      pdevice_event =
+          physical_devices[physical_device]->GetVulkanMemoryEvent(device);
+    }
+    if (pdevice_event) Emit().EmitVulkanMemoryUsageEvent(pdevice_event.get());
   }
-  rwl_physical_devices.wunlock();
-  if (pdevice_event) Emit().EmitVulkanMemoryUsageEvent(pdevice_event.get());
 
-  rwl_devices.wlock();
-  devices[device] =
-      make_unique<Device>(device, physical_devices[physical_device]);
-  rwl_devices.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_devices);
+    devices[device] =
+        make_unique<Device>(device, physical_devices[physical_device]);
+  }
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
       VulkanMemoryEvent_Source_SOURCE_DEVICE;
@@ -1239,9 +1347,10 @@ void MemoryTracker::EmitAllocateMemoryEvent(
     event->heap = devices[device]->GetHeapIndex(memory_type);
   event->has_memory_type = true;
   event->memory_type = memory_type;
-  rwl_device_memory_type_map.wlock();
-  device_memory_type_map[memory] = memory_type;
-  rwl_device_memory_type_map.wunlock();
+  {
+    scoped_write_lock wlock(&rwl_device_memory_type_map);
+    device_memory_type_map[memory] = memory_type;
+  }
   Emit().EmitVulkanMemoryUsageEvent(event.get());
 }
 
@@ -1287,9 +1396,11 @@ void MemoryTracker::EmitBindBufferEvent(VkDevice device, VkBuffer buffer,
                                         VkDeviceMemory device_memory,
                                         size_t offset) {
   EmitAllStoredEventsIfNecessary();
-  rwl_device_memory_type_map.rlock();
-  auto memory_type = device_memory_type_map[device_memory];
-  rwl_device_memory_type_map.runlock();
+  uint32_t memory_type = UINT32_MAX;
+  {
+    scoped_read_lock rlock(&rwl_device_memory_type_map);
+    memory_type = device_memory_type_map[device_memory];
+  }
   auto bindinfo = BindMemoryInfo(
       device_memory, global_unique_handles[(uint64_t)(device_memory)], offset,
       memory_type);
@@ -1299,9 +1410,10 @@ void MemoryTracker::EmitBindBufferEvent(VkDevice device, VkBuffer buffer,
   event->has_device = true;
   event->device = (uint64_t)(device);
   event->has_heap = true;
-  rwl_devices.rlock();
-  event->heap = devices[device]->GetHeapIndex(memory_type);
-  rwl_devices.runlock();
+  {
+    scoped_read_lock rlock(&rwl_devices);
+    event->heap = devices[device]->GetHeapIndex(memory_type);
+  }
   event->has_object_handle = true;
   event->object_handle = global_unique_handles[(uint64_t)(buffer)];
   VkMemoryRequirements memory_requirements;
@@ -1355,9 +1467,11 @@ void MemoryTracker::EmitBindImageEvent(VkDevice device, VkImage image,
                                        VkDeviceMemory device_memory,
                                        size_t offset) {
   EmitAllStoredEventsIfNecessary();
-  rwl_device_memory_type_map.rlock();
-  auto memory_type = device_memory_type_map[device_memory];
-  rwl_device_memory_type_map.runlock();
+  uint32_t memory_type = UINT32_MAX;
+  {
+    scoped_read_lock rlock(&rwl_device_memory_type_map);
+    memory_type = device_memory_type_map[device_memory];
+  }
   auto bindinfo = BindMemoryInfo(
       device_memory, global_unique_handles[(uint64_t)(device_memory)], offset,
       memory_type);
@@ -1367,9 +1481,10 @@ void MemoryTracker::EmitBindImageEvent(VkDevice device, VkImage image,
   event->has_device = true;
   event->device = (uint64_t)(device);
   event->has_heap = true;
-  rwl_devices.rlock();
-  event->heap = devices[device]->GetHeapIndex(memory_type);
-  rwl_devices.runlock();
+  {
+    scoped_read_lock rlock(&rwl_devices);
+    event->heap = devices[device]->GetHeapIndex(memory_type);
+  }
   event->has_object_handle = true;
   event->object_handle = global_unique_handles[(uint64_t)(image)];
   VkMemoryRequirements memory_requirements;

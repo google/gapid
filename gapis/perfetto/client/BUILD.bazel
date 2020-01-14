@@ -21,6 +21,7 @@ go_library(
         "doc.go",
         "proto.go",
         "sync.go",
+        "writer.go",
     ],
     importpath = "github.com/google/gapid/gapis/perfetto/client",
     visibility = ["//visibility:public"],

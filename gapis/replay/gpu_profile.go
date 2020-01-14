@@ -22,16 +22,56 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/trace"
 
 	perfetto_pb "protos/perfetto/config"
 )
 
 // Eyeball some generous trace config parameters
 const (
+	counterPeriodNs                         = uint64(1000000)
 	bufferSizeKb                            = uint32(256 * 1024)
 	durationMs                              = 30000
+	gpuCountersDataSourceDescriptorName     = "gpu.counters"
 	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
 )
+
+func getPerfettoConfig(ctx context.Context, device *path.Device) (*perfetto_pb.TraceConfig, error) {
+	t, err := trace.GetTracer(ctx, device)
+	if err != nil {
+		err = log.Errf(ctx, err, "Failed to find tracer for %v", device)
+		return nil, err
+	}
+	d := t.GetDevice()
+	specs := d.Instance().GetConfiguration().GetPerfettoCapability().GetGpuProfiling().GetGpuCounterDescriptor().GetSpecs()
+	ids := make([]uint32, len(specs))
+	for i, s := range specs {
+		ids[i] = s.GetCounterId()
+	}
+	conf := &perfetto_pb.TraceConfig{
+		Buffers: []*perfetto_pb.TraceConfig_BufferConfig{
+			{SizeKb: proto.Uint32(bufferSizeKb)},
+		},
+		DurationMs: proto.Uint32(durationMs),
+		DataSources: []*perfetto_pb.TraceConfig_DataSource{
+			{
+				Config: &perfetto_pb.DataSourceConfig{
+					Name: proto.String(gpuRenderStagesDataSourceDescriptorName),
+				},
+			},
+			{
+				Config: &perfetto_pb.DataSourceConfig{
+					Name: proto.String(gpuCountersDataSourceDescriptorName),
+					GpuCounterConfig: &perfetto_pb.GpuCounterConfig{
+						CounterPeriodNs: proto.Uint64(counterPeriodNs),
+						CounterIds:      ids,
+					},
+				},
+			},
+		},
+	}
+	return conf, nil
+}
 
 // GpuProfile replays the trace and writes a Perfetto trace of the replay
 func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device) (*service.ProfilingData, error) {
@@ -46,18 +86,9 @@ func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Dev
 			Device:  device,
 		}
 
-		conf := &perfetto_pb.TraceConfig{
-			Buffers: []*perfetto_pb.TraceConfig_BufferConfig{
-				{SizeKb: proto.Uint32(bufferSizeKb)},
-			},
-			DurationMs: proto.Uint32(durationMs),
-			DataSources: []*perfetto_pb.TraceConfig_DataSource{
-				{
-					Config: &perfetto_pb.DataSourceConfig{
-						Name: proto.String(gpuRenderStagesDataSourceDescriptorName),
-					},
-				},
-			},
+		conf, err := getPerfettoConfig(ctx, device)
+		if err != nil {
+			return nil, err
 		}
 
 		opts := &service.TraceOptions{

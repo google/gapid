@@ -17,6 +17,7 @@ package adreno
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/perfetto"
@@ -28,7 +29,7 @@ const (
 		"select name, depth, parent_stack_id " +
 		"from gpu_slice " +
 		"where track_id = %v " +
-		"order by slice_id"
+		"order by id"
 )
 
 var (
@@ -39,7 +40,7 @@ var (
 		{21, "% Shaders Busy", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{26, "Fragment ALU Instructions / Sec (Full)", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{30, "Textures / Vertex", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
-		{31, "Textures / Fragment", validate.And(validate.IsNumber, validate.CheckApproximateTo(1.0, 0.01))},
+		{31, "Textures / Fragment", validate.And(validate.IsNumber, validate.CheckApproximateTo(1.0, 0.1))},
 		{37, "% Time Shading Fragments", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{38, "% Time Shading Vertices", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{39, "% Time Compute", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
@@ -67,13 +68,13 @@ func (v *AdrenoValidator) validateRenderStage(ctx context.Context, processor *pe
 		hasSurfaceSlice := false
 		hasRenderSlice := false
 		for i, name := range names {
-			if name == "Surface" {
+			if strings.Contains(name, "Surface") {
 				hasSurfaceSlice = true
 				if skipNum == -1 {
 					skipNum = i
 				}
 			}
-			if name == "Render" {
+			if strings.Contains(name, "Render") {
 				hasRenderSlice = true
 			}
 		}
@@ -91,12 +92,12 @@ func (v *AdrenoValidator) validateRenderStage(ctx context.Context, processor *pe
 			// it has no parent stack id.
 			// Render slice must be a non-top-level slice, hence its depth must not be 0
 			// and it must have a parent stack id.
-			if names[i] == "Surface" {
+			if strings.Contains(names[i], "Surface") {
 				if depths[i] != 0 || parentStackId[i] != 0 {
 					return log.Errf(ctx, err, "Render stage verification failed on Surface slice")
 				}
-			} else if names[i] == "Render" {
-				if depths[i] <= 0 || parentStackId[i] <= 0 {
+			} else if strings.Contains(names[i], "Render") {
+				if depths[i] <= 0 || parentStackId[i] == 0 {
 					return log.Errf(ctx, err, "Render stage verification failed on Render slice")
 				}
 			}

@@ -1,5 +1,45 @@
 # GAPID Developer Documentation
 
+## Setup Golang development
+
+This project contains Golang code, but it does not have the file hierarchy of
+regular Golang projects (this is due to the use of Bazel as a build system).
+The `cmd/gofuse` utility enables to re-create the file hierarchy expected by Go
+tools:
+
+```sh
+# Make sure to build to have all compile-time generated files
+cd <path-to-gapid-source>
+bazel build pkg
+
+# Prepare a gapid-gofuse directory **outside of the gapid checkout directory**
+mkdir <path-outside-gapid-source>/gapid-gofuse
+
+# Run gofuse with the previous directory as a target
+bazel run //cmd/gofuse -- -dir <path-to-gapid-gofuse>
+
+# Add gapid-gofuse directory to your GOPATH environment variable.
+# On Linux, with a bash shell, you can add the following to your ~/.bashrc file:
+export GOPATH="${GOPATH:+${GOPATH}:}<path-to-gapid-gofuse>"
+# On other configurations, please search online how to add/edit environment variables.
+```
+
+After adding the gofuse directory to your GOPATH, Go tools should work as
+expected. You can edit files under the newly populated gofuse directory. You
+should still compile under the original checkout directory of GAPID.
+
+> Despite its name, the gofuse command does NOT use FUSE (filesystem in userspace).
+> It just creates directories and links to source files, including generated files.
+> It is a good idea to re-run gofuse from time to time to re-sync links to potential
+> new files.
+
+In terms of editor, [VsCode](https://code.visualstudio.com/) has good Go support
+thanks to its
+[Go extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.Go).
+With the GOPATH setup to gofuse, and opening files under the gofuse directory,
+you should get some jump-to-definition and autocomplete features working. Make
+sure to edit the files through their link found under the gofuse directory.
+
 ## How to debug / breakpoint in Golang code
 
 The recommended Golang debugger is

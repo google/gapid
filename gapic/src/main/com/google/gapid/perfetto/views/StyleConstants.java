@@ -37,6 +37,7 @@ public class StyleConstants {
   public static final double LABEL_PIN_X = LABEL_WIDTH - LABEL_MARGIN - LABEL_ICON_SIZE;
   public static final double LABEL_TOGGLE_X = LABEL_PIN_X - LABEL_ICON_SIZE;
   public static final double TRACK_MARGIN = 4;
+  public static final double HIGHLIGHT_EDGE_NEARBY_WIDTH = 10;
   public static final double SELECTION_THRESHOLD = 0.333;
   public static final double ZOOM_FACTOR_SCALE = 0.05;
   public static final double ZOOM_FACTOR_SCALE_DRAG = 0.01;
@@ -60,8 +61,10 @@ public class StyleConstants {
     public final RGBA timeHighlight;
     public final RGBA timeHighlightBorder;
     public final RGBA timeHighlightCover;
+    public final RGBA timeHighlightEmphasize;
     public final RGBA cpuFreqIdle;
     public final RGBA timelineRuler;
+    public final RGBA vsyncBackground;
 
     public final RGBA textMain;
     public final RGBA textAlt;
@@ -79,8 +82,10 @@ public class StyleConstants {
         RGBA timeHighlight,
         RGBA timeHighlightBorder,
         RGBA timeHighlightCover,
+        RGBA timeHighlightEmphasize,
         RGBA cpuFreqIdle,
         RGBA timelineRuler,
+        RGBA vsyncBackground,
         RGBA textMain,
         RGBA textAlt,
         RGBA textInvertedMain,
@@ -96,8 +101,10 @@ public class StyleConstants {
       this.timeHighlight = timeHighlight;
       this.timeHighlightBorder = timeHighlightBorder;
       this.timeHighlightCover = timeHighlightCover;
+      this.timeHighlightEmphasize = timeHighlightEmphasize;
       this.cpuFreqIdle = cpuFreqIdle;
       this.timelineRuler = timelineRuler;
+      this.vsyncBackground = vsyncBackground;
       this.textMain = textMain;
       this.textAlt = textAlt;
       this.textInvertedMain = textInvertedMain;
@@ -115,8 +122,10 @@ public class StyleConstants {
     private static final RGBA LIGHT_TIME_HIGHLIGHT = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TIME_HIGHLIGHT_BORDER = LIGHT_GRIDLINE;
     private static final RGBA LIGHT_TIME_HIGHLIGHT_COVER = rgba(0, 0, 0, 0.2f);
+    private static final RGBA LIGHT_TIME_HIGHLIGHT_EMPHASIZE = rgb(0xff, 0xde, 0x00);
     private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(240, 240, 240);
     private static final RGBA LIGHT_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
+    private static final RGBA LIGHT_VSYNC_BACKGROUND = rgb(0xf7, 0xf7, 0xf7);
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
@@ -136,8 +145,10 @@ public class StyleConstants {
             LIGHT_TIME_HIGHLIGHT,
             LIGHT_TIME_HIGHLIGHT_BORDER,
             LIGHT_TIME_HIGHLIGHT_COVER,
+            LIGHT_TIME_HIGHLIGHT_EMPHASIZE,
             LIGHT_CPU_FREQ_IDLE,
             LIGHT_TIMELINE_RULER,
+            LIGHT_VSYNC_BACKGROUND,
             LIGHT_TEXT_MAIN,
             LIGHT_TEXT_ALT,
             LIGHT_TEXT_INVERTED_MAIN,
@@ -155,8 +166,10 @@ public class StyleConstants {
     private static final RGBA DARK_TIME_HIGHLIGHT = rgb(0xff, 0xff, 0xff);
     private static final RGBA DARK_TIME_HIGHLIGHT_BORDER = DARK_GRIDLINE;
     private static final RGBA DARK_TIME_HIGHLIGHT_COVER = rgba(0xff, 0xff, 0xff, 0.4f);
+    private static final RGBA DARK_TIME_HIGHLIGHT_EMPHASIZE = rgb(0xd2, 0xb6, 0x00);
     private static final RGBA DARK_CPU_FREQ_IDLE = rgb(240, 240, 240);
     private static final RGBA DARK_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
+    private static final RGBA DARK_VSYNC_BACKGROUND = rgb(0x25, 0x25, 0x25);
 
     private static final RGBA DARK_TEXT_MAIN = rgb(0xff, 0xff, 0xff);
     private static final RGBA DARK_TEXT_ALT = rgb(0xdd, 0xdd, 0xdd);
@@ -176,8 +189,10 @@ public class StyleConstants {
             DARK_TIME_HIGHLIGHT,
             DARK_TIME_HIGHLIGHT_BORDER,
             DARK_TIME_HIGHLIGHT_COVER,
+            DARK_TIME_HIGHLIGHT_EMPHASIZE,
             DARK_CPU_FREQ_IDLE,
             DARK_TIMELINE_RULER,
+            DARK_VSYNC_BACKGROUND,
             DARK_TEXT_MAIN,
             DARK_TEXT_ALT,
             DARK_TEXT_INVERTED_MAIN,

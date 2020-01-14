@@ -39,6 +39,7 @@ cc_library(
     name = "cc",
     srcs = glob([
         "*.cpp",
+        "*.inc",
         "*.h",
     ]) + [
         ":api_timing_templated",

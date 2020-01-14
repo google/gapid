@@ -47,6 +47,11 @@ vkCmdDebugMarkerEndEXT
 vkCmdDebugMarkerInsertEXT
 {{end}}
 
+{{define "ALL_DEBUG_FUNCTIONS"}}
+ {{Macro "DEBUG_MARKER_FUNCTIONS"}}
+ {{Macro "DEBUG_UTILS_FUNCTIONS"}}
+{{end}}
+
 {{define "IS_DEBUG_MARKER_FUNCTIONS"}}
   {{$filters := Strings (Macro "DEBUG_MARKER_FUNCTIONS") | SplitEOL}}
   {{range $f := $filters}}
@@ -54,6 +59,7 @@ vkCmdDebugMarkerInsertEXT
   {{end}}
 {{end}}
 
+{{Global "Vulkan.ImplementedFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL)}}
 
 {{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
 
@@ -192,7 +198,7 @@ VkResult vkSetDebugUtilsObjectNameEXT(
         const VkDebugUtilsObjectNameInfoEXT* pNameInfo) {
     timer t("VkDevice", "vkSetDebugUtilsObjectNameEXT");
 
-    api_timing::VkApiEmitter().EmitDebugUtilsObjectName(
+    api_timing::VkApiEmit().EmitDebugUtilsObjectName(
             reinterpret_cast<uint64_t>(device), pNameInfo->objectType, pNameInfo->objectHandle, pNameInfo->pObjectName);
 
     // Must not forward function call if the extension was not supported.
@@ -207,7 +213,7 @@ VkResult vkDebugMarkerSetObjectNameEXT(
     timer t("VkDevice", "vkDebugMarkerSetObjectNameEXT");
 
     // Convert object type to VkObjectType and emit the trace.
-    api_timing::VkApiEmitter().EmitDebugUtilsObjectName(
+    api_timing::VkApiEmit().EmitDebugUtilsObjectName(
             reinterpret_cast<uint64_t>(device), getVkObjectType(pNameInfo->objectType), pNameInfo->object, pNameInfo->pObjectName);
 
     // Must not forward function call if the extension was not supported.

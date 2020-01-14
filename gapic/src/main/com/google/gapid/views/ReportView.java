@@ -31,6 +31,7 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Reports;
+import com.google.gapid.models.Settings;
 import com.google.gapid.models.Strings;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
@@ -106,7 +107,7 @@ public class ReportView extends Composite
 
     detailsGroup = Widgets.createGroup(splitter, "Details");
 
-    splitter.setWeights(models.settings.reportSplitterWeights);
+    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Report));
 
     models.capture.addListener(this);
     models.reports.addListener(this);
@@ -139,7 +140,8 @@ public class ReportView extends Composite
         }
       }
     });
-    addListener(SWT.Dispose, e -> models.settings.reportSplitterWeights = splitter.getWeights());
+    addListener(SWT.Dispose, e ->
+      models.settings.setSplitterWeights(Settings.SplitterWeights.Report, splitter.getWeights()));
   }
 
   private Text getDetails() {

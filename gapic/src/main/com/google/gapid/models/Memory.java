@@ -512,6 +512,17 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
       this.children = loadChildren();
     }
 
+    public StructNode(Path.API api, TypeInfo.Type type, MemoryBox.Value value, long rootAddress,
+        MemoryTypes typesModel, String name) {
+      this.api = api;
+      this.type = type;
+      this.value = value;
+      this.rootAddress = rootAddress;
+      this.typesModel = typesModel;
+      this.structName = name;
+      this.children = loadChildren();
+    }
+
     public TypeInfo.Type getType() {
       return type;
     }
@@ -598,8 +609,7 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
           for (int i = 0; i < childrenValues.size(); i++) {
             StructNode childNode = new StructNode(api,
                 typesModel.getType(type(childrenTypes.get(i).getType(), api)), childrenValues.get(i),
-                rootAddress, typesModel);
-            childNode.setStructName(childrenTypes.get(i).getName());
+                rootAddress, typesModel, childrenTypes.get(i).getName());
             children.add(childNode);
           }
           break;
@@ -618,7 +628,9 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
         case PSEUDONYM:
           TypeInfo.PseudonymType pseudonym = type.getPseudonym();
           childType = typesModel.getType(type(pseudonym.getUnderlying(), api));
-          children.add(new StructNode(api, childType, value, rootAddress, typesModel));
+          StructNode childNode = new StructNode(api, childType, value, rootAddress, typesModel);
+          children.add(childNode);
+          childNode.setStructName(structName);
           break;
         default:
           break;
@@ -668,9 +680,15 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
      */
     private static StructNode removeExtraLayers(StructNode root) {
       TypeInfo.Type.TyCase tyCase = root.getTypeCase();
-      if ((tyCase == TyCase.SLICE || tyCase == TyCase.PSEUDONYM) && root.hasChildren() &&
-          root.children.size() == 1 && root.children.get(0).hasChildren()) {
+      // Remove the outer layer for SLICE type. E.g. {[()]} -> [()].
+      if ((tyCase == TyCase.SLICE) && root.hasChildren() && root.children.size() == 1
+          && root.children.get(0).hasChildren()) {
         root = root.children.get(0);
+      }
+      // Remove the inner layer for PSEUDONYM type. E.g. {[()]} -> {()}.
+      if (tyCase == TyCase.PSEUDONYM && root.hasChildren() && root.children.size() == 1
+          && root.children.get(0).hasChildren()) {
+        root.children = root.children.get(0).children;
       }
       for (int i = 0; i < root.children.size(); i++) {
         root.children.set(i, removeExtraLayers(root.children.get(i)));

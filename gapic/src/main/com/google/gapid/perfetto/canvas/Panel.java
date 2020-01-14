@@ -199,6 +199,35 @@ public interface Panel {
         }
       };
     }
+
+    public default Panel.Hover withRedraw(Area newRedraw) {
+      return new Hover() {
+        @Override
+        public Area getRedraw() {
+          return Hover.this.getRedraw().combine(newRedraw);
+        }
+
+        @Override
+        public Cursor getCursor(Display display) {
+          return Hover.this.getCursor(display);
+        }
+
+        @Override
+        public void stop() {
+          Hover.this.stop();
+        }
+
+        @Override
+        public boolean isOverlay() {
+          return Hover.this.isOverlay();
+        }
+
+        @Override
+        public boolean click() {
+          return Hover.this.click();
+        }
+      };
+    }
   }
 
   public static interface Visitor {

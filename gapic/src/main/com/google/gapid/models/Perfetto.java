@@ -39,6 +39,7 @@ import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.perfetto.models.TrackConfig;
 import com.google.gapid.perfetto.models.Tracks;
+import com.google.gapid.perfetto.models.VSync;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -176,11 +177,12 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public final ImmutableMap<Long, ThreadInfo> threads;
     public final GpuInfo gpu;
     public final ImmutableMap<Long, CounterInfo> counters;
+    public final VSync vsync;
     public final TrackConfig tracks;
 
     public Data(QueryEngine queries, TimeSpan traceTime, CpuInfo cpu,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
-        GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
+        GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, VSync vsync, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
       this.cpu = cpu;
@@ -188,6 +190,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       this.threads = threads;
       this.gpu = gpu;
       this.counters = counters;
+      this.vsync = vsync;
       this.tracks = tracks;
     }
 
@@ -200,6 +203,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       private GpuInfo gpu = GpuInfo.NONE;
       private ImmutableMap<Long, CounterInfo> counters;
       private Map<CounterInfo.Type, ImmutableListMultimap<String, CounterInfo>> countersByName;
+      private VSync vsync = VSync.EMPTY;
       public final TrackConfig.Builder tracks = new TrackConfig.Builder();
 
       public Builder(QueryEngine qe) {
@@ -267,8 +271,18 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return this;
       }
 
+      public VSync getVSync() {
+        return vsync;
+      }
+
+      public Builder setVSync(VSync vsync) {
+        this.vsync = vsync;
+        return this;
+      }
+
       public Data build() {
-        return new Data(qe, traceTime, cpu, processes, threads, gpu, counters, tracks.build());
+        return new Data(
+            qe, traceTime, cpu, processes, threads, gpu, counters, vsync, tracks.build());
       }
     }
   }

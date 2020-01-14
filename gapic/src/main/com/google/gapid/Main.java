@@ -151,7 +151,7 @@ public class Main {
       };
 
       window.initMainUi(server.getClient(), models, widgets);
-      if (models.settings.skipFirstRunDialog) {
+      if (models.settings.preferences().getSkipFirstRunDialog()) {
         shell.getDisplay().asyncExec(onStart);
       } else {
         shell.getDisplay().asyncExec(() -> showFirstTimeDialog(shell, models, widgets, onStart));
