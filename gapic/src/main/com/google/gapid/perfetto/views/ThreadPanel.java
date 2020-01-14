@@ -63,11 +63,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
   protected String hoveredCategory;
   protected Size hoveredSize = Size.ZERO;
 
-  public ThreadPanel(State state, ThreadTrack track) {
-    this(state, track, false);
-  }
-
-  private ThreadPanel(State state, ThreadTrack track, boolean expanded) {
+  public ThreadPanel(State state, ThreadTrack track, boolean expanded) {
     super(state);
     this.track = track;
     this.expanded = expanded;
