@@ -36,23 +36,24 @@ import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 import java.util.List;
 
 public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable {
-  private static final double HEIGHT = 45;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
 
   protected final CounterTrack track;
+  protected final double trackHeight;
   protected HoverCard hovered = null;
   protected double mouseXpos = 0;
 
-  public CounterPanel(State state, CounterTrack track) {
+  public CounterPanel(State state, CounterTrack track, double trackHeight) {
     super(state);
     this.track = track;
+    this.trackHeight = trackHeight;
   }
 
   @Override
   public CounterPanel copy() {
-    return new CounterPanel(state, track);
+    return new CounterPanel(state, track, trackHeight);
   }
 
   @Override
@@ -72,7 +73,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
   @Override
   public double getHeight() {
-    return HEIGHT;
+    return trackHeight;
   }
 
   @Override
@@ -97,7 +98,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         double lastX = 0, lastY = h;
         for (int i = 0; i < data.ts.length; i++) {
           double nextX = state.timeToPx(data.ts[i]);
-          double nextY = (HEIGHT - 1) * (1 - (data.values[i] - min) / range);
+          double nextY = (trackHeight - 1) * (1 - (data.values[i] - min) / range);
           path.lineTo(nextX, lastY);
           path.lineTo(nextX, nextY);
           lastX = nextX;
@@ -116,12 +117,12 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       for (int index : visibleSelected) {
         double startX = state.timeToPx(data.ts[index]);
         double endX = (index >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[index + 1]);
-        double y = (HEIGHT - 1) * (1 - (data.values[index] - min) / range);
+        double y = (trackHeight - 1) * (1 - (data.values[index] - min) / range);
         ctx.fillRect(startX, y - 1, endX - startX, 3);
       }
 
       if (hovered != null) {
-        double y = (HEIGHT - 1) * (1 - (hovered.value - min) / range);
+        double y = (trackHeight - 1) * (1 - (hovered.value - min) / range);
         ctx.setBackgroundColor(BaseColor.INDIGO.rgb);
         ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, 3);
         ctx.setForegroundColor(colors().textMain);
@@ -137,10 +138,10 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, 2 * HOVER_PADDING + hovered.size.w, HEIGHT);
+        ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, 2 * HOVER_PADDING + hovered.size.w, trackHeight);
         ctx.setForegroundColor(colors().textMain);
         ctx.drawText(Fonts.Style.Normal, hovered.label,
-            mouseXpos + HOVER_MARGIN + HOVER_PADDING, (HEIGHT - hovered.size.h) / 2);
+            mouseXpos + HOVER_MARGIN + HOVER_PADDING, (trackHeight - hovered.size.h) / 2);
       }
     });
   }
@@ -177,7 +178,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         double end = Math.max(mouseXpos + CURSOR_SIZE / 2 +
             HOVER_MARGIN + HOVER_PADDING + hovered.size.w + HOVER_PADDING,
             endX);
-        return new Area(start, -TRACK_MARGIN, end - start, HEIGHT + 2 * TRACK_MARGIN);
+        return new Area(start, -TRACK_MARGIN, end - start, trackHeight + 2 * TRACK_MARGIN);
       }
 
       @Override
