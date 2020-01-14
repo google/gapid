@@ -1002,6 +1002,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	isBound := false
 	var drawCallInfo DrawParameters = NilDrawParameters
 	var framebuffer FramebufferObjectʳ
+	var renderpass RenderPassObjectʳ
 	// Use LastDrawInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1012,6 +1013,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 			if ldi.GraphicsPipeline() == p {
 				isBound = true
 				drawCallInfo = ldi.CommandParameters()
+				renderpass = ldi.RenderPass()
 				framebuffer = ldi.Framebuffer()
 			}
 		}
@@ -1034,7 +1036,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		p.geometryShader(ctx, s),
 		p.rasterizer(s, dynamicStates),
 		p.fragmentShader(ctx, s),
-		p.colorBlending(ctx, s, cmd, dynamicStates, framebuffer),
+		p.colorBlending(ctx, s, cmd, dynamicStates, framebuffer, renderpass),
 	}
 
 	return &api.ResourceData{
@@ -1531,7 +1533,7 @@ func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.Glo
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool, fb FramebufferObjectʳ) *api.Stage {
+func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool, fb FramebufferObjectʳ, rp RenderPassObjectʳ) *api.Stage {
 	depthData := p.DepthState()
 	depthList := &api.KeyValuePairList{}
 
@@ -1700,8 +1702,8 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 	}
 
 	renderPassList := &api.KeyValuePairList{}
-	if !p.RenderPass().IsNil() {
-		renderPassHandle := p.RenderPass().VulkanHandle()
+	if !rp.IsNil() {
+		renderPassHandle := rp.VulkanHandle()
 		renderPassPath := path.NewField("RenderPasses", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(renderPassHandle)
 		renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)), false)
 	}
