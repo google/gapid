@@ -52,7 +52,7 @@ public class CounterInfo {
     this.description = description;
     this.count = count;
     this.min = min;
-    this.max = max;
+    this.max = (max == min && max == 0) ? 1 : max;
     this.avg = avg;
   }
 
