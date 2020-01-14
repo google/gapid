@@ -88,7 +88,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       }
 
       CounterInfo counter = track.getCounter();
-      double min = Math.min(0, counter.min), range = counter.max - min;
+      double min = counter.range.min, range = counter.range.range();
 
       Selection<Values.Key> selected = state.getSelection(Selection.Kind.Counter);
       List<Integer> visibleSelected = Lists.newArrayList();

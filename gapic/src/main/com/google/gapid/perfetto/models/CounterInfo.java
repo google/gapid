@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.Unit;
 import com.google.gapid.proto.device.GpuProfiling;
+import com.google.gapid.util.Range;
 
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -98,6 +99,7 @@ public class CounterInfo {
   public final double min;
   public final double max;
   public final double avg;
+  public final Range range;
 
   public CounterInfo(long id, Type type, long ref, String name, String description, Unit unit,
       long count, double min, double max, double avg) {
@@ -109,8 +111,9 @@ public class CounterInfo {
     this.unit = unit;
     this.count = count;
     this.min = min;
-    this.max = (max == min && max == 0) ? 1 : max;
+    this.max = max;
     this.avg = avg;
+    this.range = computeRange(unit, min, max);
   }
 
   private CounterInfo(QueryEngine.Row row) {
@@ -118,6 +121,20 @@ public class CounterInfo {
         row.getString(4), unitFromString(row.getString(5)), row.getLong(6), row.getDouble(7),
         row.getDouble(8), row.getDouble(9));
   }
+
+  private static Range computeRange(Unit unit, double min, double max) {
+    min = Math.min(min, 0); // Never draw with an above 0 bottom y-axis.
+
+    if (unit == Unit.PERCENT) {
+      // Percent counters should show on a scale from 0% to 100%.
+      return new Range(min, Math.max(max, 100));
+    }
+
+    // If all counter values are 0 (min = max = 0), then set the range to [0, 1], so that the
+    // counter is rendered as a line, rather than a block (pegged to max).
+    return new Range(min, (max == min && max == 0) ? 1 : max);
+  }
+
 
   public static Unit unitFromString(String unit) {
     unit = unit.trim();
