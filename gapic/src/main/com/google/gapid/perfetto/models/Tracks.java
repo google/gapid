@@ -162,7 +162,8 @@ public class Tracks {
     processes.forEach(process -> {
       ProcessSummaryTrack summary =
           new ProcessSummaryTrack(data.qe, data.getCpu().count(), process);
-      String parent = (process.totalDur >= idleCutoffProc || !hasIdles) ? "procs" : "procs_idle";
+      boolean isIdleProcess = hasIdles && (process.totalDur < idleCutoffProc);
+      String parent =  isIdleProcess ? "procs_idle" : "procs";
       data.tracks.addGroup(parent, summary.getId(), process.getDisplay(),
           group(state -> new ProcessSummaryPanel(state, summary), false));
 
@@ -213,15 +214,16 @@ public class Tracks {
       boolean hasIdleThreads = threads.size() > 1 &&
           threads.get(threads.size() - 2).getThread().totalDur < idleCutoffThread;
       threads.forEach(track -> {
+        boolean isIdleThread = hasIdleThreads && track.getThread().totalDur < idleCutoffThread;
         TrackConfig.Track.UiFactory<Panel> ui;
         if (track.getThread().maxDepth == 0) {
-          ui = single(state -> new ThreadPanel(state, track), false);
+          ui = single(state -> new ThreadPanel(state, track, false), false);
         } else {
-          ui = single(
-              state -> new ThreadPanel(state, track), false, ThreadPanel::setCollapsed, true);
+          boolean expanded = !isIdleProcess && !isIdleThread;
+          ui = single(state ->
+            new ThreadPanel(state, track, expanded), false, ThreadPanel::setCollapsed, !expanded);
         }
-        String threadParent = (track.getThread().totalDur >= idleCutoffThread || !hasIdleThreads) ?
-            summary.getId() : summary.getId() + "_idle";
+        String threadParent = isIdleThread ? summary.getId() + "_idle" : summary.getId();
         data.tracks.addTrack(threadParent, track.getId(), track.getThread().getDisplay(), ui);
       });
       if (hasIdleThreads) {
