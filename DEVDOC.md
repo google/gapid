@@ -18,8 +18,10 @@ mkdir <path-outside-gapid-source>/gapid-gofuse
 # Run gofuse with the previous directory as a target
 bazel run //cmd/gofuse -- -dir <path-to-gapid-gofuse>
 
-## In your shell init script, e.g. ~/.bashrc, add the gofuse directory to GOPATH:
-export GOPATH="${GOPATH}:<path-to-gapid-gofuse>"
+# Add gapid-gofuse directory to your GOPATH environment variable.
+# On Linux, with a bash shell, you can add the following to your ~/.bashrc file:
+export GOPATH="${GOPATH:+${GOPATH}:}<path-to-gapid-gofuse>"
+# On other configurations, please search online how to add/edit environment variables.
 ```
 
 After adding the gofuse directory to your GOPATH, Go tools should work as
