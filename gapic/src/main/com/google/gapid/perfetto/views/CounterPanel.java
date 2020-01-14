@@ -82,7 +82,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       CounterTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
-      if (data == null) {
+      if (data == null || data.ts.length == 0) {
         return;
       }
 
@@ -94,8 +94,8 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
       ctx.setForegroundColor(BaseColor.PACIFIC_BLUE.rgb);
       ctx.path(path -> {
-        path.moveTo(0, h);
-        double lastX = 0, lastY = h;
+        double lastX = state.timeToPx(data.ts[0]), lastY = h;
+        path.moveTo(lastX, lastY);
         for (int i = 0; i < data.ts.length; i++) {
           double nextX = state.timeToPx(data.ts[i]);
           double nextY = (trackHeight - 1) * (1 - (data.values[i] - min) / range);
@@ -154,6 +154,10 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     }
 
     long time = state.pxToTime(x);
+    if (time < data.ts[0] || time > data.ts[data.ts.length - 1]) {
+      return Hover.NONE;
+    }
+
     int idx = 0;
     for (; idx < data.ts.length - 1; idx++) {
       if (data.ts[idx + 1] > time) {
