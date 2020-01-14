@@ -19,9 +19,9 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -29,6 +29,7 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.FrameEventsTrack;
+import com.google.gapid.perfetto.models.FrameEventsTrack.Slice;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
@@ -37,6 +38,8 @@ import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Draws the instant events and the Displayed Frame track for the Surface Flinger Frame Events
@@ -47,6 +50,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
   private final GpuInfo.Buffer buffer;
   protected final FrameEventsTrack track;
@@ -134,6 +138,10 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
 
   public void renderSlices(RenderContext ctx, FrameEventsTrack.Data data) {
     TimeSpan visible = state.getVisibleTime();
+    Selection<Slice.Key> selected = state.getSelection(Selection.Kind.FrameEvents);
+    List<Integer> visibleSelectedSlice = Lists.newArrayList();
+    List<Integer> visibleSelectedDiamond = Lists.newArrayList();
+
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
@@ -149,10 +157,12 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = depth * SLICE_HEIGHT;
 
-        float hue = (title.hashCode() & 0x7fffffff) % 360;
-        float saturation = Math.min(20 + depth * 10, 70) / 100f;
-        ctx.setBackgroundColor(hsl(hue, saturation, .65f));
+        ctx.setBackgroundColor(FrameEventsTrack.getColor(data.titles[i]));
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
+
+        if (selected.contains(new Slice.Key(tStart, tEnd - tStart))) {
+          visibleSelectedSlice.add(i);
+        }
 
         // Don't render text when we have less than 7px to play with.
         if (rectWidth < 7) {
@@ -166,17 +176,38 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         double rectWidth = 20;
         double y = depth * SLICE_HEIGHT;
 
-        float hue = (title.hashCode() & 0x7fffffff) % 360;
-        float saturation = Math.min(20 + depth * 10, 70) / 100f;
-        ctx.setBackgroundColor(hsl(hue, saturation, .65f));
-        ctx.setForegroundColor(title.substring(0,1).hashCode()%19);
+        ctx.setBackgroundColor(FrameEventsTrack.getColor(data.titles[i]));
         double[] diamondX = new double[] {rectStart - (rectWidth)/2, rectStart, rectStart + (rectWidth)/2, rectStart};
         double[] diamondY = new double[] { y+(SLICE_HEIGHT)/2,y, y+(SLICE_HEIGHT)/2, SLICE_HEIGHT};
         ctx.fillPolygon(diamondX, diamondY, 4);
+
+        if (selected.contains(new Slice.Key(tStart, tEnd - tStart))) {
+          visibleSelectedDiamond.add(i);
+        }
+
         ctx.setForegroundColor(colors().textInvertedMain);
         ctx.drawText(
             Fonts.Style.Normal, title.substring(0,1), rectStart - rectWidth/2 + 1, y + 1, rectWidth - 1, SLICE_HEIGHT - 4);
       }
+    }
+
+    for (int index : visibleSelectedSlice) {
+      ctx.setForegroundColor(FrameEventsTrack.getBorderColor(data.titles[index]));
+      double rectStart = state.timeToPx(data.starts[index]);
+      double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
+      double depth = data.depths[index];
+      ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
+    }
+
+    for (int index : visibleSelectedDiamond) {
+      ctx.setForegroundColor(FrameEventsTrack.getBorderColor(data.titles[index]));
+      double rectStart = state.timeToPx(data.starts[index]);
+      double rectWidth = 20;
+      double depth = data.depths[index];
+      double y = depth * SLICE_HEIGHT;
+      double[] diamondX = new double[] {rectStart - (rectWidth)/2, rectStart, rectStart + (rectWidth)/2, rectStart};
+      double[] diamondY = new double[] { y+(SLICE_HEIGHT)/2,y, y+(SLICE_HEIGHT)/2, SLICE_HEIGHT};
+      ctx.drawPolygon(diamondX, diamondY, 4);
     }
 
     if (hoveredTitle != null) {
