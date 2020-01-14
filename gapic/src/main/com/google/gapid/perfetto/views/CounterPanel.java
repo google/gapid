@@ -129,13 +129,6 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         ctx.drawCircle(mouseXpos, y, CURSOR_SIZE / 2);
       }
 
-      String label = String.format("%,d", Math.round(counter.max));
-      Size labelSize = ctx.measure(Fonts.Style.Normal, label);
-      ctx.setBackgroundColor(colors().hoverBackground);
-      ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
-      ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(Fonts.Style.Normal, label, 4, 4);
-
       if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, 2 * HOVER_PADDING + hovered.size.w, trackHeight);
