@@ -15,11 +15,13 @@
  */
 package com.google.gapid.perfetto.views;
 
+import static com.google.gapid.perfetto.views.StyleConstants.DEFAULT_COUNTER_TRACK_HEIGHT;
+
 import com.google.gapid.perfetto.models.CounterTrack;
 
 public class VulkanCounterPanel extends CounterPanel implements Selectable {
   public VulkanCounterPanel(State state, CounterTrack track) {
-    super(state, track);
+    super(state, track, DEFAULT_COUNTER_TRACK_HEIGHT);
   }
 
   @Override
@@ -32,14 +34,14 @@ public class VulkanCounterPanel extends CounterPanel implements Selectable {
     // Perfetto convention for Vulkan counter names:
     // Device: vulkan.mem.device.memory.type.{}.{allocation|bind}
     // Driver: vulkan.mem.driver.scope.{COMMAND|OBJECT|CACHE|DEVICE|INSTANCE}
-    String name = track.getCounter()
-                      .name.replace("vulkan.mem.", "")
-                      .replace("driver.", "Driver, ")
-                      .replace("device.", "GPU, ")
-                      .replace("scope.", "Scope: ")
-                      .replace("memory.type.", "MemoryType: ")
-                      .replace(".allocation", ", Allocated")
-                      .replace(".bind", ", Bound");
+    String name = track.getCounter().name
+        .replace("vulkan.mem.", "")
+        .replace("driver.", "Driver, ")
+        .replace("device.", "GPU, ")
+        .replace("scope.", "Scope: ")
+        .replace("memory.type.", "MemoryType: ")
+        .replace(".allocation", ", Allocated")
+        .replace(".bind", ", Bound");
     return name;
   }
 }

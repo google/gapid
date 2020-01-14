@@ -15,6 +15,8 @@
  */
 package com.google.gapid.perfetto.models;
 
+import static com.google.gapid.perfetto.views.StyleConstants.DEFAULT_COUNTER_TRACK_HEIGHT;
+import static com.google.gapid.perfetto.views.StyleConstants.PROCESS_COUNTER_TRACK_HIGHT;
 import static com.google.gapid.perfetto.views.TrackContainer.group;
 import static com.google.gapid.perfetto.views.TrackContainer.single;
 import static java.util.stream.Collectors.toList;
@@ -139,7 +141,7 @@ public class Tracks {
       for (CounterInfo counter : counters) {
         CounterTrack track = new CounterTrack(data.qe, counter);
         data.tracks.addTrack("gpu_counters", track.getId(), counter.name,
-            single(state -> new CounterPanel(state, track), true));
+            single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true));
       }
     }
     return data;
@@ -198,7 +200,7 @@ public class Tracks {
         for (CounterInfo counter : counters) {
           CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack(parentId, track.getId(), counter.name,
-              single(state -> new CounterPanel(state, track), false));
+              single(state -> new CounterPanel(state, track, PROCESS_COUNTER_TRACK_HIGHT), false));
         }
       }
 
