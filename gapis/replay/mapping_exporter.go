@@ -21,7 +21,6 @@ import (
 	"os"
 	"reflect"
 	"sort"
-	"sync"
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/log"
@@ -30,74 +29,93 @@ import (
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 )
 
+type mappingHandle struct {
+	traceValue    uint64
+	replayAddress value.Pointer
+	size          uint64
+	name          string
+}
+
 type MappingExporter struct {
-	mappings *map[uint64][]service.VulkanHandleMappingItem
-	thread   uint64
-	path     string
-	results  map[uint64]service.VulkanHandleMappingItem
-	mutex    sync.RWMutex
+	mappings       *map[uint64][]service.VulkanHandleMappingItem
+	thread         uint64
+	path           string
+	traceValues    []mappingHandle
+	notificationID uint64
 }
 
 func NewMappingExporter(ctx context.Context, mappings *map[uint64][]service.VulkanHandleMappingItem) *MappingExporter {
 	return &MappingExporter{
-		mappings: mappings,
-		thread:   0,
-		path:     "",
-		results:  make(map[uint64]service.VulkanHandleMappingItem),
-		mutex:    sync.RWMutex{},
+		mappings:       mappings,
+		thread:         0,
+		path:           "",
+		traceValues:    make([]mappingHandle, 0, 0),
+		notificationID: 0,
 	}
 }
 
 func NewMappingExporterWithPrint(ctx context.Context, path string) *MappingExporter {
 	mapping := make(map[uint64][]service.VulkanHandleMappingItem)
 	return &MappingExporter{
-		mappings: &mapping,
-		thread:   0,
-		path:     path,
-		results:  make(map[uint64]service.VulkanHandleMappingItem),
-		mutex:    sync.RWMutex{},
+		mappings:       &mapping,
+		thread:         0,
+		path:           path,
+		traceValues:    make([]mappingHandle, 0, 0),
+		notificationID: 0,
 	}
 }
 
 func (m *MappingExporter) processNotification(ctx context.Context, s *api.GlobalState, n gapir.Notification) {
-	notificationData := n.GetData()
-	notificationID := n.GetId()
-	mappingData := notificationData.GetData()
-
-	m.mutex.Lock()
-
-	result, ok := m.results[notificationID]
-	if !ok {
-		log.I(ctx, "Invalid notificationID %d", notificationID)
+	if m.notificationID != n.GetId() {
+		log.I(ctx, "Invalid notificationID %d", m.notificationID)
 		return
 	}
 
+	notificationData := n.GetData()
+	mappingData := notificationData.GetData()
+
 	byteOrder := s.MemoryLayout.GetEndian()
 	r := endian.Reader(bytes.NewReader(mappingData), byteOrder)
-	replayValue := r.Uint64()
-	result.ReplayValue = replayValue
 
-	if _, ok := (*m.mappings)[replayValue]; !ok {
-		(*m.mappings)[replayValue] = make([]service.VulkanHandleMappingItem, 0, 0)
+	for _, handle := range m.traceValues {
+		var replayValue uint64
+		switch handle.size {
+		case 1:
+			replayValue = uint64(r.Uint8())
+		case 2:
+			replayValue = uint64(r.Uint16())
+		case 4:
+			replayValue = uint64(r.Uint32())
+		case 8:
+			replayValue = r.Uint64()
+		default:
+			log.F(ctx, true, "Invalid Handle size %s: %d", handle.name, handle.size)
+		}
+
+		if _, ok := (*m.mappings)[replayValue]; !ok {
+			(*m.mappings)[replayValue] = make([]service.VulkanHandleMappingItem, 0, 0)
+		}
+
+		(*m.mappings)[replayValue] = append(
+			(*m.mappings)[replayValue],
+			service.VulkanHandleMappingItem{HandleType: handle.name, TraceValue: handle.traceValue, ReplayValue: replayValue},
+		)
 	}
 
-	(*m.mappings)[replayValue] = append((*m.mappings)[replayValue], result)
+	m.notificationID = 0
 
-	delete(m.results, notificationID)
-
-	m.mutex.Unlock()
-
-	if len(m.results) == 0 {
-		if len(m.path) > 0 {
-			printToFile(ctx, m.path, m.mappings)
-		}
+	if len(m.path) > 0 {
+		printToFile(ctx, m.path, m.mappings)
 	}
 }
 
 func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+	bufferSize := uint64(0)
+
 	for k, v := range b.Remappings {
 		typ := reflect.TypeOf(k)
 		var size uint64
@@ -106,23 +124,34 @@ func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalSt
 		} else {
 			size = uint64(typ.Size())
 		}
+
 		if size != 1 && size != 2 && size != 4 && size != 8 {
 			// Ignore objects that are not handles
 			continue
 		}
 
-		notificationID := b.GetNotificationID()
 		traceValue := reflect.ValueOf(k).Uint()
-		m.results[notificationID] = service.VulkanHandleMappingItem{HandleType: typ.Name(), TraceValue: traceValue, ReplayValue: 0}
-		b.Notification(notificationID, v, size)
-		err := b.RegisterNotificationReader(notificationID, func(n gapir.Notification) {
-			m.processNotification(ctx, s, n)
-		})
+		m.traceValues = append(m.traceValues, mappingHandle{traceValue: traceValue, replayAddress: v, size: size, name: typ.Name()})
+		bufferSize += size
+	}
 
-		if err != nil {
-			log.W(ctx, "Vulkan Mapping Notification could not registered: ", err)
-			return err
-		}
+	handleBuffer := b.AllocateMemory(bufferSize)
+	target := handleBuffer
+
+	for _, handle := range m.traceValues {
+		b.Memcpy(target, handle.replayAddress, handle.size)
+		target = target.Offset(handle.size)
+	}
+
+	m.notificationID = b.GetNotificationID()
+	b.Notification(m.notificationID, handleBuffer, bufferSize)
+	err := b.RegisterNotificationReader(m.notificationID, func(n gapir.Notification) {
+		m.processNotification(ctx, s, n)
+	})
+
+	if err != nil {
+		log.W(ctx, "Vulkan Mapping Notification could not be registered: ", err)
+		return err
 	}
 
 	return nil
