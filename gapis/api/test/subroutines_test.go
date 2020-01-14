@@ -33,7 +33,8 @@ func TestSubAdd(t *testing.T) {
 	defer a.Dispose()
 	cb := CommandBuilder{Thread: 0, Arena: a}
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	api.MutateCmds(ctx, s, nil, nil, cb.CmdAdd(10, 20))
+	err := api.MutateCmds(ctx, s, nil, nil, cb.CmdAdd(10, 20))
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	got, err := GetState(s).Ints().Read(ctx, nil, s, nil)
 	expected := []memory.Int{30}
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
