@@ -164,7 +164,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	})
 
 	lastCmd := cmds[len(cmds)-1]
-	api.MutateCmds(ctx, s, nil, nil, lastCmd)
+	err = api.MutateCmds(ctx, s, nil, nil, lastCmd)
+	if err != nil {
+		return nil, err
+	}
 
 	typedRanges = filterTypedRanges(typedRanges)
 

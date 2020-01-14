@@ -33,10 +33,11 @@ func TestClone(t *testing.T) {
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
-	api.MutateCmds(ctx, s, nil, nil,
+	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdClone(p(0x1234), 10).
 			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	got, err := GetState(s).U8s().Read(ctx, nil, s, nil)
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
 		assert.For(ctx, "got").ThatSlice(got).Equals(expected)
@@ -50,9 +51,10 @@ func TestMake(t *testing.T) {
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	idOfFirstPool, _ := s.Memory.New()
 	assert.For(ctx, "initial NextPoolID").That(idOfFirstPool).Equals(memory.PoolID(1))
-	api.MutateCmds(ctx, s, nil, nil,
+	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdMake(10),
 	)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	assert.For(ctx, "buffer count").That(GetState(s).U8s().Size()).Equals(uint64(10))
 	idOfOneAfterLastPool, _ := s.Memory.New()
 	assert.For(ctx, "final NextPoolID").That(idOfOneAfterLastPool).Equals(memory.PoolID(3))
@@ -65,11 +67,12 @@ func TestCopy(t *testing.T) {
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
-	api.MutateCmds(ctx, s, nil, nil,
+	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdMake(10),
 		cb.CmdCopy(p(0x1234), 10).
 			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	got, err := GetState(s).U8s().Read(ctx, nil, s, nil)
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
 		assert.For(ctx, "got").ThatSlice(got).Equals(expected)
@@ -82,10 +85,11 @@ func TestCharsliceToString(t *testing.T) {
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := "ħęľĺő ŵōřŀď"
-	api.MutateCmds(ctx, s, nil, nil,
+	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
 			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	assert.For(ctx, "Data").That(GetState(s).Str()).Equals(expected)
 }
 
@@ -95,10 +99,11 @@ func TestCharptrToString(t *testing.T) {
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	expected := "ħęľĺő ŵōřŀď"
-	api.MutateCmds(ctx, s, nil, nil,
+	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdCharptrToString(p(0x1234)).
 			AddRead(memory.Store(ctx, s.MemoryLayout, p(0x1234), expected)),
 	)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	assert.For(ctx, "Data").That(GetState(s).Str()).Equals(expected)
 }
 
@@ -110,9 +115,10 @@ func TestSliceCasts(t *testing.T) {
 	l := s.MemoryLayout.Clone()
 	l.Integer.Size = 6 // non-multiple of u16
 	s.MemoryLayout = l
-	api.MutateCmds(ctx, s, nil, nil,
+	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdSliceCasts(p(0x1234), 10),
 	)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
 	for _, test := range []struct {
 		name        string
 		got, expect memory.Slice
