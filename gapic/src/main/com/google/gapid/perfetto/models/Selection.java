@@ -42,6 +42,7 @@ public interface Selection<Key> {
   public String getTitle();
   public boolean contains(Key key);
   public Composite buildUi(Composite parent, State state);
+  public Combinable getBuilder();
   public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default boolean isEmpty() { return this == EMPTY_SELECTION; }
@@ -54,7 +55,7 @@ public interface Selection<Key> {
       return EMPTY_SELECTION;
   }
 
-  public static class EmptySelection<K> implements Selection<K> {
+  public static class EmptySelection<K> implements Selection<K>, Combinable<EmptySelection<K>> {
     @Override
     public String getTitle() {
       return "";
@@ -69,8 +70,26 @@ public interface Selection<Key> {
     public Composite buildUi(Composite parent, State state) {
       return new Composite(parent, SWT.NONE);
     }
+
+    @Override
+    public Combinable getBuilder() {
+      return this;
+    }
+
+    @Override
+    public EmptySelection combine(EmptySelection other) {
+      return this;
+    }
+
+    @Override
+    public Selection<?> build() {
+      return this;
+    }
   }
 
+  /**
+   * MultiSelection stores selections across different {@link Kind}s.
+   * */
   public static class MultiSelection {
     private final NavigableMap<Kind<?>, Selection<?>> selections;
 
@@ -116,6 +135,9 @@ public interface Selection<Key> {
     }
   }
 
+  /**
+   * Selection builder for combining selections across different {@link Kind}s.
+   * */
   public static class CombiningBuilder {
     private final Map<Kind<?>, ListenableFuture<Combinable<?>>> selections =
         Maps.newTreeMap();
@@ -138,11 +160,14 @@ public interface Selection<Key> {
         return new MultiSelection(res);
       });
     }
+  }
 
-    public static interface Combinable<T extends Combinable<T>> {
-      public T combine(T other);
-      public Selection<?> build();
-    }
+  /**
+  * Selection builder for combining selections within a {@link Kind}.
+  * */
+  public static interface Combinable<T extends Combinable<T>> {
+    public T combine(T other);
+    public Selection<?> build();
   }
 
   @SuppressWarnings("unused")

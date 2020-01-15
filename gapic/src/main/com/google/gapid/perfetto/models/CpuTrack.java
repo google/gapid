@@ -242,6 +242,11 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
+    public Combinable getBuilder() {
+      return new Slices(Lists.newArrayList(this));
+    }
+
+    @Override
     public void markTime(State state) {
       if (dur > 0) {
         state.setHighlight(new TimeSpan(time, time + dur));
@@ -261,11 +266,13 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
   }
 
-  public static class Slices implements Selection.CombiningBuilder.Combinable<Slices> {
+  public static class Slices implements Selection.Combinable<Slices> {
+    private final List<Slice> slices;
     private final Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
     private final Set<Long> sliceKeys = Sets.newHashSet();
 
     public Slices(List<Slice> slices) {
+      this.slices = slices;
       for (Slice slice : slices) {
         processes.computeIfAbsent(slice.upid, ByProcess.Builder::new).add(slice);
         sliceKeys.add(slice.id);
@@ -274,6 +281,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
 
     @Override
     public Slices combine(Slices other) {
+      this.slices.addAll(other.slices);
       for (Map.Entry<Long, ByProcess.Builder> e : other.processes.entrySet()) {
         processes.merge(e.getKey(), e.getValue(), ByProcess.Builder::combine);
       }
@@ -283,17 +291,20 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
 
     @Override
     public Selection build() {
-      return new Selection(processes.values().stream()
+      return new Selection(slices, processes.values().stream()
           .map(ByProcess.Builder::build)
           .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))
           .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
 
     public static class Selection implements com.google.gapid.perfetto.models.Selection<Long> {
+      private final List<Slice> slices;
       public final ImmutableList<ByProcess> processes;
       public final ImmutableSet<Long> sliceKeys;
 
-      public Selection(ImmutableList<ByProcess> processes, ImmutableSet<Long> sliceKeys) {
+      public Selection(List<Slice> slices, ImmutableList<ByProcess> processes,
+          ImmutableSet<Long> sliceKeys) {
+        this.slices = slices;
         this.processes = processes;
         this.sliceKeys = sliceKeys;
       }
@@ -311,6 +322,11 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
       @Override
       public Composite buildUi(Composite parent, State state) {
         return new CpuSlicesSelectionView(parent, state, this);
+      }
+
+      @Override
+      public Combinable getBuilder() {
+        return new Slices(slices);
       }
     }
 
