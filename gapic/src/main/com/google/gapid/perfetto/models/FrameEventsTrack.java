@@ -269,8 +269,8 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public Combinable getBuilder() {
-      return new Slices(Lists.newArrayList(this));
+    public Selection.Builder getBuilder() {
+      return new SlicesBuilder(Lists.newArrayList(this));
     }
 
     @Override
@@ -322,13 +322,48 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
   }
 
-  public static class Slices implements Selection.Combinable<Slices> {
+  public static class Slices implements Selection<Slice.Key> {
+    private final List<Slice> slices;
+    private final String title;
+    public final ImmutableList<Node> nodes;
+    public final ImmutableSet<Slice.Key> sliceKeys;
+
+    public Slices(List<Slice> slices, String title, ImmutableList<Node> nodes,
+        ImmutableSet<Slice.Key> sliceKeys) {
+      this.slices = slices;
+      this.title = title;
+      this.nodes = nodes;
+      this.sliceKeys = sliceKeys;
+    }
+
+    @Override
+    public String getTitle() {
+      return title;
+    }
+
+    @Override
+    public boolean contains(Slice.Key key) {
+      return sliceKeys.contains(key);
+    }
+
+    @Override
+    public Composite buildUi(Composite parent, State state) {
+      return new FrameEventsMultiSelectionView(parent, this);
+    }
+
+    @Override
+    public Selection.Builder getBuilder() {
+      return new SlicesBuilder(slices);
+    }
+  }
+
+  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
     private final List<Slice> slices;
     private final String title;
     private final TreeMap<Long, Node> roots = Maps.newTreeMap();
     private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
 
-    public Slices(List<Slice> slices) {
+    public SlicesBuilder(List<Slice> slices) {
       this.slices = slices;
       String ti = "";
       for (Slice slice : slices) {
@@ -340,7 +375,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public Slices combine(Slices other) {
+    public SlicesBuilder combine(SlicesBuilder other) {
       this.slices.addAll(other.slices);
       roots.putAll(other.roots);
       sliceKeys.addAll(other.sliceKeys);
@@ -349,57 +384,22 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
 
     @Override
     public Selection build() {
-      return new Selection(slices, title, ImmutableList.copyOf(roots.values()),
+      return new Slices(slices, title, ImmutableList.copyOf(roots.values()),
           ImmutableSet.copyOf(sliceKeys));
     }
+  }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection<Slice.Key> {
-      private final List<Slice> slices;
-      private final String title;
-      public final ImmutableList<Node> nodes;
-      public final ImmutableSet<Slice.Key> sliceKeys;
+  public static class Node {
+    public final String name;
+    public final long dur;
+    public final long self;
+    public final long trackId;
 
-      public Selection(List<Slice> slices, String title, ImmutableList<Node> nodes,
-          ImmutableSet<Slice.Key> sliceKeys) {
-        this.slices = slices;
-        this.title = title;
-        this.nodes = nodes;
-        this.sliceKeys = sliceKeys;
-      }
-
-      @Override
-      public String getTitle() {
-        return title;
-      }
-
-      @Override
-      public boolean contains(Slice.Key key) {
-        return sliceKeys.contains(key);
-      }
-
-      @Override
-      public Composite buildUi(Composite parent, State state) {
-        return new FrameEventsMultiSelectionView(parent, this);
-      }
-
-      @Override
-      public Combinable getBuilder() {
-        return new Slices(slices);
-      }
-    }
-
-    public static class Node {
-      public final String name;
-      public final long dur;
-      public final long self;
-      public final long trackId;
-
-      public Node(String name, long dur, long self, long id) {
-        this.name = name;
-        this.dur = dur;
-        this.self = self;
-        this.trackId = id;
-      }
+    public Node(String name, long dur, long self, long id) {
+      this.name = name;
+      this.dur = dur;
+      this.self = self;
+      this.trackId = id;
     }
   }
 }

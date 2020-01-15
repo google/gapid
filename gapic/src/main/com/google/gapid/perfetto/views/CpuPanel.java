@@ -281,7 +281,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
     if (area.h / height >= SELECTION_THRESHOLD) {
       builder.add(Selection.Kind.Cpu, transform(track.getSlices(ts), r -> {
         r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-        return new CpuTrack.Slices(r);
+        return new CpuTrack.SlicesBuilder(r);
       }));
     }
   }

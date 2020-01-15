@@ -34,7 +34,7 @@ import org.eclipse.swt.widgets.Composite;
  */
 public class ThreadStateSlicesSelectionView extends Composite {
   public ThreadStateSlicesSelectionView(
-      Composite parent, ThreadTrack.StateSlices.Selection slices) {
+      Composite parent, ThreadTrack.StateSlices slices) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
@@ -48,9 +48,9 @@ public class ThreadStateSlicesSelectionView extends Composite {
     viewer.setLabelProvider(new LabelProvider());
 
     createTableColumn(viewer, "State",
-        e -> ((ThreadTrack.StateSlices.Selection.Entry)e).state.label);
+        e -> ((ThreadTrack.StateSlices.Entry)e).state.label);
     createTableColumn(viewer, "Duration",
-        e -> timeToString(((ThreadTrack.StateSlices.Selection.Entry)e).totalDur));
+        e -> timeToString(((ThreadTrack.StateSlices.Entry)e).totalDur));
     viewer.setInput(slices);
     packColumns(viewer.getTable());
   }

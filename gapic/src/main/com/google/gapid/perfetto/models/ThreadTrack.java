@@ -224,8 +224,8 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public Combinable getBuilder() {
-      return new StateSlices(Lists.newArrayList(this));
+    public Selection.Builder getBuilder() {
+      return new StateSlicesBuilder(Lists.newArrayList(this));
     }
 
     @Override
@@ -279,12 +279,55 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
   }
 
-  public static class StateSlices implements Selection.Combinable<StateSlices> {
+  public static class StateSlices implements Selection<StateSlice.Key> {
+    private final List<StateSlice> slices;
+    public final ImmutableList<Entry> entries;
+    public final ImmutableSet<StateSlice.Key> sliceKeys;
+
+    public StateSlices(List<StateSlice> slices, ImmutableList<Entry> entries,
+        ImmutableSet<StateSlice.Key> sliceKeys) {
+      this.slices = slices;
+      this.entries = entries;
+      this.sliceKeys = sliceKeys;
+    }
+
+    @Override
+    public String getTitle() {
+      return "Thread States";
+    }
+
+    @Override
+    public boolean contains(StateSlice.Key key) {
+      return sliceKeys.contains(key);
+    }
+
+    @Override
+    public Composite buildUi(Composite parent, State state) {
+      return new ThreadStateSlicesSelectionView(parent, this);
+    }
+
+    @Override
+    public Selection.Builder getBuilder() {
+      return new StateSlicesBuilder(slices);
+    }
+
+    public static class Entry {
+      public final ThreadState state;
+      public final long totalDur;
+
+      public Entry(ThreadState state, long totalDur) {
+        this.state = state;
+        this.totalDur = totalDur;
+      }
+    }
+  }
+
+  public static class StateSlicesBuilder implements Selection.Builder<StateSlicesBuilder> {
     private final List<StateSlice> slices;
     private final Map<ThreadState, Long> byState = Maps.newHashMap();
     private final Set<StateSlice.Key> sliceKeys = Sets.newHashSet();
 
-    public StateSlices(List<StateSlice> slices) {
+    public StateSlicesBuilder(List<StateSlice> slices) {
       this.slices = slices;
       for (StateSlice slice : slices) {
         byState.compute(slice.state, (state, old) -> (old == null) ? slice.dur : old + slice.dur);
@@ -293,7 +336,7 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public StateSlices combine(StateSlices other) {
+    public StateSlicesBuilder combine(StateSlicesBuilder other) {
       this.slices.addAll(other.slices);
       for (Map.Entry<ThreadState, Long> e : other.byState.entrySet()) {
         byState.merge(e.getKey(), e.getValue(), Long::sum);
@@ -304,53 +347,10 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
 
     @Override
     public Selection build() {
-      return new Selection(slices, byState.entrySet().stream()
-          .map(e -> new Selection.Entry(e.getKey(), e.getValue()))
+      return new StateSlices(slices, byState.entrySet().stream()
+          .map(e -> new StateSlices.Entry(e.getKey(), e.getValue()))
           .sorted((e1, e2) -> Long.compare(e2.totalDur, e1.totalDur))
           .collect(ImmutableList.toImmutableList()), ImmutableSet.copyOf(sliceKeys));
-    }
-
-    public static class Selection implements com.google.gapid.perfetto.models.Selection<StateSlice.Key> {
-      private final List<StateSlice> slices;
-      public final ImmutableList<Entry> entries;
-      public final ImmutableSet<StateSlice.Key> sliceKeys;
-
-      public Selection(List<StateSlice> slices, ImmutableList<Entry> entries,
-          ImmutableSet<StateSlice.Key> sliceKeys) {
-        this.slices = slices;
-        this.entries = entries;
-        this.sliceKeys = sliceKeys;
-      }
-
-      @Override
-      public String getTitle() {
-        return "Thread States";
-      }
-
-      @Override
-      public boolean contains(StateSlice.Key key) {
-        return sliceKeys.contains(key);
-      }
-
-      @Override
-      public Composite buildUi(Composite parent, State state) {
-        return new ThreadStateSlicesSelectionView(parent, this);
-      }
-
-      @Override
-      public Combinable getBuilder() {
-        return new StateSlices(slices);
-      }
-
-      public static class Entry {
-        public final ThreadState state;
-        public final long totalDur;
-
-        public Entry(ThreadState state, long totalDur) {
-          this.state = state;
-          this.totalDur = totalDur;
-        }
-      }
     }
   }
 

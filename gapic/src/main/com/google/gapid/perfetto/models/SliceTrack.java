@@ -170,8 +170,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public Combinable getBuilder() {
-      return new Slices(Lists.newArrayList(this));
+    public Selection.Builder getBuilder() {
+      return new SlicesBuilder(Lists.newArrayList(this));
     }
 
     @Override
@@ -244,7 +244,42 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
   }
 
-  public static class Slices implements Selection.Combinable<Slices> {
+  public static class Slices implements Selection<Slice.Key> {
+    private final List<Slice> slices;
+    private final String title;
+    public final ImmutableList<Node> nodes;
+    public final ImmutableSet<Slice.Key> sliceKeys;
+
+    public Slices(List<Slice> slices, String title, ImmutableList<Node> nodes,
+        ImmutableSet<Slice.Key> sliceKeys) {
+      this.slices = slices;
+      this.title = title;
+      this.nodes = nodes;
+      this.sliceKeys = sliceKeys;
+    }
+
+    @Override
+    public String getTitle() {
+      return title;
+    }
+
+    @Override
+    public boolean contains(Slice.Key key) {
+      return sliceKeys.contains(key);
+    }
+
+    @Override
+    public Composite buildUi(Composite parent, State state) {
+      return new SlicesSelectionView(parent, this);
+    }
+
+    @Override
+    public Selection.Builder getBuilder() {
+      return new SlicesBuilder(slices);
+    }
+  }
+
+  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
     private final List<Slice> slices;
     private final String title;
     private final Map<Long, Node.Builder> byStack = Maps.newHashMap();
@@ -252,7 +287,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     private final Set<Long> roots = Sets.newHashSet();
     private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
 
-    public Slices(List<Slice> slices) {
+    public SlicesBuilder(List<Slice> slices) {
       this.slices = slices;
       String ti = "";
       for (Slice slice : slices) {
@@ -271,7 +306,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public Slices combine(Slices other) {
+    public SlicesBuilder combine(SlicesBuilder other) {
       this.slices.addAll(other.slices);
       for (Map.Entry<Long, Node.Builder> e : other.byStack.entrySet()) {
         Node.Builder mine = byStack.get(e.getKey());
@@ -289,109 +324,74 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
     @Override
     public Selection build() {
-      return new Selection(slices, title, roots.stream()
+      return new Slices(slices, title, roots.stream()
           .filter(not(byStack::containsKey))
           .flatMap(root -> byParent.get(root).stream())
           .map(b -> b.build(byParent))
           .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
           .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
+  }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection<Slice.Key> {
-      private final List<Slice> slices;
-      private final String title;
-      public final ImmutableList<Node> nodes;
-      public final ImmutableSet<Slice.Key> sliceKeys;
+  public static class Node {
+    public final String name;
+    public final long dur;
+    public final long self;
+    public final int count;
+    public final ImmutableList<Node> children;
 
-      public Selection(List<Slice> slices, String title, ImmutableList<Node> nodes,
-          ImmutableSet<Slice.Key> sliceKeys) {
-        this.slices = slices;
-        this.title = title;
-        this.nodes = nodes;
-        this.sliceKeys = sliceKeys;
-      }
-
-      @Override
-      public String getTitle() {
-        return title;
-      }
-
-      @Override
-      public boolean contains(Slice.Key key) {
-        return sliceKeys.contains(key);
-      }
-
-      @Override
-      public Composite buildUi(Composite parent, State state) {
-        return new SlicesSelectionView(parent, this);
-      }
-
-      @Override
-      public Combinable getBuilder() {
-        return new Slices(slices);
-      }
+    public Node(String name, long dur, long self, int count, ImmutableList<Node> children) {
+      this.name = name;
+      this.dur = dur;
+      this.self = self;
+      this.count = count;
+      this.children = children;
     }
 
-    public static class Node {
+    public static class Builder {
       public final String name;
-      public final long dur;
-      public final long self;
-      public final int count;
-      public final ImmutableList<Node> children;
+      public final long id;
+      public final long parent;
+      private long dur = 0;
+      private int count = 0;
 
-      public Node(String name, long dur, long self, int count, ImmutableList<Node> children) {
+      public Builder(String name, long id, long parent) {
         this.name = name;
-        this.dur = dur;
-        this.self = self;
-        this.count = count;
-        this.children = children;
+        this.id = id;
+        this.parent = parent;
       }
 
-      public static class Builder {
-        public final String name;
-        public final long id;
-        public final long parent;
-        private long dur = 0;
-        private int count = 0;
+      public Builder(Builder other) {
+        this.name = other.name;
+        this.id = other.id;
+        this.parent = other.parent;
+        this.dur = other.dur;
+        this.count = other.count;
+      }
 
-        public Builder(String name, long id, long parent) {
-          this.name = name;
-          this.id = id;
-          this.parent = parent;
-        }
+      public long getParent() {
+        return parent;
+      }
 
-        public Builder(Builder other) {
-          this.name = other.name;
-          this.id = other.id;
-          this.parent = other.parent;
-          this.dur = other.dur;
-          this.count = other.count;
-        }
+      public void add(long duration) {
+        dur += duration;
+        count++;
+      }
 
-        public long getParent() {
-          return parent;
-        }
+      public void add(Builder other) {
+        dur += other.dur;
+        count += other.count;
+      }
 
-        public void add(long duration) {
-          dur += duration;
-          count++;
-        }
-
-        public void add(Builder other) {
-          dur += other.dur;
-          count += other.count;
-        }
-
-        public Node build(Map<Long, List<Builder>> byParent) {
-          ImmutableList<Node> cs = byParent.getOrDefault(id, emptyList()).stream()
-              .map(b -> b.build(byParent))
-              .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
-              .collect(toImmutableList());
-          long cDur = cs.stream()
-              .mapToLong(n -> n.dur)
-              .sum();
-          return new Node(name, dur, dur - cDur, count, cs);
-        }
+      public Node build(Map<Long, List<Builder>> byParent) {
+        ImmutableList<Node> cs = byParent.getOrDefault(id, emptyList()).stream()
+            .map(b -> b.build(byParent))
+            .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
+            .collect(toImmutableList());
+        long cDur = cs.stream()
+            .mapToLong(n -> n.dur)
+            .sum();
+        return new Node(name, dur, dur - cDur, count, cs);
       }
     }
   }

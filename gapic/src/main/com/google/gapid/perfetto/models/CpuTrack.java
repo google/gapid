@@ -242,8 +242,8 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
-    public Combinable getBuilder() {
-      return new Slices(Lists.newArrayList(this));
+    public Selection.Builder getBuilder() {
+      return new SlicesBuilder(Lists.newArrayList(this));
     }
 
     @Override
@@ -266,12 +266,45 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
   }
 
-  public static class Slices implements Selection.Combinable<Slices> {
+  public static class Slices implements Selection<Long> {
+    private final List<Slice> slices;
+    public final ImmutableList<ByProcess> processes;
+    public final ImmutableSet<Long> sliceKeys;
+
+    public Slices(List<Slice> slices, ImmutableList<ByProcess> processes,
+        ImmutableSet<Long> sliceKeys) {
+      this.slices = slices;
+      this.processes = processes;
+      this.sliceKeys = sliceKeys;
+    }
+
+    @Override
+    public String getTitle() {
+      return "CPU Slices";
+    }
+
+    @Override
+    public boolean contains(Long key) {
+      return sliceKeys.contains(key);
+    }
+
+    @Override
+    public Composite buildUi(Composite parent, State state) {
+      return new CpuSlicesSelectionView(parent, state, this);
+    }
+
+    @Override
+    public Selection.Builder getBuilder() {
+      return new SlicesBuilder(slices);
+    }
+  }
+
+  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
     private final List<Slice> slices;
     private final Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
     private final Set<Long> sliceKeys = Sets.newHashSet();
 
-    public Slices(List<Slice> slices) {
+    public SlicesBuilder(List<Slice> slices) {
       this.slices = slices;
       for (Slice slice : slices) {
         processes.computeIfAbsent(slice.upid, ByProcess.Builder::new).add(slice);
@@ -280,7 +313,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
-    public Slices combine(Slices other) {
+    public SlicesBuilder combine(SlicesBuilder other) {
       this.slices.addAll(other.slices);
       for (Map.Entry<Long, ByProcess.Builder> e : other.processes.entrySet()) {
         processes.merge(e.getKey(), e.getValue(), ByProcess.Builder::combine);
@@ -291,124 +324,91 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
 
     @Override
     public Selection build() {
-      return new Selection(slices, processes.values().stream()
+      return new Slices(slices, processes.values().stream()
           .map(ByProcess.Builder::build)
           .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))
           .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
+  }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection<Long> {
-      private final List<Slice> slices;
-      public final ImmutableList<ByProcess> processes;
-      public final ImmutableSet<Long> sliceKeys;
+  public static class ByProcess {
+    public final long pid;
+    public final long dur;
+    public final ImmutableList<ByThread> threads;
 
-      public Selection(List<Slice> slices, ImmutableList<ByProcess> processes,
-          ImmutableSet<Long> sliceKeys) {
-        this.slices = slices;
-        this.processes = processes;
-        this.sliceKeys = sliceKeys;
-      }
-
-      @Override
-      public String getTitle() {
-        return "CPU Slices";
-      }
-
-      @Override
-      public boolean contains(Long key) {
-        return sliceKeys.contains(key);
-      }
-
-      @Override
-      public Composite buildUi(Composite parent, State state) {
-        return new CpuSlicesSelectionView(parent, state, this);
-      }
-
-      @Override
-      public Combinable getBuilder() {
-        return new Slices(slices);
-      }
+    public ByProcess(long pid, long dur, ImmutableList<ByThread> threads) {
+      this.pid = pid;
+      this.dur = dur;
+      this.threads = threads;
     }
 
-    public static class ByProcess {
+    public static class Builder {
       public final long pid;
-      public final long dur;
-      public final ImmutableList<ByThread> threads;
+      public long dur = 0;
+      public final Map<Long, ByThread.Builder> threads = Maps.newHashMap();
 
-      public ByProcess(long pid, long dur, ImmutableList<ByThread> threads) {
+      public Builder(long pid) {
         this.pid = pid;
-        this.dur = dur;
-        this.threads = threads;
       }
 
-      public static class Builder {
-        public final long pid;
-        public long dur = 0;
-        public final Map<Long, ByThread.Builder> threads = Maps.newHashMap();
+      public void add(Slice slice) {
+        dur += slice.dur;
+        threads.computeIfAbsent(slice.utid, ByThread.Builder::new).add(slice);
+      }
 
-        public Builder(long pid) {
-          this.pid = pid;
+      public Builder combine(Builder other) {
+        dur += other.dur;
+        for (Map.Entry<Long, ByThread.Builder> e : other.threads.entrySet()) {
+          threads.merge(e.getKey(), e.getValue(), ByThread.Builder::combine);
         }
+        return this;
+      }
 
-        public void add(Slice slice) {
-          dur += slice.dur;
-          threads.computeIfAbsent(slice.utid, ByThread.Builder::new).add(slice);
-        }
-
-        public Builder combine(Builder other) {
-          dur += other.dur;
-          for (Map.Entry<Long, ByThread.Builder> e : other.threads.entrySet()) {
-            threads.merge(e.getKey(), e.getValue(), ByThread.Builder::combine);
-          }
-          return this;
-        }
-
-        public ByProcess build() {
-          return new ByProcess(pid, dur, threads.values().stream()
-              .map(ByThread.Builder::build)
-              .sorted((t1, t2) -> Long.compare(t2.dur, t1.dur))
-              .collect(toImmutableList()));
-        }
+      public ByProcess build() {
+        return new ByProcess(pid, dur, threads.values().stream()
+            .map(ByThread.Builder::build)
+            .sorted((t1, t2) -> Long.compare(t2.dur, t1.dur))
+            .collect(toImmutableList()));
       }
     }
+  }
 
-    public static class ByThread {
-      public final long tid;
-      public final long dur;
-      public final ImmutableList<Slice> slices;
+  public static class ByThread {
+    public final long tid;
+    public final long dur;
+    public final ImmutableList<Slice> slices;
 
-      public ByThread(long tid, long dur, ImmutableList<Slice> slices) {
+    public ByThread(long tid, long dur, ImmutableList<Slice> slices) {
+      this.tid = tid;
+      this.dur = dur;
+      this.slices = slices;
+    }
+
+    public static class Builder {
+      private final long tid;
+      private long dur = 0;
+      private final List<Slice> slices = Lists.newArrayList();
+
+      public Builder(long tid) {
         this.tid = tid;
-        this.dur = dur;
-        this.slices = slices;
       }
 
-      public static class Builder {
-        private final long tid;
-        private long dur = 0;
-        private final List<Slice> slices = Lists.newArrayList();
+      public void add(Slice slice) {
+        dur += slice.dur;
+        slices.add(slice);
+      }
 
-        public Builder(long tid) {
-          this.tid = tid;
-        }
+      public Builder combine(Builder other) {
+        dur += other.dur;
+        slices.addAll(other.slices);
+        return this;
+      }
 
-        public void add(Slice slice) {
-          dur += slice.dur;
-          slices.add(slice);
-        }
-
-        public Builder combine(Builder other) {
-          dur += other.dur;
-          slices.addAll(other.slices);
-          return this;
-        }
-
-        public ByThread build() {
-          Collections.sort(slices, (s1, s2) -> Long.compare(s2.dur, s1.dur));
-          return new ByThread(tid, dur, slices.stream()
-              .sorted((s1, s2) -> Long.compare(s2.dur, s1.dur))
-              .collect(toImmutableList()));
-        }
+      public ByThread build() {
+        Collections.sort(slices, (s1, s2) -> Long.compare(s2.dur, s1.dur));
+        return new ByThread(tid, dur, slices.stream()
+            .sorted((s1, s2) -> Long.compare(s2.dur, s1.dur))
+            .collect(toImmutableList()));
       }
     }
   }
