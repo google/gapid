@@ -105,10 +105,6 @@ public abstract class State {
     return traceTime;
   }
 
-  public long getResolution() {
-    return resolution;
-  }
-
   public double timeToPx(long time) {
     return (time - visibleTime.start) / nanosPerPx;
   }
@@ -300,7 +296,7 @@ public abstract class State {
       nanosPerPx = 0;
       resolution = 0;
     } else {
-      resolution = 1 << DoubleMath.log2(nanosPerPx, RoundingMode.FLOOR);
+      resolution = 1l << DoubleMath.log2(nanosPerPx, RoundingMode.FLOOR);
     }
   }
 
