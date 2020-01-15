@@ -17,6 +17,7 @@ package transform
 import (
 	"context"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/config"
 )
@@ -104,7 +105,10 @@ func (p TransformWriter) State() *api.GlobalState {
 
 func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	if config.SeparateMutateStates || p.O.State() != p.S {
-		cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */)
+		err := cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */)
+		if err != nil {
+			log.F(ctx, true, "Fail to mutate command %v: %v", cmd, err)
+		}
 	}
 	p.T.Transform(ctx, id, cmd, p.O)
 }

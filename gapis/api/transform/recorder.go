@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 )
 
@@ -38,7 +39,10 @@ func (r *Recorder) State() *api.GlobalState {
 // and if the Recorder has a state, mutates this state object.
 func (r *Recorder) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	if r.S != nil {
-		cmd.Mutate(ctx, id, r.S, nil, nil)
+		err := cmd.Mutate(ctx, id, r.S, nil, nil)
+		if err != nil {
+			log.F(ctx, true, "Fail to mutate command %v: %v", cmd, err)
+		}
 	}
 	r.Cmds = append(r.Cmds, cmd)
 	r.CmdsAndIDs = append(r.CmdsAndIDs, CmdAndID{cmd, id})

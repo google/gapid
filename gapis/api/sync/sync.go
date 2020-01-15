@@ -24,6 +24,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -80,7 +81,10 @@ type writer struct {
 func (s *writer) State() *api.GlobalState { return s.state }
 
 func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
-	cmd.Mutate(ctx, id, s.state, nil, nil)
+	err := cmd.Mutate(ctx, id, s.state, nil, nil)
+	if err != nil {
+		log.F(ctx, true, "Fail to mutate command %v: %v", cmd, err)
+	}
 	s.cmds = append(s.cmds, cmd)
 }
 

@@ -401,7 +401,7 @@ func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
 		w.builder.CommitCommand()
 	} else {
 		w.builder.RevertCommand(err)
-		log.W(ctx, "Failed to write command %v %v for replay: %v", id, cmd, err)
+		log.F(ctx, true, "Failed to write command %v %v for replay: %v", id, cmd, err)
 	}
 }
 func (w *adapter) NotifyPreLoop(ctx context.Context)  {}
