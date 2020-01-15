@@ -335,7 +335,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       }
 
       builder.add(Selection.Kind.FrameEvents,
-          transform(track.getSlices(ts, startDepth, endDepth), FrameEventsTrack.Slices::new));
+          transform(track.getSlices(ts, startDepth, endDepth), FrameEventsTrack.SlicesBuilder::new));
     }
   }
 

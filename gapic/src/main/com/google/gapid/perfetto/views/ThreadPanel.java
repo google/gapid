@@ -383,9 +383,9 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
     if (startDepth == 0) {
       builder.add(Selection.Kind.ThreadState,
-          transform(track.getStates(ts), ThreadTrack.StateSlices::new));
+          transform(track.getStates(ts), ThreadTrack.StateSlicesBuilder::new));
       builder.add(Selection.Kind.Cpu, transform(
-          track.getCpuSlices(ts), r -> new CpuTrack.Slices(r)));
+          track.getCpuSlices(ts), r -> new CpuTrack.SlicesBuilder(r)));
     }
 
     startDepth = Math.max(0, startDepth - 1);
@@ -395,7 +395,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
         endDepth = Integer.MAX_VALUE;
       }
       builder.add(Selection.Kind.Thread,
-          transform(track.getSlices(ts, startDepth, endDepth), SliceTrack.Slices::new));
+          transform(track.getSlices(ts, startDepth, endDepth), SliceTrack.SlicesBuilder::new));
     }
   }
 }

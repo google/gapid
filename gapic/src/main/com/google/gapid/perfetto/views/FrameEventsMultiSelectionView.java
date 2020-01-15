@@ -33,7 +33,7 @@ import org.eclipse.swt.widgets.Composite;
  * Displays information about a list of selected slices.
  */
 public class FrameEventsMultiSelectionView extends Composite {
-  public FrameEventsMultiSelectionView(Composite parent, FrameEventsTrack.Slices.Selection sel) {
+  public FrameEventsMultiSelectionView(Composite parent, FrameEventsTrack.Slices sel) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
@@ -69,7 +69,7 @@ public class FrameEventsMultiSelectionView extends Composite {
     packColumns(viewer.getTree());
   }
 
-  protected static FrameEventsTrack.Slices.Node n(Object o) {
-    return (FrameEventsTrack.Slices.Node)o;
+  protected static FrameEventsTrack.Node n(Object o) {
+    return (FrameEventsTrack.Node)o;
   }
 }

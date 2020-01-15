@@ -42,7 +42,7 @@ public interface Selection<Key> {
   public String getTitle();
   public boolean contains(Key key);
   public Composite buildUi(Composite parent, State state);
-  public Combinable getBuilder();
+  public Selection.Builder getBuilder();
   public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default boolean isEmpty() { return this == EMPTY_SELECTION; }
@@ -55,7 +55,7 @@ public interface Selection<Key> {
       return EMPTY_SELECTION;
   }
 
-  public static class EmptySelection<K> implements Selection<K>, Combinable<EmptySelection<K>> {
+  public static class EmptySelection<K> implements Selection<K>, Builder<EmptySelection<K>> {
     @Override
     public String getTitle() {
       return "";
@@ -72,7 +72,7 @@ public interface Selection<Key> {
     }
 
     @Override
-    public Combinable getBuilder() {
+    public Selection.Builder getBuilder() {
       return this;
     }
 
@@ -139,12 +139,12 @@ public interface Selection<Key> {
    * Selection builder for combining selections across different {@link Kind}s.
    * */
   public static class CombiningBuilder {
-    private final Map<Kind<?>, ListenableFuture<Combinable<?>>> selections =
+    private final Map<Kind<?>, ListenableFuture<Selection.Builder<?>>> selections =
         Maps.newTreeMap();
 
     @SuppressWarnings("unchecked")
-    public <T extends Combinable<T>> void add(
-        Kind<?> type, ListenableFuture<Combinable<?>> selection) {
+    public <T extends Selection.Builder<T>> void add(
+        Kind<?> type, ListenableFuture<Selection.Builder<?>> selection) {
       selections.merge(type, selection, (f1, f2) -> transformAsync(f1, r1 ->
         transform(f2, r2 -> (((T)r1).combine((T)r2)))));
     }
@@ -152,7 +152,7 @@ public interface Selection<Key> {
     public ListenableFuture<MultiSelection> build() {
       return transform(Futures.allAsList(selections.values()), sels -> {
         Iterator<Kind<?>> keys = selections.keySet().iterator();
-        Iterator<Combinable<?>> vals = sels.iterator();
+        Iterator<Selection.Builder<?>> vals = sels.iterator();
         TreeMap<Kind<?>, Selection<?>> res = Maps.newTreeMap();
         while (keys.hasNext()) {
           res.put(keys.next(), vals.next().build());
@@ -165,7 +165,7 @@ public interface Selection<Key> {
   /**
   * Selection builder for combining selections within a {@link Kind}.
   * */
-  public static interface Combinable<T extends Combinable<T>> {
+  public static interface Builder<T extends Builder<T>> {
     public T combine(T other);
     public Selection<?> build();
   }

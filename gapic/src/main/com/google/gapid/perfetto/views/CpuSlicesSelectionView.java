@@ -35,7 +35,7 @@ import org.eclipse.swt.widgets.Composite;
  * Displays information about a list of selected CPU slices.
  */
 public class CpuSlicesSelectionView extends Composite {
-  public CpuSlicesSelectionView(Composite parent, State state, CpuTrack.Slices.Selection sel) {
+  public CpuSlicesSelectionView(Composite parent, State state, CpuTrack.Slices sel) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
@@ -49,8 +49,8 @@ public class CpuSlicesSelectionView extends Composite {
 
       @Override
       public boolean hasChildren(Object element) {
-        return (element instanceof CpuTrack.Slices.ByProcess) ||
-            (element instanceof CpuTrack.Slices.ByThread);
+        return (element instanceof CpuTrack.ByProcess) ||
+            (element instanceof CpuTrack.ByThread);
       }
 
       @Override
@@ -60,10 +60,10 @@ public class CpuSlicesSelectionView extends Composite {
 
       @Override
       public Object[] getChildren(Object element) {
-        if (element instanceof CpuTrack.Slices.ByProcess) {
-          return ((CpuTrack.Slices.ByProcess)element).threads.toArray();
-        } else if (element instanceof CpuTrack.Slices.ByThread) {
-          return ((CpuTrack.Slices.ByThread)element).slices.toArray();
+        if (element instanceof CpuTrack.ByProcess) {
+          return ((CpuTrack.ByProcess)element).threads.toArray();
+        } else if (element instanceof CpuTrack.ByThread) {
+          return ((CpuTrack.ByThread)element).slices.toArray();
         }
         return null;
       }
@@ -71,12 +71,12 @@ public class CpuSlicesSelectionView extends Composite {
     viewer.setLabelProvider(new LabelProvider());
 
     createTreeColumn(viewer, "Name", el -> {
-      if (el instanceof CpuTrack.Slices.ByProcess) {
-        long pid = ((CpuTrack.Slices.ByProcess)el).pid;
+      if (el instanceof CpuTrack.ByProcess) {
+        long pid = ((CpuTrack.ByProcess)el).pid;
         ProcessInfo pi = state.getProcessInfo(pid);
         return (pi == null) ? "<unknown process> [" + pid + "]" : pi.getDisplay();
-      } else if (el instanceof CpuTrack.Slices.ByThread) {
-        long tid = ((CpuTrack.Slices.ByThread)el).tid;
+      } else if (el instanceof CpuTrack.ByThread) {
+        long tid = ((CpuTrack.ByThread)el).tid;
         ThreadInfo ti = state.getThreadInfo(tid);
         return (ti == null) ? "<unknown thread> [" + tid + "]" : ti.getDisplay();
       } else {
@@ -84,10 +84,10 @@ public class CpuSlicesSelectionView extends Composite {
       }
     });
     createTreeColumn(viewer, "Slice Duration", el -> {
-      if (el instanceof CpuTrack.Slices.ByProcess) {
-        return TimeSpan.timeToString(((CpuTrack.Slices.ByProcess)el).dur);
-      } else if (el instanceof CpuTrack.Slices.ByThread) {
-        return TimeSpan.timeToString(((CpuTrack.Slices.ByThread)el).dur);
+      if (el instanceof CpuTrack.ByProcess) {
+        return TimeSpan.timeToString(((CpuTrack.ByProcess)el).dur);
+      } else if (el instanceof CpuTrack.ByThread) {
+        return TimeSpan.timeToString(((CpuTrack.ByThread)el).dur);
       } else {
         return TimeSpan.timeToString(((CpuTrack.Slice)el).dur);
       }

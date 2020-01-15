@@ -243,7 +243,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
 
       builder.add(Selection.Kind.Gpu, transform(
           track.getSlices(ts, startDepth, endDepth),
-          SliceTrack.Slices::new));
+          SliceTrack.SlicesBuilder::new));
     }
   }
 }
