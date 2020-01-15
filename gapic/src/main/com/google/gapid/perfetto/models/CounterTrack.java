@@ -155,8 +155,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     }
   }
 
-  public static class Values implements Selection<Values.Key>,
-      Selection.CombiningBuilder.Combinable<Values> {
+  public static class Values implements Selection<Values.Key>, Selection.Combinable<Values> {
     public final long[] ts;
     public final String[] names;
     public final double[][] values;
@@ -191,6 +190,11 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     @Override
     public Composite buildUi(Composite parent, State state) {
       return new CountersSelectionView(parent, state, this);
+    }
+
+    @Override
+    public Combinable getBuilder() {
+      return this;
     }
 
     @Override

@@ -28,6 +28,7 @@ import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -253,6 +254,11 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
+    public Combinable getBuilder() {
+      return new Slices(Lists.newArrayList(this));
+    }
+
+    @Override
     public void markTime(State state) {
       if (dur > 0) {
         state.setHighlight(new TimeSpan(time, time + dur));
@@ -301,12 +307,14 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
   }
 
-  public static class Slices implements Selection.CombiningBuilder.Combinable<Slices> {
+  public static class Slices implements Selection.Combinable<Slices> {
+    private final List<Slice> slices;
     private final String title;
     private final TreeMap<Long, Node> roots = Maps.newTreeMap();
     private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
 
     public Slices(List<Slice> slices) {
+      this.slices = slices;
       String ti = "";
       for (Slice slice : slices) {
         ti = slice.getTitle();
@@ -318,6 +326,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
 
     @Override
     public Slices combine(Slices other) {
+      this.slices.addAll(other.slices);
       roots.putAll(other.roots);
       sliceKeys.addAll(other.sliceKeys);
       return this;
@@ -325,15 +334,19 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
 
     @Override
     public Selection build() {
-      return new Selection(title, ImmutableList.copyOf(roots.values()), ImmutableSet.copyOf(sliceKeys));
+      return new Selection(slices, title, ImmutableList.copyOf(roots.values()),
+          ImmutableSet.copyOf(sliceKeys));
     }
 
     public static class Selection implements com.google.gapid.perfetto.models.Selection<Slice.Key> {
+      private final List<Slice> slices;
       private final String title;
       public final ImmutableList<Node> nodes;
       public final ImmutableSet<Slice.Key> sliceKeys;
 
-      public Selection(String title, ImmutableList<Node> nodes, ImmutableSet<Slice.Key> sliceKeys) {
+      public Selection(List<Slice> slices, String title, ImmutableList<Node> nodes,
+          ImmutableSet<Slice.Key> sliceKeys) {
+        this.slices = slices;
         this.title = title;
         this.nodes = nodes;
         this.sliceKeys = sliceKeys;
@@ -352,6 +365,11 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
       @Override
       public Composite buildUi(Composite parent, State state) {
         return new FrameEventsMultiSelectionView(parent, this);
+      }
+
+      @Override
+      public Combinable getBuilder() {
+        return new Slices(slices);
       }
     }
 

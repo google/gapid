@@ -170,6 +170,11 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
+    public Combinable getBuilder() {
+      return new Slices(Lists.newArrayList(this));
+    }
+
+    @Override
     public void markTime(State state) {
       if (dur > 0) {
         state.setHighlight(new TimeSpan(time, time + dur));
@@ -239,7 +244,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
   }
 
-  public static class Slices implements Selection.CombiningBuilder.Combinable<Slices> {
+  public static class Slices implements Selection.Combinable<Slices> {
+    private final List<Slice> slices;
     private final String title;
     private final Map<Long, Node.Builder> byStack = Maps.newHashMap();
     private final Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
@@ -247,6 +253,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
 
     public Slices(List<Slice> slices) {
+      this.slices = slices;
       String ti = "";
       for (Slice slice : slices) {
         ti = slice.getTitle();
@@ -265,6 +272,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
     @Override
     public Slices combine(Slices other) {
+      this.slices.addAll(other.slices);
       for (Map.Entry<Long, Node.Builder> e : other.byStack.entrySet()) {
         Node.Builder mine = byStack.get(e.getKey());
         if (mine == null) {
@@ -281,7 +289,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
     @Override
     public Selection build() {
-      return new Selection(title, roots.stream()
+      return new Selection(slices, title, roots.stream()
           .filter(not(byStack::containsKey))
           .flatMap(root -> byParent.get(root).stream())
           .map(b -> b.build(byParent))
@@ -290,11 +298,14 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     public static class Selection implements com.google.gapid.perfetto.models.Selection<Slice.Key> {
+      private final List<Slice> slices;
       private final String title;
       public final ImmutableList<Node> nodes;
       public final ImmutableSet<Slice.Key> sliceKeys;
 
-      public Selection(String title, ImmutableList<Node> nodes, ImmutableSet<Slice.Key> sliceKeys) {
+      public Selection(List<Slice> slices, String title, ImmutableList<Node> nodes,
+          ImmutableSet<Slice.Key> sliceKeys) {
+        this.slices = slices;
         this.title = title;
         this.nodes = nodes;
         this.sliceKeys = sliceKeys;
@@ -313,6 +324,11 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       @Override
       public Composite buildUi(Composite parent, State state) {
         return new SlicesSelectionView(parent, this);
+      }
+
+      @Override
+      public Combinable getBuilder() {
+        return new Slices(slices);
       }
     }
 
