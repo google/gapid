@@ -43,6 +43,17 @@ const (
 	ExportTimestamps
 )
 
+const (
+	ModeMetrics PerfettoMode = iota
+	ModeInteractive
+)
+
+const (
+	OutputDefault PerfettoOutputFormat = iota
+	OutputText
+	OutputJson
+)
+
 type VideoType uint8
 
 var videoTypeNames = map[VideoType]string{
@@ -90,6 +101,35 @@ func (v *ExportMode) Choose(c interface{}) {
 }
 func (v ExportMode) String() string {
 	return exportModeNames[v]
+}
+
+type PerfettoMode uint8
+
+var perfettoModeNames = map[PerfettoMode]string{
+	ModeMetrics:     "metrics",
+	ModeInteractive: "interactive",
+}
+
+func (v *PerfettoMode) Choose(c interface{}) {
+	*v = c.(PerfettoMode)
+}
+func (v PerfettoMode) String() string {
+	return perfettoModeNames[v]
+}
+
+type PerfettoOutputFormat uint8
+
+var PerfettoOutputFormatNames = map[PerfettoOutputFormat]string{
+	OutputDefault: "default",
+	OutputText:    "text",
+	OutputJson:    "json",
+}
+
+func (v *PerfettoOutputFormat) Choose(c interface{}) {
+	*v = c.(PerfettoOutputFormat)
+}
+func (v PerfettoOutputFormat) String() string {
+	return PerfettoOutputFormatNames[v]
 }
 
 type (
@@ -408,5 +448,13 @@ type (
 	ValidateGpuProfilingFlags struct {
 		DeviceFlags
 		Gapis GapisFlags
+	}
+
+	PerfettoFlags struct {
+		Mode       PerfettoMode         `help:"Run mode: {metrics|interactive}. Default: metrics."`
+		In         string               `help:"Input file. Refer to documentation for file format."`
+		Categories string               `help:"Comma separated list of metric categories from the input file. Only valid if 'metrics' mode is selected."`
+		Out        string               `help:"Output file."`
+		Format     PerfettoOutputFormat `help:"Output file format: {text|json}."`
 	}
 )
