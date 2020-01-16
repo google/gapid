@@ -217,14 +217,14 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     MouseMode mode = mouseMode;
     if ((mods & SWT.SHIFT) == SWT.SHIFT) {
       mode = MouseMode.Select;
-    } else if ((mods & SWT.MOD1) == SWT.MOD1) {
+    } else if ((mods & SWT.MOD1) == SWT.MOD1 && mouseMode != MouseMode.Select) {
       mode = MouseMode.TimeSelect;
     } else if (panOverride) {
       mode = MouseMode.Pan;
     }
 
     switch (mode) {
-      case Select: return selectDragger(sx, sy);
+      case Select: return selectDragger(sx, sy, mods);
       case Pan: return panDragger(sx, sy, mods);
       case Zoom: return zoomDragger(sx, sy);
       case TimeSelect: return timeSelectDragger(sx);
@@ -232,7 +232,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     }
   }
 
-  private Dragger selectDragger(double sx, double sy) {
+  private Dragger selectDragger(double sx, double sy, int mods) {
     boolean onTimeline = sy <= timeline.getPreferredHeight();
     double hFixedEnd = findHighlightFixedEnd(sx);
     return new Dragger() {
@@ -245,7 +245,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
       public Area onDragEnd(double x, double y) {
         Area redraw = onTimeline ? updateHighlight(hFixedEnd, x) : updateSelection(sx, sy, x, y);
         if (!onTimeline) {
-          finishSelection();
+          finishSelection(mods);
         }
         return redraw;
       }
@@ -341,17 +341,23 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     return Area.FULL;
   }
 
-  protected void finishSelection() {
+  protected void finishSelection(int mods) {
     Area onTrack = selection.intersect(LABEL_WIDTH, 0, width - LABEL_WIDTH, height)
         .translate(-LABEL_WIDTH, 0);
     TimeSpan ts = new TimeSpan(
         state.pxToTime(onTrack.x), state.pxToTime(onTrack.x + onTrack.w));
 
-    state.clearSelectedThreads();
+    if ((mods & SWT.MOD1) != SWT.MOD1) {
+      state.clearSelectedThreads();
+    }
     Selection.CombiningBuilder builder = new Selection.CombiningBuilder();
     visit(Visitor.of(Selectable.class, (s, a) -> s.computeSelection(builder, a, ts)), selection);
     selection = Area.NONE;
-    state.setSelection(builder.build());
+    if ((mods & SWT.MOD1) == SWT.MOD1) {
+      state.addSelection(builder.build());
+    } else {
+      state.setSelection(builder.build());
+    }
   }
 
   @Override

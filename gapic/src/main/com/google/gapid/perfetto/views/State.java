@@ -232,6 +232,17 @@ public abstract class State {
     }
   }
 
+  public void addSelection(ListenableFuture<Selection.MultiSelection> futureSel) {
+    int myId = lastSelectionUpdateId.incrementAndGet();
+    thenOnUiThread(futureSel, newSelection -> {
+      if (lastSelectionUpdateId.get() == myId) {
+        for (Selection.Kind k : newSelection.getSelections().keySet()) {
+          addSelection(k, newSelection.getSelection(k));
+        }
+      }
+    });
+  }
+
   public <Key> void setSelection(Selection.Kind<Key> type, ListenableFuture<? extends Selection<Key>> futureSel) {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {
