@@ -742,6 +742,14 @@ func (b *Builder) Export(ctx context.Context) (gapir.Payload, error) {
 	return payload, err
 }
 
+func (b *Builder) Memcpy(target value.Pointer, src value.Pointer, size uint64) {
+	b.instructions = append(b.instructions,
+		asm.Push{Value: b.remap(src)},
+		asm.Push{Value: b.remap(target)},
+		asm.Copy{Count: size},
+	)
+}
+
 // Build compiles the replay instructions, returning a Payload that can be
 // sent to the replay virtual-machine and a PostDataHandler for interpreting
 // the responses.
