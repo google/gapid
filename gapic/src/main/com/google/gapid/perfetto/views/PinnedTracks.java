@@ -65,8 +65,8 @@ public class PinnedTracks extends Panel.Base {
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y) {
-    return group.onMouseMove(m, x, y);
+  public Hover onMouseMove(TextMeasurer m, double x, double y, int mods) {
+    return group.onMouseMove(m, x, y, mods);
   }
 
   @Override

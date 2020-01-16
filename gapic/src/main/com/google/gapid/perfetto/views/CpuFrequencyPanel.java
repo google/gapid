@@ -173,7 +173,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
   }
 
   @Override
-  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     CpuFrequencyTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;

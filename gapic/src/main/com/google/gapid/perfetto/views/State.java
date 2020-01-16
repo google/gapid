@@ -218,6 +218,24 @@ public abstract class State {
     return hasDeselection;
   }
 
+  public <Key> void addSelection(Selection.Kind<Key> type, ListenableFuture<? extends Selection<Key>> futureSel) {
+    int myId = lastSelectionUpdateId.incrementAndGet();
+    thenOnUiThread(futureSel, newSelection -> {
+      if (lastSelectionUpdateId.get() == myId) {
+        addSelection(type, newSelection);
+      }
+    });
+  }
+
+  public <Key> void addSelection(Selection.Kind<Key> type, Selection<Key> newSel) {
+    if (selection == null) {
+      setSelection(type, newSel);
+    } else {
+      selection.addSelection(type, newSel);
+      listeners.fire().onSelectionChanged(selection);
+    }
+  }
+
   public <Key> void setSelection(Selection.Kind<Key> type, ListenableFuture<? extends Selection<Key>> futureSel) {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {

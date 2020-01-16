@@ -190,20 +190,20 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   }
 
   @Override
-  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     CpuTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
 
     switch (data.kind) {
-      case slice: return sliceHover(data, m, x);
+      case slice: return sliceHover(data, m, x, mods);
       case summary: return summaryHover(data, m, x);
       default: return Hover.NONE;
     }
   }
 
-  private Hover sliceHover(CpuTrack.Data data, Fonts.TextMeasurer m, double x) {
+  private Hover sliceHover(CpuTrack.Data data, Fonts.TextMeasurer m, double x, int mods) {
     mouseXpos = x;
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
@@ -237,8 +237,13 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
 
           @Override
           public boolean click() {
-            state.setSelection(Selection.Kind.Cpu, track.getSlice(id));
-            state.setSelectedThread(state.getThreadInfo(utid));
+            if ((mods & SWT.MOD1) == SWT.MOD1) {
+              state.addSelection(Selection.Kind.Cpu, track.getSlice(id));
+              state.addSelectedThread(state.getThreadInfo(utid));
+            } else {
+              state.setSelection(Selection.Kind.Cpu, track.getSlice(id));
+              state.setSelectedThread(state.getThreadInfo(utid));
+            }
             return true;
           }
         };

@@ -173,22 +173,22 @@ public class TrackContainer {
     }
 
     @Override
-    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
       if (x < LABEL_WIDTH) {
         hovered = true;
         if (filter != null && y < TITLE_HEIGHT && x >= LABEL_TOGGLE_X && x < LABEL_PIN_X) {
-          return new TrackTitleHover(track.onMouseMove(m, x, y), () -> {
+          return new TrackTitleHover(track.onMouseMove(m, x, y, mods), () -> {
             filtered = !filtered;
             filter.accept(track, filtered);
           });
         } else if (y < TITLE_HEIGHT && x >= LABEL_PIN_X) {
           return new TrackTitleHover(
-              track.onMouseMove(m, x, y), () -> pinState.toggle(this::copyWithSeparator));
+              track.onMouseMove(m, x, y, mods), () -> pinState.toggle(this::copyWithSeparator));
         } else {
-          return new TrackTitleHover(track.onMouseMove(m, x, y), null);
+          return new TrackTitleHover(track.onMouseMove(m, x, y, mods), null);
         }
       } else {
-        return track.onMouseMove(m, x, y);
+        return track.onMouseMove(m, x, y, mods);
       }
     }
 
@@ -326,7 +326,7 @@ public class TrackContainer {
     }
 
     @Override
-    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
       if (y < TITLE_HEIGHT && (expanded || x < LABEL_WIDTH)) {
         hovered = true;
         double textEnd =
@@ -341,7 +341,7 @@ public class TrackContainer {
           }
         } else {
           if (x < Math.min(textEnd, LABEL_PIN_X - LABEL_MARGIN)) {
-            return new TrackTitleHover(summary.onMouseMove(m, x, y), redraw, () -> expanded = true);
+            return new TrackTitleHover(summary.onMouseMove(m, x, y, mods), redraw, () -> expanded = true);
           }
           toggleEnd = LABEL_PIN_X;
           pinEnd = LABEL_WIDTH;
@@ -362,9 +362,9 @@ public class TrackContainer {
       }
 
       if (expanded) {
-        return detail.onMouseMove(m, x, y - TITLE_HEIGHT).translated(0, TITLE_HEIGHT);
+        return detail.onMouseMove(m, x, y - TITLE_HEIGHT, mods).translated(0, TITLE_HEIGHT);
       } else {
-        return summary.onMouseMove(m, x, y);
+        return summary.onMouseMove(m, x, y, mods);
       }
     }
 
