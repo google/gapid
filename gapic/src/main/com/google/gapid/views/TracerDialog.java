@@ -486,7 +486,7 @@ public class TracerDialog {
             return;
           }
           Device.GPUProfiling gpuCaps = getPerfettoCaps().getGpuProfiling();
-          if (gpuCaps.getHasRenderStage() && gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
+          if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
             gpuProfilingCapabilityWarning.setVisible(false);
             return;
           }

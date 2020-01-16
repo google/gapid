@@ -220,7 +220,7 @@ public class TraceConfigDialog extends DialogBase {
 
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
       SettingsProto.Perfetto.GPUOrBuilder gpu = p.getGpuOrBuilder();
-      if (gpuCaps.getHasRenderStage() && gpu.getSlices()) {
+      if (gpu.getSlices()) {
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("gpu.renderstages");
@@ -381,11 +381,7 @@ public class TraceConfigDialog extends DialogBase {
         Composite gpuGroup = withLayoutData(
             createComposite(this, withMargin(new GridLayout(1, false), 5, 0)),
             withIndents(new GridData(), GROUP_INDENT, 0));
-        if (gpuCaps.getHasRenderStage()) {
-          gpuSlices = createCheckbox(gpuGroup, "Renderstage slices", sGpu.getSlices());
-        } else {
-          gpuSlices = null;
-        }
+        gpuSlices = createCheckbox(gpuGroup, "Renderstage slices", sGpu.getSlices());
 
         if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
           gpuCounters = createCheckbox(
