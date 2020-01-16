@@ -116,6 +116,10 @@ public interface Selection<Key> {
           (Selection<Key>) selections.get(type) : Selection.emptySelection();
     }
 
+    public NavigableMap<Kind<?>, Selection<?>> getSelections() {
+      return selections;
+    }
+
     public <Key> void addSelection(Kind<Key> kind, Selection<Key> selection) {
       Selection<Key>  old = getSelection(kind);
       if (old == null || old == Selection.EMPTY_SELECTION) {
