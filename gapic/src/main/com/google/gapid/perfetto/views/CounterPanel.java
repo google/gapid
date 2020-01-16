@@ -22,7 +22,6 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.Unit;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
@@ -128,14 +127,26 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, 3);
         ctx.setForegroundColor(colors().textMain);
         ctx.drawCircle(mouseXpos, y, CURSOR_SIZE / 2);
-      }
 
-      if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, 2 * HOVER_PADDING + hovered.size.w, trackHeight);
+        double bgH = Math.max(hovered.size.h, trackHeight);
+        ctx.fillRect(mouseXpos + HOVER_MARGIN, Math.min((trackHeight - bgH) / 2, 0),
+            2 * HOVER_PADDING + hovered.size.w, bgH);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, hovered.label,
-            mouseXpos + HOVER_MARGIN + HOVER_PADDING, (trackHeight - hovered.size.h) / 2);
+        double x = mouseXpos + HOVER_MARGIN + HOVER_PADDING;
+        y = (trackHeight - hovered.size.h) / 2;
+        double dx = hovered.leftWidth + HOVER_PADDING, dy = hovered.size.h / 2;
+        ctx.drawText(Fonts.Style.Normal, "Value:", x, y);
+        ctx.drawText(Fonts.Style.Normal, "Avg:", x, y + dy);
+        ctx.drawText(Fonts.Style.Normal, "Min:", x + dx, y);
+        ctx.drawText(Fonts.Style.Normal, "Max:", x + dx, y + dy);
+
+        x +=  hovered.leftWidth;
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.label, x, y, dy);
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.avg, x, y + dy, dy);
+        x = mouseXpos + HOVER_MARGIN + HOVER_PADDING + hovered.size.w;
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.min, x, y, dy);
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.max, x, y + dy, dy);
       }
     });
   }
@@ -166,7 +177,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     long t = data.ts[idx];
     double startX = state.timeToPx(data.ts[idx]);
     double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
-    hovered = new HoverCard(m, track.getCounter().unit, data.values[idx], startX, endX);
+    hovered = new HoverCard(m, track.getCounter(), data.values[idx], startX, endX);
     mouseXpos = x;
 
     return new Hover() {
@@ -203,14 +214,34 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     public final double value;
     public final double startX, endX;
     public final String label;
+    public final String min, max, avg;
+    public final double leftWidth;
     public final Size size;
 
-    public HoverCard(Fonts.TextMeasurer tm, Unit unit, double value, double startX, double endX) {
+    public HoverCard(
+        Fonts.TextMeasurer tm, CounterInfo counter, double value, double startX, double endX) {
       this.value = value;
       this.startX = startX;
       this.endX = endX;
-      this.label = "Value: " + unit.format(value);
-      this.size = tm.measure(Fonts.Style.Normal, label);
+      this.label = counter.unit.format(value);
+      this.min = counter.unit.format(counter.min);
+      this.max = counter.unit.format(counter.max);
+      this.avg = counter.unit.format(counter.avg);
+
+      Size valueSize = tm.measure(Fonts.Style.Normal, label);
+      Size minSize = tm.measure(Fonts.Style.Normal, min);
+      Size maxSize = tm.measure(Fonts.Style.Normal, max);
+      Size avgSize = tm.measure(Fonts.Style.Normal, avg);
+
+      double leftLabel = Math.max(
+          tm.measure(Fonts.Style.Normal, "Value:").w,
+          tm.measure(Fonts.Style.Normal, "Min:").w) + HOVER_PADDING;
+      double rightLabel = Math.max(
+          tm.measure(Fonts.Style.Normal, "Max:").w,
+          tm.measure(Fonts.Style.Normal, "Avg:").w) + HOVER_PADDING;
+      this.leftWidth = leftLabel + Math.max(valueSize.w, avgSize.w);
+      this.size = new Size(leftWidth + HOVER_PADDING + rightLabel + Math.max(minSize.w, maxSize.w),
+          Math.max(valueSize.h + avgSize.h, minSize.h + maxSize.h) + HOVER_PADDING);
     }
   }
 }
