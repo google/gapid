@@ -1327,6 +1327,22 @@ func (p GraphicsPipelineObjectʳ) tessellationControlShader(ctx context.Context,
 	dataGroups := commonShaderDataGroups(ctx, s, boundDsets, p.UsedDescriptors().All(),
 		VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, p.Stages().All())
 	if dataGroups != nil {
+		tessState := p.TessellationState()
+		if !tessState.IsNil() {
+			tessStateList := &api.KeyValuePairList{}
+			tessStateList = tessStateList.AppendKeyValuePair("Control Points", api.CreatePoDDataValue("u32", tessState.PatchControlPoints()), false)
+
+			originState := tessState.TessellationDomainOriginState()
+			if !originState.IsNil() {
+				tessStateList = tessStateList.AppendKeyValuePair("Domain Origin", api.CreateEnumDataValue("VkTessellationDomianOrigin", originState.DomainOrigin()), false)
+			}
+
+			dataGroups = append(dataGroups, &api.DataGroup{
+				GroupName: "Tessellation State",
+				Data:      &api.DataGroup_KeyValues{tessStateList},
+			})
+		}
+
 		return &api.Stage{
 			StageName: "Tessellation Control Shader",
 			DebugName: "TCS",
