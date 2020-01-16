@@ -101,7 +101,9 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	s := c.NewState(ctx)
 	err = api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, i api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, i, s, nil, nil)
+		if err := cmd.Mutate(ctx, i, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 
 		api := cmd.API()
 		if api == nil {

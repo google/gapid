@@ -16,6 +16,7 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -126,9 +127,8 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 
 	processCmd := func(idx uint64) error {
 		cmd := cmds[idx]
-		err := cmd.Mutate(ctx, api.CmdID(idx), st, nil, nil)
-		if err != nil {
-			return err
+		if err := cmd.Mutate(ctx, api.CmdID(idx), st, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 		flags[idx] = cmd.CmdFlags(ctx, api.CmdID(idx), st)
 

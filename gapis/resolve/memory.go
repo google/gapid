@@ -16,6 +16,7 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 
@@ -107,7 +108,9 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 		return nil, err
 	}
 	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
 	if err != nil {
@@ -233,7 +236,9 @@ func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveCon
 		return nil, err
 	}
 	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
 	if err != nil {

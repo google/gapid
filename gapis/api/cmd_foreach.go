@@ -73,7 +73,10 @@ func ForeachCmd(ctx context.Context, cmds []Cmd, onlyTerminated bool, cb func(co
 func MutateCmds(ctx context.Context, state *GlobalState, builder *builder.Builder,
 	watcher StateWatcher, cmds ...Cmd) error {
 	return ForeachCmd(ctx, cmds, true, func(ctx context.Context, id CmdID, cmd Cmd) error {
-		return cmd.Mutate(ctx, id, state, builder, watcher)
+		if err := cmd.Mutate(ctx, id, state, builder, watcher); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
+		return nil
 	})
 }
 

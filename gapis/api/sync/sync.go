@@ -22,6 +22,7 @@ package sync
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/gapis/api"
@@ -176,9 +177,13 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 
 	return api.ForeachCmd(ctx, cmds, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
-			sync.MutateSubcommands(ctx, id, cmd, s, preSubCmdCb, postSubCmdCb)
+			if err := sync.MutateSubcommands(ctx, id, cmd, s, preSubCmdCb, postSubCmdCb); err != nil {
+				return err
+			}
 		} else {
-			cmd.Mutate(ctx, id, s, nil, nil)
+			if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+				return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+			}
 		}
 		postCmdCb(s, api.SubCmdIdx{uint64(id)}, cmd)
 		return nil

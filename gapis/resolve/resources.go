@@ -89,14 +89,18 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		delete(seen, r)
 	}
 
-	api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentThread = cmd.Thread()
 		currentAPI = cmd.API()
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
-			log.W(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
+			log.E(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	state.OnResourceDestroyed = func(r api.Resource) {
 		if index, ok := seen[r]; ok {
@@ -104,14 +108,19 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		}
 	}
 
-	api.ForeachCmd(ctx, capture.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, capture.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
 		currentThread = cmd.Thread()
 		currentAPI = cmd.API()
-		cmd.Mutate(ctx, id, state, nil, nil)
+		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	types := map[api.ResourceType]*service.ResourcesByType{}
 	for _, tr := range resources {

@@ -16,6 +16,7 @@ package gles_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -132,7 +133,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	var found bool
 	err = api.ForeachCmd(ctx, r.Cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
-			return err
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 
 		if _, ok := cmd.(*gles.GlDrawElements); ok {

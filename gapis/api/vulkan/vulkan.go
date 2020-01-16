@@ -359,7 +359,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
 		if err := cmd.Mutate(ctx, id, st, nil, nil); err != nil {
-			return err
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 		return nil
 	})
@@ -703,8 +703,8 @@ func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
 			preSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
 		}
 	}
-	if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil && err == context.Canceled {
-		return err
+	if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+		return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 	}
 	return nil
 }
