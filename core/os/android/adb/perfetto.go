@@ -23,6 +23,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"time"
 
 	perfetto_pb "protos/perfetto/config"
 
@@ -45,7 +46,8 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 
 	reader, stdout := io.Pipe()
 	logRing := ring.New(10)
-	readyOnce := task.Once(ready)
+	// TODO(apbodnar) Find a way to reliably know when Perfetto/producers are ready (b/147388497)
+	readyOnce := task.Once(task.Delay(ready, 250*time.Millisecond))
 	data, err := proto.Marshal(config)
 	if err != nil {
 		return err
