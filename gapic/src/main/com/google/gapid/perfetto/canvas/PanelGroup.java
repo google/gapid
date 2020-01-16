@@ -140,12 +140,12 @@ public class PanelGroup extends Panel.Base {
   }
 
   @Override
-  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     Child child = findPanel(y);
     if (child == null) {
       return Hover.NONE;
     }
-    return child.panel.onMouseMove(m, x, y - child.y).translated(0, child.y);
+    return child.panel.onMouseMove(m, x, y - child.y, mods).translated(0, child.y);
   }
 
   private int findPanelIdx(double y) {

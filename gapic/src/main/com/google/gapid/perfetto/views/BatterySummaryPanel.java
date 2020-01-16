@@ -140,7 +140,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
   }
 
   @Override
-  protected Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(TextMeasurer m, double x, double y, int mods) {
     BatterySummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;

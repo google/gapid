@@ -37,7 +37,7 @@ public interface Panel {
   }
 
   @SuppressWarnings("unused")
-  public default Panel.Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public default Panel.Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     return Hover.NONE;
   }
 

@@ -33,6 +33,8 @@ import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
+import org.eclipse.swt.SWT;
+
 import java.util.List;
 
 public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable {
@@ -152,7 +154,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     CounterTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
@@ -197,8 +199,13 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       @Override
       public boolean click() {
-        state.setSelection(Selection.Kind.Counter,
-            transform(track.getValue(t), d -> new CounterTrack.Values(track.getCounter().name, d)));
+        if ((mods & SWT.MOD1) == SWT.MOD1) {
+          state.addSelection(Selection.Kind.Counter,
+              transform(track.getValue(t), d -> new CounterTrack.Values(track.getCounter().name, d)));
+        } else {
+          state.setSelection(Selection.Kind.Counter,
+              transform(track.getValue(t), d -> new CounterTrack.Values(track.getCounter().name, d)));
+        }
         return true;
       }
     };

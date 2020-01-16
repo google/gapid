@@ -233,14 +233,14 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     FrameEventsTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
 
     switch (data.kind) {
-      case slices: return sliceHover(data, m, x, y);
+      case slices: return sliceHover(data, m, x, y, mods);
       case summary: return summaryHover(data, m, x);
       default: return Hover.NONE;
     }
@@ -280,7 +280,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
     };
   }
 
-  private Hover sliceHover(FrameEventsTrack.Data data, Fonts.TextMeasurer m, double x, double y) {
+  private Hover sliceHover(FrameEventsTrack.Data data, Fonts.TextMeasurer m, double x, double y, int mods) {
     int depth = (int)(y / SLICE_HEIGHT);
     if (depth < 0 || depth > buffer.maxDepth) {
       return Hover.NONE;
@@ -332,10 +332,15 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
 
           @Override
           public boolean click() {
-            if (id >= 0) {
+            if (id < 0) {
+              return false;
+            }
+            if ((mods & SWT.MOD1) == SWT.MOD1) {
+              state.addSelection(Selection.Kind.FrameEvents, track.getSlice(id));
+            } else {
               state.setSelection(Selection.Kind.FrameEvents, track.getSlice(id));
             }
-            return false;
+            return true;
           }
         };
       }

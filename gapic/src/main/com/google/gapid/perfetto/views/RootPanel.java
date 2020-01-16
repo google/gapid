@@ -355,10 +355,10 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
   }
 
   @Override
-  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     double topHeight = top.getPreferredHeight();
-    Hover result = (y < topHeight) ? top.onMouseMove(m, x, y) :
-      bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
+    Hover result = (y < topHeight) ? top.onMouseMove(m, x, y, mods) :
+      bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset(), mods)
           .transformed(a -> a.translate(0, topHeight - state.getScrollOffset()));
     if (x >= LABEL_WIDTH && y >= topHeight && result == Hover.NONE) {
       result = result.withClick(() -> state.resetSelections());

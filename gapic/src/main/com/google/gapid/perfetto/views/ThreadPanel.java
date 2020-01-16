@@ -252,7 +252,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     ThreadTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
@@ -294,13 +294,25 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
             @Override
             public boolean click() {
               if (data.schedIds[index] != 0) {
-                state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
-                state.setSelectedThread(state.getThreadInfo(track.getThread().utid));
+                if ((mods & SWT.MOD1) == SWT.MOD1) {
+                  state.addSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
+                  state.addSelectedThread(state.getThreadInfo(track.getThread().utid));
+                } else {
+                  state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
+                  state.setSelectedThread(state.getThreadInfo(track.getThread().utid));
+                }
               } else {
-                state.setSelection(Selection.Kind.ThreadState,
-                    new ThreadTrack.StateSlice(data.schedStarts[index],
-                        data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                        data.schedStates[index]));
+                if ((mods & SWT.MOD1) == SWT.MOD1) {
+                  state.addSelection(Selection.Kind.ThreadState,
+                      new ThreadTrack.StateSlice(data.schedStarts[index],
+                          data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
+                          data.schedStates[index]));
+                } else {
+                  state.setSelection(Selection.Kind.ThreadState,
+                      new ThreadTrack.StateSlice(data.schedStarts[index],
+                          data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
+                          data.schedStates[index]));
+                }
               }
               return true;
             }
@@ -348,7 +360,12 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
             @Override
             public boolean click() {
-              if (id >= 0) {
+              if (id < 0) {
+                return false;
+              }
+              if ((mods & SWT.MOD1) == SWT.MOD1) {
+                state.addSelection(Selection.Kind.Thread, track.getSlice(id));
+              } else {
                 state.setSelection(Selection.Kind.Thread, track.getSlice(id));
               }
               return true;

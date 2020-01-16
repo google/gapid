@@ -195,21 +195,21 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
   }
 
   @Override
-  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     ProcessSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
 
     switch (data.kind) {
-      case slice: return sliceHover(data, m, x, y);
+      case slice: return sliceHover(data, m, x, y, mods);
       case summary: return summaryHover(data, m, x);
       default: return Hover.NONE;
     }
   }
 
   private Hover sliceHover(
-      ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y) {
+      ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y, int mods) {
     int cpuCount = state.getCpuInfo().count();
     int cpuIdx = (int)(y * cpuCount / HEIGHT);
     if (cpuIdx < 0 || cpuIdx >= cpuCount) {
@@ -250,8 +250,13 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
 
           @Override
           public boolean click() {
-            state.setSelection(Selection.Kind.Cpu, track.getSlice(id));
-            state.setSelectedThread(state.getThreadInfo(utid));
+            if ((mods & SWT.MOD1) == SWT.MOD1) {
+              state.addSelection(Selection.Kind.Cpu, track.getSlice(id));
+              state.addSelectedThread(state.getThreadInfo(utid));
+            } else {
+              state.setSelection(Selection.Kind.Cpu, track.getSlice(id));
+              state.setSelectedThread(state.getThreadInfo(utid));
+            }
             return true;
           }
         };

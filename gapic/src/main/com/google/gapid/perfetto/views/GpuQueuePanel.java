@@ -154,7 +154,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     SliceTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
@@ -207,11 +207,15 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
 
           @Override
           public boolean click() {
-            if (id >= 0) {
-              state.setSelection(Selection.Kind.Gpu, track.getSlice(id));
-              return true;
+            if (id < 0) {
+              return false;
             }
-            return false;
+            if ((mods & SWT.MOD1) == SWT.MOD1) {
+              state.addSelection(Selection.Kind.Gpu, track.getSlice(id));
+            } else {
+              state.setSelection(Selection.Kind.Gpu, track.getSlice(id));
+            }
+            return true;
           }
         };
       }

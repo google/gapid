@@ -75,8 +75,8 @@ public interface CopyablePanel<T extends CopyablePanel<T>> extends Panel {
     }
 
     @Override
-    public Hover onMouseMove(TextMeasurer m, double x, double y) {
-      return group.onMouseMove(m, x, y);
+    public Hover onMouseMove(TextMeasurer m, double x, double y, int mods) {
+      return group.onMouseMove(m, x, y, mods);
     }
 
     @Override
