@@ -321,6 +321,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		// TODO(b/146384733): Change this to API version when it releases
 		gpu.HasFrameLifecycle = true
 	}
+	gpu.HasRenderStage = true
 
 	if !b.SupportsPerfetto(ctx) {
 		return result, fmt.Errorf("Perfetto is not supported on this device")
@@ -338,10 +339,6 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 
 	for _, ds := range state.GetDataSources() {
 		desc := ds.GetDsDescriptor()
-		if desc.GetName() == gpuRenderStagesDataSourceDescriptorName {
-			gpu.HasRenderStage = true
-			continue
-		}
 		counters := desc.GetGpuCounterDescriptor().GetSpecs()
 		if len(counters) != 0 {
 			if gpu.GpuCounterDescriptor == nil {
