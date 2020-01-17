@@ -548,7 +548,12 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				rp := st.RenderPasses().Get(ar.RenderPass())
 				f.watcher.ignore = true
 				for i := uint32(0); i < uint32(rp.AttachmentDescriptions().Len()); i++ {
-					if VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED == rp.AttachmentDescriptions().Get(i).InitialLayout() {
+					att := rp.AttachmentDescriptions().Get(i)
+					if att.InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED ||
+						att.LoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR ||
+						att.LoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE ||
+						att.StencilLoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR ||
+						att.StencilLoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE {
 						f.watcher.ignore = false
 						break
 					}
