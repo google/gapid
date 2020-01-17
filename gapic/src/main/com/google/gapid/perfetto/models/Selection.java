@@ -91,7 +91,7 @@ public interface Selection<Key> {
    * MultiSelection stores selections across different {@link Kind}s.
    * */
   public static class MultiSelection {
-    private NavigableMap<Kind<?>, Selection<?>> selections;
+    private final NavigableMap<Kind<?>, Selection<?>> selections;
 
     public <Key> MultiSelection(Kind<Key> type, Selection<Key> selection) {
       this.selections = Maps.newTreeMap();
@@ -116,8 +116,10 @@ public interface Selection<Key> {
           (Selection<Key>) selections.get(type) : Selection.emptySelection();
     }
 
-    public NavigableMap<Kind<?>, Selection<?>> getSelections() {
-      return selections;
+    public void addSelection(MultiSelection other) {
+      for (Selection.Kind k : other.selections.keySet()) {
+        this.addSelection(k, other.selections.get(k));
+      }
     }
 
     public <Key> void addSelection(Kind<Key> kind, Selection<Key> selection) {
