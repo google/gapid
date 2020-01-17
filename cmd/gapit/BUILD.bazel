@@ -36,6 +36,7 @@ go_library(
         "make_doc.go",
         "memory.go",
         "packages.go",
+        "perfetto.go",
         "profile.go",
         "replace_resource.go",
         "report.go",
