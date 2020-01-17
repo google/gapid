@@ -236,8 +236,11 @@ public abstract class State {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {
       if (lastSelectionUpdateId.get() == myId) {
-        for (Selection.Kind k : newSelection.getSelections().keySet()) {
-          addSelection(k, newSelection.getSelection(k));
+        if (selection == null) {
+          setSelection(newSelection);
+        } else {
+          selection.addSelection(newSelection);
+          listeners.fire().onSelectionChanged(selection);
         }
       }
     });
