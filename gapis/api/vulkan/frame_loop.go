@@ -486,10 +486,6 @@ func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out tran
 
 	// Iterate through the loop contents, emitting instructions one by one.
 	for cmdIndex, cmd := range f.capturedLoopCmds {
-		// TODO: figure out how to deal with VkGetQueryPoolResults in loop, skip it in the loop for now as it will cause the loop hang.
-		if _, ok := cmd.(*VkGetQueryPoolResults); ok {
-			continue
-		}
 		out.MutateAndWrite(ctx, f.capturedLoopCmdIds[cmdIndex], cmd)
 	}
 
