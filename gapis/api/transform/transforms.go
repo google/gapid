@@ -26,7 +26,7 @@ type Transforms []Transformer
 
 // Transform sequentially transforms the commands by each of the transformers in
 // the list, before writing the final output to the output command Writer.
-func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
+func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) error {
 	chain := out
 	for i := len(l) - 1; i >= 0; i-- {
 		s := chain.State()
@@ -50,6 +50,7 @@ func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
 		chain = p.O
 		p.T.Flush(ctx, chain)
 	}
+	return nil
 }
 
 // Add is a convenience function for appending the list of Transformers t to the
