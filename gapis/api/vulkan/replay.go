@@ -878,6 +878,7 @@ func (a API) Replay(
 	transforms.Add(makeReadable)
 	transforms.Add(&dropInvalidDestroy{tag: "Replay"})
 
+	splitter := NewCommandSplitter(ctx)
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}
 	// Gathers and reports any issues found.
@@ -1009,18 +1010,6 @@ func (a API) Replay(
 				return err
 			}
 			cmdid := req.after[0] + uint64(extraCommands)
-			// TODO(subcommands): Add subcommand support here
-			if err := earlyTerminator.Add(ctx, extraCommands, api.CmdID(cmdid), req.after[1:]); err != nil {
-				return err
-			}
-
-			after := api.CmdID(cmdid)
-			if len(req.after) > 1 {
-				// If we are dealing with subcommands, 2 things are true.
-				// 2) the earlyTerminator.lastRequest is the last command we have to actually run.
-				//     Either the VkQueueSubmit, or the VkSetEvent if synchronization comes in to play
-				after = earlyTerminator.lastRequest
-			}
 
 			if optimize {
 				// Should have been built in expandCommands()
@@ -1031,28 +1020,42 @@ func (a API) Replay(
 				}
 			}
 
+			if cfg.drawMode == service.DrawMode_OVERDRAW {
+				// TODO(subcommands): Add subcommand support here
+				if err := earlyTerminator.Add(ctx, extraCommands, api.CmdID(cmdid), req.after[1:]); err != nil {
+					return err
+				}
+
+				if overdraw == nil {
+					overdraw = newStencilOverdraw()
+				}
+				overdraw.add(ctx, uint64(extraCommands), req.after, intent.Capture, rr.Result)
+				break
+			}
+			if err := earlyTerminator.Add(ctx, extraCommands, api.CmdID(cmdid), api.SubCmdIdx{}); err != nil {
+				return err
+			}
+			subIdx := append(api.SubCmdIdx{}, req.after...)
+			subIdx[0] = subIdx[0] + uint64(extraCommands)
+			splitter.Split(ctx, subIdx)
 			switch cfg.drawMode {
 			case service.DrawMode_WIREFRAME_ALL:
 				wire = true
 			case service.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
-			case service.DrawMode_OVERDRAW:
-				if overdraw == nil {
-					overdraw = newStencilOverdraw()
-				}
-				overdraw.add(ctx, uint64(extraCommands), req.after, intent.Capture, rr.Result)
+			// Overdraw is handled above, since it breaks out of the normal read flow.
+			default:
 			}
 
-			if cfg.drawMode != service.DrawMode_OVERDRAW {
-				switch req.attachment {
-				case api.FramebufferAttachment_Depth:
-					readFramebuffer.Depth(after, req.framebufferIndex, rr.Result)
-				case api.FramebufferAttachment_Stencil:
-					return fmt.Errorf("Stencil attachments are not currently supported")
-				default:
-					readFramebuffer.Color(after, req.width, req.height, req.framebufferIndex, rr.Result)
-				}
+			switch req.attachment {
+			case api.FramebufferAttachment_Depth:
+				readFramebuffer.Depth(ctx, subIdx, req.framebufferIndex, rr.Result)
+			case api.FramebufferAttachment_Stencil:
+				return fmt.Errorf("Stencil attachments are not currently supported")
+			default:
+				readFramebuffer.Color(ctx, subIdx, req.width, req.height, req.framebufferIndex, rr.Result)
 			}
+
 			if req.displayToSurface {
 				doDisplayToSurface = true
 			}
@@ -1134,6 +1137,7 @@ func (a API) Replay(
 	}
 
 	if issues == nil && profile == nil {
+		transforms.Add(splitter)
 		transforms.Add(readFramebuffer, injector)
 	}
 
@@ -1193,28 +1197,32 @@ func (a API) QueryFramebufferAttachment(
 	beginIndex := api.CmdID(0)
 	endIndex := api.CmdID(0)
 	subcommand := ""
-	if len(after) == 1 {
-		a := api.CmdID(after[0])
-		// If we are not running subcommands we can probably batch
-		for _, v := range s.SortedKeys() {
-			if v > a {
-				break
-			}
-			for _, k := range s.CommandRanges[v].SortedKeys() {
-				if k > a {
-					beginIndex = v
-					endIndex = k
+	// We cant break up overdraw right now, but we can break up
+	// everything else.
+	if drawMode == service.DrawMode_OVERDRAW {
+		if len(after) == 1 {
+			a := api.CmdID(after[0])
+			// If we are not running subcommands we can probably batch
+			for _, v := range s.SortedKeys() {
+				if v > a {
+					break
+				}
+				for _, k := range s.CommandRanges[v].SortedKeys() {
+					if k > a {
+						beginIndex = v
+						endIndex = k
+					}
 				}
 			}
-		}
-	} else { // If we are replaying subcommands, then we can't batch at all
-		beginIndex = api.CmdID(after[0])
-		endIndex = api.CmdID(after[0])
-		for i, j := range after[1:] {
-			if i != 0 {
-				subcommand += ":"
+		} else { // If we are replaying subcommands, then we can't batch at all
+			beginIndex = api.CmdID(after[0])
+			endIndex = api.CmdID(after[0])
+			for i, j := range after[1:] {
+				if i != 0 {
+					subcommand += ":"
+				}
+				subcommand += fmt.Sprintf("%d", j)
 			}
-			subcommand += fmt.Sprintf("%d", j)
 		}
 	}
 

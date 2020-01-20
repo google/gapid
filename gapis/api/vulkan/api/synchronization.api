@@ -430,36 +430,43 @@ cmd void vkCmdWaitEvents(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  args := new!vkCmdWaitEventsArgs(
-    SrcStageMask:  srcStageMask,
-    DstStageMask:  dstStageMask,
-  )
-  events := pEvents[0:eventCount]
-  handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
-  memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
-  handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
-  bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
-  handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
-  imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
-  for i in (0 .. eventCount) {
-    if !(events[i] in Events) { vkErrorInvalidEvent(events[i]) }
-    args.Events[i] = events[i]
-  }
-  for i in (0 .. memoryBarrierCount) {
-    args.MemoryBarriers[i] = memoryBarriers[i]
-  }
-  for i in (0 .. bufferMemoryBarrierCount) {
-    args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
-  }
-  for i in (0 .. imageMemoryBarrierCount) {
-    args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
-  }
-
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
-    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents))
-    CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents[mapPos] =
+    cb := CommandBuffers[commandBuffer]
+    args := new!vkCmdWaitEventsArgs(
+      SrcStageMask:  srcStageMask,
+      DstStageMask:  dstStageMask,
+    )
+    events := pEvents[0:eventCount]
+    handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
+    memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
+    handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
+    bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
+    handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
+    imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
+    for i in (0 .. eventCount) {
+      if !(events[i] in Events) { vkErrorInvalidEvent(events[i]) }
+      args.Events[i] = events[i]
+    }
+    for i in (0 .. memoryBarrierCount) {
+      args.MemoryBarriers[i] = memoryBarriers[i]
+    }
+    for i in (0 .. bufferMemoryBarrierCount) {
+      args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
+    }
+    for i in (0 .. imageMemoryBarrierCount) {
+      args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+      img := Images[args.ImageMemoryBarriers[i].image]
+      RecordLayoutTransition(cb, 
+        img,
+        args.ImageMemoryBarriers[i].subresourceRange, 
+        args.ImageMemoryBarriers[i].newLayout
+      )
+    }
+
+    mapPos := as!u32(len(cb.BufferCommands.vkCmdWaitEvents))
+    cb.BufferCommands.vkCmdWaitEvents[mapPos] =
     args
 
     AddCommand(commandBuffer, cmd_vkCmdWaitEvents, mapPos)
@@ -552,35 +559,41 @@ cmd void vkCmdPipelineBarrier(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  args := new!vkCmdPipelineBarrierArgs(
-    SrcStageMask:     srcStageMask,
-    DstStageMask:     dstStageMask,
-    DependencyFlags:  dependencyFlags
-  )
-  handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
-  memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
-  for i in (0 .. memoryBarrierCount) {
-    args.MemoryBarriers[i] = memoryBarriers[i]
-  }
-
-  handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
-  bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
-  for i in (0 .. bufferMemoryBarrierCount) {
-    args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
-  }
-
-  handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
-  imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
-  for i in (0 .. imageMemoryBarrierCount) {
-    args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
-  }
-
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
-    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier))
-    CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier[mapPos] =
-    args
+    cb := CommandBuffers[commandBuffer]
+    args := new!vkCmdPipelineBarrierArgs(
+      SrcStageMask:     srcStageMask,
+      DstStageMask:     dstStageMask,
+      DependencyFlags:  dependencyFlags
+    )
+    handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
+    memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
+    for i in (0 .. memoryBarrierCount) {
+      args.MemoryBarriers[i] = memoryBarriers[i]
+    }
+
+    handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
+    bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
+    for i in (0 .. bufferMemoryBarrierCount) {
+      args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
+    }
+
+    handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
+    imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
+    for i in (0 .. imageMemoryBarrierCount) {
+      args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
+      img := Images[args.ImageMemoryBarriers[i].image]
+      RecordLayoutTransition(cb, 
+        img,
+        args.ImageMemoryBarriers[i].subresourceRange, 
+        args.ImageMemoryBarriers[i].newLayout
+      )
+    }
+
+    mapPos := as!u32(len(cb.BufferCommands.vkCmdPipelineBarrier))
+    cb.BufferCommands.vkCmdPipelineBarrier[mapPos] = args
 
     AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
   }
