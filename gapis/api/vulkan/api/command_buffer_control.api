@@ -287,6 +287,15 @@ enum SemaphoreUpdate {
   @untrackedMap dense_map!(u32, ref!vkCmdDispatchBaseArgs)             vkCmdDispatchBase
 }
 
+@internal class AspectImageTransition {
+  // This u64 is a combination of 2 u32s, (layer << 32 | level)
+  map!(u64, VkImageLayout)                Layouts
+}
+
+@internal class  ImageTransitions {
+  map!(VkImageAspectFlagBits, ref!AspectImageTransition) AspectTransitions
+}
+
 @internal class CommandBufferObject {
   @unused VkDevice                        Device
   @unused RecordingState                  Recording
@@ -298,6 +307,58 @@ enum SemaphoreUpdate {
   @untracked @unused BufferCommands       BufferCommands
   @unused ref!CommandBufferBegin          BeginInfo
   @unused ref!VulkanDebugMarkerInfo       DebugInfo
+
+  @unused
+  map!(VkImage, ref!ImageTransitions)         ImageTransitions
+  @unused
+  ref!RenderPassObject                        CurrentRecordingRenderpass
+  ref!FramebufferObject                       CurrentRecordingFramebuffer
+  u32                                         CurrentRecordingSubpass
+  ref!RenderPassObject                        PreviouslyStartedRenderpass
+  ref!FramebufferObject                       PreviousFramebuffer
+}
+
+sub void RecordLayoutTransition(ref!CommandBufferObject obj, ref!ImageObject img, VkImageSubresourceRange rng, VkImageLayout new_layout) {
+  if img != null {
+    if !(img.VulkanHandle in obj.ImageTransitions) {
+      obj.ImageTransitions[img.VulkanHandle] = new!ImageTransitions()
+    }
+    layerCount := imageSubresourceLayerCount(img, rng)
+    levelCount := imageSubresourceLevelCount(img, rng)
+    transitions := obj.ImageTransitions[img.VulkanHandle]
+
+    for _ , _ , aspectBit in unpackImageAspectFlags(img, rng.aspectMask) {
+      if !aspectBit in transitions.AspectTransitions {
+          transitions.AspectTransitions[aspectBit] = new!AspectImageTransition()
+      }
+      aspectTransitions := transitions.AspectTransitions[aspectBit]
+      for i in 0 .. levelCount {
+        for j in 0 .. layerCount {
+          level := rng.baseMipLevel + i
+          layer := rng.baseArrayLayer + j
+          aspectTransitions.Layouts[(as!u64(layer) << 32) | as!u64(level)] = new_layout
+        }
+      }
+    }
+  }
+}
+
+sub void MergeLayoutTransitions(ref!CommandBufferObject dst, ref!CommandBufferObject src) {
+  for _, img, aspect_transitions in src.ImageTransitions {
+    if !(img in dst.ImageTransitions) {
+      dst.ImageTransitions[img] = new!ImageTransitions()
+    }
+    dst_transitions := dst.ImageTransitions[img]
+    for _, aspect, transitions in aspect_transitions.AspectTransitions {
+      if !aspect in dst_transitions.AspectTransitions {
+        dst_transitions.AspectTransitions[aspect] = new!AspectImageTransition()
+      }
+      dstLayouts := dst_transitions.AspectTransitions[aspect]
+      for _, k, v in transitions.Layouts {
+        dstLayouts.Layouts[k] = v
+      }
+    }
+  }
 }
 
 sub void AddCommand(
@@ -430,6 +491,7 @@ cmd VkResult vkBeginCommandBuffer(
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
     buff := CommandBuffers[commandBuffer]
+    clear(buff.ImageTransitions)
     if (buff.Level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) && (info.pInheritanceInfo != null) {
       inheritanceInfo := info.pInheritanceInfo[0]
       begin.Inherited = true
@@ -584,7 +646,7 @@ cmd void vkCmdExecuteCommands(
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
-    primaryCmdBuf := CommandBuffers[commandBuffer]
+    primary_buff := CommandBuffers[commandBuffer]
     cmd_buffers := pCommandBuffers[0:commandBufferCount]
     args := new!vkCmdExecuteCommandsArgs()
     for i in (0 .. commandBufferCount) {
@@ -593,10 +655,16 @@ cmd void vkCmdExecuteCommands(
       } else {
         args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
       }
+      if !(cmd_buffers[i] in CommandBuffers) {
+        vkErrorInvalidCommandBuffer(cmd_buffers[i])
+      } else {
+        child_buf := CommandBuffers[cmd_buffers[i]]
+        MergeLayoutTransitions(primary_buff, child_buf)
+      }
     }
 
-    mapPos := as!u32(len(primaryCmdBuf.BufferCommands.vkCmdExecuteCommands))
-    primaryCmdBuf.BufferCommands.vkCmdExecuteCommands[mapPos] = args
+    mapPos := as!u32(len(primary_buff.BufferCommands.vkCmdExecuteCommands))
+    primary_buff.BufferCommands.vkCmdExecuteCommands[mapPos] = args
 
     AddCommand(commandBuffer, cmd_vkCmdExecuteCommands, mapPos)
   }
