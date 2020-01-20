@@ -42,10 +42,12 @@ func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) e
 		}
 		chain = TransformWriter{s, l[i], chain}
 	}
-	api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		chain.MutateAndWrite(ctx, id, cmd)
-		return nil
+	err := api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		return chain.MutateAndWrite(ctx, id, cmd)
 	})
+	if err != nil {
+		return err
+	}
 	for p, ok := chain.(TransformWriter); ok; p, ok = chain.(TransformWriter) {
 		chain = p.O
 		p.T.Flush(ctx, chain)
@@ -103,11 +105,14 @@ func (p TransformWriter) State() *api.GlobalState {
 	return p.S
 }
 
-func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
+func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 	if config.SeparateMutateStates || p.O.State() != p.S {
-		cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */)
+		if err := cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */); err != nil {
+			return err
+		}
 	}
 	p.T.Transform(ctx, id, cmd, p.O)
+	return nil
 }
 
 // NotifyPreLoop notifies next transformer in the chain about the beginning of the loop

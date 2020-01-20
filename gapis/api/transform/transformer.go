@@ -56,7 +56,7 @@ type Writer interface {
 	State() *api.GlobalState
 	// MutateAndWrite mutates the state object associated with this writer,
 	// and it passes the command to further consumers.
-	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
+	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error
 	//Notify next transformer it's ready to start loop the trace.
 	NotifyPreLoop(ctx context.Context)
 	//Notify next transformer it's the end of the loop.
