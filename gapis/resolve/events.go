@@ -16,6 +16,7 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
@@ -79,8 +80,10 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		}
 		return 0
 	}
-	api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+	err = api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 
 		// TODO: Add event generation to the API files.
 		if !filter(id, cmd, s) {
@@ -231,6 +234,10 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		lastCmd = id
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &service.Events{List: events}, nil
 }

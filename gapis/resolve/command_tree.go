@@ -249,8 +249,10 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Walk the list of unfiltered commands to build the groups.
 	s := c.NewState(ctx)
-	api.ForeachCmd(ctx, c.Commands, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+	err = api.ForeachCmd(ctx, c.Commands, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		if filter(id, cmd, s) {
 			for _, g := range groupers {
 				g.Process(ctx, id, cmd, s)
@@ -258,6 +260,10 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	// Build the command tree
 	out := &commandTree{
@@ -309,8 +315,10 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Now we have all the groups, we finally need to add the filtered commands.
 	s = c.NewState(ctx)
-	api.ForeachCmd(ctx, c.Commands, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+	err = api.ForeachCmd(ctx, c.Commands, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 
 		if !filter(id, cmd, s) {
 			return nil
@@ -345,6 +353,10 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	// Cluster the commands
 	out.root.Cluster(uint64(p.MaxChildren), uint64(p.MaxNeighbours))

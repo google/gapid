@@ -436,6 +436,9 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	// Note that this is only necessary for building replay instructions
 	err := a.mutate(ctx, id, s, nil, w)
+	if err != nil {
+		return err
+	}
 	if b != nil {
 		l := s.MemoryLayout
 		// Ensure that the builder reads pImageIndex (which points to the correct image index at this point).
@@ -450,6 +453,9 @@ func (a *VkAcquireNextImage2KHR) Mutate(ctx context.Context, id api.CmdID, s *ap
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	// Note that this is only necessary for building replay instructions
 	err := a.mutate(ctx, id, s, nil, w)
+	if err != nil {
+		return err
+	}
 	if b != nil {
 		l := s.MemoryLayout
 		// Ensure that the builder reads pImageIndex (which points to the correct image index at this point).

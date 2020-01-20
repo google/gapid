@@ -90,16 +90,22 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 		resources[i] = r
 	}
 
-	api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
-			log.W(ctx, "Get resources at %v: Initial cmd [%v]%v - %v", p.Indices, id, cmd, err)
+			log.E(ctx, "Get resources at %v: Initial cmd [%v]%v - %v", p.Indices, id, cmd, err)
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
-		cmd.Mutate(ctx, id, state, nil, nil)
+		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
 	if err != nil {

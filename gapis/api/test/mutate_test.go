@@ -61,7 +61,8 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 
 	api.ForeachCmd(ctx, test.cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		b.BeginCommand(uint64(id), 0)
-		cmd.Mutate(ctx, id, s, b, nil)
+		err := cmd.Mutate(ctx, id, s, b, nil)
+		assert.For(ctx, "Mutate command").ThatError(err).Succeeded()
 		b.CommitCommand()
 		return nil
 	})
