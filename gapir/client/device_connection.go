@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -24,7 +23,6 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
-	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -39,67 +37,46 @@ import (
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
-	"github.com/google/gapid/gapir"
 	perfetto_android "github.com/google/gapid/gapis/perfetto/android"
 )
 
 const (
-	sessionTimeout             = time.Second * 30
+	deviceConnectionTimeout    = time.Second * 30
 	maxCheckSocketFileAttempts = 10
 	checkSocketFileRetryDelay  = time.Second
-	connectTimeout             = time.Second * 10
-	heartbeatInterval          = time.Millisecond * 500
 )
 
-type session struct {
-	device   bind.Device
-	port     int
-	auth     auth.Token
-	closeCBs []func()
-	inited   chan struct{}
-	// The connection for heartbeat
-	conn *connection
+type deviceConnectionInfo struct {
+	cleanupFunc func()
+	port        int
+	authToken   auth.Token
 }
 
-func newSession(d bind.Device) *session {
-	return &session{device: d, inited: make(chan struct{})}
-}
-
-func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) error {
-	defer close(s.inited)
-	var err error
-
+func initDeviceConnection(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	if host.Instance(ctx).SameAs(d.Instance()) {
-		err = s.newHost(ctx, d, abi, launchArgs)
+		return newHost(ctx, d, abi, launchArgs)
 	} else if adbd, ok := d.(adb.Device); ok {
-		err = s.newADB(ctx, adbd, abi, launchArgs)
+		return newADB(ctx, adbd, abi, launchArgs)
 	} else if remoted, ok := d.(remotessh.Device); ok {
-		err = s.newRemote(ctx, remoted, abi, launchArgs)
+		return newRemote(ctx, remoted, abi, launchArgs)
 	} else {
-		err = log.Errf(ctx, nil, "Cannot connect to device type %+v", d)
+		return nil, log.Errf(ctx, nil, "Cannot connect to device type %+v", d)
 	}
-	if err != nil {
-		s.close(ctx)
-		return err
-	}
-
-	crash.Go(func() { s.heartbeat(ctx, heartbeatInterval) })
-	return nil
 }
 
-func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device.ABI, launchArgs []string) error {
+func newRemote(ctx context.Context, d remotessh.Device, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	authTokenFile, authToken := auth.GenTokenFile()
 	defer os.Remove(authTokenFile)
 
-	otherdir, cleanup, err := d.TempDir(ctx)
+	otherdir, cleanupTemp, err := d.TempDir(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer cleanup(ctx)
+	defer cleanupTemp(ctx)
 
 	pf := otherdir + "/auth"
 	if err = d.PushFile(ctx, authTokenFile, pf); err != nil {
-		return err
+		return nil, err
 	}
 
 	forceEnableDiskCache := true
@@ -115,7 +92,7 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 	}
 
 	args := []string{
-		"--idle-timeout-sec", strconv.Itoa(int(sessionTimeout / time.Second)),
+		"--idle-timeout-sec", strconv.Itoa(int(deviceConnectionTimeout / time.Second)),
 		"--auth-token-file", pf,
 	}
 	args = append(args, launchArgs...)
@@ -129,17 +106,19 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 
 	gapir, err := layout.Gapir(ctx, abi)
 	if err = d.PushFile(ctx, gapir.System(), otherdir+"/gapir"); err != nil {
-		return err
+		return nil, err
 	}
 
 	remoteGapir := otherdir + "/gapir"
 
 	env := shell.NewEnv()
-	sessionCleanup, err := loader.SetupReplay(ctx, d, abi, env)
+
+	cleanup, err := loader.SetupReplay(ctx, d, abi, env)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.onClose(func() { sessionCleanup.Invoke(ctx) })
+
+	cleanupFunc := func() { cleanup.Invoke(ctx) }
 
 	parser := func(severity log.Severity) io.WriteCloser {
 		h := log.GetHandler(ctx)
@@ -180,33 +159,19 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 
 	if err != nil {
 		log.E(ctx, "Starting gapir. Error: %v", err)
-		return nil
+		return nil, err
 	}
 
-	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", port), authToken, connectTimeout)
-	if err != nil {
-		return log.Err(ctx, err, "Timeout waiting for connection")
-	}
-
-	s.onClose(func() {
-		if s.conn != nil {
-			s.conn.Close()
-		}
-	})
-	log.I(ctx, "Heartbeat connection setup done")
-
-	s.port = port
-	s.auth = authToken
-	return nil
+	return &deviceConnectionInfo{port: port, authToken: authToken, cleanupFunc: cleanupFunc}, nil
 }
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
-func (s *session) newHost(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) error {
+func newHost(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	authTokenFile, authToken := auth.GenTokenFile()
 	defer os.Remove(authTokenFile)
 
 	args := []string{
-		"--idle-timeout-sec", strconv.Itoa(int(sessionTimeout / time.Second)),
+		"--idle-timeout-sec", strconv.Itoa(int(deviceConnectionTimeout / time.Second)),
 		"--auth-token-file", authTokenFile,
 	}
 	args = append(args, launchArgs...)
@@ -214,15 +179,16 @@ func (s *session) newHost(ctx context.Context, d bind.Device, abi *device.ABI, l
 	gapir, err := layout.Gapir(ctx, abi)
 	if err != nil {
 		log.F(ctx, true, "Couldn't locate gapir executable: %v", err)
-		return nil
+		return nil, err
 	}
 
 	env := shell.CloneEnv()
 	cleanup, err := loader.SetupReplay(ctx, d, abi, env)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.onClose(func() { cleanup.Invoke(ctx) })
+
+	cleanupFunc := func() { cleanup.Invoke(ctx) }
 
 	parser := func(severity log.Severity) io.WriteCloser {
 		h := log.GetHandler(ctx)
@@ -261,23 +227,10 @@ func (s *session) newHost(ctx context.Context, d bind.Device, abi *device.ABI, l
 	})
 	if err != nil {
 		log.E(ctx, "Starting gapir. Error: %v", err)
-		return nil
+		return nil, err
 	}
 
-	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", port), authToken, connectTimeout)
-	if err != nil {
-		return log.Err(ctx, err, "Timeout waiting for connection")
-	}
-	s.onClose(func() {
-		if s.conn != nil {
-			s.conn.Close()
-		}
-	})
-	log.I(ctx, "Heartbeat connection setup done")
-
-	s.port = port
-	s.auth = authToken
-	return nil
+	return &deviceConnectionInfo{port: port, authToken: authToken, cleanupFunc: cleanupFunc}, nil
 }
 
 var socketNames = map[device.Architecture]string{
@@ -287,7 +240,7 @@ var socketNames = map[device.Architecture]string{
 	device.X86_64: "gapir-x86-64",
 }
 
-func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []string) error {
+func newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	ctx = log.V{"abi": abi}.Bind(ctx)
 
 	log.I(ctx, "Unlocking device screen")
@@ -295,21 +248,17 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 	if err != nil {
 		log.W(ctx, "Failed to determine lock state: %s", err)
 	} else if !unlocked {
-		return log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
+		return nil, log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
 	}
 
 	log.I(ctx, "Checking gapid.apk is installed...")
 	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	completeLaunchArgs := []string{
-		"--idle-timeout-sec", string(int(sessionTimeout / time.Second)),
-	}
-
-	if len(string(s.auth)) > 0 {
-		completeLaunchArgs = append(completeLaunchArgs, "--auth-token-file", string(s.auth))
+		"--idle-timeout-sec", string(int(deviceConnectionTimeout / time.Second)),
 	}
 
 	for _, arg := range launchArgs {
@@ -324,15 +273,13 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 		}
 	}
 	if gapirActivityIndex < 0 {
-		return log.Errf(ctx, nil, "Cannot find gapir activity in gapid APK")
+		return nil, log.Errf(ctx, nil, "Cannot find gapir activity in gapid APK")
 	}
 
 	log.I(ctx, "Launching GAPIR...")
 	// Configure GAPIR to be traceable for replay profiling
 	cleanup, err := perfetto_android.SetupProfileLayersSource(ctx, d, apk.Name, abi)
-	s.onClose(func() {
-		cleanup.Invoke(ctx)
-	})
+
 	if err != nil {
 		// TODO(apbodnar) Fail here if we know we need render stages
 		log.W(ctx, "Failed to setup render stage environment for replayer")
@@ -342,27 +289,28 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 	if err := d.StartActivity(ctx, *apk.ActivityActions[gapirActivityIndex],
 		android.StringExtra{"gapir-intent-flag", strings.Join(completeLaunchArgs, " ")},
 	); err != nil {
-		return err
+		return nil, err
 	}
 
 	log.I(ctx, "Setting up port forwarding...")
 	localPort, err := adb.LocalFreeTCPPort()
 	if err != nil {
-		return log.Err(ctx, err, "Finding free port")
+		return nil, log.Err(ctx, err, "Finding free port")
 	}
-	s.port = int(localPort)
+
+	port := int(localPort)
 	socket, ok := socketNames[abi.Architecture]
 	ctx = log.V{"socket": socket}.Bind(ctx)
 	if !ok {
-		return log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
+		return nil, log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
 	}
 	apkDir, err := apk.FileDir(ctx)
 	if err != nil {
-		return log.Errf(ctx, err, "Getting gapid.apk files directory")
+		return nil, log.Errf(ctx, err, "Getting gapid.apk files directory")
 	}
 	appDir, err := apk.AppDir(ctx)
 	if err != nil {
-		return log.Errf(ctx, err, "Getting gapid.apk directory")
+		return nil, log.Errf(ctx, err, "Getting gapid.apk directory")
 	}
 
 	// Ignore the error returned from this. This is best-effort.
@@ -384,72 +332,18 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 			return true, nil
 		})
 	if err != nil {
-		return log.Errf(ctx, err, "Checking socket: %v", socketPath)
+		return nil, log.Errf(ctx, err, "Checking socket: %v", socketPath)
 	}
 	log.I(ctx, "Gapir socket: '%v' is opened now", socketPath)
 
 	if err := d.Forward(ctx, localPort, adb.NamedFileSystemSocket(socketPath)); err != nil {
-		return log.Err(ctx, err, "Forwarding port")
+		return nil, log.Err(ctx, err, "Forwarding port")
 	}
-	s.onClose(func() { d.RemoveForward(ctx, localPort) })
 
-	log.I(ctx, "Waiting for connection to GAPIR...")
-	s.conn, err = newConnection(fmt.Sprintf("localhost:%d", localPort), s.auth, connectTimeout)
-	if err != nil {
-		return log.Err(ctx, err, "Timeout waiting for connection")
+	cleanupFunc := func() {
+		cleanup.Invoke(ctx)
+		d.RemoveForward(ctx, localPort)
 	}
-	s.onClose(func() {
-		if s.conn != nil {
-			s.conn.Close()
-		}
-	})
-	log.I(ctx, "Heartbeat connection setup done")
-	return nil
-}
 
-func (s *session) connect(ctx context.Context) (gapir.Connection, error) {
-	<-s.inited
-	return newConnection(fmt.Sprintf("localhost:%d", s.port), s.auth, connectTimeout)
-}
-
-func (s *session) onClose(f func()) {
-	s.closeCBs = append(s.closeCBs, f)
-}
-
-func (s *session) close(ctx context.Context) {
-	if s.conn != nil {
-		s.conn.Shutdown(ctx)
-	}
-	for _, f := range s.closeCBs {
-		f()
-	}
-	s.closeCBs = nil
-}
-
-func (s *session) ping(ctx context.Context) (time.Duration, error) {
-	if s.conn == nil {
-		return time.Duration(0), log.Errf(ctx, nil, "cannot ping without gapir connection")
-	}
-	start := time.Now()
-	err := s.conn.Ping(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return time.Since(start), nil
-}
-
-func (s *session) heartbeat(ctx context.Context, pingInterval time.Duration) {
-	for {
-		select {
-		case <-task.ShouldStop(ctx):
-			return
-		case <-time.After(pingInterval):
-			_, err := s.ping(ctx)
-			if err != nil {
-				log.E(ctx, "Error sending keep-alive ping. Error: %v", err)
-				s.close(ctx)
-				return
-			}
-		}
-	}
+	return &deviceConnectionInfo{port: port, authToken: "", cleanupFunc: cleanupFunc}, nil
 }

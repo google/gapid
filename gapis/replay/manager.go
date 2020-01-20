@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/replay/scheduler"
@@ -54,10 +55,9 @@ type Manager interface {
 // Manager is used discover replay devices and to send replay requests to those
 // discovered devices.
 type manager struct {
-	gapir       *gapir.Client
-	schedulers  map[id.ID]*scheduler.Scheduler
-	connections map[id.ID]*backgroundConnection
-	mutex       sync.Mutex // guards schedulers
+	gapir      *gapir.Client
+	schedulers map[id.ID]*scheduler.Scheduler
+	mutex      sync.Mutex // guards schedulers
 }
 
 // batchKey is used as a key for the batch that's being formed.
@@ -74,12 +74,16 @@ type batchKey struct {
 // New returns a new Manager instance using the database db.
 func New(ctx context.Context) Manager {
 	out := &manager{
-		gapir:       gapir.New(ctx),
-		schedulers:  make(map[id.ID]*scheduler.Scheduler),
-		connections: make(map[id.ID]*backgroundConnection),
+		gapir:      gapir.New(ctx),
+		schedulers: make(map[id.ID]*scheduler.Scheduler),
 	}
 	bind.GetRegistry(ctx).Listen(bind.NewDeviceListener(out.createScheduler, out.destroyScheduler))
 	return out
+}
+
+// NewManagerForTest returns a new Manager for the test.
+func NewManagerForTest(client *gapir.Client) Manager {
+	return &manager{gapir: client}
 }
 
 // Replay requests that req is to be performed on the device described by intent,
@@ -157,4 +161,20 @@ func (m *manager) destroyScheduler(ctx context.Context, device bind.Device) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	delete(m.schedulers, deviceID)
+}
+
+func (m *manager) connect(ctx context.Context, device bind.Device, replayABI *device.ABI) (*gapir.ConnectionKey, error) {
+	return m.gapir.Connect(ctx, device, replayABI)
+}
+
+func (m *manager) BeginReplay(ctx context.Context, conn *gapir.ConnectionKey, payload string, dependent string) error {
+	return m.gapir.BeginReplay(ctx, conn, payload, dependent)
+}
+
+func (m *manager) SetReplayExecutor(ctx context.Context, conn *gapir.ConnectionKey, executor gapir.ReplayExecutor) (func(), error) {
+	return m.gapir.SetReplayExecutor(ctx, conn, executor)
+}
+
+func (m *manager) PrewarmReplay(ctx context.Context, conn *gapir.ConnectionKey, payload string, cleanup string) error {
+	return m.gapir.PrewarmReplay(ctx, conn, payload, cleanup)
 }
