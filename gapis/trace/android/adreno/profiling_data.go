@@ -27,7 +27,7 @@ import (
 
 var (
 	slicesQuery = "" +
-		"SELECT s.context_id, s.render_target, s.frame_id, s.submission_id, s.hw_queue_id, s.ts, s.dur, s.name, depth, arg_set_id, track_id, t.name " +
+		"SELECT s.context_id, s.render_target, s.frame_id, s.submission_id, s.hw_queue_id, s.command_buffer, s.ts, s.dur, s.name, depth, arg_set_id, track_id, t.name " +
 		"FROM gpu_track t LEFT JOIN gpu_slice s " +
 		"ON s.track_id = t.id AND t.scope = 'gpu_render_stage'"
 	argsQueryFmt = "" +
@@ -69,7 +69,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 		if m, ok := (*handleMapping)[uint64(v)]; ok {
 			contextIds[i] = int64(m[0].TraceValue)
 		} else {
-			log.E(ctx, "Context Id could not found: %v", v)
+			log.E(ctx, "Context Id not found: %v", v)
 		}
 	}
 
@@ -78,20 +78,29 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 		if m, ok := (*handleMapping)[uint64(v)]; ok {
 			renderTargets[i] = int64(m[0].TraceValue)
 		} else {
-			log.E(ctx, "Render Target could not found: %v", v)
+			log.E(ctx, "Render Target not found: %v", v)
+		}
+	}
+
+	commandBuffers := slicesColumns[5].GetLongValues()
+	for i, v := range commandBuffers {
+		if m, ok := (*handleMapping)[uint64(v)]; ok {
+			commandBuffers[i] = int64(m[0].TraceValue)
+		} else {
+			log.E(ctx, "Command Buffer not found: %v", v)
 		}
 	}
 
 	frameIds := slicesColumns[2].GetLongValues()
 	submissionIds := slicesColumns[3].GetLongValues()
 	hwQueueIds := slicesColumns[4].GetLongValues()
-	timestamps := slicesColumns[5].GetLongValues()
-	durations := slicesColumns[6].GetLongValues()
-	names := slicesColumns[7].GetStringValues()
-	depths := slicesColumns[8].GetLongValues()
-	argSetIds := slicesColumns[9].GetLongValues()
-	trackIds := slicesColumns[10].GetLongValues()
-	trackNames := slicesColumns[11].GetStringValues()
+	timestamps := slicesColumns[6].GetLongValues()
+	durations := slicesColumns[7].GetLongValues()
+	names := slicesColumns[8].GetStringValues()
+	depths := slicesColumns[9].GetLongValues()
+	argSetIds := slicesColumns[10].GetLongValues()
+	trackIds := slicesColumns[11].GetLongValues()
+	trackNames := slicesColumns[12].GetStringValues()
 
 	for i := uint64(0); i < numSliceRows; i++ {
 		var argsQueryResult *perfetto_service.QueryResult
@@ -122,6 +131,10 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 		extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 			Name:  "renderTarget",
 			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(renderTargets[i])},
+		})
+		extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
+			Name:  "commandBuffer",
+			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(commandBuffers[i])},
 		})
 		extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 			Name:  "frameId",
