@@ -31,10 +31,10 @@ public class Analytics implements ExceptionHandler {
   private static final Logger LOG = Logger.getLogger(Analytics.class.getName());
 
   public static enum View {
-    Main, FilmStrip, LeftTabs, RightTabs,
+    Main, LeftTabs, RightTabs,
     About, Help, GotoCommand, GotoMemory, Licenses, Settings, Trace, Welcome,
     // See MainWindow.MainTab.Type
-    Commands, Framebuffer, Pipeline, Textures, Geometry, Shaders, Report, Log, State, Memory,
+    FilmStrip, Profile, Commands, Framebuffer, Pipeline, Textures, Geometry, Shaders, Report, Log, State, Memory,
     ContextSelector, ReplayDeviceSelector;
   }
 

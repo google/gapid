@@ -34,6 +34,7 @@ import com.google.gapid.views.GeometryView;
 import com.google.gapid.views.LogView;
 import com.google.gapid.views.MemoryView;
 import com.google.gapid.views.PipelineView;
+import com.google.gapid.views.ProfileView;
 import com.google.gapid.views.ReportView;
 import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
@@ -357,6 +358,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
      */
     public static enum Type {
       Filmstrip(View.FilmStrip, "Filmstrip", true, ThumbnailScrubber::new),
+      Profile(View.Profile, "Profile", true, ProfileView::new),
 
       ApiCalls(View.Commands, "Commands", false, CommandTree::new),
 
