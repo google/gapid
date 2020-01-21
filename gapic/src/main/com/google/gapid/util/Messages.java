@@ -20,6 +20,7 @@ import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 public interface Messages {
   public static final String WINDOW_TITLE = "Android GPU Inspector";
   public static final String LOADING_CAPTURE = "Loading capture...";
+  public static final String LOADING_PROFILE = "Profiling replay...";
   public static final String CAPTURE_LOAD_FAILURE = "Failed to load capture.";
   public static final String NO_FRAMES_IN_CONTEXT = "No frames in selected context.";
   public static final String SELECT_COMMAND = "Select a frame or command.";
