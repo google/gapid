@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
@@ -114,18 +113,18 @@ func Devices(ctx context.Context) (DeviceList, error) {
 	return out, nil
 }
 
-func SetupPrereleaseDriver(ctx context.Context, d Device, p *android.InstalledPackage) (app.Cleanup, error) {
+func SetupPrereleaseDriver(ctx context.Context, d Device, packageName string) (app.Cleanup, error) {
 	oldOptinApps, err := d.SystemSetting(ctx, "global", prereleaseDriverSettingVariable)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to get prerelease driver opt in apps.")
 	}
-	if strings.Contains(oldOptinApps, p.Name) {
+	if strings.Contains(oldOptinApps, packageName) {
 		return nil, nil
 	}
-	newOptinApps := oldOptinApps + "," + p.Name
+	newOptinApps := oldOptinApps + "," + packageName
 	// TODO(b/145893290) Check whether application has developer driver enabled once b/145893290 is fixed.
 	if err := d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, newOptinApps); err != nil {
-		return nil, log.Errf(ctx, err, "Failed to set up prerelease driver for app: %v.", p.Name)
+		return nil, log.Errf(ctx, err, "Failed to set up prerelease driver for app: %v.", packageName)
 	}
 	return func(ctx context.Context) {
 		d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, oldOptinApps)

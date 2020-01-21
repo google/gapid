@@ -232,7 +232,7 @@ public class TracerDialog {
       createButton(parent, IDialogConstants.CANCEL_ID, IDialogConstants.CANCEL_LABEL, false);
 
       Listener modifyListener = e -> {
-        ok.setEnabled(traceInput.isReady());
+        ok.setEnabled(traceInput.isReady() && traceInput.getDeviceHasProfilingCapability());
       };
       traceInput.addModifyListener(modifyListener);
 
@@ -265,7 +265,7 @@ public class TracerDialog {
       private static final String MEC_LABEL_WARNING =
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final String PERFETTO_LABEL = "Profile Config: ";
-      private static final String NO_GPU_PROFILING_CAPABILITY = "Warning: Selected device has no GPU profiling capability.";
+      private static final String NO_GPU_PROFILING_CAPABILITY = "Error: Selected device has no GPU profiling capability.";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -299,11 +299,12 @@ public class TracerDialog {
       private final Label fileLabel;
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
-      private final Label gpuProfilingCapabilityWarning;
+      private final Label gpuProfilingCapabilityErrorMessage;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
+      protected boolean deviceHasProfilingCapability = false;
 
       public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
         super(parent, SWT.NONE);
@@ -446,11 +447,11 @@ public class TracerDialog {
         requiredFieldMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         requiredFieldMessage.setVisible(false);
 
-        gpuProfilingCapabilityWarning = withLayoutData(
+        gpuProfilingCapabilityErrorMessage = withLayoutData(
             createLabel(this, NO_GPU_PROFILING_CAPABILITY),
             new GridData(SWT.FILL, SWT.FILL, true, false));
-        gpuProfilingCapabilityWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
-        gpuProfilingCapabilityWarning.setVisible(false);
+        gpuProfilingCapabilityErrorMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
+        gpuProfilingCapabilityErrorMessage.setVisible(false);
 
         Link adbWarning = withLayoutData(
             createLink(this, "Path to adb invalid/missing. " +
@@ -466,18 +467,8 @@ public class TracerDialog {
             e -> updateOnApiChange(trace, getSelectedDevice(), getSelectedApi()));
 
         Listener gpuProfilingCapabilityListener = e -> {
-          // Skip if the device is not Android device, or trace type is not Perfetto.
-          if (getSelectedDevice() == null || !getSelectedDevice().isAndroid() ||
-              getSelectedApi() == null || getSelectedApi().getType() != TraceType.Perfetto) {
-            gpuProfilingCapabilityWarning.setVisible(false);
-            return;
-          }
-          Device.GPUProfiling gpuCaps = getPerfettoCaps().getGpuProfiling();
-          if (gpuCaps.getHasRenderStage() && gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
-            gpuProfilingCapabilityWarning.setVisible(false);
-            return;
-          }
-          gpuProfilingCapabilityWarning.setVisible(true);
+          cacheHasProfilingCapability();
+          gpuProfilingCapabilityErrorMessage.setVisible(!deviceHasProfilingCapability);
         };
         device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
         api.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
@@ -518,6 +509,18 @@ public class TracerDialog {
 
         updateDevicesDropDown(trace);
         colorFilledInput(widgets.theme);
+      }
+
+      private void cacheHasProfilingCapability() {
+        // Skip if the device is not Android device, or trace type is not Perfetto.
+        if (getSelectedDevice() == null || !getSelectedDevice().isAndroid() ||
+            getSelectedApi() == null || getSelectedApi().getType() != TraceType.Perfetto) {
+          deviceHasProfilingCapability = true;
+        } else {
+          Device.GPUProfiling gpuCaps = getPerfettoCaps().getGpuProfiling();
+          deviceHasProfilingCapability =
+              gpuCaps.getHasRenderStage() && gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0;
+        }
       }
 
       private void colorFilledInput(Theme theme) {
@@ -788,6 +791,10 @@ public class TracerDialog {
         return getSelectedDevice() != null && config != null &&
             (!config.getRequiresApplication() || !traceTarget.getText().isEmpty()) &&
             !directory.getText().isEmpty() && !file.getText().isEmpty();
+      }
+
+      public boolean getDeviceHasProfilingCapability() {
+        return deviceHasProfilingCapability;
       }
 
       public void addModifyListener(Listener listener) {
