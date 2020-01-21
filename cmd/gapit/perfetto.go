@@ -17,11 +17,14 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -69,11 +72,17 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		if _, err := os.Stat(input); os.IsNotExist(err) {
 			return fmt.Errorf("Could not find input queries file: %v", input)
 		}
+	} else if run_metrics == true {
+		log.I(ctx, "No input file is given to read the metric definitions. Default metrics will be run. You can use '-in <metrics-json-file>' to provide custom metric definitions or  '-mode interactive' to use the interactive mode.")
 	}
 
-	var categories []string
+	var empty struct{}
+	var categories map[string]struct{}
 	if run_metrics && verb.Categories != "" {
-		categories = strings.Split(verb.Categories, ",")
+		catstrs := strings.Split(verb.Categories, ",")
+		for _, s := range catstrs {
+			categories[s] = empty
+		}
 	}
 
 	output := ""
@@ -82,7 +91,6 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	outputFormat := OutputText
-	fmt.Println("verb.Format: ", verb.Format)
 	switch verb.Format {
 	case OutputDefault:
 		if output == "" {
@@ -105,7 +113,17 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 }
 
+func RunPrepQuery(ctx context.Context, cclient client.Client, capture *path.Capture, query string) (err error) {
+	log.I(ctx, "Running query: %s", query)
+	_, error := cclient.PerfettoQuery(ctx, capture, query)
+	if error != nil {
+		err = fmt.Errorf("Error while running query %s : %v.", query, err)
+	}
+	return
+}
+
 func RunQuery(ctx context.Context, cclient client.Client, capture *path.Capture, query string) (numColumns int, columnNames []string, columnTypes []string, numRecords uint64, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, err error) {
+	log.I(ctx, "Running query: %s", query)
 	queryResult, error := cclient.PerfettoQuery(ctx, capture, query)
 	if error != nil {
 		err = fmt.Errorf("Error while running query %s : %v.", query, err)
@@ -137,7 +155,123 @@ func RunQuery(ctx context.Context, cclient client.Client, capture *path.Capture,
 	return
 }
 
-func RunMetrics(ctx context.Context, trace string, input string, categories []string, output string, format PerfettoOutputFormat) error {
+type MetricResult struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type MetricResults struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Results     []MetricResult `json:"results"`
+}
+
+type CategoryResults struct {
+	Name    string          `json:"name"`
+	Metrics []MetricResults `json:"metrics"`
+}
+
+type MetricsResults struct {
+	Categories []CategoryResults `json:"categories"`
+}
+
+func RunMetrics(ctx context.Context, trace string, inputPath string, categories map[string]struct{}, outputPath string, format PerfettoOutputFormat) error {
+
+	type Query struct {
+		Query string `json:"query"`
+	}
+
+	type Metric struct {
+		Name        string  `json:"name"`
+		Description string  `json:"description"`
+		Queries     []Query `json:"queries"`
+	}
+
+	type MetricCategory struct {
+		Name    string   `json:"category"`
+		Metrics []Metric `json:"metric"`
+	}
+
+	type MetricsInfo struct {
+		PrepQueries      []Query          `json:"initialize"`
+		MetricCategories []MetricCategory `json:"metrics"`
+	}
+
+	metricsFile, err := os.Open(inputPath)
+	if err != nil {
+		app.Usage(ctx, "Cannot open file %s: %v.", inputPath, err)
+	}
+	defer metricsFile.Close()
+	byteValue, _ := ioutil.ReadAll(metricsFile)
+	var metricsInfo MetricsInfo
+	json.Unmarshal(byteValue, &metricsInfo)
+
+	// Load the trace
+	client, capture, err := getGapisAndLoadCapture(ctx, GapisFlags{}, GapirFlags{}, trace, CaptureFileFlags{})
+	if err != nil {
+		return fmt.Errorf("Error while loading the trace file %s: %v.", trace, err)
+	}
+	defer client.Close()
+
+	// Run the preparation queries
+	for _, query := range metricsInfo.PrepQueries {
+		if err := RunPrepQuery(ctx, client, capture, query.Query); err != nil {
+			return err
+		}
+	}
+
+	if format == OutputText {
+		if err := InitilizeOutputFile(ctx, ModeMetrics, outputPath, format); err != nil {
+			return err
+		}
+	}
+
+	var metricsResults MetricsResults
+	runCustomCategories := len(categories) > 0
+	for i := 0; i < len(metricsInfo.MetricCategories); i++ {
+		categoryName := metricsInfo.MetricCategories[i].Name
+		if runCustomCategories {
+			if _, ok := categories[categoryName]; !ok {
+				continue
+			}
+		}
+		log.I(ctx, "Running Category: %s", categoryName)
+		categoryResults := CategoryResults{Name: categoryName}
+		metrics := &(metricsInfo.MetricCategories[i].Metrics)
+		for j := 0; j < len(*metrics); j++ {
+			log.I(ctx, "Running Metric: %s", (*metrics)[j].Name)
+			queries := &(*metrics)[j].Queries
+			if len(*queries) == 0 {
+				log.I(ctx, "No queires found to run for this metric.")
+			} else {
+				for k := 0; k < len(*queries)-1; k++ {
+					if err := RunPrepQuery(ctx, client, capture, (*queries)[k].Query); err != nil {
+						return err
+					}
+				}
+				numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, err := RunQuery(ctx, client, capture, (*queries)[len(*queries)-1].Query)
+				if err != nil {
+					return err
+				}
+				if numRecords == 0 {
+					log.I(ctx, "No records returned by this query.")
+				} else if format == OutputText {
+					err := ReportMetricResultsInTextFormat(categoryName, (*metrics)[j].Name, (*metrics)[j].Description, numColumns, columnNames, columnTypes, dataStrings, dataLongs, dataDoubles, outputPath)
+					if err != nil {
+						return err
+					}
+				} else {
+					categoryResults.Metrics = append(categoryResults.Metrics, CreateMetricResult((*metrics)[j].Name, (*metrics)[j].Description, numColumns, columnNames, columnTypes, dataStrings, dataLongs, dataDoubles))
+				}
+			}
+		}
+		metricsResults.Categories = append(metricsResults.Categories, categoryResults)
+	}
+	if format == OutputJson {
+		if err := WriteResultsToJSONOutput(metricsResults, outputPath); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -177,17 +311,16 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 
 	// Run the preparation queries
 	for _, query := range prepQueries {
-		log.I(ctx, "Running query: %s", query)
-		_, err := client.PerfettoQuery(ctx, capture, query)
-		if err != nil {
-			return fmt.Errorf("Error while running query: %v.", err)
+		if err := RunPrepQuery(ctx, client, capture, query); err != nil {
+			return err
 		}
 	}
 
 	// If queries are passed as a pipe, run the queries, report the results and finish the execution
 	if pipeMode {
-		if outputPath != "" {
-			InitilizeOutputFile(ctx, outputPath, format)
+		err := InitilizeOutputFile(ctx, ModeInteractive, outputPath, format)
+		if err != nil {
+			return err
 		}
 		for qindex, query := range queries {
 			log.I(ctx, "Running query: %s", query)
@@ -208,8 +341,10 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 				}
 			}
 		}
-		if outputPath != "" {
-			FinalizeOutputFile(ctx, outputPath, format)
+		if format == OutputJson {
+			if err := FinalizeJSONOutput(ctx, outputPath); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -249,7 +384,6 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 				}
 			}
 			valid_command = true
-			// Run the query here
 		} else if strings.HasPrefix(cmdString, "save") {
 			if !valid_results {
 				fmt.Println("No valid query results available to save.")
@@ -266,22 +400,23 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 					var err error
 					switch prefix {
 					case "text":
-						err = InitilizeOutputFile(ctx, path, OutputText)
-						if err == nil {
+						err = InitilizeOutputFile(ctx, ModeInteractive, path, OutputText)
+						if err != nil {
 							err = ReportQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, path)
 						}
 					case "json":
-						err = InitilizeOutputFile(ctx, path, OutputJson)
+						err = InitilizeOutputFile(ctx, ModeInteractive, path, OutputJson)
 						if err == nil {
 							lastQuery := true
 							err = ReportQueryResultsInJSONFormat(query, lastQuery, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, path)
 						}
+						if err == nil {
+							if err = FinalizeJSONOutput(ctx, outputPath); err != nil {
+								return err
+							}
+						}
 					}
-					if err != nil {
-						fmt.Println(err)
-					} else {
-						fmt.Println("Results saved to ", path)
-					}
+					fmt.Println("Results saved to ", path)
 				}
 			}
 		} else if strings.HasPrefix(cmdString, "quit") {
@@ -298,30 +433,44 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 	return nil
 }
 
-func InitilizeOutputFile(ctx context.Context, outputPath string, outputFormat PerfettoOutputFormat) error {
-	output, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("Error while creating the output file %s: %v.", outputPath, err)
+func InitilizeOutputFile(ctx context.Context, runMode PerfettoMode, outputPath string, outputFormat PerfettoOutputFormat) error {
+	var output *os.File
+	var err error
+	if outputPath != "" {
+		output, err = os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("Error while creating the output file %s: %v.", outputPath, err)
+		}
+		defer output.Close()
+	} else {
+		output = os.Stdout
 	}
-	defer output.Close()
-	if outputFormat == OutputJson {
-		if _, err := output.Write([]byte("{\"Queries\":[\n")); err != nil {
+	if runMode == ModeInteractive && outputFormat == OutputJson {
+		if _, err := output.Write([]byte("{\"queries\":[\n")); err != nil {
+			return fmt.Errorf("Error writing to the output file %s: %v.", outputPath, err)
+		}
+	} else if runMode == ModeMetrics && outputFormat == OutputText {
+		if _, err := output.Write([]byte("GAPID System Profiler Metrics\n")); err != nil {
 			return fmt.Errorf("Error writing to the output file %s: %v.", outputPath, err)
 		}
 	}
 	return nil
 }
 
-func FinalizeOutputFile(ctx context.Context, outputPath string, outputFormat PerfettoOutputFormat) error {
-	output, err := os.OpenFile(outputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("Error while opening the output file %s: %v.", outputPath, err)
-	}
-	defer output.Close()
-	if outputFormat == OutputJson {
-		if _, err := output.Write([]byte("]}")); err != nil {
-			return fmt.Errorf("Error writing to the output file %s: %v.", outputPath, err)
+func FinalizeJSONOutput(ctx context.Context, outputPath string) error {
+	var output *os.File
+	var err error
+	if outputPath != "" {
+		output, err = os.OpenFile(outputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("Error while opening the output file %s: %v.", outputPath, err)
 		}
+		defer output.Close()
+	} else {
+		output = os.Stdout
+	}
+	if _, err := output.Write([]byte("]}")); err != nil {
+		return fmt.Errorf("Error writing to the output file %s: %v.", outputPath, err)
 	}
 	return nil
 }
@@ -362,6 +511,38 @@ func ReportQueryResultsInTextFormat(query string, numColumns int, columnNames []
 		fmt.Fprintln(writer)
 	}
 	fmt.Fprintln(writer)
+	writer.Flush()
+	return nil
+}
+
+func ReportMetricResultsInTextFormat(categoryName string, metric string, description string, numColumns int, columnNames []string, columnTypes []string, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, outputPath string) error {
+	var output *os.File
+	var err error
+	if outputPath != "" {
+		output, err = os.OpenFile(outputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("Error while opening the output file %s: %v.", outputPath, err)
+		}
+		defer output.Close()
+	} else {
+		output = os.Stdout
+	}
+	writer := bufio.NewWriter(output)
+	writer.WriteString("\nCategory: " + categoryName + "\n")
+	writer.WriteString("Metric name: " + metric + "\n")
+	writer.WriteString("Description: " + description + "\n")
+	for i := 0; i < numColumns; i++ {
+		switch columnTypes[i] {
+		case "UNKNOWN":
+			writer.WriteString(columnNames[i] + ": NULL\n")
+		case "STRING":
+			writer.WriteString(columnNames[i] + ": " + dataStrings[i][0] + "\n")
+		case "LONG":
+			writer.WriteString(columnNames[i] + ": " + strconv.FormatInt(dataLongs[i][0], 10) + "\n")
+		case "DOUBLE":
+			writer.WriteString(columnNames[i] + ": " + strconv.FormatFloat(dataDoubles[i][0], 'E', -1, 64) + "\n")
+		}
+	}
 	writer.Flush()
 	return nil
 }
@@ -425,5 +606,49 @@ func ReportQueryResultsInJSONFormat(query string, lastQuery bool, numColumns int
 	}
 
 	writer.Flush()
+	return nil
+}
+
+func CreateMetricResult(metric string, description string, numColumns int, columnNames []string, columnTypes []string, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64) (metricResults MetricResults) {
+	metricResults.Name = metric
+	metricResults.Description = description
+	for i := 0; i < numColumns; i++ {
+		var result string
+		switch columnTypes[i] {
+		case "UNKNOWN":
+			result = "NULL"
+		case "STRING":
+			result = dataStrings[i][0]
+		case "LONG":
+			result = strconv.FormatInt(dataLongs[i][0], 10)
+		case "DOUBLE":
+			result = strconv.FormatFloat(dataDoubles[i][0], 'E', -1, 64)
+		}
+		metricResults.Results = append(metricResults.Results, MetricResult{Name: columnNames[i], Value: result})
+	}
+	return
+}
+
+func WriteResultsToJSONOutput(metricsResults MetricsResults, outputPath string) error {
+	var output *os.File
+	var err error
+	if outputPath != "" {
+		output, err = os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("Error while opening the output file %s: %v.", outputPath, err)
+		}
+		defer output.Close()
+	} else {
+		output = os.Stdout
+	}
+
+	jsonResult, err := json.MarshalIndent(&metricsResults, "", "  ")
+	if err != nil {
+		return fmt.Errorf("Error converting the metrics results to Json. Please file a bug and provide as much as information as possbile to address this issue. Error: %v", err)
+	}
+	if _, err := output.Write(jsonResult); err != nil {
+		return fmt.Errorf("Error writing to the output file %s: %v.", outputPath, err)
+	}
+	output.Sync()
 	return nil
 }
