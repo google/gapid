@@ -31,6 +31,7 @@ import (
 
 type stateWatcher struct {
 	memoryWrites map[memory.PoolID]*interval.U64SpanList
+	ignore       bool // Ignore tracking current command
 }
 
 func (b *stateWatcher) OnBeginCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
@@ -50,6 +51,9 @@ func (b *stateWatcher) OnWriteFrag(ctx context.Context, owner api.RefObject, fra
 
 func (b *stateWatcher) OnWriteSlice(ctx context.Context, slice memory.Slice) {
 
+	if b.ignore {
+		return
+	}
 	span := interval.U64Span{
 		Start: slice.Base(),
 		End:   slice.Base() + slice.Size(),
@@ -103,10 +107,11 @@ type frameLoop struct {
 	memoryToUnmap    map[VkDeviceMemory]bool
 	memoryToMap      map[VkDeviceMemory]bool
 
-	bufferToDestroy map[VkBuffer]bool
-	bufferChanged   map[VkBuffer]bool
-	bufferToCreate  map[VkBuffer]bool
-	bufferToRestore map[VkBuffer]VkBuffer
+	bufferToDestroy   map[VkBuffer]bool
+	bufferChanged     map[VkBuffer]bool
+	bufferToCreate    map[VkBuffer]bool
+	bufferToRestore   map[VkBuffer]VkBuffer
+	bufferMemToBackup map[VkDeviceMemory]VkDeviceMemory
 
 	bufferViewToDestroy map[VkBufferView]bool
 	bufferViewToCreate  map[VkBufferView]bool
@@ -187,8 +192,9 @@ type frameLoop struct {
 
 	frameNum uint32
 
-	loopTerminated      bool
-	lastObservedCommand api.CmdID
+	loopTerminated       bool
+	lastObservedCommand  api.CmdID
+	totalMemoryAllocated uint64
 }
 
 func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture, loopStart api.CmdID, loopEnd api.CmdID, loopCount int32) *frameLoop {
@@ -229,10 +235,11 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		memoryToUnmap:    make(map[VkDeviceMemory]bool),
 		memoryToMap:      make(map[VkDeviceMemory]bool),
 
-		bufferToDestroy: make(map[VkBuffer]bool),
-		bufferChanged:   make(map[VkBuffer]bool),
-		bufferToCreate:  make(map[VkBuffer]bool),
-		bufferToRestore: make(map[VkBuffer]VkBuffer),
+		bufferToDestroy:   make(map[VkBuffer]bool),
+		bufferChanged:     make(map[VkBuffer]bool),
+		bufferToCreate:    make(map[VkBuffer]bool),
+		bufferToRestore:   make(map[VkBuffer]VkBuffer),
+		bufferMemToBackup: make(map[VkDeviceMemory]VkDeviceMemory),
 
 		bufferViewToDestroy: make(map[VkBufferView]bool),
 		bufferViewToCreate:  make(map[VkBufferView]bool),
@@ -526,6 +533,37 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 
 	f.loopStartState = f.cloneState(ctx, startState)
 	currentState := f.cloneState(ctx, startState)
+
+	st := GetState(currentState)
+	st.PreSubcommand = func(i interface{}) {
+		cr, ok := i.(CommandReferenceʳ)
+		if ok {
+			args := GetCommandArgs(ctx, cr, st)
+			switch ar := args.(type) {
+			case VkCmdBeginRenderPassArgsʳ:
+				rp := st.RenderPasses().Get(ar.RenderPass())
+				f.watcher.ignore = true
+				for i := uint32(0); i < uint32(rp.AttachmentDescriptions().Len()); i++ {
+					att := rp.AttachmentDescriptions().Get(i)
+					if att.InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED ||
+						att.LoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR ||
+						att.LoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE ||
+						att.StencilLoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR ||
+						att.StencilLoadOp() == VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE {
+						f.watcher.ignore = false
+						break
+					}
+				}
+
+			case VkCmdPipelineBarrierArgsʳ:
+				f.watcher.ignore = true
+			}
+		}
+	}
+
+	st.PostSubcommand = func(i interface{}) {
+		f.watcher.ignore = false
+	}
 
 	// Loop through each command mutating the shadow state and looking at what has been created/destroyed
 	err := api.ForeachCmd(ctx, f.capturedLoopCmds, true, func(ctx context.Context, cmdId api.CmdID, cmd api.Cmd) error {
@@ -1156,7 +1194,7 @@ func (f *frameLoop) detectChangedBuffers(ctx context.Context) {
 			// Otherwise, we'll need to capture this objects state IFF it was modified during the loop.
 
 			data := buffer.Memory().Data()
-			span := interval.U64Span{data.Base(), data.Base() + data.Size()}
+			span := interval.U64Span{data.Base() + uint64(buffer.MemoryOffset()), data.Base() + uint64(buffer.MemoryOffset()+buffer.Info().Size())}
 			poolID := data.Pool()
 
 			// Did we see this buffer get written to during the loop? If we did, then we need to capture the values at the start of the loop.
@@ -1171,6 +1209,7 @@ func (f *frameLoop) detectChangedBuffers(ctx context.Context) {
 			}
 		}
 	}
+	log.D(ctx, "Total number of buffer %v, number of buffer changed %v", len(apiState.Buffers().All()), len(f.bufferChanged))
 }
 
 func (f *frameLoop) detectChangedImages(ctx context.Context) {
@@ -1234,6 +1273,7 @@ func (f *frameLoop) detectChangedImages(ctx context.Context) {
 			}
 		}
 	}
+	log.D(ctx, "Total number of Image %v, number of image changed %v", len(apiState.Images().All()), len(f.imageChanged))
 }
 
 func (f *frameLoop) isSameDescriptorSet(src, dst DescriptorSetObjectʳ) bool {
@@ -1366,8 +1406,6 @@ func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *st
 		return err
 	}
 
-	// TODO: Backup other resources.
-
 	// Flush out the backup commands
 	stateBuilder.scratchRes.Free(stateBuilder)
 
@@ -1377,25 +1415,32 @@ func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *st
 
 func (f *frameLoop) createStagingBuffer(ctx context.Context, stateBuilder *stateBuilder, src BufferObjectʳ) (VkBuffer, error) {
 
-	stagingBuffer := VkBuffer(newUnusedID(true, func(x uint64) bool {
-		return GetState(stateBuilder.newState).Buffers().Contains(VkBuffer(x))
-	}))
-
-	mem := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
-		return GetState(stateBuilder.newState).DeviceMemories().Contains(VkDeviceMemory(x))
-	}))
-
 	bufferObj := src.Clone(GetState(stateBuilder.newState).Arena(), api.CloneContext{})
 	usage := VkBufferUsageFlags(uint32(bufferObj.Info().Usage()) | uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
 	bufferObj.Info().SetUsage(usage)
 
-	memObj := bufferObj.Memory().Clone(GetState(stateBuilder.newState).Arena(), api.CloneContext{})
-	memObj.SetVulkanHandle(mem)
-	memObj.SetMappedLocation(Voidᵖ(0))
-	memObj.SetMappedOffset(VkDeviceSize(uint64(0)))
-	memObj.SetMappedSize(VkDeviceSize(uint64(0)))
+	stagingMemory, ok := f.bufferMemToBackup[src.Memory().VulkanHandle()]
+	if !ok {
+		stagingMemory = VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
+			return GetState(stateBuilder.newState).DeviceMemories().Contains(VkDeviceMemory(x))
+		}))
 
-	stateBuilder.createDeviceMemory(memObj, false)
+		memObj := bufferObj.Memory().Clone(GetState(stateBuilder.newState).Arena(), api.CloneContext{})
+		memObj.SetVulkanHandle(stagingMemory)
+		memObj.SetMappedLocation(Voidᵖ(0))
+		memObj.SetMappedOffset(VkDeviceSize(uint64(0)))
+		memObj.SetMappedSize(VkDeviceSize(uint64(0)))
+		stateBuilder.createDeviceMemory(memObj, false)
+		f.totalMemoryAllocated += uint64(memObj.AllocationSize())
+		log.D(ctx, "Allocate device memory of size %v, total allocated %v", memObj.AllocationSize(), f.totalMemoryAllocated)
+
+		f.bufferMemToBackup[src.Memory().VulkanHandle()] = stagingMemory
+	}
+
+	memObj := GetState(stateBuilder.newState).DeviceMemories().Get(stagingMemory)
+	stagingBuffer := VkBuffer(newUnusedID(true, func(x uint64) bool {
+		return GetState(stateBuilder.newState).Buffers().Contains(VkBuffer(x))
+	}))
 
 	err := stateBuilder.createSameBuffer(bufferObj, stagingBuffer, memObj)
 
@@ -2445,6 +2490,7 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 		stateBuilder.createSameBuffer(srcBuffer, buf, mem)
 	}
 
+	log.D(ctx, "Total number of bufferToRestore is %v", len(f.bufferToRestore))
 	for dst, src := range f.bufferToRestore {
 
 		srcBufferObj := GetState(stateBuilder.newState).Buffers().Get(src)
@@ -2530,8 +2576,6 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder,
 		return nil
 	}
 
-	apiState := GetState(stateBuilder.newState)
-
 	for toCreate := range f.imageToCreate {
 		log.D(ctx, "Recreate image %v which was destroyed during loop.", toCreate)
 		image := GetState(f.loopStartState).Images().Get(toCreate)
@@ -2539,6 +2583,7 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder,
 		// For image creation, the associated image views changes are handled in the restore step below.
 	}
 
+	apiState := GetState(stateBuilder.newState)
 	for dst, src := range f.imageToRestore {
 
 		dstObj := apiState.Images().Get(dst)
