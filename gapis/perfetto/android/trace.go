@@ -62,6 +62,10 @@ func hasRenderStageEnabled(perfettoConfig *perfetto_pb.TraceConfig) bool {
 
 // SetupProfileLayersSource configures the device to allow packages to be used as layer sources for profiling
 func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName string, abi *device.ABI) (app.Cleanup, error) {
+	cleanup, err := adb.SetupPrereleaseDriver(ctx, d, packageName)
+	if err != nil {
+		return cleanup.Invoke(ctx), err
+	}
 	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
 		return nil, err
@@ -71,7 +75,8 @@ func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName str
 		packages = append(packages, gapidapk.PackageName(abi))
 	}
 
-	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, []string{}, true)
+	nextCleanup, err := android.SetupLayers(ctx, d, packageName, packages, []string{}, true)
+	cleanup = cleanup.Then(nextCleanup)
 	if err != nil {
 		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages layer packages.")
 	}
@@ -128,7 +133,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		hasRenderStages := false
 		if driver.Package != "" {
 			// Setup the application to use the prerelease driver.
-			nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, a.Package)
+			nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, a.Package.Name)
 			cleanup = cleanup.Then(nextCleanup)
 			if err != nil {
 				return nil, cleanup.Invoke(ctx), err

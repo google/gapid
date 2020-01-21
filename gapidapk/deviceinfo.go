@@ -116,7 +116,7 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	var cleanup app.Cleanup
 
 	// Set up device info service to use prerelease driver.
-	nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, apk.InstalledPackage)
+	nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, apk.InstalledPackage.Name)
 	cleanup = cleanup.Then(nextCleanup)
 	if err != nil {
 		cleanup.Invoke(ctx)
