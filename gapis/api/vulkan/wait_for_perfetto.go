@@ -59,9 +59,9 @@ func (t *WaitForPerfetto) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	t.wff.Transform(ctx, id, cmd, out)
 }
 
-func (t *WaitForPerfetto) Flush(ctx context.Context, out transform.Writer) {
+func (t *WaitForPerfetto) Flush(ctx context.Context, out transform.Writer) error {
 	addVkDeviceWaitIdle(ctx, out)
-	t.wff.Flush(ctx, out)
+	return t.wff.Flush(ctx, out)
 }
 
 func (t *WaitForPerfetto) PreLoop(ctx context.Context, out transform.Writer)  {}

@@ -524,7 +524,7 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}
 }
 
-func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
+func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) error {
 	s := out.State()
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	for _, queryPoolInfo := range t.queryPools {
@@ -532,6 +532,7 @@ func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
 	}
 	t.cleanup(ctx, out)
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.replayResult })
+	return nil
 }
 
 func (t *queryTimestamps) PreLoop(ctx context.Context, out transform.Writer) {

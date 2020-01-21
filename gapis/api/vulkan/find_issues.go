@@ -263,14 +263,16 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	}
 }
 
-func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
+func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {
 	cb := CommandBuilder{Thread: 0, Arena: out.State().Arena}
 	for inst, ch := range t.reportCallbacks {
-		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch))
+		if err := out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch)); err != nil {
+			return err
+		}
 		// It is safe to delete keys in loop in Go
 		delete(t.reportCallbacks, inst)
 	}
-	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+	err := out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		return b.RegisterNotificationReader(builder.IssuesNotificationID, func(n gapir.Notification) {
 			vkApi := API{}
 			eMsg := n.GetErrorMsg()
@@ -298,5 +300,9 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 			t.issues = append(t.issues, issue)
 		})
 	}))
+	if err != nil {
+		return err
+	}
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.issues })
+	return nil
 }

@@ -2199,7 +2199,7 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	return renderInfo.image, nil
 }
 
-func (*stencilOverdraw) Flush(ctx context.Context, out transform.Writer) {}
+func (*stencilOverdraw) Flush(ctx context.Context, out transform.Writer) error { return nil }
 
 func (*stencilOverdraw) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (*stencilOverdraw) PostLoop(ctx context.Context, output transform.Writer) {}

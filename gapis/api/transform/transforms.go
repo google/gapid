@@ -85,7 +85,7 @@ func (t transform) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out
 	t.F(ctx, id, cmd, output)
 }
 
-func (t transform) Flush(ctx context.Context, output Writer) {}
+func (t transform) Flush(ctx context.Context, output Writer) error { return nil }
 
 func (t transform) Name() string { return t.N }
 

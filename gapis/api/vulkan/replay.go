@@ -324,10 +324,10 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer)    {}
-func (t *makeAttachementReadable) PreLoop(ctx context.Context, out transform.Writer)  {}
-func (t *makeAttachementReadable) PostLoop(ctx context.Context, out transform.Writer) {}
-func (t *makeAttachementReadable) BuffersCommands() bool                              { return false }
+func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) error { return nil }
+func (t *makeAttachementReadable) PreLoop(ctx context.Context, out transform.Writer)     {}
+func (t *makeAttachementReadable) PostLoop(ctx context.Context, out transform.Writer)    {}
+func (t *makeAttachementReadable) BuffersCommands() bool                                 { return false }
 
 func buildReplayEnumeratePhysicalDevices(
 	ctx context.Context, s *api.GlobalState, cb CommandBuilder, instance VkInstance,
@@ -555,10 +555,10 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	return
 }
 
-func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer)    {}
-func (t *dropInvalidDestroy) PreLoop(ctx context.Context, out transform.Writer)  {}
-func (t *dropInvalidDestroy) PostLoop(ctx context.Context, out transform.Writer) {}
-func (t *dropInvalidDestroy) BuffersCommands() bool                              { return false }
+func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer) error { return nil }
+func (t *dropInvalidDestroy) PreLoop(ctx context.Context, out transform.Writer)     {}
+func (t *dropInvalidDestroy) PostLoop(ctx context.Context, out transform.Writer)    {}
+func (t *dropInvalidDestroy) BuffersCommands() bool                                 { return false }
 
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
@@ -569,7 +569,7 @@ func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) error {
 	s := out.State()
 	so := getStateObject(s)
 	id := api.CmdNoID
@@ -579,123 +579,179 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 
 	// Wait all queues in all devices to finish their jobs first.
 	for handle := range so.Devices().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDeviceWaitIdle(handle, VkResult_VK_SUCCESS))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDeviceWaitIdle(handle, VkResult_VK_SUCCESS)); err != nil {
+			return err
+		}
 	}
 
 	// Synchronization primitives.
 	for handle, object := range so.Events().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyEvent(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyEvent(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Fences().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyFence(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyFence(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Semaphores().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// SamplerYcbcrConversions
 	for handle, object := range so.SamplerYcbcrConversions().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySamplerYcbcrConversion(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySamplerYcbcrConversion(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Framebuffers, samplers.
 	for handle, object := range so.Framebuffers().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Samplers().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Descriptor sets.
 	for handle, object := range so.DescriptorPools().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.DescriptorSetLayouts().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Buffers.
 	for handle, object := range so.BufferViews().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyBufferView(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyBufferView(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Buffers().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Shader modules.
 	for handle, object := range so.ShaderModules().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyShaderModule(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyShaderModule(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Pipelines.
 	for handle, object := range so.GraphicsPipelines().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.ComputePipelines().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.PipelineLayouts().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineLayout(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineLayout(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.PipelineCaches().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineCache(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineCache(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Render passes.
 	for handle, object := range so.RenderPasses().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyRenderPass(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyRenderPass(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	for handle, object := range so.QueryPools().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyQueryPool(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyQueryPool(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Command buffers.
 	for handle, object := range so.CommandPools().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyCommandPool(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyCommandPool(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Swapchains.
 	for handle, object := range so.Swapchains().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySwapchainKHR(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySwapchainKHR(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Memories.
 	for handle, object := range so.DeviceMemories().All() {
-		out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Images
 	for handle, object := range so.ImageViews().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	// Note: so.Images also contains Swapchain images. We do not want
 	// to delete those, as that must be handled by VkDestroySwapchainKHR
 	for handle, object := range so.Images().All() {
 		if !object.IsSwapchainImage() {
-			out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device(), handle, p))
+			if err := out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device(), handle, p)); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Devices.
 	for handle := range so.Devices().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDevice(handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDevice(handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Surfaces.
 	for handle, object := range so.Surfaces().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Debug report callbacks
 	for handle, object := range so.DebugReportCallbacks().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDebugReportCallbackEXT(object.Instance(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDebugReportCallbackEXT(object.Instance(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Instances.
 	for handle := range so.Instances().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyInstance(handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyInstance(handle, p)); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}
@@ -752,10 +808,10 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer)    {}
-func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)  {}
-func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer) {}
-func (t *DisplayToSurface) BuffersCommands() bool                              { return false }
+func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) error { return nil }
+func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)     {}
+func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer)    {}
+func (t *DisplayToSurface) BuffersCommands() bool                                 { return false }
 
 // issuesConfig is a replay.Config used by issuesRequests.
 type issuesConfig struct {

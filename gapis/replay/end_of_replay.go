@@ -41,8 +41,9 @@ func (t *EndOfReplay) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, 
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *EndOfReplay) Flush(ctx context.Context, out transform.Writer) {
+func (t *EndOfReplay) Flush(ctx context.Context, out transform.Writer) error {
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return nil })
+	return nil
 }
 
 func (t *EndOfReplay) PreLoop(ctx context.Context, out transform.Writer)  {}

@@ -442,7 +442,7 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.
 	}
 }
 
-func (t *VulkanTerminator) Flush(ctx context.Context, out transform.Writer)       {}
+func (t *VulkanTerminator) Flush(ctx context.Context, out transform.Writer) error { return nil }
 func (t *VulkanTerminator) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (t *VulkanTerminator) PostLoop(ctx context.Context, output transform.Writer) {}
 func (t *VulkanTerminator) BuffersCommands() bool                                 { return false }

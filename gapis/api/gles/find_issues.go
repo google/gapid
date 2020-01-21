@@ -290,6 +290,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	}
 }
 
-func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
+func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.issues })
+	return nil
 }

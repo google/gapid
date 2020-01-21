@@ -63,8 +63,9 @@ func (t *fileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out 
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *fileLog) Flush(ctx context.Context, out Writer) {
+func (t *fileLog) Flush(ctx context.Context, out Writer) error {
 	t.file.Close()
+	return nil
 }
 
 func (t *fileLog) PreLoop(ctx context.Context, output Writer) {

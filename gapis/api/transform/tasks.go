@@ -60,12 +60,13 @@ func (t *Tasks) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Wr
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *Tasks) Flush(ctx context.Context, out Writer) {
+func (t *Tasks) Flush(ctx context.Context, out Writer) error {
 	t.sort()
 	for _, task := range t.tasks {
 		task.work(ctx, out)
 	}
 	t.tasks = nil
+	return nil
 }
 
 func (t *Tasks) PreLoop(ctx context.Context, output Writer)  {}

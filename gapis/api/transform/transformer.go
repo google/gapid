@@ -28,7 +28,7 @@ type Transformer interface {
 	Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)
 	// Flush is called at the end of a command stream to cause Transformers
 	// that cache commands to send any they have stored into the output.
-	Flush(ctx context.Context, output Writer)
+	Flush(ctx context.Context, output Writer) error
 	// Preloop is called at the beginning of the loop if the trace is going to
 	// be looped.
 	PreLoop(ctx context.Context, output Writer)

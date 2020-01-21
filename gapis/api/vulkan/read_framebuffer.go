@@ -71,7 +71,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}
 }
 
-func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer)       {}
+func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) error { return nil }
 func (t *readFramebuffer) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (t *readFramebuffer) PostLoop(ctx context.Context, output transform.Writer) {}
 func (t *readFramebuffer) BuffersCommands() bool                                 { return false }

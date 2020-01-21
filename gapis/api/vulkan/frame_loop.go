@@ -486,18 +486,20 @@ func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out tran
 	out.NotifyPostLoop(ctx)
 }
 
-func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) {
+func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) error {
 
 	log.W(ctx, "FrameLoop FLUSH")
 
 	if f.loopTerminated == false {
 		if f.lastObservedCommand == api.CmdNoID {
 			log.W(ctx, "FrameLoop transform was applied to whole trace (Flush() has been called) without the loop starting.")
+			return fmt.Errorf("FrameLoop transform was applied to whole trace (Flush() has been called) without the loop starting.")
 		} else {
 			log.E(ctx, "FrameLoop: current frame is %v cmdId %v, cmd is %v.", f.frameNum, f.capturedLoopCmdIds[len(f.capturedLoopCmdIds)-1], f.capturedLoopCmds[len(f.capturedLoopCmds)-1])
 			log.F(ctx, true, "FrameLoop transform was applied to whole trace (Flush() has been called) mid loop. Cannot end transformation in this state.")
 		}
 	}
+	return nil
 }
 
 func (f *frameLoop) PreLoop(ctx context.Context, out transform.Writer) {
