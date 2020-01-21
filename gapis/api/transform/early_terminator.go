@@ -39,17 +39,19 @@ func (t *earlyTerminator) Add(ctx context.Context, extraCommands int, id api.Cmd
 	return nil
 }
 
-func (t *earlyTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *earlyTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) error {
 	if t.done && (cmd.API() == nil || cmd.API().ID() == t.api) {
-		return
+		return nil
 	}
 
-	out.MutateAndWrite(ctx, id, cmd)
+	if err := out.MutateAndWrite(ctx, id, cmd); err != nil {
+		return err
+	}
 	// Keep a.API() == nil so that we can test without an API
 	if t.lastID == id {
 		t.done = true
-		return
 	}
+	return nil
 }
 
 func (t *earlyTerminator) Flush(ctx context.Context, out Writer) error { return nil }

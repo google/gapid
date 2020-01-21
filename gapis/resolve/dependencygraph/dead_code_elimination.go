@@ -75,7 +75,7 @@ func (t *DeadCodeElimination) Request(id api.CmdID) {
 	}
 }
 
-func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) {
+func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) error {
 	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 

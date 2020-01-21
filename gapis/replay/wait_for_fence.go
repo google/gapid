@@ -29,11 +29,11 @@ type WaitForFence struct {
 	ShouldWait        func(ctx context.Context, id api.CmdID, cmd api.Cmd) bool
 }
 
-func (t *WaitForFence) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *WaitForFence) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	if t.TransformCallback != nil && t.ShouldWait != nil && t.ShouldWait(ctx, id, cmd) {
 		t.AddTransformWait(ctx, id, out)
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *WaitForFence) Flush(ctx context.Context, out transform.Writer) error {

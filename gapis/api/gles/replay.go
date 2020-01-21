@@ -377,8 +377,8 @@ func (a API) Profile(
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, cmd)
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) error {

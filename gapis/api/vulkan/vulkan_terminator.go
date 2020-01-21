@@ -398,9 +398,9 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	newSubmitData.Free()
 }
 
-func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	if t.stopped {
-		return
+		return nil
 	}
 
 	doCut := false
@@ -440,6 +440,7 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.
 	if id == t.lastRequest {
 		t.stopped = true
 	}
+	return nil
 }
 
 func (t *VulkanTerminator) Flush(ctx context.Context, out transform.Writer) error { return nil }

@@ -157,9 +157,9 @@ func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalSt
 	return nil
 }
 
-func (m *MappingExporter) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (m *MappingExporter) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	m.thread = cmd.Thread()
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func printToFile(ctx context.Context, path string, mappings *map[uint64][]service.VulkanHandleMappingItem) {

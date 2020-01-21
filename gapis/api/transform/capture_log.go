@@ -51,7 +51,7 @@ func NewCaptureLog(ctx context.Context, sourceCapture *capture.GraphicsCapture, 
 	}
 }
 
-func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) error {
 	// Don't write out the custom commands (e.g. replay.Custom)
 	if cmd.API() != nil {
 		if id.IsReal() {
@@ -59,7 +59,7 @@ func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		}
 		t.cmds = append(t.cmds, cmd)
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *captureLog) Flush(ctx context.Context, out Writer) error {

@@ -157,7 +157,7 @@ func patchBufferusage(usage VkBufferUsageFlags) (VkBufferUsageFlags, bool) {
 	return VkBufferUsageFlags(uint32(usage) | uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)), true
 }
 
-func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -196,8 +196,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			for _, w := range observations.Writes {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newCmd)
-			return
+			return out.MutateAndWrite(ctx, id, newCmd)
 		}
 	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		pinfo := swapchain.PCreateInfo()
@@ -227,8 +226,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			for _, w := range observations.Writes {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newCmd)
-			return
+			return out.MutateAndWrite(ctx, id, newCmd)
 		}
 	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok && !t.imagesOnly {
 		pInfo := createRenderPass.PCreateInfo()
@@ -244,8 +242,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		// Returns if no attachment description needs to be changed
 		if !changed {
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 		// Build new attachments data, new create info and new command
 		newAttachments := s.AllocDataOrPanic(ctx, attachments)
@@ -269,14 +266,12 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		for _, w := range createRenderPass.Extras().Observations().Writes {
 			newCmd.AddWrite(w.Range, w.ID)
 		}
-		out.MutateAndWrite(ctx, id, newCmd)
-		return
+		return out.MutateAndWrite(ctx, id, newCmd)
 	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok && !t.imagesOnly {
 		if e.PPhysicalDevices() == 0 {
 			// Querying for the number of devices.
 			// No changes needed here.
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
@@ -292,8 +287,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		for _, e := range cmd.Extras().All() {
 			newEnumerate.Extras().Add(e)
 		}
-		out.MutateAndWrite(ctx, id, newEnumerate)
-		return
+		return out.MutateAndWrite(ctx, id, newEnumerate)
 	} else if buffer, ok := cmd.(*VkCreateBuffer); ok {
 		pinfo := buffer.PCreateInfo()
 		info := pinfo.MustRead(ctx, buffer, s, nil)
@@ -317,11 +311,10 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			for _, w := range observations.Writes {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newCmd)
-			return
+			return out.MutateAndWrite(ctx, id, newCmd)
 		}
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) error { return nil }
@@ -352,7 +345,7 @@ func buildReplayEnumeratePhysicalDevices(
 // whose destroying targets are not recorded in the state.
 type dropInvalidDestroy struct{ tag string }
 
-func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -366,12 +359,12 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	case *VkDestroyInstance:
 		if !GetState(s).Instances().Contains(cmd.Instance()) {
 			warnDropCmd(cmd.Instance())
-			return
+			return nil
 		}
 	case *VkDestroyDevice:
 		if !GetState(s).Devices().Contains(cmd.Device()) {
 			warnDropCmd(cmd.Device())
-			return
+			return nil
 		}
 	case *VkFreeCommandBuffers:
 		cmdBufCount := cmd.CommandBufferCount()
@@ -390,7 +383,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 			if len(newCmdBufs) == 0 {
 				// no need to have this command
 				warnDropCmd(cmdBufs)
-				return
+				return nil
 			}
 			if len(newCmdBufs) != len(cmdBufs) {
 				// need to modify the command to drop the command buffers not
@@ -399,8 +392,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 				newCmdBufsData := s.AllocDataOrPanic(ctx, newCmdBufs)
 				defer newCmdBufsData.Free()
 				newCmd := cb.VkFreeCommandBuffers(cmd.Device(), cmd.CommandPool(), uint32(len(newCmdBufs)), newCmdBufsData.Ptr()).AddRead(newCmdBufsData.Data())
-				out.MutateAndWrite(ctx, id, newCmd)
-				return
+				return out.MutateAndWrite(ctx, id, newCmd)
 			}
 			// No need to modify the command, just mutate and write the command
 			// like others.
@@ -408,53 +400,53 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	case *VkFreeMemory:
 		if !GetState(s).DeviceMemories().Contains(cmd.Memory()) {
 			warnDropCmd(cmd.Memory())
-			return
+			return nil
 		}
 	case *VkDestroyBuffer:
 		if !GetState(s).Buffers().Contains(cmd.Buffer()) {
 			warnDropCmd(cmd.Buffer())
-			return
+			return nil
 		}
 	case *VkDestroyBufferView:
 		if !GetState(s).BufferViews().Contains(cmd.BufferView()) {
 			warnDropCmd(cmd.BufferView())
-			return
+			return nil
 		}
 	case *VkDestroyImage:
 		if !GetState(s).Images().Contains(cmd.Image()) {
 			warnDropCmd(cmd.Image())
-			return
+			return nil
 		}
 	case *VkDestroyImageView:
 		if !GetState(s).ImageViews().Contains(cmd.ImageView()) {
 			warnDropCmd(cmd.ImageView())
-			return
+			return nil
 		}
 	case *VkDestroyShaderModule:
 		if !GetState(s).ShaderModules().Contains(cmd.ShaderModule()) {
 			warnDropCmd(cmd.ShaderModule())
-			return
+			return nil
 		}
 	case *VkDestroyPipeline:
 		if !GetState(s).GraphicsPipelines().Contains(cmd.Pipeline()) &&
 			!GetState(s).ComputePipelines().Contains(cmd.Pipeline()) {
 			warnDropCmd(cmd.Pipeline())
-			return
+			return nil
 		}
 	case *VkDestroyPipelineLayout:
 		if !GetState(s).PipelineLayouts().Contains(cmd.PipelineLayout()) {
 			warnDropCmd(cmd.PipelineLayout())
-			return
+			return nil
 		}
 	case *VkDestroyPipelineCache:
 		if !GetState(s).PipelineCaches().Contains(cmd.PipelineCache()) {
 			warnDropCmd(cmd.PipelineCache())
-			return
+			return nil
 		}
 	case *VkDestroySampler:
 		if !GetState(s).Samplers().Contains(cmd.Sampler()) {
 			warnDropCmd(cmd.Sampler())
-			return
+			return nil
 		}
 	case *VkFreeDescriptorSets:
 		descSetCount := cmd.DescriptorSetCount()
@@ -473,7 +465,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 			if len(newDescSets) == 0 {
 				// no need to have this command
 				warnDropCmd(descSets)
-				return
+				return nil
 			}
 			if len(newDescSets) != len(descSets) {
 				// need to modify the command to drop the command buffers not
@@ -484,8 +476,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 				newCmd := cb.VkFreeDescriptorSets(
 					cmd.Device(), cmd.DescriptorPool(), uint32(len(newDescSets)),
 					newDescSetsData.Ptr(), VkResult_VK_SUCCESS).AddRead(newDescSetsData.Data())
-				out.MutateAndWrite(ctx, id, newCmd)
-				return
+				return out.MutateAndWrite(ctx, id, newCmd)
 			}
 			// No need to modify the command, just mutate and write the command
 			// like others.
@@ -493,66 +484,65 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	case *VkDestroyDescriptorSetLayout:
 		if !GetState(s).DescriptorSetLayouts().Contains(cmd.DescriptorSetLayout()) {
 			warnDropCmd(cmd.DescriptorSetLayout())
-			return
+			return nil
 		}
 	case *VkDestroyDescriptorPool:
 		if !GetState(s).DescriptorPools().Contains(cmd.DescriptorPool()) {
 			warnDropCmd(cmd.DescriptorPool())
-			return
+			return nil
 		}
 	case *VkDestroyFence:
 		if !GetState(s).Fences().Contains(cmd.Fence()) {
 			warnDropCmd(cmd.Fence())
-			return
+			return nil
 		}
 	case *VkDestroySemaphore:
 		if !GetState(s).Semaphores().Contains(cmd.Semaphore()) {
 			warnDropCmd(cmd.Semaphore())
-			return
+			return nil
 		}
 	case *VkDestroyEvent:
 		if !GetState(s).Events().Contains(cmd.Event()) {
 			warnDropCmd(cmd.Event())
-			return
+			return nil
 		}
 	case *VkDestroyQueryPool:
 		if !GetState(s).QueryPools().Contains(cmd.QueryPool()) {
 			warnDropCmd(cmd.QueryPool())
-			return
+			return nil
 		}
 	case *VkDestroyFramebuffer:
 		if !GetState(s).Framebuffers().Contains(cmd.Framebuffer()) {
 			warnDropCmd(cmd.Framebuffer())
-			return
+			return nil
 		}
 	case *VkDestroyRenderPass:
 		if !GetState(s).RenderPasses().Contains(cmd.RenderPass()) {
 			warnDropCmd(cmd.RenderPass())
-			return
+			return nil
 		}
 	case *VkDestroyCommandPool:
 		if !GetState(s).CommandPools().Contains(cmd.CommandPool()) {
 			warnDropCmd(cmd.CommandPool())
-			return
+			return nil
 		}
 	case *VkDestroySurfaceKHR:
 		if !GetState(s).Surfaces().Contains(cmd.Surface()) {
 			warnDropCmd(cmd.Surface())
-			return
+			return nil
 		}
 	case *VkDestroySwapchainKHR:
 		if !GetState(s).Swapchains().Contains(cmd.Swapchain()) {
 			warnDropCmd(cmd.Swapchain())
-			return
+			return nil
 		}
 	case *VkDestroyDebugReportCallbackEXT:
 		if !GetState(s).DebugReportCallbacks().Contains(cmd.Callback()) {
 			warnDropCmd(cmd.Callback())
-			return
+			return nil
 		}
 	}
-	out.MutateAndWrite(ctx, id, cmd)
-	return
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer) error { return nil }
@@ -565,8 +555,8 @@ func (t *dropInvalidDestroy) BuffersCommands() bool                             
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, cmd)
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) error {
@@ -766,7 +756,7 @@ func newDisplayToSurface() *DisplayToSurface {
 
 // DisplayToSurface is a transformation that enables rendering during replay to
 // the original surface.
-func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	switch c := cmd.(type) {
 	case *VkCreateSwapchainKHR:
 		newCmd := c.clone(out.State().Arena)
@@ -774,8 +764,7 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 		// Add an extra to indicate to custom_replay to add a flag to
 		// the virtual swapchain pNext
 		newCmd.extras = append(api.CmdExtras{t}, cmd.Extras().All()...)
-		out.MutateAndWrite(ctx, id, newCmd)
-		return
+		return out.MutateAndWrite(ctx, id, newCmd)
 	case *VkCreateAndroidSurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
@@ -805,7 +794,7 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
 		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP)
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) error { return nil }

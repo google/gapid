@@ -91,7 +91,7 @@ func simplifyFragmentShader(ctx context.Context) transform.Transformer {
 	ctx = log.Enter(ctx, "simplifyFragmentShader")
 
 	return transform.Transform("simplifyFragmentShader", func(ctx context.Context,
-		id api.CmdID, cmd api.Cmd, out transform.Writer) {
+		id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 
 		s := out.State()
 		l := s.MemoryLayout
@@ -153,9 +153,9 @@ func simplifyFragmentShader(ctx context.Context) transform.Transformer {
 			}
 			newCmd.AddRead(nameData.Data())
 
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
 		default:
-			out.MutateAndWrite(ctx, id, cmd)
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 	})
 }

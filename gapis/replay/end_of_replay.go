@@ -37,8 +37,8 @@ func (t *EndOfReplay) AddResult(r Result) {
 	t.res = append(t.res, r)
 }
 
-func (t *EndOfReplay) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, cmd)
+func (t *EndOfReplay) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *EndOfReplay) Flush(ctx context.Context, out transform.Writer) error {

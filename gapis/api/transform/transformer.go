@@ -25,7 +25,7 @@ type Transformer interface {
 	// Transform takes a given command and identifier and Writes out a possibly
 	// transformed set of commands to the output.
 	// Transform must not modify cmd in any way.
-	Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)
+	Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) error
 	// Flush is called at the end of a command stream to cause Transformers
 	// that cache commands to send any they have stored into the output.
 	Flush(ctx context.Context, output Writer) error

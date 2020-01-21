@@ -374,7 +374,7 @@ func (b *DCEBuilder) Request(ctx context.Context, fci api.SubCmdIdx) error {
 
 // Transform is to comform the interface of Transformer, but does not accept
 // any input.
-func (*DCEBuilder) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) {
+func (*DCEBuilder) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) error {
 	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 

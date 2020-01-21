@@ -26,7 +26,7 @@ import (
 func minimizeViewport(ctx context.Context) transform.Transformer {
 	ctx = log.Enter(ctx, "Minimize viewport")
 	return transform.Transform("Minimize viewport", func(ctx context.Context,
-		id api.CmdID, cmd api.Cmd, out transform.Writer) {
+		id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 
 		const width = 1
 		const height = 1
@@ -179,5 +179,6 @@ func minimizeViewport(ctx context.Context) transform.Transformer {
 		default:
 			out.MutateAndWrite(ctx, id, cmd)
 		}
+		return nil
 	})
 }

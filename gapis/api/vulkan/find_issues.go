@@ -82,13 +82,13 @@ func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, numInitialCm
 	return t
 }
 
-func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	ctx = log.Enter(ctx, "findIssues")
 
 	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */, nil /* no watcher */)
 	if mutateErr != nil {
 		// Ignore since downstream transform layers can only consume valid commands
-		return
+		return nil
 	}
 
 	s := out.State()
@@ -261,6 +261,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		))
 		t.reportCallbacks[inst] = callbackHandle
 	}
+	return nil
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {

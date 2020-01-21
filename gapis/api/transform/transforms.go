@@ -72,17 +72,17 @@ func (l *Transforms) Prepend(t Transformer) {
 
 // Transform is a helper for building simple Transformers that are implemented
 // by function f. name is used to identify the transform when logging.
-func Transform(name string, f func(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)) Transformer {
+func Transform(name string, f func(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) error) Transformer {
 	return transform{name, f}
 }
 
 type transform struct {
-	N string                                            // Transform name. Used for debugging.
-	F func(context.Context, api.CmdID, api.Cmd, Writer) // The transform function.
+	N string                                                  // Transform name. Used for debugging.
+	F func(context.Context, api.CmdID, api.Cmd, Writer) error // The transform function.
 }
 
-func (t transform) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) {
-	t.F(ctx, id, cmd, output)
+func (t transform) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) error {
+	return t.F(ctx, id, cmd, output)
 }
 
 func (t transform) Flush(ctx context.Context, output Writer) error { return nil }
@@ -111,8 +111,7 @@ func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd a
 			return err
 		}
 	}
-	p.T.Transform(ctx, id, cmd, p.O)
-	return nil
+	return p.T.Transform(ctx, id, cmd, p.O)
 }
 
 // NotifyPreLoop notifies next transformer in the chain about the beginning of the loop
