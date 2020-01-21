@@ -31,6 +31,9 @@
         android:supportsRtl="true"
         android:debuggable="true"
         >
+        <meta-data
+            android:name="com.android.graphics.developerdriver.enable"
+            android:value="true" />
         <activity android:name="com.google.android.gapid.ReplayerActivity"
                   android:label="GAPID - ${name}">
             <meta-data android:name="android.app.lib_name"
@@ -40,7 +43,9 @@
             </intent-filter>
         </activity>
         <activity android:name="com.google.android.gapid.VkSampleActivity"
-                  android:label="GAPID - Vulkan Sample">
+                  android:label="GAPID - Vulkan Sample"
+                  android:configChanges="orientation|screenSize"
+                  android:screenOrientation="portrait">
             <meta-data android:name="android.app.lib_name"
                        android:value="vulkan_sample" />
             <intent-filter>
