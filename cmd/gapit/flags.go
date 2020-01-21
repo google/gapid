@@ -424,6 +424,7 @@ type (
 	GpuProfileFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
+		Json  bool `help:"Return replay profiling data as JSON instead of text"`
 	}
 
 	CreateGraphVisualizationFlags struct {

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/service"
@@ -73,10 +74,18 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if err != nil {
 		return err
 	}
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stdout, "%v\n", log.Err(ctx, err, "Couldn't marshal trace to JSON"))
+
+	if verb.Json {
+		jsonBytes, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			return log.Err(ctx, err, "Couldn't marshal trace to JSON")
+		}
+		fmt.Fprintln(os.Stdout, string(jsonBytes))
+	} else {
+		err = proto.MarshalText(os.Stdout, res)
+		if err != nil {
+			return log.Err(ctx, err, "Couldn't marshal trace to text")
+		}
 	}
-	fmt.Fprintln(os.Stdout, string(jsonBytes))
 	return nil
 }
