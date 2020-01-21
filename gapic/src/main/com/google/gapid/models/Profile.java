@@ -22,6 +22,7 @@ import static java.util.logging.Level.WARNING;
 
 import com.google.common.base.Objects;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -125,11 +126,25 @@ public class Profile
     }
 
     public boolean hasSlices() {
-      return profile.getSlices().getSlicesCount() > 0;
+      return profile.getSlices().getSlicesCount() > 0 &&
+          profile.getSlices().getTracksCount() > 0;
     }
 
     public Service.ProfilingData.GpuSlices getSlices() {
       return profile.getSlices();
+    }
+
+    public TimeSpan getSlicesTimeSpan() {
+      if (!hasSlices()) {
+        return TimeSpan.ZERO;
+      }
+
+      long start = Long.MAX_VALUE, end = 0;
+      for (Service.ProfilingData.GpuSlices.Slice slice : profile.getSlices().getSlicesList()) {
+        start = Math.min(slice.getTs(), start);
+        end = Math.max(slice.getTs() + slice.getDur(), end);
+      }
+      return new TimeSpan(start, end);
     }
   }
 

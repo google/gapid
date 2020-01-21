@@ -85,4 +85,6 @@ public interface Messages {
   public static final String GEO_SEMANTICS_HINT = "Manually configure the vertex stream semantics:";
   public static final String QUERY_VIEW_WINDOW_TITLE = "AGI - Query Shell";
   public static final String KEYBOARD_MOUSE_HELP_TITLE = "Keyboard/Mouse Shortcut Help";
+  public static final String PROFILE_NO_SLICES =
+      "GPU Profiling is not supported on this device or for this capture";
 }
