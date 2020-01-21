@@ -43,7 +43,7 @@ public class TimeSpan {
   public final long end;
 
   public TimeSpan(long startNs, long endNs) {
-    checkArgument(startNs <= endNs, "%d > %d", startNs, endNs);
+    checkArgument(startNs <= endNs, "%s > %s", startNs, endNs);
     this.start = startNs;
     this.end = endNs;
   }
@@ -62,6 +62,10 @@ public class TimeSpan {
 
   public boolean contains(TimeSpan other) {
     return start <= other.start && end >= other.end;
+  }
+
+  public boolean overlaps(long oStart, long oEnd) {
+    return start < oEnd && oStart < end;
   }
 
   public TimeSpan expand(long deltaNs) {
