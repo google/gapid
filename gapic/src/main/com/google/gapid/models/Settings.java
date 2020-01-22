@@ -122,7 +122,10 @@ public class Settings {
     if (file.exists() && file.canRead()) {
       try (Reader reader = new FileReader(file)) {
         SettingsProto.Settings.Builder read = SettingsProto.Settings.newBuilder();
-        TextFormat.merge(reader, read);
+        TextFormat.Parser.newBuilder()
+            .setAllowUnknownFields(true)
+            .build()
+            .merge(reader, read);
         return new Settings(read);
       } catch (TextFormat.ParseException e) {
         LOG.log(FINE, "Proto parse error reading properties from " + file, e);
