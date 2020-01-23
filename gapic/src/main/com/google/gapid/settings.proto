@@ -72,11 +72,13 @@ message Trace {
       MANUAL = 0;
       BEGINNING = 1;
       FRAME = 2;
+      TIME = 3;
     }
 
     Type type = 1;
     int32 start_frame = 2;
-    int32 duration = 3;
+    int32 start_time = 3;
+    int32 duration = 4;
   }
 
   string device_serial = 1;

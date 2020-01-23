@@ -32,7 +32,9 @@ import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.models.Analytics;
@@ -491,8 +493,8 @@ public class TracerDialog {
           }
           mecWarningLabel.requestLayout();
 
-          boolean startAtFrame = startType.getSelectionIndex() == StartType.Frame.ordinal();
-          startFrame.setVisible(startAtFrame);
+          StartType start = StartType.values()[startType.getSelectionIndex()];
+          startFrame.setVisible(start == StartType.Frame || start == StartType.Time);
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
         startType.addListener(SWT.Selection, mecListener);
@@ -602,10 +604,10 @@ public class TracerDialog {
             isPerfetto ? Messages.CAPTURE_TRACE_PERFETTO : Messages.CAPTURE_TRACE_GRAPHICS);
         withoutBuffering.setEnabled(!isPerfetto);
         withoutBuffering.setSelection(!isPerfetto && trace.getWithoutBuffering());
-        if (isPerfetto && startType.getItemCount() == 3) {
+        if (isPerfetto && startType.getItemCount() == 4) {
           startType.remove(StartType.Frame.ordinal());
-        } else if (!isPerfetto && startType.getItemCount() == 2) {
-          startType.add(StartType.Frame.name());
+        } else if (!isPerfetto && startType.getItemCount() == 3) {
+          startType.add(StartType.Frame.name(), StartType.Frame.ordinal());
         }
         switch (dur.getType()) {
           case BEGINNING:
@@ -613,16 +615,20 @@ public class TracerDialog {
             break;
           case FRAME:
             startType.select(StartType.Frame.ordinal());
+            startFrame.setSelection(dur.getStartFrame());
+            break;
+          case TIME:
+            startType.select(StartType.Time.ordinal());
+            startFrame.setSelection(dur.getStartTime());
             break;
           case MANUAL:
           default:
             startType.select(StartType.Manual.ordinal());
         }
-        startFrame.setSelection(dur.getStartFrame());
-        duration.setSelection(dur.getDuration());
 
+        duration.setSelection(dur.getDuration());
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
-        updateDurationSpinner(dev, config);
+        updateDurationSpinner(dev, config, dur.getType());
         perfettoConfig.setVisible(isPerfetto);
 
         if (!userHasChangedOutputFile) {
@@ -631,7 +637,9 @@ public class TracerDialog {
         }
       }
 
-      private void updateDurationSpinner(DeviceCaptureInfo dev, TraceTypeCapabilities capabilities) {
+      private void updateDurationSpinner(
+          DeviceCaptureInfo dev, TraceTypeCapabilities capabilities,
+          SettingsProto.Trace.Duration.Type type) {
         boolean isStadia = dev != null && dev.isStadia();
         boolean isPerfetto = isPerfetto(capabilities);
         if (isStadia && isPerfetto) {
@@ -642,7 +650,8 @@ public class TracerDialog {
         } else {
           duration.setMinimum(0);
           duration.setMaximum(DURATION_MAX);
-          durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
+          durationUnit.setText((isPerfetto || type == SettingsProto.Trace.Duration.Type.TIME) ?
+              DURATION_UNIT : FRAMES_UNIT);
         }
         durationUnit.requestLayout();
       }
@@ -810,7 +819,11 @@ public class TracerDialog {
         SettingsProto.Trace.Duration.Builder dur = isPerfetto(config) ?
             trace.getProfileDurationBuilder() : trace.getGfxDurationBuilder();
         dur.setType(start.proto);
-        dur.setStartFrame(startFrame.getSelection());
+        if (start == StartType.Frame) {
+          dur.setStartFrame(startFrame.getSelection());
+        } else if (start == StartType.Time) {
+          dur.setStartTime(startFrame.getSelection());
+        }
         dur.setDuration(duration.getSelection());
         trace.setWithoutBuffering(withoutBuffering.getSelection());
         trace.setHideUnknownExtensions(hideUnknownExtensions.getSelection());
@@ -836,8 +849,12 @@ public class TracerDialog {
           trace.setEnv(envVars.getText());
           options.addAllEnvironment(splitEnv(envVars.getText()));
         }
+        int delay = 0;
         if (config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported) {
           switch (start) {
+            case Time:
+              delay = startFrame.getSelection();
+              // $FALL-THROUGH$
             case Manual:
               options.setDeferStart(true);
               break;
@@ -865,7 +882,7 @@ public class TracerDialog {
               .setDurationMs(durationMs));
         }
 
-        return new TraceRequest(output, options.build());
+        return new TraceRequest(output, options.build(), delay);
       }
 
       private static List<String> splitEnv(String env) {
@@ -930,6 +947,7 @@ public class TracerDialog {
     private static enum StartType {
       Beginning(SettingsProto.Trace.Duration.Type.BEGINNING),
       Manual(SettingsProto.Trace.Duration.Type.MANUAL),
+      Time(SettingsProto.Trace.Duration.Type.TIME),
       Frame(SettingsProto.Trace.Duration.Type.FRAME);
 
       public final SettingsProto.Trace.Duration.Type proto;
@@ -952,11 +970,14 @@ public class TracerDialog {
     private Label bytesLabel;
     private Text errorText;
     private Button errorButton;
+    private Label autoStartLabel;
 
     private Tracer.Trace trace;
 
     private StatusResponse status;
     private Throwable error;
+    private long autoStartTime = -1;
+    private boolean started = false;
 
     public TraceProgressDialog(
         Shell shell, Analytics analytics, Tracer.TraceRequest request, Theme theme) {
@@ -1041,7 +1062,33 @@ public class TracerDialog {
         } else {
           bytesLabel.setText(String.format("%.2f GBytes", bytes / 1024.0 / 1024.0 / 1024.0));
         }
+
+        if (request.delay > 0 && !started &&
+            status.getStatus() == Service.TraceStatus.WaitingToStart) {
+          if (autoStartTime < 0) {
+            autoStartTime = System.currentTimeMillis() + SECONDS.toMillis(request.delay);
+          } else if (autoStartTime <= System.currentTimeMillis()) {
+            Button button = getButton(IDialogConstants.OK_ID);
+            if (button != null) {
+              button.setEnabled(false);
+            }
+            started = true;
+            trace.start();
+          }
+
+          if (autoStartLabel != null) {
+            autoStartLabel.setVisible(true);
+            long left = Math.max(0,
+                MILLISECONDS.toSeconds(autoStartTime - System.currentTimeMillis() + 999));
+            autoStartLabel.setText("Automatically starting in " + left + "s...");
+            autoStartLabel.requestLayout();
+            Widgets.scheduleIfNotDisposed(autoStartLabel, 100, () -> update());
+          }
+        } else if (autoStartLabel != null) {
+          autoStartLabel.setVisible(false);
+        }
       }
+
       if (error != null) {
         statusLabel.setText("Failed.");
         errorText.setText(getErrorMessage());
@@ -1112,6 +1159,11 @@ public class TracerDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
+      if (request.delay > 0) {
+        ((GridLayout) parent.getLayout()).numColumns++;
+        autoStartLabel = createLabel(parent, "Automatically starting in " + request.delay + "s...");
+        autoStartLabel.setVisible(false);
+      }
       createButton(parent, IDialogConstants.OK_ID, "Cancel", true);
     }
 
@@ -1125,7 +1177,10 @@ public class TracerDialog {
           switch (status.getStatus()) {
             case WaitingToStart:
               button.setEnabled(false);
-              trace.start();
+              if (!started) {
+                started = true;
+                trace.start();
+              }
               break;
             case Capturing:
               button.setEnabled(false);

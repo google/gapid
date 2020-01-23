@@ -152,10 +152,12 @@ public class Tracer {
   public static class TraceRequest {
     public final File output;
     public final Service.TraceOptions options;
+    public final int delay;
 
-    public TraceRequest(File output, TraceOptions options) {
+    public TraceRequest(File output, TraceOptions options, int delay) {
       this.output = output;
       this.options = options;
+      this.delay = delay;
     }
 
     public boolean isMec() {
