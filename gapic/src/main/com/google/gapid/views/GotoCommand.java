@@ -17,7 +17,7 @@ package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createSpinner;
+import static com.google.gapid.widgets.Widgets.createTextbox;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.CommandStream;
@@ -36,7 +36,9 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Spinner;
+import org.eclipse.swt.widgets.Text;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Dialog for the goto command action.
@@ -50,7 +52,7 @@ public class GotoCommand {
     GotoDialog dialog = new GotoDialog(shell, models.commands);
     if (dialog.open() == Window.OK) {
       models.commands.selectCommands(CommandIndex.forCommand(Path.Command.newBuilder()
-          .addIndices(dialog.value)
+          .addAllIndices(dialog.value)
           .setCapture(models.capture.getData().path)
           .build()), true);
     }
@@ -61,8 +63,8 @@ public class GotoCommand {
    */
   private static class GotoDialog extends MessageDialog {
     private final CommandStream commands;
-    private Spinner spinner;
-    public int value;
+    private Text text;
+    public List<Long> value;
 
     public GotoDialog(Shell shell, CommandStream commands) {
       super(shell, Messages.GOTO, null, Messages.GOTO_COMMAND, MessageDialog.CONFIRM, 0,
@@ -77,26 +79,22 @@ public class GotoCommand {
 
     @Override
     protected Control createCustomArea(Composite parent) {
-      // Although the command ID is a long, we currently only actually support the int range, as
-      // the commands are stored in an array. So, using an int spinner here is fine.
-      //TODO limit to max commands
-      int max = Integer.MAX_VALUE;
-      CommandIndex selection = commands.getSelectedCommands();
-      int current = (selection == null) ? 0 : 0 /*TODO(int)last(selection)*/;
-
       Composite container = createComposite(parent, new GridLayout(2, false));
       container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
       createLabel(container, Messages.COMMAND_ID + ":");
-      spinner = createSpinner(container, current, 0, max);
-      spinner.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+      text = createTextbox(container, "");
+      text.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
       return container;
     }
 
     @Override
     protected void buttonPressed(int buttonId) {
-      // The spinner gets disposed after this.
-      value = spinner.getSelection();
+      String[] strings = text.getText().split("\\.");
+      value = new ArrayList<Long>();
+      for (String s : strings) {
+        value.add(Long.parseLong(s));
+      }
       super.buttonPressed(buttonId);
     }
   }
