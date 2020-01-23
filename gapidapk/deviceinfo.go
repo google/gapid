@@ -25,9 +25,11 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/flock"
@@ -105,6 +107,30 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		log.W(ctx, "Couldn't find gapid.apk for device. Error: %v", err)
 		return nil
 	}
+
+	driver, err := d.GraphicsDriver(ctx)
+	if err != nil {
+		return err
+	}
+
+	var cleanup app.Cleanup
+
+	// Set up device info service to use prerelease driver.
+	nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, apk.InstalledPackage)
+	cleanup = cleanup.Then(nextCleanup)
+	if err != nil {
+		cleanup.Invoke(ctx)
+		return err
+	}
+
+	// Set driver package
+	nextCleanup, err = android.SetupLayers(ctx, d, apk.Name, []string{driver.Package}, []string{}, true)
+	cleanup = cleanup.Then(nextCleanup)
+	if err != nil {
+		cleanup.Invoke(ctx)
+		return err
+	}
+	defer cleanup.Invoke(ctx)
 
 	if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
 		startSignal, startFunc := task.NewSignal()
