@@ -46,6 +46,7 @@ const (
 const (
 	ModeMetrics PerfettoMode = iota
 	ModeInteractive
+	ModeList
 )
 
 const (
@@ -108,6 +109,7 @@ type PerfettoMode uint8
 var perfettoModeNames = map[PerfettoMode]string{
 	ModeMetrics:     "metrics",
 	ModeInteractive: "interactive",
+	ModeList:        "list",
 }
 
 func (v *PerfettoMode) Choose(c interface{}) {

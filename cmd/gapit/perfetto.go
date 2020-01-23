@@ -46,24 +46,21 @@ func init() {
 }
 
 func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	if flags.NArg() != 1 {
-		app.Usage(ctx, "Exactly one perfetto trace file expected, got %d", flags.NArg())
-		return nil
+	var trace string
+	if verb.Mode != ModeList {
+		if flags.NArg() != 1 {
+			app.Usage(ctx, "Exactly one perfetto trace file expected, got %d", flags.NArg())
+			return nil
+		}
+
+		trace = flags.Arg(0)
+		if _, err := os.Stat(trace); os.IsNotExist(err) {
+			return fmt.Errorf("Could not find trace file: %v", trace)
+		}
 	}
 
-	trace := flags.Arg(0)
-	if _, err := os.Stat(trace); os.IsNotExist(err) {
-		return fmt.Errorf("Could not find trace file: %v", trace)
-	}
-
-	runMetrics := true
-	switch verb.Mode {
-	case ModeMetrics:
-		// default: runMetrics
-	case ModeInteractive:
-		runMetrics = false
-	default:
-		app.Usage(ctx, "Run mode should be 'metrics' or 'interactive', got '%s'.", verb.Mode)
+	if verb.Mode != ModeMetrics && verb.Mode != ModeInteractive && verb.Mode != ModeList {
+		app.Usage(ctx, "Run mode should be 'metrics', 'interactive' or 'list', got '%s'.", verb.Mode)
 	}
 
 	var input string
@@ -72,13 +69,13 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		if _, err := os.Stat(input); os.IsNotExist(err) {
 			return fmt.Errorf("Could not find input queries file: %v", input)
 		}
-	} else if runMetrics == true {
+	} else if verb.Mode == ModeMetrics {
 		log.I(ctx, "No input file is given to read the metric definitions. Default metrics will be run. You can use '-in <metrics-json-file>' to provide custom metric definitions or  '-mode interactive' to use the interactive mode.")
 	}
 
 	var empty struct{}
 	categories := make(map[string]struct{})
-	if runMetrics && verb.Categories != "" {
+	if verb.Mode != ModeInteractive && verb.Categories != "" {
 		catstrs := strings.Split(verb.Categories, ",")
 		for _, s := range catstrs {
 			categories[s] = empty
@@ -106,10 +103,12 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		app.Usage(ctx, "Output format should be 'text' or 'json', got '%s'.", verb.Format)
 	}
 
-	if runMetrics {
+	if verb.Mode == ModeMetrics {
 		return RunMetrics(ctx, trace, input, categories, output, outputFormat)
-	} else {
+	} else if verb.Mode == ModeInteractive {
 		return RunInteractive(ctx, trace, input, output, outputFormat)
+	} else {
+		return ListMetrics(ctx, input, categories)
 	}
 }
 
@@ -212,7 +211,10 @@ func RunMetrics(ctx context.Context, trace string, inputPath string, categories 
 		byteValue = []byte(PredefinedMetrics())
 	}
 	var metricsInfo MetricsInfo
-	json.Unmarshal(byteValue, &metricsInfo)
+	err := json.Unmarshal(byteValue, &metricsInfo)
+	if err != nil {
+		return fmt.Errorf("Error while unmarshalling metrics from file %s: %v.", inputPath, err)
+	}
 
 	// Load the trace
 	client, capture, err := getGapisAndLoadCapture(ctx, GapisFlags{}, GapirFlags{}, trace, CaptureFileFlags{})
@@ -733,6 +735,45 @@ func WriteResultsToJSONOutput(metricsResults MetricsResults, outputPath string) 
 		return fmt.Errorf("Error writing to the output file %s: %v.", outputPath, err)
 	}
 	output.Sync()
+	return nil
+}
+
+func ListMetrics(ctx context.Context, inputPath string, categories map[string]struct{}) error {
+	var byteValue []byte
+	if inputPath != "" {
+		metricsFile, err := os.Open(inputPath)
+		if err != nil {
+			app.Usage(ctx, "Cannot open file %s: %v.", inputPath, err)
+		}
+		defer metricsFile.Close()
+		byteValue, _ = ioutil.ReadAll(metricsFile)
+	} else {
+		byteValue = []byte(PredefinedMetrics())
+	}
+	var metricsInfo MetricsInfo
+	err := json.Unmarshal(byteValue, &metricsInfo)
+	if err != nil {
+		return fmt.Errorf("Error while unmarshalling metrics from file %s: %v.", inputPath, err)
+	}
+
+	metricInfo, _ := json.MarshalIndent(&metricsInfo.PrepQueries, "", "  ")
+	fmt.Println("Initialization Queries:")
+	os.Stdin.Write(metricInfo)
+	os.Stdin.Sync()
+	fmt.Println("\nMetrics:")
+	listCustomCategories := len(categories) > 0
+	for i := 0; i < len(metricsInfo.MetricCategories); i++ {
+		categoryName := metricsInfo.MetricCategories[i].Name
+		if listCustomCategories {
+			if _, ok := categories[categoryName]; !ok {
+				continue
+			}
+		}
+		metricInfo, _ := json.MarshalIndent(&metricsInfo.MetricCategories[i], "", "  ")
+		os.Stdin.Write(metricInfo)
+		os.Stdin.WriteString("\n")
+	}
+	os.Stdin.Sync()
 	return nil
 }
 
