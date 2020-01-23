@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "extract", "filehash")
+load("//tools/build:rules.bzl", "extract", "filehash", "symbols")
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 def _strip_impl(ctx):
@@ -66,6 +66,12 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}, bins = {}):
             name = libname,
             lib = ":" + libname + "_unstripped",
             abi = abi,
+        )
+
+        symbols(
+            visibility = ["//visibility:public"],
+            name = "{}.sym".format(libname),
+            src = ":{}_unstripped".format(libname),
         )
 
     assets = []

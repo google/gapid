@@ -61,7 +61,7 @@ for api in gles vulkan gvr; do
 done
 
 # Build the package and symbol file.
-build //:pkg //cmd/gapir/cc:gapir.sym
+build //:pkg //:symbols
 
 # Build the Vulkan sample
 build //cmd/vulkan_sample:vulkan_sample

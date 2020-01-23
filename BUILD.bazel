@@ -91,6 +91,20 @@ filegroup(
     }),
 )
 
+filegroup(
+    name = "symbols",
+    srcs = [
+        "//cmd/gapir/cc:gapir.sym",
+    ] + select({
+        "//tools/build:linux": [
+            "//gapidapk/android/apk:arm64-v8a_gapir.sym",
+            "//gapidapk/android/apk:armeabi-v7a_gapir.sym",
+            "//gapidapk/android/apk:x86_gapir.sym",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
 # Rules to build the expected installed structure for running
 filegroup(
     name = "gfxapi-ls",
