@@ -262,13 +262,8 @@ public class TracerDialog {
       private static final String DURATION_UNIT_NO_MANUAL = "Seconds";
       private static final String MEC_LABEL_WARNING =
           "NOTE: Mid-Execution capture for %s is experimental";
-      private static final int DEFAULT_START_FRAME = 100;
       private static final String PERFETTO_LABEL = "Profile Config: ";
       private static final String NO_GPU_PROFILING_CAPABILITY = "Warning: Selected device has no GPU profiling capability.";
-
-      private static enum StartType {
-        Beginning, Manual, Frame;
-      }
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -384,24 +379,14 @@ public class TracerDialog {
         createLabel(durGroup, "Start at:");
         startType = Widgets.createDropDown(durGroup);
         startType.setItems(Arrays.stream(StartType.values()).map(Enum::name).toArray(String[]::new));
-        startFrame = withLayoutData(
-            createSpinner(durGroup, Math.max(1, trace.getStartAt()), 1, 999999),
+        startType.select(StartType.Manual.ordinal());
+        startFrame = withLayoutData(createSpinner(durGroup, 100, 1, 999999),
             new GridData(SWT.FILL, SWT.TOP, false, false));
+        startFrame.setVisible(false);
         mecWarningLabel = createLabel(durGroup, "");
 
-        if (trace.getStartAt() < 0) {
-          startType.select(StartType.Manual.ordinal());
-          startFrame.setSelection(DEFAULT_START_FRAME);
-        } else if (trace.getStartAt() > 0) {
-          startType.select(StartType.Frame.ordinal());
-        } else {
-          startType.select(StartType.Beginning.ordinal());
-          startFrame.setSelection(DEFAULT_START_FRAME);
-        }
-
         durationLabel = createLabel(durGroup, FRAMES_LABEL);
-        duration = withLayoutData(
-            createSpinner(durGroup, trace.getDuration(), 0, DURATION_MAX),
+        duration = withLayoutData(createSpinner(durGroup, 7, 0, DURATION_MAX),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         durationUnit = createLabel(durGroup, FRAMES_UNIT);
 
@@ -611,19 +596,31 @@ public class TracerDialog {
         targetLabel.requestLayout();
 
         boolean isPerfetto = isPerfetto(config);
+        SettingsProto.Trace.DurationOrBuilder dur = isPerfetto ?
+            trace.getProfileDurationOrBuilder() : trace.getGfxDurationOrBuilder();
         getShell().setText(
             isPerfetto ? Messages.CAPTURE_TRACE_PERFETTO : Messages.CAPTURE_TRACE_GRAPHICS);
         withoutBuffering.setEnabled(!isPerfetto);
         withoutBuffering.setSelection(!isPerfetto && trace.getWithoutBuffering());
         if (isPerfetto && startType.getItemCount() == 3) {
-          if (startType.getSelectionIndex() == StartType.Frame.ordinal()) {
-            // Switch to manual if it was "start at frame x".
-            startType.select(StartType.Manual.ordinal());
-          }
           startType.remove(StartType.Frame.ordinal());
         } else if (!isPerfetto && startType.getItemCount() == 2) {
           startType.add(StartType.Frame.name());
         }
+        switch (dur.getType()) {
+          case BEGINNING:
+            startType.select(StartType.Beginning.ordinal());
+            break;
+          case FRAME:
+            startType.select(StartType.Frame.ordinal());
+            break;
+          case MANUAL:
+          default:
+            startType.select(StartType.Manual.ordinal());
+        }
+        startFrame.setSelection(dur.getStartFrame());
+        duration.setSelection(dur.getDuration());
+
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
         updateDurationSpinner(dev, config);
         perfettoConfig.setVisible(isPerfetto);
@@ -802,6 +799,7 @@ public class TracerDialog {
         TraceTypeCapabilities config = getSelectedApi();
         File output = getOutputFile();
         SettingsProto.Trace.Builder trace = settings.writeTrace();
+        StartType start = StartType.values()[startType.getSelectionIndex()];
 
         trace.setDeviceSerial(dev.device.getSerial());
         trace.setDeviceName(dev.device.getName());
@@ -809,17 +807,11 @@ public class TracerDialog {
         trace.setApi(config.getApi());
         trace.setUri(traceTarget.getText());
         trace.setArguments(arguments.getText());
-        switch (startType.getSelectionIndex()) {
-          case 0: // Beginning
-            trace.setStartAt(0);
-            break;
-          case 1: // Manual
-            trace.setStartAt(-1);
-            break;
-          default: // Frame
-            trace.setStartAt(startFrame.getSelection());
-        }
-        trace.setDuration(duration.getSelection());
+        SettingsProto.Trace.Duration.Builder dur = isPerfetto(config) ?
+            trace.getProfileDurationBuilder() : trace.getGfxDurationBuilder();
+        dur.setType(start.proto);
+        dur.setStartFrame(startFrame.getSelection());
+        dur.setDuration(duration.getSelection());
         trace.setWithoutBuffering(withoutBuffering.getSelection());
         trace.setHideUnknownExtensions(hideUnknownExtensions.getSelection());
         trace.setOutDir(directory.getText());
@@ -845,10 +837,15 @@ public class TracerDialog {
           options.addAllEnvironment(splitEnv(envVars.getText()));
         }
         if (config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported) {
-          int startAt = trace.getStartAt();
-          options.setDeferStart(startAt < 0);
-          if (startAt > 0) {
-            options.setStartFrame(startAt);
+          switch (start) {
+            case Manual:
+              options.setDeferStart(true);
+              break;
+            case Frame:
+              options.setStartFrame(startFrame.getSelection());
+              break;
+            default:
+              // Do nothing.
           }
         }
         if (dev.config.getHasCache()) {
@@ -927,6 +924,18 @@ public class TracerDialog {
 
       private static boolean isPerfetto(TraceTypeCapabilities config) {
         return config != null && config.getType() == TraceType.Perfetto;
+      }
+    }
+
+    private static enum StartType {
+      Beginning(SettingsProto.Trace.Duration.Type.BEGINNING),
+      Manual(SettingsProto.Trace.Duration.Type.MANUAL),
+      Frame(SettingsProto.Trace.Duration.Type.FRAME);
+
+      public final SettingsProto.Trace.Duration.Type proto;
+
+      private StartType(SettingsProto.Trace.Duration.Type proto) {
+        this.proto = proto;
       }
     }
   }

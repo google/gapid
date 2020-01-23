@@ -59,7 +59,7 @@ public class Settings {
 
   private static final String SETTINGS_FILE = ".gapic";
   private static final int MAX_RECENT_FILES = 16;
-  private static final int CURRENT_VERSION = 0;
+  private static final int CURRENT_VERSION = 1;
 
   // Only set values for fields where the proto zero/false/empty default doesn't make sense.
   private static SettingsProto.Settings DEFAULT_SETTINGS = SettingsProto.Settings.newBuilder()
@@ -76,8 +76,13 @@ public class Settings {
               .setDrawerHeight(250)))
       .setTrace(SettingsProto.Trace.newBuilder()
           .setType("Graphics")
-          .setStartAt(-1) // MEC
-          .setDuration(7) // 7 frames
+          .setGfxDuration(SettingsProto.Trace.Duration.newBuilder()
+              .setType(SettingsProto.Trace.Duration.Type.MANUAL)
+              .setStartFrame(100)
+              .setDuration(7))
+          .setProfileDuration(SettingsProto.Trace.Duration.newBuilder()
+              .setType(SettingsProto.Trace.Duration.Type.MANUAL)
+              .setDuration(5))
           .setDisablePcs(true))
       .setPerfetto(SettingsProto.Perfetto.newBuilder()
           .setCpu(SettingsProto.Perfetto.CPU.newBuilder()
@@ -114,6 +119,18 @@ public class Settings {
 
   private static SettingsProto.Settings.Builder fixup(SettingsProto.Settings.Builder proto) {
     tryFindAdb(proto.getPreferencesBuilder());
+    switch (proto.getVersion()) {
+      case 0:
+        // Version 1 introduced the Trace.Duration message. Set the defaults for it.
+        proto.getTraceBuilder()
+            .setGfxDuration(SettingsProto.Trace.Duration.newBuilder()
+                .setType(SettingsProto.Trace.Duration.Type.MANUAL)
+                .setStartFrame(100)
+                .setDuration(7))
+            .setProfileDuration(SettingsProto.Trace.Duration.newBuilder()
+                .setType(SettingsProto.Trace.Duration.Type.MANUAL)
+                .setDuration(5));
+    }
     return proto.setVersion(CURRENT_VERSION);
   }
 
