@@ -67,6 +67,18 @@ message UI {
 }
 
 message Trace {
+  message Duration {
+    enum Type {
+      MANUAL = 0;
+      BEGINNING = 1;
+      FRAME = 2;
+    }
+
+    Type type = 1;
+    int32 start_frame = 2;
+    int32 duration = 3;
+  }
+
   string device_serial = 1;
   string device_name = 2;
   string type = 3;
@@ -75,14 +87,16 @@ message Trace {
   string arguments = 6;
   string cwd = 7;
   string env = 8;
-  int32 start_at = 9;   // -1: manual (mec), 0: beginning, 1+ frame x
-  int32 duration = 10;  // 0: manual, 1+ frames/seconds
+  reserved 9;
+  reserved 10;
   bool without_buffering = 11;
   bool hide_unknown_extensions = 12;
   bool clear_cache = 13;
   bool disable_pcs = 14;
   string out_dir = 15;
   string friendly_name = 16;
+  Duration gfx_duration = 17;
+  Duration profile_duration = 18;
 }
 
 message Perfetto {
