@@ -329,7 +329,7 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 				return err
 			}
 			if format == OutputText {
-				err := ReportQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, outputPath)
+				err := ReportAllQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, outputPath)
 				if err != nil {
 					return err
 				}
@@ -378,9 +378,23 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 				fmt.Println("Error while running query: ", err)
 			} else {
 				valid_results = true
-				err = ReportQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, "")
-				if err != nil {
-					fmt.Println(err)
+				startIndex := uint64(0)
+				recordCount := uint64(10)
+				for {
+					err = ReportPartialQueryResultsOnConsole(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, startIndex, recordCount)
+					if err != nil {
+						fmt.Println(err)
+					}
+					if startIndex+recordCount >= numRecords {
+						break
+					}
+					fmt.Print("Press any key for more results; press 'q' to quit... ")
+					reader := bufio.NewReaderSize(os.Stdin, 1)
+					input, _ := reader.ReadByte()
+					if input == 'q' {
+						break
+					}
+					startIndex = startIndex + recordCount
 				}
 			}
 			valid_command = true
@@ -402,7 +416,7 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 					case "text":
 						err = InitilizeOutputFile(ctx, ModeInteractive, path, OutputText)
 						if err != nil {
-							err = ReportQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, path)
+							err = ReportAllQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, path)
 						}
 					case "json":
 						err = InitilizeOutputFile(ctx, ModeInteractive, path, OutputJson)
@@ -475,7 +489,15 @@ func FinalizeJSONOutput(ctx context.Context, outputPath string) error {
 	return nil
 }
 
-func ReportQueryResultsInTextFormat(query string, numColumns int, columnNames []string, columnTypes []string, numRecords uint64, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, outputPath string) error {
+func ReportAllQueryResultsInTextFormat(query string, numColumns int, columnNames []string, columnTypes []string, numRecords uint64, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, outputPath string) error {
+	return ReportQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, outputPath, true, 0, 0)
+}
+
+func ReportPartialQueryResultsOnConsole(query string, numColumns int, columnNames []string, columnTypes []string, numRecords uint64, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, startIndex uint64, count uint64) error {
+	return ReportQueryResultsInTextFormat(query, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, "", false, startIndex, count)
+}
+
+func ReportQueryResultsInTextFormat(query string, numColumns int, columnNames []string, columnTypes []string, numRecords uint64, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, outputPath string, showAll bool, startIndex uint64, count uint64) error {
 	var output *os.File
 	var err error
 	if outputPath != "" {
@@ -489,13 +511,21 @@ func ReportQueryResultsInTextFormat(query string, numColumns int, columnNames []
 	}
 	const padding = 2
 	writer := tabwriter.NewWriter(output, 0, 0, padding, ' ', 0)
-	fmt.Fprintln(writer, "Query: "+query)
 	for i := 0; i < numColumns; i++ {
 		fmt.Fprint(writer, columnNames[i]+"\t")
 	}
 	fmt.Fprintln(writer)
 
-	for i := uint64(0); i < numRecords; i++ {
+	if showAll {
+		fmt.Fprintln(writer, "Query: "+query)
+		startIndex = 0
+		count = numRecords
+	}
+	endIndex := numRecords
+	if endIndex > startIndex+count {
+		endIndex = startIndex + count
+	}
+	for i := startIndex; i < endIndex; i++ {
 		for j := 0; j < numColumns; j++ {
 			switch columnTypes[j] {
 			case "UNKNOWN":
