@@ -32,6 +32,8 @@ import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 
+import static java.util.logging.Level.INFO;
+
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
@@ -53,14 +55,19 @@ import com.google.gapid.widgets.Widgets;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.TableViewerColumn;
+import org.eclipse.jface.viewers.ViewerCell;
+import org.eclipse.jface.viewers.StyledCellLabelProvider;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
@@ -231,7 +238,7 @@ implements Tab, Capture.Listener, CommandStream.Listener {
 
                   if (dv.link != null) {
                     withLayoutData(createLink(
-                        kvpComposite, dv.displayValue, e -> models.follower.onFollow(dv.link)),
+                        kvpComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
                         new GridData(SWT.BEGINNING, SWT.TOP, false, false));
                   } else {
                     withLayoutData(createLabel(kvpComposite, dv.displayValue),
@@ -253,22 +260,51 @@ implements Tab, Capture.Listener, CommandStream.Listener {
                 if (dataGroup.getTable().getDynamic()) {
                   dataComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
                 }
-
-                TableViewer groupTable =
-                    createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+          
+                TableViewer groupTable = createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
                 List<API.Row> rows = dataGroup.getTable().getRowsList();
-
+          
                 groupTable.setContentProvider(ArrayContentProvider.getInstance());
-
+          
                 for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
                   int col = i;
-                  createTableColumn(groupTable, dataGroup.getTable().getHeaders(i), row -> {
-                    return convertDataValue(((API.Row)row).getRowValues(col)).displayValue;
-                  });
+                  TableViewerColumn tvc = createTableColumn(groupTable, dataGroup.getTable().getHeaders(i));
+          
+                  StyledCellLabelProvider cellLabelProvider = new StyledCellLabelProvider() {
+                    @Override
+                    public void update(ViewerCell cell) {
+                      DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(col));
+          
+                      cell.setText(dv.displayValue);
+          
+                      if (dv.link != null) {;
+                        StyleRange style = new StyleRange();
+                        theme.linkStyler().applyStyles(style);
+                        style.length = dv.displayValue.length();
+                        cell.setStyleRanges(new StyleRange[] { style });
+                      }
+          
+                      super.update(cell);
+                    }
+                  };
+          
+                  tvc.setLabelProvider(cellLabelProvider);
                 }
-
+          
                 groupTable.setInput(rows);
+          
                 packColumns(groupTable.getTable());
+          
+                groupTable.getTable().addListener(SWT.MouseDown, e -> {
+                  Point pt = new Point(e.x, e.y);
+                  ViewerCell cell = groupTable.getCell(new Point(e.x, e.y));
+                  DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(cell.getColumnIndex()));
+
+                  if (dv.link != null) {
+                    models.follower.onFollow(dv.link);
+                    return;
+                  }
+                });
 
                 break;
 
@@ -445,7 +481,6 @@ implements Tab, Capture.Listener, CommandStream.Listener {
 
       case LINK:
         DataValue dv = convertDataValue(val.getLink().getDisplayVal());
-        dv.displayValue = "<a>" + dv.displayValue + "</a>";
         dv.link = val.getLink().getLink();
         return dv;
 
