@@ -56,12 +56,12 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return fmt.Errorf("Could not find trace file: %v", trace)
 	}
 
-	run_metrics := true
+	runMetrics := true
 	switch verb.Mode {
 	case ModeMetrics:
-		// default: run_metrics
+		// default: runMetrics
 	case ModeInteractive:
-		run_metrics = false
+		runMetrics = false
 	default:
 		app.Usage(ctx, "Run mode should be 'metrics' or 'interactive', got '%s'.", verb.Mode)
 	}
@@ -72,13 +72,13 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		if _, err := os.Stat(input); os.IsNotExist(err) {
 			return fmt.Errorf("Could not find input queries file: %v", input)
 		}
-	} else if run_metrics == true {
+	} else if runMetrics == true {
 		log.I(ctx, "No input file is given to read the metric definitions. Default metrics will be run. You can use '-in <metrics-json-file>' to provide custom metric definitions or  '-mode interactive' to use the interactive mode.")
 	}
 
 	var empty struct{}
-	var categories map[string]struct{}
-	if run_metrics && verb.Categories != "" {
+	categories := make(map[string]struct{})
+	if runMetrics && verb.Categories != "" {
 		catstrs := strings.Split(verb.Categories, ",")
 		for _, s := range catstrs {
 			categories[s] = empty
@@ -106,7 +106,7 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		app.Usage(ctx, "Output format should be 'text' or 'json', got '%s'.", verb.Format)
 	}
 
-	if run_metrics {
+	if runMetrics {
 		return RunMetrics(ctx, trace, input, categories, output, outputFormat)
 	} else {
 		return RunInteractive(ctx, trace, input, output, outputFormat)
@@ -160,10 +160,14 @@ type MetricResult struct {
 	Value string `json:"value"`
 }
 
+type MetricResultRecord struct {
+	Results []MetricResult `json:"result"`
+}
+
 type MetricResults struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Results     []MetricResult `json:"results"`
+	Name        string               `json:"name"`
+	Description string               `json:"description"`
+	Results     []MetricResultRecord `json:"results"`
 }
 
 type CategoryResults struct {
@@ -175,34 +179,38 @@ type MetricsResults struct {
 	Categories []CategoryResults `json:"categories"`
 }
 
+type Query struct {
+	Query string `json:"query"`
+}
+
+type Metric struct {
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Queries     []Query `json:"queries"`
+}
+
+type MetricCategory struct {
+	Name    string   `json:"category"`
+	Metrics []Metric `json:"metric"`
+}
+
+type MetricsInfo struct {
+	PrepQueries      []Query          `json:"initialize"`
+	MetricCategories []MetricCategory `json:"metrics"`
+}
+
 func RunMetrics(ctx context.Context, trace string, inputPath string, categories map[string]struct{}, outputPath string, format PerfettoOutputFormat) error {
-
-	type Query struct {
-		Query string `json:"query"`
+	var byteValue []byte
+	if inputPath != "" {
+		metricsFile, err := os.Open(inputPath)
+		if err != nil {
+			app.Usage(ctx, "Cannot open file %s: %v.", inputPath, err)
+		}
+		defer metricsFile.Close()
+		byteValue, _ = ioutil.ReadAll(metricsFile)
+	} else {
+		byteValue = []byte(PredefinedMetrics())
 	}
-
-	type Metric struct {
-		Name        string  `json:"name"`
-		Description string  `json:"description"`
-		Queries     []Query `json:"queries"`
-	}
-
-	type MetricCategory struct {
-		Name    string   `json:"category"`
-		Metrics []Metric `json:"metric"`
-	}
-
-	type MetricsInfo struct {
-		PrepQueries      []Query          `json:"initialize"`
-		MetricCategories []MetricCategory `json:"metrics"`
-	}
-
-	metricsFile, err := os.Open(inputPath)
-	if err != nil {
-		app.Usage(ctx, "Cannot open file %s: %v.", inputPath, err)
-	}
-	defer metricsFile.Close()
-	byteValue, _ := ioutil.ReadAll(metricsFile)
 	var metricsInfo MetricsInfo
 	json.Unmarshal(byteValue, &metricsInfo)
 
@@ -256,12 +264,12 @@ func RunMetrics(ctx context.Context, trace string, inputPath string, categories 
 				if numRecords == 0 {
 					log.I(ctx, "No records returned by this query.")
 				} else if format == OutputText {
-					err := ReportMetricResultsInTextFormat(categoryName, (*metrics)[j].Name, (*metrics)[j].Description, numColumns, columnNames, columnTypes, dataStrings, dataLongs, dataDoubles, outputPath)
+					err := ReportMetricResultsInTextFormat(categoryName, (*metrics)[j].Name, (*metrics)[j].Description, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, outputPath)
 					if err != nil {
 						return err
 					}
 				} else {
-					categoryResults.Metrics = append(categoryResults.Metrics, CreateMetricResult((*metrics)[j].Name, (*metrics)[j].Description, numColumns, columnNames, columnTypes, dataStrings, dataLongs, dataDoubles))
+					categoryResults.Metrics = append(categoryResults.Metrics, CreateMetricResult((*metrics)[j].Name, (*metrics)[j].Description, numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles))
 				}
 			}
 		}
@@ -351,7 +359,7 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 
 	// Start the interactive mode
 	log.I(ctx, "Starting interactive mode ...")
-	valid_results := false
+	validResults := false
 	var numColumns int
 	var columnNames []string
 	var columnTypes []string
@@ -362,12 +370,12 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 	var query string
 	var cmdString string
 	var cmdHistory []string
-	var valid_command bool
-	run_command_from_history := false
+	var validCommand bool
+	runCommandFromHistory := false
 
 	for {
-		valid_command = false
-		if !run_command_from_history {
+		validCommand = false
+		if !runCommandFromHistory {
 			fmt.Print(">> ")
 			reader := bufio.NewReader(os.Stdin)
 			cmdString, err = reader.ReadString('\n')
@@ -375,16 +383,16 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 				return err
 			}
 		}
-		run_command_from_history = false
+		runCommandFromHistory = false
 		cmdHistory = append(cmdHistory, cmdString)
 		if strings.HasPrefix(cmdString, "run") {
-			valid_results = false
+			validResults = false
 			query = strings.TrimSuffix(strings.TrimPrefix(cmdString, "run"), "\n")
 			numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, err = RunQuery(ctx, client, capture, query)
 			if err != nil {
 				fmt.Println("Error while running query: ", err)
 			} else {
-				valid_results = true
+				validResults = true
 				startIndex := uint64(0)
 				recordCount := uint64(10)
 				for {
@@ -404,14 +412,14 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 					startIndex = startIndex + recordCount
 				}
 			}
-			valid_command = true
+			validCommand = true
 		} else if strings.HasPrefix(cmdString, "save") {
-			if !valid_results {
+			if !validResults {
 				fmt.Println("No valid query results available to save.")
 			} else {
 				cmdString = strings.TrimSpace(strings.TrimPrefix(cmdString, "save"))
 				if strings.HasPrefix(cmdString, "text") || strings.HasPrefix(cmdString, "json") {
-					valid_command = true
+					validCommand = true
 					prefix := cmdString[:4]
 					path := strings.TrimSpace(cmdString[4:])
 					if strings.HasPrefix(path, "~/") {
@@ -442,7 +450,7 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 			}
 		} else if strings.HasPrefix(cmdString, "history") {
 			cmdString = strings.TrimSpace(strings.TrimPrefix(cmdString, "history"))
-			valid_command = true
+			validCommand = true
 			cmdFirst := 0
 			cmdCountr, err := strconv.Atoi(cmdString)
 			if err == nil {
@@ -457,17 +465,17 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 			cmdString = strings.TrimSpace(strings.TrimPrefix(cmdString, "!"))
 			cmdId, err := strconv.Atoi(cmdString)
 			if err == nil && cmdId < len(cmdHistory)-1 {
-				valid_command = true
+				validCommand = true
 				cmdString = cmdHistory[cmdId]
-				run_command_from_history = true
+				runCommandFromHistory = true
 				fmt.Println(cmdString)
 			}
 		} else if strings.HasPrefix(cmdString, "quit") {
 			break
 		}
-		if !valid_command {
+		if !validCommand {
 			fmt.Println("Please use one of the following commands:")
-			fmt.Println("\t>> run <sql_query>")
+			fmt.Println("\t>> run <sql-query>")
 			fmt.Println("\t>> save text <filename>")
 			fmt.Println("\t>> save json <filename>")
 			fmt.Println("\t>> history [num-of-last-commands]")
@@ -576,7 +584,7 @@ func ReportQueryResultsInTextFormat(query string, numColumns int, columnNames []
 	return nil
 }
 
-func ReportMetricResultsInTextFormat(categoryName string, metric string, description string, numColumns int, columnNames []string, columnTypes []string, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, outputPath string) error {
+func ReportMetricResultsInTextFormat(categoryName string, metric string, description string, numColumns int, columnNames []string, columnTypes []string, numRecords uint64, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64, outputPath string) error {
 	var output *os.File
 	var err error
 	if outputPath != "" {
@@ -588,22 +596,32 @@ func ReportMetricResultsInTextFormat(categoryName string, metric string, descrip
 	} else {
 		output = os.Stdout
 	}
-	writer := bufio.NewWriter(output)
-	writer.WriteString("\nCategory: " + categoryName + "\n")
-	writer.WriteString("Metric name: " + metric + "\n")
-	writer.WriteString("Description: " + description + "\n")
+	const padding = 2
+	writer := tabwriter.NewWriter(output, 0, 0, padding, ' ', 0)
+	fmt.Fprintln(writer, "Category: ", categoryName)
+	fmt.Fprintln(writer, "Metric name: ", metric)
+	fmt.Fprintln(writer, "Description: ", description)
 	for i := 0; i < numColumns; i++ {
-		switch columnTypes[i] {
-		case "UNKNOWN":
-			writer.WriteString(columnNames[i] + ": NULL\n")
-		case "STRING":
-			writer.WriteString(columnNames[i] + ": " + dataStrings[i][0] + "\n")
-		case "LONG":
-			writer.WriteString(columnNames[i] + ": " + strconv.FormatInt(dataLongs[i][0], 10) + "\n")
-		case "DOUBLE":
-			writer.WriteString(columnNames[i] + ": " + strconv.FormatFloat(dataDoubles[i][0], 'E', -1, 64) + "\n")
-		}
+		fmt.Fprint(writer, columnNames[i]+"\t")
 	}
+	fmt.Fprintln(writer)
+
+	for i := uint64(0); i < numRecords; i++ {
+		for j := 0; j < numColumns; j++ {
+			switch columnTypes[j] {
+			case "UNKNOWN":
+				fmt.Fprintf(writer, "NULL\t")
+			case "STRING":
+				fmt.Fprintf(writer, "%s\t", dataStrings[j][i])
+			case "LONG":
+				fmt.Fprintf(writer, "%d\t", dataLongs[j][i])
+			case "DOUBLE":
+				fmt.Fprintf(writer, "%f\t", dataDoubles[j][i])
+			}
+		}
+		fmt.Fprintln(writer)
+	}
+	fmt.Fprintln(writer)
 	writer.Flush()
 	return nil
 }
@@ -670,22 +688,26 @@ func ReportQueryResultsInJSONFormat(query string, lastQuery bool, numColumns int
 	return nil
 }
 
-func CreateMetricResult(metric string, description string, numColumns int, columnNames []string, columnTypes []string, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64) (metricResults MetricResults) {
+func CreateMetricResult(metric string, description string, numColumns int, columnNames []string, columnTypes []string, numRecords uint64, dataStrings [][]string, dataLongs [][]int64, dataDoubles [][]float64) (metricResults MetricResults) {
 	metricResults.Name = metric
 	metricResults.Description = description
-	for i := 0; i < numColumns; i++ {
-		var result string
-		switch columnTypes[i] {
-		case "UNKNOWN":
-			result = "NULL"
-		case "STRING":
-			result = dataStrings[i][0]
-		case "LONG":
-			result = strconv.FormatInt(dataLongs[i][0], 10)
-		case "DOUBLE":
-			result = strconv.FormatFloat(dataDoubles[i][0], 'E', -1, 64)
+	for i := uint64(0); i < numRecords; i++ {
+		var resultsRecord MetricResultRecord
+		for j := 0; j < numColumns; j++ {
+			var result string
+			switch columnTypes[j] {
+			case "UNKNOWN":
+				result = "NULL"
+			case "STRING":
+				result = dataStrings[j][i]
+			case "LONG":
+				result = strconv.FormatInt(dataLongs[j][i], 10)
+			case "DOUBLE":
+				result = strconv.FormatFloat(dataDoubles[j][i], 'E', -1, 64)
+			}
+			resultsRecord.Results = append(resultsRecord.Results, MetricResult{Name: columnNames[j], Value: result})
 		}
-		metricResults.Results = append(metricResults.Results, MetricResult{Name: columnNames[i], Value: result})
+		metricResults.Results = append(metricResults.Results, resultsRecord)
 	}
 	return
 }
@@ -712,4 +734,159 @@ func WriteResultsToJSONOutput(metricsResults MetricsResults, outputPath string) 
 	}
 	output.Sync()
 	return nil
+}
+
+func PredefinedMetrics() string {
+	metricsJsonString := `{
+	  "initialize": [{
+	      "query": "CREATE VIEW [DRIVER_MEM_TRACK_IDS] AS SELECT * FROM counter_track WHERE name LIKE 'vulkan.mem.driver.%'"
+	    },
+	    {
+	      "query": "CREATE VIEW [GPU_MEM_ALLOC_TRACK_IDS] AS SELECT * FROM counter_track WHERE name LIKE 'vulkan.mem.device.%allocation'"
+	    },
+	    {
+	      "query": "CREATE VIEW [GPU_MEM_BIND_TRACK_IDS] AS SELECT * FROM counter_track WHERE name LIKE 'vulkan.mem.device.%bind'"
+	    }
+	  ],
+	  "metrics": [{
+	      "category": "CPU",
+	      "metric": [{
+	        "name": "AvgCPULoadPercentage",
+	        "description": "Average CPU load in percentage over all CPU cores",
+	        "queries": [{
+	          "query": "SELECT (100 * CAST(SUM(dur) AS FLOAT) / (COUNT(DISTINCT cpu) * CAST(MAX(ts) - MIN(ts) AS FLOAT))) AS avg_cpu_load FROM sched WHERE utid !=  0"
+	        }]
+	      }]
+	    },
+	    {
+	      "category": "Memory",
+	      "metric": [{
+	          "name": "AvgMemoryUsageBytes",
+	          "description": "Average host memory usage in bytes",
+	          "queries": [{
+	              "query": "CREATE VIEW [TOTALMEM] AS SELECT value AS total_mem FROM counter WHERE track_id = (SELECT id FROM counter_track WHERE name = 'MemTotal') LIMIT 1"
+	            },
+	            {
+	              "query": "CREATE VIEW [FREEMEM] AS SELECT AVG(value) AS avg_free_mem FROM counter WHERE track_id = (SELECT id FROM counter_track WHERE name = 'MemFree')"
+	            },
+	            {
+	              "query": "SELECT CAST((total_mem - avg_free_mem) AS INT) AS avg_used_mem FROM [TOTALMEM], [FREEMEM]"
+	            }
+	          ]
+	        },
+	        {
+	          "name": "MaxMemoryUsageBytes",
+	          "description": "Max host memory usage in bytes",
+	          "queries": [{
+	              "query": "CREATE VIEW [TOTALMEM] AS SELECT value AS total_mem FROM counter WHERE track_id = (SELECT id FROM counter_track WHERE name = 'MemTotal') LIMIT 1"
+	            },
+	            {
+	              "query": "CREATE VIEW [MINFREEMEM] AS SELECT MIN(value) AS min_free_mem FROM counter WHERE track_id = (SELECT id FROM counter_track WHERE name = 'MemFree')"
+	            },
+	            {
+	              "query": "SELECT CAST((total_mem - min_free_mem) AS INT) AS max_used_mem FROM [TOTALMEM], [MINFREEMEM]"
+	            }
+	          ]
+	        }
+	      ]
+	    },
+	    {
+	      "category": "Graphics.Memory.Driver",
+	      "metric": [{
+	          "name": "AvgDriverMemUsagePerScope",
+	          "description": "Average memory usage by driver per allocation scope in bytes",
+	          "queries": [{
+	            "query": "SELECT REPLACE([DRIVER_MEM_TRACK_IDS].name, 'vulkan.mem.driver.scope.', '') AS scope, CAST(AVG(counter.value) AS INT) AS avg_mem_driver_bytes FROM counter LEFT JOIN [DRIVER_MEM_TRACK_IDS] WHERE counter.track_id = [DRIVER_MEM_TRACK_IDS].id GROUP BY counter.track_id"
+	          }]
+	        },
+	        {
+	          "name": "MaxDriverMemUsagePerScope",
+	          "description": "Max memory usage by driver per allocation scope in bytes",
+	          "queries": [{
+	            "query": "SELECT REPLACE([DRIVER_MEM_TRACK_IDS].name, 'vulkan.mem.driver.scope.', '') AS scope, CAST (MAX(counter.value) AS INT) AS max_mem_driver_bytes FROM counter LEFT JOIN [DRIVER_MEM_TRACK_IDS] WHERE counter.track_id = [DRIVER_MEM_TRACK_IDS].id GROUP BY counter.track_id"
+	          }]
+	        }
+	      ]
+	    },
+	    {
+	      "category": "Graphics.Memory.GPU",
+	      "metric": [{
+	          "name": "AvgGPUMemAllocPerMemType",
+	          "description": "Average GPU memory allocation per memory type",
+	          "queries": [{
+	            "query": "SELECT REPLACE(REPLACE([GPU_MEM_ALLOC_TRACK_IDS].name, 'vulkan.mem.device.memory.type.', ''), '.allocation', '') AS memory_type, CAST(AVG(counter.value) AS INT) AS avg_gpu_alloc_bytes FROM counter LEFT JOIN [GPU_MEM_ALLOC_TRACK_IDS] WHERE counter.track_id = [GPU_MEM_ALLOC_TRACK_IDS].id GROUP BY counter.track_id ORDER BY memory_type"
+	          }]
+	        },
+	        {
+	          "name": "MaxGPUMemAllocPerMemType",
+	          "description": "Max GPU memory allocation per memory type",
+	          "queries": [{
+	            "query": "SELECT REPLACE(REPLACE([GPU_MEM_ALLOC_TRACK_IDS].name, 'vulkan.mem.device.memory.type.', ''), '.allocation', '') AS memory_type, CAST(MAX(counter.value) AS INT) AS max_gpu_alloc_bytes FROM counter LEFT JOIN [GPU_MEM_ALLOC_TRACK_IDS] WHERE counter.track_id = [GPU_MEM_ALLOC_TRACK_IDS].id GROUP BY counter.track_id ORDER BY memory_type"
+	          }]
+	        },
+	        {
+	          "name": "AvgGPUMemBindPerMemType",
+	          "description": "Average GPU memory bound per memory type",
+	          "queries": [{
+	            "query": "SELECT REPLACE(REPLACE([GPU_MEM_BIND_TRACK_IDS].name, 'vulkan.mem.device.memory.type.', ''), '.bind', '') AS memory_type, CAST(AVG(counter.value) AS INT) AS avg_gpu_bound_bytes FROM counter LEFT JOIN [GPU_MEM_BIND_TRACK_IDS] WHERE counter.track_id = [GPU_MEM_BIND_TRACK_IDS].id GROUP BY counter.track_id ORDER BY memory_type"
+	          }]
+	        },
+	        {
+	          "name": "MaxGPUMemBindPerMemType",
+	          "description": "Max GPU memory bound per memory type",
+	          "queries": [{
+	            "query": "SELECT REPLACE(REPLACE([GPU_MEM_BIND_TRACK_IDS].name, 'vulkan.mem.device.memory.type.', ''), '.bind', '') AS memory_type, CAST(MAX(counter.value) AS INT) AS max_gpu_bound_bytes FROM counter LEFT JOIN [GPU_MEM_BIND_TRACK_IDS] WHERE counter.track_id = [GPU_MEM_BIND_TRACK_IDS].id GROUP BY counter.track_id ORDER BY memory_type"
+	          }]
+	        }
+	      ]
+	    },
+	    {
+	      "category": "Graphics.Vulkan",
+	      "metric": [{
+	          "name": "NumCreateBufferEvents",
+	          "description": "Number of create buffer events",
+	          "queries": [{
+	            "query": "SELECT COUNT(*) AS num_create_buffers FROM vulkan_memory_allocations WHERE source = 'GPU_BUFFER' AND operation = 'CREATE'"
+	          }]
+	        },
+	        {
+	          "name": "NumBindBufferEvents",
+	          "description": "Number of bind buffer events",
+	          "queries": [{
+	            "query": "SELECT COUNT(*) AS num_bind_buffers FROM vulkan_memory_allocations WHERE source = 'GPU_BUFFER' AND operation = 'BIND'"
+	          }]
+	        },
+	        {
+	          "name": "SumBoundBuffersPerMemoryType",
+	          "description": "Sum of bound buffer sizes per memory type in bytes",
+	          "queries": [{
+	            "query": "SELECT memory_type, SUM(memory_size) AS bound_buffers_in_bytes FROM vulkan_memory_allocations WHERE source = 'GPU_BUFFER' AND operation = 'BIND' GROUP BY memory_type"
+	          }]
+	        },
+	        {
+	          "name": "NumCreateImageEvents",
+	          "description": "Number of create image events",
+	          "queries": [{
+	            "query": "SELECT COUNT(*) AS num_create_images FROM vulkan_memory_allocations WHERE source = 'GPU_IMAGE' AND operation = 'CREATE'"
+	          }]
+	        },
+	        {
+	          "name": "NumBindImageEvents",
+	          "description": "Number of bind image events",
+	          "queries": [{
+	            "query": "SELECT COUNT(*) AS num_bind_images FROM vulkan_memory_allocations WHERE source = 'GPU_IMAGE' AND operation = 'BIND'"
+	          }]
+	        },
+	        {
+	          "name": "SumBoundImagesPerMemoryType",
+	          "description": "Sum of bound image sizes per memory type in bytes",
+	          "queries": [{
+	            "query": "SELECT memory_type, SUM(memory_size) AS bound_images_in_bytes FROM vulkan_memory_allocations WHERE source = 'GPU_IMAGE' AND operation = 'BIND' GROUP BY memory_type"
+	          }]
+	        }
+	      ]
+	    }
+	  ]
+	}`
+	return metricsJsonString
 }
