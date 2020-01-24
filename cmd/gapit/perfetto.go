@@ -360,19 +360,26 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 	var dataLongs [][]int64
 	var dataDoubles [][]float64
 	var query string
+	var cmdString string
+	var cmdHistory []string
+	var valid_command bool
+	run_command_from_history := false
 
 	for {
-		valid_command := false
-		fmt.Print(">> ")
-		reader := bufio.NewReader(os.Stdin)
-		cmdString, err := reader.ReadString('\n')
-		if err != nil {
-			return err
+		valid_command = false
+		if !run_command_from_history {
+			fmt.Print(">> ")
+			reader := bufio.NewReader(os.Stdin)
+			cmdString, err = reader.ReadString('\n')
+			if err != nil {
+				return err
+			}
 		}
+		run_command_from_history = false
+		cmdHistory = append(cmdHistory, cmdString)
 		if strings.HasPrefix(cmdString, "run") {
 			valid_results = false
 			query = strings.TrimSuffix(strings.TrimPrefix(cmdString, "run"), "\n")
-			var err error
 			numColumns, columnNames, columnTypes, numRecords, dataStrings, dataLongs, dataDoubles, err = RunQuery(ctx, client, capture, query)
 			if err != nil {
 				fmt.Println("Error while running query: ", err)
@@ -402,7 +409,7 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 			if !valid_results {
 				fmt.Println("No valid query results available to save.")
 			} else {
-				cmdString := strings.TrimSpace(strings.TrimPrefix(cmdString, "save"))
+				cmdString = strings.TrimSpace(strings.TrimPrefix(cmdString, "save"))
 				if strings.HasPrefix(cmdString, "text") || strings.HasPrefix(cmdString, "json") {
 					valid_command = true
 					prefix := cmdString[:4]
@@ -433,6 +440,28 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 					fmt.Println("Results saved to ", path)
 				}
 			}
+		} else if strings.HasPrefix(cmdString, "history") {
+			cmdString = strings.TrimSpace(strings.TrimPrefix(cmdString, "history"))
+			valid_command = true
+			cmdFirst := 0
+			cmdCountr, err := strconv.Atoi(cmdString)
+			if err == nil {
+				if len(cmdHistory)-cmdCountr > 0 {
+					cmdFirst = len(cmdHistory) - cmdCountr - 1
+				}
+			}
+			for i := cmdFirst; i < len(cmdHistory)-1; i++ {
+				fmt.Print(i, "\t", cmdHistory[i])
+			}
+		} else if strings.HasPrefix(cmdString, "!") {
+			cmdString = strings.TrimSpace(strings.TrimPrefix(cmdString, "!"))
+			cmdId, err := strconv.Atoi(cmdString)
+			if err == nil && cmdId < len(cmdHistory)-1 {
+				valid_command = true
+				cmdString = cmdHistory[cmdId]
+				run_command_from_history = true
+				fmt.Println(cmdString)
+			}
 		} else if strings.HasPrefix(cmdString, "quit") {
 			break
 		}
@@ -441,6 +470,8 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 			fmt.Println("\t>> run <sql_query>")
 			fmt.Println("\t>> save text <filename>")
 			fmt.Println("\t>> save json <filename>")
+			fmt.Println("\t>> history [num-of-last-commands]")
+			fmt.Println("\t>> !<command-id-returned-in-history>")
 			fmt.Println("\t>> quit")
 		}
 	}
