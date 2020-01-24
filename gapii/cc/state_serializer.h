@@ -94,7 +94,7 @@ inline void StateSerializer::sendData(memory::Observation* observation,
   observation->set_res_index(index);
 
   if (sendObservation) {
-    mObserver->encode(observation);
+    mObserver->encode_message(observation);
   }
 }
 

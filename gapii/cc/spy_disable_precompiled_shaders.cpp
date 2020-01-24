@@ -109,8 +109,8 @@ void Spy::glProgramBinary(CallObserver* observer, uint32_t program,
 
     observer->read(binary, binary_size);
     observer->observePending();
-
-    observer->encodeAndDelete(new api::CmdCall);
+    api::CmdCall call;
+    observer->encode_message(&call);
     observer->exit();
   } else {
     GlesSpy::glProgramBinary(observer, program, binary_format, binary,
@@ -141,7 +141,8 @@ void Spy::glProgramBinaryOES(CallObserver* observer, uint32_t program,
     observer->read(binary, binary_size);
     observer->observePending();
 
-    observer->encodeAndDelete(new api::CmdCall);
+    api::CmdCall call;
+    observer->encode_message(&call);
     observer->exit();
   } else {
     GlesSpy::glProgramBinaryOES(observer, program, binary_format, binary,
@@ -171,7 +172,8 @@ void Spy::glShaderBinary(CallObserver* observer, int32_t count,
         slice(binary, (uint64_t)((GLsizei)(0)), (uint64_t)(binary_size)));
     observer->observePending();
 
-    observer->encodeAndDelete(new api::CmdCall);
+    api::CmdCall call;
+    observer->encode_message(&call);
     observer->exit();
   } else {
     GlesSpy::glShaderBinary(observer, count, shaders, binary_format, binary,
@@ -188,7 +190,8 @@ void Spy::glGetInteger64v(CallObserver* observer, uint32_t param,
     observer->enter(
         cmd::glGetInteger64v{observer->getCurrentThread(), param, values});
 
-    observer->encodeAndDelete(new api::CmdCall);
+    api::CmdCall call;
+    observer->encode_message(&call);
 
     observer->write(slice(values, 0, 1));
     observer->observePending();
@@ -207,7 +210,8 @@ void Spy::glGetIntegerv(CallObserver* observer, uint32_t param,
     observer->enter(
         cmd::glGetIntegerv{observer->getCurrentThread(), param, values});
 
-    observer->encodeAndDelete(new api::CmdCall);
+    api::CmdCall call;
+    observer->encode_message(&call);
 
     observer->write(slice(values, 0, 1));
     observer->observePending();

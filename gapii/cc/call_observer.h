@@ -156,7 +156,7 @@ class CallObserver : public context_t {
   void enter(const ::google::protobuf::Message* cmd);
 
   // encode encodes cmd the proto message to the PackEncoder.
-  void encode(const ::google::protobuf::Message* cmd);
+  void encode_message(const ::google::protobuf::Message* cmd);
 
   // encodeAndDelete encodes the proto message to the PackEncoder and then
   // deletes the message.
