@@ -249,7 +249,8 @@
         {{end}}
 ¶
         {{if IsVoid $.Return.Type}}
-          observer->encodeAndDelete(new api::CmdCall);
+          api::CmdCall call;
+          observer->encode_message(&call);
         {{else}}
           observer->encode(cmd::{{.Name}}Call{§
           {{if IsString $.Return.Type}}gapil::String(arena(), result)

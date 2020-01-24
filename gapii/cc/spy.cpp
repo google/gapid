@@ -95,26 +95,28 @@ const uint32_t kMaxFramebufferObservationHeight = 2560;
 
 const int32_t kSuspendIndefinitely = -1;
 
-std::recursive_mutex gMutex;  // Guards gSpy.
-std::unique_ptr<gapii::Spy> gSpy;
 thread_local gapii::CallObserver* gContext = nullptr;
 
 }  // anonymous namespace
 
 namespace gapii {
 
-Spy* Spy::get() {
-  std::lock_guard<std::recursive_mutex> lock(gMutex);
-  if (!gSpy) {
+struct spy_creator {
+  spy_creator() {
     GAPID_LOGGER_INIT(LOG_LEVEL_INFO, "gapii", nullptr);
     GAPID_INFO("Constructing spy...");
-    gSpy.reset(new Spy());
+    m_spy.reset(new Spy());
     GAPID_INFO("Registering spy symbols...");
     for (int i = 0; kGLESExports[i].mName != NULL; ++i) {
-      gSpy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
+      m_spy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
     }
   }
-  return gSpy.get();
+  std::unique_ptr<gapii::Spy> m_spy;
+};
+
+Spy* Spy::get() {
+  static spy_creator creator;
+  return creator.m_spy.get();
 }
 
 Spy::Spy()
@@ -715,13 +717,13 @@ void Spy::observeFramebuffer(CallObserver* observer, uint8_t api) {
   if (downsamplePixels(data, w, h, &downsampledData, &downsampledW,
                        &downsampledH, kMaxFramebufferObservationWidth,
                        kMaxFramebufferObservationHeight)) {
-    auto observation = new capture::FramebufferObservation();
-    observation->set_original_width(w);
-    observation->set_original_height(h);
-    observation->set_data_width(downsampledW);
-    observation->set_data_height(downsampledH);
-    observation->set_data(downsampledData.data(), downsampledData.size());
-    observer->encodeAndDelete(observation);
+    capture::FramebufferObservation observation;
+    observation.set_original_width(w);
+    observation.set_original_height(h);
+    observation.set_data_width(downsampledW);
+    observation.set_data_height(downsampledH);
+    observation.set_data(downsampledData.data(), downsampledData.size());
+    observer->encode_message(&observation);
   }
 }
 
@@ -735,10 +737,10 @@ void Spy::onPostFence(CallObserver* observer) {
       setFakeGlError(observer, traceErr);
     }
 
-    auto es = new gles_pb::ErrorState();
-    es->set_trace_drivers_gl_error(traceErr);
-    es->set_interceptors_gl_error(observer->getError());
-    observer->encodeAndDelete(es);
+    gles_pb::ErrorState es;
+    es.set_trace_drivers_gl_error(traceErr);
+    es.set_interceptors_gl_error(observer->getError());
+    observer->encode_message(&es);
   }
 }
 

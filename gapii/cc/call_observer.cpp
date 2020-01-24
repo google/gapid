@@ -99,11 +99,11 @@ void CallObserver::observePending() {
     uint8_t* data = reinterpret_cast<uint8_t*>(p.start());
     uint64_t size = p.end() - p.start();
     auto resIndex = mSpy->sendResource(mApi, data, size);
-    auto observation = new memory::Observation();
-    observation->set_base(p.start());
-    observation->set_size(size);
-    observation->set_res_index(resIndex);
-    encodeAndDelete(observation);
+    memory::Observation observation;
+    observation.set_base(p.start());
+    observation.set_size(size);
+    observation.set_res_index(resIndex);
+    encode_message(&observation);
   }
   mPendingObservations.clear();
 }
@@ -113,9 +113,9 @@ void CallObserver::observeTimestamp() {
     return;
   }
   // Get time
-  auto timestamp = new api::TimeStamp();
-  timestamp->set_nanoseconds(core::GetNanoseconds());
-  encodeAndDelete(timestamp);
+  api::TimeStamp timestamp;
+  timestamp.set_nanoseconds(core::GetNanoseconds());
+  encode_message(&timestamp);
 }
 
 void CallObserver::enter(const ::google::protobuf::Message* cmd) {
@@ -126,7 +126,7 @@ void CallObserver::enter(const ::google::protobuf::Message* cmd) {
   mEncoderStack.push(encoder()->group(cmd));
 }
 
-void CallObserver::encode(const ::google::protobuf::Message* cmd) {
+void CallObserver::encode_message(const ::google::protobuf::Message* cmd) {
   if (!mShouldTrace) {
     return;
   }

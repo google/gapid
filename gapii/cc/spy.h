@@ -27,6 +27,7 @@
 #include <unordered_map>
 
 namespace gapii {
+struct spy_creator;
 class ConnectionStream;
 class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
  public:
@@ -140,6 +141,8 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
 
   std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
   std::unique_ptr<core::AsyncJob> mMessageReceiverJob;
+
+  friend struct spy_creator;
 };
 
 }  // namespace gapii
