@@ -454,6 +454,33 @@ func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup) err
 	return nil
 }
 
+// TraverseSubCmdRoot visits all the spans in the SubCmdRoot, and applys the
+// callback <cb> to a span if it's of type SubCmdRoot.
+func (c *SubCmdRoot) TraverseSubCmdRoot(cb func(item *SubCmdRoot)) {
+	cb(c)
+	for _, span := range c.SubGroup.Spans {
+		switch s := span.(type) {
+		case *SubCmdRoot:
+			s.TraverseSubCmdRoot(cb)
+		case *CmdIDGroup:
+			s.TraverseSubCmdRoot(cb)
+		}
+	}
+}
+
+// TraverseSubCmdRoot visits all the spans in the CmdIDGroup, and applys the
+// callback <cb> to a span if it's of type SubCmdRoot.
+func (g *CmdIDGroup) TraverseSubCmdRoot(cb func(item *SubCmdRoot)) {
+	for _, span := range g.Spans {
+		switch s := span.(type) {
+		case *SubCmdRoot:
+			s.TraverseSubCmdRoot(cb)
+		case *CmdIDGroup:
+			s.TraverseSubCmdRoot(cb)
+		}
+	}
+}
+
 // FindSubCommandRoot returns the SubCmdRoot that represents the given CmdID.
 func (g CmdIDGroup) FindSubCommandRoot(id CmdID) *SubCmdRoot {
 	for _, x := range g.Spans {

@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/extensions"
@@ -139,7 +140,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode, r *path.Resol
 		count := uint64(1)
 		g := ""
 		if len(item.Id) > 1 {
-			g = fmt.Sprintf("%v", item.Id)
+			g = fmt.Sprintf("%v", item.SubGroup.Name)
 			count = uint64(item.SubGroup.Count())
 		}
 		return &service.CommandTreeNode{
@@ -340,6 +341,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 				}
 				r.Insert(append([]uint64{}, x...))
 			}
+			setSubCmdNodesName(ctx, r, snc.SubcommandReferences, c.Commands)
 			return nil
 		}
 
@@ -510,6 +512,32 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 	if p.AllowIncompleteFrame && frameCount > 0 && frameStart > frameEnd {
 		t.root.AddGroup(frameStart, last, "Incomplete Frame")
 	}
+}
+
+// setSubCmdNodesName set reasonable names for the intermediate nodes in a
+// group of subcommands. Typically subcommands are group by different pSubmits
+// batches first, and different Command Buffers next.
+func setSubCmdNodesName(
+	ctx context.Context,
+	r *api.SubCmdRoot,
+	refMap map[api.CmdID][]sync.SubcommandReference,
+	commands []api.Cmd) {
+
+	id := api.CmdID(r.Id[0])
+	refs := refMap[id]
+	r.TraverseSubCmdRoot(func(item *api.SubCmdRoot) {
+		switch len(item.Id) {
+		case 2:
+			item.SubGroup.Name = fmt.Sprintf("pSubmits[%v]", item.Id[1])
+		case 3:
+			for _, ref := range refs {
+				if item.Id[1:].Contains(ref.Index) && ref.GeneratingCmd >= 0 && int(ref.GeneratingCmd) < len(commands) {
+					item.SubGroup.Name = fmt.Sprintf("Command Buffer %v", commands[ref.GeneratingCmd].CmdParams().Find("commandBuffer").Get())
+					break
+				}
+			}
+		}
+	})
 }
 
 func setRepresentations(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds api.Spans) {
