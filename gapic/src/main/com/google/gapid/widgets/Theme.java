@@ -198,6 +198,7 @@ public interface Theme {
   @Text(Text.Mono) public Font monoSpaceFont();
   @Text(Text.Big) public Font bigBoldFont();
   @Text(Text.TabTitle) public Font selectedTabTitleFont();
+  @Text(Text.SubTitle) public Font subTitleFont();
 
   public void dispose();
 
@@ -293,7 +294,7 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Text {
-    public static final int Mono = 1, Big = 2, TabTitle = 3;
+    public static final int Mono = 1, Big = 2, TabTitle = 3, SubTitle = 4;
 
     public int value();
   }
@@ -462,6 +463,15 @@ public interface Theme {
           case Text.TabTitle: {
             Font dflt = JFaceResources.getDefaultFont();
             Font font = FontDescriptor.createFrom(dflt)
+                .setStyle(SWT.BOLD)
+                .createFont(display);
+            resources.put(method.getName(), font);
+            return true;
+          }
+          case Text.SubTitle: {
+            Font dflt = JFaceResources.getDefaultFont();
+            Font font = FontDescriptor.createFrom(dflt)
+                .setHeight(dflt.getFontData()[0].getHeight() * 5 / 4)
                 .setStyle(SWT.BOLD)
                 .createFont(display);
             resources.put(method.getName(), font);
