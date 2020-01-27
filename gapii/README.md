@@ -10,10 +10,11 @@ GAPII behaves as follows:
 
 * On the first call to an intercepted function, GAPII will block, listening for a socket connection.
 * Once a connection has been made, GAPII will allow the application to continue execution.
+* If GAPII does not capture the trace from the beginning, it will monitor the graphics state instead.
 * For each intercepted function that’s called by the application, the function’s identifier and arguments are encoded and streamed to the socket.
 * Memory observations are also streamed for functions that read from or write to memory.
-* If the application is terminated, then the socket is closed immediately. No end-of-stream marker is written.
-* The remote endpoint of the socket is also free to close the socket at any point.
+* If the remote endpoint requests to end the capture, or the specified amount of frames have been captured or the application is terminated, an end-of-stream marker is written.
+* The remote endpoint of the socket closes the socket after receiving the end-of-stream marker.
 
 ## State tracking
 
