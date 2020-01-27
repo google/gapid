@@ -114,6 +114,9 @@ func (s *grpcServer) inRPC() func() {
 		case s.keepAlive <- struct{}{}:
 		default:
 		}
+		if atomic.LoadInt64(&s.inFlightRPCs) == 0 {
+			panic("Should never happen: inFlightRPCs counter is going below zero")
+		}
 		atomic.AddInt64(&s.inFlightRPCs, -1)
 	}
 }
