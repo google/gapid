@@ -29,7 +29,7 @@ uniform float angle;
 void main() {
 	float c = cos(angle);
 	float s = sin(angle);
-	mat3 rotation = mat3(vec3(c, -s, 0.0), vec3(s, c, 0.0), vec3(0.0, 0.0, 1.0));
+		mat3 rotation = mat3(vec3(c, -s, 0.0), vec3(s, c, 0.0), vec3(0.0, 0.0, 1.0));
 	gl_Position = vec4(rotation * position, 1.0);
 }`
 
