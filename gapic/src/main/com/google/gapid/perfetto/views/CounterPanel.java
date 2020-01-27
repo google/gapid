@@ -59,6 +59,10 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
   @Override
   public String getTitle() {
+    CounterInfo info = track.getCounter();
+    if (info.type == CounterInfo.Type.Gpu && "gpufreq".equals(info.name)) {
+      return "GPU " + info.ref + " Frequency";
+    }
     return track.getCounter().name;
   }
 
