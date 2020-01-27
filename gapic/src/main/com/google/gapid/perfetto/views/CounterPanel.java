@@ -45,7 +45,6 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   protected final CounterTrack track;
   protected final double trackHeight;
   protected HoverCard hovered = null;
-  protected double mouseXpos = 0;
 
   public CounterPanel(State state, CounterTrack track, double trackHeight) {
     super(state);
@@ -130,14 +129,14 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         ctx.setBackgroundColor(BaseColor.INDIGO.rgb);
         ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, 3);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawCircle(mouseXpos, y, CURSOR_SIZE / 2);
+        ctx.drawCircle(hovered.mouseX, y, CURSOR_SIZE / 2);
 
         ctx.setBackgroundColor(colors().hoverBackground);
         double bgH = Math.max(hovered.size.h, trackHeight);
-        ctx.fillRect(mouseXpos + HOVER_MARGIN, Math.min((trackHeight - bgH) / 2, 0),
+        ctx.fillRect(hovered.mouseX + HOVER_MARGIN, Math.min((trackHeight - bgH) / 2, 0),
             2 * HOVER_PADDING + hovered.size.w, bgH);
         ctx.setForegroundColor(colors().textMain);
-        double x = mouseXpos + HOVER_MARGIN + HOVER_PADDING;
+        double x = hovered.mouseX + HOVER_MARGIN + HOVER_PADDING;
         y = (trackHeight - hovered.size.h) / 2;
         double dx = hovered.leftWidth + HOVER_PADDING, dy = hovered.size.h / 2;
         ctx.drawText(Fonts.Style.Normal, "Value:", x, y);
@@ -148,7 +147,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         x +=  hovered.leftWidth;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.label, x, y, dy);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.avg, x, y + dy, dy);
-        x = mouseXpos + HOVER_MARGIN + HOVER_PADDING + hovered.size.w;
+        x = hovered.mouseX + HOVER_MARGIN + HOVER_PADDING + hovered.size.w;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.min, x, y, dy);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.max, x, y + dy, dy);
       }
@@ -181,14 +180,13 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     long t = data.ts[idx];
     double startX = state.timeToPx(data.ts[idx]);
     double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
-    hovered = new HoverCard(m, track.getCounter(), data.values[idx], startX, endX);
-    mouseXpos = x;
+    hovered = new HoverCard(m, track.getCounter(), data.values[idx], startX, endX, x);
 
     return new Hover() {
       @Override
       public Area getRedraw() {
-        double start = Math.min(mouseXpos - CURSOR_SIZE / 2, startX);
-        double end = Math.max(mouseXpos + CURSOR_SIZE / 2 +
+        double start = Math.min(hovered.mouseX - CURSOR_SIZE / 2, startX);
+        double end = Math.max(hovered.mouseX + CURSOR_SIZE / 2 +
             HOVER_MARGIN + HOVER_PADDING + hovered.size.w + HOVER_PADDING,
             endX);
         return new Area(start, -TRACK_MARGIN, end - start, trackHeight + 2 * TRACK_MARGIN);
@@ -222,16 +220,18 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   private static class HoverCard {
     public final double value;
     public final double startX, endX;
+    public final double mouseX;
     public final String label;
     public final String min, max, avg;
     public final double leftWidth;
     public final Size size;
 
-    public HoverCard(
-        Fonts.TextMeasurer tm, CounterInfo counter, double value, double startX, double endX) {
+    public HoverCard(Fonts.TextMeasurer tm, CounterInfo counter, double value, double startX,
+        double endX, double mouseX) {
       this.value = value;
       this.startX = startX;
       this.endX = endX;
+      this.mouseX = mouseX;
       this.label = counter.unit.format(value);
       this.min = counter.unit.format(counter.min);
       this.max = counter.unit.format(counter.max);
