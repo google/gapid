@@ -60,11 +60,6 @@ func doReplay(t *testing.T, f func(*builder.Builder)) error {
 		t.Errorf("Failed to connect to '%v': %v", device, err)
 		return err
 	}
-	bgc, err := replay.MakeBackgroundConnectionForTest(ctx, device, connection, abi)
-	if err != nil {
-		t.Errorf("Failed to set up background connection to '%v': %v", device, err)
-		return err
-	}
 
 	b := builder.New(abi.MemoryLayout, nil)
 
@@ -83,7 +78,9 @@ func doReplay(t *testing.T, f func(*builder.Builder)) error {
 		return err
 	}
 
-	err = replay.Execute(ctx, "", payload, decoder, notification, fenceReady, bgc, abi.MemoryLayout, os)
+	m := replay.NewManagerForTest(client)
+
+	err = replay.Execute(ctx, "", payload, decoder, notification, fenceReady, m, connection, abi.MemoryLayout, os)
 	if err != nil {
 		t.Errorf("Executor failed with error: %v", err)
 		return err

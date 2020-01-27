@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapir"
+	gapirClient "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -50,7 +51,8 @@ func Execute(
 	handlePost builder.PostDataHandler,
 	handleNotification builder.NotificationHandler,
 	fenceReadyCallback builder.FenceReadyRequestCallback,
-	connection *backgroundConnection,
+	m Manager,
+	conn *gapirClient.ConnectionKey,
 	memoryLayout *device.MemoryLayout,
 	os *device.OS) error {
 
@@ -68,17 +70,17 @@ func Execute(
 		memoryLayout:       memoryLayout,
 		OS:                 os,
 		finished:           make(chan error),
-	}.execute(ctx, connection)
+	}.execute(ctx, m.(*manager), conn)
 }
 
-func (e executor) execute(ctx context.Context, connection *backgroundConnection) error {
+func (e executor) execute(ctx context.Context, m *manager, conn *gapirClient.ConnectionKey) error {
 	plid, err := database.Store(ctx, &e.payload)
 	if err != nil {
 		return log.Errf(ctx, err, "Storing replay payload")
 	}
 	e.payloadID = plid
 	log.I(ctx, "Replaying %v", plid)
-	clean, err := connection.SetReplayExecutor(ctx, e)
+	clean, err := m.SetReplayExecutor(ctx, conn, e)
 	if err != nil {
 		return err
 	}
@@ -86,20 +88,20 @@ func (e executor) execute(ctx context.Context, connection *backgroundConnection)
 
 	log.I(ctx, "Beginning replay %v", plid)
 	// Start replay with id
-	connection.BeginReplay(ctx, plid.String(), e.dependent)
+	m.BeginReplay(ctx, conn, plid.String(), e.dependent)
 	// Wait for finished
 	err = <-e.finished
 	return err
 }
 
-func (e executor) HandleFinished(ctx context.Context, err error, conn gapir.Connection) error {
+func (e executor) HandleFinished(ctx context.Context, err error) error {
 	log.I(ctx, "Finished replay %v", e.payloadID)
 	e.finished <- err
 	return nil
 }
 
 // HandlePostData implements gapir.ReplayResponseHandler interface.
-func (e executor) HandlePostData(ctx context.Context, postData *gapir.PostData, conn gapir.Connection) error {
+func (e executor) HandlePostData(ctx context.Context, postData *gapir.PostData) error {
 	ctx = status.Start(ctx, "Post Data (count: %d)", len(postData.PostDataPieces))
 	defer status.Finish(ctx)
 
@@ -108,14 +110,14 @@ func (e executor) HandlePostData(ctx context.Context, postData *gapir.PostData, 
 }
 
 // HandleNotification implements gapir.ReplayResponseHandler interface.
-func (e executor) HandleNotification(ctx context.Context, notification *gapir.Notification, conn gapir.Connection) error {
+func (e executor) HandleNotification(ctx context.Context, notification *gapir.Notification) error {
 	e.handleNotification(notification)
 	return nil
 }
 
-func (e executor) HandleFenceReadyRequest(ctx context.Context, req *gapir.FenceReadyRequest, conn gapir.Connection) error {
+func (e executor) HandleFenceReadyRequest(ctx context.Context, req *gapir.FenceReadyRequest) error {
 	ctx = status.Start(ctx, "Fence Ready Request")
 	defer status.Finish(ctx)
 	e.fenceReadyCallback(req)
-	return conn.SendFenceReady(ctx, req.GetId())
+	return nil
 }

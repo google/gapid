@@ -231,33 +231,33 @@ func (c *connection) HandleReplayCommunication(
 		}
 		switch r.Res.(type) {
 		case *replaysrv.ReplayResponse_PayloadRequest:
-			if err := handler.HandlePayloadRequest(ctx, r.GetPayloadRequest().GetPayloadId(), c); err != nil {
+			if err := handler.HandlePayloadRequest(ctx, r.GetPayloadRequest().GetPayloadId()); err != nil {
 				return log.Errf(ctx, err, "Handling replay payload request")
 			}
 		case *replaysrv.ReplayResponse_ResourceRequest:
-			if err := handler.HandleResourceRequest(ctx, r.GetResourceRequest(), c); err != nil {
+			if err := handler.HandleResourceRequest(ctx, r.GetResourceRequest()); err != nil {
 				return log.Errf(ctx, err, "Handling replay resource request")
 			}
 		case *replaysrv.ReplayResponse_CrashDump:
-			if err := handler.HandleCrashDump(ctx, r.GetCrashDump(), c); err != nil {
+			if err := handler.HandleCrashDump(ctx, r.GetCrashDump()); err != nil {
 				return log.Errf(ctx, err, "Handling replay crash dump")
 			}
 			// No valid replay response after crash dump.
 			return nil
 		case *replaysrv.ReplayResponse_PostData:
-			if err := handler.HandlePostData(ctx, r.GetPostData(), c); err != nil {
+			if err := handler.HandlePostData(ctx, r.GetPostData()); err != nil {
 				return log.Errf(ctx, err, "Handling post data")
 			}
 		case *replaysrv.ReplayResponse_Notification:
-			if err := handler.HandleNotification(ctx, r.GetNotification(), c); err != nil {
+			if err := handler.HandleNotification(ctx, r.GetNotification()); err != nil {
 				return log.Errf(ctx, err, "Handling notification")
 			}
 		case *replaysrv.ReplayResponse_Finished:
-			if err := handler.HandleFinished(ctx, nil, c); err != nil {
+			if err := handler.HandleFinished(ctx, nil); err != nil {
 				return log.Errf(ctx, err, "Handling finished")
 			}
 		case *replaysrv.ReplayResponse_FenceReadyRequest:
-			if err := handler.HandleFenceReadyRequest(ctx, r.GetFenceReadyRequest(), c); err != nil {
+			if err := handler.HandleFenceReadyRequest(ctx, r.GetFenceReadyRequest()); err != nil {
 				return log.Errf(ctx, err, "Handling replay fence ready request")
 			}
 		default:

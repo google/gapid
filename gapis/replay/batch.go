@@ -269,7 +269,7 @@ func (m *manager) execute(
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
-	connection, err := m.connect(ctx, d, replayABI)
+	conn, err := m.connect(ctx, d, replayABI)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to device")
 	}
@@ -299,7 +299,7 @@ func (m *manager) execute(
 				depBuilder = i.oldBuilder
 				depState = i.oldState
 
-				err = connection.PrewarmReplay(ctx, i.prerunID, i.cleanupID)
+				err = m.PrewarmReplay(ctx, conn, i.prerunID, i.cleanupID)
 				if err != nil {
 					return log.Err(ctx, err, "Replay returned error")
 				}
@@ -376,7 +376,8 @@ func (m *manager) execute(
 			handlePost,
 			handleNotification,
 			fenceReadyCallback,
-			connection,
+			m,
+			conn,
 			replayABI.MemoryLayout,
 			d.Instance().GetConfiguration().GetOS(),
 		)

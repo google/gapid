@@ -51,27 +51,28 @@ type (
 // from a connected GAPIR device.
 type ReplayResponseHandler interface {
 	// HandlePayloadRequest handles the given payload request message.
-	HandlePayloadRequest(context.Context, string, Connection) error
+	HandlePayloadRequest(context.Context, string) error
 	// HandleResourceRequest handles the given resource request message.
-	HandleResourceRequest(context.Context, *ResourceRequest, Connection) error
+	HandleResourceRequest(context.Context, *ResourceRequest) error
 	// HandleCrashDump handles the given crash dump message.
-	HandleCrashDump(context.Context, *CrashDump, Connection) error
+	HandleCrashDump(context.Context, *CrashDump) error
 	// HandlePostData handles the given post data message.
-	HandlePostData(context.Context, *PostData, Connection) error
+	HandlePostData(context.Context, *PostData) error
 	// HandleNotification handles the given notification message.
-	HandleNotification(context.Context, *Notification, Connection) error
+	HandleNotification(context.Context, *Notification) error
 	// HandleFinished handles the replay complete
-	HandleFinished(context.Context, error, Connection) error
+	HandleFinished(context.Context, error) error
 	// HandleFenceReadyRequest handles the profiler ready message.
-	HandleFenceReadyRequest(context.Context, *FenceReadyRequest, Connection) error
+	HandleFenceReadyRequest(context.Context, *FenceReadyRequest) error
 }
 
 // Connection represents a connection between GAPIS and GAPIR. It wraps the
 // internal gRPC connections and holds authentication token. A new Connection
 // should be created only by client.Client.
+
 // TODO: The functionality of replay stream and Ping/Shutdown can be separated.
 // The GAPIS code should only use the replay stream, Ping/Shutdown should be
-// managed by client.session.
+// managed by client.
 type Connection interface {
 	// Close shutdown the GAPIR connection.
 	Close()
