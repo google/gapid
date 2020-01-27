@@ -38,8 +38,11 @@ import java.util.Set;
 import java.util.stream.LongStream;
 
 public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
-  private static final String VIEW_SQL =
+  private static final String VIEW_SQL_DELTA =
       "select ts + 1 ts, lead(ts) over win - ts dur, lead(value) over win value " +
+      "from counter where track_id = %d window win as (order by ts)";
+  private static final String VIEW_SQL_EVENT =
+      "select ts, lead(ts) over win - ts dur, value " +
       "from counter where track_id = %d window win as (order by ts)";
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), avg(value) from %s group by quantum_ts";
@@ -75,7 +78,11 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   }
 
   private String viewSql() {
-    return format(VIEW_SQL, counter.id);
+    switch (counter.interpolation) {
+      case Delta: return format(VIEW_SQL_DELTA, counter.id);
+      case Event: return format(VIEW_SQL_EVENT, counter.id);
+      default: throw new AssertionError();
+    }
   }
 
   @Override

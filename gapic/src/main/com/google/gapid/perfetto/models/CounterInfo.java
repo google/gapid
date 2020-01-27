@@ -94,6 +94,7 @@ public class CounterInfo {
   public final String name;
   public final String description;
   public final Unit unit;
+  public final Interpolation interpolation;
   public final long ref;
   public final long count;
   public final double min;
@@ -102,13 +103,14 @@ public class CounterInfo {
   public final Range range;
 
   public CounterInfo(long id, Type type, long ref, String name, String description, Unit unit,
-      long count, double min, double max, double avg) {
+      Interpolation interpolation, long count, double min, double max, double avg) {
     this.id = id;
     this.type = type;
     this.ref = ref;
     this.name = name;
     this.description = description;
     this.unit = unit;
+    this.interpolation = interpolation;
     this.count = count;
     this.min = min;
     this.max = max;
@@ -118,8 +120,8 @@ public class CounterInfo {
 
   private CounterInfo(QueryEngine.Row row) {
     this(row.getLong(0), Type.of(row.getString(1)), row.getLong(2), row.getString(3),
-        row.getString(4), unitFromString(row.getString(5)), row.getLong(6), row.getDouble(7),
-        row.getDouble(8), row.getDouble(9));
+        row.getString(4), unitFromString(row.getString(5)), Interpolation.of(row), row.getLong(6),
+        row.getDouble(7), row.getDouble(8), row.getDouble(9));
   }
 
   private static Range computeRange(Unit unit, double min, double max) {
@@ -186,6 +188,18 @@ public class CounterInfo {
         default:
           return Global; // Treat unknowns as global counters.
       }
+    }
+  }
+
+  public static enum Interpolation {
+    Delta, // the value represents the counter "amount" since the last sample.
+    Event; // the value represents the current value until the next sample.
+
+    public static Interpolation of(QueryEngine.Row row) {
+      // Only GPU counters, and not the gpufreq counter, are Delta counters.
+      // TODO: this should be part of the counter definition in the backend.
+      return (!"gpu_counter_track".equals(row.getString(1)) ||
+          "gpufreq".equals(row.getString(3))) ? Event : Delta;
     }
   }
 }
