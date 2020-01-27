@@ -50,7 +50,9 @@ func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) e
 	}
 	for p, ok := chain.(TransformWriter); ok; p, ok = chain.(TransformWriter) {
 		chain = p.O
-		p.T.Flush(ctx, chain)
+		if err := p.T.Flush(ctx, chain); err != nil {
+			return err
+		}
 	}
 	return nil
 }
