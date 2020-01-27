@@ -258,8 +258,8 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       }
 
       @Override
-      public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
-        return (x < LABEL_WIDTH) ? Hover.NONE : track.onMouseMove(m, x, y);
+      public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+        return (x < LABEL_WIDTH) ? Hover.NONE : track.onMouseMove(m, x, y, mods);
       }
     }
 
