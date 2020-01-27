@@ -125,6 +125,8 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       if (hovered != null) {
         double y = (trackHeight - 1) * (1 - (hovered.value - min) / range);
+        ctx.setBackgroundColor(BaseColor.VIVID_BLUE.rgb);
+        ctx.fillRect(hovered.startX, y, hovered.endX - hovered.startX, trackHeight - y);
         ctx.setBackgroundColor(BaseColor.INDIGO.rgb);
         ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, 3);
         ctx.setForegroundColor(colors().textMain);
