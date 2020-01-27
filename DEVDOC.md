@@ -30,15 +30,15 @@ should still compile under the original checkout directory of GAPID.
 
 > Despite its name, the gofuse command does NOT use FUSE (filesystem in userspace).
 > It just creates directories and links to source files, including generated files.
-> It is a good idea to re-run gofuse from time to time to re-sync links to potential
+> It is a good idea to re-run gofuse from time to time, to re-sync links to potential
 > new files.
 
 In terms of editor, [VsCode](https://code.visualstudio.com/) has good Go support
 thanks to its
 [Go extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.Go).
-With the GOPATH setup to gofuse, and opening files under the gofuse directory,
-you should get some jump-to-definition and autocomplete features working. Make
-sure to edit the files through their link found under the gofuse directory.
+With the GOPATH setup to gofuse and opening the `<path-to-gapid-gofuse>` directory,
+as the root of your workspace, you should get some jump-to-definition and autocomplete
+features working. Make sure to edit the files through their link found under the gofuse directory.
 
 ## How to debug / breakpoint in Golang code
 
@@ -114,7 +114,56 @@ paths to start from another directory, typically your root directory. There may
 be a way to adjust using GOPATH to tell to your IDE a possible root for filename
 lookups.
 
-Any help to fix this is very welcome!
+See the workaround for VSCode below, any help to fix it for other IDEs is very welcome!
+
+#### Integration with VSCode and Delve
+
+To use the delve debugger for Go with VSCode to debug `gapis`. These steps can be followed:
+
+1. Make sure to complete Golang Setup for GAPID.
+
+2. Create a `launch.json` under the workspace directory with `Ctrl + Shift + P` and `Debug: Open launch.json`
+
+3. Paste this as one of the launch configurations. This will ensure that there is a launch configuration for attaching to Delve.
+```
+{
+    ...
+    "configurations": [
+        ...,
+        {
+            "name": "Attach to Delve",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "apiVersion": 2,
+            "remotePath": "gapis/",
+            "cwd": "${workspaceFolder}/src/github.com/google/gapid/gapis",
+            "dlvLoadConfig": {
+                "followPointers": true,
+                "maxVariableRecurse": 1,
+                "maxStringLen": 120,
+                "maxArrayValues": 120,
+                "maxStructFields": -1
+            },
+            "host": <host>,
+            "port": <port>,
+        },
+    ],
+    ...
+}
+```
+A sample `<host>` can be `127.0.0.1` and `<port>` can be `1234`.
+
+4. Start delve in headless mode at gapid check-in folder.
+```
+dlv exec --headless --listen=<host>:<port> --api-version 2 ./bazel-bin/pkg/gapis -- <gapis-arguments>
+```
+
+This will allow using port `1234` (or any other preferred port) to connect to delve from VSCode.
+
+5. Start debugging with `Debug->Start Debugging` (on Linux with `F5`) and make sure `Attach to Delve` is selected as the launch configuration.
+
+6. Now VSCode can interact with Delve and can be used for debugging `gapis` in VSCode UI instead of command line. Enjoy your debugging :)
 
 ## How to debug via printing message
 
