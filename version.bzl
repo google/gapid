@@ -12,32 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# True source of GAPID versions.
+# True source of AGI versions.
 # Increment these numbers immediately after releasing a new version.
-GAPID_VERSION_MAJOR="1"
-GAPID_VERSION_MINOR="7"
-GAPID_VERSION_POINT="0"
+AGI_VERSION_MAJOR="0"
+AGI_VERSION_MINOR="9"
+AGI_VERSION_POINT="0"
 
 # See bazel.rc. Can be overriden on the command line with:
-#   bazel build --define GAPID_BUILD_NUMBER=<#> --define GAPID_BUILD_SHA=<sha>
-GAPID_BUILD_NUMBER="$(GAPID_BUILD_NUMBER)"
-GAPID_BUILD_SHA="$(GAPID_BUILD_SHA)"
+#   bazel build --define AGI_BUILD_NUMBER=<#> --define AGI_BUILD_SHA=<sha>
+AGI_BUILD_NUMBER="$(AGI_BUILD_NUMBER)"
+AGI_BUILD_SHA="$(AGI_BUILD_SHA)"
 
-def _gapid_version(ctx):
+def _agi_version(ctx):
     ctx.actions.expand_template(
         template = ctx.file.template,
         output = ctx.outputs.out,
         substitutions = {
-            "@GAPID_VERSION_MAJOR@": GAPID_VERSION_MAJOR,
-            "@GAPID_VERSION_MINOR@": GAPID_VERSION_MINOR,
-            "@GAPID_VERSION_POINT@": GAPID_VERSION_POINT,
-            "@GAPID_BUILD_NUMBER@": ctx.var.get("GAPID_BUILD_NUMBER"),
-            "@GAPID_BUILD_SHA@": ctx.var.get("GAPID_BUILD_SHA"),
+            "@AGI_VERSION_MAJOR@": AGI_VERSION_MAJOR,
+            "@AGI_VERSION_MINOR@": AGI_VERSION_MINOR,
+            "@AGI_VERSION_POINT@": AGI_VERSION_POINT,
+            "@AGI_BUILD_NUMBER@": ctx.var.get("AGI_BUILD_NUMBER"),
+            "@AGI_BUILD_SHA@": ctx.var.get("AGI_BUILD_SHA"),
         }
     )
 
-gapid_version = rule(
-    implementation=_gapid_version,
+agi_version = rule(
+    implementation=_agi_version,
     attrs = {
         "template": attr.label(
             mandatory = True,

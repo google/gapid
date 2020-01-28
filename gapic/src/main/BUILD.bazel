@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//:version.bzl", "gapid_version")
+load("//:version.bzl", "agi_version")
 load("//tools/build:rules.bzl", "java_grpc_library")
 
 java_library(
@@ -33,7 +33,7 @@ java_library(
     ],
 )
 
-gapid_version(
+agi_version(
     name = "version",
     out = "com/google/gapid/util/GapidVersion.java",
     template = "com/google/gapid/util/GapidVersion.java.in",

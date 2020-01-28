@@ -681,7 +681,7 @@ void android_main(struct android_app* app) {
     Options::PrintHelp();
     return;
   } else if (opts.version) {
-    GAPID_INFO("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
+    GAPID_INFO("GAPIR version " AGI_VERSION_AND_BUILD "\n");
     return;
   } else if (opts.mode == kConflict) {
     GAPID_ERROR("Argument conflicts.");
@@ -974,7 +974,7 @@ int main(int argc, const char* argv[]) {
     Options::PrintHelp();
     return EXIT_SUCCESS;
   } else if (opts.version) {
-    printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
+    printf("GAPIR version " AGI_VERSION_AND_BUILD "\n");
     return EXIT_SUCCESS;
   } else if (opts.mode == kConflict) {
     GAPID_ERROR("Argument conflicts.");

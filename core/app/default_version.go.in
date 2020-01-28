@@ -16,9 +16,9 @@ package app
 
 func init() {
 	Version = VersionSpec{
-		Major: @GAPID_VERSION_MAJOR@,
-		Minor: @GAPID_VERSION_MINOR@,
-		Point: @GAPID_VERSION_POINT@,
-		Build: "@GAPID_BUILD_SHA@",
+		Major: @AGI_VERSION_MAJOR@,
+		Minor: @AGI_VERSION_MINOR@,
+		Point: @AGI_VERSION_POINT@,
+		Build: "@AGI_BUILD_SHA@",
 	}
 }

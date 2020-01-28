@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//:version.bzl", "gapid_version")
+load("//:version.bzl", "agi_version")
 load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
@@ -63,7 +63,7 @@ cc_library(
     ],
 )
 
-gapid_version(
+agi_version(
     name = "version",
     out = "version.h",
     template = "version.h.in",

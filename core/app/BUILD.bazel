@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("//:version.bzl", "gapid_version")
+load("//:version.bzl", "agi_version")
 
 go_library(
     name = "go_default_library",
@@ -49,7 +49,7 @@ go_library(
     ],
 )
 
-gapid_version(
+agi_version(
     name = "version",
     out = "default_version.go",
     template = "default_version.go.in",

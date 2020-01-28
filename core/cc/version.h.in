@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef GAPID_VERSION_AND_BUILD
-#define GAPID_VERSION_AND_BUILD \
-  "@GAPID_VERSION_MAJOR@."      \
-  "@GAPID_VERSION_MINOR@."      \
-  "@GAPID_VERSION_POINT@."      \
-  "@GAPID_BUILD_SHA@"
+#ifndef AGI_VERSION_AND_BUILD
+#define AGI_VERSION_AND_BUILD \
+  "@AGI_VERSION_MAJOR@."      \
+  "@AGI_VERSION_MINOR@."      \
+  "@AGI_VERSION_POINT@."      \
+  "@AGI_BUILD_SHA@"
 #endif

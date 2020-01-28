@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Bazel RC file for the GAPID build.
+# Bazel RC file for the AGI build.
 
 # Import any user defined rules.
 try-import %workspace%/user.bazelrc
@@ -29,7 +29,7 @@ build --cxxopt="-std=c++11" --host_cxxopt="-std=c++11"
 build --fat_apk_cpu armeabi-v7a,arm64-v8a,x86
 
 # Default version defines
-build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
+build --define AGI_BUILD_NUMBER=0 --define AGI_BUILD_SHA=developer
 
 # Without this, bazel wraps each cc_library with "--whole-archive" flags for the
 # linker when building the dynamic library, which leads to over-bloated libs.
