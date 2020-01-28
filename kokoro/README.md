@@ -15,7 +15,7 @@ A `.zip` file is built containing the application, dependant DLLs and the
 JRE. The file structure within the `.zip` archive is:
 
 ```
-gapid\
+agi\
 ├─ jre\...
 ├─ lib\
 │  ├─ GraphicsSpyLayer.json
@@ -37,23 +37,22 @@ gapid\
 └─ libwinpthread-1.dll
 ```
 
-Plans are in place to also build an executable installer. The installer will
-allows the user to install the package anywhere, suggesting
-`%PROGRAMFILES%\gapid`. The installer will install GAPID into the selected
-folder with the same structure as mentioned aboe.
+An MSI installer is also built. The installer allows the user to install the
+package anywhere, suggesting `%PROGRAMFILES%\agi`. The installer will install
+AGI into the selected folder with the same structure as mentioned above.
 
 ## MacOS
 
-The built package consists of a `.dmg` disk image containing the `GAPID.app`
+The built package consists of a `.dmg` disk image containing the `AGI.app`
 application and link to `/Applications` to make "installing" easy. The
-`GAPID.app` can be run from anywhere and follows the following structure:
+`AGI.app` can be run from anywhere and follows the following structure:
 
 ```
-GAPID.app/
+AGI.app/
 └─ Contents/
    ├─ MacOS/
    │  └─ <see below>
-   ├─ Resources/GAPID.icns
+   ├─ Resources/AGI.icns
    └─ Info.plist
 ```
 
@@ -61,7 +60,7 @@ Along with the `.dmg` disk image, a `.zip` file with the same content's as
 inside the `Contents/MacOS/` folder of the `.app` package is built:
 
 ```
-<Content/MacOS inside .app or gapid inside .zip>/
+<Content/MacOS inside .app or agi inside .zip>/
 ├─ jre/...
 ├─ lib/
 │  ├─ gapic.jar
@@ -77,14 +76,14 @@ inside the `Contents/MacOS/` folder of the `.app` package is built:
 └─ gapit
 ```
 
-When running the `.app` application, the `gapid` script is invoked. When
+When running the `.app` application, the `gapid` executable is invoked. When
 using the `.zip` file, the only way to run the application is via the
-terminal by running the `gapid` script or the executables.
+terminal by running the `gapid` executable.
 
 ## Linux
 
 A Debian `.deb` package and a `.zip` file with the same contents are built.
-The package installs into `/opt/gapid`, while archives can be expanded anywhere.
+The package installs into `/opt/agi`, while archives can be expanded anywhere.
 The Debian package depends on `openjdk-8-jre` and neither it nor the `.zip`
 archives contain the JRE. The launcher script looks for `java` first in
 `$JAVA_HOME`, then on the `$PATH`, and finally the hard-coded
@@ -92,7 +91,7 @@ archives contain the JRE. The launcher script looks for `java` first in
 package provides. The file layout is:
 
 ```
-/{opt|wherever}/gapid/
+/{opt|wherever}/agi/
 ├─ lib/
 │  ├─ gapic.jar
 │  ├─ GraphicsSpyLayer.json
