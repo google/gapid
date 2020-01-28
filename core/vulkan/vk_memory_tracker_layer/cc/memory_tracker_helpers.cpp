@@ -18,12 +18,6 @@
 
 namespace memory_tracker {
 
-VkResult vkCreateDevice(PFN_vkCreateDevice fn, VkPhysicalDevice physicalDevice,
-                        const VkDeviceCreateInfo* pCreateInfo,
-                        AllocationCallbacks pAllocator, VkDevice* pDevice) {
-  return fn(physicalDevice, pCreateInfo, pAllocator, pDevice);
-}
-
 void vkCmdDraw(PFN_vkCmdDraw fn, VkCommandBuffer commandBuffer,
                uint32_t vertexCount, uint32_t instanceCount,
                uint32_t firstVertex, uint32_t firstInstance) {
@@ -35,13 +29,6 @@ VkResult vkQueueSubmit(PFN_vkQueueSubmit fn, VkQueue queue,
                        uint32_t submitCount, const VkSubmitInfo* pSubmits,
                        VkFence fence) {
   return fn(queue, submitCount, pSubmits, fence);
-}
-
-VkResult vkCreateInstance(PFN_vkCreateInstance fn,
-                          const VkInstanceCreateInfo* pCreateInfo,
-                          AllocationCallbacks pAllocator,
-                          VkInstance* pInstance) {
-  return fn(pCreateInfo, pAllocator, pInstance);
 }
 
 }  // namespace memory_tracker
