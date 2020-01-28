@@ -7,15 +7,15 @@
   <key>CFBundleExecutable</key>
   <string>gapid</string>
   <key>CFBundleIconFile</key>
-  <string>GAPID.icns</string>
+  <string>AGI.icns</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleName</key>
-  <string>GAPID</string>
+  <string>AGI</string>
   <key>CFBundleDisplayName</key>
-  <string>Graphics API Debugger</string>
+  <string>Android GPU Inspector</string>
   <key>CFBundleIdentifier</key>
-  <string>com.google.GAPID</string>
+  <string>com.google.agi</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6</string>
   <key>NSHumanReadableCopyright</key>
@@ -30,7 +30,7 @@
      <string>gfxtrace</string>
     </array>
     <key>CFBundleTypeIconFile</key>
-    <string>GAPID.icns</string>
+    <string>AGI.icns</string>
     <key>CFBundleTypeName</key>
     <string>Graphics API Trace</string>
     <key>CFBundleTypeRole</key>

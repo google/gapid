@@ -17,7 +17,7 @@
 set -ex
 
 BUILD_ROOT=$PWD
-SRC=$PWD/github/gapid/
+SRC=$PWD/github/agi/
 
 # Setup the Android SDK and NDK
 curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
@@ -49,8 +49,8 @@ function build {
   $BUILD_ROOT/bazel/bin/bazel \
       --output_base="${TMP}/bazel_out" \
       build -c opt --config symbols \
-      --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
-      --define GAPID_BUILD_SHA="$BUILD_SHA" \
+      --define AGI_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+      --define AGI_BUILD_SHA="$BUILD_SHA" \
       --strategy CppLink=local \
       $@
   echo $(date): Build completed.

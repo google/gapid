@@ -15,11 +15,11 @@
 # DMG configuration for dmgbuild.
 
 format = 'UDZO'
-files = [ 'GAPID.app' ]
+files = [ 'AGI.app' ]
 symlinks = { 'Applications': '/Applications' }
-badge_icon = 'GAPID.app/Contents/Resources/GAPID.icns'
+badge_icon = 'AGI.app/Contents/Resources/AGI.icns'
 icon_locations = {
-	'GAPID.app': (120, 172),
+	'AGI.app': (120, 172),
 	'Applications': (360, 172),
 	'.background.tiff': (1000, 1000), # hide
 	'.VolumeIcon.icns': (1000, 1000), # hide

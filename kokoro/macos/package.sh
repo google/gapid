@@ -44,34 +44,31 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
                   END {print major"."minor"."micro}' $BIN/pkg/build.properties)
 
 # Combine package contents.
-mkdir -p gapid/jre
-cp -r $BIN/pkg/* gapid/
-"$SRC/copy_jre.sh" gapid/jre
+mkdir -p agi/jre
+cp -r $BIN/pkg/* agi/
+"$SRC/copy_jre.sh" agi/jre
 
 # Create a zip file.
-zip -r gapid-$VERSION-macos.zip gapid/
+zip -r agi-$VERSION-macos.zip agi/
 
 # Create a .app package
-mkdir -p GAPID.app/Contents/MacOS/
-cp -r gapid/* GAPID.app/Contents/MacOS/
-cp "$SRC/Info.plist" GAPID.app/Contents/
+mkdir -p AGI.app/Contents/MacOS/
+cp -r agi/* AGI.app/Contents/MacOS/
+cp "$SRC/Info.plist" AGI.app/Contents/
 
-mkdir -p GAPID.iconset GAPID.app/Contents/Resources
+mkdir -p AGI.iconset AGI.app/Contents/Resources
 for i in 512 256 128 64 32 16; do
-  cp "$SRC/../../gapic/res/icons/logo_${i}.png" GAPID.iconset/icon_${i}x${i}.png
-  cp "$SRC/../../gapic/res/icons/logo_$((i*2)).png" GAPID.iconset/icon_${i}x${i}\@2x.png
+  cp "$SRC/../../gapic/res/icons/logo_${i}.png" AGI.iconset/icon_${i}x${i}.png
+  cp "$SRC/../../gapic/res/icons/logo_$((i*2)).png" AGI.iconset/icon_${i}x${i}\@2x.png
 done
-iconutil -c icns -o GAPID.app/Contents/Resources/GAPID.icns GAPID.iconset
-
-# TODO Copy the GAPIR Symbols
-# cp ../current/gapir.sym gapir-$VERSION-macos.sym
+iconutil -c icns -o AGI.app/Contents/Resources/AGI.icns AGI.iconset
 
 # Make a dmg file.
 pip install --upgrade --user dmgbuild pyobjc-framework-Quartz
 cp "$SRC"/background*.png .
 cp "$SRC/dmg-settings.py" .
 # Path to dmgbuild must match where pip installs it
-~/Library/Python/3.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION-macos.dmg
+~/Library/Python/3.7/bin/dmgbuild -s dmg-settings.py AGI agi-$VERSION-macos.dmg
 
 # Copy the symbol file to the output.
 [ -f "$BIN/cmd/gapir/cc/gapir.sym" ] && cp "$BIN/cmd/gapir/cc/gapir.sym" gapir-$VERSION-macos.sym
