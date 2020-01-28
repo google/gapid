@@ -1,4 +1,4 @@
-# GAPID Developer Documentation
+# Android GPU Inspector Developer Documentation
 
 ## Setup Golang development
 
@@ -9,18 +9,18 @@ tools:
 
 ```sh
 # Make sure to build to have all compile-time generated files
-cd <path-to-gapid-source>
+cd <path-to-agi-source>
 bazel build pkg
 
-# Prepare a gapid-gofuse directory **outside of the gapid checkout directory**
-mkdir <path-outside-gapid-source>/gapid-gofuse
+# Prepare a agi-gofuse directory **outside of the AGI checkout directory**
+mkdir <path-outside-agi-source>/agi-gofuse
 
 # Run gofuse with the previous directory as a target
-bazel run //cmd/gofuse -- -dir <path-to-gapid-gofuse>
+bazel run //cmd/gofuse -- -dir <path-to-agi-gofuse>
 
-# Add gapid-gofuse directory to your GOPATH environment variable.
+# Add agi-gofuse directory to your GOPATH environment variable.
 # On Linux, with a bash shell, you can add the following to your ~/.bashrc file:
-export GOPATH="${GOPATH:+${GOPATH}:}<path-to-gapid-gofuse>"
+export GOPATH="${GOPATH:+${GOPATH}:}<path-to-agi-gofuse>"
 # On other configurations, please search online how to add/edit environment variables.
 ```
 
@@ -31,7 +31,7 @@ as described [here](https://blogs.windows.com/windowsdeveloper/2016/12/02/symlin
 
 After adding the gofuse directory to your GOPATH, Go tools should work as
 expected. You can edit files under the newly populated gofuse directory. You
-should still compile under the original checkout directory of GAPID.
+should still compile under the original AGI checkout directory.
 
 > Despite its name, the gofuse command does NOT use FUSE (filesystem in userspace).
 > It just creates directories and links to source files, including generated files.
@@ -112,7 +112,7 @@ dlv exec --init my-delve-init-script.txt <program to debug...>
 ### Integration with an IDE
 
 If you want to interact with the debugger via your editor or IDE, be aware that
-delve will think file paths start from the gapid top directory, and not your
+delve will think file paths start from the AGI top directory, and not your
 root directory. This is very likely due to Bazel compilation. You may have to
 find workarounds if you call delve from an editor/IDE which consider the file
 paths to start from another directory, typically your root directory. There may

@@ -1,19 +1,19 @@
-# Building GAPID
+# Building Android GPU Inspector
 
-GAPID uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **1.2.0**.
+AGI uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **1.2.0**.
 
-Bazel is able to fetch most of the dependencies required to build GAPID, but currently the Android SDK and NDK both need to be downloaded and installed by hand.
+Bazel is able to fetch most of the dependencies required to build AGI, but currently the Android SDK and NDK both need to be downloaded and installed by hand.
 
 Please see the following OS specific guides for setting up the build environment.
 
-After setting up the build environment, GAPID can be built in a terminal with:
+After setting up the build environment, AGI can be built in a terminal with:
 
 ```
-cd <path-to-gapid-source>
+cd <path-to-agi-source>
 bazel build pkg
 ```
 
-The build output will be at `<path-to-gapid-source>/bazel-bin/pkg`.
+The build output will be at `<path-to-agi-source>/bazel-bin/pkg`.
 
 ---
 

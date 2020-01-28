@@ -1,4 +1,4 @@
-# GAPID: Graphics API Debugger
+# Android GPU Inspector
 
 [![GoDoc](https://godoc.org/github.com/google/gapid?status.svg)](https://godoc.org/github.com/google/gapid)
 [![Gitter](https://badges.gitter.im/google/gapid.svg)](https://gitter.im/google/gapid?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -11,23 +11,23 @@
 
 ## Downloads
 
-**[Download the latest version of GAPID here.](https://github.com/google/gapid/releases)**
+**[Download the latest version of AGI here.](https://github.com/google/agi/releases)**
 
-*Unstable* developer releases are [here](https://github.com/google/gapid-dev-releases/releases).
+*Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases).
 
 ## Documentation
 
 **[User documentation can be found at gapid.dev](https://gapid.dev)**
 
-The [developer documentation](DEVDOC.md) contains some hints for GAPID
+The [developer documentation](DEVDOC.md) contains some hints for AGI
 developers. See also the README files under some source directories.
 
 ## About
 
-GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
+Android GPU Inspector is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
 
-GAPID can trace any Android [debuggable application](https://developer.android.com/guide/topics/manifest/application-element.html#debug), or if you have root access to the device any application can be traced.
-GAPID can also trace any desktop Vulkan application.
+Android GPU Inspector can trace any Android [debuggable application](https://developer.android.com/guide/topics/manifest/application-element.html#debug), or if you have root access to the device any application can be traced.
+AGI can also trace any desktop Vulkan application.
 
 <table>
   <tr>
@@ -58,19 +58,19 @@ GAPID can also trace any desktop Vulkan application.
 
 ## Building
 
-**See [Building GAPID](BUILDING.md).**
+**See [Building Android GPU Inspector](BUILDING.md).**
 
 ## Running the client
 
-After building GAPID, you can run the client from `<gapid-root>/bazel-bin/pkg/gapid`.
+After building AGI, you can run the client from `<gapid-root>/bazel-bin/pkg/gapid`.
 
 ## Command-Line Interface
 
-GAPID exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gapid.dev/cli/).
+AGI exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gapid.dev/cli/).
 
 ## Project Structure
 
-GAPID consists of the following sub-components:
+Android GPU Inspector consists of the following sub-components:
 
 ### [`gapii`](gapii): Graphics API Interceptor
 A layer that sits between the application / game and the GPU driver, recording all the calls and memory accesses.
@@ -86,4 +86,3 @@ The frontend user interface application. Provides visual inspection of the captu
 
 ### [`gapil`](gapil): Graphics API Language
 A new domain specific language to describe a graphics API in its entirety. Combined with our template system to generate huge parts of the interceptor, server and replay systems.
-

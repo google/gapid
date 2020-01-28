@@ -5,32 +5,32 @@ just a few small guidelines you need to follow.
 
 ## Check out the source
 
-Do the following to check out the GAPID source code on GitHub:
+Do the following to check out the Android GPU Inspector source code on GitHub:
 
 1.  Sign up for GitHub at https://github.com/ if you don’t already have an account.
 1.  (Optional) Set up an SSH key to [connect to your account using SSH].
 1.  (Optional) [Add a GPG signing key to your account].
-1.  Go to the project landing page at https://github.com/google/gapid.
+1.  Go to the project landing page at https://github.com/google/agi.
 1.  [Fork the repository]. This creates a copy of the repository in your account.
 1.  Create a work folder on your workstation. The rest of this document assumes `~/work`, adjust as needed.
-1.  On _your_ GAPID project page, [clone your copy of the repository] and add it to your local work folder:
+1.  On _your_ AGI project page, [clone your copy of the repository] and add it to your local work folder:
     ```
     cd ~/work
     git clone <clone-url>
-    cd gapid
+    cd agi
     ```
 1.  Add the Google remote repository to your local repository:
     ```
-    git remote add goog git@github.com:google/gapid.git
+    git remote add goog git@github.com:google/agi.git
     git fetch goog
     ```
 
 ## (Optional) Configure git
 
-Use the following commands to configure git for GAPID development:
+Use the following commands to configure git for AGI development:
 ```
 # Assume the remote branch has the same name as your local branch to make pushing changes easier
-git config push.default current 
+git config push.default current
 # Default to pushing to your fork (assuming the above directions)
 git config remote.pushDefault origin
 # Make git clean up all the remote tags it creates when you delete remote branches
@@ -38,13 +38,13 @@ git config fetch.prune true
 git config user.name <your-name> # Add --global to make this a global setting
 git config user.email <you@your-email.com> # Can also be a global setting
 # If you added a GPG signing key, run the following commands:
-git config user.signingkey <keyid> 
+git config user.signingkey <keyid>
 git config commit.gpgsign true
 ```
 
-## Build GAPID for the first time
+## Build Android GPU Inspector for the first time
 
-Follow the [build instructions] in the GAPID repository.
+Follow the [build instructions] in the AGI repository.
 
 ## Sign the Contributor License Agreement
 
@@ -58,17 +58,17 @@ You generally only need to submit a CLA once, so if you've already submitted one
 
 ## Open a pull request (PR)
 
-Do the following to contribute to the GAPID project:
+Do the following to contribute to the AGI project:
 
 1.  Prepare your changes on a dedicated branch in your local repository:
     ```
     git checkout -b <my-branch>
-    ```  
-1.  Make changes, commit the changes, and squash them into a single commit. 
+    ```
+1.  Make changes, commit the changes, and squash them into a single commit.
 1.  Use the presubmit script to check code formatting and other things:
     ```
-    # Install clang-format 6.0 
-    sudo apt-get install -y clang-format-6.0 
+    # Install clang-format 6.0
+    sudo apt-get install -y clang-format-6.0
     export CLANG_FORMAT=clang-format-6.0
     # Run the script
     ./kokoro/presubmit/presubmit.sh
@@ -81,10 +81,10 @@ Do the following to contribute to the GAPID project:
     ```
 1.  Push to your GitHub repo:
     ```
-    git push 
+    git push
     ```
-1.  Visit https://github.com/google/gapid to see a pop-up dialog inviting you  to open a PR; click on the dialog to create a PR. See [Creating a pull request from a fork] for more information.
-1.  All submissions, including submissions by project members, require review. You can request specific reviewers for your PR or leave the reviewers section blank. A GAPID team member will review the request.
+1.  Visit https://github.com/google/agi to see a pop-up dialog inviting you to open a PR; click on the dialog to create a PR. See [Creating a pull request from a fork] for more information.
+1.  All submissions, including submissions by project members, require review. You can request specific reviewers for your PR or leave the reviewers section blank. An AGI team member will review the request.
 
 Consult [GitHub Help] for more information on using pull requests.
 
@@ -92,6 +92,6 @@ Consult [GitHub Help] for more information on using pull requests.
 [Add a GPG signing key to your account]: https://help.github.com/en/articles/adding-a-new-gpg-key-to-your-github-account
 [Fork the repository]: https://help.github.com/en/articles/fork-a-repo
 [clone your copy of the repository]: https://help.github.com/en/articles/cloning-a-repository
-[build instructions]: https://github.com/google/gapid/blob/master/BUILDING.md
+[build instructions]: https://github.com/google/agi/blob/master/BUILDING.md
 [Creating a pull request from a fork]: https://help.github.com/en/articles/creating-a-pull-request-from-a-fork
 [GitHub Help]: https://help.github.com/articles/about-pull-requests/
