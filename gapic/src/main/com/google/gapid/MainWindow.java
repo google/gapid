@@ -53,6 +53,7 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.window.ApplicationWindow;
@@ -267,7 +268,8 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = findMenu(MenuItems.FILE_ID);
     manager.removeAll();
 
-    Action save = MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models));
+    ActionContributionItem save = new ActionContributionItem(
+        MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models)));
 
     manager.add(MenuItems.FileOpen.create(() -> showOpenTraceDialog(getShell(), models)));
     manager.add(save);
@@ -276,16 +278,15 @@ public class MainWindow extends ApplicationWindow {
         () -> showTracingDialog(client, getShell(), models, widgets)));
     manager.add(MenuItems.FileExit.create(() -> close()));
 
-    save.setEnabled(false);
     models.capture.addListener(new Capture.Listener() {
       @Override
-      public void onCaptureLoadingStart(boolean maintainState) {
-        save.setEnabled(false);
-      }
-
-      @Override
       public void onCaptureLoaded(Message error) {
-        save.setEnabled(models.capture.isGraphics());
+        if (models.capture.isGraphics() && manager.find(save.getId()) == null) {
+          manager.insertAfter(MenuItems.FileOpen.getLabel(), save);
+        } else if (!models.capture.isGraphics() && manager.find(save.getId()) != null) {
+          manager.remove(save);
+        }
+        manager.updateAll(true);
       }
     });
 
@@ -464,6 +465,10 @@ public class MainWindow extends ApplicationWindow {
       this.accelerator = accelerator;
     }
 
+    public String getLabel() {
+      return label;
+    }
+
     public Action create(Runnable listener) {
       return configure(new Action() {
         @Override
@@ -483,6 +488,7 @@ public class MainWindow extends ApplicationWindow {
     }
 
     private Action configure(Action action) {
+      action.setId(label);
       action.setText(label);
       action.setAccelerator(accelerator);
       return action;
