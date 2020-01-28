@@ -1,10 +1,10 @@
 [Desktop Entry]
 Encoding=UTF-8
 Type=Application
-Name=GAPID
-Comment=Graphics API Debugger
+Name=Android GPU Inspector
+Comment=Android GPU Inspector
 Categories=Development;Debugger;Graphics;3DGraphics
-Icon=/opt/gapid/icon.png
-Exec=/opt/gapid/gapid %f
+Icon=/opt/agi/icon.png
+Exec=/opt/agi/gapid %f
 Terminal=false
 MimeType=application/x-gfxtrace

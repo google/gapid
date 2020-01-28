@@ -17,7 +17,7 @@
 set -ex
 
 BUILD_ROOT=$PWD
-SRC=$PWD/github/gapid/
+SRC=$PWD/github/agi/
 
 # Get bazel
 BAZEL_VERSION=1.2.0
@@ -40,8 +40,8 @@ function test {
     $BUILD_ROOT/bazel/bin/bazel \
         --output_base="${TMP}/bazel_out" \
         test -c opt --config symbols \
-        --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
-        --define GAPID_BUILD_SHA="$BUILD_SHA" \
+        --define AGI_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+        --define AGI_BUILD_SHA="$BUILD_SHA" \
         --test_tag_filters=-needs_gpu \
         $@
     echo $(date): Tests completed.

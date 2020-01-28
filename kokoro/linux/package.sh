@@ -44,49 +44,46 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
                   END {print major"."minor"."micro}' $BIN/pkg/build.properties)
 
 # Combine package contents.
-mkdir -p gapid/DEBIAN gapid/opt/gapid gapid/usr/share/applications gapid/usr/share/menu gapid/usr/share/mime/packages
-cp -r $BIN/pkg/* gapid/opt/gapid
-cp "$SRC/../../gapic/res/icons/logo_256.png" gapid/opt/gapid/icon.png
-cp "$SRC/gapid.desktop" gapid/usr/share/applications/google-gapid.desktop
-cp "$SRC/gapid.menu" gapid/usr/share/menu/google-gapid.menu
-cp "$SRC/gapid-mime.xml" gapid/usr/share/mime/packages/gapid.xml
+mkdir -p agi/DEBIAN agi/opt/agi agi/usr/share/applications agi/usr/share/menu agi/usr/share/mime/packages
+cp -r $BIN/pkg/* agi/opt/agi
+cp "$SRC/../../gapic/res/icons/logo_256.png" agi/opt/agi/icon.png
+cp "$SRC/gapid.desktop" agi/usr/share/applications/google-agi.desktop
+cp "$SRC/gapid.menu" agi/usr/share/menu/google-agi.menu
+cp "$SRC/gapid-mime.xml" agi/usr/share/mime/packages/agi.xml
 
 # Create the dpkg config file.
-cat > gapid/DEBIAN/control <<EOF
-Package: gapid
+cat > agi/DEBIAN/control <<EOF
+Package: agi
 Version: $VERSION
 Section: development
 Priority: optional
 Architecture: amd64
 Depends: openjdk-8-jre
 Maintainer: Google, Inc <gapid-team@google.com>
-Description: GAPID is a collection of tools that allows you to inspect, tweak
- and replay calls from an application to a graphics driver.
+Description: Android Graphics Inspector is a collection of tools that allows you
+ to inspect, tweak and replay calls from an application to a graphics driver.
  .
- GAPID can trace any Android debuggable application, or if you have root access
+ AGI can trace any Android debuggable application, or if you have root access
  to the device any application can be traced.
-Homepage: https://github.com/google/gapid
-Installed-Size: $(du -s gapid/opt | cut -f1)
+Homepage: https://github.com/google/agi
+Installed-Size: $(du -s agi/opt | cut -f1)
 EOF
 
 # Fix up permissions (root ownership is faked below).
-find gapid/ -type f -exec chmod 644 {} +
-chmod 755 gapid/opt/gapid/gapi[drst] gapid/opt/gapid/device-info
-find gapid/ -type d -exec chmod 755 {} +
-find gapid/ -type d -exec chmod g-s {} +
+find agi/ -type f -exec chmod 644 {} +
+chmod 755 agi/opt/agi/gapi[drst] agi/opt/agi/device-info
+find agi/ -type d -exec chmod 755 {} +
+find agi/ -type d -exec chmod g-s {} +
 
 # Package up zip file.
-cd gapid/opt/
-zip -r ../../gapid-$VERSION-linux.zip gapid/
+cd agi/opt/
+zip -r ../../agi-$VERSION-linux.zip agi/
 cd ../../
-
-# TODO Copy the GAPIR symbols
-# cp ../current/gapir.sym gapir-$VERSION-linux.sym
 
 # Build the .deb package.
 echo "$(date): Building package."
-fakeroot dpkg-deb -v --build gapid
-mv gapid.deb gapid-$VERSION-linux.deb
+fakeroot dpkg-deb -v --build agi
+mv agi.deb agi-$VERSION-linux.deb
 echo "$(date): Done."
 
 # Copy the symbol file to the output.

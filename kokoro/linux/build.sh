@@ -17,7 +17,7 @@
 set -ex
 
 BUILD_ROOT=$PWD
-SRC=$PWD/github/gapid/
+SRC=$PWD/github/agi/
 
 # Get bazel.
 BAZEL_VERSION=1.2.0
@@ -48,8 +48,8 @@ function build {
   $BUILD_ROOT/bazel/bin/bazel \
     --output_base="${TMP}/bazel_out" \
     build -c opt --config symbols \
-    --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
-    --define GAPID_BUILD_SHA="$BUILD_SHA" \
+    --define AGI_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+    --define AGI_BUILD_SHA="$BUILD_SHA" \
     $@
   echo $(date): Build completed.
 }

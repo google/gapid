@@ -19,4 +19,4 @@ devdate=`date '+%Y%m%d'`
 
 export DEV_PREFIX="dev-${devdate}-"
 
-. $PWD/github/gapid/kokoro/linux/build.sh
+. $PWD/github/agi/kokoro/linux/build.sh
