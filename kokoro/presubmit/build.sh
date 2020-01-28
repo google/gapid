@@ -17,7 +17,7 @@
 set -ex
 
 BUILD_ROOT=$PWD
-SRC=$PWD/github/gapid/
+SRC=$PWD/github/agi/
 
 # Get bazel.
 BAZEL_VERSION=1.2.0
