@@ -31,20 +31,18 @@ import (
 // triangle primitives with draw calls of a wireframe equivalent.
 func wireframe(ctx context.Context, framebuffer FramebufferId) transform.Transformer {
 	ctx = log.Enter(ctx, "Wireframe")
-	return transform.Transform("Wireframe", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	return transform.Transform("Wireframe", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 		if dc, ok := cmd.(drawCall); ok {
 			s := out.State()
 			c := GetContext(s, cmd.Thread())
 
 			fb := c.Bound().DrawFramebuffer()
 			if fb.IsNil() {
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 			if fb.ID() != framebuffer {
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 			dID := id.Derived()
@@ -62,8 +60,9 @@ func wireframe(ctx context.Context, framebuffer FramebufferId) transform.Transfo
 
 			t.revert(ctx)
 		} else {
-			out.MutateAndWrite(ctx, id, cmd)
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
+		return nil
 	})
 }
 
@@ -71,7 +70,7 @@ func wireframe(ctx context.Context, framebuffer FramebufferId) transform.Transfo
 // the mesh over of the specified draw call.
 func wireframeOverlay(ctx context.Context, i api.CmdID) transform.Transformer {
 	ctx = log.Enter(ctx, "DrawMode_WIREFRAME_OVERLAY")
-	return transform.Transform("DrawMode_WIREFRAME_OVERLAY", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	return transform.Transform("DrawMode_WIREFRAME_OVERLAY", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 		if i == id {
 			if dc, ok := cmd.(drawCall); ok {
 				s := out.State()
@@ -93,11 +92,11 @@ func wireframeOverlay(ctx context.Context, i api.CmdID) transform.Transformer {
 				}
 
 				t.revert(ctx)
-				return
+				return nil
 			}
 		}
 
-		out.MutateAndWrite(ctx, id, cmd)
+		return out.MutateAndWrite(ctx, id, cmd)
 	})
 }
 

@@ -26,7 +26,7 @@ var renderStagesLayer = "VkRenderStagesProducer"
 
 type profilingLayers struct{}
 
-func (t *profilingLayers) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *profilingLayers) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	ctx = log.Enter(ctx, "ProfilingLayers")
 
 	s := out.State()
@@ -78,12 +78,14 @@ func (t *profilingLayers) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		for _, w := range cmd.Extras().Observations().Writes {
 			newCmd.AddWrite(w.Range, w.ID)
 		}
-		out.MutateAndWrite(ctx, id, newCmd)
+		return out.MutateAndWrite(ctx, id, newCmd)
 
 	default:
-		out.MutateAndWrite(ctx, id, cmd)
+		return out.MutateAndWrite(ctx, id, cmd)
 
 	}
+
+	return nil
 }
 
 func (t *profilingLayers) PreLoop(ctx context.Context, out transform.Writer) {
@@ -92,7 +94,7 @@ func (t *profilingLayers) PreLoop(ctx context.Context, out transform.Writer) {
 func (t *profilingLayers) PostLoop(ctx context.Context, out transform.Writer) {
 	out.NotifyPostLoop(ctx)
 }
-func (t *profilingLayers) Flush(ctx context.Context, out transform.Writer) {}
+func (t *profilingLayers) Flush(ctx context.Context, out transform.Writer) error { return nil }
 func (t *profilingLayers) BuffersCommands() bool {
 	return false
 }

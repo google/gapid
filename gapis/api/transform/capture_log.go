@@ -51,7 +51,7 @@ func NewCaptureLog(ctx context.Context, sourceCapture *capture.GraphicsCapture, 
 	}
 }
 
-func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) error {
 	// Don't write out the custom commands (e.g. replay.Custom)
 	if cmd.API() != nil {
 		if id.IsReal() {
@@ -59,10 +59,10 @@ func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		}
 		t.cmds = append(t.cmds, cmd)
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *captureLog) Flush(ctx context.Context, out Writer) {
+func (t *captureLog) Flush(ctx context.Context, out Writer) error {
 	a := arena.New()
 	defer a.Dispose()
 
@@ -82,13 +82,14 @@ func (t *captureLog) Flush(ctx context.Context, out Writer) {
 	c, err := capture.NewGraphicsCapture(ctx, a, "capturelog", t.header, nil, t.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)
-		return
+		return err
 	}
 	if err := c.Export(ctx, t.file); err != nil {
 		log.E(ctx, "Failed to write capture to file %v: %v", t.file, err)
-		return
+		return err
 	}
 	t.file.Close()
+	return nil
 }
 
 func (t *captureLog) PreLoop(ctx context.Context, output Writer)  {}

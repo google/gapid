@@ -52,7 +52,7 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 	cmdPipelineBindings := make(map[VkCommandBuffer]VkPipeline)
 
 	return transform.Transform("setPrimitiveCountToOne", func(ctx context.Context,
-		id api.CmdID, cmd api.Cmd, out transform.Writer) {
+		id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 
 		s := out.State()
 		l := s.MemoryLayout
@@ -64,7 +64,9 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 
 		switch cmd := cmd.(type) {
 		case *VkCreateGraphicsPipelines:
-			out.MutateAndWrite(ctx, id, cmd)
+			if err := out.MutateAndWrite(ctx, id, cmd); err != nil {
+				return err
+			}
 			cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 
 			createInfoCount := uint64(cmd.CreateInfoCount())
@@ -76,7 +78,9 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 				perPipelineVertexCount[pipelineHandles[i]] = getMinimumVertexCountForPrimitive(ctx, primitive)
 			}
 		case *VkCmdBindPipeline:
-			out.MutateAndWrite(ctx, id, cmd)
+			if err := out.MutateAndWrite(ctx, id, cmd); err != nil {
+				return err
+			}
 			if cmd.PipelineBindPoint() == VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
 				cmdPipelineBindings[cmd.commandBuffer] = cmd.Pipeline()
 			}
@@ -89,7 +93,9 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 				cmd.FirstVertex(),
 				cmd.FirstInstance(),
 			)
-			out.MutateAndWrite(ctx, id, newCmd)
+			if err := out.MutateAndWrite(ctx, id, newCmd); err != nil {
+				return err
+			}
 		case *VkCmdDrawIndexed:
 			vertexCount := perPipelineVertexCount[cmdPipelineBindings[cmd.commandBuffer]]
 			newCmd := cb.VkCmdDrawIndexed(
@@ -100,7 +106,9 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 				cmd.VertexOffset(),
 				cmd.FirstInstance(),
 			)
-			out.MutateAndWrite(ctx, id, newCmd)
+			if err := out.MutateAndWrite(ctx, id, newCmd); err != nil {
+				return err
+			}
 		case *VkCmdDrawIndirect:
 			isIndirectDraw = true
 			cmdBuf = cmd.commandBuffer
@@ -122,8 +130,7 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 			isIndirectDraw = true
 			cmdBuf = cmd.commandBuffer
 		default:
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 
 		// Replace indirect draw calls with direct ones.
@@ -136,7 +143,8 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 				0, // first vertex
 				0, // first instance
 			)
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
 		}
+		return nil
 	})
 }

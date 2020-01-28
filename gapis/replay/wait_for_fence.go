@@ -29,17 +29,18 @@ type WaitForFence struct {
 	ShouldWait        func(ctx context.Context, id api.CmdID, cmd api.Cmd) bool
 }
 
-func (t *WaitForFence) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *WaitForFence) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	if t.TransformCallback != nil && t.ShouldWait != nil && t.ShouldWait(ctx, id, cmd) {
 		t.AddTransformWait(ctx, id, out)
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *WaitForFence) Flush(ctx context.Context, out transform.Writer) {
+func (t *WaitForFence) Flush(ctx context.Context, out transform.Writer) error {
 	if t.FlushCallback != nil {
-		t.AddFlushWait(ctx, out)
+		return t.AddFlushWait(ctx, out)
 	}
+	return nil
 }
 
 func (t *WaitForFence) PreLoop(ctx context.Context, out transform.Writer)  {}
@@ -57,8 +58,8 @@ func (t *WaitForFence) AddTransformWait(ctx context.Context, id api.CmdID, out t
 	}})
 }
 
-func (t *WaitForFence) AddFlushWait(ctx context.Context, out transform.Writer) {
-	out.MutateAndWrite(ctx, api.CmdNoID, Custom{T: 0, F: func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+func (t *WaitForFence) AddFlushWait(ctx context.Context, out transform.Writer) error {
+	return out.MutateAndWrite(ctx, api.CmdNoID, Custom{T: 0, F: func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		fenceID := uint32(0x3ffffff)
 		b.Wait(fenceID)
 		fcb := func(p *gapir.FenceReadyRequest) {

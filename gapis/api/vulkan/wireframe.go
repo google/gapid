@@ -27,7 +27,7 @@ import (
 func wireframe(ctx context.Context) transform.Transformer {
 	ctx = log.Enter(ctx, "Wireframe")
 	return transform.Transform("Wireframe", func(ctx context.Context,
-		id api.CmdID, cmd api.Cmd, out transform.Writer) {
+		id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 		s := out.State()
 		l := s.MemoryLayout
 		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -56,9 +56,9 @@ func wireframe(ctx context.Context) transform.Transformer {
 			for _, w := range cmd.Extras().Observations().Writes {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
 		default:
-			out.MutateAndWrite(ctx, id, cmd)
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 	})
 }

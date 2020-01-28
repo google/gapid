@@ -69,7 +69,7 @@ func (s *stencilOverdraw) add(ctx context.Context, extraCommands uint64, after [
 	})
 }
 
-func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	gs := out.State()
 	st := GetState(gs)
 	arena := gs.Arena
@@ -97,20 +97,17 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		// Need to make sure depth images are created with transfer
 		// source mode, just in case they're being used in load mode
 		// and we need to copy from them.
-		s.rewriteImageCreate(ctx, cb, gs, st, arena, id, c, mustAllocData, out)
-		return
+		return s.rewriteImageCreate(ctx, cb, gs, st, arena, id, c, mustAllocData, out)
 	}
 	res, ok := s.rewrite[id]
 	if !ok {
-		out.MutateAndWrite(ctx, id, cmd)
-		return
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	submit, ok := cmd.(*VkQueueSubmit)
 	if !ok {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Overdraw change marked for non-VkQueueSubmit")})
-		out.MutateAndWrite(ctx, id, cmd)
-		return
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	lastRenderPassArgs, lastRenderPassIdx, err :=
@@ -119,14 +116,12 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		res(nil, &service.ErrDataUnavailable{
 			Reason: messages.ErrMessage(fmt.Sprintf(
 				"Could not get overdraw: %v", err))})
-		out.MutateAndWrite(ctx, id, cmd)
-		return
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	if lastRenderPassArgs.IsNil() {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("No render pass in queue submit")})
-		out.MutateAndWrite(ctx, id, cmd)
-		return
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	img, err := s.rewriteQueueSubmit(ctx, cb, gs, st, arena, submit,
@@ -136,8 +131,7 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		res(nil, &service.ErrDataUnavailable{
 			Reason: messages.ErrMessage(fmt.Sprintf(
 				"Could not get overdraw: %v", err))})
-		out.MutateAndWrite(ctx, id, cmd)
-		return
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	checkImage := func(img *image.Data) error {
@@ -171,6 +165,7 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	for i := len(cleanups) - 1; i >= 0; i-- {
 		cleanups[i]()
 	}
+	return nil
 }
 
 func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
@@ -182,7 +177,7 @@ func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
 	cmd *VkCreateImage,
 	alloc func(...interface{}) api.AllocResult,
 	out transform.Writer,
-) {
+) error {
 	allReads := []api.AllocResult{}
 	allocAndRead := func(v ...interface{}) api.AllocResult {
 		res := alloc(v)
@@ -194,9 +189,7 @@ func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
 	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, gs, nil)
 	mask := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
 	if !isDepthFormat(createInfo.Fmt()) || (createInfo.Usage()&mask == mask) {
-
-		out.MutateAndWrite(ctx, id, cmd)
-		return
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	newCreateInfo := createInfo.Clone(a, api.CloneContext{})
@@ -230,7 +223,7 @@ func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
 		newCmd.AddRead(read.Data())
 	}
 
-	out.MutateAndWrite(ctx, id, newCmd)
+	return out.MutateAndWrite(ctx, id, newCmd)
 }
 
 func (*stencilOverdraw) getLastRenderPass(ctx context.Context,
@@ -2199,7 +2192,7 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	return renderInfo.image, nil
 }
 
-func (*stencilOverdraw) Flush(ctx context.Context, out transform.Writer) {}
+func (*stencilOverdraw) Flush(ctx context.Context, out transform.Writer) error { return nil }
 
 func (*stencilOverdraw) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (*stencilOverdraw) PostLoop(ctx context.Context, output transform.Writer) {}

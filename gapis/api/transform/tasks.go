@@ -49,7 +49,7 @@ func (t *Tasks) sort() {
 	}
 }
 
-func (t *Tasks) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *Tasks) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) error {
 	if id.IsReal() {
 		t.sort()
 		for len(t.tasks) > 0 && t.tasks[0].at < id {
@@ -57,15 +57,16 @@ func (t *Tasks) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Wr
 			t.tasks = t.tasks[1:]
 		}
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *Tasks) Flush(ctx context.Context, out Writer) {
+func (t *Tasks) Flush(ctx context.Context, out Writer) error {
 	t.sort()
 	for _, task := range t.tasks {
 		task.work(ctx, out)
 	}
 	t.tasks = nil
+	return nil
 }
 
 func (t *Tasks) PreLoop(ctx context.Context, output Writer)  {}

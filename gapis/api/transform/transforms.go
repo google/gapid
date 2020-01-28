@@ -26,7 +26,7 @@ type Transforms []Transformer
 
 // Transform sequentially transforms the commands by each of the transformers in
 // the list, before writing the final output to the output command Writer.
-func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
+func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) error {
 	chain := out
 	for i := len(l) - 1; i >= 0; i-- {
 		s := chain.State()
@@ -42,14 +42,19 @@ func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
 		}
 		chain = TransformWriter{s, l[i], chain}
 	}
-	api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		chain.MutateAndWrite(ctx, id, cmd)
-		return nil
+	err := api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		return chain.MutateAndWrite(ctx, id, cmd)
 	})
+	if err != nil {
+		return err
+	}
 	for p, ok := chain.(TransformWriter); ok; p, ok = chain.(TransformWriter) {
 		chain = p.O
-		p.T.Flush(ctx, chain)
+		if err := p.T.Flush(ctx, chain); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // Add is a convenience function for appending the list of Transformers t to the
@@ -69,20 +74,20 @@ func (l *Transforms) Prepend(t Transformer) {
 
 // Transform is a helper for building simple Transformers that are implemented
 // by function f. name is used to identify the transform when logging.
-func Transform(name string, f func(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)) Transformer {
+func Transform(name string, f func(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) error) Transformer {
 	return transform{name, f}
 }
 
 type transform struct {
-	N string                                            // Transform name. Used for debugging.
-	F func(context.Context, api.CmdID, api.Cmd, Writer) // The transform function.
+	N string                                                  // Transform name. Used for debugging.
+	F func(context.Context, api.CmdID, api.Cmd, Writer) error // The transform function.
 }
 
-func (t transform) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) {
-	t.F(ctx, id, cmd, output)
+func (t transform) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) error {
+	return t.F(ctx, id, cmd, output)
 }
 
-func (t transform) Flush(ctx context.Context, output Writer) {}
+func (t transform) Flush(ctx context.Context, output Writer) error { return nil }
 
 func (t transform) Name() string { return t.N }
 
@@ -102,11 +107,13 @@ func (p TransformWriter) State() *api.GlobalState {
 	return p.S
 }
 
-func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
+func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 	if config.SeparateMutateStates || p.O.State() != p.S {
-		cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */)
+		if err := cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */); err != nil {
+			return err
+		}
 	}
-	p.T.Transform(ctx, id, cmd, p.O)
+	return p.T.Transform(ctx, id, cmd, p.O)
 }
 
 // NotifyPreLoop notifies next transformer in the chain about the beginning of the loop

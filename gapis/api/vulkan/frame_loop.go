@@ -321,12 +321,11 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 	}
 }
 
-func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, out transform.Writer) error {
 
 	// If we're looping only once we can just passthrough commands
 	if f.loopCount == 1 {
-		out.MutateAndWrite(ctx, cmdId, cmd)
-		return
+		return out.MutateAndWrite(ctx, cmdId, cmd)
 	}
 
 	ctx = log.Enter(ctx, "FrameLoop Transform")
@@ -338,7 +337,7 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 	f.lastObservedCommand = cmdId
 
 	if lastObservedCommand != api.CmdNoID && lastObservedCommand > api.CmdID.Real(cmdId) {
-		log.F(ctx, true, "FrameLoop: expected next observed command ID to be >= last observed command ID")
+		return fmt.Errorf("FrameLoop: expected next observed command ID to be >= last observed command ID")
 	}
 
 	// Walk the frame count forwards if we just hit the end of one.
@@ -357,13 +356,12 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 			f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
 			f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
 
-			return
+			return nil
 
 		} else {
 			// The current command is before the loop begins and needs no special treatment. Just pass-through.
 			log.D(ctx, "FrameLoop: before loop at frame %v, cmdId %v, cmd %v.", f.frameNum, cmdId, cmd)
-			out.MutateAndWrite(ctx, cmdId, cmd)
-			return
+			return out.MutateAndWrite(ctx, cmdId, cmd)
 		}
 
 	} else if f.loopTerminated == false { // We're not before or at the start of the loop: thus, are we inside the loop or just at the end of it?
@@ -372,11 +370,11 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 		if api.CmdID.Real(cmdId) >= f.loopEndIdx && cmdId != api.CmdNoID {
 
 			if lastObservedCommand == api.CmdNoID {
-				log.F(ctx, true, "FrameLoop: Somehow, the FrameLoop ended before it began. Did an earlier transform delete the whole loop? Were your loop indexes realistic?")
+				return fmt.Errorf("FrameLoop: Somehow, the FrameLoop ended before it began. Did an earlier transform delete the whole loop? Were your loop indexes realistic?")
 			}
 
 			if len(f.capturedLoopCmdIds) != len(f.capturedLoopCmds) {
-				log.F(ctx, true, "FrameLoop: Control flow error: Somehow, the number of captured commands and commandIds are not equal.")
+				return fmt.Errorf("FrameLoop: Control flow error: Somehow, the number of captured commands and commandIds are not equal.")
 			}
 
 			f.loopTerminated = true
@@ -390,7 +388,7 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 			if f.loopCount == 0 {
 				f.capturedLoopCmds = make([]api.Cmd, 0)
 				f.capturedLoopCmdIds = make([]api.CmdID, 0)
-				return
+				return nil
 			}
 
 			// Some things we're going to need for the next work...
@@ -410,14 +408,15 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 
 				// Back up the resources that change in the loop (as indentified above)
 				if err := f.backupChangedResources(ctx, stateBuilder); err != nil {
-					log.E(ctx, "FrameLoop: Failed to backup changed resources: %v", err)
-					return
+					return fmt.Errorf("FrameLoop: Failed to backup changed resources: %v", err)
 				}
 
 			}
 
 			// Do first iteration of mid-loop stuff.
-			f.writeLoopContents(ctx, cmd, out)
+			if err := f.writeLoopContents(ctx, cmd, out); err != nil {
+				return err
+			}
 
 			// Mark branch target for loop jump
 			{
@@ -435,13 +434,14 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 			{
 				// Now we need to emit the instructions to reset the state, before the conditional branch back to the start of the loop.
 				if err := f.resetResources(ctx, stateBuilder); err != nil {
-					log.E(ctx, "FrameLoop: Failed to reset changed resources %v.", err)
-					return
+					return fmt.Errorf("FrameLoop: Failed to reset changed resources %v.", err)
 				}
 			}
 
 			// Do first iteration mid-loop stuff.
-			f.writeLoopContents(ctx, cmd, out)
+			if err := f.writeLoopContents(ctx, cmd, out); err != nil {
+				return err
+			}
 
 			// Write out the conditional jump to the start of the state rewind code to provide the actual looping behaviour
 			{
@@ -456,7 +456,7 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 			}
 
 			// Finally, we've done all the processing for a loop. Nothing left to do.
-			return
+			return nil
 
 		} else { // We're currently inside the loop.
 
@@ -468,44 +468,49 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 
 			log.D(ctx, "FrameLoop: inside loop at frame %v, cmdId %v, cmd %v.", f.frameNum, cmdId, cmd)
 
-			return
+			return nil
 		}
 
 	} else { // We're after the loop. Again, we can simply pass-through commands.
-		out.MutateAndWrite(ctx, cmdId, cmd)
-		return
+		return out.MutateAndWrite(ctx, cmdId, cmd)
 	}
 
 	// Should have early out-ed before this point.
-	log.F(ctx, true, "FrameLoop: Internal control flow error: Should not be possible to reach this statement.")
+	return fmt.Errorf("FrameLoop: Internal control flow error: Should not be possible to reach this statement.")
 }
 
-func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out transform.Writer) {
+func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out transform.Writer) error {
 
 	// Notify the other transforms that we're about to emit the start of the loop.
 	out.NotifyPreLoop(ctx)
 
 	// Iterate through the loop contents, emitting instructions one by one.
 	for cmdIndex, cmd := range f.capturedLoopCmds {
-		out.MutateAndWrite(ctx, f.capturedLoopCmdIds[cmdIndex], cmd)
+		if err := out.MutateAndWrite(ctx, f.capturedLoopCmdIds[cmdIndex], cmd); err != nil {
+			return err
+		}
 	}
 
 	// Notify the other transforms that we're about to emit the end of the loop.
 	out.NotifyPostLoop(ctx)
+
+	return nil
 }
 
-func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) {
+func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) error {
 
 	log.W(ctx, "FrameLoop FLUSH")
 
 	if f.loopTerminated == false {
 		if f.lastObservedCommand == api.CmdNoID {
 			log.W(ctx, "FrameLoop transform was applied to whole trace (Flush() has been called) without the loop starting.")
+			return fmt.Errorf("FrameLoop transform was applied to whole trace (Flush() has been called) without the loop starting.")
 		} else {
 			log.E(ctx, "FrameLoop: current frame is %v cmdId %v, cmd is %v.", f.frameNum, f.capturedLoopCmdIds[len(f.capturedLoopCmdIds)-1], f.capturedLoopCmds[len(f.capturedLoopCmds)-1])
 			log.F(ctx, true, "FrameLoop transform was applied to whole trace (Flush() has been called) mid loop. Cannot end transformation in this state.")
 		}
 	}
+	return nil
 }
 
 func (f *frameLoop) PreLoop(ctx context.Context, out transform.Writer) {

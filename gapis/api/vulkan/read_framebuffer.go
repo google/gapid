@@ -44,19 +44,21 @@ func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 
 // If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
-func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	s := out.State()
 	isEOF := cmd.CmdFlags(ctx, id, s).IsEndOfFrame()
-	doMutate := func() {
-		out.MutateAndWrite(ctx, id, cmd)
+	doMutate := func() error {
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 
 	if !isEOF {
-		doMutate()
+		return doMutate()
 	} else {
 		// This is a VkQueuePresent, we need to extract the information out of this,
 		// so that we can correctly display the image.
-		cmd.Mutate(ctx, id, out.State(), nil, nil)
+		if err := cmd.Mutate(ctx, id, out.State(), nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 	}
 
 	if r, ok := t.injections[id-api.CmdID(t.numInitialCommands)]; ok {
@@ -67,11 +69,12 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}
 
 	if isEOF {
-		doMutate()
+		return doMutate()
 	}
+	return nil
 }
 
-func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer)       {}
+func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer) error { return nil }
 func (t *readFramebuffer) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (t *readFramebuffer) PostLoop(ctx context.Context, output transform.Writer) {}
 func (t *readFramebuffer) BuffersCommands() bool                                 { return false }

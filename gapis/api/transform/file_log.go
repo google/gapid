@@ -39,7 +39,7 @@ func NewFileLog(ctx context.Context, path string) Transformer {
 	return &fileLog{file: f}
 }
 
-func (t *fileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *fileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) error {
 	if cmd.API() != nil {
 		t.file.WriteString(fmt.Sprintf("%v: %v\n", id, cmd))
 	} else {
@@ -60,11 +60,12 @@ func (t *fileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out 
 			}
 		}
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *fileLog) Flush(ctx context.Context, out Writer) {
+func (t *fileLog) Flush(ctx context.Context, out Writer) error {
 	t.file.Close()
+	return nil
 }
 
 func (t *fileLog) PreLoop(ctx context.Context, output Writer) {

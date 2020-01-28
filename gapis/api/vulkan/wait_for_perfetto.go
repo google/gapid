@@ -52,16 +52,16 @@ func (t *WaitForPerfetto) waitTest(ctx context.Context, id api.CmdID, cmd api.Cm
 	return false
 }
 
-func (t *WaitForPerfetto) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *WaitForPerfetto) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	if t.waitTest(ctx, id, cmd) {
 		addVkDeviceWaitIdle(ctx, out)
 	}
-	t.wff.Transform(ctx, id, cmd, out)
+	return t.wff.Transform(ctx, id, cmd, out)
 }
 
-func (t *WaitForPerfetto) Flush(ctx context.Context, out transform.Writer) {
+func (t *WaitForPerfetto) Flush(ctx context.Context, out transform.Writer) error {
 	addVkDeviceWaitIdle(ctx, out)
-	t.wff.Flush(ctx, out)
+	return t.wff.Flush(ctx, out)
 }
 
 func (t *WaitForPerfetto) PreLoop(ctx context.Context, out transform.Writer)  {}

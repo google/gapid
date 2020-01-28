@@ -396,14 +396,17 @@ func (w *adapter) State() *api.GlobalState {
 	return w.state
 }
 
-func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
+func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 	w.builder.BeginCommand(uint64(id), cmd.Thread())
-	if err := cmd.Mutate(ctx, id, w.state, w.builder, nil); err == nil {
+	err := cmd.Mutate(ctx, id, w.state, w.builder, nil)
+	if err == nil {
 		w.builder.CommitCommand()
 	} else {
 		w.builder.RevertCommand(err)
 		log.W(ctx, "Failed to write command %v %v for replay: %v", id, cmd, err)
 	}
+	return err
 }
+
 func (w *adapter) NotifyPreLoop(ctx context.Context)  {}
 func (w *adapter) NotifyPostLoop(ctx context.Context) {}

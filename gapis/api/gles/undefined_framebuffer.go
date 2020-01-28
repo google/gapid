@@ -27,12 +27,12 @@ import (
 // color buffer at the end of each frame.
 func undefinedFramebuffer(ctx context.Context, device *device.Instance) transform.Transformer {
 	seenSurfaces := make(map[EGLSurface]bool)
-	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	return transform.Transform("DirtyFramebuffer", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 		out.MutateAndWrite(ctx, id, cmd)
 		s := out.State()
 		c := GetContext(s, cmd.Thread())
 		if c.IsNil() || !c.Other().Initialized() || c.Constants().MajorVersion() < 2 {
-			return // We can't do anything without a context or GLES 1.
+			return nil // We can't do anything without a context or GLES 1.
 		}
 		if eglMakeCurrent, ok := cmd.(*EglMakeCurrent); ok && !seenSurfaces[eglMakeCurrent.Draw()] {
 			// Render the undefined pattern for new contexts.
@@ -51,12 +51,13 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 				// the framework, and that the framebuffer is reused between
 				// calls.
 				// BUG: https://github.com/google/gapid/issues/846.
-				return
+				return nil
 			}
 			if !c.Other().PreserveBuffersOnSwap() {
 				drawUndefinedFramebuffer(ctx, id, cmd, device, s, c, out)
 			}
 		}
+		return nil
 	})
 }
 

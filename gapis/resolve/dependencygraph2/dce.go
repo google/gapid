@@ -374,13 +374,13 @@ func (b *DCEBuilder) Request(ctx context.Context, fci api.SubCmdIdx) error {
 
 // Transform is to comform the interface of Transformer, but does not accept
 // any input.
-func (*DCEBuilder) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) {
+func (*DCEBuilder) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) error {
 	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 
 // Flush is to comform the interface of Transformer. Flush performs DCE, and
 // sends the live commands to the writer
-func (b *DCEBuilder) Flush(ctx context.Context, out transform.Writer) {
+func (b *DCEBuilder) Flush(ctx context.Context, out transform.Writer) error {
 	b.Build(ctx)
 	for i, cmd := range b.LiveCmds() {
 		liveCmdID := api.CmdID(i)
@@ -393,8 +393,11 @@ func (b *DCEBuilder) Flush(ctx context.Context, out transform.Writer) {
 		if config.DebugDeadCodeElimination {
 			log.D(ctx, "Flushing [%v / %v] %v", cmdID, liveCmdID, cmd)
 		}
-		out.MutateAndWrite(ctx, cmdID, cmd)
+		if err := out.MutateAndWrite(ctx, cmdID, cmd); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (b *DCEBuilder) PreLoop(ctx context.Context, out transform.Writer)  {}

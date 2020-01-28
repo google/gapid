@@ -293,8 +293,7 @@ func (a API) Replay(
 	if profile == nil {
 		cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
 	}
-	transforms.Transform(ctx, cmds, out)
-	return nil
+	return transforms.Transform(ctx, cmds, out)
 }
 
 func (a API) QueryIssues(
@@ -378,11 +377,11 @@ func (a API) Profile(
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, cmd)
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) error {
 	s := out.State()
 	cmds := []api.Cmd{}
 
@@ -483,12 +482,15 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		// Mutating the delete command ensures the object is removed from all maps,
 		// and that we will not try to remove it again when iterating over the second context.
 		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
-		api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-			out.MutateAndWrite(ctx, api.CmdNoID, cmd)
-			return nil
+		err := api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+			return out.MutateAndWrite(ctx, api.CmdNoID, cmd)
 		})
+		if err != nil {
+			return err
+		}
 		cmds = []api.Cmd{}
 	}
+	return nil
 }
 
 func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}

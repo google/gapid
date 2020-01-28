@@ -75,7 +75,7 @@ func (t *DeadCodeElimination) Request(id api.CmdID) {
 	}
 }
 
-func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) {
+func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) error {
 	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 
@@ -83,24 +83,23 @@ func (t *DeadCodeElimination) PreLoop(ctx context.Context, out transform.Writer)
 func (t *DeadCodeElimination) PostLoop(ctx context.Context, out transform.Writer) {}
 func (t *DeadCodeElimination) BuffersCommands() bool                              { return false }
 
-func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
+func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) error {
 	ctx = status.Start(ctx, "DCE Flush")
 	defer status.Finish(ctx)
 
 	if t.KeepAllAlive {
-		api.ForeachCmd(ctx, t.depGraph.Commands, true, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
-			out.MutateAndWrite(ctx, t.depGraph.GetCmdID(int(index)), cmd)
-			return nil
+		err := api.ForeachCmd(ctx, t.depGraph.Commands, true, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
+			return out.MutateAndWrite(ctx, t.depGraph.GetCmdID(int(index)), cmd)
 		})
-		return
+		return err
 	}
 	t0 := deadCodeEliminationCounter.Start()
 	isLive := t.propagateLiveness(ctx)
 	deadCodeEliminationCounter.Stop(t0)
-	api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], true, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
+	return api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], true, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 		id := t.depGraph.GetCmdID(int(index))
 		if isLive[index] {
-			out.MutateAndWrite(ctx, id, cmd)
+			return out.MutateAndWrite(ctx, id, cmd)
 		} else if debugDCE {
 			log.I(ctx, "Dropped %v %v", id, cmd)
 		}

@@ -26,7 +26,7 @@ import (
 func minimizeTextures(ctx context.Context) transform.Transformer {
 	ctx = log.Enter(ctx, "Minimize textures")
 	return transform.Transform("Minimize textures", func(ctx context.Context,
-		id api.CmdID, cmd api.Cmd, out transform.Writer) {
+		id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 
 		const newTexWidth = 1
 		const newTexHeight = 1
@@ -37,11 +37,11 @@ func minimizeTextures(ctx context.Context) transform.Transformer {
 		cb := CommandBuilder{Thread: cmd.Thread(), Arena: a}
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		switch cmd := cmd.(type) {
+
 		case *VkCreateImage:
 			imageCreateInfo := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
 			if 0 != (imageCreateInfo.Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-				out.MutateAndWrite(ctx, id, cmd)
-				break
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 			imageCreateInfo.SetExtent(NewVkExtent3D(a, newTexWidth, newTexHeight, imageCreateInfo.Extent().Depth()))
@@ -61,7 +61,8 @@ func minimizeTextures(ctx context.Context) transform.Transformer {
 			for _, w := range cmd.Extras().Observations().Writes {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
+
 		case *VkCmdCopyBufferToImage:
 			bufferImageCopy := cmd.PRegions().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0]
 			imageSubresource := bufferImageCopy.ImageSubresource()
@@ -82,7 +83,8 @@ func minimizeTextures(ctx context.Context) transform.Transformer {
 				bufferImageCopyData.Ptr(),
 			).AddRead(bufferImageCopyData.Data())
 
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
+
 		case *VkCmdCopyImageToBuffer:
 			bufferImageCopy := cmd.PRegions().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0]
 			imageSubresource := bufferImageCopy.ImageSubresource()
@@ -103,7 +105,8 @@ func minimizeTextures(ctx context.Context) transform.Transformer {
 				bufferImageCopyData.Ptr(),
 			).AddRead(bufferImageCopyData.Data())
 
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
+
 		case *VkCmdBlitImage:
 			oldImageBlit := cmd.PRegions().MustRead(ctx, cmd, s, nil)
 			srcSubresource := oldImageBlit.SrcSubresource()
@@ -137,7 +140,8 @@ func minimizeTextures(ctx context.Context) transform.Transformer {
 				cmd.filter,
 			).AddRead(imageBlitData.Data())
 
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
+
 		case *VkCreateImageView:
 			imageViewCreateInfo := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
 			subresourceRange := imageViewCreateInfo.SubresourceRange()
@@ -160,7 +164,8 @@ func minimizeTextures(ctx context.Context) transform.Transformer {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
 
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
+
 		case *VkCmdClearColorImage:
 			subresourceRanges := cmd.PRanges().MustRead(ctx, cmd, s, nil)
 			subresourceRanges.SetBaseMipLevel(0)
@@ -177,9 +182,10 @@ func minimizeTextures(ctx context.Context) transform.Transformer {
 				subresourceRangesData.Ptr(),
 			).AddRead(subresourceRangesData.Data())
 
-			out.MutateAndWrite(ctx, id, newCmd)
+			return out.MutateAndWrite(ctx, id, newCmd)
+
 		default:
-			out.MutateAndWrite(ctx, id, cmd)
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 	})
 }

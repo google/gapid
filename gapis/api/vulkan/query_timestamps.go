@@ -270,7 +270,7 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 	device VkDevice,
 	queryPoolInfo *queryPoolInfo,
 	commandPool VkCommandPool,
-	cmd *VkQueueSubmit) {
+	cmd *VkQueueSubmit) error {
 
 	s := out.State()
 	l := s.MemoryLayout
@@ -386,7 +386,7 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 	for _, read := range reads {
 		newCmd.AddRead(read.Data())
 	}
-	out.MutateAndWrite(ctx, id, newCmd)
+	return out.MutateAndWrite(ctx, id, newCmd)
 }
 
 func (t *queryTimestamps) GetQueryResults(ctx context.Context,
@@ -476,11 +476,10 @@ func (t *queryTimestamps) processNotification(ctx context.Context, s *api.Global
 	})
 }
 
-func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	ctx = log.Enter(ctx, "queryTimestamps")
 	if t.willLoop && !t.readyToLoop {
-		out.MutateAndWrite(ctx, id, cmd)
-		return
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
 	s := out.State()
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -518,13 +517,15 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		if numSlotAvailable < queryCount {
 			t.GetQueryResults(ctx, cb, out, queryPoolInfo)
 		}
-		t.rewriteQueueSubmit(ctx, cb, out, id, vkDevice, queryPoolInfo, commandPool, cmd)
+		return t.rewriteQueueSubmit(ctx, cb, out, id, vkDevice, queryPoolInfo, commandPool, cmd)
+
 	default:
-		out.MutateAndWrite(ctx, id, cmd)
+		return out.MutateAndWrite(ctx, id, cmd)
 	}
+	return nil
 }
 
-func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
+func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) error {
 	s := out.State()
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
 	for _, queryPoolInfo := range t.queryPools {
@@ -532,6 +533,7 @@ func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
 	}
 	t.cleanup(ctx, out)
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.replayResult })
+	return nil
 }
 
 func (t *queryTimestamps) PreLoop(ctx context.Context, out transform.Writer) {

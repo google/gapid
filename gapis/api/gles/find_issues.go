@@ -87,7 +87,7 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 		e.DriverError.ErrorString(), e.ExpectedError.ErrorString())
 }
 
-func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	ctx = log.Enter(ctx, "findIssues")
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: t.state.Arena}
 	t.lastGlError = GLenum_GL_NO_ERROR
@@ -112,7 +112,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	if mutateErr != nil {
 		// Ignore since downstream transform layers can only consume valid commands
-		return
+		// This transform want to see all possible errors, but won't propagate them up
+		return nil
 	}
 
 	out.MutateAndWrite(ctx, id, cmd)
@@ -121,7 +122,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	s := GetState(t.state)
 	c := s.GetContext(cmd.Thread())
 	if c.IsNil() {
-		return
+		return nil
 	}
 
 	// Check the result of glGetError after every command.
@@ -164,7 +165,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		st, err := shader.Type().ShaderType()
 		if err != nil {
 			t.onIssue(cmd, id, service.Severity_ErrorLevel, err)
-			return
+			return nil
 		}
 
 		if !t.targetVersion.IsES {
@@ -288,8 +289,10 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 				c.Constants().Vendor(), c.Constants().Version(), glDev.Vendor, glDev.Version))
 		}
 	}
+	return nil
 }
 
-func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
+func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.issues })
+	return nil
 }

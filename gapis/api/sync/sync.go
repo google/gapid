@@ -80,9 +80,12 @@ type writer struct {
 
 func (s *writer) State() *api.GlobalState { return s.state }
 
-func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
-	cmd.Mutate(ctx, id, s.state, nil, nil)
+func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	if err := cmd.Mutate(ctx, id, s.state, nil, nil); err != nil {
+		return err
+	}
 	s.cmds = append(s.cmds, cmd)
+	return nil
 }
 
 func (s *writer) NotifyPreLoop(ctx context.Context)  {}
@@ -149,7 +152,9 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		return cmds[0 : id+1], nil
 	}
 	w := &writer{rc.NewState(ctx), nil}
-	transforms.Transform(ctx, cmds, w)
+	if err := transforms.Transform(ctx, cmds, w); err != nil {
+		return nil, err
+	}
 
 	return w.cmds, nil
 }
