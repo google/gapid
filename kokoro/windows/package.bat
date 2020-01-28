@@ -51,25 +51,22 @@ awk -F= 'BEGIN {major=0; minor=0; micro=0}^
 set /p VERSION=<version.txt
 
 REM Combine package contents.
-xcopy /e %BIN_DIR%\pkg\* gapid\
-copy "%~dp0\gapid.ico" gapid
-copy "c:\tools\msys64\mingw64\bin\libgcc_s_seh-1.dll" gapid
-copy "c:\tools\msys64\mingw64\bin\libstdc++-6.dll" gapid
-copy "c:\tools\msys64\mingw64\bin\libwinpthread-1.dll" gapid
-call "%~dp0\copy_jre.bat" "%cd%\gapid\jre"
+xcopy /e %BIN_DIR%\pkg\* agi\
+copy "%~dp0\gapid.ico" agi\agi.ico
+copy "c:\tools\msys64\mingw64\bin\libgcc_s_seh-1.dll" agi
+copy "c:\tools\msys64\mingw64\bin\libstdc++-6.dll" agi
+copy "c:\tools\msys64\mingw64\bin\libwinpthread-1.dll" agi
+call "%~dp0\copy_jre.bat" "%cd%\agi\jre"
 
 REM Package up the zip file.
-zip -r gapid-%VERSION%-windows.zip gapid
-
-REM TODO Copy the GAPIR symbols
-REM copy ..\current\gapir.sym gapir-%VERSION%-windows.sym
+zip -r agi-%VERSION%-windows.zip agi
 
 REM Create an MSI installer.
-copy "%~dp0\gapid.wxs" .
+copy "%~dp0\gapid.wxs" agi.wxs
 copy "%~dp0\*.bmp" .
-"%WIX%\heat.exe" dir gapid -ag -cg gapid -dr GAPID -template fragment -sreg -sfrag -srd -suid -o component.wxs
-"%WIX%\candle.exe" -dGAPIDVersion="%VERSION%" gapid.wxs component.wxs
-"%WIX%\light.exe" gapid.wixobj component.wixobj -b gapid -ext WixUIExtension -cultures:en-us -o gapid-%VERSION%-windows.msi
+"%WIX%\heat.exe" dir agi -ag -cg agi -dr AGI -template fragment -sreg -sfrag -srd -suid -o component.wxs
+"%WIX%\candle.exe" -dAGIVersion="%VERSION%" agi.wxs component.wxs
+"%WIX%\light.exe" agi.wixobj component.wixobj -b agi -ext WixUIExtension -cultures:en-us -o agi-%VERSION%-windows.msi
 
 REM Copy the symbol file to the output.
 if exist "%BIN_DIR%\cmd\gapir\cc\gapir.sym" (

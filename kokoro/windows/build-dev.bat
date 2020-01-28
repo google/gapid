@@ -22,4 +22,4 @@ for /f "tokens=1,2,3,4 delims=/ " %%a in ('date /t') do set devdate=%%d%%b%%c
 
 set DEV_PREFIX=dev-%devdate%-
 
-call %cd%\github\gapid\kokoro\windows\build.bat
+call %cd%\github\agi\kokoro\windows\build.bat

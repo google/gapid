@@ -17,7 +17,7 @@ Windows Build Script.
 
 :start
 set BUILD_ROOT=%cd%
-set SRC=%cd%\github\gapid
+set SRC=%cd%\github\agi
 
 REM Use a fixed JDK.
 set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
@@ -68,21 +68,21 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
 
 REM Build each API package separately first, as the go-compiler needs ~8GB of RAM for each package.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
-    --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
-    --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
+    --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define AGI_BUILD_SHA="%BUILD_SHA%" ^
     //gapis/api/gles:go_default_library
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
-    --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
-    --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
+    --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define AGI_BUILD_SHA="%BUILD_SHA%" ^
     //gapis/api/vulkan:go_default_library
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 
 REM Build everything else.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
-    --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
-    --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
+    --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define AGI_BUILD_SHA="%BUILD_SHA%" ^
     //:pkg //:symbols //cmd/smoketests //cmd/vulkan_sample:vulkan_sample
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%

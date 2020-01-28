@@ -12,19 +12,19 @@
      See the License for the specific language governing permissions and
      limitations under the License. -->
 
-<!-- MSI Definition for GAPID consumed by the WiX Toolset -->
+<!-- MSI Definition for AGI consumed by the WiX Toolset -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Name="GAPID $(var.GAPIDVersion)" Manufacturer="Google, Inc"
+  <Product Name="Android GPU Inspector $(var.AGIVersion)" Manufacturer="Google, Inc"
       Id="*"
-      UpgradeCode="7187CA6A-4A6D-4187-B6B1-1E100176A91D"
-      Language="1033" Codepage="1252" Version="$(var.GAPIDVersion)">
+      UpgradeCode="7187CA6A-4A6D-4187-B6B2-1E100176A91D"
+      Language="1033" Codepage="1252" Version="$(var.AGIVersion)">
 
-    <Package Id="*" Keywords="Installer" Description="GAPID Installer"
-        Comments="Installs the Graphics API Debugger" Manufacturer="Google, Inc"
+    <Package Id="*" Keywords="Installer" Description="AGI Installer"
+        Comments="Installs Android GPU Inspector" Manufacturer="Google, Inc"
         InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252" />
 
     <!-- Upgrade logic. Automatically uninstalls any existing older / newer version. -->
-    <Upgrade Id='7187CA6A-4A6D-4187-B6B1-1E100176A91D'>
+    <Upgrade Id='7187CA6A-4A6D-4187-B6B2-1E100176A91D'>
       <UpgradeVersion OnlyDetect='no' Property='PREVIOUSFOUND'
           Minimum='0.0.0' IncludeMinimum='no' />
     </Upgrade>
@@ -37,60 +37,60 @@
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFilesFolder" Name="PFiles">
-        <Directory Id="GAPID" Name="gapid" />
+        <Directory Id="AGI" Name="agi" />
       </Directory>
       <Directory Id="ProgramMenuFolder">
-        <Directory Id="ApplicationProgramsFolder" Name="GAPID" />
+        <Directory Id="ApplicationProgramsFolder" Name="Android GPU Inspector" />
       </Directory>
     </Directory>
 
     <DirectoryRef Id="ApplicationProgramsFolder">
       <Component Id="ApplicationShortcut" Guid="*">
-        <Shortcut Id="ApplicationStartMenuShortcut" Name="GAPID" Description="Graphics API Debugger"
-            Target="[!gapid.exe]" WorkingDirectory="APPLICATIONROOTDIRECTORY" Icon="gapid.ico" />
+        <Shortcut Id="ApplicationStartMenuShortcut" Name="Android GPU Inspector" Description="Android GPU Inspector"
+            Target="[!gapid.exe]" WorkingDirectory="APPLICATIONROOTDIRECTORY" Icon="agi.ico" />
         <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
-        <RegistryValue Root="HKCU" Key="Software\Google\GAPID" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\Google\AGI" Name="installed" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </DirectoryRef>
 
-    <Icon Id="gapid.ico" SourceFile="gapid.ico" />
+    <Icon Id="agi.ico" SourceFile="agi.ico" />
 
-    <DirectoryRef Id="GAPID">
+    <DirectoryRef Id="AGI">
       <Component Id="FileAssociation" Guid="*">
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace" Value="Graphics API Trace" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace" Name="AppUserModelId" Value="GAPID" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="AppUserModelId" Value="GAPID" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationIcon" Value="[!gapid.ico]" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationName" Value="Graphics API Debugger" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationDescription" Value="Inspect Graphics Traces" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\Application" Name="ApplicationCompany" Value="Google, Inc" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\DefaultIcon" Value="[!gapid.ico]" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\GAPID.Trace\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace" Value="Graphics API Trace" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace" Name="AppUserModelId" Value="AGI" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\Application" Name="AppUserModelId" Value="AGI" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\Application" Name="ApplicationIcon" Value="[!agi.ico]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\Application" Name="ApplicationName" Value="Graphics API Debugger" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\Application" Name="ApplicationDescription" Value="Inspect Graphics Traces" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\Application" Name="ApplicationCompany" Value="Google, Inc" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\DefaultIcon" Value="[!agi.ico]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
 
-        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\gapid.exe" Value="[!gapid.exe]" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\gapid.exe" Name="Path" Value="[GAPID]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\agi.exe" Value="[!gapid.exe]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\agi.exe" Name="Path" Value="[AGI]" Type="string" />
 
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\gapid.exe\SupportedTypes" Name=".gfxtrace" Value="" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\gapid.exe\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\SupportedTypes" Name=".gfxtrace" Value="" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
 
-        <RegistryValue Root="HKLM" Key="Software\Classes\.gfxtrace" Value="GAPID.Trace" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\.gfxtrace" Value="AGI.Trace" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gfxtrace\shell\edit\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
       </Component>
     </DirectoryRef>
 
-    <Feature Id="GAPID"  Title="Graphics API Debugger" Level="1">
-      <ComponentGroupRef Id="gapid" />
+    <Feature Id="AGI"  Title="Android GPU Inspector" Level="1">
+      <ComponentGroupRef Id="agi" />
       <ComponentRef Id="ApplicationShortcut" />
       <ComponentRef Id="FileAssociation" />
     </Feature>
 
-    <Property Id="WIXUI_INSTALLDIR" Value="GAPID" />
-    <Property Id="ARPPRODUCTICON" Value="gapid.ico" />
+    <Property Id="WIXUI_INSTALLDIR" Value="AGI" />
+    <Property Id="ARPPRODUCTICON" Value="agi.ico" />
     <WixVariable Id="WixUIBannerBmp" Value="banner.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="ui_dialog.bmp" />
 
     <!-- From WixUI_InstallDir.wxs - without a license dialog -->
-    <UI Id="gapid">
+    <UI Id="agi">
       <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
       <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
       <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
