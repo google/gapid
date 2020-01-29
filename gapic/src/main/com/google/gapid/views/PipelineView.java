@@ -71,6 +71,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 
@@ -197,7 +198,15 @@ implements Tab, Capture.Listener, CommandStream.Listener {
         for (API.Stage stage : stages) {
           TabItem item = createStandardTabItem(folder, stage.getDebugName());
 
-          Group stageGroup = createGroup(folder, stage.getStageName());
+          Composite stageGroup = createComposite(folder, new GridLayout());
+
+          FillLayout nameLayout = new FillLayout(SWT.VERTICAL);
+          nameLayout.marginHeight = 5;
+          Composite nameComposite = withLayoutData( createComposite(stageGroup, nameLayout),
+              new GridData(SWT.BEGINNING, SWT.BEGINNING, false, false));
+
+          Label stageName = createLabel(nameComposite, stage.getStageName() + " (" + stage.getDebugName() + ")");
+          stageName.setFont(theme.bigBoldFont());
 
           item.setControl(stageGroup);
 
@@ -205,14 +214,20 @@ implements Tab, Capture.Listener, CommandStream.Listener {
             continue;
           }
 
+          FillLayout dataLayout = new FillLayout(SWT.VERTICAL);
+          dataLayout.spacing = 5;
+          Composite dataComposite = withLayoutData( createComposite(stageGroup, dataLayout),
+              new GridData(SWT.FILL, SWT.FILL, true, true));
+
           for (API.DataGroup dataGroup : stage.getGroupsList()) {
-            Group dataComposite = createGroup(stageGroup, dataGroup.getGroupName());
+            Group dataGroupComposite = createGroup(dataComposite, dataGroup.getGroupName());
+            dataGroupComposite.setFont(theme.subTitleFont());
 
             switch (dataGroup.getDataCase()) {
               case KEY_VALUES:
                 RowLayout rowLayout = new RowLayout();
                 rowLayout.wrap = true;
-                ScrolledComposite scrollComposite = createScrolledComposite(dataComposite,
+                ScrolledComposite scrollComposite = createScrolledComposite(dataGroupComposite,
                     new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL);
 
                 Composite contentComposite = createComposite(scrollComposite, rowLayout);
@@ -230,7 +245,7 @@ implements Tab, Capture.Listener, CommandStream.Listener {
                       new GridData(SWT.BEGINNING, SWT.TOP, false, false));
 
                   if (!dynamicExists && kvp.getDynamic()) {
-                    dataComposite.setText(dataGroup.getGroupName() + " (* value set dynamically)");
+                    dataGroupComposite.setText(dataGroup.getGroupName() + " (* value set dynamically)");
                     dynamicExists = true;
                   }
 
@@ -258,10 +273,10 @@ implements Tab, Capture.Listener, CommandStream.Listener {
 
               case TABLE:
                 if (dataGroup.getTable().getDynamic()) {
-                  dataComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
+                  dataGroupComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
                 }
           
-                TableViewer groupTable = createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+                TableViewer groupTable = createTableViewer(dataGroupComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
                 List<API.Row> rows = dataGroup.getTable().getRowsList();
           
                 groupTable.setContentProvider(ArrayContentProvider.getInstance());
@@ -298,11 +313,14 @@ implements Tab, Capture.Listener, CommandStream.Listener {
                 groupTable.getTable().addListener(SWT.MouseDown, e -> {
                   Point pt = new Point(e.x, e.y);
                   ViewerCell cell = groupTable.getCell(new Point(e.x, e.y));
-                  DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(cell.getColumnIndex()));
 
-                  if (dv.link != null) {
-                    models.follower.onFollow(dv.link);
-                    return;
+                  if (cell != null) {
+                    DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(cell.getColumnIndex()));
+
+                    if (dv.link != null) {
+                      models.follower.onFollow(dv.link);
+                      return;
+                    }
                   }
                 });
 
@@ -310,7 +328,7 @@ implements Tab, Capture.Listener, CommandStream.Listener {
 
               case SHADER:
                 SourceViewer viewer = new SourceViewer(
-                    dataComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+                    dataGroupComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
                 StyledText textWidget = viewer.getTextWidget();
                 textWidget.setFont(theme.monoSpaceFont());
                 textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
