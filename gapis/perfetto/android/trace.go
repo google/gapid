@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync/atomic"
 
 	perfetto_pb "protos/perfetto/config"
@@ -40,9 +39,8 @@ const (
 
 	// perfettoTraceFile is the location on the device where we'll ask Perfetto
 	// to store the trace data while tracing.
-	perfettoTraceFile               = "/data/misc/perfetto-traces/gapis-trace"
-	prereleaseDriverSettingVariable = "game_driver_prerelease_opt_in_apps"
-	renderStageVulkanLayerName      = "VkRenderStagesProducer"
+	perfettoTraceFile          = "/data/misc/perfetto-traces/gapis-trace"
+	renderStageVulkanLayerName = "VkRenderStagesProducer"
 )
 
 // Process represents a running Perfetto capture.
@@ -90,7 +88,7 @@ func setupProfileLayers(ctx context.Context, d adb.Device, driver adb.Driver, pa
 	}
 
 	// Setup render stage layer. Render stage layer should be at the bottom (end of list).
-	if hasRenderStages {
+	if hasRenderStages && d.Instance().GetConfiguration().GetPerfettoCapability().GetGpuProfiling().GetHasRenderStageProducerLayer() {
 		packages = append(packages, driver.Package)
 		enabledLayers = append(enabledLayers, renderStageVulkanLayerName)
 	}
@@ -100,24 +98,6 @@ func setupProfileLayers(ctx context.Context, d adb.Device, driver adb.Driver, pa
 		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
 	}
 	return cleanup, nil
-}
-
-func setupPrereleaseDriver(ctx context.Context, d adb.Device, p *android.InstalledPackage) (app.Cleanup, error) {
-	oldOptinApps, err := d.SystemSetting(ctx, "global", prereleaseDriverSettingVariable)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Failed to get prerelease driver opt in apps.")
-	}
-	if strings.Contains(oldOptinApps, p.Name) {
-		return nil, nil
-	}
-	newOptinApps := oldOptinApps + "," + p.Name
-	// TODO(b/145893290) Check whether application has developer driver enabled once b/145893290 is fixed.
-	if err := d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, newOptinApps); err != nil {
-		return nil, log.Errf(ctx, err, "Failed to set up prerelease driver for app: %v.", p.Name)
-	}
-	return func(ctx context.Context) {
-		d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, oldOptinApps)
-	}, nil
 }
 
 // Start optional starts an app and sets up a Perfetto trace
@@ -147,7 +127,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		hasRenderStages := false
 		if driver.Package != "" {
 			// Setup the application to use the prerelease driver.
-			nextCleanup, err := setupPrereleaseDriver(ctx, d, a.Package)
+			nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, a.Package)
 			cleanup = cleanup.Then(nextCleanup)
 			if err != nil {
 				return nil, cleanup.Invoke(ctx), err

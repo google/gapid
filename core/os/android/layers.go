@@ -74,6 +74,12 @@ func SetupLayers(ctx context.Context, d Device, appPkg string, layerPkgs []strin
 				return cleanup.Invoke(ctx), err
 			}
 		}
+	} else {
+		if vulkan {
+			d.DeleteSystemSetting(ctx, "global", "gpu_debug_layers")
+		} else {
+			d.DeleteSystemSetting(ctx, "global", "gpu_debug_layers_gles")
+		}
 	}
 
 	return cleanup, nil
