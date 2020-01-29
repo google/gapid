@@ -116,7 +116,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
           continue;
         }
 
-        ctx.setForegroundColor(colors().textInvertedMain);
+        ctx.setForegroundColor(colors().textMain);
         ctx.drawText(
             Fonts.Style.Normal, title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
       }

@@ -69,8 +69,6 @@ public class StyleConstants {
 
     public final RGBA textMain;
     public final RGBA textAlt;
-    public final RGBA textInvertedMain;
-    public final RGBA textInvertedAlt;
 
     public Colors(RGBA background,
         RGBA titleBackground,
@@ -88,9 +86,7 @@ public class StyleConstants {
         RGBA timelineRuler,
         RGBA vsyncBackground,
         RGBA textMain,
-        RGBA textAlt,
-        RGBA textInvertedMain,
-        RGBA textInvertedAlt) {
+        RGBA textAlt) {
       this.background = background;
       this.titleBackground = titleBackground;
       this.gridline = gridline;
@@ -108,8 +104,6 @@ public class StyleConstants {
       this.vsyncBackground = vsyncBackground;
       this.textMain = textMain;
       this.textAlt = textAlt;
-      this.textInvertedMain = textInvertedMain;
-      this.textInvertedAlt = textInvertedAlt;
     }
 
     private static final RGBA LIGHT_BACKGROUND = rgb(0xff, 0xff, 0xff);
@@ -130,8 +124,6 @@ public class StyleConstants {
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
-    private static final RGBA LIGHT_TEXT_INVERTED_MAIN = rgb(0xff, 0xff, 0xff);
-    private static final RGBA LIGHT_TEXT_INVERTED_ALT = rgb(0xdd, 0xdd, 0xdd);
 
     public static Colors light() {
       return new Colors(
@@ -151,9 +143,7 @@ public class StyleConstants {
             LIGHT_TIMELINE_RULER,
             LIGHT_VSYNC_BACKGROUND,
             LIGHT_TEXT_MAIN,
-            LIGHT_TEXT_ALT,
-            LIGHT_TEXT_INVERTED_MAIN,
-            LIGHT_TEXT_INVERTED_ALT);
+            LIGHT_TEXT_ALT);
     }
 
     private static final RGBA DARK_BACKGROUND = rgb(0x1a, 0x1a, 0x1a);
@@ -174,8 +164,6 @@ public class StyleConstants {
 
     private static final RGBA DARK_TEXT_MAIN = rgb(0xf1, 0xf1, 0xf8);
     private static final RGBA DARK_TEXT_ALT = rgb(0xdd, 0xdd, 0xdd);
-    private static final RGBA DARK_TEXT_INVERTED_MAIN = rgb(0x19, 0x1A, 0x19);
-    private static final RGBA DARK_TEXT_INVERTED_ALT = rgb(50, 51, 52);
 
     public static Colors dark() {
       return new Colors(
@@ -195,9 +183,7 @@ public class StyleConstants {
             DARK_TIMELINE_RULER,
             DARK_VSYNC_BACKGROUND,
             DARK_TEXT_MAIN,
-            DARK_TEXT_ALT,
-            DARK_TEXT_INVERTED_MAIN,
-            DARK_TEXT_INVERTED_ALT);
+            DARK_TEXT_ALT);
     }
   }
 

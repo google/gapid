@@ -129,7 +129,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           ctx.setBackgroundColor(mergeState.color.get());
           ctx.fillRect(mergeStartX, 0, mergeWidth, SLICE_HEIGHT);
           if (mergeWidth > 7) {
-            ctx.setForegroundColor(colors().textInvertedMain);
+            ctx.setForegroundColor(colors().textMain);
             ctx.drawText(Fonts.Style.Normal, mergeState.label,
                 rectStart + 2, 2, rectWidth - 4, SLICE_HEIGHT - 4);
           }
@@ -167,7 +167,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           ctx.setBackgroundColor(ts.color.get());
           ctx.fillRect(rectStart, 0, rectWidth, SLICE_HEIGHT);
           if (rectWidth > 7) {
-            ctx.setForegroundColor(colors().textInvertedMain);
+            ctx.setForegroundColor(colors().textMain);
             ctx.drawText(Fonts.Style.Normal, ts.label,
                 rectStart + 2, 2, rectWidth - 4, SLICE_HEIGHT - 4);
           }
@@ -211,7 +211,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
             continue;
           }
 
-          ctx.setForegroundColor(colors().textInvertedMain);
+          ctx.setForegroundColor(colors().textMain);
           ctx.drawText(Fonts.Style.Normal, title,
               rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
         }
