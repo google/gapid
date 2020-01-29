@@ -113,20 +113,20 @@ public class StyleConstants {
     }
 
     private static final RGBA LIGHT_BACKGROUND = rgb(0xff, 0xff, 0xff);
-    private static final RGBA LIGHT_TITLE_BACKGROUND = rgb(0xf7, 0xf7, 0xf7);
+    private static final RGBA LIGHT_TITLE_BACKGROUND = rgb(0xf1, 0xf1, 0xf1);
     private static final RGBA LIGHT_GRIDLINE = rgb(0xda, 0xda, 0xda);
     private static final RGBA LIGHT_PANEL_BORDER = LIGHT_GRIDLINE;
     private static final RGBA LIGHT_HOVER_BACKGROUND = rgba(0xf7, 0xf7, 0xf7, 0.95f);
-    private static final RGBA LIGHT_LOADING_BACKGROUND = rgb(0xee, 0xee, 0xee);
+    private static final RGBA LIGHT_LOADING_BACKGROUND = rgb(0xe0, 0xe6, 0xe8);
     private static final RGBA LIGHT_LOADING_FOREGROUND = rgb(0x66, 0x66, 0x66);
     private static final RGBA LIGHT_SELECTION_BACKGROUND = rgba(0, 0, 255, 0.3f);
     private static final RGBA LIGHT_TIME_HIGHLIGHT = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TIME_HIGHLIGHT_BORDER = LIGHT_GRIDLINE;
     private static final RGBA LIGHT_TIME_HIGHLIGHT_COVER = rgba(0, 0, 0, 0.2f);
     private static final RGBA LIGHT_TIME_HIGHLIGHT_EMPHASIZE = rgb(0xff, 0xde, 0x00);
-    private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(240, 240, 240);
+    private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(0xf0, 0xf0, 0xf0);
     private static final RGBA LIGHT_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
-    private static final RGBA LIGHT_VSYNC_BACKGROUND = rgb(0xf7, 0xf7, 0xf7);
+    private static final RGBA LIGHT_VSYNC_BACKGROUND = rgb(0xf9, 0xf9, 0xf9);
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
@@ -156,23 +156,23 @@ public class StyleConstants {
             LIGHT_TEXT_INVERTED_ALT);
     }
 
-    private static final RGBA DARK_BACKGROUND = rgb(0x00, 0x00, 0x00);
-    private static final RGBA DARK_TITLE_BACKGROUND = rgb(0x25, 0x25, 0x25);
+    private static final RGBA DARK_BACKGROUND = rgb(0x1a, 0x1a, 0x1a);
+    private static final RGBA DARK_TITLE_BACKGROUND = rgb(0x3b, 0x3b, 0x3b);
     private static final RGBA DARK_GRIDLINE = rgb(0x40, 0x40, 0x40);
     private static final RGBA DARK_PANEL_BORDER = DARK_GRIDLINE;
     private static final RGBA DARK_HOVER_BACKGROUND = rgba(0x17, 0x17, 0x17, 0.8f);
-    private static final RGBA DARK_LOADING_BACKGROUND = rgb(0x25, 0x25, 0x25);
-    private static final RGBA DARK_LOADING_FOREGROUND = rgb(0xAA, 0xAA, 0xAA);
+    private static final RGBA DARK_LOADING_BACKGROUND = rgb(0x4a, 0x4a, 0x4a);
+    private static final RGBA DARK_LOADING_FOREGROUND = rgb(0xaa, 0xaa, 0xaa);
     private static final RGBA DARK_SELECTION_BACKGROUND = rgba(0, 0, 255, 0.5f);
     private static final RGBA DARK_TIME_HIGHLIGHT = rgb(0xff, 0xff, 0xff);
     private static final RGBA DARK_TIME_HIGHLIGHT_BORDER = DARK_GRIDLINE;
-    private static final RGBA DARK_TIME_HIGHLIGHT_COVER = rgba(0xff, 0xff, 0xff, 0.4f);
+    private static final RGBA DARK_TIME_HIGHLIGHT_COVER = rgba(0xff, 0xff, 0xff, 0.2f);
     private static final RGBA DARK_TIME_HIGHLIGHT_EMPHASIZE = rgb(0xd2, 0xb6, 0x00);
-    private static final RGBA DARK_CPU_FREQ_IDLE = rgb(240, 240, 240);
+    private static final RGBA DARK_CPU_FREQ_IDLE = rgb(0x55, 0x55, 0x55);
     private static final RGBA DARK_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
-    private static final RGBA DARK_VSYNC_BACKGROUND = rgb(0x25, 0x25, 0x25);
+    private static final RGBA DARK_VSYNC_BACKGROUND = rgb(0x24, 0x24, 0x24);
 
-    private static final RGBA DARK_TEXT_MAIN = rgb(0xff, 0xff, 0xff);
+    private static final RGBA DARK_TEXT_MAIN = rgb(0xf1, 0xf1, 0xf8);
     private static final RGBA DARK_TEXT_ALT = rgb(0xdd, 0xdd, 0xdd);
     private static final RGBA DARK_TEXT_INVERTED_MAIN = rgb(0x19, 0x1A, 0x19);
     private static final RGBA DARK_TEXT_INVERTED_ALT = rgb(50, 51, 52);
