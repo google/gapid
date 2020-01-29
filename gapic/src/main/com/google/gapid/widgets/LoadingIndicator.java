@@ -90,6 +90,12 @@ public class LoadingIndicator {
     return x + (w - s.width) / 2 + s.width;
   }
 
+  public void paintImage(Image image, GC g, int x, int y, Point size) {
+    Rectangle s = image.getBounds();
+    g.drawImage(image, 0, 0, s.width, s.height,
+        x + (size.x - s.width) / 2, y + (size.y - s.height) / 2, s.width, s.height);
+  }
+
   public Image getCurrentFrame() {
     long elapsed = System.currentTimeMillis() % CYCLE_LENGTH;
     return icons[(int)((elapsed * icons.length) / CYCLE_LENGTH)];
@@ -136,6 +142,10 @@ public class LoadingIndicator {
     return new Widget(parent, true);
   }
 
+  public WithImage createWithImage (Composite parent, Image success, Image failure) {
+    return new WithImage(parent, false, success, failure);
+  }
+
   /**
    * Object containing the loading indicator that needs to be animated.
    */
@@ -150,7 +160,7 @@ public class LoadingIndicator {
    * Widget that shows the loading indicator while loading and is blank once done.
    */
   public class Widget extends Canvas implements Loadable, Repaintable {
-    private boolean loading = false;
+    protected boolean loading = false;
 
     public Widget(Composite parent, boolean showRefresh) {
       super(parent, SWT.DOUBLE_BUFFERED);
@@ -184,6 +194,32 @@ public class LoadingIndicator {
     @Override
     public Point computeSize(int wHint, int hHint, boolean changed) {
       return new Point(SMALL_SIZE, SMALL_SIZE);
+    }
+  }
+
+  public class WithImage extends Widget {
+    private Image successImage;
+    private Image failureImage;
+    public boolean status;
+
+    public WithImage(Composite parent, boolean showRefresh, Image success, Image failure) {
+      super(parent, showRefresh);
+      successImage = success;
+      failureImage = failure;
+      addListener(SWT.Paint, e -> {
+        if (!loading) {
+          if (status) {
+            paintImage(successImage, e.gc, 0, 0, getSize());
+          }
+          else {
+            paintImage(failureImage, e.gc, 0, 0, getSize());
+          }
+        }
+      });
+      }
+
+    public void updateStatus(boolean status) {
+      this.status = status;
     }
   }
 }

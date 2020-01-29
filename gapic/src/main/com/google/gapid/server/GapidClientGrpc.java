@@ -31,6 +31,8 @@ import com.google.gapid.proto.service.Service.TraceTargetTreeNodeRequest;
 import com.google.gapid.proto.service.Service.TraceTargetTreeNodeResponse;
 import com.google.gapid.proto.service.Service.UpdateSettingsRequest;
 import com.google.gapid.proto.service.Service.UpdateSettingsResponse;
+import com.google.gapid.proto.service.Service.ValidateDeviceRequest;
+import com.google.gapid.proto.service.Service.ValidateDeviceResponse;
 import com.google.gapid.util.MoreFutures;
 
 import java.util.function.Consumer;
@@ -167,6 +169,11 @@ public class GapidClientGrpc implements GapidClient {
   @Override
   public ListenableFuture<PerfettoQueryResponse> perfettoQuery(PerfettoQueryRequest request) {
     return client.perfettoQuery(request);
+  }
+
+  @Override
+  public ListenableFuture<ValidateDeviceResponse> validateDevice(ValidateDeviceRequest request) {
+    return client.validateDevice(request);
   }
 
   @Override

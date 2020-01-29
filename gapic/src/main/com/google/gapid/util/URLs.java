@@ -18,4 +18,6 @@ package com.google.gapid.util;
 public interface URLs {
   public static final String FILE_BUG_URL =
       "https://github.com/google/gapid/issues/new?template=standard-bug-report-for-gapid.md";
+  public static final String DEVICE_COMPATIBILITY =
+      "https://github.com/google/gapid";
 }

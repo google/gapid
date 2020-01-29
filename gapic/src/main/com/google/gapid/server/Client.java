@@ -257,6 +257,15 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getResult(), in.getError(), stack))));
   }
 
+  public ListenableFuture<Service.ValidateDeviceResponse> validateDevice(Path.Device device) {
+    return call(() -> String.format("RPC->validateDevice(%s)", shortDebugString(device)),
+        stack -> MoreFutures.transformAsync(
+            client.validateDevice(Service.ValidateDeviceRequest.newBuilder()
+                .setDevice(device)
+                .build()),
+            in -> immediateFuture(in)));
+  }
+
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
     LOG.log(FINE, "RPC->getLogStream()");
     return client.streamLog(onLogMessage);

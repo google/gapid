@@ -24,6 +24,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ValidateDeviceResponse;
 import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -140,6 +141,47 @@ public class Devices {
   public void selectReplayDevice(Device.Instance dev) {
     selectedReplayDevice = dev;
     listeners.fire().onReplayDeviceChanged(dev);
+  }
+
+  public void updateValidationStatus(DeviceCaptureInfo device, Service.ValidateDeviceResponse response) {
+    if (response == null || response.hasError()) {
+      device.validationStatus = false;
+      return;
+    }
+    device.validationStatus = true;
+  }
+
+  public void validateDevice(DeviceCaptureInfo device, Runnable callback) {
+    if (!devices.contains(device)) {
+      return;
+    }
+    rpcController.start().listen(client.validateDevice(device.path),
+        new UiErrorCallback<Service.ValidateDeviceResponse, Service.ValidateDeviceResponse, Service.ValidateDeviceResponse>(shell, LOG) {
+
+      @Override
+      protected void onUiThreadSuccess(Service.ValidateDeviceResponse response) {
+        updateValidationStatus(device, response);
+        callback.run();
+      }
+
+      @Override
+      protected void onUiThreadError(Service.ValidateDeviceResponse response) {
+        updateValidationStatus(device, response);
+        callback.run();
+      }
+
+      @Override
+      protected ResultOrError<ValidateDeviceResponse, ValidateDeviceResponse> onRpcThread(Rpc.Result<ValidateDeviceResponse> response)
+          throws RpcException, ExecutionException {
+        try {
+          return success(response.get());
+        } catch (RpcException | ExecutionException e) {
+          throttleLogRpcError(LOG, "LoadData error", e);
+          return error(null);
+        }
+      }
+
+    });
   }
 
   public void loadDevices() {
@@ -278,6 +320,7 @@ public class Devices {
     public final Device.Instance device;
     public final Service.DeviceTraceConfiguration config;
     public final TraceTargets targets;
+    public boolean validationStatus = false;
 
     public DeviceCaptureInfo(Path.Device path, Device.Instance device,
         Service.DeviceTraceConfiguration config, TraceTargets targets) {
