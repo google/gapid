@@ -944,6 +944,17 @@ func (a API) Replay(
 		return numInitialCmdWithoutOpt, nil
 	}
 
+	frameLoopEndCmdID := func(cmds []api.Cmd) api.CmdID {
+		lastCmdID := api.CmdID(0)
+		for i := len(cmds) - 1; i >= 0; i-- {
+			if cmds[i].Terminated() {
+				lastCmdID = api.CmdID(i)
+				break
+			}
+		}
+		return lastCmdID
+	}
+
 	wire := false
 	doDisplayToSurface := false
 	var overdraw *stencilOverdraw
@@ -968,7 +979,7 @@ func (a API) Replay(
 			}
 			willLoop := req.loopCount > 1
 			if willLoop {
-				frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), api.CmdID(len(cmds)-1), req.loopCount)
+				frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), frameLoopEndCmdID(cmds), req.loopCount)
 			}
 		case timestampsRequest:
 			var numInitialCommands int
@@ -980,7 +991,7 @@ func (a API) Replay(
 				}
 				willLoop := req.loopCount > 1
 				if willLoop {
-					frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), api.CmdID(len(cmds)-1), req.loopCount)
+					frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), frameLoopEndCmdID(cmds), req.loopCount)
 				}
 
 				timestamps = newQueryTimestamps(ctx, c, numInitialCommands, cmds, willLoop, req.handler)
