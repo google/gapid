@@ -62,6 +62,7 @@ import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -223,39 +224,47 @@ implements Tab, Capture.Listener, CommandStream.Listener {
 
             switch (dataGroup.getDataCase()) {
               case KEY_VALUES:
-                RowLayout rowLayout = new RowLayout();
-                rowLayout.wrap = true;
-                ScrolledComposite scrollComposite = createScrolledComposite(dataGroupComposite,
-                    new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL);
+                dataGroupComposite.setLayout(new GridLayout(1, false));
+                ScrolledComposite scrollComposite = withLayoutData( createScrolledComposite(dataGroupComposite,
+                    new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL),
+                    new GridData(SWT.FILL, SWT.FILL, true, true));
 
-                Composite contentComposite = createComposite(scrollComposite, rowLayout);
+                GridLayout gridLayout = new GridLayout(2, false);
+                gridLayout.marginWidth = 5;
+                gridLayout.marginHeight = 5;
+                gridLayout.horizontalSpacing = -1;
+                gridLayout.verticalSpacing = -1;
+                Composite contentComposite = createComposite(scrollComposite, gridLayout);
 
                 List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
 
                 boolean dynamicExists = false;
 
                 for (API.KeyValuePair kvp : kvpList) {
-                  Composite kvpComposite =
-                      createComposite(contentComposite, new GridLayout(2, false));
+                  GridLayout kvpLayout = new GridLayout(1, false);
+                  kvpLayout.marginHeight = 5;
+                  kvpLayout.marginWidth = 5;
+                  Composite keyComposite = withLayoutData( createComposite(contentComposite, kvpLayout, SWT.BORDER),
+                      new GridData(SWT.FILL, SWT.TOP, false, false));
 
-                  withLayoutData(
-                      createBoldLabel(kvpComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
-                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                  Label keyLabel = withLayoutData( createBoldLabel(keyComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
+                      new GridData(SWT.RIGHT, SWT.CENTER, true, true));
 
                   if (!dynamicExists && kvp.getDynamic()) {
                     dataGroupComposite.setText(dataGroup.getGroupName() + " (* value set dynamically)");
                     dynamicExists = true;
                   }
 
-                  DataValue dv = convertDataValue(kvp.getValue());
+                  Composite valueComposite = withLayoutData( createComposite(contentComposite, kvpLayout, SWT.BORDER),
+                      new GridData(SWT.FILL, SWT.TOP, false, false));
 
+                  DataValue dv = convertDataValue(kvp.getValue());
                   if (dv.link != null) {
-                    withLayoutData(createLink(
-                        kvpComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
-                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                    withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
+                        new GridData(SWT.LEFT, SWT.CENTER, true, true));
                   } else {
-                    withLayoutData(createLabel(kvpComposite, dv.displayValue),
-                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                    withLayoutData( createLabel(valueComposite, dv.displayValue),
+                        new GridData(SWT.LEFT, SWT.CENTER, true, true));
                   }
                 }
 
@@ -263,8 +272,33 @@ implements Tab, Capture.Listener, CommandStream.Listener {
                 scrollComposite.setExpandVertical(true);
                 scrollComposite.setExpandHorizontal(true);
                 scrollComposite.addListener(SWT.Resize, event -> {
-                  int width = scrollComposite.getClientArea().width;
-                  scrollComposite.setMinHeight(contentComposite.computeSize(width, SWT.DEFAULT).y);
+                  Rectangle scrollArea = scrollComposite.getClientArea();
+
+                  int currentNumColumns = gridLayout.numColumns;
+                  int numChildren = contentComposite.getChildren().length;
+                  Point tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+
+                  if (tableSize.x < scrollArea.width) {
+                    while (tableSize.x < scrollArea.width && gridLayout.numColumns < numChildren) {
+                      gridLayout.numColumns += 2;
+                      tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+                    }
+
+                    if (tableSize.x > scrollArea.width) {
+                      gridLayout.numColumns -= 2;
+                    } 
+                  } else {
+                    while (tableSize.x > scrollArea.width && gridLayout.numColumns >= 4) {
+                      gridLayout.numColumns -= 2;
+                      tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+                    }
+                  }
+
+                  if (gridLayout.numColumns != currentNumColumns) {
+                    scrollComposite.layout();
+                  }
+
+                  scrollComposite.setMinHeight(contentComposite.computeSize(scrollArea.width, SWT.DEFAULT).y);
                 });
 
                 break;
