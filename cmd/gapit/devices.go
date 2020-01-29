@@ -55,12 +55,11 @@ func (verb *devicesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to get device list")
 	}
 
-	stdout := os.Stdout
 	deviceObjs := []deviceObj{}
 	for _, p := range devices {
 		o, err := client.Get(ctx, p.Path(), nil)
 		if err != nil {
-			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't resolve device"))
+			log.Err(ctx, err, "Couldn't resolve device")
 			continue
 		}
 		d := o.(*device.Instance)
@@ -78,7 +77,7 @@ func (verb *devicesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if err != nil {
 		return log.Err(ctx, err, "Failed to marshal devices to JSON")
 	}
-	fmt.Fprintln(stdout, string(jsonBytes))
+	fmt.Fprintln(os.Stdout, string(jsonBytes))
 
 	return nil
 }
