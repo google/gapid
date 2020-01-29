@@ -28,6 +28,12 @@ import (
 
 type devicesVerb struct{ DevicesFlags }
 
+// deviceObj wraps the device info in a JSON-Marshable type
+type deviceObj struct {
+	DeviceID string
+	Instance *device.Instance
+}
+
 func init() {
 	verb := &devicesVerb{}
 	app.AddVerb(&app.Verb{
@@ -49,25 +55,29 @@ func (verb *devicesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to get device list")
 	}
 
-	stdout := os.Stdout
-	for i, p := range devices {
-		fmt.Fprintf(stdout, "-- Device %v: %v --\n", i, p.ID.ID())
+	deviceObjs := []deviceObj{}
+	for _, p := range devices {
 		o, err := client.Get(ctx, p.Path(), nil)
 		if err != nil {
-			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't resolve device"))
+			log.Err(ctx, err, "Couldn't resolve device")
 			continue
 		}
 		d := o.(*device.Instance)
 		if verb.OS != device.UnknownOS && verb.OS != d.GetConfiguration().GetOS().GetKind() {
 			continue
 		}
-		jsonBytes, err := json.MarshalIndent(d, "", "  ")
-		if err != nil {
-			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't marshal device to JSON"))
-			continue
+		devObj := deviceObj{
+			DeviceID: fmt.Sprintf("%v", p.ID.ID()),
+			Instance: d,
 		}
-		fmt.Fprintln(stdout, string(jsonBytes))
+		deviceObjs = append(deviceObjs, devObj)
 	}
+
+	jsonBytes, err := json.MarshalIndent(deviceObjs, "", "  ")
+	if err != nil {
+		return log.Err(ctx, err, "Failed to marshal devices to JSON")
+	}
+	fmt.Fprintln(os.Stdout, string(jsonBytes))
 
 	return nil
 }
