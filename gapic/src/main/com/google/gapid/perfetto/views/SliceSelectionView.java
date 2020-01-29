@@ -106,7 +106,7 @@ public class SliceSelectionView extends Composite {
 
       ImmutableMap<String, String> props = propsBuilder.build();
       if (!props.isEmpty()) {
-        withLayoutData(createBoldLabel(main, "Render Stage Info"),
+        withLayoutData(createBoldLabel(main, "Vulkan Info"),
             withSpans(new GridData(), 2, 1));
         props.forEach((key, value) -> {
           createLabel(main, key);

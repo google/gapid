@@ -295,7 +295,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
       @Override
       public String getTitle() {
-        return "GPU Render Stages";
+        return "GPU Queue Events";
       }
 
       @Override
