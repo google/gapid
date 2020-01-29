@@ -169,7 +169,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
           continue;
         }
 
-        ctx.setForegroundColor(colors().textInvertedMain);
+        ctx.setForegroundColor(colors().textMain);
         ctx.drawText(
             Fonts.Style.Normal, title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
       } else {
@@ -185,7 +185,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
           visibleSelectedDiamond.add(i);
         }
 
-        ctx.setForegroundColor(colors().textInvertedMain);
+        ctx.setForegroundColor(colors().textMain);
         ctx.drawText(
             Fonts.Style.Normal, title.substring(0,1), rectStart - rectWidth/2 + 1, y + 1, rectWidth - 1, SLICE_HEIGHT - 4);
       }
