@@ -109,6 +109,7 @@ public class TraceView extends Composite
     } else {
       loading.stopLoading();
       traceUi.getState().update(models.perfetto.getData());
+      traceUi.requestFocus();
     }
   }
 
