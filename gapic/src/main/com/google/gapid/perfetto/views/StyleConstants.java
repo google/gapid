@@ -19,6 +19,7 @@ import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.Colors.rgb;
 import static com.google.gapid.util.Colors.rgba;
 
+import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.graphics.Image;
@@ -187,102 +188,6 @@ public class StyleConstants {
     }
   }
 
-  private static final HSL GRAY_COLOR = new HSL(0, 0, 62);
-
-  /*
-   * Definition and API for colors in GAPID.
-   * */
-  public static class Palette {
-    public static enum BaseColor {
-      GREY(new HSL(202, 25, 67)),
-      LIGHT_BLUE(new HSL(200, 98, 82)),
-      ORANGE(new HSL(20, 90, 70)),
-      GREEN(new HSL(131, 65, 67)),
-      LIGHT_PURPLE(new HSL(262, 51, 70)),
-      PINK(new HSL(338, 70, 67)),
-      TURQUOISE(new HSL(171, 74, 61)),
-      TAN(new HSL(42, 50, 75)),
-      PACIFIC_BLUE(new HSL(198, 100, 42)),
-      TEAL(new HSL(172, 74, 29)),
-      PURPLE(new HSL(262, 70, 58)),
-      DARK_ORANGE(new HSL(22, 76, 43)),
-      INDIGO(new HSL(217, 50, 40)),
-      LIME(new HSL(59, 51, 45)),
-      MAGENTA(new HSL(320, 53, 47)),
-      VIVID_BLUE(new HSL(215, 100, 55));
-
-      public final HSL hsl;
-      public final RGBA rgb;
-
-      private BaseColor(HSL hsl) {
-        this.hsl = hsl;
-        this.rgb = hsl.rgb();
-      }
-    }
-
-    private static final int COLOR_COUNT = BaseColor.values().length;
-    private static final int[] LIGHT_OFFSETS = new int[] {
-        5, 2, 4, 5, 4, 5, 6, 3, 10, 12, 6, 9, 10, 9, 9, 7,
-    };
-    private static final int[] DARK_OFFSETS = new int[] {
-        -3, -6, -4, -3, -4, -3, -2, -5, -1, -1, -2, -1, -1, -1, -1, -1,
-    };
-    private static final int LIGHT_SHADE_COUNT = 5;
-    private static final int DARK_SHADE_COUNT = 5;
-    private static final HSL[][] LIGHT_COLORS = createLightThemeColor();
-    private static final HSL[][] DARK_COLORS = createDarkThemeColor();
-
-    /**
-     * Retrieve the color from the basic palette.
-     */
-    public static RGBA getColor(int hueIdx) {
-      return BaseColor.values()[hueIdx % COLOR_COUNT].rgb;
-    }
-
-    /**
-     * Retrieve the color with an adjusted brightness.
-     *
-     * @param hueIdx decides what color you get, e.g. it's green or purple.
-     * @param shadeIdx decides how pale the color you get. If it's positive ,the color is retrieved
-     * from Light theme, otherwise Dark theme. Within a limit, the larger the number, the lighter.
-     */
-    public static RGBA getColor(int hueIdx, int shadeIdx) {
-      if (shadeIdx == 0) {
-        return BaseColor.values()[hueIdx % COLOR_COUNT].rgb;
-      } else if (shadeIdx > 0) {
-        shadeIdx = shadeIdx > LIGHT_SHADE_COUNT ? (LIGHT_SHADE_COUNT - 1) : (shadeIdx - 1);
-        return LIGHT_COLORS[hueIdx % COLOR_COUNT][shadeIdx].rgb();
-      } else {
-        shadeIdx = shadeIdx < -DARK_SHADE_COUNT ? (DARK_SHADE_COUNT - 1) : (-shadeIdx - 1);
-        return DARK_COLORS[hueIdx % COLOR_COUNT][shadeIdx].rgb();
-      }
-    }
-
-    private static HSL[][] createLightThemeColor() {
-      HSL[][] light = new HSL[COLOR_COUNT][LIGHT_SHADE_COUNT];
-      for (int hueIdx = 0; hueIdx < COLOR_COUNT; hueIdx++) {
-        HSL base = BaseColor.values()[hueIdx].hsl;
-        int offset = LIGHT_OFFSETS[hueIdx];
-        for (int shade = 0; shade < LIGHT_SHADE_COUNT; shade++) {
-          light[hueIdx][shade] = new HSL(base.h, base.s, base.l + (shade + 1) * offset);
-        }
-      }
-      return light;
-    }
-
-    private static HSL[][] createDarkThemeColor() {
-      HSL[][] dark = new HSL[COLOR_COUNT][DARK_SHADE_COUNT];
-      for (int hueIdx = 0; hueIdx < COLOR_COUNT; hueIdx++) {
-        HSL base = BaseColor.values()[hueIdx].hsl;
-        int offset = DARK_OFFSETS[hueIdx];
-        for (int shade = 0; shade < DARK_SHADE_COUNT; shade++) {
-          dark[hueIdx][shade] = new HSL(base.h, base.s, base.l + (shade + 1) * offset);
-        }
-      }
-      return dark;
-    }
-  }
-
   private static Colors colors = Colors.light();
   private static boolean isDark = false;
 
@@ -291,6 +196,62 @@ public class StyleConstants {
 
   public static Colors colors() {
     return colors;
+  }
+
+  public static Gradient gradient(int seed) {
+    // See Gradients.Colors for explanation of magic constants.
+    int idx = ((seed + 8) & 0x7fffffff) % Gradients.COUNT;
+    return (isDark ? Gradients.DARK : Gradients.LIGHT)[idx];
+  }
+
+  public static Gradient mainGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[14] : Gradients.LIGHT[14];
+  }
+
+  public static Gradient threadStateSleeping() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[15] : Gradients.LIGHT[15];
+  }
+
+  public static Gradient threadStateRunnable() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[13] : Gradients.LIGHT[13];
+  }
+
+  public static Gradient threadStateRunning() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[10] : Gradients.LIGHT[10];
+  }
+
+  public static Gradient threadStateBlockedOk() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[1] : Gradients.LIGHT[1];
+  }
+
+  public static Gradient threadStateBlockedWarn() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[2] : Gradients.LIGHT[2];
+  }
+
+  public static Gradient batteryInGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[10] : Gradients.LIGHT[10];
+  }
+
+  public static Gradient batteryOutGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[10] : Gradients.LIGHT[1];
+  }
+
+  public static Gradient memoryUsedGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[13] : Gradients.LIGHT[13];
+  }
+
+  public static Gradient memoryBuffersGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[14] : Gradients.LIGHT[14];
   }
 
   public static boolean isLight() {
@@ -308,10 +269,6 @@ public class StyleConstants {
 
   public static void toggleDark() {
     setDark(!isDark);
-  }
-
-  public static HSL getGrayColor() {
-    return GRAY_COLOR;
   }
 
   public static Image arrowDown(Theme theme) {
@@ -346,25 +303,103 @@ public class StyleConstants {
     return isDark ? theme.pinInactiveDark() : theme.pinInactiveLight();
   }
 
-  public static class HSL {
-    public final int h, s, l;
+  public static class Gradient {
+    private static final float HIGH_TARGET = 0.9f;
+    private static final float LOW_TARGET = 0.2f;
 
-    public HSL(int h, int s, int l) {
+    private static final float LIGHT_BASE = 0.3f;
+    private static final float LIGHT_BORDER = -0.1f;
+    private static final float LIGHT_HIGHLIHGT = -0.5f;
+    private static final float DARK_BASE = 0.1f;
+    private static final float DARK_BORDER = -0.4f;
+    private static final float DARK_HIGHLIGHT = 0.7f;
+
+    public final RGBA base;
+    public final RGBA border;
+    public final RGBA highlight;
+    public final RGBA alternate;
+    public final RGBA disabled = hsl(0, 0, 0.62f);
+
+    private final float h, s, l;
+    private final float high, low;
+
+    public Gradient(float h, float s, float l, boolean light) {
       this.h = h;
       this.s = s;
       this.l = l;
+      this.high = light ? HIGH_TARGET : LOW_TARGET;
+      this.low = light ? LOW_TARGET : HIGH_TARGET;
+
+      this.base = lerp(light ? LIGHT_BASE : DARK_BASE);
+      this.border = lerp(light ? LIGHT_BORDER : DARK_BORDER);
+      this.highlight = lerp(light ? LIGHT_HIGHLIHGT : DARK_HIGHLIGHT);
+      this.alternate = lerp(1);
     }
 
-    public RGBA rgb() {
-      return hsl(h, s / 100f, l / 100f);
+    /**
+     * @param x interpolation multiplier in the range [-1, 1].
+     */
+    public RGBA lerp(float x) {
+      if (x < 0) {
+        return hsl(h, s, l - x * (low - l));
+      } else {
+        return hsl(h, s, l + x * (high - l));
+      }
     }
 
-    public HSL adjusted(int newH, int newS, int newL) {
-      return new HSL(clamp(newH, 0, 360), clamp(newS, 0, 100), clamp(newL, 0, 100));
+    /** Sets fill to base. **/
+    public void applyBase(RenderContext ctx) {
+      ctx.setBackgroundColor(base);
     }
 
-    private static int clamp(int x, int min, int max) {
-      return Math.min(Math.max(x, min), max);
+    /** Sets fill to base, and stroke to border. **/
+    public void applyBaseAndBorder(RenderContext ctx) {
+      ctx.setForegroundColor(border);
+      ctx.setBackgroundColor(base);
+    }
+  }
+
+  private static class Gradients {
+    // Order here matters, when changing, adjust the indices above.
+    private static final float[][] COLORS = {
+        {  15.38f, 0.2633f, 0.6000f }, // Brown
+        {  20.15f, 0.8954f, 0.7000f }, // Orange         // blocked OK, battery out
+        {  21.92f, 0.7626f, 0.4294f }, // Dark Orange    // blocked warn
+        {  36.22f, 0.7312f, 0.5000f }, // Light Brown
+        {  42.19f, 0.4412f, 0.7490f }, // Tan
+        {  50.00f, 0.5822f, 0.5844f }, // Gold
+        {  59.49f, 0.5109f, 0.4490f }, // Lime
+        {  66.00f, 0.8233f, 0.5400f }, // Apple Green
+        {  88.00f, 0.5000f, 0.5300f }, // Chartreuse
+        { 122.00f, 0.3900f, 0.4900f }, // Dark Green
+        { 130.91f, 0.6548f, 0.6706f }, // Green          // running, battery in
+        { 171.02f, 0.5787f, 0.5598f }, // Turquoise
+        { 172.36f, 0.7432f, 0.2902f }, // Teal
+        { 198.40f, 1.0000f, 0.4157f }, // Pacific Blue   // runnable, mem used
+        { 200.22f, 0.9787f, 0.8157f }, // Light Blue     // main, mem buf/cache
+        { 201.95f, 0.2455f, 0.6725f }, // Grey           // sleeping
+        { 214.85f, 1.0000f, 0.5510f }, // Vivid Blue
+        { 217.06f, 0.5000f, 0.4000f }, // Indigo
+        { 261.54f, 0.5065f, 0.6980f }, // Light Purple
+        { 262.30f, 0.6981f, 0.5843f }, // Purple
+        { 298.56f, 0.5540f, 0.6845f }, // Light Magenta
+        { 319.69f, 0.5333f, 0.4706f }, // Magenta
+        { 338.32f, 0.7041f, 0.6686f }, // Pink
+    };
+
+    public static final Gradient[] LIGHT;
+    public static final Gradient[] DARK;
+    public static final int COUNT = COLORS.length;
+
+    static {
+      LIGHT = new Gradient[COUNT];
+      DARK = new Gradient[COUNT];
+
+      for (int i = 0; i < COUNT; i++) {
+        float h = COLORS[i][0], s = COLORS[i][1], l = COLORS[i][2];
+        LIGHT[i] = new Gradient(h, s, l, true);
+        DARK[i] = new Gradient(h, s, l, false);
+      }
     }
   }
 }

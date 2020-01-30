@@ -37,6 +37,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Events;
 
+import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Widget;
 
 import java.math.RoundingMode;
@@ -137,16 +138,14 @@ public abstract class State {
     }
   }
 
-  public boolean hasSelectedThreads() {
-    return selectedThreads.size() > 0;
-  }
-
-  public boolean isUpidInSelection(long upid) {
-    return selectedThreads.containsKey(upid);
-  }
-
-  public boolean isUtidInSelection(long utid) {
-    return selectedThreads.containsValue(utid);
+  public RGBA getSliceColorForThread(ThreadInfo thread) {
+    if (selectedThreads.isEmpty() || selectedThreads.containsValue(thread.utid)) {
+      return thread.getColor().base;
+    } else if (selectedThreads.containsKey(thread.upid)) {
+      return thread.getColor().alternate;
+    } else {
+      return thread.getColor().disabled;
+    }
   }
 
   public TimeSpan getHighlight() {

@@ -18,6 +18,7 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -31,7 +32,6 @@ import com.google.gapid.perfetto.models.CounterTrack;
 import com.google.gapid.perfetto.models.CounterTrack.Values;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
-import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 import org.eclipse.swt.SWT;
 
@@ -96,8 +96,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       Selection<Values.Key> selected = state.getSelection(Selection.Kind.Counter);
       List<Integer> visibleSelected = Lists.newArrayList();
-      ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
-      ctx.setForegroundColor(BaseColor.PACIFIC_BLUE.rgb);
+      mainGradient().applyBaseAndBorder(ctx);
       ctx.path(path -> {
         double lastX = state.timeToPx(data.ts[0]), lastY = h;
         path.moveTo(lastX, lastY);
@@ -118,7 +117,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       });
 
       // Draw highlight line after the whole graph is rendered, so that the highlight is on the top.
-      ctx.setBackgroundColor(BaseColor.INDIGO.rgb);
+      ctx.setBackgroundColor(mainGradient().highlight);
       for (int index : visibleSelected) {
         double startX = state.timeToPx(data.ts[index]);
         double endX = (index >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[index + 1]);
@@ -128,10 +127,8 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       if (hovered != null) {
         double y = (trackHeight - 1) * (1 - (hovered.value - min) / range);
-        ctx.setBackgroundColor(BaseColor.VIVID_BLUE.rgb);
-        ctx.fillRect(hovered.startX, y, hovered.endX - hovered.startX, trackHeight - y);
-        ctx.setBackgroundColor(BaseColor.INDIGO.rgb);
-        ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, 3);
+        ctx.setBackgroundColor(mainGradient().highlight);
+        ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, trackHeight - y + 1);
         ctx.setForegroundColor(colors().textMain);
         ctx.drawCircle(hovered.mouseX, y, CURSOR_SIZE / 2);
 

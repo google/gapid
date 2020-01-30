@@ -15,6 +15,7 @@
  */
 package com.google.gapid.perfetto.models;
 
+import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.ImmutableMap;
@@ -23,8 +24,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.views.State;
 import com.google.gapid.perfetto.views.StyleConstants;
-
-import org.eclipse.swt.graphics.RGBA;
 
 import java.util.Map;
 
@@ -68,6 +67,10 @@ public class ThreadInfo {
     return name.isEmpty() ? "[" + tid + "]" : name + " [" + tid + "]";
   }
 
+  public StyleConstants.Gradient getColor() {
+    return gradient(Long.hashCode(upid != 0 ? upid : utid));
+  }
+
   public static ListenableFuture<Perfetto.Data.Builder> listThreads(Perfetto.Data.Builder data) {
     return transform(data.qe.query(THREAD_QUERY), res -> {
       Map<Long, ProcessInfo.Builder> procs = Maps.newHashMap();
@@ -96,35 +99,12 @@ public class ThreadInfo {
     });
   }
 
-  public static RGBA getColor(State state, long utid) {
-    ThreadInfo queried = state.getThreadInfo(utid);
-    if (!state.hasSelectedThreads()) {
-      return colorForThread(queried, 0);
-    } else if (state.isUtidInSelection(queried.utid)) {
-      return colorForThread(queried, 0);
-    } else if (state.isUpidInSelection(queried.upid)) {
-      return colorForThread(queried, StyleConstants.isLight() ? 3 : -3);
-    } else {
-      return StyleConstants.getGrayColor().rgb();
-    }
-  }
-
-  public static RGBA getBorderColor(State state, long utid) {
-    return colorForThread(state.getThreadInfo(utid), StyleConstants.isLight() ? -5 : 5);
-  }
-
-  private static RGBA colorForThread(ThreadInfo ti, int shadeIdx) {
-    if (ti == null) {
-      return StyleConstants.getGrayColor().rgb();
-    }
-    return StyleConstants.Palette.getColor((int)(ti.upid != 0 ? ti.upid : ti.utid), shadeIdx);
-  }
-
   public static Display getDisplay(State state, long utid, boolean hover) {
     ThreadInfo thread = state.getThreadInfo(utid);
     if (thread == null) {
       // fallback, should not really happen.
-      return hover ? null : new Display(null, null, "??? [id: " + utid + "]", "");
+      return hover ? null : new Display(
+          null, new ThreadInfo(utid, -1, 0, -1, "", 0, 0), "??? [id: " + utid + "]", "");
     }
     String threadLabel = (hover ? "T: " : "") + thread.name + " [" + thread.tid + "]";
 

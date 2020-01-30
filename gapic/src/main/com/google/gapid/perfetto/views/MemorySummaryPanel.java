@@ -18,13 +18,14 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.memoryBuffersGradient;
+import static com.google.gapid.perfetto.views.StyleConstants.memoryUsedGradient;
 
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.MemorySummaryTrack;
-import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 /**
  * Displays information about the system memory usage.
@@ -71,7 +72,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
         return;
       }
 
-      ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
+      memoryBuffersGradient().applyBase(ctx);
       ctx.path(path -> {
         path.moveTo(0, h);
         double lastX = 0, lastY = h;
@@ -88,7 +89,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
         ctx.fillPath(path);
       });
 
-      ctx.setBackgroundColor(BaseColor.PACIFIC_BLUE.rgb);
+      memoryUsedGradient().applyBase(ctx);
       ctx.path(path -> {
         path.moveTo(0, h);
         double lastX = 0, lastY = h;
@@ -121,9 +122,9 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
         double dy = hovered.allSize.h / 4;
         ctx.setBackgroundColor(colors().background);
         ctx.fillRect(x, y + 1 * dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
-        ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
+        memoryBuffersGradient().applyBase(ctx);
         ctx.fillRect(x, y + 2 * dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
-        ctx.setBackgroundColor(BaseColor.PACIFIC_BLUE.rgb);
+        memoryUsedGradient().applyBase(ctx);
         ctx.fillRect(x, y + 3 * dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
 
         x += LEGEND_SIZE + HOVER_PADDING;

@@ -17,6 +17,8 @@ package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
+import static com.google.gapid.perfetto.views.StyleConstants.batteryInGradient;
+import static com.google.gapid.perfetto.views.StyleConstants.batteryOutGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
 import com.google.gapid.perfetto.canvas.Area;
@@ -25,9 +27,6 @@ import com.google.gapid.perfetto.canvas.Fonts.TextMeasurer;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.BatterySummaryTrack;
-import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
-
-import org.eclipse.swt.graphics.RGBA;
 
 import java.util.Arrays;
 
@@ -75,7 +74,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
       long maxAbs = maxAbsCurrent(data.current);
 
       // Draw outgoing battery current above the x axis.
-      ctx.setBackgroundColor(BaseColor.ORANGE.rgb);
+      batteryOutGradient().applyBase(ctx);
       ctx.path(path -> {
         path.moveTo(0, h / 2);
         double lastX = 0, lastY = h / 2;
@@ -93,7 +92,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
       });
 
       // Draw ingoing battery current below the x axis.
-      ctx.setBackgroundColor(BaseColor.GREEN.rgb);
+      batteryInGradient().applyBase(ctx);
       ctx.path(path -> {
         path.moveTo(0, h / 2);
         double lastX = 0, lastY = h / 2;
@@ -119,8 +118,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
         double x = mouseXpos + HOVER_MARGIN + HOVER_PADDING, y = mouseYpos;
         double dy = hovered.allSize.h / 2;
 
-        RGBA color = hovered.current > 0 ? BaseColor.ORANGE.rgb : BaseColor.GREEN.rgb;
-        ctx.setBackgroundColor(color);
+        (hovered.current > 0 ? batteryOutGradient() : batteryInGradient()).applyBase(ctx);
         ctx.fillRect(x, y + dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
 
         x += LEGEND_SIZE + HOVER_PADDING;
