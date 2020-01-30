@@ -159,11 +159,11 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
       }
 
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(
-          Fonts.Style.Normal, threadInfo.title, rectStart + 2, 2, rectWidth - 4, (h / 2) - 4);
+      ctx.drawTextLeftTruncate(Fonts.Style.Normal, threadInfo.title, threadInfo.shortTitle,
+          rectStart + 2, 2, rectWidth - 4, (h / 2) - 4);
       if (!threadInfo.subTitle.isEmpty()) {
         ctx.setForegroundColor(colors().textAlt);
-        ctx.drawText(Fonts.Style.Normal, threadInfo.subTitle,
+        ctx.drawTextLeftTruncate(Fonts.Style.Normal, threadInfo.subTitle, threadInfo.shortSubTitle,
             rectStart + 2, (h / 2) + 2, rectWidth - 4, (h / 2) - 4);
       }
     }

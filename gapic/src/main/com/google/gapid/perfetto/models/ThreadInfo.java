@@ -104,30 +104,35 @@ public class ThreadInfo {
     if (thread == null) {
       // fallback, should not really happen.
       return hover ? null : new Display(
-          null, new ThreadInfo(utid, -1, 0, -1, "", 0, 0), "??? [id: " + utid + "]", "");
+          null, new ThreadInfo(utid, -1, 0, -1, "", 0, 0), "??? [id: " + utid + "]", "???", "", "");
     }
     String threadLabel = (hover ? "T: " : "") + thread.name + " [" + thread.tid + "]";
 
     ProcessInfo process = state.getProcessInfo(thread.upid);
     if (process == null || process.name.isEmpty()) {
-      return new Display(process, thread, threadLabel, "");
+      return new Display(process, thread, threadLabel, thread.name, "", "");
     }
     String processLabel = (hover ? "P: " : "") + process.name + " [" + process.pid + "]";
 
-    return new Display(process, thread, threadLabel, processLabel);
+    return new Display(process, thread, threadLabel, thread.name, processLabel, process.name);
   }
 
   public static class Display {
     public final ProcessInfo process;
     public final ThreadInfo thread;
     public final String title;
+    public final String shortTitle;
     public final String subTitle;
+    public final String shortSubTitle;
 
-    public Display(ProcessInfo process, ThreadInfo thread, String title, String subTitle) {
+    public Display(ProcessInfo process, ThreadInfo thread, String title, String shortTitle,
+        String subTitle, String shortSubTitle) {
       this.process = process;
       this.thread = thread;
       this.title = title;
+      this.shortTitle = shortTitle;
       this.subTitle = subTitle;
+      this.shortSubTitle = shortSubTitle;
     }
   }
 }
