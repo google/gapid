@@ -242,7 +242,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(Lists.newArrayList(this));
     }
 
@@ -294,7 +294,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(slices);
     }
   }
@@ -323,7 +323,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
-    public Selection build() {
+    public Selection<Long> build() {
       return new Slices(slices, processes.values().stream()
           .map(ByProcess.Builder::build)
           .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))

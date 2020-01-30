@@ -196,7 +196,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(Lists.newArrayList(this));
     }
 
@@ -339,7 +339,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(slices);
     }
   }
@@ -388,7 +388,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public Selection build() {
+    public Selection<Slice.Key> build() {
       return new Slices(slices, title, roots.stream()
           .filter(not(byStack::containsKey))
           .flatMap(root -> byParent.get(root).stream())

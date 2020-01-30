@@ -42,17 +42,16 @@ public interface Selection<Key> {
   public String getTitle();
   public boolean contains(Key key);
   public Composite buildUi(Composite parent, State state);
-  public Selection.Builder getBuilder();
+  public Selection.Builder<?> getBuilder();
   public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default boolean isEmpty() { return this == EMPTY_SELECTION; }
 
-  @SuppressWarnings("rawtypes")
-  public static final Selection EMPTY_SELECTION = new EmptySelection<>();
+  public static final Selection<?> EMPTY_SELECTION = new EmptySelection<Object>();
 
   @SuppressWarnings("unchecked")
   public static <K> Selection<K> emptySelection() {
-      return EMPTY_SELECTION;
+      return (Selection<K>)EMPTY_SELECTION;
   }
 
   public static class EmptySelection<K> implements Selection<K>, Builder<EmptySelection<K>> {
@@ -72,12 +71,12 @@ public interface Selection<Key> {
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<?> getBuilder() {
       return this;
     }
 
     @Override
-    public EmptySelection combine(EmptySelection other) {
+    public EmptySelection<K> combine(EmptySelection<K> other) {
       return this;
     }
 
@@ -116,18 +115,20 @@ public interface Selection<Key> {
           (Selection<Key>) selections.get(type) : Selection.emptySelection();
     }
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public void addSelection(MultiSelection other) {
       for (Selection.Kind k : other.selections.keySet()) {
         this.addSelection(k, other.selections.get(k));
       }
     }
 
-    public <Key> void addSelection(Kind<Key> kind, Selection<Key> selection) {
+    @SuppressWarnings("unchecked")
+    public <Key, T extends Builder<T>> void addSelection(Kind<Key> kind, Selection<Key> selection) {
       Selection<Key>  old = getSelection(kind);
       if (old == null || old == Selection.EMPTY_SELECTION) {
         selections.put(kind, selection);
       } else {
-        selections.put(kind, old.getBuilder().combine(selection.getBuilder()).build());
+        selections.put(kind, ((T)old.getBuilder()).combine((T)selection.getBuilder()).build());
       }
     }
 

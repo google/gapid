@@ -31,8 +31,8 @@ import java.util.Map;
  * Displays multiple different selections.
  */
 public class MultiSelectionView extends Composite {
-  public MultiSelectionView(Composite parent, Map<Selection.Kind<?>, Selection<?>> selections,
-      State state) {
+  public MultiSelectionView(
+      Composite parent, Map<Selection.Kind<?>, Selection<?>> selections, State state) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
