@@ -144,11 +144,15 @@ public class Tracks {
     }
 
     if (!counters.isEmpty()) {
-      data.tracks.addLabelGroup("gpu", "gpu_counters", "GPU Counters",
-          group(state -> new TitlePanel("GPU Counters"), true));
+      String parent = "gpu";
+      if (counters.size() > 1) {
+        data.tracks.addLabelGroup("gpu", "gpu_counters", "GPU Counters",
+            group(state -> new TitlePanel("GPU Counters"), true));
+        parent = "gpu_counters";
+      }
       for (CounterInfo counter : counters) {
         CounterTrack track = new CounterTrack(data.qe, counter);
-        data.tracks.addTrack("gpu_counters", track.getId(), counter.name,
+        data.tracks.addTrack(parent, track.getId(), counter.name,
             single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true));
       }
     }
