@@ -36,9 +36,7 @@ import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.FrameEventsMultiSelectionView;
 import com.google.gapid.perfetto.views.FrameEventsSelectionView;
 import com.google.gapid.perfetto.views.State;
-import com.google.gapid.perfetto.views.StyleConstants;
 
-import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.List;
@@ -76,19 +74,6 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
 
   public static FrameEventsTrack forBuffer(QueryEngine qe, GpuInfo.Buffer buffer) {
     return new FrameEventsTrack(qe, buffer.trackId);
-  }
-
-  public static RGBA getColor(String title) {
-    return colorForSlice(title, 0);
-  }
-
-  public static RGBA getBorderColor(String title) {
-    return colorForSlice(title, StyleConstants.isLight() ? -5 : 5);
-  }
-
-  private static RGBA colorForSlice(String title, int shadeIdx) {
-    return StyleConstants.Palette.getColor(
-        (title.hashCode() ^ title.length()) & 0x7fffffff, shadeIdx);
   }
 
   @Override

@@ -39,9 +39,7 @@ import com.google.gapid.perfetto.models.QueryEngine.Row;
 import com.google.gapid.perfetto.views.SliceSelectionView;
 import com.google.gapid.perfetto.views.SlicesSelectionView;
 import com.google.gapid.perfetto.views.State;
-import com.google.gapid.perfetto.views.StyleConstants;
 
-import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.List;
@@ -118,19 +116,6 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
   public abstract ListenableFuture<Slice> getSlice(long id);
   public abstract ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth);
-
-  public static RGBA getColor(String title, int depth) {
-    return colorForSlice(title, depth, 0);
-  }
-
-  public static RGBA getBorderColor(String title, int depth) {
-    return colorForSlice(title, depth, StyleConstants.isLight() ? -5 : 5);
-  }
-
-  private static RGBA colorForSlice(String title, int depth, int shadeIdx) {
-    return StyleConstants.Palette.getColor(
-        (title.hashCode() ^ depth) & 0x7fffffff, shadeIdx);
-  }
 
   public static class Data extends Track.Data {
     public final long[] ids;

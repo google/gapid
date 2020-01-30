@@ -19,6 +19,7 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -35,10 +36,10 @@ import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.models.ThreadTrack;
 import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
-import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.List;
@@ -107,8 +108,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       Selection<Long> selectedCpu = state.getSelection(Selection.Kind.Cpu);
       Selection<StateSlice.Key> selectedThreadState = state.getSelection(Selection.Kind.ThreadState);
       Selection<Slice.Key> selectedThread = state.getSelection(Selection.Kind.Thread);
-      List<Integer> visibleSelectedSched = Lists.newArrayList();
-      List<Integer> visibleSelectedExpanded = Lists.newArrayList();
+      List<Highlight> visibleSelected = Lists.newArrayList();
 
       boolean merging = false;
       double mergeStartX = 0;
@@ -120,13 +120,13 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
         if (tEnd <= visible.start || tStart >= visible.end) {
           continue;
         }
-        double rectStart = state.timeToPx(tStart);
+        final double rectStart = state.timeToPx(tStart);
         double rectEnd = state.timeToPx(tEnd);
-        double rectWidth = rectEnd - rectStart;
+        final double rectWidth = rectEnd - rectStart;
 
         if (merging && (rectStart - mergeEndX) > MERGE_GAP_THRESHOLD) {
           double mergeWidth = Math.max(1, mergeEndX - mergeStartX);
-          ctx.setBackgroundColor(mergeState.color.get());
+          mergeState.color.get().applyBase(ctx);
           ctx.fillRect(mergeStartX, 0, mergeWidth, SLICE_HEIGHT);
           if (mergeWidth > 7) {
             ctx.setForegroundColor(colors().textMain);
@@ -152,6 +152,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           }
         } else {
           ThreadState ts = data.schedStates[i];
+          double drawStart = rectStart, drawWidth = rectWidth;
           if (merging) {
             double ratio = (mergeEndX - mergeStartX) / rectWidth;
             if (ratio > MERGE_STATE_RATIO) {
@@ -159,28 +160,29 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
             } else if (ratio > 1 / MERGE_STATE_RATIO) {
               ts = mergeState.merge(ts);
             }
-            rectStart = mergeStartX;
-            rectWidth = rectEnd - rectStart;
+            drawStart = mergeStartX;
+            drawWidth = rectEnd - mergeStartX;
             merging = false;
           }
 
-          ctx.setBackgroundColor(ts.color.get());
-          ctx.fillRect(rectStart, 0, rectWidth, SLICE_HEIGHT);
-          if (rectWidth > 7) {
+          ts.color.get().applyBase(ctx);
+          ctx.fillRect(drawStart, 0, drawWidth, SLICE_HEIGHT);
+          if (drawWidth > 7) {
             ctx.setForegroundColor(colors().textMain);
             ctx.drawText(Fonts.Style.Normal, ts.label,
-                rectStart + 2, 2, rectWidth - 4, SLICE_HEIGHT - 4);
+                drawStart + 2, 2, drawWidth - 4, SLICE_HEIGHT - 4);
           }
         }
 
         if (selectedCpu.contains(data.schedIds[i])
             || selectedThreadState.contains(new StateSlice.Key(data.schedStarts[i],
                 data.schedEnds[i] - data.schedStarts[i], track.getThread().utid))) {
-          visibleSelectedSched.add(i);
+          visibleSelected.add(
+              new Highlight(data.schedStates[i].color.get().border, rectStart, 0, rectWidth));
         }
       }
       if (merging) {
-        ctx.setBackgroundColor(mergeState.color.get());
+        mergeState.color.get().applyBase(ctx);
         ctx.fillRect(mergeStartX, 0, mergeEndX - mergeStartX, SLICE_HEIGHT);
       }
 
@@ -199,11 +201,12 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
           double y = (1 + depth) * SLICE_HEIGHT;
 
-          ctx.setBackgroundColor(SliceTrack.getColor(title, depth));
+          StyleConstants.Gradient color = gradient(title.hashCode() ^ depth);
+          color.applyBase(ctx);
           ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
           if (selectedThread.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
-            visibleSelectedExpanded.add(i);
+            visibleSelected.add(new Highlight(color.border, rectStart, y, rectWidth));
           }
 
           // Don't render text when we have less than 7px to play with.
@@ -218,19 +221,9 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       }
 
       // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
-      for (int index : visibleSelectedSched) {
-        ctx.setForegroundColor(BaseColor.INDIGO.rgb);
-        double rectStart = state.timeToPx(data.schedStarts[index]);
-        double rectWidth = Math.max(1, state.timeToPx(data.schedEnds[index]) - rectStart);
-        ctx.drawRect(rectStart, 0, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
-      }
-      for (int index : visibleSelectedExpanded) {
-        ctx.setForegroundColor(
-            SliceTrack.getBorderColor(data.slices.titles[index], data.slices.depths[index]));
-        double rectStart = state.timeToPx(data.slices.starts[index]);
-        double rectWidth = Math.max(1, state.timeToPx(data.slices.ends[index]) - rectStart);
-        double depth = data.slices.depths[index];
-        ctx.drawRect(rectStart, (1 + depth) * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, 2);
+      for (Highlight hl : visibleSelected) {
+        ctx.setForegroundColor(hl.color);
+        ctx.drawRect(hl.x, hl.y, hl.w, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
 
       if (hoveredTitle != null) {
@@ -409,6 +402,18 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       }
       builder.add(Selection.Kind.Thread,
           transform(track.getSlices(ts, startDepth, endDepth), SliceTrack.SlicesBuilder::new));
+    }
+  }
+
+  private static class Highlight {
+    public final RGBA color;
+    public final double x, y, w;
+
+    public Highlight(RGBA color, double x, double y, double w) {
+      this.color = color;
+      this.x = x;
+      this.y = y;
+      this.w = w;
     }
   }
 }

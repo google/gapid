@@ -19,6 +19,8 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.gradient;
+import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -33,10 +35,10 @@ import com.google.gapid.perfetto.models.FrameEventsTrack.Slice;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
-import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.List;
@@ -101,8 +103,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
 
-    ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
-    ctx.setForegroundColor(BaseColor.PACIFIC_BLUE.rgb);
+    mainGradient().applyBaseAndBorder(ctx);
     ctx.path(path -> {
       path.moveTo(0, h);
       double y = h, x = 0;
@@ -139,8 +140,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
   public void renderSlices(RenderContext ctx, FrameEventsTrack.Data data) {
     TimeSpan visible = state.getVisibleTime();
     Selection<Slice.Key> selected = state.getSelection(Selection.Kind.FrameEvents);
-    List<Integer> visibleSelectedSlice = Lists.newArrayList();
-    List<Integer> visibleSelectedDiamond = Lists.newArrayList();
+    List<Highlight> visibleSelected = Lists.newArrayList();
 
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
@@ -152,16 +152,16 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         continue;
       }
       double rectStart = state.timeToPx(tStart);
+      StyleConstants.Gradient color = gradient(data.titles[i].hashCode());
+      color.applyBase(ctx);
 
       if (tEnd - tStart > 3 ) {
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = depth * SLICE_HEIGHT;
-
-        ctx.setBackgroundColor(FrameEventsTrack.getColor(data.titles[i]));
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
         if (selected.contains(new Slice.Key(tStart, tEnd - tStart))) {
-          visibleSelectedSlice.add(i);
+          visibleSelected.add(Highlight.slice(color.border, rectStart, y, rectWidth));
         }
 
         // Don't render text when we have less than 7px to play with.
@@ -175,14 +175,12 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       } else {
         double rectWidth = 20;
         double y = depth * SLICE_HEIGHT;
-
-        ctx.setBackgroundColor(FrameEventsTrack.getColor(data.titles[i]));
-        double[] diamondX = new double[] {rectStart - (rectWidth)/2, rectStart, rectStart + (rectWidth)/2, rectStart};
-        double[] diamondY = new double[] { y+(SLICE_HEIGHT)/2,y, y+(SLICE_HEIGHT)/2, SLICE_HEIGHT};
+        double[] diamondX = { rectStart - (rectWidth / 2), rectStart, rectStart + (rectWidth / 2), rectStart};
+        double[] diamondY = { y + (SLICE_HEIGHT / 2), y, y + (SLICE_HEIGHT / 2), SLICE_HEIGHT };
         ctx.fillPolygon(diamondX, diamondY, 4);
 
         if (selected.contains(new Slice.Key(tStart, tEnd - tStart))) {
-          visibleSelectedDiamond.add(i);
+          visibleSelected.add(Highlight.diamond(color.border, diamondX, diamondY));
         }
 
         ctx.setForegroundColor(colors().textMain);
@@ -191,23 +189,8 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       }
     }
 
-    for (int index : visibleSelectedSlice) {
-      ctx.setForegroundColor(FrameEventsTrack.getBorderColor(data.titles[index]));
-      double rectStart = state.timeToPx(data.starts[index]);
-      double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
-      double depth = data.depths[index];
-      ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
-    }
-
-    for (int index : visibleSelectedDiamond) {
-      ctx.setForegroundColor(FrameEventsTrack.getBorderColor(data.titles[index]));
-      double rectStart = state.timeToPx(data.starts[index]);
-      double rectWidth = 20;
-      double depth = data.depths[index];
-      double y = depth * SLICE_HEIGHT;
-      double[] diamondX = new double[] {rectStart - (rectWidth)/2, rectStart, rectStart + (rectWidth)/2, rectStart};
-      double[] diamondY = new double[] { y+(SLICE_HEIGHT)/2,y, y+(SLICE_HEIGHT)/2, SLICE_HEIGHT};
-      ctx.drawPolygon(diamondX, diamondY, 4);
+    for (Highlight highlight : visibleSelected) {
+      highlight.draw(ctx);
     }
 
     if (hoveredTitle != null) {
@@ -255,12 +238,13 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
 
     long p = data.numEvents[bucket];
     String text;
-    if (p == 0)
+    if (p == 0) {
       text = "Nothing presented";
-    else if (p == 1)
+    } else if (p == 1) {
       text = Long.toString(p) + " frame presented";
-    else
+    } else {
       text = Long.toString(p) + " frames presented";
+    }
     hovered = new HoverCard(bucket, p, text, m.measure(Fonts.Style.Normal, text));
 
     double mouseX = state.timeToPx(
@@ -392,5 +376,23 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
   @Override
   public FrameEventsSummaryPanel copy() {
     return new FrameEventsSummaryPanel(state, buffer, track);
+  }
+
+  private interface Highlight {
+    public void draw(RenderContext ctx);
+
+    public static Highlight slice(RGBA color, double x, double y, double w) {
+      return ctx -> {
+        ctx.setForegroundColor(color);
+        ctx.drawRect(x, y, w, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
+      };
+    }
+
+    public static Highlight diamond(RGBA color, double[] xs, double[] ys) {
+      return ctx -> {
+        ctx.setForegroundColor(color);
+        ctx.drawPolygon(xs, ys, 4);
+      };
+    }
   }
 }

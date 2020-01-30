@@ -17,6 +17,7 @@ package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
@@ -83,8 +84,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
       String yLabel = (yMax / Math.pow(10, unitGroup * 3)) + " " + kUnits[unitGroup + 1] + "Hz";
 
       // Draw the CPU frequency graph.
-      ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu().id, 3));
-      ctx.setForegroundColor(StyleConstants.Palette.getColor(track.getCpu().id));
+      gradient(track.getCpu().id).applyBaseAndBorder(ctx);
       ctx.path(path -> {
         double lastX = startPx, lastY = h;
         path.moveTo(lastX, lastY);
@@ -127,8 +127,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
       }
 
       if (hoveredValue != null && hoveredTs != null) {
-        ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu().id, 3));
-        ctx.setForegroundColor(StyleConstants.Palette.getColor(track.getCpu().id));
+        gradient(track.getCpu().id).applyBaseAndBorder(ctx);
 
         Size textSize = ctx.measure(Fonts.Style.Normal, hoverLabel);
         double xStart = Math.floor(state.timeToPx(hoveredTs));
