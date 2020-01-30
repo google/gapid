@@ -261,6 +261,8 @@ func (t *commandSplitter) getStartedCommandBuffer(ctx context.Context, queueSubm
 	return commandBufferID, nil
 }
 
+const VK_ATTACHMENT_UNUSED = uint32(0xFFFFFFFF)
+
 func (t *commandSplitter) splitRenderPass(ctx context.Context, rp RenderPassObjectʳ, out transform.Writer) [][3]VkRenderPass {
 	s := out.State()
 	st := GetState(s)
@@ -285,10 +287,12 @@ func (t *commandSplitter) splitRenderPass(ctx context.Context, rp RenderPassObje
 		patchFinalLayout := func(rpo RenderPassObjectʳ, ar U32ːVkAttachmentReferenceᵐ) {
 			for k := 0; k < len(ar.All()); k++ {
 				ia := ar.Get(uint32(k))
-				currentLayouts[ia.Attachment()] = ia.Layout()
-				ad := rpo.AttachmentDescriptions().Get(ia.Attachment())
-				ad.SetFinalLayout(ia.Layout())
-				rpo.AttachmentDescriptions().Add(ia.Attachment(), ad)
+				if ia.Attachment() != VK_ATTACHMENT_UNUSED {
+					currentLayouts[ia.Attachment()] = ia.Layout()
+					ad := rpo.AttachmentDescriptions().Get(ia.Attachment())
+					ad.SetFinalLayout(ia.Layout())
+					rpo.AttachmentDescriptions().Add(ia.Attachment(), ad)
+				}
 			}
 		}
 
@@ -335,10 +339,12 @@ func (t *commandSplitter) splitRenderPass(ctx context.Context, rp RenderPassObje
 			spd.ResolveAttachments().Clear()
 			if !spd.DepthStencilAttachment().IsNil() {
 				ia := spd.DepthStencilAttachment()
-				currentLayouts[ia.Attachment()] = ia.Layout()
-				ad := rp1.AttachmentDescriptions().Get(ia.Attachment())
-				ad.SetFinalLayout(ia.Layout())
-				rp1.AttachmentDescriptions().Add(ia.Attachment(), ad)
+				if ia.Attachment() != VK_ATTACHMENT_UNUSED {
+					currentLayouts[ia.Attachment()] = ia.Layout()
+					ad := rp1.AttachmentDescriptions().Get(ia.Attachment())
+					ad.SetFinalLayout(ia.Layout())
+					rp1.AttachmentDescriptions().Add(ia.Attachment(), ad)
+				}
 			}
 			spd.PreserveAttachments().Clear()
 
@@ -362,10 +368,12 @@ func (t *commandSplitter) splitRenderPass(ctx context.Context, rp RenderPassObje
 			spd.ResolveAttachments().Clear()
 			if !spd.DepthStencilAttachment().IsNil() {
 				ia := spd.DepthStencilAttachment()
-				currentLayouts[ia.Attachment()] = ia.Layout()
-				ad := rp2.AttachmentDescriptions().Get(ia.Attachment())
-				ad.SetFinalLayout(ia.Layout())
-				rp2.AttachmentDescriptions().Add(ia.Attachment(), ad)
+				if ia.Attachment() != VK_ATTACHMENT_UNUSED {
+					currentLayouts[ia.Attachment()] = ia.Layout()
+					ad := rp2.AttachmentDescriptions().Get(ia.Attachment())
+					ad.SetFinalLayout(ia.Layout())
+					rp2.AttachmentDescriptions().Add(ia.Attachment(), ad)
+				}
 			}
 			spd.PreserveAttachments().Clear()
 			rp2.SubpassDescriptions().Clear()
@@ -392,10 +400,12 @@ func (t *commandSplitter) splitRenderPass(ctx context.Context, rp RenderPassObje
 				patchFinalLayout(rp3, spd.ColorAttachments())
 				if !spd.DepthStencilAttachment().IsNil() {
 					ia := spd.DepthStencilAttachment()
-					currentLayouts[ia.Attachment()] = ia.Layout()
-					ad := rp3.AttachmentDescriptions().Get(ia.Attachment())
-					ad.SetFinalLayout(ia.Layout())
-					rp3.AttachmentDescriptions().Add(ia.Attachment(), ad)
+					if ia.Attachment() != VK_ATTACHMENT_UNUSED {
+						currentLayouts[ia.Attachment()] = ia.Layout()
+						ad := rp3.AttachmentDescriptions().Get(ia.Attachment())
+						ad.SetFinalLayout(ia.Layout())
+						rp3.AttachmentDescriptions().Add(ia.Attachment(), ad)
+					}
 				}
 			}
 			spd.PreserveAttachments().Clear()
