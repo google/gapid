@@ -111,7 +111,12 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	})
 
 	isVulkan := o.APIs&VulkanAPI != uint32(0)
-	useLayers := android.SupportsLayersViaSystemSettings(d)
+	var useLayers bool
+	if isVulkan {
+		useLayers = android.SupportsVulkanLayersViaSystemSettings(d)
+	} else {
+		useLayers = android.SupportsGLESLayersViaSystemSettings(d)
+	}
 
 	if useLayers {
 		log.I(ctx, "Setting up Layer")
