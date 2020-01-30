@@ -29,7 +29,8 @@ import java.util.List;
  * Data about a GPU in the trace.
  */
 public class GpuInfo {
-  public static final GpuInfo NONE = new GpuInfo(Collections.emptyList(), Collections.emptyList());
+  public static final GpuInfo NONE = new GpuInfo(Collections.emptyList(), Collections.emptyList(),
+      Collections.emptyList());
 
   private static final String MAX_DEPTH_QUERY =
       "select t.id, t.name, t.scope, max(depth) + 1 " +
@@ -38,10 +39,12 @@ public class GpuInfo {
       "order by t.id";
 
   private final List<Queue> queues;
+  private final List<VkEvent> vkEvents;
   private final List<Buffer> buffers;
 
-  private GpuInfo(List<Queue> queues, List<Buffer> buffers) {
+  private GpuInfo(List<Queue> queues, List<VkEvent> vkEvents, List<Buffer> buffers) {
     this.queues = queues;
+    this.vkEvents = vkEvents;
     this.buffers = buffers;
   }
 
@@ -55,6 +58,14 @@ public class GpuInfo {
 
   public Iterable<Queue> queues() {
     return Iterables.unmodifiableIterable(queues);
+  }
+
+  public int vkEventCount() {
+    return vkEvents.size();
+  }
+
+  public Iterable<VkEvent> vkEvents() {
+    return Iterables.unmodifiableIterable(vkEvents);
   }
 
   public int bufferCount() {
@@ -72,11 +83,15 @@ public class GpuInfo {
   private static ListenableFuture<GpuInfo> info(QueryEngine qe) {
     return transform(qe.queries(MAX_DEPTH_QUERY), res -> {
       List<Queue> queues = Lists.newArrayList();
+      List<VkEvent> vkEvents = Lists.newArrayList();
       List<Buffer> buffers = Lists.newArrayList();
       res.forEachRow(($, r) -> {
         switch (r.getString(2)) {
           case "gpu_render_stage":
             queues.add(new Queue(queues.size(), r));
+            break;
+          case "vulkan_events":
+            vkEvents.add(new VkEvent(r));
             break;
           case "graphics_frame_event":
             buffers.add(new Buffer(r));
@@ -86,7 +101,7 @@ public class GpuInfo {
 
       // Sort buffers by name, the query is sorted by track id for the queues.
       buffers.sort((b1, b2) -> b1.name.compareTo(b2.name));
-      return new GpuInfo(queues, buffers);
+      return new GpuInfo(queues, vkEvents, buffers);
     });
   }
 
@@ -107,6 +122,26 @@ public class GpuInfo {
 
     public String getDisplay() {
       return "GPU Queue " + id;
+    }
+  }
+
+  public static class VkEvent {
+    public final long trackId;
+    public final String name;
+    public final int maxDepth;
+
+    public VkEvent(long trackId, String name, int maxDepth) {
+      this.trackId = trackId;
+      this.name = name;
+      this.maxDepth = maxDepth;
+    }
+
+    public VkEvent(QueryEngine.Row row) {
+      this(row.getLong(0), row.getString(1), row.getInt(3));
+    }
+
+    public String getDisplay() {
+      return name;
     }
   }
 

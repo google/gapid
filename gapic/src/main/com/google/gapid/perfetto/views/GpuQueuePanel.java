@@ -23,6 +23,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -34,6 +35,7 @@ import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.SliceTrack.Slice;
+import com.google.gapid.perfetto.models.VulkanEventTrack;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -41,6 +43,7 @@ import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Draws the GPU Queue slices.
@@ -93,6 +96,11 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       TimeSpan visible = state.getVisibleTime();
       Selection<Slice.Key> selected = state.getSelection(Selection.Kind.Gpu);
       List<Highlight> visibleSelected = Lists.newArrayList();
+
+      Set<Long> selectedSIds = getSelectedSubmissionIdsInVulkanEventTrack(state);
+      long[] sIds = data.getExtraLongs("submissionIds");
+      List<Integer> linkedIdxs = Lists.newArrayList();
+
       for (int i = 0; i < data.starts.length; i++) {
         long tStart = data.starts[i];
         long tEnd = data.ends[i];
@@ -108,6 +116,12 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
 
         StyleConstants.Gradient color = gradient(data.titles[i].hashCode());
         color.applyBase(ctx);
+        // Link slices in Vulkan Event Panel and Gpu Queue Panel through submission id.
+        if (!selectedSIds.isEmpty() && i < sIds.length && !selectedSIds.contains(sIds[i])) {
+          ctx.setBackgroundColor(StyleConstants.getGrayColor().rgb()); // Grey out unlinked ones.
+        } else if (i < sIds.length && selectedSIds.contains(sIds[i])) {
+          linkedIdxs.add(i);
+        }
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
         if (selected.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
@@ -128,6 +142,16 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       for (Highlight highlight : visibleSelected) {
         ctx.setForegroundColor(highlight.color);
         ctx.drawRect(highlight.x, highlight.y, highlight.w, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
+      }
+
+      // If a Vulkan Event slice is selected, draw a bounding rectangle for all the GPU Queue slices
+      // with the same submission id.
+      for (int index : linkedIdxs) {
+        ctx.setForegroundColor(SliceTrack.getBorderColor(data.titles[index], data.depths[index]));
+        double rectStart = state.timeToPx(data.starts[index]);
+        double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
+        double depth = data.depths[index];
+        ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
 
       if (hoveredTitle != null) {
@@ -249,6 +273,17 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
           track.getSlices(ts, startDepth, endDepth),
           SliceTrack.SlicesBuilder::new));
     }
+  }
+
+  private Set<Long> getSelectedSubmissionIdsInVulkanEventTrack(State state) {
+    Selection<Long> selection = state.getSelection(Selection.Kind.VulkanEvent);
+    Set<Long> res = Sets.newHashSet();    // On Vulkan Event Track.
+    if (selection instanceof VulkanEventTrack.Slice) {
+      res = Sets.newHashSet(((VulkanEventTrack.Slice)selection).submissionId);
+    } else if (selection instanceof VulkanEventTrack.Slices) {
+      res = ((VulkanEventTrack.Slices)selection).getSubmissionIds();
+    }
+    return res;
   }
 
   private static class Highlight {
