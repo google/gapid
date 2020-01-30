@@ -28,8 +28,6 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.BatterySummaryTrack;
 
-import java.util.Arrays;
-
 public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
   private static final double HEIGHT = 50;
   private static final double HOVER_MARGIN = 10;
@@ -71,7 +69,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
         return;
       }
 
-      long maxAbs = maxAbsCurrent(data.current);
+      double maxAbs = track.getMaxAbsCurrent();
 
       // Draw outgoing battery current above the x axis.
       batteryOutGradient().applyBase(ctx);
@@ -171,10 +169,6 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
         hovered = null;
       }
     };
-  }
-
-  private static long maxAbsCurrent(long[] currents) {
-    return Arrays.stream(currents).map(Math::abs).max().orElse(0);
   }
 
   private static class HoverCard {
