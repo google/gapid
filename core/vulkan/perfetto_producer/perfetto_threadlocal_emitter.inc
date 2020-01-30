@@ -221,7 +221,6 @@ void ThreadlocalEmitter<T>::EmitProcessData() {
         uint64_t category_iid = InternCategory("cat", packet, &interned_data);
 
         auto* track_event = packet->set_track_event();
-        track_event->set_timestamp_absolute_us(time / 1000);
         track_event->add_category_iids(category_iid);
 
         auto* debug_annotation = track_event->add_debug_annotations();
@@ -278,7 +277,6 @@ void ThreadlocalEmitter<T>::StartEvent(const char* category, const char* name) {
             InternCategory(category, packet, &interned_data);
 
         auto track_event = packet->set_track_event();
-        track_event->set_timestamp_absolute_us(time / 1000);
         track_event->add_category_iids(category_iid);
 
         auto legacy_event = track_event->set_legacy_event();
@@ -306,7 +304,6 @@ void ThreadlocalEmitter<T>::EndEvent(const char* category) {
             InternCategory(category, packet, &interned_data);
 
         auto track_event = packet->set_track_event();
-        track_event->set_timestamp_absolute_us(time / 1000);
         track_event->add_category_iids(category_iid);
 
         auto legacy_event = track_event->set_legacy_event();
