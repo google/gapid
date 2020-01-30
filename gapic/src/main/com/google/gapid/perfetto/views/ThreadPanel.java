@@ -30,6 +30,7 @@ import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
@@ -86,7 +87,11 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
   @Override
   public String getTooltip() {
-    return "\\b" + getTitle();
+    ProcessInfo process = state.getProcessInfo(track.getThread().upid);
+    if (process == null) {
+      return "\\b" + getTitle();
+    }
+    return "\\bT: " + getTitle() + "\nP: " + process.getDisplay();
   }
 
   @Override
