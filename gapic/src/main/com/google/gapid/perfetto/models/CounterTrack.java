@@ -200,7 +200,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<Values> getBuilder() {
       return this;
     }
 

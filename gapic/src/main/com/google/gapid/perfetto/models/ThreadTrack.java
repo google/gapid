@@ -224,7 +224,7 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<StateSlicesBuilder> getBuilder() {
       return new StateSlicesBuilder(Lists.newArrayList(this));
     }
 
@@ -307,7 +307,7 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<StateSlicesBuilder> getBuilder() {
       return new StateSlicesBuilder(slices);
     }
 
@@ -346,7 +346,7 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public Selection build() {
+    public Selection<StateSlice.Key> build() {
       return new StateSlices(slices, byState.entrySet().stream()
           .map(e -> new StateSlices.Entry(e.getKey(), e.getValue()))
           .sorted((e1, e2) -> Long.compare(e2.totalDur, e1.totalDur))

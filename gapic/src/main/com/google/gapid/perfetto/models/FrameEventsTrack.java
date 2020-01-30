@@ -254,7 +254,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(Lists.newArrayList(this));
     }
 
@@ -337,7 +337,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(slices);
     }
   }
@@ -368,7 +368,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public Selection build() {
+    public Selection<Slice.Key> build() {
       return new Slices(slices, title, ImmutableList.copyOf(roots.values()),
           ImmutableSet.copyOf(sliceKeys));
     }
