@@ -116,11 +116,15 @@ public class Tracks {
     data.tracks.addLabelGroup(null, "gpu", "GPU", group(state -> new TitlePanel("GPU"), true));
 
     if (data.getGpu().queueCount() > 0) {
-      data.tracks.addLabelGroup(
-          "gpu", "gpu_queues", "GPU Queues", group(state -> new TitlePanel("GPU Queues"), true));
+      String parent = "gpu";
+      if (data.getGpu().queueCount() > 1) {
+        data.tracks.addLabelGroup(
+            "gpu", "gpu_queues", "GPU Queues", group(state -> new TitlePanel("GPU Queues"), true));
+        parent = "gpu_queues";
+      }
       for (GpuInfo.Queue queue : data.getGpu().queues()) {
         SliceTrack track = SliceTrack.forGpuQueue(data.qe, queue);
-        data.tracks.addTrack("gpu_queues", track.getId(), queue.getDisplay(),
+        data.tracks.addTrack(parent, track.getId(), queue.getDisplay(),
             single(state -> new GpuQueuePanel(state, queue, track), true));
       }
     }
