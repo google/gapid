@@ -73,9 +73,6 @@ var (
 
 // Data contains a map of synchronization pairs.
 type Data struct {
-	// CommandRanges contains commands that will be blocked from completion,
-	// and what subcommands will be made available by future commands.
-	CommandRanges map[api.CmdID]ExecutionRanges
 	// SubcommandReferences contains the information about every subcommand
 	// run by a particular command.
 	SubcommandReferences map[api.CmdID][]SubcommandReference
@@ -119,7 +116,6 @@ func (t *subCommandMarkerGroupTrie) NewMarkerGroup(parent api.SubCmdIdx, name st
 // NewData creates a new clean Data object
 func NewData() *Data {
 	return &Data{
-		CommandRanges:          map[api.CmdID]ExecutionRanges{},
 		SubcommandReferences:   map[api.CmdID][]SubcommandReference{},
 		SubcommandGroups:       map[api.CmdID][]api.SubCmdIdx{},
 		Hidden:                 api.CmdIDSet{},
@@ -144,16 +140,6 @@ func (s SynchronizationIndices) Swap(i, j int) {
 // Less returns true if s[i] < s[j]
 func (s SynchronizationIndices) Less(i, j int) bool {
 	return s[i] < s[j]
-}
-
-// SortedKeys returns the keys of 's' in sorted order
-func (s Data) SortedKeys() SynchronizationIndices {
-	v := make(SynchronizationIndices, 0, len(s.CommandRanges))
-	for k := range s.CommandRanges {
-		v = append(v, k)
-	}
-	sort.Sort(v)
-	return v
 }
 
 // SortedKeys returns the keys of 'e' in sorted order

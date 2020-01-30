@@ -219,11 +219,6 @@ enum SemaphoreUpdate {
   @unused u32                   CommandIndex
   @unused CommandType           Type
   @unused u32                   MapIndex
-  @unused SemaphoreUpdate       SemaphoreUpdate
-  @unused VkSemaphore           Semaphore
-  @unused ref!QueuedSparseBinds SparseBinds
-  @unused VkFence               SignalFence
-  @unused u32                   DeviceMask
 }
 
 @internal class BufferCommands {
@@ -371,11 +366,6 @@ sub void AddCommand(
     CommandIndex: commandIndex,
     Type: type,
     MapIndex: mapPos,
-    SemaphoreUpdate: None,
-    Semaphore: as!VkSemaphore(0),
-    SparseBinds: as!ref!QueuedSparseBinds(null),
-    SignalFence: as!VkFence(0),
-    DeviceMask: 0,
   )
   cb := CommandBuffers[commandBuffer]
   if cb.Recording != RECORDING {

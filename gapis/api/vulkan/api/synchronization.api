@@ -322,13 +322,7 @@ cmd VkResult vkSetEvent(
   if queue != as!VkQueue(0) {
     q := Queues[queue]
     if e.VulkanHandle in q.PendingEvents {
-      delete(q.PendingEvents, e.VulkanHandle)
-    }
-    // If all pending events are signaled, so all removed from the pending
-    // event list in the queue object, we should roll out the pending commands
-    if len(q.PendingEvents) == 0 {
-      LastBoundQueue = Queues[queue]
-      execPendingCommands(queue, true)
+      vkErrorUnsupported("Unsupported signal-after-submit events")
     }
   }
   recordEventSet(event)
@@ -437,6 +431,7 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
     if event.Signaled != true {
       LastBoundQueue.PendingEvents[e] = event
       recordEventWait(e)
+      vkErrUnsupported("Unsupported, signal-after-submit events")
     }
   }
   if len(LastBoundQueue.PendingEvents) == 0 {
