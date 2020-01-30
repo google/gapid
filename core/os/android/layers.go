@@ -24,14 +24,9 @@ import (
 
 const eglLayersExt = "EGL_ANDROID_GLES_layers"
 
-// SupportsLayersViaSystemSettings returns whether the given device supports
-// loading GLES and Vulkan layers via the system settings.
-func SupportsLayersViaSystemSettings(d Device) bool {
-	// TODO: this currently looks for the EGL extension that advertises the
-	// GLES layer loading capability. Technically, the extension could be
-	// absent, but the device could still support loading Vulkan layers via
-	// the settings. There doesn't appear to be a way to detect Vulkan support
-	// and we currently assume a device either supports both, or none.
+// SupportsGLESLayersViaSystemSettings returns whether the given device supports
+// loading GLES layers via the system settings.
+func SupportsGLESLayersViaSystemSettings(d Device) bool {
 	exts := d.Instance().GetConfiguration().GetDrivers().GetOpengl().GetExtensions()
 	for _, ext := range exts {
 		if ext == eglLayersExt {
@@ -39,6 +34,14 @@ func SupportsLayersViaSystemSettings(d Device) bool {
 		}
 	}
 	return false
+}
+
+// SupportsVulkanLayersViaSystemSettings returns whether the given device supports
+// loading Vulkan layers via the system settings.
+func SupportsVulkanLayersViaSystemSettings(d Device) bool {
+	// Supported since Android P / API level 28
+	apiVersion := d.Instance().GetConfiguration().GetOS().GetAPIVersion()
+	return apiVersion >= 28
 }
 
 // SetupLayer initializes d to use either a Vulkan or GLES layer from layerPkgs
