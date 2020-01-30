@@ -29,7 +29,6 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
-	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
@@ -1190,31 +1189,13 @@ func (a API) QueryFramebufferAttachment(
 	displayToSurface bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
-	s, err := resolve.SyncData(ctx, intent.Capture)
-	if err != nil {
-		return nil, err
-	}
 	beginIndex := api.CmdID(0)
 	endIndex := api.CmdID(0)
 	subcommand := ""
 	// We cant break up overdraw right now, but we can break up
 	// everything else.
 	if drawMode == service.DrawMode_OVERDRAW {
-		if len(after) == 1 {
-			a := api.CmdID(after[0])
-			// If we are not running subcommands we can probably batch
-			for _, v := range s.SortedKeys() {
-				if v > a {
-					break
-				}
-				for _, k := range s.CommandRanges[v].SortedKeys() {
-					if k > a {
-						beginIndex = v
-						endIndex = k
-					}
-				}
-			}
-		} else { // If we are replaying subcommands, then we can't batch at all
+		if len(after) > 1 { // If we are replaying subcommands, then we can't batch at all
 			beginIndex = api.CmdID(after[0])
 			endIndex = api.CmdID(after[0])
 			for i, j := range after[1:] {

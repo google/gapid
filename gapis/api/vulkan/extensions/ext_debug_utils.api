@@ -184,7 +184,6 @@ vkCmdBeginDebugUtilsLabelEXTArgs {
 }
 
 sub void dovkCmdBeginDebugUtilsLabelEXT(ref!vkCmdBeginDebugUtilsLabelEXTArgs args) {
-  pushDebugMarker(args.LabelName)
 }
 
 @threadSafety("app")
@@ -217,7 +216,6 @@ cmd void vkCmdBeginDebugUtilsLabelEXT(
 vkCmdEndDebugUtilsLabelEXTArgs {}
 
 sub void dovkCmdEndDebugUtilsLabelEXT(ref!vkCmdEndDebugUtilsLabelEXTArgs args) {
-  popDebugMarker()
 }
 
 @threadSafety("app")
@@ -245,7 +243,6 @@ vkCmdInsertDebugUtilsLabelEXTArgs {
 }
 
 sub void dovkCmdInsertDebugUtilsLabelEXT(ref!vkCmdInsertDebugUtilsLabelEXTArgs args) {
-  pushDebugMarker(args.LabelName)
 }
 
 @threadSafety("app")

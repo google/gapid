@@ -496,17 +496,9 @@ void VulkanSpy::leaveSubcontext(CallObserver*) {}
 void VulkanSpy::nextSubcontext(CallObserver*) {}
 void VulkanSpy::resetSubcontext(CallObserver*) {}
 void VulkanSpy::onPreSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
-void VulkanSpy::onPreProcessCommand(CallObserver*,
-                                    gapil::Ref<CommandReference>) {}
+
 void VulkanSpy::onPostSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
-void VulkanSpy::onDeferSubcommand(CallObserver*, gapil::Ref<CommandReference>) {
-}
 void VulkanSpy::onCommandAdded(CallObserver*, VkCommandBuffer) {}
-void VulkanSpy::pushDebugMarker(CallObserver*, std::string) {}
-void VulkanSpy::popDebugMarker(CallObserver*) {}
-void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
-void VulkanSpy::popRenderPassMarker(CallObserver*) {}
-void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 uint32_t VulkanSpy::onesCount(CallObserver*, uint32_t x) {
   return std::bitset<32>(x).count();
 }

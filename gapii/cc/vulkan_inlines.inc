@@ -17,8 +17,6 @@
 // This file is intended to be included by vulkan_spy.h inside
 // of the gapid namespace.
 
-inline void VulkanSpy::notifyPendingCommandAdded(CallObserver*, VkQueue) {}
-
 inline void VulkanSpy::vkErrInvalidHandle(CallObserver*, std::string handleType, uint64_t handle){
     GAPID_DEBUG("Error: Invalid %s: %" PRIu64, handleType.c_str(), handle)
 }

@@ -116,7 +116,6 @@ vkCmdDebugMarkerBeginEXTArgs {
 }
 
 sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
-  pushDebugMarker(args.MarkerName)
 }
 
 @threadSafety("app")
@@ -152,7 +151,6 @@ cmd void vkCmdDebugMarkerBeginEXT(
 vkCmdDebugMarkerEndEXTArgs {}
 
 sub void dovkCmdDebugMarkerEndEXT(ref!vkCmdDebugMarkerEndEXTArgs draw) {
-  popDebugMarker()
 }
 
 @threadSafety("app")

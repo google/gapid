@@ -31,7 +31,9 @@ import (
 
 type testPtrResolver struct{}
 
-func (testPtrResolver) ResolveTemporaryPointer(value.TemporaryPointer) value.VolatilePointer { return 0 }
+func (testPtrResolver) ResolveTemporaryPointer(value.TemporaryPointer) value.VolatilePointer {
+	return 0
+}
 func (testPtrResolver) ResolveObservedPointer(ptr value.ObservedPointer) (protocol.Type, uint64) {
 	return protocol.Type_VolatilePointer, uint64(ptr)
 }
