@@ -24,6 +24,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_SLOW;
 import static com.google.gapid.perfetto.views.StyleConstants.ZOOM_FACTOR_SCALE;
 import static com.google.gapid.widgets.Widgets.createButtonWithImage;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 
@@ -202,6 +203,10 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
 
   public S getState() {
     return state;
+  }
+
+  public void requestFocus() {
+    scheduleIfNotDisposed(canvas, canvas::setFocus);
   }
 
   private double lastZoom = 1;
