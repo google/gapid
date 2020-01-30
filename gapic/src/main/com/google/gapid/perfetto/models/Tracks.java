@@ -130,11 +130,15 @@ public class Tracks {
     }
 
     if (data.getGpu().bufferCount() > 0) {
-      data.tracks.addLabelGroup("gpu", "sf_events", "Surface Flinger Events",
-          group(state -> new TitlePanel("Surface Flinger Events"), true));
+      String parent = "gpu";
+      if (data.getGpu().bufferCount() > 1) {
+        data.tracks.addLabelGroup("gpu", "sf_events", "Surface Flinger Events",
+            group(state -> new TitlePanel("Surface Flinger Events"), true));
+        parent = "sf_events";
+      }
       for (GpuInfo.Buffer buffer : data.getGpu().buffers()) {
         FrameEventsTrack track = FrameEventsTrack.forBuffer(data.qe, buffer);
-        data.tracks.addTrack("sf_events", track.getId(), buffer.getDisplay(),
+        data.tracks.addTrack(parent, track.getId(), buffer.getDisplay(),
             single(state -> new FrameEventsSummaryPanel(state, buffer, track), true));
       }
     }
