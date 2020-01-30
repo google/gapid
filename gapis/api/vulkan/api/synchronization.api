@@ -214,6 +214,35 @@ cmd void vkDestroySemaphore(
   delete(Semaphores, semaphore)
 }
 
+// Partial implementation
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkSignalSemaphore(
+    VkDevice                                    device,
+    const VkSemaphoreSignalInfo*                pSignalInfo) {
+  return VK_SUCCESS
+}
+
+// Partial implementation
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkWaitSemaphores(
+    VkDevice                                    device,
+    const VkSemaphoreWaitInfo*                  pWaitInfo,
+    u64                                         timeout) {
+  return VK_SUCCESS
+}
+
+// Partial implementation
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkGetSemaphoreCounterValue(
+    VkDevice                                    device,
+    VkSemaphore                                 semaphore,
+    u64*                                        pValue) {
+  return VK_SUCCESS
+}
+
 ///////////
 // Event //
 ///////////

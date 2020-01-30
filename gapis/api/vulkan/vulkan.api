@@ -44,6 +44,7 @@ import "api/enums.api"
 import "api/types.api"
 import "api/structs.api"
 import "api/vk11structs.api"
+import "api/vk12structs.api"
 
 import "api/properties_features_requirements.api"
 import "api/instance.api"
