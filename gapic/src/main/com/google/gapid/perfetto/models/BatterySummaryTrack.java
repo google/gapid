@@ -51,6 +51,7 @@ public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTra
   private final long capacityId;
   private final long chargeId;
   private final long currentId;
+  private final double maxAbsCurrent;
   private final boolean needQuantize;
 
   public BatterySummaryTrack(
@@ -60,7 +61,12 @@ public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTra
     this.chargeId = charge.id;
     this.currentId = current.id;
     long maxCount = Math.max(capacity.count, Math.max(charge.count, current.count));
+    this.maxAbsCurrent = Math.max(Math.abs(current.min), Math.abs(current.max));
     this.needQuantize = maxCount > Track.QUANTIZE_CUT_OFF;
+  }
+
+  public double getMaxAbsCurrent() {
+    return maxAbsCurrent;
   }
 
   @Override
