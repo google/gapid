@@ -164,7 +164,6 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
           break;
         }
         case 'h':
-        case '?':
           KeyboardMouseHelpDialog.showHelp(getShell(), analytics, theme);
           break;
         case 'm': {
@@ -182,6 +181,12 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
         case 'z':
         case '0':
           redraw = state.setVisibleTime(state.getTraceTime());
+          break;
+      }
+
+      switch (e.character) {
+        case '?':
+          KeyboardMouseHelpDialog.showHelp(getShell(), analytics, theme);
           break;
       }
 
