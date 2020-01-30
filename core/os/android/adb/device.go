@@ -189,6 +189,11 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
+	// Make sure Perfetto daemons are running.
+	if err := d.EnsurePerfettoPersistent(ctx); err != nil {
+		return nil, err
+	}
+
 	// Run device info providers only if the API is supported
 	if d.To.Configuration.OS != nil && d.To.Configuration.OS.APIVersion >= device.AndroidMinimalSupportedAPIVersion {
 		devInfoProvidersMutex.Lock()
