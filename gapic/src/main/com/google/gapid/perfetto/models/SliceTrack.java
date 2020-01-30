@@ -67,14 +67,51 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
   public static SliceTrack forGpuQueue(QueryEngine qe, GpuInfo.Queue queue) {
     return new WithQueryEngine(qe, "gpu_slice", queue.trackId) {
+      // TODO(b/148540258): Remove the copy pasted SliceTrack code and clean up
+      private final String GPU_COLUMNS = "render_target, render_target_name, render_pass, render_pass_name, command_buffer, command_buffer_name";
+
+      @Override
+      protected String baseColumns() {
+        return BASE_COLUMNS + ", " + GPU_COLUMNS;
+      }
+
+      @Override
+      protected ListenableFuture<Data> computeData(DataRequest req) {
+        Window window = Window.compute(req, 5);
+        return transformAsync(window.update(qe, tableName("window")), $ ->
+            window.quantized ? computeQuantSlices(req) : computeSlices(req));
+      }
+
+      private ListenableFuture<Data> computeSlices(DataRequest req) {
+        return transformAsync(qe.query(slicesSql(req)), res ->
+          transform(qe.getAllArgs(res.stream().mapToLong(r -> r.getLong(8))), args -> {
+            int rows = res.getNumRows();
+            Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
+                new String[rows], new String[rows], new ArgSet[rows]);
+            res.forEachRow((i, row) -> {
+              long start = row.getLong(1);
+              data.ids[i] = row.getLong(0);
+              data.starts[i] = start;
+              data.ends[i] = start + row.getLong(2);
+              data.categories[i] = row.getString(3);
+              data.titles[i] = row.getString(4);
+              data.depths[i] = row.getInt(5);
+              // Add debug marker to title if it exists
+              if (data.depths[i] == 0) {
+                String debugMarker = row.getString(10);
+                if (!debugMarker.isEmpty()) {
+                  data.titles[i] += "[" + debugMarker + "]";
+                }
+              }
+              data.args[i] = args.getOrDefault(row.getLong(8), ArgSet.EMPTY);
+            });
+            return data;
+          }));
+      }
+
       @Override
       protected Slice buildSlice(Row row, ArgSet args) {
-        return new Slice(row, args) {
-          @Override
-          public String getTitle() {
-            return "GPU Render Stages";
-          }
-        };
+        return new Slice.GpuSlice(row, args);
       }
     };
   }
@@ -156,6 +193,10 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     public ThreadInfo getThread() {
+      return null;
+    }
+
+    public RenderStageInfo getRenderStageInfo() {
       return null;
     }
 
@@ -241,6 +282,45 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       public ThreadInfo getThread() {
         return thread;
       }
+    }
+
+    public static class GpuSlice extends Slice {
+      private final RenderStageInfo renderStageInfo;
+
+      public GpuSlice(Row row, ArgSet args) {
+        super(row, args);
+        renderStageInfo = new RenderStageInfo(row.getLong(9), row.getString(10), row.getLong(11),
+            row.getString(12), row.getLong(13), row.getString(14));
+      }
+
+      @Override
+      public String getTitle() {
+        return "GPU Queue Events";
+      }
+
+      @Override
+      public RenderStageInfo getRenderStageInfo() {
+        return renderStageInfo;
+      }
+    }
+  }
+
+  public static class RenderStageInfo {
+    public final long frameBufferHandle;
+    public final String frameBufferName;
+    public final long renderPassHandle;
+    public final String renderPassName;
+    public final long commandBufferHandle;
+    public final String commandBufferName;
+
+    public RenderStageInfo(long frameBufferHandle, String frameBufferName, long renderPassHandle,
+        String renderPassName, long commandBufferHandle, String commandBufferName) {
+      this.frameBufferHandle = frameBufferHandle;
+      this.frameBufferName = frameBufferName;
+      this.commandBufferHandle = commandBufferHandle;
+      this.commandBufferName = commandBufferName;
+      this.renderPassHandle = renderPassHandle;
+      this.renderPassName = renderPassName;
     }
   }
 
@@ -397,12 +477,15 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
   }
 
   private abstract static class WithQueryEngine extends SliceTrack {
-    private static final String BASE_COLUMNS =
+    protected static final String BASE_COLUMNS =
         "id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
-    private static final String SLICES_VIEW =
-        "select " + BASE_COLUMNS + " from %s where track_id = %d";
-    private static final String SLICES_SQL =
-        "select " + BASE_COLUMNS + " from %s " +
+    protected final String table;
+    protected final long trackId;
+
+    private final String SLICES_VIEW =
+        "select " + baseColumns() + " from %s where track_id = %d";
+    private final String SLICES_SQL =
+        "select " + baseColumns() + " from %s " +
         "where ts >= %d - dur and ts <= %d order by ts";
     private static final String SLICES_QUANT_SQL =
         "select min(start_ts), max(end_ts), depth, label, max(cnt) from (" +
@@ -416,15 +499,16 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         "  group by quantum_ts, depth) " +
         "group by depth, label, i";
 
-    private static final String SLICE_SQL =
-        "select " + BASE_COLUMNS + " from %s where id = %d";
-    private static final String SLICE_RANGE_SQL =
-        "select " + BASE_COLUMNS + " from %s " +
+    private final String SLICE_SQL =
+        "select " + baseColumns() + " from %s where id = %d";
+    private final String SLICE_RANGE_SQL =
+        "select " + baseColumns() + " from %s " +
         "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
-
     private final QueryEngine qe;
-    private final String table;
-    private final long trackId;
+
+    protected String baseColumns() {
+      return BASE_COLUMNS;
+    }
 
     protected WithQueryEngine(QueryEngine qe, String table, long trackId) {
       super(trackId);
@@ -454,7 +538,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
           window.quantized ? computeQuantSlices(req) : computeSlices(req));
     }
 
-    private ListenableFuture<Data> computeQuantSlices(DataRequest req) {
+    protected ListenableFuture<Data> computeQuantSlices(DataRequest req) {
       return transform(qe.query(slicesQuantSql()), res -> {
         int rows = res.getNumRows();
         Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
@@ -499,7 +583,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         }));
     }
 
-    private String slicesSql(DataRequest req) {
+    protected String slicesSql(DataRequest req) {
       return format(SLICES_SQL, tableName("slices"), req.range.start, req.range.end);
     }
 

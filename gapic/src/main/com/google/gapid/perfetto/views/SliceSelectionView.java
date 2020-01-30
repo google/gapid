@@ -24,9 +24,11 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.SliceTrack;
+import com.google.gapid.perfetto.models.SliceTrack.RenderStageInfo;
 import com.google.gapid.perfetto.models.ThreadInfo;
 
 import org.eclipse.swt.SWT;
@@ -75,6 +77,42 @@ public class SliceSelectionView extends Composite {
     if (!slice.name.isEmpty()) {
       createLabel(main, "Name:");
       createLabel(main, slice.name);
+    }
+
+    RenderStageInfo renderStageInfo = slice.getRenderStageInfo();
+    if (renderStageInfo != null) {
+      ImmutableMap.Builder<String, String> propsBuilder = ImmutableMap.builder();
+      if (renderStageInfo.frameBufferHandle != 0) {
+        if (renderStageInfo.frameBufferName.isEmpty()) {
+          propsBuilder.put("VkFrameBuffer:", String.format("0x%08X", renderStageInfo.frameBufferHandle));
+        } else {
+          propsBuilder.put("VkFrameBuffer:", renderStageInfo.frameBufferName + " <" + String.format("0x%08X", renderStageInfo.frameBufferHandle) + ">");
+        }
+      }
+      if (renderStageInfo.renderPassHandle != 0) {
+        if (renderStageInfo.renderPassName.isEmpty()) {
+          propsBuilder.put("VkRenderPass:", String.format("0x%08X", renderStageInfo.renderPassHandle));
+        } else {
+          propsBuilder.put("VkRenderPass:", renderStageInfo.renderPassName + " <" + String.format("0x%08X", renderStageInfo.renderPassHandle) + ">");
+        }
+      }
+      if (renderStageInfo.commandBufferHandle != 0) {
+        if (renderStageInfo.commandBufferName.isEmpty()) {
+          propsBuilder.put("VkCommandBuffer:", String.format("0x%08X", renderStageInfo.commandBufferHandle));
+        } else {
+          propsBuilder.put("VkCommandBuffer:", renderStageInfo.commandBufferName + " <" + String.format("0x%08X", renderStageInfo.commandBufferHandle) + ">");
+        }
+      }
+
+      ImmutableMap<String, String> props = propsBuilder.build();
+      if (!props.isEmpty()) {
+        withLayoutData(createBoldLabel(main, "Vulkan Info"),
+            withSpans(new GridData(), 2, 1));
+        props.forEach((key, value) -> {
+          createLabel(main, key);
+          createLabel(main, value);
+        });
+      }
     }
 
     if (!slice.args.isEmpty()) {
