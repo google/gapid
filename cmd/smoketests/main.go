@@ -173,7 +173,6 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 		{"dump_pipeline", tracepath},
 		{"dump_resources", tracepath},
 		{"memory", tracepath},
-		{"stats", tracepath},
 		{"trim", tracepath},
 		{"unpack", tracepath},
 	}

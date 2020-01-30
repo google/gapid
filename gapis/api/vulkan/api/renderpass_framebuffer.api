@@ -287,7 +287,6 @@ sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
     loadImageAttachment(as!u32(i))
   }
   transitionSubpassAttachmentLayouts(ldi.LastSubpass)
-  pushRenderPassMarker(args.RenderPass)
 }
 
 @internal
@@ -419,7 +418,6 @@ sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
   ldi := lastDrawInfo()
   ldi.LastSubpass += 1
   transitionSubpassAttachmentLayouts(ldi.LastSubpass)
-  popAndPushMarkerForNextSubpass(ldi.LastSubpass)
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
@@ -454,10 +452,6 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
   }
   _ = ldi.InRenderPass
   ldi.InRenderPass = false
-  popRenderPassMarker()
-  if (len(ldi.RenderPass.SubpassDescriptions) > 1) {
-    popRenderPassMarker()
-  }
 }
 
 @threadSafety("app")

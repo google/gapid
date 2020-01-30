@@ -42,7 +42,6 @@ go_library(
         "report.go",
         "screenshot.go",
         "state.go",
-        "stats.go",
         "status.go",
         "stresstest.go",
         "sxs_video.go",
