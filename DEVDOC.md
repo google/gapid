@@ -24,6 +24,11 @@ export GOPATH="${GOPATH:+${GOPATH}:}<path-to-gapid-gofuse>"
 # On other configurations, please search online how to add/edit environment variables.
 ```
 
+If you encounter a symlink error on Windows like 'a required privilege is not held by the client',
+you have to use a command prompt with adminstrator priviledges or enable
+[Developer Mode](https://docs.microsoft.com/en-us/windows/uwp/get-started/enable-your-device-for-development)
+as described [here](https://blogs.windows.com/windowsdeveloper/2016/12/02/symlinks-windows-10/).
+
 After adding the gofuse directory to your GOPATH, Go tools should work as
 expected. You can edit files under the newly populated gofuse directory. You
 should still compile under the original checkout directory of GAPID.
