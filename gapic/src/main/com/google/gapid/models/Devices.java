@@ -42,6 +42,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -166,6 +167,7 @@ public class Devices {
 
       @Override
       protected void onUiThreadError(Service.ValidateDeviceResponse response) {
+        LOG.log(Level.WARNING, response.toString());
         updateValidationStatus(device, response);
         callback.run();
       }

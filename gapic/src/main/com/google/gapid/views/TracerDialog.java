@@ -484,7 +484,7 @@ public class TracerDialog {
         adbWarning.setVisible(!models.settings.isAdbValid());
 
         device.getCombo().addListener(SWT.Selection, e -> {
-          updateOnDeviceChange(models, getSelectedDevice());
+          updateOnDeviceChange(models.settings, getSelectedDevice());
           runValidationCheck(models, getSelectedDevice(), getSelectedApi());
         });
         api.getCombo().addListener(SWT.Selection, e -> {
