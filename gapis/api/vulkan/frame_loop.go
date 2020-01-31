@@ -81,6 +81,12 @@ func (b *stateWatcher) CloseForwardDependency(ctx context.Context, dependencyID 
 func (b *stateWatcher) DropForwardDependency(ctx context.Context, dependencyID interface{}) {
 }
 
+type backupMemory struct {
+	memory VkDeviceMemory
+	size   VkDeviceSize
+	offset VkDeviceSize
+}
+
 // Transfrom
 type frameLoop struct {
 	capture   *capture.GraphicsCapture
@@ -102,16 +108,16 @@ type frameLoop struct {
 	deviceToDestroy map[VkDevice]bool
 	deviceToCreate  map[VkDevice]bool
 
-	memoryToFree     map[VkDeviceMemory]bool
-	memoryToAllocate map[VkDeviceMemory]bool
-	memoryToUnmap    map[VkDeviceMemory]bool
-	memoryToMap      map[VkDeviceMemory]bool
+	memoryToFree           map[VkDeviceMemory]bool
+	memoryToAllocate       map[VkDeviceMemory]bool
+	memoryToUnmap          map[VkDeviceMemory]bool
+	memoryToMap            map[VkDeviceMemory]bool
+	memoryForStagingBuffer map[VkDevice]*backupMemory
 
-	bufferToDestroy   map[VkBuffer]bool
-	bufferChanged     map[VkBuffer]bool
-	bufferToCreate    map[VkBuffer]bool
-	bufferToRestore   map[VkBuffer]VkBuffer
-	bufferMemToBackup map[VkDeviceMemory]VkDeviceMemory
+	bufferToDestroy map[VkBuffer]bool
+	bufferChanged   map[VkBuffer]bool
+	bufferToCreate  map[VkBuffer]bool
+	bufferToRestore map[VkBuffer]VkBuffer
 
 	bufferViewToDestroy map[VkBufferView]bool
 	bufferViewToCreate  map[VkBufferView]bool
@@ -230,16 +236,16 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		deviceToDestroy: make(map[VkDevice]bool),
 		deviceToCreate:  make(map[VkDevice]bool),
 
-		memoryToFree:     make(map[VkDeviceMemory]bool),
-		memoryToAllocate: make(map[VkDeviceMemory]bool),
-		memoryToUnmap:    make(map[VkDeviceMemory]bool),
-		memoryToMap:      make(map[VkDeviceMemory]bool),
+		memoryToFree:           make(map[VkDeviceMemory]bool),
+		memoryToAllocate:       make(map[VkDeviceMemory]bool),
+		memoryToUnmap:          make(map[VkDeviceMemory]bool),
+		memoryToMap:            make(map[VkDeviceMemory]bool),
+		memoryForStagingBuffer: make(map[VkDevice]*backupMemory),
 
-		bufferToDestroy:   make(map[VkBuffer]bool),
-		bufferChanged:     make(map[VkBuffer]bool),
-		bufferToCreate:    make(map[VkBuffer]bool),
-		bufferToRestore:   make(map[VkBuffer]VkBuffer),
-		bufferMemToBackup: make(map[VkDeviceMemory]VkDeviceMemory),
+		bufferToDestroy: make(map[VkBuffer]bool),
+		bufferChanged:   make(map[VkBuffer]bool),
+		bufferToCreate:  make(map[VkBuffer]bool),
+		bufferToRestore: make(map[VkBuffer]VkBuffer),
 
 		bufferViewToDestroy: make(map[VkBufferView]bool),
 		bufferViewToCreate:  make(map[VkBufferView]bool),
@@ -1437,35 +1443,62 @@ func (f *frameLoop) createStagingBuffer(ctx context.Context, stateBuilder *state
 	usage := VkBufferUsageFlags(uint32(bufferObj.Info().Usage()) | uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
 	bufferObj.Info().SetUsage(usage)
 
-	stagingMemory, ok := f.bufferMemToBackup[src.Memory().VulkanHandle()]
+	memInfo, ok := f.memoryForStagingBuffer[src.Device()]
 	if !ok {
-		stagingMemory = VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
-			return GetState(stateBuilder.newState).DeviceMemories().Contains(VkDeviceMemory(x))
-		}))
-
-		memObj := bufferObj.Memory().Clone(GetState(stateBuilder.newState).Arena(), api.CloneContext{})
-		memObj.SetVulkanHandle(stagingMemory)
-		memObj.SetMappedLocation(Voidᵖ(0))
-		memObj.SetMappedOffset(VkDeviceSize(uint64(0)))
-		memObj.SetMappedSize(VkDeviceSize(uint64(0)))
-		stateBuilder.createDeviceMemory(memObj, false)
-		f.totalMemoryAllocated += uint64(memObj.AllocationSize())
-		log.D(ctx, "Allocate device memory of size %v, total allocated %v", memObj.AllocationSize(), f.totalMemoryAllocated)
-
-		f.bufferMemToBackup[src.Memory().VulkanHandle()] = stagingMemory
+		return VkBuffer(0), fmt.Errorf("No device memory allocated for staging buffer %v", src.VulkanHandle())
 	}
 
-	memObj := GetState(stateBuilder.newState).DeviceMemories().Get(stagingMemory)
+	memObj := GetState(stateBuilder.newState).DeviceMemories().Get(memInfo.memory)
+	if memObj.IsNil() {
+		return VkBuffer(0), fmt.Errorf("No device memory allocated for staging buffer %v", src.VulkanHandle())
+	}
+
 	stagingBuffer := VkBuffer(newUnusedID(true, func(x uint64) bool {
 		return GetState(stateBuilder.newState).Buffers().Contains(VkBuffer(x))
 	}))
 
-	err := stateBuilder.createSameBuffer(bufferObj, stagingBuffer, memObj)
+	err := stateBuilder.createSameBuffer(bufferObj, stagingBuffer, memObj, memInfo.offset)
+	memInfo.offset += bufferObj.Info().Size()
 
 	return stagingBuffer, err
 }
 
+// allocateMemoryForStagingbuffer allocates one vkDeviceMemory per device for the backup buffers.
+func (f *frameLoop) allocateMemoryForStagingbuffer(ctx context.Context, stateBuilder *stateBuilder) {
+
+	// Calculates total memory need for backup for each device.
+	for buffer := range f.bufferChanged {
+		bufferObj := GetState(stateBuilder.newState).Buffers().Get(buffer)
+		dev := bufferObj.Device()
+		if _, ok := f.memoryForStagingBuffer[dev]; !ok {
+			f.memoryForStagingBuffer[dev] = &backupMemory{VkDeviceMemory(0), VkDeviceSize(0), VkDeviceSize(0)}
+		}
+		memInfo := f.memoryForStagingBuffer[dev]
+		memInfo.size += bufferObj.Info().Size()
+	}
+
+	for dev, memInfo := range f.memoryForStagingBuffer {
+		memInfo.size = 256 * ((memInfo.size + 255) / 256)
+		log.D(ctx, "Total size need for backup is %v", memInfo.size)
+		memInfo.memory = VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
+			return GetState(stateBuilder.newState).DeviceMemories().Contains(VkDeviceMemory(x))
+		}))
+
+		memObj := MakeDeviceMemoryObjectʳ(GetState(stateBuilder.newState).Arena())
+		memObj.SetDevice(dev)
+		memObj.SetVulkanHandle(memInfo.memory)
+		memObj.SetAllocationSize(memInfo.size)
+		memObj.SetMemoryTypeIndex(stateBuilder.GetScratchBufferMemoryIndex(GetState(stateBuilder.newState).Devices().Get(dev)))
+
+		stateBuilder.createDeviceMemory(memObj, false)
+		f.totalMemoryAllocated += uint64(memObj.AllocationSize())
+		log.D(ctx, "Allocate device memory of size %v, total allocated %v", memObj.AllocationSize(), f.totalMemoryAllocated)
+	}
+}
+
 func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	f.allocateMemoryForStagingbuffer(ctx, stateBuilder)
 
 	for buffer := range f.bufferChanged {
 
@@ -2548,7 +2581,7 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 		log.D(ctx, "Recreate buffer %v which was destroyed during loop.", buf)
 		srcBuffer := GetState(f.loopStartState).Buffers().Get(buf)
 		mem := GetState(stateBuilder.newState).DeviceMemories().Get(srcBuffer.Memory().VulkanHandle())
-		stateBuilder.createSameBuffer(srcBuffer, buf, mem)
+		stateBuilder.createSameBuffer(srcBuffer, buf, mem, srcBuffer.MemoryOffset())
 	}
 
 	log.D(ctx, "Total number of bufferToRestore is %v", len(f.bufferToRestore))
