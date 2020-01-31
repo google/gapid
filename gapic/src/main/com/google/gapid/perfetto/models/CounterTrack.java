@@ -35,7 +35,6 @@ import org.eclipse.swt.widgets.Composite;
 
 import java.util.Arrays;
 import java.util.Set;
-import java.util.stream.LongStream;
 
 public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   private static final String VIEW_SQL_DELTA =
@@ -120,9 +119,11 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
 
   public ListenableFuture<Data> getValue(long t) {
     return transform(expectOneRow(qe.query(valueSql(t))), row -> {
-      Data data = new Data(null, new long[1], new double[1]);
+      Data data = new Data(null, new long[2], new double[2]);
       data.ts[0] = row.getLong(0);
+      data.ts[1] = row.getLong(1);
       data.values[0] = row.getDouble(2);
+      data.values[0] = data.values[1];
       return data;
     });
   }
@@ -130,11 +131,17 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   public ListenableFuture<Data> getValues(TimeSpan ts) {
     return transform(qe.query(rangeSql(ts)), res -> {
       int rows = res.getNumRows();
-      Data data = new Data(null, new long[rows], new double[rows]);
+      if (rows == 0) {
+        return Data.empty(null);
+      }
+
+      Data data = new Data(null, new long[rows + 1], new double[rows + 1]);
       res.forEachRow((i, r) -> {
         data.ts[i] = r.getLong(0);
         data.values[i] = r.getDouble(2);
       });
+      data.ts[rows] = res.getLong(rows - 1, 1, 0);
+      data.values[rows] = data.values[rows - 1];
       return data;
     });
   }
@@ -172,15 +179,22 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
       this.ts = data.ts;
       this.names = new String[] { name };
       this.values = new double[][] { data.values };
-      LongStream.of(ts).boxed().forEach(t -> valueKeys.add(new Values.Key(name, t)));
+      initKeys();
     }
 
     private Values(long[] ts, String[] names, double[][] values) {
       this.ts = ts;
       this.names = names;
       this.values = values;
+      initKeys();
+    }
+
+    private void initKeys() {
       for (String name : names) {
-        LongStream.of(ts).boxed().forEach(t -> valueKeys.add(new Values.Key(name, t)));
+        // Skip the last dummy entry for the range end.
+        Arrays.stream(ts, 0, ts.length - 1)
+            .boxed()
+            .forEach(t -> valueKeys.add(new Values.Key(name, t)));
       }
     }
 
@@ -246,9 +260,10 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     }
 
     private static long[] combineTs(long[] a, long[] b) {
-      long[] r = new long[a.length + b.length];
+      // Remember, the last value in both a and b needs to be ignored.
+      long[] r = new long[a.length + b.length - 1];
       int ai = 0, bi = 0, ri = 0;
-      for (; ai < a.length && bi < b.length; ri++) {
+      for (; ai < a.length - 1 && bi < b.length - 1; ri++) {
         long av = a[ai], bv = b[bi];
         if (av == bv) {
           r[ri] = av;
@@ -263,9 +278,12 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
         }
       }
       // One of these copies does nothing.
-      System.arraycopy(a, ai, r, ri, a.length - ai);
-      System.arraycopy(b, bi, r, ri, b.length - bi);
-      return Arrays.copyOf(r, ri + a.length - ai + b.length - bi); // Truncate array.
+      System.arraycopy(a, ai, r, ri, a.length - ai - 1);
+      System.arraycopy(b, bi, r, ri, b.length - bi - 1);
+
+      int newLength = ri + a.length - ai + b.length - bi - 1;
+      r[newLength - 1] = Math.max(a[a.length - 1], b[b.length - 1]);
+      return Arrays.copyOf(r, newLength); // Truncate array.
     }
 
     @Override
