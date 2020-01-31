@@ -152,14 +152,17 @@ To use the delve debugger for Go with VSCode to debug `gapis`. These steps can b
     ...
 }
 ```
-A sample `<host>` can be `127.0.0.1` and `<port>` can be `1234`.
+As an example, `<host>` could be `127.0.0.1` and `<port>` could be `1234`.
 
 4. Start delve in headless mode at gapid check-in folder.
 ```
 dlv exec --headless --listen=<host>:<port> --api-version 2 ./bazel-bin/pkg/gapis -- <gapis-arguments>
 ```
 
-This will allow using port `1234` (or any other preferred port) to connect to delve from VSCode.
+The command below will allow using port `1234` (or any other preferred port) to connect to delve from VSCode.
+```
+dlv exec --headless --listen=127.0.0.1:1234 --api-version 2 ./bazel-bin/pkg/gapis -- -persist -rpc localhost:8888
+```
 
 5. Start debugging with `Debug->Start Debugging` (on Linux with `F5`) and make sure `Attach to Delve` is selected as the launch configuration.
 
