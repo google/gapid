@@ -99,7 +99,6 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
 
       Set<Long> selectedSIds = getSelectedSubmissionIdsInVulkanEventTrack(state);
       long[] sIds = data.getExtraLongs("submissionIds");
-      List<Integer> linkedIdxs = Lists.newArrayList();
 
       for (int i = 0; i < data.starts.length; i++) {
         long tStart = data.starts[i];
@@ -114,17 +113,19 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = depth * SLICE_HEIGHT;
 
+        // Render slice entity.
+        // Grey out if there's vulkan api event selection but this GPU queue slice is not linked.
         StyleConstants.Gradient color = gradient(data.titles[i].hashCode());
-        color.applyBase(ctx);
-        // Link slices in Vulkan Event Panel and Gpu Queue Panel through submission id.
         if (!selectedSIds.isEmpty() && i < sIds.length && !selectedSIds.contains(sIds[i])) {
-          ctx.setBackgroundColor(color.disabled); // Grey out unlinked ones.
-        } else if (i < sIds.length && selectedSIds.contains(sIds[i])) {
-          linkedIdxs.add(i);
+          ctx.setBackgroundColor(color.disabled);
+        } else {
+          color.applyBase(ctx);
         }
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
-        if (selected.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
+        // Highlight GPU queue slice if it's selected or linked by a vulkan api event.
+        if (selected.contains(new Slice.Key(tStart, tEnd - tStart, depth)) ||
+            (i < sIds.length && selectedSIds.contains(sIds[i]))) {
           visibleSelected.add(new Highlight(color.border, rectStart, y, rectWidth));
         }
 
@@ -142,16 +143,6 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       for (Highlight highlight : visibleSelected) {
         ctx.setForegroundColor(highlight.color);
         ctx.drawRect(highlight.x, highlight.y, highlight.w, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
-      }
-
-      // If a Vulkan API Event slice is selected, draw a bounding rectangle for all the GPU Queue
-      // slices with the same submission id.
-      for (int index : linkedIdxs) {
-        ctx.setForegroundColor(gradient(data.titles[index].hashCode() ^ data.depths[index]).border);
-        double rectStart = state.timeToPx(data.starts[index]);
-        double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
-        double depth = data.depths[index];
-        ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
 
       if (hoveredTitle != null) {
