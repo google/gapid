@@ -45,6 +45,7 @@ import org.eclipse.swt.widgets.Composite;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * {@link Track} containing slices.
@@ -213,16 +214,9 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public void markTime(State state) {
+    public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
-        state.setHighlight(new TimeSpan(time, time + dur));
-      }
-    }
-
-    @Override
-    public void zoom(State state) {
-      if (dur > 0) {
-        state.setVisibleTime(new TimeSpan(time, time + dur));
+        span.accept(new TimeSpan(time, time + dur));
       }
     }
 
@@ -355,6 +349,13 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     @Override
     public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(slices);
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
+      for (Slice slice : slices) {
+        slice.getRange(span);
+      }
     }
   }
 

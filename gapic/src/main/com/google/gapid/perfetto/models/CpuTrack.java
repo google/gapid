@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * {@link Track} containing CPU slices for a single core.
@@ -247,16 +248,9 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
-    public void markTime(State state) {
+    public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
-        state.setHighlight(new TimeSpan(time, time + dur));
-      }
-    }
-
-    @Override
-    public void zoom(State state) {
-      if (dur > 0) {
-        state.setVisibleTime(new TimeSpan(time, time + dur));
+        span.accept(new TimeSpan(time, time + dur));
       }
     }
 
@@ -296,6 +290,13 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     @Override
     public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(slices);
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
+      for (Slice slice : slices) {
+        slice.getRange(span);
+      }
     }
   }
 

@@ -42,6 +42,7 @@ import org.eclipse.swt.widgets.Composite;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 /**
  * Data about a Surface Flinger Frame Events in the trace.
@@ -259,16 +260,9 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public void markTime(State state) {
+    public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
-        state.setHighlight(new TimeSpan(time, time + dur));
-      }
-    }
-
-    @Override
-    public void zoom(State state) {
-      if (dur > 0) {
-        state.setVisibleTime(new TimeSpan(time, time + dur));
+        span.accept(new TimeSpan(time, time + dur));
       }
     }
 
@@ -339,6 +333,13 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     @Override
     public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(slices);
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
+      for (Slice slice : slices) {
+        slice.getRange(span);
+      }
     }
   }
 
