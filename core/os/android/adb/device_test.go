@@ -30,21 +30,21 @@ func TestParseDevices(t_ *testing.T) {
 	defer func() { devices.Handlers[0] = validDevices }()
 	expected := &device.Instance{
 		Serial: "production_device",
-		Name:   "hammerhead",
+		Name:   "flame",
 		Configuration: &device.Configuration{
 			OS: &device.OS{
 				Kind:         device.Android,
-				Name:         "Marshmallow",
-				Build:        "hammerhead-user 6.0.1 MMB29Q 2480792 release-keys",
-				MajorVersion: 6,
+				Name:         "Android 10",
+				Build:        "flame-user 10 QQ1A.191003.005 5926727 release-keys",
+				MajorVersion: 10,
 				MinorVersion: 0,
-				PointVersion: 1,
-				APIVersion:   26,
+				PointVersion: 0,
+				APIVersion:   29,
 			},
 			Hardware: &device.Hardware{
-				Name: "hammerhead",
+				Name: "flame",
 			},
-			ABIs: []*device.ABI{device.AndroidARMv7a},
+			ABIs: []*device.ABI{device.AndroidARM64v8a},
 		},
 	}
 	expected.GenID()

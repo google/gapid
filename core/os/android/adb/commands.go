@@ -304,6 +304,20 @@ func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error)
 	return perfetto.NewClient(ctx, conn, cleanup)
 }
 
+// EnsurePerfettoPersistent ensures that Perfetto daemons, traced and
+// traced_probes, are running. Note that there is a delay between setting the
+// system property and daemons finish starting, hence this function needs to be
+// called as early as possible.
+func (b *binding) EnsurePerfettoPersistent(ctx context.Context) error {
+	if !b.SupportsPerfetto(ctx) {
+		return fmt.Errorf("Perfetto is not supported on this device")
+	}
+	if err := b.SetSystemProperty(ctx, "persist.traced.enable", "1"); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
 	result := b.To.Configuration.PerfettoCapability
 	if result == nil {
