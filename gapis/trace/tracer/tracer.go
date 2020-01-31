@@ -84,10 +84,15 @@ func LayersFromOptions(ctx context.Context, o *service.TraceOptions) []string {
 	if o.PerfettoConfig == nil {
 		return ret
 	}
+
+	added := map[string]struct{}{}
 	for _, x := range o.PerfettoConfig.GetDataSources() {
 		if layer, err := layout.LayerFromDataSource(x.GetConfig().GetName()); err == nil {
 			if _, err := layout.LibraryFromLayerName(layer); err == nil {
-				ret = append(ret, layer)
+				if _, ok := added[layer]; !ok {
+					added[layer] = struct{}{}
+					ret = append(ret, layer)
+				}
 			}
 		}
 	}
