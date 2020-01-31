@@ -45,7 +45,8 @@ public class CountersSelectionView extends Composite {
       createTableColumn(viewer, sel.names[i], r -> String.valueOf(sel.values[idx][(Integer)r]));
     }
 
-    Integer[] rows = new Integer[sel.ts.length];
+    // Skip the last row (it represents the end of the selection range).
+    Integer[] rows = new Integer[sel.ts.length - 1];
     for (int i = 0; i < rows.length; i++) {
       rows[i] = i;
     }
