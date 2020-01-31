@@ -258,17 +258,4 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
       return new Slices(slices, ImmutableSet.copyOf(sliceKeys));
     }
   }
-
-  public static RGBA getColor(String title) {
-    return colorForSlice(title, 0);
-  }
-
-  public static RGBA getBorderColor(String title) {
-    return colorForSlice(title, StyleConstants.isLight() ? -5 : 5);
-  }
-
-  private static RGBA colorForSlice(String title, int shadeIdx) {
-    return StyleConstants.Palette.getColor(
-        (title.hashCode() ^ title.length()) & 0x7fffffff, shadeIdx);
-  }
 }

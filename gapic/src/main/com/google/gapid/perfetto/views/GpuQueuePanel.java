@@ -118,7 +118,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         color.applyBase(ctx);
         // Link slices in Vulkan Event Panel and Gpu Queue Panel through submission id.
         if (!selectedSIds.isEmpty() && i < sIds.length && !selectedSIds.contains(sIds[i])) {
-          ctx.setBackgroundColor(StyleConstants.getGrayColor().rgb()); // Grey out unlinked ones.
+          ctx.setBackgroundColor(color.disabled); // Grey out unlinked ones.
         } else if (i < sIds.length && selectedSIds.contains(sIds[i])) {
           linkedIdxs.add(i);
         }
@@ -147,7 +147,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       // If a Vulkan API Event slice is selected, draw a bounding rectangle for all the GPU Queue
       // slices with the same submission id.
       for (int index : linkedIdxs) {
-        ctx.setForegroundColor(SliceTrack.getBorderColor(data.titles[index], data.depths[index]));
+        ctx.setForegroundColor(gradient(data.titles[index].hashCode() ^ data.depths[index]).border);
         double rectStart = state.timeToPx(data.starts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
         double depth = data.depths[index];

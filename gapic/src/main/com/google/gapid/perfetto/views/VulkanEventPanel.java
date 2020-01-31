@@ -18,6 +18,7 @@ package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
@@ -29,10 +30,12 @@ import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.VulkanEventTrack;
-import java.util.List;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
   private static final double ARROW_HEIGHT = 10;
@@ -98,7 +101,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = SLICE_Y + depth * SLICE_HEIGHT;
 
-        ctx.setBackgroundColor(VulkanEventTrack.getColor(data.names[i]));
+        gradient(data.names[i].hashCode()).applyBase(ctx);
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
         if (selected.contains(data.ids[i])) {
@@ -110,7 +113,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
           continue;
         }
 
-        ctx.setForegroundColor(colors().textInvertedMain);
+        ctx.setForegroundColor(colors().textMain);
         ctx.drawText(
             Fonts.Style.Normal, data.names[i], rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
 
@@ -118,7 +121,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
 
       // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
       for (int index : visibleSelected) {
-        ctx.setForegroundColor(VulkanEventTrack.getBorderColor(data.names[index]));
+        ctx.setForegroundColor(gradient(data.names[index].hashCode()).border);
         double rectStart = state.timeToPx(data.starts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
         double depth = data.depths[index];
