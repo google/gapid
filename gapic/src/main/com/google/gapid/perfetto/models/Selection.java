@@ -21,6 +21,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.models.CounterTrack.Values;
 import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
@@ -34,6 +35,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 /**
  * Data about the current selection in the UI.
@@ -43,9 +45,14 @@ public interface Selection<Key> {
   public boolean contains(Key key);
   public Composite buildUi(Composite parent, State state);
   public Selection.Builder<?> getBuilder();
-  public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
-  public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
-  public default boolean isEmpty() { return this == EMPTY_SELECTION; }
+
+  public default void getRange(@SuppressWarnings("unused") Consumer<TimeSpan> span) {
+    /* do nothing */
+  }
+
+  public default boolean isEmpty() {
+    return false;
+  }
 
   public static final Selection<?> EMPTY_SELECTION = new EmptySelection<Object>();
 
@@ -63,6 +70,11 @@ public interface Selection<Key> {
     @Override
     public boolean contains(K key) {
       return false;
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return true;
     }
 
     @Override
@@ -133,17 +145,19 @@ public interface Selection<Key> {
     }
 
     public void markTime(State state) {
-      // TODO: is this good enough?
-      if (selections.size() == 1) {
-        firstSelection().markTime(state);
-      }
+      getRange().ifNotEmpty(state::setHighlight);
     }
 
     public void zoom(State state) {
-      // TODO: handle zooming into multiple selections.
-      if (selections.size() == 1) {
-        firstSelection().zoom(state);
+      getRange().ifNotEmpty(state::setVisibleTime);
+    }
+
+    private TimeSpan getRange() {
+      TimeSpan[] range = new TimeSpan[] { TimeSpan.ZERO };
+      for (Selection<?> sel : selections.values()) {
+        sel.getRange(r -> range[0] = range[0].expand(r));
       }
+      return range[0];
     }
 
     private Selection<?> firstSelection() {
