@@ -183,13 +183,13 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
     }
     auto hasher = gapil::hash<K>{};
     auto eq = std::equal_to<K>{};
-    uint64_t hash = hasher(key);
+    uint64_t hash = hasher(key) & 0xFFFFFFFFFFF;
 
     auto elems = els();
 
-    for (uint64_t i = 0; i < capacity; ++i) {
+    for (uint64_t i = 0; i < capacity; ++i, hash = ((hash * 69069) + 1) & 0xFFFFFFFFFFF) {
         bool leave = false;
-        uint64_t lookup_pos = (hash + i) & (capacity - 1);
+        uint64_t lookup_pos = hash & (capacity - 1);
         switch(elems[lookup_pos].used) {
             case GAPIL_MAP_ELEMENT_EMPTY:
                 leave = true;
@@ -209,9 +209,10 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
     // storageBucket assumes there is at least one open cell.
     // Make sure before you run this, that is the case.
     auto storageBucket = [&](uint64_t h) {
+        h = h & 0xFFFFFFFFFFF;
         auto elems = els();
-        for (uint64_t i = 0; i < capacity; ++i) {
-            uint64_t x = (h + i) & (capacity - 1);
+        for (uint64_t i = 0; i < capacity; ++i, h = ((h * 69069) + 1) & 0xFFFFFFFFFFF) {
+            uint64_t x = h & (capacity - 1);
             if (elems[x].used != GAPIL_MAP_ELEMENT_FULL) {
                 return x;
             }
@@ -292,11 +293,11 @@ void Map<K, V, DENSE>::Allocation::remove(K key) {
     }
     auto hasher = gapil::hash<K>{};
     auto eq = std::equal_to<K>{};
-    uint64_t hash = hasher(key);
+    uint64_t hash = hasher(key) & 0xFFFFFFFFFFF;
     auto elems = els();
 
-    for (uint64_t i = 0; i < capacity; ++i) {
-        uint64_t lookup_pos = (hash + i) & (capacity - 1);
+    for (uint64_t i = 0; i < capacity; ++i, hash = ((hash * 69069) + 1) & 0xFFFFFFFFFFF) {
+        uint64_t lookup_pos = hash & (capacity - 1);
         switch(elems[lookup_pos].used) {
             case GAPIL_MAP_ELEMENT_EMPTY:
                 return;
