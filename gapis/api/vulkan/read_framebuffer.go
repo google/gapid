@@ -279,7 +279,7 @@ func (t *readFramebuffer) getLayout(ctx context.Context,
 		if !transitions.AspectTransitions().Contains(aspect) {
 			continue
 		}
-		transition_key := (uint64(layer) << 32) | uint64(level)
+		transition_key := (uint64(layer) << 8) | uint64(level&0xFF)
 		aspect_transition := transitions.AspectTransitions().Get(aspect)
 		if !aspect_transition.Layouts().Contains(transition_key) {
 			continue

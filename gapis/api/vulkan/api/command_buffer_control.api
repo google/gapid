@@ -283,7 +283,7 @@ enum SemaphoreUpdate {
 }
 
 @internal class AspectImageTransition {
-  // This u64 is a combination of 2 u32s, (layer << 32 | level)
+  // This u64 is a combination of 2 u32s, (layer << 8 | level)
   map!(u64, VkImageLayout)                Layouts
 }
 
@@ -331,7 +331,7 @@ sub void RecordLayoutTransition(ref!CommandBufferObject obj, ref!ImageObject img
         for j in 0 .. layerCount {
           level := rng.baseMipLevel + i
           layer := rng.baseArrayLayer + j
-          aspectTransitions.Layouts[(as!u64(layer) << 32) | as!u64(level)] = new_layout
+          aspectTransitions.Layouts[(as!u64(layer) << 8) | as!u64(level & 0xFF)] = new_layout
         }
       }
     }
