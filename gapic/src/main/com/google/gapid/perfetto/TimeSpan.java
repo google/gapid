@@ -18,6 +18,8 @@ package com.google.gapid.perfetto;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
+import java.util.function.Consumer;
+
 /**
  * Represents a span of time in nanoseconds.
  */
@@ -36,6 +38,11 @@ public class TimeSpan {
     @Override
     public boolean contains(TimeSpan other) {
       return false;
+    }
+
+    @Override
+    public TimeSpan expand(TimeSpan other) {
+      return other;
     }
   };
 
@@ -56,6 +63,12 @@ public class TimeSpan {
     return end == start;
   }
 
+  public void ifNotEmpty(Consumer<TimeSpan> run) {
+    if (!isEmpty()) {
+      run.accept(this);
+    }
+  }
+
   public boolean contains(long time) {
     return (time >= start && time <= end);
   }
@@ -70,6 +83,13 @@ public class TimeSpan {
 
   public TimeSpan expand(long deltaStartNs, long deltaEndNs) {
     return new TimeSpan(start - deltaStartNs, end + deltaEndNs);
+  }
+
+  public TimeSpan expand(TimeSpan other) {
+    if (other.isEmpty() || contains(other)) {
+      return this;
+    }
+    return new TimeSpan(Math.min(start, other.start), Math.max(end, other.end));
   }
 
   public TimeSpan align(long page) {

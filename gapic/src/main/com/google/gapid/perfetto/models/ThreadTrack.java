@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * {@link Track} containing thread state and slices of a thread.
@@ -229,16 +230,9 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public void markTime(State uiState) {
+    public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
-        uiState.setHighlight(new TimeSpan(time, time + dur));
-      }
-    }
-
-    @Override
-    public void zoom(State uiState) {
-      if (dur > 0) {
-        uiState.setVisibleTime(new TimeSpan(time, time + dur));
+        span.accept(new TimeSpan(time, time + dur));
       }
     }
 
@@ -309,6 +303,13 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     @Override
     public Selection.Builder<StateSlicesBuilder> getBuilder() {
       return new StateSlicesBuilder(slices);
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
+      for (StateSlice slice : slices) {
+        slice.getRange(span);
+      }
     }
 
     public static class Entry {

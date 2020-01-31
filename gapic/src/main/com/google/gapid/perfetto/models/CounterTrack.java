@@ -35,6 +35,7 @@ import org.eclipse.swt.widgets.Composite;
 
 import java.util.Arrays;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   private static final String VIEW_SQL_DELTA =
@@ -123,7 +124,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
       data.ts[0] = row.getLong(0);
       data.ts[1] = row.getLong(1);
       data.values[0] = row.getDouble(2);
-      data.values[0] = data.values[1];
+      data.values[1] = data.values[0];
       return data;
     });
   }
@@ -216,6 +217,13 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     @Override
     public Selection.Builder<Values> getBuilder() {
       return this;
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
+      if (ts.length >= 2) {
+        span.accept(new TimeSpan(ts[0], ts[ts.length - 1]));
+      }
     }
 
     @Override
