@@ -3,11 +3,11 @@
 [![GoDoc](https://godoc.org/github.com/google/gapid?status.svg)](https://godoc.org/github.com/google/gapid)
 [![Gitter](https://badges.gitter.im/google/gapid.svg)](https://gitter.im/google/gapid?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 <img alt="Linux" src="kokoro/img/linux.png" width="20px" height="20px" hspace="2px"/>
-[![Linux Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_linux.svg)](https://gapid-build.storage.googleapis.com/badges/build_result_linux.html)
+[![Linux Build Status](https://agi-build.storage.googleapis.com/badges/build_status_linux.svg)](https://agi-build.storage.googleapis.com/badges/build_result_linux.html)
 <img alt="MacOS" src="kokoro/img/macos.png" width="20px" height="20px" hspace="2px"/>
-[![MacOS Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_macos.svg)](https://gapid-build.storage.googleapis.com/badges/build_result_macos.html)
+[![MacOS Build Status](https://agi-build.storage.googleapis.com/badges/build_status_macos.svg)](https://agi-build.storage.googleapis.com/badges/build_result_macos.html)
 <img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>
-[![Windows Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_windows.svg)](https://gapid-build.storage.googleapis.com/badges/build_result_windows.html)
+[![Windows Build Status](https://agi-build.storage.googleapis.com/badges/build_status_windows.svg)](https://agi-build.storage.googleapis.com/badges/build_result_windows.html)
 
 ## Downloads
 
