@@ -42,7 +42,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
       "select ts + 1 ts, lead(ts) over win - ts dur, lead(value) over win value " +
       "from counter where track_id = %d window win as (order by ts)";
   private static final String VIEW_SQL_EVENT =
-      "select ts, lead(ts) over win - ts dur, value " +
+      "select ts, lead(ts, 1, (select end_ts from trace_bounds)) over win - ts dur, value " +
       "from counter where track_id = %d window win as (order by ts)";
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), avg(value) from %s group by quantum_ts";
