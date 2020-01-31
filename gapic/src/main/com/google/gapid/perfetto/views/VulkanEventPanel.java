@@ -44,32 +44,32 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
   private static final double HOVER_PADDING = 4;
   private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
-  private final GpuInfo.VkEvent vkEvent;
+  private final GpuInfo.VkApiEvent vkApiEvent;
   protected final VulkanEventTrack track;
 
   protected double mouseXpos, mouseYpos;
   protected String hoveredName;
   protected Size hoveredSize = Size.ZERO;
 
-  public VulkanEventPanel(State state, GpuInfo.VkEvent vkEvent, VulkanEventTrack track) {
+  public VulkanEventPanel(State state, GpuInfo.VkApiEvent vkApiEvent, VulkanEventTrack track) {
     super(state);
-    this.vkEvent = vkEvent;
+    this.vkApiEvent = vkApiEvent;
     this.track = track;
   }
 
   @Override
   public VulkanEventPanel copy() {
-    return new VulkanEventPanel(state, vkEvent, track);
+    return new VulkanEventPanel(state, vkApiEvent, track);
   }
 
   @Override
   public String getTitle() {
-    return vkEvent.getDisplay();
+    return vkApiEvent.getDisplay();
   }
 
   @Override
   public double getHeight() {
-    return SLICE_Y + vkEvent.maxDepth * SLICE_HEIGHT;
+    return SLICE_Y + vkApiEvent.maxDepth * SLICE_HEIGHT;
   }
 
   @Override
@@ -150,7 +150,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
     }
 
     int depth = y < SLICE_Y ? -1 : (int)((y - SLICE_Y) / SLICE_HEIGHT);
-    if (depth < 0 || depth > vkEvent.maxDepth) {
+    if (depth < 0 || depth > vkApiEvent.maxDepth) {
       return Hover.NONE;
     }
 
@@ -163,7 +163,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
         hoveredSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
             m.measure(Fonts.Style.Normal, hoveredName));
         mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
-            (1 + vkEvent.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
+            (1 + vkApiEvent.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
         long id = data.ids[i];
 
         return new Hover() {

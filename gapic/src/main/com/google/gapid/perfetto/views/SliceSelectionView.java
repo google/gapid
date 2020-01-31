@@ -105,7 +105,7 @@ public class SliceSelectionView extends Composite {
       }
 
       if (renderStageInfo.submissionId != 0) {
-        propsBuilder.put("VkSubmissionId:", Long.toString(renderStageInfo.submissionId));
+        propsBuilder.put("SubmissionId:", Long.toString(renderStageInfo.submissionId));
       }
 
       ImmutableMap<String, String> props = propsBuilder.build();

@@ -144,8 +144,8 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         ctx.drawRect(highlight.x, highlight.y, highlight.w, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
 
-      // If a Vulkan Event slice is selected, draw a bounding rectangle for all the GPU Queue slices
-      // with the same submission id.
+      // If a Vulkan API Event slice is selected, draw a bounding rectangle for all the GPU Queue
+      // slices with the same submission id.
       for (int index : linkedIdxs) {
         ctx.setForegroundColor(SliceTrack.getBorderColor(data.titles[index], data.depths[index]));
         double rectStart = state.timeToPx(data.starts[index]);

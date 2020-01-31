@@ -33,7 +33,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
 /**
- * Displays information about a selected Vulkan event.
+ * Displays information about a selected Vulkan API event.
  */
 public class VulkanEventSelectionView extends Composite {
   private static final int PROPERTIES_PER_PANEL = 8;

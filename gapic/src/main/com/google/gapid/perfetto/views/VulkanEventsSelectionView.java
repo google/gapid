@@ -29,7 +29,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 
 /**
- * Displays information about a list of selected vulkan events.
+ * Displays information about a list of selected vulkan API events.
  */
 public class VulkanEventsSelectionView extends Composite {
   public VulkanEventsSelectionView(Composite parent, VulkanEventTrack.Slices sel) {

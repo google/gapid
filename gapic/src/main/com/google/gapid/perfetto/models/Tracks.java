@@ -129,13 +129,17 @@ public class Tracks {
       }
     }
 
-    if (data.getGpu().vkEventCount() > 0) {
-      data.tracks.addLabelGroup(
-          "gpu", "vk_events", "Vulkan Events", group(state -> new TitlePanel("Vulkan Events"), true));
-      for (GpuInfo.VkEvent vkEvent : data.getGpu().vkEvents()) {
-        VulkanEventTrack track = new VulkanEventTrack(data.qe, vkEvent);
-        data.tracks.addTrack("vk_events", track.getId(), vkEvent.getDisplay(),
-            single(state -> new VulkanEventPanel(state, vkEvent, track), true));
+    if (data.getGpu().vkApiEventCount() > 0) {
+      String parent = "gpu";
+      if (data.getGpu().vkApiEventCount() > 1) {
+        data.tracks.addLabelGroup(
+            "gpu", "vk_api_events", "Vulkan API Events", group(state -> new TitlePanel("Vulkan API Events"), true));
+        parent = "vk_api_events";
+      }
+      for (GpuInfo.VkApiEvent vkApiEvent : data.getGpu().vkApiEvents()) {
+        VulkanEventTrack track = new VulkanEventTrack(data.qe, vkApiEvent);
+        data.tracks.addTrack(parent, track.getId(), vkApiEvent.getDisplay(),
+            single(state -> new VulkanEventPanel(state, vkApiEvent, track), true));
       }
     }
 

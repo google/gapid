@@ -53,9 +53,9 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
 
   private final long trackId;
 
-  public VulkanEventTrack(QueryEngine qe, GpuInfo.VkEvent vkEvent) {
-    super(qe, "vk_events_" + vkEvent.trackId);
-    this.trackId = vkEvent.trackId;
+  public VulkanEventTrack(QueryEngine qe, GpuInfo.VkApiEvent vkApiEvent) {
+    super(qe, "vk_api_events_" + vkApiEvent.trackId);
+    this.trackId = vkApiEvent.trackId;
   }
 
   @Override
@@ -166,7 +166,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
 
     @Override
     public String getTitle() {
-      return "Vulkan Events";
+      return "Vulkan API Events";
     }
 
     @Override
@@ -212,7 +212,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
 
     @Override
     public String getTitle() {
-      return "Vulkan Event Slices";
+      return "Vulkan API Event Slices";
     }
 
     @Override
