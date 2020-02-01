@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/perfetto"
 	perfetto_service "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 var (
@@ -38,8 +39,8 @@ var (
 		"SELECT ts, value FROM counter c WHERE c.track_id = %d ORDER BY ts"
 )
 
-func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, desc *device.GpuCounterDescriptor, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
-	slices, err := processGpuSlices(ctx, processor, handleMapping)
+func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, desc *device.GpuCounterDescriptor, handleMapping *map[uint64][]service.VulkanHandleMappingItem, submissionIds *[]uint64) (*service.ProfilingData, error) {
+	slices, err := processGpuSlices(ctx, processor, handleMapping, submissionIds)
 	if err != nil {
 		log.Err(ctx, err, "Failed to get GPU slices")
 	}
@@ -50,7 +51,7 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, de
 	return &service.ProfilingData{Slices: slices, Counters: counters}, nil
 }
 
-func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData_GpuSlices, error) {
+func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handleMapping *map[uint64][]service.VulkanHandleMappingItem, submissionCmdIds *[]uint64) (*service.ProfilingData_GpuSlices, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "SQL query failed: %v", slicesQuery)
@@ -61,6 +62,8 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 	slicesColumns := slicesQueryResult.GetColumns()
 	numSliceRows := slicesQueryResult.GetNumRecords()
 	slices := make([]*service.ProfilingData_GpuSlices_Slice, numSliceRows)
+	groups := make([]*service.ProfilingData_GpuSlices_Group, 0)
+	groupIds := make([]int32, numSliceRows)
 	var tracks []*service.ProfilingData_GpuSlices_Track
 	// Grab all the column values. Depends on the order of columns selected in slicesQuery
 
@@ -82,6 +85,23 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 		}
 	}
 
+	submissionIds := slicesColumns[3].GetLongValues()
+	idSet := make(map[int64]bool)
+	currentGroupId := int32(0)
+	for i, v := range submissionIds {
+		groupIds[i] = currentGroupId
+		if _, ok := idSet[v]; !ok {
+			idSet[v] = true
+			id := (*submissionCmdIds)[currentGroupId]
+			group := &service.ProfilingData_GpuSlices_Group{
+				Id: currentGroupId,
+				Link: &path.Command{Indices: []uint64{id}},
+			}
+			currentGroupId++
+			groups = append(groups, group)
+		}
+	}
+
 	commandBuffers := slicesColumns[5].GetLongValues()
 	for i, v := range commandBuffers {
 		if m, ok := (*handleMapping)[uint64(v)]; ok {
@@ -92,7 +112,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 	}
 
 	frameIds := slicesColumns[2].GetLongValues()
-	submissionIds := slicesColumns[3].GetLongValues()
+
 	hwQueueIds := slicesColumns[4].GetLongValues()
 	timestamps := slicesColumns[6].GetLongValues()
 	durations := slicesColumns[7].GetLongValues()
@@ -156,6 +176,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 			Depth:   int32(depths[i]),
 			Extras:  extras,
 			TrackId: int32(trackIds[i]),
+			GroupId: groupIds[i],
 		}
 
 		if _, ok := trackIdCache[trackIds[i]]; !ok {
@@ -170,6 +191,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 	return &service.ProfilingData_GpuSlices{
 		Slices: slices,
 		Tracks: tracks,
+		Groups: groups,
 	}, nil
 }
 

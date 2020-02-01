@@ -832,7 +832,8 @@ type profileRequest struct {
 	traceOptions *service.TraceOptions
 	handler      *replay.SignalHandler
 	buffer       *bytes.Buffer
-	mappings     *map[uint64][]service.VulkanHandleMappingItem
+	handleMappings     *map[uint64][]service.VulkanHandleMappingItem
+	submissionIds *[]uint64
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -1069,9 +1070,10 @@ func (a API) Replay(
 			profile.AddResult(rr.Result)
 			makeReadable.imagesOnly = true
 			optimize = false
+			transforms.Add(newSliceCommandMapper(uint64(numInitialCommands), req.submissionIds))
 			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer, api.CmdID(numInitialCommands)))
 			transforms.Add(&profilingLayers{})
-			transforms.Add(replay.NewMappingExporter(ctx, req.mappings))
+			transforms.Add(replay.NewMappingExporter(ctx, req.handleMappings))
 			if req.overrides.GetViewportSize() {
 				transforms.Add(minimizeViewport(ctx))
 			}
@@ -1272,11 +1274,12 @@ func (a API) Profile(
 	c := uniqueConfig()
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
-	mappings := make(map[uint64][]service.VulkanHandleMappingItem)
-	r := profileRequest{overrides, traceOptions, handler, &buffer, &mappings}
+	handleMappings := make(map[uint64][]service.VulkanHandleMappingItem)
+	submissionIds := make([]uint64, 0)
+	r := profileRequest{overrides, traceOptions, handler, &buffer, &handleMappings, &submissionIds}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	handler.DoneSignal.Wait(ctx)
 
-	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer, &mappings)
+	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer, &handleMappings, &submissionIds)
 	return d, err
 }

@@ -93,6 +93,7 @@ go_library(
         "set_primitive_count_to_one.go",
         "simplify_fragment_shader.go",
         "simplify_sampling.go",
+        "slice_command_mapper.go",
         "state.go",
         "state_rebuilder.go",
         "vulkan.go",
