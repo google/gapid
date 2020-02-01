@@ -196,6 +196,7 @@ public class Main {
     Flags.help,
     Flags.fullHelp,
     Flags.version,
+    Flags.skipDeviceValidation,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,
     GapisProcess.disableGapisTimeout,

@@ -40,6 +40,9 @@ public class Flags {
   public static final Flag<Boolean> fullHelp =
       value("fullhelp", false, "Print help information incuding hidden flags.", true);
   public static final Flag<Boolean> version = value("version", false, "Print GAPID version.");
+  public static final Flag<Boolean> skipDeviceValidation = value("skip_device_validation", false,
+      "Skips the device validation process. " +
+      "Device validation verifies that the GPU events emitted are within the acceptable threshold.");
 
   private static boolean initialized = false;
 

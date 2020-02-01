@@ -55,6 +55,7 @@ import com.google.gapid.proto.service.Service.TraceTypeCapabilities;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.TraceRequest;
+import com.google.gapid.util.Flags;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
@@ -593,7 +594,7 @@ public class TracerDialog {
       }
 
       private void runValidationCheck(Models models, DeviceCaptureInfo dev, TraceTypeCapabilities config) {
-        if (dev != null && isPerfetto(config)) {
+        if (!isValidationSkipped() && dev != null && isPerfetto(config)) {
           validationStatusLoader.startLoading();
           validationStatusText.setText("Device is being validated");
           models.devices.validateDevice(dev, () -> {
@@ -665,8 +666,8 @@ public class TracerDialog {
         updateDurationSpinner(dev, config, dur.getType());
         perfettoConfig.setVisible(isPerfetto);
         resetValidationStatus();
-        validationStatusLoader.setVisible(isPerfetto);
-        validationStatusText.setVisible(isPerfetto);
+        validationStatusLoader.setVisible(isPerfetto && !isValidationSkipped());
+        validationStatusText.setVisible(isPerfetto && !isValidationSkipped());
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
@@ -831,8 +832,12 @@ public class TracerDialog {
             !directory.getText().isEmpty() && !file.getText().isEmpty();
       }
 
+      public boolean isValidationSkipped() {
+          return Flags.skipDeviceValidation.get();
+      }
+
       public boolean isDeviceValidated() {
-        if (isPerfetto(getSelectedApi())) {
+        if (!isValidationSkipped() && isPerfetto(getSelectedApi())) {
           return getSelectedDevice() != null && getSelectedDevice().validationStatus;
         }
         return true;
