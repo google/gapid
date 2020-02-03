@@ -1243,7 +1243,7 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 	newBuffer := buffer.VulkanHandle()
 
 	mem := GetState(sb.newState).DeviceMemories().Get(buffer.Memory().VulkanHandle())
-	if err := sb.createSameBuffer(buffer, newBuffer, mem); err != nil {
+	if err := sb.createSameBuffer(buffer, newBuffer, mem, buffer.MemoryOffset()); err != nil {
 		log.E(sb.ctx, "create buffer %v failed", buffer)
 		return
 	}
@@ -3029,7 +3029,7 @@ func queueFamilyIndicesToU32Slice(m U32ːu32ᵐ) []uint32 {
 }
 
 // createSameBuffer creates a new buffer with ID |buffer| using the same information from |src| object
-func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, mem DeviceMemoryObjectʳ) error {
+func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, mem DeviceMemoryObjectʳ, memoryOffset VkDeviceSize) error {
 	os := sb.s
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 
@@ -3176,7 +3176,7 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 						).Ptr()),
 						dst.VulkanHandle(),
 						mem.VulkanHandle(),
-						dst.MemoryOffset(),
+						memoryOffset,
 					)).Ptr(),
 				VkResult_VK_SUCCESS,
 			))
@@ -3185,7 +3185,7 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 				dst.Device(),
 				dst.VulkanHandle(),
 				mem.VulkanHandle(),
-				dst.MemoryOffset(),
+				memoryOffset,
 				VkResult_VK_SUCCESS,
 			))
 		}
