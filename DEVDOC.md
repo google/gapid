@@ -25,7 +25,7 @@ export GOPATH="${GOPATH:+${GOPATH}:}<path-to-gapid-gofuse>"
 ```
 
 If you encounter a symlink error on Windows like 'a required privilege is not held by the client',
-you have to use a command prompt with adminstrator priviledges or enable
+you have to use a command prompt with administrator privileges or enable
 [Developer Mode](https://docs.microsoft.com/en-us/windows/uwp/get-started/enable-your-device-for-development)
 as described [here](https://blogs.windows.com/windowsdeveloper/2016/12/02/symlinks-windows-10/).
 
