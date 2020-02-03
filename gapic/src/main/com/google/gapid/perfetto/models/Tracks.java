@@ -36,8 +36,8 @@ import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
 import com.google.gapid.perfetto.views.TitlePanel;
 import com.google.gapid.perfetto.views.VulkanCounterPanel;
+import com.google.gapid.perfetto.views.VulkanEventPanel;
 import com.google.gapid.util.Scheduler;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -126,6 +126,20 @@ public class Tracks {
         SliceTrack track = SliceTrack.forGpuQueue(data.qe, queue);
         data.tracks.addTrack(parent, track.getId(), queue.getDisplay(),
             single(state -> new GpuQueuePanel(state, queue, track), true));
+      }
+    }
+
+    if (data.getGpu().vkApiEventCount() > 0) {
+      String parent = "gpu";
+      if (data.getGpu().vkApiEventCount() > 1) {
+        data.tracks.addLabelGroup(
+            "gpu", "vk_api_events", "Vulkan API Events", group(state -> new TitlePanel("Vulkan API Events"), true));
+        parent = "vk_api_events";
+      }
+      for (GpuInfo.VkApiEvent vkApiEvent : data.getGpu().vkApiEvents()) {
+        VulkanEventTrack track = new VulkanEventTrack(data.qe, vkApiEvent);
+        data.tracks.addTrack(parent, track.getId(), vkApiEvent.getDisplay(),
+            single(state -> new VulkanEventPanel(state, vkApiEvent, track), true));
       }
     }
 

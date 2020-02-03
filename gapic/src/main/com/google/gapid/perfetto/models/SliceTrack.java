@@ -66,7 +66,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
   public static SliceTrack forGpuQueue(QueryEngine qe, GpuInfo.Queue queue) {
     return new WithQueryEngine(qe, "gpu_slice", queue.trackId) {
       // TODO(b/148540258): Remove the copy pasted SliceTrack code and clean up
-      private final String GPU_COLUMNS = "render_target, render_target_name, render_pass, render_pass_name, command_buffer, command_buffer_name";
+      private final String GPU_COLUMNS = "render_target, render_target_name, render_pass, render_pass_name, command_buffer, command_buffer_name, submission_id";
 
       @Override
       protected String baseColumns() {
@@ -86,6 +86,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
             int rows = res.getNumRows();
             Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
                 new String[rows], new String[rows], new ArgSet[rows]);
+            long[] submissionIds = new long[rows];
             res.forEachRow((i, row) -> {
               long start = row.getLong(1);
               data.ids[i] = row.getLong(0);
@@ -102,7 +103,9 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
                 }
               }
               data.args[i] = args.getOrDefault(row.getLong(8), ArgSet.EMPTY);
+              submissionIds[i] = row.getLong(15);
             });
+            data.putExtraLongs("submissionIds", submissionIds);
             return data;
           }));
       }
@@ -125,6 +128,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     public final String[] titles;
     public final String[] categories;
     public final ArgSet[] args;
+    public Map<String, long[]> extraLongs = Maps.newHashMap();
 
     public Data(DataRequest request) {
       super(request);
@@ -147,6 +151,14 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       this.titles = titles;
       this.categories = categories;
       this.args = args;
+    }
+
+    public void putExtraLongs(String s, long[] longs) {
+      extraLongs.put(s, longs);
+    }
+
+    public long[] getExtraLongs(String s) {
+      return extraLongs.getOrDefault(s, new long[0]);
     }
   }
 
@@ -275,7 +287,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       public GpuSlice(Row row, ArgSet args) {
         super(row, args);
         renderStageInfo = new RenderStageInfo(row.getLong(9), row.getString(10), row.getLong(11),
-            row.getString(12), row.getLong(13), row.getString(14));
+            row.getString(12), row.getLong(13), row.getString(14), row.getLong(15));
       }
 
       @Override
@@ -297,15 +309,17 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     public final String renderPassName;
     public final long commandBufferHandle;
     public final String commandBufferName;
+    public final long submissionId;
 
     public RenderStageInfo(long frameBufferHandle, String frameBufferName, long renderPassHandle,
-        String renderPassName, long commandBufferHandle, String commandBufferName) {
+        String renderPassName, long commandBufferHandle, String commandBufferName, long submissionId) {
       this.frameBufferHandle = frameBufferHandle;
       this.frameBufferName = frameBufferName;
       this.commandBufferHandle = commandBufferHandle;
       this.commandBufferName = commandBufferName;
       this.renderPassHandle = renderPassHandle;
       this.renderPassName = renderPassName;
+      this.submissionId = submissionId;
     }
   }
 
