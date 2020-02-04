@@ -59,7 +59,7 @@ func (verb *devicesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	for _, p := range devices {
 		o, err := client.Get(ctx, p.Path(), nil)
 		if err != nil {
-			log.Err(ctx, err, "Couldn't resolve device")
+			log.E(ctx, "Couldn't resolve device: %v", err)
 			continue
 		}
 		d := o.(*device.Instance)
