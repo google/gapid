@@ -24,9 +24,10 @@
 
 #include <string>
 
+// TODO(b/148950543): Figure out why stdout is not captured.
 #define _LOG(lvl, name, msg, ...)                          \
   do {                                                     \
-    printf(name ": " msg "\n", ##__VA_ARGS__);             \
+    fprintf(stderr, name ": " msg "\n", ##__VA_ARGS__);    \
     __android_log_print(lvl, "GAPID", msg, ##__VA_ARGS__); \
   } while (false)
 
