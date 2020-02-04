@@ -88,19 +88,26 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 	submissionIds := slicesColumns[3].GetLongValues()
 	idSet := make(map[int64]bool)
 	currentGroupId := int32(0)
+	log.E(ctx, "Start submission mapping")
 	for i, v := range submissionIds {
 		groupIds[i] = currentGroupId
 		if _, ok := idSet[v]; !ok {
 			idSet[v] = true
-			id := (*submissionCmdIds)[currentGroupId]
-			group := &service.ProfilingData_GpuSlices_Group{
-				Id: currentGroupId,
-				Link: &path.Command{Indices: []uint64{id}},
+			log.E(ctx, "mapping submission id %v=%v (cg %v arr %v)", i, v, currentGroupId, len(*submissionCmdIds))
+			if currentGroupId < int32(len(*submissionCmdIds)) {
+				id := (*submissionCmdIds)[currentGroupId]
+				group := &service.ProfilingData_GpuSlices_Group{
+					Id: currentGroupId,
+					Link: &path.Command{Indices: []uint64{id}},
+				}
+				currentGroupId++
+				groups = append(groups, group)
+			} else {
+				log.E(ctx, "cgid out of bounds: %v %v", currentGroupId, len(*submissionCmdIds))
 			}
-			currentGroupId++
-			groups = append(groups, group)
 		}
 	}
+	log.E(ctx, "End submission mapping")
 
 	commandBuffers := slicesColumns[5].GetLongValues()
 	for i, v := range commandBuffers {
@@ -181,6 +188,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 
 		if _, ok := trackIdCache[trackIds[i]]; !ok {
 			trackIdCache[trackIds[i]] = true
+			log.E(ctx, "Novel trackid %v %v %v", i, trackIds[i], trackNames[i])
 			tracks = append(tracks, &service.ProfilingData_GpuSlices_Track{
 				Id:   int32(trackIds[i]),
 				Name: trackNames[i],
