@@ -633,6 +633,15 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
       continue;
     }
 
+    if (!(image_info.mUsage &
+          VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) {
+      // TODO(b/148857112): The TRANSFER_SRC bit is probably could be not set
+      // because the image was created with the incompatible
+      // TRANSIENT_ATTACHMENT bit. We should retrieve such images by drawing
+      // them to a quad on a buffer we can read from.
+      continue;
+    }
+
     // Since we add TRANSFER_SRC_BIT to all the created images (except the
     // swapchain ones), we can copy directly from all such images. Note that
     // later this fact soon will be changed.

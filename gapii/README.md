@@ -67,5 +67,6 @@ The following lists are maintained as a best-effort, they may not be exhaustive 
 
 ### Vulkan
 
-- `vkCreateImage`: the `VK_IMAGE_USAGE_TRANSFER_SRC_BIT` is always set, in order to be able to read the image contents.
-  The `VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT` is cleared accordingly, because it is incompatible with the transfer bit.
+- `vkCreateImage`: if the `VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT` is not
+  set, then the `VK_IMAGE_USAGE_TRANSFER_SRC_BIT` is added, to enable reading
+  back the image content.
