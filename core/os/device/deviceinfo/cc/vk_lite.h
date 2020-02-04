@@ -24,6 +24,8 @@
 typedef enum VkStructureType {
   VK_STRUCTURE_TYPE_APPLICATION_INFO = 0,
   VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO = 1,
+  VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO = 2,
+  VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO = 3,
 } VkStructureType;
 
 typedef enum VkResult {
@@ -53,6 +55,15 @@ typedef enum VkResult {
   VK_ERROR_INVALID_SHADER_NV = 1000012000,
 } VkResult;
 
+typedef enum {
+  VK_QUEUE_GRAPHICS_BIT = 0x00000001,
+  VK_QUEUE_COMPUTE_BIT = 0x00000002,
+  VK_QUEUE_TRANSFER_BIT = 0x00000004,
+  VK_QUEUE_SPARSE_BINDING_BIT = 0x00000008,
+  VK_QUEUE_PROTECTED_BIT = 0x00000010,
+  VK_QUEUE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF,
+} VkQueueFlagBits;
+
 enum class VkPhysicalDeviceType : uint32_t {
   VK_PHYSICAL_DEVICE_TYPE_OTHER = 0,
   VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU = 1,
@@ -67,8 +78,12 @@ typedef uint32_t VkFlags;
 typedef uint64_t VkDeviceSize;
 typedef size_t VkInstance;
 typedef size_t VkPhysicalDevice;
+typedef size_t VkDevice;
 
+typedef VkFlags VkDeviceCreateFlags;
+typedef VkFlags VkDeviceQueueCreateFlags;
 typedef VkFlags VkInstanceCreateFlags;
+typedef VkFlags VkQueueFlags;
 typedef VkFlags VkSampleCountFlags;
 
 typedef void* PFN_vkAllocationFunction;
@@ -92,6 +107,64 @@ typedef struct {
 } VkExtensionProperties;
 
 typedef struct {
+  VkBool32 robustBufferAccess;
+  VkBool32 fullDrawIndexUint32;
+  VkBool32 imageCubeArray;
+  VkBool32 independentBlend;
+  VkBool32 geometryShader;
+  VkBool32 tessellationShader;
+  VkBool32 sampleRateShading;
+  VkBool32 dualSrcBlend;
+  VkBool32 logicOp;
+  VkBool32 multiDrawIndirect;
+  VkBool32 drawIndirectFirstInstance;
+  VkBool32 depthClamp;
+  VkBool32 depthBiasClamp;
+  VkBool32 fillModeNonSolid;
+  VkBool32 depthBounds;
+  VkBool32 wideLines;
+  VkBool32 largePoints;
+  VkBool32 alphaToOne;
+  VkBool32 multiViewport;
+  VkBool32 samplerAnisotropy;
+  VkBool32 textureCompressionETC2;
+  VkBool32 textureCompressionASTC_LDR;
+  VkBool32 textureCompressionBC;
+  VkBool32 occlusionQueryPrecise;
+  VkBool32 pipelineStatisticsQuery;
+  VkBool32 vertexPipelineStoresAndAtomics;
+  VkBool32 fragmentStoresAndAtomics;
+  VkBool32 shaderTessellationAndGeometryPointSize;
+  VkBool32 shaderImageGatherExtended;
+  VkBool32 shaderStorageImageExtendedFormats;
+  VkBool32 shaderStorageImageMultisample;
+  VkBool32 shaderStorageImageReadWithoutFormat;
+  VkBool32 shaderStorageImageWriteWithoutFormat;
+  VkBool32 shaderUniformBufferArrayDynamicIndexing;
+  VkBool32 shaderSampledImageArrayDynamicIndexing;
+  VkBool32 shaderStorageBufferArrayDynamicIndexing;
+  VkBool32 shaderStorageImageArrayDynamicIndexing;
+  VkBool32 shaderClipDistance;
+  VkBool32 shaderCullDistance;
+  VkBool32 shaderFloat64;
+  VkBool32 shaderInt64;
+  VkBool32 shaderInt16;
+  VkBool32 shaderResourceResidency;
+  VkBool32 shaderResourceMinLod;
+  VkBool32 sparseBinding;
+  VkBool32 sparseResidencyBuffer;
+  VkBool32 sparseResidencyImage2D;
+  VkBool32 sparseResidencyImage3D;
+  VkBool32 sparseResidency2Samples;
+  VkBool32 sparseResidency4Samples;
+  VkBool32 sparseResidency8Samples;
+  VkBool32 sparseResidency16Samples;
+  VkBool32 sparseResidencyAliased;
+  VkBool32 variableMultisampleRate;
+  VkBool32 inheritedQueries;
+} VkPhysicalDeviceFeatures;
+
+typedef struct {
   VkStructureType sType;
   void* pNext;
   char* pApplicationName;
@@ -111,6 +184,28 @@ typedef struct {
   uint32_t enabledExtensionCount;
   char** ppEnabledExtensionNames;
 } VkInstanceCreateInfo;
+
+typedef struct {
+  VkStructureType sType;
+  const void* pNext;
+  VkDeviceQueueCreateFlags flags;
+  uint32_t queueFamilyIndex;
+  uint32_t qeueCount;
+  const float* pQueuePriorities;
+} VkDeviceQueueCreateInfo;
+
+typedef struct {
+  VkStructureType sType;
+  const void* pNext;
+  VkDeviceCreateFlags flags;
+  uint32_t queueCreateInfoCount;
+  const VkDeviceQueueCreateInfo* pQueueCreateInfos;
+  uint32_t enabledLayerCount;
+  const char* const* ppEnabledLayerNames;
+  uint32_t enabledExtensionCount;
+  const char* const* ppEnabledExtensionNames;
+  const VkPhysicalDeviceFeatures* pEnabledFeatures;
+} VkDeviceCreateInfo;
 
 typedef struct {
   uint32_t maxImageDimension1D;
@@ -242,6 +337,19 @@ typedef struct {
 } VkPhysicalDeviceProperties;
 
 typedef struct {
+  uint32_t width;
+  uint32_t height;
+  uint32_t depth;
+} VkExtent3D;
+
+typedef struct {
+  VkQueueFlags queueFlags;
+  uint32_t queueCount;
+  uint32_t timestampValidBits;
+  VkExtent3D minImageTransferGranularity;
+} VkQueueFamilyProperties;
+
+typedef struct {
   void* pUserData;
   PFN_vkAllocationFunction pfnAllocation;
   PFN_vkReallocationFunction pfnReallocation;
@@ -268,5 +376,13 @@ typedef VkResult(VULKAN_API_PTR* PFNVKENUMERATEPHYSICALDEVICES)(
     VkPhysicalDevice* pPhysicalDevices);
 typedef void(VULKAN_API_PTR* PFNVKGETPHYSICALDEVICEPROPERTIES)(
     VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties* pProperties);
+
+typedef void(VULKAN_API_PTR* PFNVKGETPHYSICALDEVICEQUEUEFAMILYPROPERTIES)(
+    VkPhysicalDevice physicalDevice, uint32_t* pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties* pQueueFamilyProperties);
+
+typedef VkResult(VULKAN_API_PTR* PFNVKCREATEDEVICE)(
+    VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator, VkDevice* pDevice);
 
 #endif  // GAPID_CORE_OS_DEVICEINFO_VK_LITE
