@@ -29,7 +29,7 @@ var (
 	slicesQuery = "" +
 		"SELECT s.context_id, s.render_target, s.frame_id, s.submission_id, s.hw_queue_id, s.command_buffer, s.ts, s.dur, s.name, depth, arg_set_id, track_id, t.name " +
 		"FROM gpu_track t LEFT JOIN gpu_slice s " +
-		"ON s.track_id = t.id AND t.scope = 'gpu_render_stage'"
+		"ON s.track_id = t.id WHERE t.scope = 'gpu_render_stage'"
 	argsQueryFmt = "" +
 		"SELECT key, string_value FROM args WHERE args.arg_set_id = %d"
 	counterTracksQuery = "" +
