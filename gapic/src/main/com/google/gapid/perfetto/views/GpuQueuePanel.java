@@ -113,9 +113,14 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = depth * SLICE_HEIGHT;
 
+        int commaIndex = data.titles[i].indexOf(',');
+        int colorCode = (commaIndex == -1)
+          ? data.titles[i].hashCode()
+          : data.titles[i].substring(0, commaIndex).hashCode();
+
         // Render slice entity.
         // Grey out if there's vulkan api event selection but this GPU queue slice is not linked.
-        StyleConstants.Gradient color = gradient(data.titles[i].hashCode());
+        StyleConstants.Gradient color = gradient(colorCode);
         if (!selectedSIds.isEmpty() && i < sIds.length && !selectedSIds.contains(sIds[i])) {
           ctx.setBackgroundColor(color.disabled);
         } else {
