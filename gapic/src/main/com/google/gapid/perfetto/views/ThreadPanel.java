@@ -19,7 +19,6 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -206,7 +205,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
           double y = (1 + depth) * SLICE_HEIGHT;
 
-          StyleConstants.Gradient color = gradient(title.hashCode() ^ depth);
+          StyleConstants.Gradient color = getSliceColor(title, depth);
           color.applyBase(ctx);
           ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
