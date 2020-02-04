@@ -112,6 +112,7 @@ import "extensions/khr_shader_float_controls.api"
 import "extensions/khr_shader_float16_int8.api"
 import "extensions/khr_shader_atomic_int64.api"
 import "extensions/khr_driver_properties.api"
+import "extensions/khr_timeline_semaphore.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
