@@ -16,15 +16,16 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.util.Logging.throttleLogRpcError;
+import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.ValidateDeviceResponse;
 import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -34,6 +35,8 @@ import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.Flags;
+import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
@@ -41,8 +44,9 @@ import com.google.gapid.util.Paths;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -60,10 +64,15 @@ public class Devices {
   private Device.Instance selectedReplayDevice;
   private List<DeviceCaptureInfo> devices;
 
+  public static final Flag<Boolean> skipDeviceValidation = Flags.value("skip_device_validation", false,
+      "Skips the device validation process. " +
+      "Device validation verifies that the GPU events emitted are within the acceptable threshold.", true);
+
   public Devices(Shell shell, Analytics analytics, Client client, Capture capture) {
     this.shell = shell;
     this.analytics = analytics;
     this.client = client;
+    DeviceValidationInfo.createInstance(client, shell);
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -144,46 +153,12 @@ public class Devices {
     listeners.fire().onReplayDeviceChanged(dev);
   }
 
-  public void updateValidationStatus(DeviceCaptureInfo device, Service.ValidateDeviceResponse response) {
-    if (response == null || response.hasError()) {
-      device.validationStatus = false;
-      return;
-    }
-    device.validationStatus = true;
+  public static void validateDevice(DeviceCaptureInfo device, Function<Boolean, Void> callback) {
+    DeviceValidationInfo.validateDevice(device, callback);
   }
 
-  public void validateDevice(DeviceCaptureInfo device, Runnable callback) {
-    if (!devices.contains(device)) {
-      return;
-    }
-    rpcController.start().listen(client.validateDevice(device.path),
-        new UiErrorCallback<Service.ValidateDeviceResponse, Service.ValidateDeviceResponse, Service.ValidateDeviceResponse>(shell, LOG) {
-
-      @Override
-      protected void onUiThreadSuccess(Service.ValidateDeviceResponse response) {
-        updateValidationStatus(device, response);
-        callback.run();
-      }
-
-      @Override
-      protected void onUiThreadError(Service.ValidateDeviceResponse response) {
-        LOG.log(Level.WARNING, response.toString());
-        updateValidationStatus(device, response);
-        callback.run();
-      }
-
-      @Override
-      protected ResultOrError<ValidateDeviceResponse, ValidateDeviceResponse> onRpcThread(Rpc.Result<ValidateDeviceResponse> response)
-          throws RpcException, ExecutionException {
-        try {
-          return success(response.get());
-        } catch (RpcException | ExecutionException e) {
-          throttleLogRpcError(LOG, "LoadData error", e);
-          return error(null);
-        }
-      }
-
-    });
+  public static boolean getValidationStatus(DeviceCaptureInfo device) {
+    return DeviceValidationInfo.getValidationStatus(device);
   }
 
   public void loadDevices() {
@@ -224,6 +199,7 @@ public class Devices {
 
   protected void updateDevices(List<DeviceCaptureInfo> newDevices) {
     devices = newDevices;
+    DeviceValidationInfo.reset();
     listeners.fire().onCaptureDevicesLoaded();
   }
 
@@ -322,7 +298,6 @@ public class Devices {
     public final Device.Instance device;
     public final Service.DeviceTraceConfiguration config;
     public final TraceTargets targets;
-    public boolean validationStatus = false;
 
     public DeviceCaptureInfo(Path.Device path, Device.Instance device,
         Service.DeviceTraceConfiguration config, TraceTargets targets) {
@@ -338,6 +313,89 @@ public class Devices {
 
     public boolean isStadia() {
       return device.getConfiguration().getOS().getKind() == Device.OSKind.Stadia;
+    }
+  }
+
+  private static class DeviceValidationInfo {
+    private static DeviceValidationInfo instance = null;
+    private SingleInFlight rpcController = new SingleInFlight();
+    private final Client client;
+    private final Shell shell;
+    private Map<DeviceCaptureInfo, Boolean> status;
+
+    private DeviceValidationInfo(Client client, Shell shell) {
+      this.client = client;
+      this.shell = shell;
+      status = Maps.newHashMap();
+    }
+
+    private void validate(DeviceCaptureInfo device, Function<Boolean, Void> callback) {
+      if (device == null) {
+        return;
+      }
+      if (status.getOrDefault(device, null) != null) {
+        callback.apply(status.get(device));
+        return;
+      }
+
+      rpcController.start().listen(client.validateDevice(device.path),
+          new UiErrorCallback<Service.ValidateDeviceResponse, Service.ValidateDeviceResponse, Service.ValidateDeviceResponse>(shell, LOG) {
+
+        @Override
+        protected ResultOrError<Service.ValidateDeviceResponse, Service.ValidateDeviceResponse>
+          onRpcThread(Rpc.Result<Service.ValidateDeviceResponse> response) throws RpcException, ExecutionException {
+          try {
+            return success(response.get());
+          } catch (RpcException | ExecutionException e) {
+            throttleLogRpcError(LOG, "LoadData error", e);
+            return error(null);
+          }
+        }
+
+        @Override
+        protected void onUiThreadSuccess(Service.ValidateDeviceResponse response) {
+          updateValidationStatus(device, response);
+          callback.apply(getValidationStatus(device));
+        }
+
+        @Override
+        protected void onUiThreadError(Service.ValidateDeviceResponse response) {
+          LOG.log(WARNING, response.toString());
+          updateValidationStatus(device, response);
+          callback.apply(getValidationStatus(device));
+        }
+      });
+    }
+
+    protected static void updateValidationStatus(DeviceCaptureInfo device, Service.ValidateDeviceResponse response) {
+      if (instance == null) {
+        return;
+      }
+      if (response == null || response.hasError()) {
+        instance.status.put(device, false);
+        return;
+      }
+      instance.status.put(device, true);
+    }
+
+    public static void createInstance(Client client, Shell shell) {
+      instance = new DeviceValidationInfo(client, shell);
+    }
+
+    public static void validateDevice(DeviceCaptureInfo device, Function<Boolean, Void> callback) {
+      if (instance != null) {
+        instance.validate(device, callback);
+      }
+    }
+
+    public static void reset() {
+      if (instance != null) {
+        instance.status.clear();
+      }
+    }
+
+    public static boolean getValidationStatus(DeviceCaptureInfo device) {
+      return instance == null ? false : instance.status.getOrDefault(device, false);
     }
   }
 }

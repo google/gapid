@@ -55,7 +55,6 @@ import com.google.gapid.proto.service.Service.TraceTypeCapabilities;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.TraceRequest;
-import com.google.gapid.util.Flags;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
@@ -594,16 +593,24 @@ public class TracerDialog {
       }
 
       private void runValidationCheck(Models models, DeviceCaptureInfo dev, TraceTypeCapabilities config) {
-        if (!isValidationSkipped() && dev != null && isPerfetto(config)) {
+        if (dev == null || Devices.skipDeviceValidation.get()) {
+          return;
+        }
+        setValidationStatus(Devices.getValidationStatus(dev));
+        if (isPerfetto(config) && !Devices.getValidationStatus(dev)) {
           validationStatusLoader.startLoading();
           validationStatusText.setText("Device is being validated");
-          models.devices.validateDevice(dev, () -> {
-            setValidationStatus(dev.validationStatus);
+          Devices.validateDevice(dev, e -> {
+            setValidationStatus(e);
+            return null;
           });
         }
       }
 
       private void setValidationStatus(boolean status) {
+        if (validationStatusLoader.isDisposed()) {
+          return;
+        }
         validationStatusLoader.updateStatus(status);
         validationStatusText.setText("Validation " + (status ? "Passed." : "Failed. " + VALIDATION_FAILED_LANDING_PAGE));
         validationStatusLoader.stopLoading();
@@ -832,13 +839,13 @@ public class TracerDialog {
             !directory.getText().isEmpty() && !file.getText().isEmpty();
       }
 
-      public boolean isValidationSkipped() {
-          return Flags.skipDeviceValidation.get();
+      public static boolean isValidationSkipped() {
+          return Devices.skipDeviceValidation.get();
       }
 
       public boolean isDeviceValidated() {
         if (!isValidationSkipped() && isPerfetto(getSelectedApi())) {
-          return getSelectedDevice() != null && getSelectedDevice().validationStatus;
+          return getSelectedDevice() != null && Devices.getValidationStatus(getSelectedDevice());
         }
         return true;
       }

@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import com.google.common.base.Throwables;
 import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.Analytics;
+import com.google.gapid.models.Devices;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
@@ -196,7 +197,7 @@ public class Main {
     Flags.help,
     Flags.fullHelp,
     Flags.version,
-    Flags.skipDeviceValidation,
+    Devices.skipDeviceValidation,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,
     GapisProcess.disableGapisTimeout,
