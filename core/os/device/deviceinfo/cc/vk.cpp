@@ -141,6 +141,9 @@ bool vkPhysicalDevices(
   }
   MUST_RESOLVE(PFNVKENUMERATEPHYSICALDEVICES, vkEnumeratePhysicalDevices);
   MUST_RESOLVE(PFNVKGETPHYSICALDEVICEPROPERTIES, vkGetPhysicalDeviceProperties);
+  MUST_RESOLVE(PFNVKGETPHYSICALDEVICEQUEUEFAMILYPROPERTIES,
+               vkGetPhysicalDeviceQueueFamilyProperties);
+  MUST_RESOLVE(PFNVKCREATEDEVICE, vkCreateDevice);
 #undef MUST_RESOLVE
 
   uint32_t phy_dev_count = 0;
@@ -161,6 +164,47 @@ bool vkPhysicalDevices(
     driver->mutable_physical_devices(i)->set_device_id(prop.deviceID);
     driver->mutable_physical_devices(i)->set_device_name(
         std::string(prop.deviceName));
+
+    // Attempt to create VkDevice for every VkPhysicalDevice.
+    uint32_t queue_family_count;
+    vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &queue_family_count,
+                                             nullptr);
+    if (queue_family_count == 0) {
+      continue;
+    }
+    std::vector<VkQueueFamilyProperties> queue_family_properties(
+        queue_family_count, VkQueueFamilyProperties{});
+    vkGetPhysicalDeviceQueueFamilyProperties(phy_dev, &queue_family_count,
+                                             queue_family_properties.data());
+    for (uint32_t j = 0; j < queue_family_count; ++j) {
+      if ((queue_family_properties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+          (queue_family_properties[j].queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+        float priority = 1.0f;
+        VkDeviceQueueCreateInfo queue_create_info{
+            VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            nullptr,
+            0,
+            j,
+            1,
+            &priority,
+        };
+        VkDeviceCreateInfo create_info{
+            VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            nullptr,
+            0,
+            1,
+            &queue_create_info,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            nullptr,
+        };
+        VkDevice device{};
+        MUST_SUCCESS(vkCreateDevice(phy_dev, &create_info, nullptr, &device));
+        break;
+      }
+    }
   }
 
   return true;
