@@ -31,13 +31,11 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.State;
-import com.google.gapid.perfetto.views.StyleConstants;
 import com.google.gapid.perfetto.views.VulkanEventSelectionView;
 import com.google.gapid.perfetto.views.VulkanEventsSelectionView;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Composite;
 
 public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Data> {
@@ -50,6 +48,9 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
   private static final String SLICES_SQL =
       "select " + BASE_COLUMNS + " from %s " +
           "where ts >= %d - dur and ts <= %d order by ts";
+  private static final String SLICE_RANGE_SQL =
+      "select " + BASE_COLUMNS + " from %s " +
+          "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
 
   private final long trackId;
 
@@ -103,6 +104,15 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
   public ListenableFuture<Slice> getSlice(long id) {
     return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
         transform(qe.getArgs(r.getLong(7)), args -> buildSlice(r, args)));
+  }
+
+  private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {
+    return format(SLICE_RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
+  }
+
+  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+    return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)),
+        res -> res.list(($, row) -> buildSlice(row, ArgSet.EMPTY)));
   }
 
   protected Slice buildSlice(QueryEngine.Row row, ArgSet args) {

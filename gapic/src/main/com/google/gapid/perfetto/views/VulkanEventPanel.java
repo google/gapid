@@ -17,8 +17,10 @@
 package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
+import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.perfetto.views.StyleConstants.gradient;
+import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
@@ -29,6 +31,7 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.VulkanEventTrack;
 
 import org.eclipse.swt.SWT;
@@ -37,7 +40,7 @@ import org.eclipse.swt.widgets.Display;
 
 import java.util.List;
 
-public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
+public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Selectable {
   private static final double ARROW_HEIGHT = 10;
   private static final double ARROW_WIDTH = 10;
   private static final double ARROW_TIP = 2;
@@ -202,5 +205,28 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> {
       }
     }
     return Hover.NONE;
+  }
+
+  @Override
+  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+    int startDepth = (int)((area.y - SLICE_Y) / SLICE_HEIGHT);
+    int endDepth = (int)((area.y + area.h - SLICE_Y) / SLICE_HEIGHT);
+    if (startDepth == endDepth && area.h / SLICE_HEIGHT < SELECTION_THRESHOLD) {
+      return;
+    }
+    if (((startDepth + 1) * SLICE_HEIGHT - area.y + SLICE_Y) / SLICE_HEIGHT < SELECTION_THRESHOLD) {
+      startDepth++;
+    }
+    if ((area.y + area.h - endDepth * SLICE_HEIGHT - SLICE_Y) / SLICE_HEIGHT < SELECTION_THRESHOLD) {
+      endDepth--;
+    }
+    if (startDepth > endDepth) {
+      return;
+    }
+
+    if (endDepth >= 0) {
+      builder.add(Selection.Kind.VulkanEvent, transform(
+          track.getSlices(ts, startDepth, endDepth), VulkanEventTrack.SlicesBuilder::new));
+    }
   }
 }
