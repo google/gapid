@@ -147,6 +147,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         remote = "https://github.com/nothings/stb",
         commit = "f67165c2bb2af3060ecae7d20d6f731173485ad0",
         build_file = "@gapid//tools/build/third_party:stb.BUILD",
+        shallow_since = "1572280202 -0700",
     )
 
     maybe_repository(
@@ -156,6 +157,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         remote = "https://chromium.googlesource.com/linux-syscall-support",
         commit = "e6527b0cd469e3ff5764785dadcb39bf7d787154",
         build_file = "@gapid//tools/build/third_party:lss.BUILD",
+        shallow_since = "1508355462 +0000",
     )
 
     maybe_repository(
@@ -164,7 +166,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         remote = "https://android.googlesource.com/platform/external/perfetto",
         commit = "15c8c3e5af6e843dfcaf036333b7ccdfbb1b725f",
-        shallow_since = "1576864224 +0000",
+        shallow_since = "1580316486 +0000",
     )
 
     maybe_repository(
