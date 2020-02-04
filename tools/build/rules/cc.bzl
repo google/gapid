@@ -120,7 +120,7 @@ def _symbols_impl(ctx):
 # crash server. Has a single "src" attribute, which should point to the
 # (unstripped) binary whose symbol information should be extracted. Generates
 # the symbol data file that can be uploaded to the crash server.
-_symbols = rule(
+symbols = rule(
     _symbols_impl,
     attrs = {
         "src": attr.label(
@@ -154,9 +154,10 @@ def cc_stripped_binary(name, **kwargs):
         **kwargs
     )
 
-    _symbols(
+    symbols(
         name = name + ".sym",
         src = unstripped,
+        visibility = ["//visibility:public"],
     )
 
     strip(
