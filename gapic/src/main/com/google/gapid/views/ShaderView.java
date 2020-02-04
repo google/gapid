@@ -445,7 +445,7 @@ public class ShaderView extends Composite
       viewer.configure(new GlslSourceConfiguration(theme));
       viewer.setDocument(GlslSourceConfiguration.createDocument(source.source));
       textWidget.addListener(SWT.KeyDown, e -> {
-        if (isKey(e, SWT.MOD1, 'z')) {
+        if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
           viewer.doOperation(ITextOperationTarget.UNDO);
         } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
           viewer.doOperation(ITextOperationTarget.REDO);
