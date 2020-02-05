@@ -179,14 +179,14 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
         }
 
         ctx.setForegroundColor(colors().timeHighlightEmphasize);
-        if (isHighlightStartHovered && mouseMode == MouseMode.Select) {
-          ctx.drawLine(x1, 0, x1, timeline.getPreferredHeight(), 3);
-        } else if (isHighlightStartHovered && mouseMode == MouseMode.TimeSelect) {
-          ctx.drawLine(x1, 0, x1, height, 3);
-        } else if (isHighlightEndHovered && mouseMode == MouseMode.Select) {
-          ctx.drawLine(x2, 0, x2, timeline.getPreferredHeight(), 3);
+        if (isHighlightStartHovered && mouseMode == MouseMode.TimeSelect) {
+          ctx.drawLine(x1, 0, x1, height, 3); // Draw across the whole root panel in y direction.
+        } else if (isHighlightStartHovered) {
+          ctx.drawLine(x1, 0, x1, timeline.getPreferredHeight(), 3); // Draw only in time ruler.
         } else if (isHighlightEndHovered && mouseMode == MouseMode.TimeSelect) {
           ctx.drawLine(x2, 0, x2, height, 3);
+        } else if (isHighlightEndHovered) {
+          ctx.drawLine(x2, 0, x2, timeline.getPreferredHeight(), 3);
         }
       });
     }
@@ -214,6 +214,10 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
       return Dragger.NONE;
     }
 
+    if (sy <= timeline.getPreferredHeight()) {
+      return timeHighlightDragger(sx, sy, mods);
+    }
+
     MouseMode mode = mouseMode;
     if ((mods & SWT.SHIFT) == SWT.SHIFT) {
       mode = MouseMode.Select;
@@ -232,21 +236,32 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     }
   }
 
-  private Dragger selectDragger(double sx, double sy, int mods) {
-    boolean onTimeline = sy <= timeline.getPreferredHeight();
+  private Dragger timeHighlightDragger(double sx, double sy, int mods) {
     double hFixedEnd = findHighlightFixedEnd(sx);
     return new Dragger() {
       @Override
       public Area onDrag(double x, double y) {
-        return onTimeline ? updateHighlight(hFixedEnd, x) : updateSelection(sx, sy, x, y);
+        return updateHighlight(hFixedEnd, x);
       }
 
       @Override
       public Area onDragEnd(double x, double y) {
-        Area redraw = onTimeline ? updateHighlight(hFixedEnd, x) : updateSelection(sx, sy, x, y);
-        if (!onTimeline) {
-          finishSelection(mods);
-        }
+        return onDrag(x, y);
+      }
+    };
+  }
+
+  private Dragger selectDragger(double sx, double sy, int mods) {
+    return new Dragger() {
+      @Override
+      public Area onDrag(double x, double y) {
+        return updateSelection(sx, sy, x, y);
+      }
+
+      @Override
+      public Area onDragEnd(double x, double y) {
+        Area redraw = updateSelection(sx, sy, x, y);
+        finishSelection(mods);
         return redraw;
       }
     };
@@ -410,7 +425,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     boolean nearStart = Math.abs(x - hStart) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
     boolean nearEnd = Math.abs(x - hEnd) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
     boolean closerToStart = Math.abs(x - hStart) < Math.abs(x - hEnd);
-    if (mouseMode == MouseMode.Select) {
+    if (mouseMode != MouseMode.TimeSelect) {
       isHighlightStartHovered = nearStart && closerToStart && y <= timeline.getPreferredHeight();
       isHighlightEndHovered = nearEnd && !closerToStart && y <= timeline.getPreferredHeight();
     } else if (mouseMode == MouseMode.TimeSelect) {
