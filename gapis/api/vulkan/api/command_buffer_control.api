@@ -626,6 +626,21 @@ class vkCmdExecuteCommandsArgs {
 }
 
 sub void dovkCmdExecuteCommands(ref!vkCmdExecuteCommandsArgs cmds) {
+  enterSubcontext()
+  for i in (0 .. len(cmds.CommandBuffers)) {
+    cb := CommandBuffers[cmds.CommandBuffers[as!u32(i)]]
+    enterSubcontext()
+    for j in (0 .. len(cb.CommandReferences)) {
+      cmd := cb.CommandReferences[as!u32(j)]
+      onPreSubcommand(cmd)
+      callCommand(cmd)
+      onPostSubcommand(cmd)
+      nextSubcontext()
+    }
+    leaveSubcontext()
+    nextSubcontext()
+  }
+  leaveSubcontext()
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
