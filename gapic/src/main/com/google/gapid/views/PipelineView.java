@@ -39,6 +39,7 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
+import com.google.gapid.models.Resources;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -66,7 +67,6 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
@@ -83,7 +83,7 @@ import java.util.logging.Logger;
  * View the displays the information for each stage of the pipeline.
  */
 public class PipelineView extends Composite
-implements Tab, Capture.Listener, CommandStream.Listener {
+    implements Tab, Capture.Listener, CommandStream.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(PipelineView.class.getName());
 
   protected final Models models;
@@ -103,9 +103,13 @@ implements Tab, Capture.Listener, CommandStream.Listener {
 
     stagesContainer = createComposite(loading.getContents(), new FillLayout());
 
+    models.capture.addListener(this);
     models.commands.addListener(this);
+    models.resources.addListener(this);
     addListener(SWT.Dispose, e -> {
+      models.capture.removeListener(this);
       models.commands.removeListener(this);
+      models.resources.removeListener(this);
     });
   }
 
@@ -127,16 +131,8 @@ implements Tab, Capture.Listener, CommandStream.Listener {
   }
 
   @Override
-  public void onCommandsLoaded() {
-    if (!models.commands.isLoaded()) {
-      loading.showMessage(Info, Messages.CAPTURE_LOAD_FAILURE);
-    } else {
-      if (models.commands.getSelectedCommands() == null) {
-        loading.showMessage(Info, Messages.SELECT_COMMAND);
-      } else {
-        loading.stopLoading();
-      }
-    }
+  public void onResourcesLoaded() {
+    updatePipelines();
   }
 
   @Override
@@ -145,40 +141,44 @@ implements Tab, Capture.Listener, CommandStream.Listener {
   }
 
   private void updatePipelines() {
-    loading.startLoading();
-    Rpc.listen(models.resources.loadBoundPipelines(),
-        new UiErrorCallback<API.MultiResourceData, List<API.Pipeline>, Loadable.Message>(this, LOG) {
-      @Override
-      protected ResultOrError<List<API.Pipeline>, Loadable.Message> onRpcThread(
-          Rpc.Result<API.MultiResourceData> result) {
-        try {
-          List<API.Pipeline> pipelines = Lists.newArrayList();
-          for (API.ResourceData resource : result.get().getResourcesList()) {
-            if (resource.hasPipeline()) {
-              pipelines.add(resource.getPipeline());
+    if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
+      loading.startLoading();
+      Rpc.listen(models.resources.loadBoundPipelines(),
+          new UiErrorCallback<API.MultiResourceData, List<API.Pipeline>, Loadable.Message>(this, LOG) {
+        @Override
+        protected ResultOrError<List<API.Pipeline>, Loadable.Message> onRpcThread(
+            Rpc.Result<API.MultiResourceData> result) {
+          try {
+            List<API.Pipeline> pipelines = Lists.newArrayList();
+            for (API.ResourceData resource : result.get().getResourcesList()) {
+              if (resource.hasPipeline()) {
+                pipelines.add(resource.getPipeline());
+              }
             }
+            return success(pipelines);
+          } catch (RpcException e) {
+            models.analytics.reportException(e);
+            return error(Loadable.Message.error(e));
+          } catch (ExecutionException e) {
+            models.analytics.reportException(e);
+            throttleLogRpcError(LOG, "Failed to load pipelines", e);
+            return error(Loadable.Message.error(e.getCause().getMessage()));
           }
-          return success(pipelines);
-        } catch (RpcException e) {
-          models.analytics.reportException(e);
-          return error(Loadable.Message.error(e));
-        } catch (ExecutionException e) {
-          models.analytics.reportException(e);
-          throttleLogRpcError(LOG, "Failed to load pipelines", e);
-          return error(Loadable.Message.error(e.getCause().getMessage()));
         }
-      }
 
-      @Override
-      protected void onUiThreadSuccess(List<API.Pipeline> pipelines) {
-        setPipelines(pipelines);
-      }
+        @Override
+        protected void onUiThreadSuccess(List<API.Pipeline> pipelines) {
+          setPipelines(pipelines);
+        }
 
-      @Override
-      protected void onUiThreadError(Loadable.Message error) {
-        loading.showMessage(error);
-      }
-    });
+        @Override
+        protected void onUiThreadError(Loadable.Message error) {
+          loading.showMessage(error);
+        }
+      });
+    } else {
+      loading.showMessage(Info, Messages.SELECT_COMMAND);
+    }
   }
 
   protected void setPipelines(List<API.Pipeline> pipelines) {
@@ -247,7 +247,7 @@ implements Tab, Capture.Listener, CommandStream.Listener {
                   Composite keyComposite = withLayoutData( createComposite(contentComposite, kvpLayout, SWT.BORDER),
                       new GridData(SWT.FILL, SWT.TOP, false, false));
 
-                  Label keyLabel = withLayoutData( createBoldLabel(keyComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
+                  withLayoutData( createBoldLabel(keyComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
                       new GridData(SWT.RIGHT, SWT.CENTER, true, true));
 
                   if (!dynamicExists && kvp.getDynamic()) {
@@ -286,7 +286,7 @@ implements Tab, Capture.Listener, CommandStream.Listener {
 
                     if (tableSize.x > scrollArea.width) {
                       gridLayout.numColumns -= 2;
-                    } 
+                    }
                   } else {
                     while (tableSize.x > scrollArea.width && gridLayout.numColumns >= 4) {
                       gridLayout.numColumns -= 2;
