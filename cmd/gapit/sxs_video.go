@@ -106,8 +106,17 @@ func (verb *videoVerb) sxsVideoSource(
 	// These would result in a failed comparison as the observed frame could
 	// be anything and the replayed frame will show the undefined framebuffer
 	// pattern.
-	// Permit the first run of frames to have no content.
-	permitNoMatch := true
+	// Permit the first run of frames to have no content. If there are no
+	// draw-calls or clear calls at all however, then do not permit this.
+	permitNoMatch := false
+
+	for _, e := range events {
+		if e.Kind == service.EventKind_Clear ||
+			e.Kind == service.EventKind_DrawCall {
+			permitNoMatch = true
+			break
+		}
+	}
 
 	var lastFrameEvent *path.Command
 	for _, e := range events {
