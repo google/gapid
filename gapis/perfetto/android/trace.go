@@ -30,6 +30,7 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapis/service"
 )
@@ -152,7 +153,11 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 	}
 
 	if a != nil {
-		if err := d.StartActivity(ctx, *a); err != nil {
+		var additionalArgs []android.ActionExtra
+		if opts.AdditionalCommandLineArgs != "" {
+			additionalArgs = append(additionalArgs, android.CustomExtras(text.Quote(text.SplitArgs(opts.AdditionalCommandLineArgs))))
+		}
+		if err := d.StartActivity(ctx, *a, additionalArgs...); err != nil {
 			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting the activity")
 		}
 	}
