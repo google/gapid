@@ -890,12 +890,8 @@ uint32_t VulkanSpy::SpyOverride_vkCreateImage(
     VkDevice device, const VkImageCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkImage* pImage) {
   VkImageCreateInfo override_create_info = *pCreateInfo;
-  // Make it possible to read the image contents
   override_create_info.musage |=
       VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-  // Unset TRANSIENT_ATTACHMENT, which is incompatible with TRANSFER_SRC
-  override_create_info.musage &=
-      ~(VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);
   return mImports.mVkDeviceFunctions[device].vkCreateImage(
       device, &override_create_info, pAllocator, pImage);
 }
