@@ -97,6 +97,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
   @Override
   public void reinitialize() {
     if (models.profile.isLoaded()) {
+      loading.stopLoading();
       updateProfile(models.profile.getData());
     } else {
       loading.showMessage(
