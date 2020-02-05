@@ -30,9 +30,23 @@ const (
 		"select value from counter " +
 		"where track_id = %v order by ts " +
 		"limit %v offset 10"
-	renderStageTrackIDQuery = "select id from gpu_track where scope = 'gpu_render_stage'"
-	sampleCounter           = 100
+	trackIDQuery           = "select id from gpu_track where scope = '%v'"
+	renderStageTrackScope  = "gpu_render_stage"
+	vulkanEventsTrackScope = "vulkan_events"
+	renderStageSlicesQuery = "" +
+		"select name, command_buffer, submission_id " +
+		"from gpu_slice " +
+		"where track_id = %v " +
+		"order by id"
+	vulkanEventSlicesQuery = "" +
+		"select name, submission_id " +
+		"from gpu_slice " +
+		"where track_id = %v " +
+		"order by id"
+	sampleCounter = 100
 )
+
+type Scope string
 
 // Checker is a function that checks the validity of the values of the given result set column.
 type Checker func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool
@@ -164,9 +178,9 @@ func ValidateGpuCounters(ctx context.Context, processor *perfetto.Processor, cou
 	return nil
 }
 
-// GetRenderStageTrackIDs returns all track ids from gpu_track where the scope is gpu_render_stage
-func GetRenderStageTrackIDs(ctx context.Context, processor *perfetto.Processor) ([]int64, error) {
-	queryResult, err := processor.Query(renderStageTrackIDQuery)
+// GetTrackIDs returns all track ids from gpu_track with the given scope.
+func GetTrackIDs(ctx context.Context, s Scope, processor *perfetto.Processor) ([]int64, error) {
+	queryResult, err := processor.Query(fmt.Sprintf(trackIDQuery, s))
 	if err != nil || queryResult.GetNumRecords() <= 0 {
 		return []int64{}, log.Err(ctx, err, "Failed to query GPU render stage track ids")
 	}
@@ -175,4 +189,62 @@ func GetRenderStageTrackIDs(ctx context.Context, processor *perfetto.Processor) 
 		result[i] = v
 	}
 	return result, nil
+}
+
+// ValidateGpuSlices validates gpu slices, returns nil if all validation passes.
+func ValidateGpuSlices(ctx context.Context, processor *perfetto.Processor) error {
+	tIds, err := GetTrackIDs(ctx, renderStageTrackScope, processor)
+	if err != nil {
+		return err
+	}
+	for _, tId := range tIds {
+		queryResult, err := processor.Query(fmt.Sprintf(renderStageSlicesQuery, tId))
+		if err != nil || queryResult.GetNumRecords() <= 0 {
+			return log.Errf(ctx, err, "Failed to query with %v", fmt.Sprintf(renderStageSlicesQuery, tId))
+		}
+		columns := queryResult.GetColumns()
+		numRecords := queryResult.GetNumRecords()
+		names := columns[0].GetStringValues()
+		commandBuffers := columns[1].GetLongValues()
+		submissionIds := columns[2].GetLongValues()
+		if numRecords == 0 {
+			return log.Err(ctx, nil, "No gpu slices")
+		}
+		for i := uint64(0); i < numRecords; i++ {
+			if commandBuffers[i] == 0 {
+				return log.Errf(ctx, nil, "Gpu slice %v has null command buffer", names[i])
+			}
+			if submissionIds[i] == 0 {
+				return log.Errf(ctx, nil, "Gpu slice %v has null submission id", names[i])
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateVulkanEvents validates vulkan events slices, returns nil if all validation passes.
+func ValidateVulkanEvents(ctx context.Context, processor *perfetto.Processor) error {
+	tIds, err := GetTrackIDs(ctx, vulkanEventsTrackScope, processor)
+	if err != nil {
+		return err
+	}
+	for _, tId := range tIds {
+		queryResult, err := processor.Query(fmt.Sprintf(vulkanEventSlicesQuery, tId))
+		if err != nil || queryResult.GetNumRecords() <= 0 {
+			return log.Errf(ctx, err, "Failed to query with %v", fmt.Sprintf(vulkanEventSlicesQuery, tId))
+		}
+		columns := queryResult.GetColumns()
+		numRecords := queryResult.GetNumRecords()
+		names := columns[0].GetStringValues()
+		submissionIds := columns[1].GetLongValues()
+		if numRecords == 0 {
+			return log.Err(ctx, nil, "No render stage slices")
+		}
+		for i := uint64(0); i < numRecords; i++ {
+			if names[i] == "vkQueueSubmit" && submissionIds[i] == 0 {
+				return log.Errf(ctx, nil, "Vulkan event slice %v has null submission id", names[i])
+			}
+		}
+	}
+	return nil
 }
