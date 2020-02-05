@@ -59,13 +59,3 @@ GAPII needs to support all of these cases.
 
 Each encoded command holds an identifier of the thread that made the call.
 Commands from all threads are encoded into a single chronological stream.
-
-## Command modifications during capture
-
-Some commands may have to be modified for the capture to be possible.
-The following lists are maintained as a best-effort, they may not be exhaustive nor up-to-date.
-
-### Vulkan
-
-- `vkCreateImage`: the `VK_IMAGE_USAGE_TRANSFER_SRC_BIT` is always set, in order to be able to read the image contents.
-  The `VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT` is cleared accordingly, because it is incompatible with the transfer bit.
