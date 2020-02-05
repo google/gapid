@@ -94,6 +94,7 @@ cmd VkResult vkQueueSubmit(
   LastSubmission = SUBMIT
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
+  clear(LastBoundQueue.ReadCoherentBuffers)
   enterSubcontext()
   for i in (0 .. submitCount) {
     info := submitInfo[i]
@@ -177,7 +178,6 @@ cmd VkResult vkQueueSubmit(
         }
       }
     }
-    clear(LastBoundQueue.ReadCoherentBuffers)
     
     executeSubmit(queue, subm)
     nextSubcontext()
