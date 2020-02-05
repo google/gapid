@@ -19,7 +19,6 @@ import static com.google.gapid.widgets.Widgets.createButton;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
-import static com.google.gapid.widgets.Widgets.createTextarea;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 
@@ -35,20 +34,28 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.OS;
 import com.google.gapid.widgets.Widgets;
 
+import org.eclipse.jface.text.Document;
+import org.eclipse.jface.text.ITextDoubleClickStrategy;
+import org.eclipse.jface.text.ITextOperationTarget;
+import org.eclipse.jface.text.source.ISourceViewer;
+import org.eclipse.jface.text.source.SourceViewer;
+import org.eclipse.jface.text.source.SourceViewerConfiguration;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.TableColumn;
-import org.eclipse.swt.widgets.Text;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -70,7 +77,7 @@ public class QueryViewer extends Composite
   private final Models models;
   private final Button run;
   protected final Spinner tablePage;
-  private final Text query;
+  private final StyledText query;
   protected final TableViewer table;
   protected final ResultContentProvider provider;
   private static final int MAX_ENTRIES = 1000;
@@ -86,8 +93,17 @@ public class QueryViewer extends Composite
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
 
     Composite top = createComposite(splitter, new GridLayout(1, false));
-    query = withLayoutData(createTextarea(top, "select * from perfetto_tables"),
-        new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    SourceViewer viewer = createSourceViewer(top, "select * from perfetto_tables");
+    query = viewer.getTextWidget();
+    query.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+    query.addListener(SWT.KeyDown, e -> {
+      if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+        viewer.doOperation(ITextOperationTarget.UNDO);
+      } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+        viewer.doOperation(ITextOperationTarget.REDO);
+      }
+    });
 
     Composite middle = createComposite(top, new GridLayout(2, false));
     run = withLayoutData(createButton(middle, "Run", e -> exec()),
@@ -125,6 +141,25 @@ public class QueryViewer extends Composite
   @Override
   public void onPerfettoLoaded(Loadable.Message error) {
     run.setEnabled(error == null && models.capture.isPerfetto());
+  }
+
+  private SourceViewer createSourceViewer(Composite parent, String string) {
+    SourceViewer viewer =
+        new SourceViewer(parent, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+    viewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    viewer.configure(new SourceViewerConfiguration(){
+      //Avoid dependency on ICU which causes runtime NoClassDefFoundError.
+      @Override
+      public ITextDoubleClickStrategy getDoubleClickStrategy(ISourceViewer viewer, String type) {
+        return v -> {};
+      }
+    });
+    viewer.setDocument(new Document(string));
+    return viewer;
+  }
+
+  private static boolean isKey(Event e, int stateMask, int keyCode) {
+    return (e.stateMask & stateMask) == stateMask && e.keyCode == keyCode;
   }
 
   private void exec() {
