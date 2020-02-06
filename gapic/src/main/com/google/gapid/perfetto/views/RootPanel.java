@@ -178,15 +178,12 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
           }
         }
 
+        // Draw drag-able hint on highlighted timeline's edge when hovered.
         ctx.setForegroundColor(colors().timeHighlightEmphasize);
-        if (isHighlightStartHovered && mouseMode == MouseMode.TimeSelect) {
-          ctx.drawLine(x1, 0, x1, height, 3); // Draw across the whole root panel in y direction.
-        } else if (isHighlightStartHovered) {
-          ctx.drawLine(x1, 0, x1, timeline.getPreferredHeight(), 3); // Draw only in time ruler.
-        } else if (isHighlightEndHovered && mouseMode == MouseMode.TimeSelect) {
-          ctx.drawLine(x2, 0, x2, height, 3);
+        if (isHighlightStartHovered) {
+          ctx.drawLine(x1, 0, x1, height, 3);
         } else if (isHighlightEndHovered) {
-          ctx.drawLine(x2, 0, x2, timeline.getPreferredHeight(), 3);
+          ctx.drawLine(x2, 0, x2, height, 3);
         }
       });
     }
@@ -214,8 +211,8 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
       return Dragger.NONE;
     }
 
-    if (sy <= timeline.getPreferredHeight()) {
-      return timeHighlightDragger(sx, sy, mods);
+    if (sy <= timeline.getPreferredHeight() || isHighlightStartHovered || isHighlightEndHovered) {
+      return timeSelectDragger(sx);
     }
 
     MouseMode mode = mouseMode;
@@ -234,21 +231,6 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
       case TimeSelect: return timeSelectDragger(sx);
       default: return Dragger.NONE;
     }
-  }
-
-  private Dragger timeHighlightDragger(double sx, double sy, int mods) {
-    double hFixedEnd = findHighlightFixedEnd(sx);
-    return new Dragger() {
-      @Override
-      public Area onDrag(double x, double y) {
-        return updateHighlight(hFixedEnd, x);
-      }
-
-      @Override
-      public Area onDragEnd(double x, double y) {
-        return onDrag(x, y);
-      }
-    };
   }
 
   private Dragger selectDragger(double sx, double sy, int mods) {
@@ -425,13 +407,8 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     boolean nearStart = Math.abs(x - hStart) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
     boolean nearEnd = Math.abs(x - hEnd) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
     boolean closerToStart = Math.abs(x - hStart) < Math.abs(x - hEnd);
-    if (mouseMode != MouseMode.TimeSelect) {
-      isHighlightStartHovered = nearStart && closerToStart && y <= timeline.getPreferredHeight();
-      isHighlightEndHovered = nearEnd && !closerToStart && y <= timeline.getPreferredHeight();
-    } else if (mouseMode == MouseMode.TimeSelect) {
-      isHighlightStartHovered = nearStart && closerToStart;
-      isHighlightEndHovered = nearEnd && !closerToStart;
-    }
+    isHighlightStartHovered = nearStart && closerToStart;
+    isHighlightEndHovered = nearEnd && !closerToStart;
     return preStartStatus != isHighlightStartHovered || preEndStatus != isHighlightEndHovered;
   }
 
