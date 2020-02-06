@@ -191,7 +191,7 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 
 	// Make sure Perfetto daemons are running.
 	if err := d.EnsurePerfettoPersistent(ctx); err != nil {
-		return nil, err
+		log.W(ctx, "Failed to singal Perfetto services to start", err)
 	}
 
 	// Run device info providers only if the API is supported
