@@ -76,6 +76,9 @@ java_library(
 proto_library(
     name = "settings_proto",
     srcs = ["com/google/gapid/settings.proto"],
+    deps = [
+        "@perfetto//:protos_perfetto_config_merged_config_protos",
+    ],
 )
 
 java_proto_library(

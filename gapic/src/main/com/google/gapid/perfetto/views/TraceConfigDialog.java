@@ -27,11 +27,14 @@ import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createSpinner;
+import static com.google.gapid.widgets.Widgets.createTextarea;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
@@ -48,9 +51,13 @@ import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 import com.google.protobuf.ProtocolMessageEnum;
+import com.google.protobuf.TextFormat;
+import com.google.protobuf.TextFormat.ParseException;
 
+import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -63,11 +70,14 @@ import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Text;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -75,6 +85,8 @@ import perfetto.protos.PerfettoConfig;
 import perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy;
 
 public class TraceConfigDialog extends DialogBase {
+  protected static final Logger LOG = Logger.getLogger(TraceConfigDialog.class.getName());
+
   private static final int BUFFER_SIZE = 131072;
   private static final int FTRACE_BUFFER_SIZE = 8192;
   private static final String[] CPU_BASE_FTRACE = {
@@ -147,8 +159,12 @@ public class TraceConfigDialog extends DialogBase {
   }
 
   public static String getConfigSummary(Settings settings, Device.PerfettoCapability caps) {
-    List<String> enabled = Lists.newArrayList();
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
+    if (p.getUseCustom()) {
+      return "Custom";
+    }
+
+    List<String> enabled = Lists.newArrayList();
     if (p.getCpuOrBuilder().getEnabled()) {
       enabled.add("CPU");
     }
@@ -179,9 +195,12 @@ public class TraceConfigDialog extends DialogBase {
 
   public static PerfettoConfig.TraceConfig.Builder getConfig(
       Settings settings, Device.PerfettoCapability caps, String traceTarget) {
-    PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
+    if (p.getUseCustom()) {
+      return p.getCustomConfig().toBuilder();
+    }
 
+    PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
     PerfettoConfig.FtraceConfig.Builder ftrace = null;
     if (p.getCpuOrBuilder().getEnabled() || (p.getGpuOrBuilder().getEnabled())) {
       ftrace = config.addDataSourcesBuilder()
@@ -307,9 +326,37 @@ public class TraceConfigDialog extends DialogBase {
   @Override
   protected Control createDialogArea(Composite parent) {
     Composite area = (Composite)super.createDialogArea(parent);
-    input = withLayoutData(
-        new InputArea(area, settings, theme, caps), new GridData(GridData.FILL_BOTH));
+    Composite container = withLayoutData(createComposite(area, new StackLayout()),
+        new GridData(GridData.FILL_BOTH));
+
+    InputArea[] areas = new InputArea[2];
+    areas[0] = new BasicInputArea(
+        container, settings, theme, caps, () -> switchTo(container, areas[1]));
+    areas[1] = new AdvancedInputArea(
+        container, () -> switchTo(container, areas[0]), this::setOkButtonEnabled);
+
+    input = settings.perfetto().getUseCustom() ? areas[1] : areas[0];
+    ((StackLayout)container.getLayout()).topControl = input.asControl();
+
+    // Delay this, so the dialog size is computed only based on the basic dialog.
+    scheduleIfNotDisposed(container, () -> input.onSwitchedTo(settings));
+
     return area;
+  }
+
+  private void switchTo(Composite container, InputArea newArea) {
+    input = newArea;
+    ((StackLayout)container.getLayout()).topControl = input.asControl();
+    container.requestLayout();
+    input.onSwitchedTo(settings);
+    setOkButtonEnabled(true);
+  }
+
+  private void setOkButtonEnabled(boolean enabled) {
+    Button button = getButton(IDialogConstants.OK_ID);
+    if (button != null) {
+      button.setEnabled(enabled);
+    }
   }
 
   @Override
@@ -318,7 +365,17 @@ public class TraceConfigDialog extends DialogBase {
     super.okPressed();
   }
 
-  private static class InputArea extends Composite {
+  private static interface InputArea {
+    public default void onSwitchedTo(@SuppressWarnings("unused") Settings settings) {
+      // Do nothing.
+    }
+    public void update(Settings settings);
+    public default Control asControl() {
+      return (Control)this;
+    }
+  }
+
+  private static class BasicInputArea extends Composite implements InputArea {
     private static final int GROUP_INDENT = 20;
 
     private final Button cpu;
@@ -353,8 +410,8 @@ public class TraceConfigDialog extends DialogBase {
     private final Button vulkanMemoryTrackingDevice;
     private final Button vulkanMemoryTrackingDriver;
 
-    public InputArea(
-        Composite parent, Settings settings, Theme theme, Device.PerfettoCapability caps) {
+    public BasicInputArea(Composite parent, Settings settings, Theme theme,
+        Device.PerfettoCapability caps, Runnable toAdvanced) {
       super(parent, SWT.NONE);
       setLayout(new GridLayout(1, false));
 
@@ -518,6 +575,13 @@ public class TraceConfigDialog extends DialogBase {
         vulkanMemoryTrackingDriver = null;
       }
 
+      withLayoutData(createLink(this, "<a>Switch to advanced mode</a>", e -> {
+        // Remember the input thus far and turn it into a proto to be modified by the user.
+        update(settings);
+        settings.writePerfetto().setCustomConfig(getConfig(settings, caps, ""));
+        toAdvanced.run();
+      }), new GridData(SWT.END, SWT.BEGINNING, false, false));
+
       updateCpu();
       updateGpu();
       updateMem();
@@ -535,12 +599,14 @@ public class TraceConfigDialog extends DialogBase {
       return vk.getMemoryTrackingCategoriesList().contains(cat);
     }
 
+    @Override
     public void update(Settings settings) {
       SettingsProto.Perfetto.CPU.Builder sCpu = settings.writePerfetto().getCpuBuilder();
       SettingsProto.Perfetto.GPU.Builder sGpu = settings.writePerfetto().getGpuBuilder();
       SettingsProto.Perfetto.Memory.Builder sMem = settings.writePerfetto().getMemoryBuilder();
       SettingsProto.Perfetto.Battery.Builder sBatt = settings.writePerfetto().getBatteryBuilder();
       SettingsProto.Perfetto.Vulkan.Builder sVk = settings.writePerfetto().getVulkanBuilder();
+      settings.writePerfetto().setUseCustom(false);
 
       sCpu.setEnabled(cpu.getSelection());
       sCpu.setChain(cpuChain.getSelection());
@@ -739,6 +805,55 @@ public class TraceConfigDialog extends DialogBase {
             .boxed()
             .collect(toList());
         super.okPressed();
+      }
+    }
+  }
+
+  private static class AdvancedInputArea extends Composite implements InputArea {
+    private final Text input;
+
+    public AdvancedInputArea(Composite parent, Runnable toBasic, Consumer<Boolean> okEnabled) {
+      super(parent, SWT.NONE);
+      setLayout(new GridLayout(1, false));
+      input = withLayoutData(createTextarea(this, ""),
+          new GridData(SWT.FILL, SWT.FILL, true, true));
+      withLayoutData(createLink(
+          this, "<a>Reset and switch back to basic</a>", e -> toBasic.run()),
+          new GridData(SWT.END, SWT.BEGINNING, false, false));
+      Label error = Widgets.createLabel(this, "");
+      error.setVisible(false);
+      error.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
+
+      input.addListener(SWT.Modify, ev -> {
+        try {
+          TextFormat.merge(input.getText(), PerfettoConfig.TraceConfig.newBuilder());
+          error.setVisible(false);
+          error.setText("");
+          okEnabled.accept(true);
+        } catch (ParseException e) {
+          error.setVisible(true);
+          error.setText("Parse Error: " + e.getMessage());
+          okEnabled.accept(false);
+        }
+        error.requestLayout();
+      });
+    }
+
+    @Override
+    public void onSwitchedTo(Settings settings) {
+      input.setText(TextFormat.printToString(settings.perfetto().getCustomConfig()));
+    }
+
+    @Override
+    public void update(Settings settings) {
+      try {
+        TextFormat.merge(input.getText(), settings.writePerfetto()
+            .getCustomConfigBuilder()
+            .clear());
+        settings.writePerfetto().setUseCustom(true);
+      } catch (ParseException e) {
+        // This shouldn't happen as we disable the OK button.
+        LOG.log(WARNING, "Unexpected proto parse exception", e);
       }
     }
   }
