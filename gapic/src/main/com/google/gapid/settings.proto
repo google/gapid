@@ -14,6 +14,8 @@
 
 syntax = "proto3";
 
+import "protos/perfetto/config/perfetto_config.proto";
+
 option java_package = "com.google.gapid.proto";
 option java_outer_classname = "SettingsProto";
 
@@ -153,6 +155,9 @@ message Perfetto {
     repeated MemoryTracking memory_tracking_categories = 5;
   }
   Vulkan vulkan = 5;
+
+  perfetto.protos.TraceConfig custom_config = 6;
+  bool use_custom = 7;
 }
 
 message Settings {
