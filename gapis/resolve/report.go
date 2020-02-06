@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
+	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -117,10 +118,13 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		}
 	}
 
+	InitialCommands, _, _ := initialcmds.InitialCommands(ctx, r.Path.Capture)
+	numberOfInitialCommands := api.CmdID(len(InitialCommands))
+
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
 	api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		items, currentCmd = items[:0], uint64(id)
+		items = items[:0]
 
 		if as := cmd.Extras().Aborted(); as != nil && as.IsAssert {
 			items = append(items, r.newReportItem(log.Fatal, uint64(id),
@@ -139,11 +143,12 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 				item.Tags = append(item.Tags, getCommandNameTag(cmd))
 				builder.Add(ctx, item)
 			}
-			for _, issue := range issues[id] {
-				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command),
+
+			for _, issue := range issues[id+numberOfInitialCommands] {
+				item := r.newReportItem(log.Severity(issue.Severity), uint64(id),
 					messages.ErrReplayDriver(issue.Error.Error()))
-				if int(issue.Command) < len(c.Commands) {
-					item.Tags = append(item.Tags, getCommandNameTag(c.Commands[issue.Command]))
+				if int(id) < len(c.Commands) {
+					item.Tags = append(item.Tags, getCommandNameTag(c.Commands[id]))
 				}
 				builder.Add(ctx, item)
 			}

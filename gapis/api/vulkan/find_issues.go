@@ -295,7 +295,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {
 				return
 			}
 			// The debug report is issued for a trace command
-			issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
+			issue.Command = api.CmdID(label)
 			issue.Error = fmt.Errorf("%s", msg)
 			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
 			t.issues = append(t.issues, issue)
