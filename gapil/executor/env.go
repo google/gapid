@@ -285,7 +285,18 @@ func (e *Env) call(ctx context.Context, fptr, args unsafe.Pointer) error {
 	err := compiler.ErrorCode(C.call(e.cCtx, (*C.TFunc)(fptr)))
 	e.goCtx = nil
 
-	return err.Err()
+	return errorFromErrorCode(err)
+}
+
+func errorFromErrorCode(c compiler.ErrorCode) error {
+	switch c {
+	case compiler.ErrSuccess:
+		return nil
+	case compiler.ErrAborted:
+		return api.ErrCmdAborted{}
+	default:
+		return fmt.Errorf("Unknown error code %v", c)
+	}
 }
 
 func (e *Env) applyObservations(l []api.CmdObservation) {
