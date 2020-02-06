@@ -24,7 +24,6 @@ go_library(
         "compiler.go",
         "context.go",
         "debug.go",
-        "errors.go",
         "exec.go",
         "expressions.go",
         "externs.go",
@@ -57,7 +56,6 @@ go_library(
         "//gapil/compiler/mangling:go_default_library",
         "//gapil/compiler/mangling/c:go_default_library",
         "//gapil/semantic:go_default_library",
-        "//gapis/api:go_default_library",
     ],
 )
 
