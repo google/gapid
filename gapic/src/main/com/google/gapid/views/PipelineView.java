@@ -62,6 +62,7 @@ import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.graphics.RGB;
@@ -191,20 +192,21 @@ public class PipelineView extends Composite
   protected void setPipelines(List<API.Pipeline> pipelines) {
     loading.stopLoading();
     disposeAllChildren(stagesContainer);
-    //TabFolder folder = createStandardTabFolder(stagesContainer);
     createPipelineTabs(stagesContainer, pipelines);
     stagesContainer.requestLayout();
   }
 
   private void createPipelineTabs(Composite folder, List<API.Pipeline> pipelines) {
-    HashMap<String, API.Stage> stageMap = new HashMap<String, API.Stage>();
+    HashMap<String, Composite> stageMap = new HashMap<String, Composite>();
 
     if (!pipelines.isEmpty()) {
       Composite stripComposite = withLayoutData( createComposite(folder, new FillLayout(SWT.HORIZONTAL)),
           new GridData(SWT.FILL, SWT.TOP, true, false));
       Label separator = withLayoutData( new Label(folder, SWT.SEPARATOR | SWT.HORIZONTAL),
           new GridData(SWT.FILL, SWT.TOP, true, false));
-      Composite stageGroup = withLayoutData( createComposite(folder, new GridLayout()),
+
+      StackLayout stageStack = new StackLayout();
+      Composite stageComposite = withLayoutData( createComposite(folder, stageStack),
           new GridData(SWT.FILL, SWT.FILL, true, true));
 
       for (int pipeIndex = 0; pipeIndex < pipelines.size(); pipeIndex++) {
@@ -212,16 +214,15 @@ public class PipelineView extends Composite
 
         for (int stageIndex = 0; stageIndex < stages.size(); stageIndex++) {
           API.Stage stage = stages.get(stageIndex);
-          stageMap.put(stage.getDebugName(), stage);
+          stageMap.put(stage.getDebugName(), createStage(stageComposite, stage));
 
           Button stageButton = new Button(stripComposite, SWT.FLAT);
           stageButton.setText(stage.getDebugName());
           stageButton.addListener(SWT.Selection, e -> {
-            disposeAllChildren(stageGroup);
-            createStage(stageGroup, stageMap.get(stage.getDebugName()));
+            stageStack.topControl = stageMap.get(stage.getDebugName());
+            stageComposite.layout();
             selectedStage = stage.getDebugName();
             stripComposite.redraw();
-            stripComposite.update();
           });
 
           stageButton.setBackground(getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
@@ -258,13 +259,11 @@ public class PipelineView extends Composite
             stageButton.addListener(SWT.MouseEnter, e -> {
               hoveredButton = stageButton;
               stripComposite.redraw();
-              stripComposite.update();
             });
 
             stageButton.addListener(SWT.MouseExit, e -> {
               hoveredButton = null;
               stripComposite.redraw();
-              stripComposite.update();
             });
           }
 
@@ -296,11 +295,12 @@ public class PipelineView extends Composite
         selectedStage = pipelines.get(0).getStagesList().get(0).getDebugName();
       }
 
-      createStage(stageGroup, stageMap.get(selectedStage));
+      stageStack.topControl = stageMap.get(selectedStage);
     }
   }
 
-  private void createStage(Composite stageGroup, API.Stage currentStage) {
+  private Composite createStage(Composite parent, API.Stage currentStage) {
+    Composite stageGroup = createComposite(parent, new GridLayout());
     FillLayout nameLayout = new FillLayout(SWT.VERTICAL);
     nameLayout.marginHeight = 5;
     Composite nameComposite = withLayoutData( createComposite(stageGroup, nameLayout),
@@ -473,6 +473,7 @@ public class PipelineView extends Composite
     }
 
     stageGroup.requestLayout();
+    return stageGroup;
   }
 
   @Override
