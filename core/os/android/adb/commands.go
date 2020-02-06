@@ -310,7 +310,7 @@ func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error)
 // called as early as possible.
 func (b *binding) EnsurePerfettoPersistent(ctx context.Context) error {
 	if !b.SupportsPerfetto(ctx) {
-		return fmt.Errorf("Perfetto is not supported on this device")
+		return nil
 	}
 	if err := b.SetSystemProperty(ctx, "persist.traced.enable", "1"); err != nil {
 		return err
