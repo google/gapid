@@ -33,10 +33,13 @@ import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.State;
 import com.google.gapid.perfetto.views.VulkanEventSelectionView;
 import com.google.gapid.perfetto.views.VulkanEventsSelectionView;
+
+import org.eclipse.swt.widgets.Composite;
+
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import org.eclipse.swt.widgets.Composite;
 
 public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Data> {
   private static final String BASE_COLUMNS =
@@ -190,21 +193,14 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(Lists.newArrayList(this));
     }
 
     @Override
-    public void markTime(State state) {
+    public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
-        state.setHighlight(new TimeSpan(time, time + dur));
-      }
-    }
-
-    @Override
-    public void zoom(State state) {
-      if (dur > 0) {
-        state.setVisibleTime(new TimeSpan(time, time + dur));
+        span.accept(new TimeSpan(time, time + dur));
       }
     }
   }
@@ -236,8 +232,15 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     }
 
     @Override
-    public Selection.Builder getBuilder() {
+    public Selection.Builder<SlicesBuilder> getBuilder() {
       return new SlicesBuilder(slices);
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
+      for (Slice slice : slices) {
+        slice.getRange(span);
+      }
     }
 
     public Set<Long> getSubmissionIds() {
@@ -264,7 +267,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     }
 
     @Override
-    public Selection build() {
+    public Selection<Long> build() {
       return new Slices(slices, ImmutableSet.copyOf(sliceKeys));
     }
   }
