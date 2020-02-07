@@ -108,7 +108,7 @@ public class StyleConstants {
     }
 
     private static final RGBA LIGHT_BACKGROUND = rgb(0xff, 0xff, 0xff);
-    private static final RGBA LIGHT_TITLE_BACKGROUND = rgb(0xf1, 0xf1, 0xf1);
+    private static final RGBA LIGHT_TITLE_BACKGROUND = rgb(0xe9, 0xe9, 0xe9);
     private static final RGBA LIGHT_GRIDLINE = rgb(0xda, 0xda, 0xda);
     private static final RGBA LIGHT_PANEL_BORDER = LIGHT_GRIDLINE;
     private static final RGBA LIGHT_HOVER_BACKGROUND = rgba(0xf7, 0xf7, 0xf7, 0.95f);
@@ -121,7 +121,7 @@ public class StyleConstants {
     private static final RGBA LIGHT_TIME_HIGHLIGHT_EMPHASIZE = rgb(0xff, 0xde, 0x00);
     private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(0xf0, 0xf0, 0xf0);
     private static final RGBA LIGHT_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
-    private static final RGBA LIGHT_VSYNC_BACKGROUND = rgb(0xf9, 0xf9, 0xf9);
+    private static final RGBA LIGHT_VSYNC_BACKGROUND = rgb(0xf5, 0xf5, 0xf5);
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
