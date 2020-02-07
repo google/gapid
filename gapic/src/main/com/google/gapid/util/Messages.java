@@ -18,7 +18,7 @@ package com.google.gapid.util;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 
 public interface Messages {
-  public static final String WINDOW_TITLE = "Graphics API Debugger";
+  public static final String WINDOW_TITLE = "Android GPU Inspector";
   public static final String LOADING_CAPTURE = "Loading capture...";
   public static final String CAPTURE_LOAD_FAILURE = "Failed to load capture.";
   public static final String NO_FRAMES_IN_CONTEXT = "No frames in selected context.";
@@ -55,15 +55,16 @@ public interface Messages {
   public static final String SELECT_ACTIVITY = "Select an Application to Trace";
   public static final String WELCOME_TITLE = WINDOW_TITLE + " - Welcome";
   public static final String WELCOME_SUBTITLE = "Get started with " + WINDOW_TITLE;
-  public static final String WELCOME_TEXT = "GAPID allows you to inspect, tweak, and replay calls" +
+  public static final String WELCOME_TEXT = "AGI allows you to inspect, tweak, and replay calls" +
       " from an application to a\ngraphics API. To begin, let us know where adb is located on" +
       " your computer.";
   public static final String WELCOME_BUTTON = "Get Started";
   public static final String ANALYTICS_OPTION =
-      "Help improve GAPID by sending usage statistics to Google";
+      "Help improve Android GPU Inspector by sending usage statistics to Google";
   public static final String CRASH_REPORTING_OPTION =
-      "Help GAPID identify issues by sending crash reports to Google";
-  public static final String UPDATE_CHECK_OPTION = "Automatically check for GAPID updates (please restart GAPID to force an update check)";
+      "Help Android GPU Inspector identify issues by sending crash reports to Google";
+  public static final String UPDATE_CHECK_OPTION = "Automatically check for AGI updates " +
+      "(please restart AGI to force an update check)";
   public static final String UPDATE_CHECK_DEV_RELEASE_OPTION = "Include unstable developer releases";
   public static final String PRIVACY_POLICY =
       "Google's <a href=\"TOS\">APIs Terms of Service</a> and <a href=\"PP\">Privacy Policy</a>" +
@@ -73,7 +74,7 @@ public interface Messages {
   public static final String ERROR_MESSAGE =
       "The application encountered an error:\n%s\n\nPlease check the logs for details.";
   public static final String BUG_BODY =
-      "GAPID Version: " + GAPID_VERSION.toString() + "\n" +
+      "AGI Version: " + GAPID_VERSION.toString() + "\n" +
       "OS: " + OS.name + " " + OS.arch + "\n\n" +
       "Please provide detailed steps that led to the error and copy-paste the stack trace.\n" +
       "Extra details from the logs and the trace file would be extra helpful.\n\n";
@@ -81,6 +82,6 @@ public interface Messages {
       "Failed to create an OpenGL context. OpenGL is required to use this application.";
   public static final String GEO_SEMANTICS_TITLE = "Vertex Semantics";
   public static final String GEO_SEMANTICS_HINT = "Manually configure the vertex stream semantics:";
-  public static final String QUERY_VIEW_WINDOW_TITLE = "GAPID - Query Shell";
+  public static final String QUERY_VIEW_WINDOW_TITLE = "AGI - Query Shell";
   public static final String KEYBOARD_MOUSE_HELP_TITLE = "Keyboard/Mouse Shortcut Help";
 }
