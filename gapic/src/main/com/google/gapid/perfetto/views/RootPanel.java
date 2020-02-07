@@ -468,12 +468,8 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
 
     private void renderVSync(RenderContext ctx, Repainter repainter, Panel panel, VSync vsync) {
       ctx.trace("VSync", () -> {
-        VSync.Data data = vsync.getData(state.toRequest(), (future, consumer) -> {
-          state.thenOnUiThread(future, result -> {
-            consumer.accept(result);
-            repainter.repaint(new Area(0, 0, width, height));
-          });
-        });
+        VSync.Data data = vsync.getData(state.toRequest(),
+            TrackPanel.onUiThread(state, () -> repainter.repaint(new Area(0, 0, width, height))));
         if (data == null) {
           return;
         }

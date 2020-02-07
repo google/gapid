@@ -24,6 +24,7 @@ import static com.google.gapid.perfetto.views.TimelinePanel.drawGridLines;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
@@ -32,6 +33,7 @@ import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.Track;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * {@link Panel} displaying a {@link Track}.
@@ -125,20 +127,27 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
 
   protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods);
 
-  //Helper functions for the track.getData(..) calls.
+  // Helper functions for the track.getData(..) calls.
   protected <D> Track.OnUiThread<D> onUiThread() {
-    return (future, consumer) -> {
-      state.thenOnUiThread(future, consumer);
-    };
+    return onUiThread(state, () -> { /* do nothing */ });
   }
 
   // Helper functions for the track.getData(..) calls.
   protected <D> Track.OnUiThread<D> onUiThread(Repainter repainter) {
-    return (future, consumer) -> {
-      state.thenOnUiThread(future, result -> {
-        consumer.accept(result);
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+    return onUiThread(state, () -> repainter.repaint(new Area(0, 0, width, height)));
+  }
+
+  public static <D> Track.OnUiThread<D> onUiThread(State state, Runnable repaint) {
+    return new Track.OnUiThread<D>() {
+      @Override
+      public void onUiThread(ListenableFuture<D> future, Consumer<D> callback) {
+        state.thenOnUiThread(future, callback);
+      }
+
+      @Override
+      public void repaint() {
+        repaint.run();
+      }
     };
   }
 

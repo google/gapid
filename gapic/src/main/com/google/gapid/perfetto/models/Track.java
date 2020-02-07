@@ -23,11 +23,13 @@ import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.google.common.cache.Cache;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.util.Caches;
 
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -61,8 +63,8 @@ public abstract class Track<D extends Track.Data> {
   private D data;
   private ListenableFuture<?> scheduledFuture;
   // Set to null on any thread, set to non-null only on the UI thread.
-  private final AtomicReference<DataRequest> scheduledRequest =
-      new AtomicReference<DataRequest>(null);
+  private final AtomicReference<ScheduledRequest<D>> scheduledRequest =
+      new AtomicReference<ScheduledRequest<D>>(null);
   private final Semaphore getDataLock = new Semaphore(1);
   private boolean initialized; // guarded by getDataLock
 
@@ -76,18 +78,19 @@ public abstract class Track<D extends Track.Data> {
 
   // on UI Thread
   public D getData(DataRequest req, OnUiThread<D> onUiThread) {
-    if (checkScheduledRequest(req) && (data == null || !data.request.satisfies(req))) {
+    if (checkScheduledRequest(req, onUiThread) && (data == null || !data.request.satisfies(req))) {
       schedule(req.pageAlign(), onUiThread);
     }
     return data;
   }
 
   // on UI Thread. returns true, if a new request may be scheduled.
-  private boolean checkScheduledRequest(DataRequest req) {
-    DataRequest scheduled = scheduledRequest.get();
+  private boolean checkScheduledRequest(DataRequest req, OnUiThread<D> callback) {
+    ScheduledRequest<D> scheduled = scheduledRequest.get();
     if (scheduled == null) {
       return true;
     } else if (scheduled.satisfies(req)) {
+      scheduled.addCallback(callback);
       return false;
     }
 
@@ -105,33 +108,34 @@ public abstract class Track<D extends Track.Data> {
       return;
     }
 
-    scheduledRequest.set(request);
+    ScheduledRequest<D> scheduled = new ScheduledRequest<D>(request, onUiThread);
+    scheduledRequest.set(scheduled);
     scheduledFuture = EXECUTOR.schedule(
-        () -> query(request, onUiThread), REQUEST_DELAY_MS, MILLISECONDS);
+        () -> query(scheduled), REQUEST_DELAY_MS, MILLISECONDS);
   }
 
   // *not* on UI Thread
-  private void query(DataRequest req, OnUiThread<D> onUiThread) {
+  private void query(ScheduledRequest<D> scheduled) {
     try {
       if (!getDataLock.tryAcquire(ACQUIRE_TIMEOUT_MS, MILLISECONDS)) {
         logFailure(LOG, EXECUTOR.schedule(
-            () -> query(req, onUiThread), ACQUIRE_RETRY_MS, MILLISECONDS));
+            () -> query(scheduled), ACQUIRE_RETRY_MS, MILLISECONDS));
         return;
       }
     } catch (InterruptedException e) {
       // We were cancelled while waiting on the lock.
-      scheduledRequest.compareAndSet(req, null);
+      scheduledRequest.compareAndSet(scheduled, null);
       return;
     }
 
-    if (scheduledRequest.get() != req) {
+    if (scheduledRequest.get() != scheduled) {
       getDataLock.release();
       return;
     }
 
     try {
-      ListenableFuture<D> future = transformAsync(setup(), $ -> computeData(req));
-      onUiThread.onUiThreadAndRepaint(future, newData -> update(req, newData));
+      ListenableFuture<D> future = transformAsync(setup(), $ -> computeData(scheduled.request));
+      scheduled.scheduleCallbacks(future, newData -> update(scheduled, newData));
       // Always unlock when the future completes/fails/is cancelled.
       future.addListener(getDataLock::release, EXECUTOR);
     } catch (RuntimeException e) {
@@ -141,9 +145,9 @@ public abstract class Track<D extends Track.Data> {
   }
 
   // on UI Thread
-  private void update(DataRequest req, D newData) {
-    cache.put(this, req, newData);
-    if (scheduledRequest.compareAndSet(req, null)) {
+  private void update(ScheduledRequest<D> scheduled, D newData) {
+    cache.put(this, scheduled.request, newData);
+    if (scheduledRequest.compareAndSet(scheduled, null)) {
       data = newData;
       scheduledFuture = null;
     }
@@ -165,10 +169,10 @@ public abstract class Track<D extends Track.Data> {
 
   public static interface OnUiThread<T> {
     /**
-     * Runs the consumer with the result of the given future on the UI thread and repaints upon
-     * completion.
+     * Runs the consumer with the result of the given future on the UI thread.
      */
-    public void onUiThreadAndRepaint(ListenableFuture<T> future, Consumer<T> callback);
+    public void onUiThread(ListenableFuture<T> future, Consumer<T> callback);
+    public void repaint();
   }
 
   public static class Data {
@@ -259,6 +263,36 @@ public abstract class Track<D extends Track.Data> {
     public WithQueryEngine(QueryEngine qe, String trackId) {
       super(trackId);
       this.qe = qe;
+    }
+  }
+
+  private static class ScheduledRequest<D extends Track.Data> {
+    public final DataRequest request;
+    private final List<OnUiThread<D>> callbacks;
+
+    public ScheduledRequest(DataRequest request, OnUiThread<D> callback) {
+      this.request = request;
+      this.callbacks = Lists.newArrayList(callback);
+    }
+
+    public boolean satisfies(DataRequest req) {
+      return request.satisfies(req);
+    }
+
+    // Only on UI thread.
+    public void addCallback(OnUiThread<D> callback) {
+      callbacks.add(callback);
+    }
+
+    // Not on UI thread.
+    public void scheduleCallbacks(ListenableFuture<D> future, Consumer<D> update) {
+      // callbacks.get(0) is safe since we only ever append to the list.
+      callbacks.get(0).onUiThread(future, data -> {
+        update.accept(data);
+        for (OnUiThread<D> callback : callbacks) {
+          callback.repaint();
+        }
+      });
     }
   }
 
