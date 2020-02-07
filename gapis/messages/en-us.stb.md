@@ -221,8 +221,8 @@ The file cannot be read.
 
 # ERR_FILE_TOO_NEW
 
-The file was created by a more recent version of GAPID and cannot be read.
+The file was created by a more recent version of AGI and cannot be read.
 
 # ERR_FILE_TOO_OLD
 
-The file was created by an old version of GAPID and cannot be read.
+The file was created by an old version of AGI and cannot be read.
