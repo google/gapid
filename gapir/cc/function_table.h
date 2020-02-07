@@ -49,20 +49,25 @@ class FunctionTable {
   inline Function* lookup(Id id);
 
  private:
-  // Map of the supported function ids to the actual function implementations
-  std::unordered_map<Id, Function> mFunctions;
+  // Array of the actual function implementations by function ID
+  // This is stored as an array rather than a map because many lookups are
+  // performed at replay time and this becomes a bottleneck when stored as a
+  // map. The 64k entries (limit mandated elsewhere in the code by the vm
+  // bytecode instruction packing) are small enough that storing them as an
+  // array isn't a problem.
+  Function mFunctions[65536] = {};
 };
 
 inline FunctionTable::Function* FunctionTable::lookup(Id id) {
-  auto func = mFunctions.find(id);
-  if (func == mFunctions.end()) {
+  Function& ret = mFunctions[id];
+  if (ret == nullptr) {
     return nullptr;
   }
-  return &func->second;
+  return &ret;
 }
 
 inline void FunctionTable::insert(Id id, Function func) {
-  if (mFunctions.count(id) != 0) {
+  if (mFunctions[id] != NULL) {
     GAPID_FATAL("Duplicate functions inserted into table");
   }
   mFunctions[id] = func;
