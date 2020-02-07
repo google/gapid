@@ -51,13 +51,13 @@ import java.util.logging.Logger;
 /**
  * Stores various settings based on user interactions with the UI to maintain customized looks and
  * other shortcuts between runs. E.g. size and location of the window, directory of the last opened
- * file, options for the last trace, etc. The settings are persisted in a ".gapic" file in the
+ * file, options for the last trace, etc. The settings are persisted in a ".agic" file in the
  * user's home directory.
  */
 public class Settings {
   private static final Logger LOG = Logger.getLogger(Settings.class.getName());
 
-  private static final String SETTINGS_FILE = ".gapic";
+  private static final String SETTINGS_FILE = ".agic";
   private static final int MAX_RECENT_FILES = 16;
   private static final int CURRENT_VERSION = 1;
 
