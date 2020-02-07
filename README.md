@@ -62,7 +62,7 @@ AGI can also trace any desktop Vulkan application.
 
 ## Running the client
 
-After building AGI, you can run the client from `<gapid-root>/bazel-bin/pkg/gapid`.
+After building AGI, you can run the client from `<agi-root>/bazel-bin/pkg/gapid`.
 
 ## Command-Line Interface
 

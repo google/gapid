@@ -6,7 +6,7 @@ the same file. Special "comment markers" are used to indicate which shader the
 following lines of code belong to.
 
 These program files are stored in the
-[shader resource](https://github.com/google/gapid/tree/master/gapic/res/shaders)
+[shader resource](https://github.com/google/agi/tree/master/gapic/res/shaders)
 directory in files ending with the ```.glsl``` extension. The name of the file
 is used as the identifier of the shader program.
 

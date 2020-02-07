@@ -1,10 +1,10 @@
 # Templates
 
-GAPID uses the golang [template] package with its API file parser/compiler to generate Go, C++ and Java code.
+AGI uses the golang [template] package with its API file parser/compiler to generate Go, C++ and Java code.
 
 The .api files are parsed, and a `.tmpl` file is used to generate one or more output files using the `apic` tool.
 
-GAPID's template system exposes a few extensions to the standard golang template system:
+AGI's template system exposes a few extensions to the standard golang template system:
 
 ## Macros
 
@@ -50,7 +50,7 @@ being the faster option:
 
 ## File macros
 
-GAPID also adds support for emitting multiple files from a single `.tmpl` source using the `file` function.
+AGI also adds support for emitting multiple files from a single `.tmpl` source using the `file` function.
 `file` is identical to `Macro`, but it takes one additional argument for the output file name:
 
 ```go
@@ -63,7 +63,7 @@ will adopt the same extension.
 
 ## Special symbols
 
-To try and help with the formatting of the generated output, GAPID's templates support a number of custom unicode symbols:
+To try and help with the formatting of the generated output, AGI's templates support a number of custom unicode symbols:
 
 ### `»` Begin indentation of a block
 

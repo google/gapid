@@ -53,7 +53,7 @@ accessed.
 
 ## Data types
 
-The GAPID virtual-machine supports the following primitive data types:
+The AGI virtual-machine supports the following primitive data types:
 
 Type            | Description
 --------------- | ----------------------------------------------------

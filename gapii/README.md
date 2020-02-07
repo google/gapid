@@ -1,6 +1,6 @@
 # Graphics API Interceptor (GAPII)
 
-The Graphics API Interceptor is the GAPID component responsible for intercepting and capturing all commands issued by an application to the graphics driver.
+The Graphics API Interceptor is the AGI component responsible for intercepting and capturing all commands issued by an application to the graphics driver.
 
 GAPII can be packaged as a dynamically-loaded library (`.so`, `.dll`) or as an archive linked into the application at build time (`.a`, `.lib`).
 

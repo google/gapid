@@ -41,7 +41,7 @@ should still compile under the original AGI checkout directory.
 In terms of editor, [VsCode](https://code.visualstudio.com/) has good Go support
 thanks to its
 [Go extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.Go).
-With the GOPATH setup to gofuse and opening the `<path-to-gapid-gofuse>` directory,
+With the GOPATH setup to gofuse and opening the `<path-to-agi-gofuse>` directory,
 as the root of your workspace, you should get some jump-to-definition and autocomplete
 features working. Make sure to edit the files through their link found under the gofuse directory.
 
@@ -123,13 +123,13 @@ See the workaround for VSCode below, any help to fix it for other IDEs is very w
 
 #### Integration with VSCode and Delve
 
-To use the delve debugger for Go with VSCode to debug `gapis`. These steps can be followed:
+Follow these steps to use the delve debugger for Go with VSCode to debug `gapis`.
 
-1. Make sure to complete Golang Setup for GAPID.
+1. Make sure to complete the Golang setup above for AGI.
 
-2. Create a `launch.json` under the workspace directory with `Ctrl + Shift + P` and `Debug: Open launch.json`
+2. Create a `launch.json` file under the workspace directory with `Ctrl + Shift + P` and `Debug: Open launch.json`
 
-3. Paste this as one of the launch configurations. This will ensure that there is a launch configuration for attaching to Delve.
+3. Paste the following as one of the launch configurations. This will ensure that there is a launch configuration for attaching to Delve.
 ```
 {
     ...
@@ -142,7 +142,7 @@ To use the delve debugger for Go with VSCode to debug `gapis`. These steps can b
             "mode": "remote",
             "apiVersion": 2,
             "remotePath": "gapis/",
-            "cwd": "${workspaceFolder}/src/github.com/google/gapid/gapis",
+            "cwd": "${workspaceFolder}/src/github.com/google/agi/gapis",
             "dlvLoadConfig": {
                 "followPointers": true,
                 "maxVariableRecurse": 1,
@@ -159,7 +159,7 @@ To use the delve debugger for Go with VSCode to debug `gapis`. These steps can b
 ```
 As an example, `<host>` could be `127.0.0.1` and `<port>` could be `1234`.
 
-4. Start delve in headless mode at gapid check-in folder.
+4. Start delve in headless mode in the AGI root folder.
 ```
 dlv exec --headless --listen=<host>:<port> --api-version 2 ./bazel-bin/pkg/gapis -- <gapis-arguments>
 ```
@@ -171,7 +171,7 @@ dlv exec --headless --listen=127.0.0.1:1234 --api-version 2 ./bazel-bin/pkg/gapi
 
 5. Start debugging with `Debug->Start Debugging` (on Linux with `F5`) and make sure `Attach to Delve` is selected as the launch configuration.
 
-6. Now VSCode can interact with Delve and can be used for debugging `gapis` in VSCode UI instead of command line. Enjoy your debugging :)
+6. Now VSCode can interact with Delve and can be used for debugging `gapis` in VSCode UI instead of the command line. Enjoy your debugging :)
 
 ## How to debug via printing message
 

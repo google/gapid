@@ -37,7 +37,7 @@ a list of the commands that are run during that submission. From there you can
 query information about any call in the program.
 
 ## Performance
-We are still tuning performance for Vulkan in GAPID. For Posix based platforms
+We are still tuning performance for Vulkan in AGI. For Posix based platforms
 we handle persistently mapped coherent memory efficiently, but for Windows this
 is currently in progress. Large blocks of mapped coherent memory can greatly
 reduce replay performance and increase trace size.

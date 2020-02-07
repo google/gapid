@@ -1,6 +1,6 @@
 # Graphics API Server (GAPIS)
 
-The Graphics API Server is the central component of the GAPID tool suite, providing the interface between the client and the replay systems.
+The Graphics API Server is the central component of the AGI tool suite, providing the interface between the client and the replay systems.
 
 GAPIS has been designed to support multiple graphics APIs.
 The client does not need to have any knowledge of any graphics APIs, making implementing new clients relatively trivial.
@@ -131,7 +131,7 @@ Again, most of this logic is handled by `Builder`
 
 ### Compatibility
 
-One of GAPID's core goals is to support replays on targets different to those used to create the capture. For example, we may want to capture an OpenGL ES 2.0 application, and replay the capture using a desktop OpenGL 4.0 context.
+One of AGI's core goals is to support replays on targets different to those used to create the capture. For example, we may want to capture an OpenGL ES 2.0 application, and replay the capture using a desktop OpenGL 4.0 context.
 
 OpenGL has the concept of core and compatibility profiles - as functions are marked as deprecated between OpenGL versions, the compatibility profile will still permit the deprecated functionality, the core profile will error. Most drivers and devices will offer compatibility profiles, but certain targets, including macOS, only supports core profiles for OpenGL 3+.
 
