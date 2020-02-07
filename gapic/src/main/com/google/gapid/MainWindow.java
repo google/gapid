@@ -388,7 +388,7 @@ public class MainWindow extends ApplicationWindow {
     private final Widgets widgets;
 
     private Service.TraceType current;
-    private MainView view;
+    private MainView mainView;
 
     public MainViewContainer(Composite parent, Models models, Widgets widgets) {
       super(parent, SWT.NONE);
@@ -400,25 +400,25 @@ public class MainWindow extends ApplicationWindow {
 
     public MainView updateAndGet(Service.TraceType traceType) {
       if (traceType == current) {
-        return view;
+        return mainView;
       }
-      if (view != null) {
-        ((Control)view).dispose();
+      if (mainView != null) {
+        ((Control)mainView).dispose();
       }
 
       current = traceType;
       switch (traceType) {
         case Graphics:
-          view = new GraphicsTraceView(this, models, widgets);
+          mainView = new GraphicsTraceView(this, models, widgets);
           break;
         case Perfetto:
-          view = new PerfettoTraceView(this, models, widgets);
+          mainView = new PerfettoTraceView(this, models, widgets);
           break;
         default:
           throw new AssertionError("Trace type not supported: " + traceType);
       }
       layout();
-      return view;
+      return mainView;
     }
   }
 
