@@ -222,16 +222,11 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
     VkLayerDeviceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
     // Grab the fpGetInstanceProcAddr from the layer_info. We will get
     // vkCreateDevice from this.
-    // Note: we cannot use our instance_map because we do not have a
-    // vkInstance here.
 
-    gapii::VulkanImports::PFNVKGETINSTANCEPROCADDR get_instance_proc_addr =
-        layer_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
+    VkInstance instance = mState.PhysicalDevices[physicalDevice]->mInstance;
+    auto& instance_functions = mImports.mVkInstanceFunctions[instance];
 
-    gapii::VulkanImports::PFNVKCREATEDEVICE create_device = reinterpret_cast<gapii::VulkanImports::PFNVKCREATEDEVICE>(
-        get_instance_proc_addr(0, "vkCreateDevice"));
-
-    if (!create_device) {
+    if (!instance_functions.vkCreateDevice) {
       return VkResult::VK_ERROR_INITIALIZATION_FAILED;
     }
 
@@ -246,7 +241,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
 
     //// Prepare the enabled extension list for the next layer's vkCreateDevice
     auto enumerate_dev_exts = reinterpret_cast<gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES>(
-        mImports.mVkInstanceFunctions[mState.PhysicalDevices[physicalDevice]->mInstance].vkEnumerateDeviceExtensionProperties);
+        instance_functions.vkEnumerateDeviceExtensionProperties);
     uint32_t extension_count = 0;
     uint32_t enumerate_extension_result;
     enumerate_extension_result = enumerate_dev_exts(physicalDevice, nullptr, &extension_count, nullptr);
@@ -269,7 +264,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
     override_create_info.mppEnabledExtensionNames = extension_names.data();
     override_create_info.menabledExtensionCount = extension_names.size();
     // Actually make the call to vkCreateDevice.
-    uint32_t result = create_device(physicalDevice, &override_create_info, pAllocator, pDevice);
+    uint32_t result = instance_functions.vkCreateDevice(physicalDevice, &override_create_info, pAllocator, pDevice);
 
     // If we failed, then we don't store the associated pointers.
     if (result != VkResult::VK_SUCCESS) {
@@ -302,8 +297,6 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
         if (!mMemoryTracker.IsInstalled() && !mDisableCoherentMemoryTracker) {
             mMemoryTracker.EnableMemoryTracker();
 
-            VkInstance instance = mState.PhysicalDevices[physicalDevice]->mInstance;
-            auto& instance_functions = mImports.mVkInstanceFunctions[instance];
             VkPhysicalDeviceMemoryProperties props(arena());
             instance_functions.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &props);
             uint32_t coherent_bit = static_cast<uint32_t>(-1);
