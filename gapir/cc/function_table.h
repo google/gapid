@@ -37,6 +37,11 @@ class FunctionTable {
   // return true if the function call was successful, false otherwise.
   typedef std::function<bool(uint32_t, Stack*, bool)> Function;
 
+  FunctionTable() : mFunctions(new Function[65536]) {
+    for (int i = 0; i < 65536; ++i) mFunctions[i] = nullptr;
+  }
+  ~FunctionTable() { delete[] mFunctions; }
+
   // The function identifier. These are part of the protocol between the server
   // and the replay system, and so must remain consistent.
   typedef uint16_t Id;
@@ -49,20 +54,26 @@ class FunctionTable {
   inline Function* lookup(Id id);
 
  private:
-  // Map of the supported function ids to the actual function implementations
-  std::unordered_map<Id, Function> mFunctions;
+  // Array of the actual function implementations by function ID
+  // This is stored as an array rather than a map because many lookups are
+  // performed at replay time and this becomes a bottleneck when stored as a
+  // map. The 64k entries (limit mandated elsewhere in the code by the vm
+  // bytecode instruction packing) are small enough that storing them as an
+  // array isn't a problem. These are dynamically allocated because
+  // windows fails at compile time with an inline array.
+  Function* mFunctions;
 };
 
 inline FunctionTable::Function* FunctionTable::lookup(Id id) {
-  auto func = mFunctions.find(id);
-  if (func == mFunctions.end()) {
+  Function& ret = mFunctions[id];
+  if (ret == nullptr) {
     return nullptr;
   }
-  return &func->second;
+  return &ret;
 }
 
 inline void FunctionTable::insert(Id id, Function func) {
-  if (mFunctions.count(id) != 0) {
+  if (mFunctions[id] != NULL) {
     GAPID_FATAL("Duplicate functions inserted into table");
   }
   mFunctions[id] = func;

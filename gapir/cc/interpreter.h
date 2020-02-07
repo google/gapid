@@ -180,11 +180,15 @@ class Interpreter {
   // Memory manager which managing the memory used during the interpretation
   const MemoryManager* mMemoryManager;
 
-  // The builtin functions.
-  std::unordered_map<uint8_t, FunctionTable> mBuiltins;
+  // The builtin functions. The size of this array is specified by the number of
+  // supported APIs which in-turn is defined by the packing of the vm bytecode
+  // (4 bits = 16 values)
+  FunctionTable mBuiltins[16];
 
-  // The current renderer functions.
-  std::unordered_map<uint8_t, FunctionTable*> mRendererFunctions;
+  // The current renderer functions. The size of this array is specified by the
+  // number of supported APIs which in-turn is defined by the packing of the vm
+  // bytecode (4 bits = 16 values)
+  FunctionTable* mRendererFunctions[16] = {};
 
   // Callback function for requesting renderer functions for an unknown api.
   ApiRequestCallback apiRequestCallback;
