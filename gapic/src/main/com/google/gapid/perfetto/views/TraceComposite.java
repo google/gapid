@@ -293,10 +293,13 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
     public TopBar(Composite parent, Analytics analytics, Theme theme) {
       super(parent, SWT.NONE);
       setLayout(new GridLayout(3, false));
-      createLabel(this, "Mode:");
+      withLayoutData(createLabel(this, "Mode:"),
+          new GridData(SWT.BEGINNING, SWT.CENTER, false, false));
       toolBar = withLayoutData(new ToolBar(this, SWT.FLAT | SWT.HORIZONTAL | SWT.TRAIL),
-          new GridData(SWT.FILL, SWT.FILL, true, true));
-      createButtonWithImage(this, theme.help(), e -> showHelp(getShell(), analytics, theme));
+          new GridData(SWT.FILL, SWT.CENTER, true, true));
+      withLayoutData(
+          createButtonWithImage(this, theme.help(), e -> showHelp(getShell(), analytics, theme)),
+          new GridData(SWT.END, SWT.CENTER, false, false));
     }
 
     public Consumer<RootPanel.MouseMode> buildModeActions(Theme theme, Consumer<MouseMode> onClick) {
