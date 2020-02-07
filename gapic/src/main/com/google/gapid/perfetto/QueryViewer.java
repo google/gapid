@@ -143,15 +143,15 @@ public class QueryViewer extends Composite
     run.setEnabled(error == null && models.capture.isPerfetto());
   }
 
-  private SourceViewer createSourceViewer(Composite parent, String string) {
+  private static SourceViewer createSourceViewer(Composite parent, String string) {
     SourceViewer viewer =
         new SourceViewer(parent, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
     viewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     viewer.configure(new SourceViewerConfiguration(){
       //Avoid dependency on ICU which causes runtime NoClassDefFoundError.
       @Override
-      public ITextDoubleClickStrategy getDoubleClickStrategy(ISourceViewer viewer, String type) {
-        return v -> {};
+      public ITextDoubleClickStrategy getDoubleClickStrategy(ISourceViewer v, String type) {
+        return x -> { /* do nothing */ };
       }
     });
     viewer.setDocument(new Document(string));

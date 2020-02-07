@@ -266,7 +266,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
     }
   }
 
-  private Set<Long> getSelectedSubmissionIdsInVulkanEventTrack(State state) {
+  private static Set<Long> getSelectedSubmissionIdsInVulkanEventTrack(State state) {
     Selection<Long> selection = state.getSelection(Selection.Kind.VulkanEvent);
     Set<Long> res = Sets.newHashSet();    // On Vulkan Event Track.
     if (selection instanceof VulkanEventTrack.Slice) {
