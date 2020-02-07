@@ -241,6 +241,11 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		i.GenID()
 	}
 
+	c, _ := d.DriverVersionCode(ctx)
+	if c != -1 {
+		d.To.Configuration.Drivers.PrereleaseDriverApkVersionCode = int64(c)
+	}
+
 	return d, nil
 }
 

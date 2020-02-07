@@ -15,15 +15,17 @@
  */
 package com.google.gapid.models;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
-import static java.util.logging.Level.WARNING;
+import static java.util.logging.Level.FINE;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.device.Device;
+import com.google.gapid.proto.device.Device.DeviceValidationCache;
+import com.google.gapid.proto.device.Device.DeviceValidationCacheEntry;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Value;
@@ -39,14 +41,20 @@ import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
+import com.google.gapid.util.OS;
 import com.google.gapid.util.Paths;
+import com.google.protobuf.TextFormat;
 
 import org.eclipse.swt.widgets.Shell;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import java.util.logging.Logger;
 
 /**
@@ -63,6 +71,8 @@ public class Devices {
   private List<Device.Instance> replayDevices;
   private Device.Instance selectedReplayDevice;
   private List<DeviceCaptureInfo> devices;
+  private DeviceValidationInfo deviceValidationInfo;
+  private List<DeviceCaptureInfo> validatedDevices;
 
   public static final Flag<Boolean> skipDeviceValidation = Flags.value("skip_device_validation", false,
       "Skips the device validation process. " +
@@ -72,7 +82,8 @@ public class Devices {
     this.shell = shell;
     this.analytics = analytics;
     this.client = client;
-    DeviceValidationInfo.createInstance(client, shell);
+    deviceValidationInfo = new DeviceValidationInfo(client);
+    validatedDevices = Lists.newArrayList();
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -153,12 +164,21 @@ public class Devices {
     listeners.fire().onReplayDeviceChanged(dev);
   }
 
-  public static void validateDevice(DeviceCaptureInfo device, Function<Boolean, Void> callback) {
-    DeviceValidationInfo.validateDevice(device, callback);
+  public ListenableFuture<DeviceValidationResult> validateDevice(DeviceCaptureInfo device) {
+    if (validatedDevices.contains(device)) {
+      return immediateFuture(DeviceValidationResult.getDefaultResult());
+    }
+    return MoreFutures.transform(deviceValidationInfo.doValidation(device), e -> {
+      if (e.passed) {
+        validatedDevices.add(device);
+      }
+      return e;
+    });
+
   }
 
-  public static boolean getValidationStatus(DeviceCaptureInfo device) {
-    return DeviceValidationInfo.getValidationStatus(device);
+  public boolean getValidationStatus(DeviceCaptureInfo device) {
+    return validatedDevices.contains(device);
   }
 
   public void loadDevices() {
@@ -199,7 +219,6 @@ public class Devices {
 
   protected void updateDevices(List<DeviceCaptureInfo> newDevices) {
     devices = newDevices;
-    DeviceValidationInfo.reset();
     listeners.fire().onCaptureDevicesLoaded();
   }
 
@@ -316,86 +335,103 @@ public class Devices {
     }
   }
 
+  /*
+   *  Class that handles the gapis communication for device validation and the load/store
+   *  of the validation cache.
+   */
   private static class DeviceValidationInfo {
-    private static DeviceValidationInfo instance = null;
-    private SingleInFlight rpcController = new SingleInFlight();
+    private static final String VALIDATION_CACHE = ".gapic-device-validation-cache";
     private final Client client;
-    private final Shell shell;
-    private Map<DeviceCaptureInfo, Boolean> status;
 
-    private DeviceValidationInfo(Client client, Shell shell) {
+    // Local list of validated devices.
+    private List<DeviceValidationCacheEntry> deviceCacheList;
+
+    public DeviceValidationInfo(Client client) {
       this.client = client;
-      this.shell = shell;
-      status = Maps.newHashMap();
+      loadFromCache();
     }
 
-    private void validate(DeviceCaptureInfo device, Function<Boolean, Void> callback) {
+    private void loadFromCache() {
+      File file = new File(OS.userHomeDir, VALIDATION_CACHE);
+      DeviceValidationCache deviceValidationCache = DeviceValidationCache.getDefaultInstance();
+      if (file.exists() && file.canRead()) {
+        try (Reader reader = new FileReader(file)) {
+          DeviceValidationCache.Builder read = DeviceValidationCache.newBuilder();
+          TextFormat.Parser.newBuilder()
+              .setAllowUnknownFields(true)
+              .build()
+              .merge(reader, read);
+          deviceValidationCache = read.build();
+        } catch (TextFormat.ParseException e) {
+          LOG.log(FINE, "Proto parse error reading properties from " + file, e);
+        } catch (IOException e) {
+          LOG.log(FINE, "IO error reading properties from " + file, e);
+        }
+      }
+      deviceCacheList = Lists.newArrayList(deviceValidationCache.toBuilder().getEntriesList());
+    }
+
+    private void saveToCache() {
+      DeviceValidationCache deviceValidationCache = DeviceValidationCache.newBuilder()
+          .addAllEntries(deviceCacheList).build();
+      if (deviceValidationCache != null) {
+        File file = new File(OS.userHomeDir, VALIDATION_CACHE);
+        try (Writer writer = new FileWriter(file)) {
+          TextFormat.print(deviceValidationCache, writer);
+        } catch (IOException e) {
+          LOG.log(FINE, "IO error writing properties to " + file, e);
+        }
+      }
+    }
+
+    public ListenableFuture<DeviceValidationResult> doValidation(DeviceCaptureInfo device) {
       if (device == null) {
-        return;
-      }
-      if (status.getOrDefault(device, null) != null) {
-        callback.apply(status.get(device));
-        return;
+        return immediateFuture(DeviceValidationResult.getDefaultResult());
       }
 
-      rpcController.start().listen(client.validateDevice(device.path),
-          new UiErrorCallback<Service.ValidateDeviceResponse, Service.ValidateDeviceResponse, Service.ValidateDeviceResponse>(shell, LOG) {
+      List<Integer> driverVersions = Lists.newArrayList();
+      device.device.getConfiguration().getDrivers().getVulkan().getPhysicalDevicesList().forEach(e -> {
+        driverVersions.add(e.getDriverVersion());
+      });
 
-        @Override
-        protected ResultOrError<Service.ValidateDeviceResponse, Service.ValidateDeviceResponse>
-          onRpcThread(Rpc.Result<Service.ValidateDeviceResponse> response) throws RpcException, ExecutionException {
-          try {
-            return success(response.get());
-          } catch (RpcException | ExecutionException e) {
-            throttleLogRpcError(LOG, "LoadData error", e);
-            return error(null);
-          }
-        }
+      DeviceValidationCacheEntry currentEntry =
+          DeviceValidationCacheEntry.newBuilder()
+            .setOs(device.device.getConfiguration().getOS())
+            .addAllDriverVersion(driverVersions)
+            .setVersionCode(device.device.getConfiguration().getDrivers().getPrereleaseDriverApkVersionCode())
+            .build();
 
-        @Override
-        protected void onUiThreadSuccess(Service.ValidateDeviceResponse response) {
-          updateValidationStatus(device, response);
-          callback.apply(getValidationStatus(device));
-        }
+      if (deviceCacheList.contains(currentEntry)) {
+        return immediateFuture(DeviceValidationResult.getDefaultResult());
+      }
 
-        @Override
-        protected void onUiThreadError(Service.ValidateDeviceResponse response) {
-          LOG.log(WARNING, response.toString());
-          updateValidationStatus(device, response);
-          callback.apply(getValidationStatus(device));
-        }
+      return MoreFutures.transform(client.validateDevice(device.path), e -> {
+        updateValidationStatus(currentEntry, e);
+        return new DeviceValidationResult(e.getError(), !e.hasError());
       });
     }
 
-    protected static void updateValidationStatus(DeviceCaptureInfo device, Service.ValidateDeviceResponse response) {
-      if (instance == null) {
-        return;
-      }
+    protected void updateValidationStatus(DeviceValidationCacheEntry entry, Service.ValidateDeviceResponse response) {
       if (response == null || response.hasError()) {
-        instance.status.put(device, false);
         return;
       }
-      instance.status.put(device, true);
+      deviceCacheList.add(entry);
+      saveToCache();
+    }
+  }
+
+  public static class DeviceValidationResult {
+    private static DeviceValidationResult defaultInstance = new DeviceValidationResult(null, true);
+    public Service.Error error;
+    public boolean passed;
+
+    public DeviceValidationResult(Service.Error error, boolean passed) {
+      this.error = error;
+      this.passed = passed;
     }
 
-    public static void createInstance(Client client, Shell shell) {
-      instance = new DeviceValidationInfo(client, shell);
-    }
-
-    public static void validateDevice(DeviceCaptureInfo device, Function<Boolean, Void> callback) {
-      if (instance != null) {
-        instance.validate(device, callback);
-      }
-    }
-
-    public static void reset() {
-      if (instance != null) {
-        instance.status.clear();
-      }
-    }
-
-    public static boolean getValidationStatus(DeviceCaptureInfo device) {
-      return instance == null ? false : instance.status.getOrDefault(device, false);
+    public static DeviceValidationResult getDefaultResult() {
+      return defaultInstance;
     }
   }
 }

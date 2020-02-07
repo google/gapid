@@ -214,6 +214,8 @@ message Drivers {
   OpenGLDriver opengl = 1;
   // The Vulkan driver support.
   VulkanDriver vulkan = 2;
+  // Driver APK version
+  int64 prerelease_driver_apk_version_code = 3;
 }
 
 // OpenGLDriver describes the device driver support for the OpenGL or OpenGL ES
@@ -268,4 +270,21 @@ message VulkanPhysicalDevice {
   uint32 device_id = 4;
   // deviceName is a null-terminated string containing the name of the device.
   string device_name = 5;
+}
+
+// DeviceValidationCache contains the list of validated devices.
+// The cached information is stored into a file whenever a new device is
+// successfully validated.
+message DeviceValidationCache {
+  repeated DeviceValidationCacheEntry entries = 1;
+}
+
+// DeviceValidationCacheEntry describes the properties of the device that can
+// change validation results if updated.
+message DeviceValidationCacheEntry {
+  OS os = 1;
+  // driverVersion from the VulkanPhysicalDevice. (Per VulkanPhysicalDevice)
+  repeated uint32 driver_version = 2;
+  // The pre-release driver APK version code
+  int64 version_code = 3;
 }

@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfig;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfigSummary;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.showPerfettoConfigDialog;
+import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.MoreFutures.logFailure;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
@@ -35,12 +36,14 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Devices.DeviceCaptureInfo;
+import com.google.gapid.models.Devices.DeviceValidationResult;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
@@ -52,6 +55,10 @@ import com.google.gapid.proto.service.Service.DeviceTraceConfiguration;
 import com.google.gapid.proto.service.Service.StatusResponse;
 import com.google.gapid.proto.service.Service.TraceType;
 import com.google.gapid.proto.service.Service.TraceTypeCapabilities;
+import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
+import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.TraceRequest;
@@ -104,6 +111,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -192,6 +200,7 @@ public class TracerDialog {
     private final Models models;
     private final Widgets widgets;
     private final Runnable refreshDevices;
+    private final Shell shell;
 
     private TraceInput traceInput;
     private List<DeviceCaptureInfo> devices;
@@ -203,6 +212,7 @@ public class TracerDialog {
       this.models = models;
       this.widgets = widgets;
       this.refreshDevices = refreshDevices;
+      this.shell = shell;
     }
 
     public void setDevices(List<DeviceCaptureInfo> devices) {
@@ -222,7 +232,7 @@ public class TracerDialog {
     @Override
     protected Control createDialogArea(Composite parent) {
       Composite area = (Composite)super.createDialogArea(parent);
-      traceInput = new TraceInput(area, models, widgets, refreshDevices);
+      traceInput = new TraceInput(area, models, widgets, refreshDevices, shell);
       traceInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
       if (devices != null) {
@@ -283,6 +293,8 @@ public class TracerDialog {
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
       private List<DeviceCaptureInfo> devices;
+      private final SingleInFlight rpcController = new SingleInFlight();
+      private final Models models;
 
       private final ComboViewer device;
       private final Label deviceLabel;
@@ -315,14 +327,16 @@ public class TracerDialog {
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
 
+
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
 
       public final ListenableProperty<Boolean> validationStatus;
 
-      public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
+      public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices, Shell shell) {
         super(parent, SWT.NONE);
+        this.models = models;
         SettingsProto.TraceOrBuilder trace = models.settings.trace();
 
         this.friendlyName = trace.getFriendlyName();
@@ -485,11 +499,11 @@ public class TracerDialog {
 
         device.getCombo().addListener(SWT.Selection, e -> {
           updateOnDeviceChange(models.settings, getSelectedDevice());
-          runValidationCheck(models, getSelectedDevice(), getSelectedApi());
+          runValidationCheck(getSelectedDevice(), getSelectedApi(), shell);
         });
         api.getCombo().addListener(SWT.Selection, e -> {
           updateOnApiChange(trace, getSelectedDevice(), getSelectedApi());
-          runValidationCheck(models, getSelectedDevice(), getSelectedApi());
+          runValidationCheck(getSelectedDevice(), getSelectedApi(), shell);
         });
 
         Listener mecListener = e -> {
@@ -592,22 +606,42 @@ public class TracerDialog {
         updatePerfettoConfigLabel(settings);
       }
 
-      private void runValidationCheck(Models models, DeviceCaptureInfo dev, TraceTypeCapabilities config) {
+      private void runValidationCheck(DeviceCaptureInfo dev, TraceTypeCapabilities config, Shell shell) {
         if (dev == null || Devices.skipDeviceValidation.get()) {
           return;
         }
-        setValidationStatus(Devices.getValidationStatus(dev));
-        if (isPerfetto(config) && !Devices.getValidationStatus(dev)) {
+        setValidationStatus(models.devices.getValidationStatus(dev));
+        if (isPerfetto(config) && !models.devices.getValidationStatus(dev)) {
           validationStatusLoader.startLoading();
           validationStatusText.setText("Device is being validated");
-          Devices.validateDevice(dev, e -> {
-            setValidationStatus(e);
-            return null;
+          rpcController.start().listen(models.devices.validateDevice(dev),
+              new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(shell, LOG) {
+            @Override
+            protected ResultOrError<DeviceValidationResult, DeviceValidationResult>
+              onRpcThread(Rpc.Result<DeviceValidationResult> response) throws RpcException, ExecutionException {
+              try {
+                return success(response.get());
+              } catch (RpcException | ExecutionException e) {
+                throttleLogRpcError(LOG, "LoadData error", e);
+                return error(null);
+              }
+            }
+
+            @Override
+            protected void onUiThreadSuccess(DeviceValidationResult result) {
+              setValidationStatus(result.passed);
+            }
+
+            @Override
+            protected void onUiThreadError(DeviceValidationResult result) {
+              LOG.log(WARNING, "UI thread error while validating device");
+              setValidationStatus(false);
+            }
           });
         }
       }
 
-      private void setValidationStatus(boolean status) {
+      protected void setValidationStatus(boolean status) {
         if (validationStatusLoader.isDisposed()) {
           return;
         }
@@ -845,7 +879,7 @@ public class TracerDialog {
 
       public boolean isDeviceValidated() {
         if (!isValidationSkipped() && isPerfetto(getSelectedApi())) {
-          return getSelectedDevice() != null && Devices.getValidationStatus(getSelectedDevice());
+          return getSelectedDevice() != null && models.devices.getValidationStatus(getSelectedDevice());
         }
         return true;
       }
