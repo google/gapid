@@ -56,6 +56,7 @@
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateDescriptorSetLayout(
@@ -113,6 +114,7 @@ cmd VkResult vkCreateDescriptorSetLayout(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyDescriptorSetLayout(
@@ -137,6 +139,7 @@ cmd void vkDestroyDescriptorSetLayout(
   @unused ref!VulkanDebugMarkerInfo                      DebugInfo
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateDescriptorPool(
@@ -177,6 +180,7 @@ cmd VkResult vkCreateDescriptorPool(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyDescriptorPool(
@@ -194,6 +198,7 @@ cmd void vkDestroyDescriptorPool(
   }
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkDevice")
 cmd VkResult vkResetDescriptorPool(
@@ -252,6 +257,7 @@ cmd VkResult vkResetDescriptorPool(
   map!(VkCommandBuffer, bool)           CommandBufferUsers
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkDevice")
 cmd VkResult vkAllocateDescriptorSets(
@@ -295,6 +301,7 @@ cmd VkResult vkAllocateDescriptorSets(
   return ?
 }
 
+@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkFreeDescriptorSets(
     VkDevice               device,
@@ -523,6 +530,7 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
   return ret_val.Map
 }
 
+@since("1.0")
 @indirect("VkDevice")
 @threadsafe
 cmd void vkUpdateDescriptorSets(
@@ -810,6 +818,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
   updateDescriptorBufferBindingOffsets(args)
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -865,6 +874,7 @@ sub void dovkCmdPushConstants(ref!vkCmdPushConstantsArgs args) {
   }
 }
 
+@since("1.0")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdPushConstants(
@@ -963,6 +973,7 @@ sub void GetDescriptorSetLayoutSupport(
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd void vkGetDescriptorSetLayoutSupport(
     VkDevice                               device,

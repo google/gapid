@@ -72,6 +72,7 @@
   ref!DeviceGroupBinding             DeviceGroupBinding
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @override
@@ -136,6 +137,7 @@ cmd VkResult vkCreateBuffer(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyBuffer(
@@ -174,6 +176,7 @@ cmd void vkDestroyBuffer(
 }
 
 // Buffer view functions
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateBufferView(
@@ -212,6 +215,7 @@ cmd VkResult vkCreateBufferView(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyBufferView(
@@ -276,6 +280,7 @@ sub void BindBufferMemory(
   }
 }
 
+@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkBindBufferMemory(
     VkDevice       device,
@@ -333,6 +338,7 @@ sub void BindBufferMemory2(
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd VkResult vkBindBufferMemory2(
     VkDevice                      device,

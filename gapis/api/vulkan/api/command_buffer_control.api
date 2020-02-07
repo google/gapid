@@ -49,6 +49,7 @@
   @unused ref!VulkanDebugMarkerInfo                      DebugInfo
 }
 
+@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkCreateCommandPool(
     VkDevice                       device,
@@ -82,6 +83,7 @@ cmd VkResult vkCreateCommandPool(
   return ?
 }
 
+@since("1.0")
 @indirect("VkDevice")
 cmd void vkDestroyCommandPool(
     VkDevice                     device,
@@ -97,6 +99,7 @@ cmd void vkDestroyCommandPool(
   }
 }
 
+@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkResetCommandPool(
     VkDevice                device,
@@ -375,6 +378,7 @@ sub void AddCommand(
   onCommandAdded(commandBuffer)
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @custom
@@ -417,6 +421,7 @@ cmd VkResult vkAllocateCommandBuffers(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @custom
@@ -448,6 +453,7 @@ cmd void vkFreeCommandBuffers(
 extern void recordBeginCommandBuffer(VkCommandBuffer commandBuffer)
 extern void recordEndCommandBuffer(VkCommandBuffer commandBuffer)
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkBeginCommandBuffer(
@@ -513,6 +519,7 @@ cmd VkResult vkBeginCommandBuffer(
   return ?
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkEndCommandBuffer(
@@ -530,6 +537,7 @@ cmd VkResult vkEndCommandBuffer(
   return ?
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkResetCommandBuffer(
@@ -643,6 +651,7 @@ sub void dovkCmdExecuteCommands(ref!vkCmdExecuteCommandsArgs cmds) {
   leaveSubcontext()
 }
 
+@since("1.0")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdExecuteCommands(
     VkCommandBuffer        commandBuffer,
@@ -691,6 +700,7 @@ sub void TrimCommandPool(
   if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd void vkTrimCommandPool(
     VkDevice                device,

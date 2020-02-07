@@ -60,6 +60,7 @@ sub void registerFramebufferUser(ref!ImageViewObject view, VkFramebuffer vkFb, u
   view.FramebufferUsers[vkFb][attachment] = true
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateFramebuffer(
@@ -108,6 +109,7 @@ cmd VkResult vkCreateFramebuffer(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyFramebuffer(
@@ -143,6 +145,7 @@ cmd void vkDestroyFramebuffer(
   @unused ref!InputAttachmentAspectInfo      InputAttachmentAspectInfo
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateRenderPass(
@@ -236,6 +239,7 @@ cmd VkResult vkCreateRenderPass(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyRenderPass(
@@ -246,6 +250,7 @@ cmd void vkDestroyRenderPass(
   delete(RenderPasses, renderPass)
 }
 
+@since("1.0")
 @indirect("VkDevice")
 cmd void vkGetRenderAreaGranularity(
     VkDevice     device,
@@ -320,6 +325,7 @@ sub void RecordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
 }
 
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdBeginRenderPass(
@@ -420,6 +426,7 @@ sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
   transitionSubpassAttachmentLayouts(ldi.LastSubpass)
 }
 
+@since("1.0")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdNextSubpass(
     VkCommandBuffer   commandBuffer,
@@ -454,6 +461,7 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
   ldi.InRenderPass = false
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(

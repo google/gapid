@@ -59,6 +59,7 @@
   ref!QueuedSparseBinds  SparseBinds
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetDeviceQueue(
@@ -82,6 +83,7 @@ cmd void vkGetDeviceQueue(
   pQueue[0] = id
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 @submission
@@ -194,6 +196,7 @@ cmd VkResult vkQueueSubmit(
 }
 
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkQueue", "VkDevice")
 @threadsafe
@@ -258,6 +261,7 @@ sub void addSparseImageMemoryBinding(VkImage image, VkSparseImageMemoryBind bind
   }
 }
 
+@since("1.0")
 @indirect("VkQueue", "VkDevice")
 cmd VkResult vkQueueBindSparse(
     VkQueue                 queue,

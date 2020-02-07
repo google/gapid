@@ -58,6 +58,7 @@ enum QueryStatus {
   @untracked @unused ref!QueueObject    LastBoundQueue
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateQueryPool(
@@ -98,6 +99,7 @@ cmd VkResult vkCreateQueryPool(
   return ?
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyQueryPool(
@@ -108,6 +110,7 @@ cmd void vkDestroyQueryPool(
   delete(QueryPools, queryPool)
 }
 
+@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
@@ -171,6 +174,7 @@ sub void dovkCmdBeginQuery(ref!vkCmdBeginQueryArgs args) {
   }
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdBeginQuery(
@@ -213,6 +217,7 @@ sub void dovkCmdEndQuery(ref!vkCmdEndQueryArgs args) {
   }
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndQuery(
@@ -255,6 +260,7 @@ sub void dovkCmdResetQueryPool(ref!vkCmdResetQueryPoolArgs args) {
   }
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdResetQueryPool(
@@ -298,6 +304,7 @@ sub void dovkCmdWriteTimestamp(ref!vkCmdWriteTimestampArgs args) {
   }
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdWriteTimestamp(
@@ -363,6 +370,7 @@ sub void dovkCmdCopyQueryPoolResults(ref!vkCmdCopyQueryPoolResultsArgs args) {
   }
 }
 
+@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdCopyQueryPoolResults(
