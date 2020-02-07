@@ -108,6 +108,9 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return nil
 	}
 
+	// Close any previous runs of the apk
+	apk.Stop(ctx)
+
 	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
 		return err
