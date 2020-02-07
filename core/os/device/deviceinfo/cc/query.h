@@ -94,12 +94,14 @@ bool vkLayersAndExtensions(
     std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);
 
 // vkPhysicalDevices populates the VulkanPhysicalDevices fields in the
-// given device::VulkanDriver. Returns true if succeeded. If a
-// vkGetInstanceProcAddress function is given, that function will be used to
-// resolve Vulkan API calls, otherwise Vulkan loader will be used.
+// given device::VulkanDriver and creates a dummy VkDevice. Returns true if
+// succeeded. If a vkGetInstanceProcAddress function is given, that function
+// will be used to resolve Vulkan API calls, otherwise Vulkan loader will be
+// used.
 bool vkPhysicalDevices(
     device::VulkanDriver*, size_t vk_inst = 0,
-    std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);
+    std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr,
+    bool create_device = true);
 
 device::VulkanProfilingLayers* get_vulkan_profiling_layers();
 

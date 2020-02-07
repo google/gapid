@@ -216,8 +216,8 @@ bool updateVulkanDriver(
     // support Vulkan, return without touching the device::Instance.
     return false;
   }
-  if (!query::vkPhysicalDevices(vk_driver, vk_inst_handle,
-                                get_inst_proc_addr)) {
+  if (!query::vkPhysicalDevices(vk_driver, vk_inst_handle, get_inst_proc_addr,
+                                false)) {
     // Failed at getting Vulkan physical device info, the device may not
     // support Vulkan, return without touching the device::Instance.
     return false;
