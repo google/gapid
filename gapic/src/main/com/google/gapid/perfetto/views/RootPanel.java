@@ -376,7 +376,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
         return false;
       });
     }
-    if (checkHighlightEdgeHovered(x, y)) {
+    if (checkHighlightEdgeHovered(x)) {
       result = result.withRedraw(Area.FULL);
     }
     return result;
@@ -399,7 +399,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
   }
 
   // Return true if the highlight edge's hovering status changes.
-  private boolean checkHighlightEdgeHovered(double x, double y) {
+  private boolean checkHighlightEdgeHovered(double x) {
     boolean preStartStatus = isHighlightStartHovered;
     boolean preEndStatus = isHighlightEndHovered;
     double hStart = state.timeToPx(state.getHighlight().start) + LABEL_WIDTH;
