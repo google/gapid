@@ -51,7 +51,7 @@ import java.util.logging.Logger;
  * Dialog showing some basic info about our application.
  */
 public class AboutDialog {
-  private static final String HELP_URL = "https://google.github.io/gapid";
+  private static final String HELP_URL = "https://gpuinspector.dev";
   private static final Logger LOG = Logger.getLogger(AboutDialog.class.getName());
 
   private AboutDialog() {

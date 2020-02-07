@@ -17,7 +17,7 @@
 
 ## Documentation
 
-**[User documentation can be found at gapid.dev](https://gapid.dev)**
+**[User documentation can be found at gpuinspector.dev](https://gpuinspector.dev)**
 
 The [developer documentation](DEVDOC.md) contains some hints for AGI
 developers. See also the README files under some source directories.
@@ -32,25 +32,25 @@ AGI can also trace any desktop Vulkan application.
 <table>
   <tr>
     <td>
-      <a href="https://gapid.dev/images/screenshots/framebuffer.png">
-        <img src="https://gapid.dev/images/screenshots/framebuffer_thumb.jpg" alt="Screenshot 1">
+      <a href="https://gpuinspector.dev/images/screenshots/framebuffer.png">
+        <img src="https://gpuinspector.dev/images/screenshots/framebuffer_thumb.jpg" alt="Screenshot 1">
       </a>
     </td>
     <td>
-      <a href="https://gapid.dev/images/screenshots/geometry.png">
-        <img src="https://gapid.dev/images/screenshots/geometry_thumb.jpg" alt="Screenshot 2">
+      <a href="https://gpuinspector.dev/images/screenshots/geometry.png">
+        <img src="https://gpuinspector.dev/images/screenshots/geometry_thumb.jpg" alt="Screenshot 2">
       </a>
     </td>
   </tr>
   <tr>
     <td>
-      <a href="https://gapid.dev/images/screenshots/textures.png">
-        <img src="https://gapid.dev/images/screenshots/textures_thumb.jpg" alt="Screenshot 3">
+      <a href="https://gpuinspector.dev/images/screenshots/textures.png">
+        <img src="https://gpuinspector.dev/images/screenshots/textures_thumb.jpg" alt="Screenshot 3">
       </a>
     </td>
     <td>
-      <a href="https://gapid.dev/images/screenshots/shaders.png">
-        <img src="https://gapid.dev/images/screenshots/shaders_thumb.jpg" alt="Screenshot 4">
+      <a href="https://gpuinspector.dev/images/screenshots/shaders.png">
+        <img src="https://gpuinspector.dev/images/screenshots/shaders_thumb.jpg" alt="Screenshot 4">
       </a>
     </td>
   </tr>
@@ -66,7 +66,7 @@ After building AGI, you can run the client from `<gapid-root>/bazel-bin/pkg/gapi
 
 ## Command-Line Interface
 
-AGI exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gapid.dev/cli/).
+AGI exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gpuinspector.dev/cli/).
 
 ## Project Structure
 
