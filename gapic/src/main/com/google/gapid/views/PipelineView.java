@@ -53,6 +53,7 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.StyledCellLabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
@@ -71,6 +72,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 
@@ -260,11 +262,13 @@ public class PipelineView extends Composite
 
                   DataValue dv = convertDataValue(kvp.getValue());
                   if (dv.link != null) {
-                    withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
+                    Link dvLink = withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
                         new GridData(SWT.LEFT, SWT.CENTER, true, true));
+                    dvLink.setToolTipText(dv.tooltipValue);
                   } else {
-                    withLayoutData( createLabel(valueComposite, dv.displayValue),
+                    Label dvLabel = withLayoutData( createLabel(valueComposite, dv.displayValue),
                         new GridData(SWT.LEFT, SWT.CENTER, true, true));
+                    dvLabel.setToolTipText(dv.tooltipValue);
                   }
                 }
 
@@ -309,6 +313,8 @@ public class PipelineView extends Composite
                 }
 
                 TableViewer groupTable = createTableViewer(dataGroupComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+                ColumnViewerToolTipSupport.enableFor(groupTable);
+
                 List<API.Row> rows = dataGroup.getTable().getRowsList();
 
                 groupTable.setContentProvider(ArrayContentProvider.getInstance());
@@ -332,6 +338,11 @@ public class PipelineView extends Composite
                       }
 
                       super.update(cell);
+                    }
+
+                    @Override
+                    public String getToolTipText(Object element) {
+                      return convertDataValue(((API.Row)element).getRowValues(col)).tooltipValue;
                     }
                   };
 
@@ -522,11 +533,20 @@ public class PipelineView extends Composite
         }
 
       case ENUMVAL:
-        return new DataValue(val.getEnumVal().getDisplayValue());
+        DataValue enumDV = new DataValue(val.getEnumVal().getDisplayValue());
+        enumDV.tooltipValue = val.getEnumVal().getStringValue();
+        return enumDV;
+
 
       case BITFIELD:
         Joiner joiner = Joiner.on((val.getBitfield().getCombined()) ? "" : " | ");
-        return new DataValue(joiner.join(val.getBitfield().getSetDisplayNamesList()));
+        DataValue bitDV = new DataValue(joiner.join(val.getBitfield().getSetDisplayNamesList()));
+        if (val.getBitfield().getCombined()) {
+          joiner = Joiner.on(" | ");
+        }
+        bitDV.tooltipValue = joiner.join(val.getBitfield().getSetBitnamesList());
+        return bitDV;
+
 
       case LINK:
         DataValue dv = convertDataValue(val.getLink().getDisplayVal());
@@ -541,11 +561,13 @@ public class PipelineView extends Composite
 
   private static class DataValue {
     public String displayValue;
+    public String tooltipValue;
     public Path.Any link;
 
     public DataValue(String displayValue) {
       this.link = null;
       this.displayValue = displayValue;
+      this.tooltipValue = null;
     }
   }
 }
