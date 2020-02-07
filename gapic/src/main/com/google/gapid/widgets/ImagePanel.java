@@ -122,7 +122,7 @@ public class ImagePanel extends Composite implements Loadable {
 
   private static final Cache<Image.Key, Histogram> HISTOGRAM_CACHE = softCache();
 
-  private final View view;
+  private final View analyticsView;
   private final Analytics analytics;
   private final Widgets widgets;
   private final SingleInFlight imageRequestController = new SingleInFlight();
@@ -143,7 +143,7 @@ public class ImagePanel extends Composite implements Loadable {
   public ImagePanel(
       Composite parent, View view, Analytics analytics, Widgets widgets, boolean naturallyFlipped) {
     super(parent, SWT.NONE);
-    this.view = view;
+    this.analyticsView = view;
     this.analytics = analytics;
     this.widgets = widgets;
     this.backgroundSelection = new BackgroundSelection(getDisplay());
@@ -363,33 +363,33 @@ public class ImagePanel extends Composite implements Loadable {
 
   public void createToolbar(ToolBar bar, Theme theme) {
     zoomFitItem = createToggleToolItem(bar, theme.zoomFit(), e -> {
-      analytics.postInteraction(view, ClientAction.ZoomFit);
+      analytics.postInteraction(analyticsView, ClientAction.ZoomFit);
       setZoomMode(((ToolItem)e.widget).getSelection() ?
           ZoomMode.ZOOM_TO_FIT : ZoomMode.ZOOM_MANUAL);
     }, "Zoom to fit");
     zoomActualItem = createToggleToolItem(bar, theme.zoomActual(), e -> {
-      analytics.postInteraction(view, ClientAction.ZoomActual);
+      analytics.postInteraction(analyticsView, ClientAction.ZoomActual);
       setZoomMode(((ToolItem)e.widget).getSelection() ?
           ZoomMode.ZOOM_TO_ACTUAL : ZoomMode.ZOOM_MANUAL);
     }, "Original size");
     setZoomMode(ZoomMode.ZOOM_TO_FIT);
     createToolItem(bar, theme.zoomIn(), e -> {
-      analytics.postInteraction(view, ClientAction.ZoomIn);
+      analytics.postInteraction(analyticsView, ClientAction.ZoomIn);
       zoom(-ZOOM_AMOUNT);
     }, "Zoom in");
     createToolItem(bar, theme.zoomOut(), e -> {
-      analytics.postInteraction(view, ClientAction.ZoomOut);
+      analytics.postInteraction(analyticsView, ClientAction.ZoomOut);
       zoom(ZOOM_AMOUNT);
     }, "Zoom out");
     createSeparator(bar);
     createToggleToolItem(bar, theme.toggleHistogram(), e -> {
       boolean show = ((ToolItem)e.widget).getSelection();
       analytics.postInteraction(
-          view, show ? ClientAction.ShowHistogram : ClientAction.HideHistogram);
+          analyticsView, show ? ClientAction.ShowHistogram : ClientAction.HideHistogram);
       setShowHistogram(show);
     }, "Toggle histogram");
     colorChanelsItem = createBaloonToolItem(bar, theme.colorChannels()[15], shell -> {
-      analytics.postInteraction(view, ClientAction.ShowColorChannels);
+      analytics.postInteraction(analyticsView, ClientAction.ShowColorChannels);
       Composite c = createComposite(shell, new RowLayout(SWT.HORIZONTAL), SWT.BORDER);
       final ImageComponent i = imageComponent;
       createCheckbox(c, "Red", i.isChannelEnabled(CHANNEL_RED), e -> {
@@ -410,12 +410,12 @@ public class ImagePanel extends Composite implements Loadable {
       });
     }, "Color channel selection");
     backgroundItem = createBaloonToolItem(bar, theme.transparency(), shell -> {
-      analytics.postInteraction(view, ClientAction.ShowBackground);
+      analytics.postInteraction(analyticsView, ClientAction.ShowBackground);
       backgroundSelection.createBaloonContents(
           shell, theme, mode -> updateBackgroundMode(mode, theme));
     }, "Choose image background");
     createToggleToolItem(bar, theme.flipVertically(), e -> {
-      analytics.postInteraction(view, ClientAction.Flip);
+      analytics.postInteraction(analyticsView, ClientAction.Flip);
       imageComponent.setFlipped(((ToolItem)e.widget).getSelection());
     }, "Flip vertically");
     createSeparator(bar);
@@ -465,7 +465,7 @@ public class ImagePanel extends Composite implements Loadable {
   }
 
   protected void save() {
-    analytics.postInteraction(view, ClientAction.Save);
+    analytics.postInteraction(analyticsView, ClientAction.Save);
     FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
     dialog.setText("Save image to...");
     dialog.setFilterNames(new String[] { "PNG Images" });
