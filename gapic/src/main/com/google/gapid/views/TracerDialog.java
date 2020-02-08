@@ -266,6 +266,8 @@ public class TracerDialog {
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final String PERFETTO_LABEL = "Profile Config: ";
       private static final String NO_GPU_PROFILING_CAPABILITY = "Warning: Selected device has no GPU profiling capability.";
+      private static final String EMPTY_APP_WITH_RENDER_STAGE =
+          "Warning: Application needs to be specified for GPU profiling data.";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -300,6 +302,7 @@ public class TracerDialog {
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
       private final Label gpuProfilingCapabilityWarning;
+      private final Label emptyAppWarning;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
@@ -416,6 +419,7 @@ public class TracerDialog {
         Widgets.createButton(perfettoConfig, "Configure", e -> {
           showPerfettoConfigDialog(getShell(), models, widgets, getPerfettoCaps());
           updatePerfettoConfigLabel(models.settings);
+          updateEmptyAppWithRenderStageWarning(models.settings);
         });
         perfettoConfig.setVisible(false);
 
@@ -481,6 +485,15 @@ public class TracerDialog {
         };
         device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
         api.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
+
+        emptyAppWarning = withLayoutData(
+            createLabel(this, EMPTY_APP_WITH_RENDER_STAGE),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        emptyAppWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
+        emptyAppWarning.setVisible(false);
+        device.getCombo().addListener(SWT.Selection, e -> updateEmptyAppWithRenderStageWarning(models.settings));
+        api.getCombo().addListener(SWT.Selection, e -> updateEmptyAppWithRenderStageWarning(models.settings));
+        traceTarget.addBoxListener(SWT.Modify, e -> updateEmptyAppWithRenderStageWarning(models.settings));
 
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
@@ -730,6 +743,20 @@ public class TracerDialog {
         perfettoConfigLabel.setText(
             PERFETTO_LABEL + getConfigSummary(settings, getPerfettoCaps()));
         perfettoConfigLabel.requestLayout();
+      }
+
+      private void updateEmptyAppWithRenderStageWarning(Settings settings) {
+        if (getSelectedDevice() == null || !getSelectedDevice().isAndroid() ||
+            getSelectedApi() == null || getSelectedApi().getType() != TraceType.Perfetto) {
+          emptyAppWarning.setVisible(false);
+          return;
+        }
+        SettingsProto.Perfetto.GPUOrBuilder gpu = settings.perfetto().getGpuOrBuilder();
+        if (traceTarget.getText().isEmpty() && gpu.getEnabled() && gpu.getSlices()) {
+          emptyAppWarning.setVisible(true);
+        } else  {
+          emptyAppWarning.setVisible(false);
+        }
       }
 
       protected static TraceTargets.Target showTraceTargetPicker(
