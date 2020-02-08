@@ -19,7 +19,6 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
@@ -152,7 +151,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         continue;
       }
       double rectStart = state.timeToPx(tStart);
-      StyleConstants.Gradient color = gradient(data.titles[i].hashCode());
+      StyleConstants.Gradient color = getSliceColor(data.titles[i]);
       color.applyBase(ctx);
 
       if (tEnd - tStart > 3 ) {

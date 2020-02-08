@@ -19,7 +19,6 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -104,7 +103,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = SLICE_Y + depth * SLICE_HEIGHT;
 
-        gradient(data.names[i].hashCode()).applyBase(ctx);
+        getSliceColor(data.names[i]).applyBase(ctx);
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
         if (selected.contains(data.ids[i])) {
@@ -124,7 +123,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
 
       // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
       for (int index : visibleSelected) {
-        ctx.setForegroundColor(gradient(data.names[index].hashCode()).border);
+        ctx.setForegroundColor(getSliceColor(data.names[index]).border);
         double rectStart = state.timeToPx(data.starts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
         double depth = data.depths[index];

@@ -142,6 +142,18 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
     };
   }
 
+  // Helper function to determine the color of a slice.
+  protected StyleConstants.Gradient getSliceColor(String title, int depth) {
+    int commaIndex = title.indexOf(',');
+    int colorCode = (commaIndex == -1) ? title.hashCode() :
+        title.substring(0, commaIndex).hashCode();
+    return StyleConstants.gradient(colorCode ^ depth);
+  }
+
+  protected StyleConstants.Gradient getSliceColor(String title) {
+    return getSliceColor(title, 0);
+  }
+
   private static class Tooltip {
     private static final Splitter LINE_SPLITTER =
         Splitter.on(CharMatcher.anyOf("\r\n")).omitEmptyStrings().trimResults();
