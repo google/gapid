@@ -52,7 +52,7 @@ public final class GapiPaths {
   private static final String USER_HOME_GAPID_ROOT = "gapid";
   private static final String GAPID_PKG_SUBDIR = "pkg";
   private static final String GAPID_ROOT_ENV_VAR = "GAPID";
-  private static final String RUNFILES_MANIFEST = "gapid.runfiles_manifest";
+  private static final String RUNFILES_MANIFEST = "agi.runfiles_manifest";
 
   private static GapiPaths tools;
 
