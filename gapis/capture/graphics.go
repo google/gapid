@@ -282,6 +282,14 @@ func deserializeGFXTrace(ctx context.Context, r *Record, in io.Reader) (out *Gra
 	if d.header == nil {
 		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
 	}
+
+	for _, api := range d.builder.apis {
+		if api.Name() == "gles" {
+			return nil, &service.ErrUnsupportedVersion{
+				Reason: messages.ErrFileOpenGl(),
+			}
+		}
+	}
 	return d.builder.build(r.Name, d.header), nil
 }
 

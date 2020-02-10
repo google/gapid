@@ -226,3 +226,7 @@ The file was created by a more recent version of AGI and cannot be read.
 # ERR_FILE_TOO_OLD
 
 The file was created by an old version of AGI and cannot be read.
+
+# ERR_FILE_OPEN_GL
+
+GLES traces are not supported in AGI. Please use GAPID instead.
