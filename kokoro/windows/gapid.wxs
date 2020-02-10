@@ -47,7 +47,7 @@
     <DirectoryRef Id="ApplicationProgramsFolder">
       <Component Id="ApplicationShortcut" Guid="*">
         <Shortcut Id="ApplicationStartMenuShortcut" Name="Android GPU Inspector" Description="Android GPU Inspector"
-            Target="[!gapid.exe]" WorkingDirectory="APPLICATIONROOTDIRECTORY" Icon="agi.ico" />
+            Target="[!agi.exe]" WorkingDirectory="APPLICATIONROOTDIRECTORY" Icon="agi.ico" />
         <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\Google\AGI" Name="installed" Type="integer" Value="1" KeyPath="yes" />
       </Component>
@@ -65,16 +65,16 @@
         <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\Application" Name="ApplicationDescription" Value="Inspect Graphics Traces" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\Application" Name="ApplicationCompany" Value="Google, Inc" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\DefaultIcon" Value="[!agi.ico]" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\AGI.Trace\shell\open\command" Value="&quot;[!agi.exe]&quot; &quot;%1&quot;" Type="string" />
 
-        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\agi.exe" Value="[!gapid.exe]" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\agi.exe" Value="[!agi.exe]" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\agi.exe" Name="Path" Value="[AGI]" Type="string" />
 
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\SupportedTypes" Name=".gfxtrace" Value="" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\shell\open\command" Value="&quot;[!agi.exe]&quot; &quot;%1&quot;" Type="string" />
 
         <RegistryValue Root="HKLM" Key="Software\Classes\.gfxtrace" Value="AGI.Trace" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gfxtrace\shell\edit\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gfxtrace\shell\edit\command" Value="&quot;[!agi.exe]&quot; &quot;%1&quot;" Type="string" />
       </Component>
     </DirectoryRef>
 
