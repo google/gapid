@@ -34,7 +34,6 @@ go_binary(
     ],
     data = [
         "//cmd/gapis",
-        "//cmd/gapit",
         "//gapic:gapic_deploy.jar",
         "//gapis/messages:stb",
     ],
