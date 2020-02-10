@@ -17,5 +17,5 @@
    3. **IMPORTANT**: Uncheck **Copy projects into workspace**
    4. Click "Finish".
 8. Set up Run Configurations.
-   1. In Arguments tab: give the --gapid flag. E.g.: `--gapid <path_to_agi>/bazel-bin/pkg`, replace `<path_to_agi>` with your local project path.
+   1. In Arguments tab: give the `--gapid` flag. E.g.: `--gapid <path_to_agi>/bazel-bin/pkg`, replace `<path_to_agi>` with your local project path.
    2. In Dependencies tab: add the lwjgl native jars. Find and add `/gapic/bazel-external/org_lwjgl_core_natives_linux/jar/lwjgl-3.2.0.jar`, `/gapic/bazel-external/org_lwjgl_opengl_natives_linux/jar/lwjgl-opengl-3.2.0.jar`. Folder name and jar name may vary based on your operating system.
