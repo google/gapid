@@ -5,7 +5,7 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>English</string>
   <key>CFBundleExecutable</key>
-  <string>gapid</string>
+  <string>agi</string>
   <key>CFBundleIconFile</key>
   <string>AGI.icns</string>
   <key>CFBundlePackageType</key>
