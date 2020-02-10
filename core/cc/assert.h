@@ -17,6 +17,7 @@
 #ifndef CORE_ASSERT_H
 #define CORE_ASSERT_H
 
+#include <cassert>
 #include "log.h"
 
 #define GAPID_ASSERT(cond)                     \

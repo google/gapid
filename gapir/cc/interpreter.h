@@ -143,9 +143,9 @@ class Interpreter {
   Result load(uint32_t opcode);
   Result pop(uint32_t opcode);
   Result storeV(uint32_t opcode);
-  Result store();
+  Result store(uint32_t);
   Result resource(uint32_t);
-  Result post();
+  Result post(uint32_t);
   Result copy(uint32_t opcode);
   Result clone(uint32_t opcode);
   Result strcpy(uint32_t opcode);
@@ -156,7 +156,7 @@ class Interpreter {
   Result jumpLabel(uint32_t opcode);
   Result jumpNZ(uint32_t opcode);
   Result jumpZ(uint32_t opcode);
-  Result notification();
+  Result notification(uint32_t);
   Result wait(uint32_t opcode);
 
   // Returns true, if address..address+size(type) is "constant" memory.
@@ -170,9 +170,6 @@ class Interpreter {
 
   // Returns false, if address is known not safe to write to.
   bool isWriteAddress(void* address) const;
-
-  // Interpret one specific opcode.
-  Result interpret(uint32_t opcode);
 
   // The crash handler used for catching and reporting crashes.
   core::CrashHandler& mCrashHandler;

@@ -134,79 +134,74 @@
       {{end}}
     {{end}}
 
-    if (stack->isValid()) {
-      GAPID_DEBUG({{Template "C++.PrintfCommandCallWithLabel" $}});
+    GAPID_DEBUG({{Template "C++.PrintfCommandCallWithLabel" $}});
 
-      #if TARGET_OS == GAPID_OS_ANDROID
-      ATrace_beginSection("{{$name}}");
-      #endif  // TARGET_OS == GAPID_OS_ANDROID
+    #if TARGET_OS == GAPID_OS_ANDROID
+    ATrace_beginSection("{{$name}}");
+    #endif  // TARGET_OS == GAPID_OS_ANDROID
 
-      {{if GetAnnotation $ "indirect"}}
-        {{$args := (GetAnnotation $ "indirect").Arguments}}
-        {{$elem := (index $.CallParameters 0).Name}}
-        {{$func := Macro "CmdName" $}}
-        if (
-        #ifndef NDEBUG
-        {{Template "GetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}
-        #else
-        true
-        #endif
-        ) {
+    {{if GetAnnotation $ "indirect"}}
+      {{$args := (GetAnnotation $ "indirect").Arguments}}
+      {{$elem := (index $.CallParameters 0).Name}}
+      {{$func := Macro "CmdName" $}}
+      if (
+      #ifndef NDEBUG
+      {{Template "GetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}
+      #else
+      true
+      #endif
+      ) {
+    {{else}}
+      if (mFunctionStubs.{{$name}} != nullptr) {
+    {{end}}
+      {{if not (IsVoid $.Return.Type)}}
+        {{Template "C++.ReturnType" $}} return_value = {{Template "Call" $}};
+        GAPID_DEBUG("[%u]{{$name}} returned {{Template "C++.PrintfFormatCode" $.Return.Type}}", cmdLabel, return_value);
+        {{if eq $name "glGetError"}}
+          if (return_value != Gles::GLenum::GL_NO_ERROR) {
+            GAPID_ERROR("[%u]glGetError() returned: 0x%x", cmdLabel, return_value);
+          }
+        {{end}}
+        if (pushReturn) {
+          {{$ty := TypeOf $.Return.Type | Underlying | Unpack}}
+          {{if IsSize $ty}}
+            stack->push<uint64_t>(static_cast<uint64_t>(return_value));
+          {{else}}
+            stack->push<{{Template "C++.ReturnType" $}}>(return_value);
+          {{end}}
+        }
       {{else}}
-        if (mFunctionStubs.{{$name}} != nullptr) {
+        {{Template "Call" $}};
       {{end}}
-        {{if not (IsVoid $.Return.Type)}}
-          {{Template "C++.ReturnType" $}} return_value = {{Template "Call" $}};
-          GAPID_DEBUG("[%u]{{$name}} returned {{Template "C++.PrintfFormatCode" $.Return.Type}}", cmdLabel, return_value);
-          {{if eq $name "glGetError"}}
-            if (return_value != Gles::GLenum::GL_NO_ERROR) {
-              GAPID_ERROR("[%u]glGetError() returned: 0x%x", cmdLabel, return_value);
-            }
-          {{end}}
-          if (pushReturn) {
-            {{$ty := TypeOf $.Return.Type | Underlying | Unpack}}
-            {{if IsSize $ty}}
-              stack->push<uint64_t>(static_cast<uint64_t>(return_value));
-            {{else}}
-              stack->push<{{Template "C++.ReturnType" $}}>(return_value);
-            {{end}}
+
+      {{if and 0 (eq (Global "API") "gles")}} {{/* Enable for debugging */}}
+        const Gles::GLenum err = mFunctionStubs.glGetError();
+        if (err != Gles::GLenum::GL_NO_ERROR) {
+          GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
+          GAPID_ERROR("{{$name}} returned error: 0x%x", err);
+          return false;
+        }
+        {{if eq $name "glShaderSource"}}
+          GAPID_DEBUG("Shader source: %s", source[0]);
+        {{else if eq $name "glCompileShader"}}
+          int success = 0;
+          mFunctionStubs.glGetShaderiv(shader, Gles::GLenum::GL_COMPILE_STATUS, &success);
+          if (success == 0) {
+            char buf[2048];
+            mFunctionStubs.glGetShaderInfoLog(shader, 2048, nullptr, buf);
+            GAPID_ERROR("Shader failed to compile: %s", buf);
           }
-        {{else}}
-          {{Template "Call" $}};
         {{end}}
-
-        {{if and 0 (eq (Global "API") "gles")}} {{/* Enable for debugging */}}
-          const Gles::GLenum err = mFunctionStubs.glGetError();
-          if (err != Gles::GLenum::GL_NO_ERROR) {
-            GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
-            GAPID_ERROR("{{$name}} returned error: 0x%x", err);
-            return false;
-          }
-          {{if eq $name "glShaderSource"}}
-            GAPID_DEBUG("Shader source: %s", source[0]);
-          {{else if eq $name "glCompileShader"}}
-            int success = 0;
-            mFunctionStubs.glGetShaderiv(shader, Gles::GLenum::GL_COMPILE_STATUS, &success);
-            if (success == 0) {
-              char buf[2048];
-              mFunctionStubs.glGetShaderInfoLog(shader, 2048, nullptr, buf);
-              GAPID_ERROR("Shader failed to compile: %s", buf);
-            }
-          {{end}}
-        {{end}}
-      } else {
-        GAPID_ERROR("Attempted to call unsupported function {{$name}}");
-      }
-
-      #if TARGET_OS == GAPID_OS_ANDROID
-      ATrace_endSection();
-      #endif  // TARGET_OS == GAPID_OS_ANDROID
-
-      return true;
+      {{end}}
     } else {
-      GAPID_ERROR("Error during calling function {{$name}}");
-      return false;
+      GAPID_ERROR("Attempted to call unsupported function {{$name}}");
     }
+
+    #if TARGET_OS == GAPID_OS_ANDROID
+    ATrace_endSection();
+    #endif  // TARGET_OS == GAPID_OS_ANDROID
+
+    return true;
   }
   {{Global "CallFunction" $prevCallFunction}}
 ¶

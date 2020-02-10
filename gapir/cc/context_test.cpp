@@ -118,22 +118,6 @@ TEST_F(ContextTest, LoadResource) {
   EXPECT_THAT(resourceA, ElementsAreArray(res, resourceA.size()));
 }
 
-TEST_F(ContextTest, LoadResourcePopFailed) {
-  auto payload =
-      createPayload(128, 1024, {}, {A},
-                    {instruction(Interpreter::InstructionCode::RESOURCE, 0)});
-
-  EXPECT_CALL(*mSrv, getPayload("payload"))
-      .WillOnce(Return(ByMove(std::move(payload))));
-  core::CrashHandler crash_handler;
-  auto context = Context::create(mSrv.get(), crash_handler,
-                                 mResourceLoader.get(), mMemoryManager.get());
-
-  EXPECT_THAT(context, NotNull());
-  context->initialize("payload");
-  EXPECT_FALSE(context->interpret());
-}
-
 TEST_F(ContextTest, LoadResourceGetFailed) {
   auto payload =
       createPayload(128, 1024, {}, {A},
