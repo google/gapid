@@ -71,7 +71,7 @@ func run() int {
 			fmt.Println(" --jar             Path to the gapic JAR to use")
 			fmt.Println(" --vm              Path to the JVM to use")
 			fmt.Println(" --vmarg           Extra argument for the JVM (repeatable)")
-			fmt.Println(" --console         Run GAPID inside a terminal console")
+			fmt.Println(" --console         Run AGI inside a terminal console")
 			fmt.Println(" --verbose-startup Log verbosely in the launcher")
 		}()
 	}

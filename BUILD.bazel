@@ -41,8 +41,8 @@ gazelle(
 
 # Alias meant to be used with 'bazel run <alias> -- <arguments>'.
 alias(
-    name = "gapid",
-    actual = "//cmd/gapid",
+    name = "agi",
+    actual = "//cmd/agi",
 )
 
 alias(
@@ -161,7 +161,7 @@ copy_tree(
 copy_to(
     name = "pkg-root",
     srcs = [
-        "//cmd/gapid",
+        "//cmd/agi",
         "//cmd/gapir/cc:gapir",
         "//cmd/gapis",
         "//cmd/gapit",

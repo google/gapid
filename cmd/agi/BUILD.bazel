@@ -21,13 +21,13 @@ go_library(
         "console_windows.go",
         "main.go",
     ],
-    importpath = "github.com/google/gapid/cmd/gapid",
+    importpath = "github.com/google/gapid/cmd/agi",
     visibility = ["//visibility:private"],
 )
 
 # BUG: This isn't go_stripped_binary due to issue #1753.
 go_binary(
-    name = "gapid",
+    name = "agi",
     args = [
         "--jar",
         "$(location //gapic:gapic_deploy.jar)",
