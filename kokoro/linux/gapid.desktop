@@ -5,6 +5,6 @@ Name=Android GPU Inspector
 Comment=Android GPU Inspector
 Categories=Development;Debugger;Graphics;3DGraphics
 Icon=/opt/agi/icon.png
-Exec=/opt/agi/gapid %f
+Exec=/opt/agi/agi %f
 Terminal=false
 MimeType=application/x-gfxtrace

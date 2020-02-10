@@ -71,7 +71,7 @@ EOF
 
 # Fix up permissions (root ownership is faked below).
 find agi/ -type f -exec chmod 644 {} +
-chmod 755 agi/opt/agi/gapi[drst] agi/opt/agi/device-info
+chmod 755 agi/opt/agi/agi agi/opt/agi/gapi[rst] agi/opt/agi/device-info
 find agi/ -type d -exec chmod 755 {} +
 find agi/ -type d -exec chmod g-s {} +
 

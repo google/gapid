@@ -1,3 +1,3 @@
 ?package(agi):needs="X11" section="Applications/Programming"\
-  title="AGI" longtitle="Android GPU Inspector" command="/opt/agi/gapid"\
+  title="AGI" longtitle="Android GPU Inspector" command="/opt/agi/agi"\
   icon="/opt/agi/icon.png"
