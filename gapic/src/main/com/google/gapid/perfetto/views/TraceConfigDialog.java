@@ -33,7 +33,6 @@ import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -95,6 +94,11 @@ public class TraceConfigDialog extends DialogBase {
 
   private static final int PROC_SCAN_PERIOD = 2000;
   private static final int FTRACE_DRAIN_PERIOD = 250;
+
+  private static final int MAX_IN_MEM_DURATION = 15 * 1000;
+  private static final int FLUSH_PERIOD = 5000;
+  private static final int WRITE_PERIOD = 2000;
+  private static final long MAX_FILE_SIZE = 2l * 1024 * 1024 * 1024;
 
   // These ftrace categories are always enabled to track process creation and ending.
   private static final String[] PROCESS_TRACKING_FTRACE = {
@@ -206,10 +210,10 @@ public class TraceConfigDialog extends DialogBase {
   }
 
   public static PerfettoConfig.TraceConfig.Builder getConfig(
-      Settings settings, Device.PerfettoCapability caps, String traceTarget) {
+      Settings settings, Device.PerfettoCapability caps, String traceTarget, int duration) {
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
     if (p.getUseCustom()) {
-      return p.getCustomConfig().toBuilder();
+      return p.getCustomConfig().toBuilder().setDurationMs(duration);
     }
 
     PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
@@ -328,7 +332,13 @@ public class TraceConfigDialog extends DialogBase {
         .setSizeKb(PROC_BUFFER_SIZE)
         .setFillPolicy(FillPolicy.DISCARD));
 
-    config.setFlushPeriodMs((int)SECONDS.toMillis(5));
+    config.setFlushPeriodMs(FLUSH_PERIOD);
+    config.setDurationMs(duration);
+    if (duration > MAX_IN_MEM_DURATION) {
+      config.setWriteIntoFile(true);
+      config.setFileWritePeriodMs(WRITE_PERIOD);
+      config.setMaxFileSizeBytes(MAX_FILE_SIZE);
+    }
 
     return config;
   }
@@ -601,7 +611,10 @@ public class TraceConfigDialog extends DialogBase {
       withLayoutData(createLink(this, "<a>Switch to advanced mode</a>", e -> {
         // Remember the input thus far and turn it into a proto to be modified by the user.
         update(settings);
-        settings.writePerfetto().setCustomConfig(getConfig(settings, caps, ""));
+        settings.writePerfetto().setCustomConfig(
+            // Use a config that writes to file for custom by default.
+            getConfig(settings, caps, "", MAX_IN_MEM_DURATION + 1)
+                .clearDurationMs());
         toAdvanced.run();
       }), new GridData(SWT.END, SWT.BEGINNING, false, false));
 
