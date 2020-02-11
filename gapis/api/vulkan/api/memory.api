@@ -68,7 +68,6 @@
   VkBuffer Buffer
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @override
@@ -134,7 +133,6 @@ cmd VkResult vkAllocateMemory(
   return ?
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkFreeMemory(
@@ -153,7 +151,6 @@ cmd void vkFreeMemory(
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkDevice")
 cmd VkResult vkMapMemory(
@@ -188,7 +185,6 @@ cmd VkResult vkMapMemory(
   return ?
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkDevice")
 cmd void vkUnmapMemory(
@@ -207,7 +203,6 @@ cmd void vkUnmapMemory(
   memoryObject.MappedLocation = null
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkFlushMappedMemoryRanges(
     VkDevice                   device,
@@ -258,7 +253,6 @@ class MemoryRangeArray {
   map!(u32, u64)   End
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkInvalidateMappedMemoryRanges(
     VkDevice                   device,
@@ -293,7 +287,6 @@ cmd VkResult vkInvalidateMappedMemoryRanges(
 
 // Memory management API functions
 
-@since("1.0")
 @indirect("VkDevice")
 cmd void vkGetDeviceMemoryCommitment(
     VkDevice       device,
