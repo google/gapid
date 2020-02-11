@@ -905,8 +905,8 @@ public class TracerDialog {
           int durationMs = duration.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
           durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
-          options.setPerfettoConfig(getConfig(settings, getPerfettoCaps(), traceTarget.getText())
-              .setDurationMs(durationMs));
+          options.setPerfettoConfig(
+              getConfig(settings, getPerfettoCaps(), traceTarget.getText(), durationMs));
         }
 
         return new TraceRequest(output, options.build(), delay);
