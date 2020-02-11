@@ -107,11 +107,7 @@ public class TraceConfigDialog extends DialogBase {
       "sched/sched_waking",
   };
   private static final String[] CPU_SLICES_ATRACE = {
-      // TODO: this should come from the device.
-      "adb", "aidl", "am", "audio", "binder_driver", "binder_lock", "bionic", "camera",
-      "core_services", "dalvik", "database", "disk", "freq", "gfx", "hal", "idle", "input",
-      "ion", "memory", "memreclaim", "network", "nnapi", "pdx", "pm", "power", "res", "rro", "rs",
-      "sched", "sm", "ss", "sync", "vibrator", "video", "view", "webview", "wm",
+      "am", "audio", "gfx", "hal", "input", "pm", "power", "res", "rs", "sm", "video", "view", "wm",
   };
   private static final String[] GPU_FREQ_FTRACE = {
       "power/gpu_frequency",
