@@ -1717,7 +1717,7 @@ int main(int argc, const char** argv) {
     vkCmdEndRenderPass(render_command_buffers[frame_parity]);
 
     REQUIRE_SUCCESS(vkEndCommandBuffer(render_command_buffers[frame_parity]));
-    VkPipelineStageFlags flags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    VkPipelineStageFlags flags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
     VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO,
                         nullptr,
