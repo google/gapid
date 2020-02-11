@@ -21,6 +21,7 @@ import static com.google.gapid.perfetto.views.TrackContainer.group;
 import static com.google.gapid.perfetto.views.TrackContainer.single;
 import static java.util.stream.Collectors.toList;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
@@ -38,6 +39,7 @@ import com.google.gapid.perfetto.views.TitlePanel;
 import com.google.gapid.perfetto.views.VulkanCounterPanel;
 import com.google.gapid.perfetto.views.VulkanEventPanel;
 import com.google.gapid.util.Scheduler;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -49,6 +51,10 @@ import java.util.stream.Collectors;
 public class Tracks {
   // CPU usage percentage at which a process/thread is considered idle.
   private static final double IDLE_PERCENT_CUTOFF = 0.001; // 0.1%.
+  // Polled counters from the process_stats data source.
+  private static final ImmutableSet<String> PROC_STATS_COUNTER = ImmutableSet.of(
+      "mem.virt", "mem.rss", "mem.locked", "oom_score_adj"
+  );
 
   private Tracks() {
   }
@@ -296,6 +302,11 @@ public class Tracks {
     if (counter.name.startsWith("mem.rss.") || counter.name.startsWith("mem.ion.") ||
         "mem.swap".equals(counter.name) ||  "Heap size (KB)".equals(counter.name)) {
       // Memory counters get their own UI.
+      return false;
+    }
+
+    if (PROC_STATS_COUNTER.contains(counter.name)) {
+      // The process_stat counters are too infrequent to be helpful.
       return false;
     }
 

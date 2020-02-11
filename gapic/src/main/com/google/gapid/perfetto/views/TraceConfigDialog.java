@@ -87,9 +87,13 @@ import perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy;
 public class TraceConfigDialog extends DialogBase {
   protected static final Logger LOG = Logger.getLogger(TraceConfigDialog.class.getName());
 
-  private static final int BUFFER_SIZE = 131072;
+  private static final int MAIN_BUFFER_SIZE = 131072;
+  private static final int PROC_BUFFER_SIZE = 4096;
+  private static final int PROC_BUFFER = 1;
   // Kernel ftrace buffer size per CPU.
   private static final int FTRACE_BUFFER_SIZE = 8192;
+
+  private static final int PROC_SCAN_PERIOD = 2000;
 
   // These ftrace categories are always enabled to track process creation and ending.
   private static final String[] PROCESS_TRACKING_FTRACE = {
@@ -214,15 +218,22 @@ public class TraceConfigDialog extends DialogBase {
             .getFtraceConfigBuilder()
             .addAllFtraceEvents(Arrays.asList(PROCESS_TRACKING_FTRACE))
             .setBufferSizeKb(FTRACE_BUFFER_SIZE);
+    // Record process names at startup into the metadata buffer.
+    config.addDataSourcesBuilder()
+        .getConfigBuilder()
+            .setName("linux.process_stats")
+            .setTargetBuffer(PROC_BUFFER)
+            .getProcessStatsConfigBuilder()
+                .setScanAllProcessesOnStart(true);
+    // Periodically record process information into the main buffer.
+    config.addDataSourcesBuilder()
+        .getConfigBuilder()
+            .setName("linux.process_stats")
+            .getProcessStatsConfigBuilder()
+                .setProcStatsPollMs(PROC_SCAN_PERIOD)
+                .setProcStatsCacheTtlMs(10 * PROC_SCAN_PERIOD);
 
     if (p.getCpuOrBuilder().getEnabled()) {
-      // Record process names.
-      config.addDataSourcesBuilder()
-          .getConfigBuilder()
-              .setName("linux.process_stats")
-              .getProcessStatsConfigBuilder()
-                  .setScanAllProcessesOnStart(true);
-
       ftrace.addAllFtraceEvents(Arrays.asList(CPU_BASE_FTRACE));
       if (p.getCpuOrBuilder().getFrequency()) {
         ftrace.addAllFtraceEvents(Arrays.asList(CPU_FREQ_FTRACE));
@@ -308,9 +319,15 @@ public class TraceConfigDialog extends DialogBase {
       }
     }
 
+    // Buffer 0 (default): main buffer.
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
-        .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE)
+        .setSizeKb((largeBuffer ? 8 : 1) * MAIN_BUFFER_SIZE)
         .setFillPolicy(FillPolicy.DISCARD));
+    // Buffer 1: Initial process metadata.
+    config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
+        .setSizeKb(PROC_BUFFER_SIZE)
+        .setFillPolicy(FillPolicy.DISCARD));
+
     config.setFlushPeriodMs((int)SECONDS.toMillis(5));
 
     return config;
