@@ -15,7 +15,6 @@
  */
 package com.google.gapid.perfetto.views;
 
-import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_COMMAND_BUFFER;
 import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_DEVICE;
 import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_INSTANCE;
 import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_PHYSICAL_DEVICE;
@@ -147,7 +146,6 @@ public class TraceConfigDialog extends DialogBase {
 
   private static final ImmutableMap<ProtocolMessageEnum, String> VK_LABLES =
       ImmutableMap.<ProtocolMessageEnum, String> builder()
-        .put(CPU_TIMING_COMMAND_BUFFER, "VkCommandBuffer")
         .put(CPU_TIMING_DEVICE, "VkDevice")
         .put(CPU_TIMING_INSTANCE, "VkInstance")
         .put(CPU_TIMING_PHYSICAL_DEVICE, "VkPhysicalDevice")
@@ -304,12 +302,10 @@ public class TraceConfigDialog extends DialogBase {
                   .addAllBatteryCounters(Arrays.asList(BAT_COUNTERS));
     }
 
-    boolean largeBuffer = false;
     if (p.getVulkanOrBuilder().getEnabled()) {
       Device.VulkanProfilingLayers vkLayers = caps.getVulkanProfileLayers();
       SettingsProto.Perfetto.VulkanOrBuilder vk = p.getVulkanOrBuilder();
       if (vkLayers.getCpuTiming() && vk.getCpuTiming()) {
-        largeBuffer = true;
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("VulkanCPUTiming")
@@ -325,7 +321,7 @@ public class TraceConfigDialog extends DialogBase {
 
     // Buffer 0 (default): main buffer.
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
-        .setSizeKb((largeBuffer ? 8 : 1) * MAIN_BUFFER_SIZE)
+        .setSizeKb(MAIN_BUFFER_SIZE)
         .setFillPolicy(FillPolicy.DISCARD));
     // Buffer 1: Initial process metadata.
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
@@ -433,7 +429,6 @@ public class TraceConfigDialog extends DialogBase {
     private final Spinner batRate;
     private final Button vulkan;
     private final Button vulkanCPUTiming;
-    private final Button vulkanCPUTimingCommandBuffer;
     private final Button vulkanCPUTimingDevice;
     private final Button vulkanCPUTimingInstance;
     private final Button vulkanCPUTimingPhysicalDevice;
@@ -569,15 +564,12 @@ public class TraceConfigDialog extends DialogBase {
               createCheckbox(cpuTimingGroup, "Device", hasCategory(sVk, CPU_TIMING_DEVICE));
           vulkanCPUTimingQueue =
               createCheckbox(cpuTimingGroup, "Queue", hasCategory(sVk, CPU_TIMING_QUEUE));
-          vulkanCPUTimingCommandBuffer = createCheckbox(
-              cpuTimingGroup, "CommandBuffer", hasCategory(sVk, CPU_TIMING_COMMAND_BUFFER));
         } else {
           vulkanCPUTiming = null;
           vulkanCPUTimingInstance = null;
           vulkanCPUTimingPhysicalDevice = null;
           vulkanCPUTimingDevice = null;
           vulkanCPUTimingQueue = null;
-          vulkanCPUTimingCommandBuffer = null;
         }
         if (caps.getVulkanProfileLayers().getMemoryTracker()) {
           vulkanMemoryTracking = createCheckbox(
@@ -602,7 +594,6 @@ public class TraceConfigDialog extends DialogBase {
         vulkanCPUTimingPhysicalDevice = null;
         vulkanCPUTimingDevice = null;
         vulkanCPUTimingQueue = null;
-        vulkanCPUTimingCommandBuffer = null;
         vulkanMemoryTracking = null;
         vulkanMemoryTrackingDevice = null;
         vulkanMemoryTrackingDriver = null;
@@ -674,7 +665,6 @@ public class TraceConfigDialog extends DialogBase {
       if (vulkanCPUTiming != null) {
         sVk.setCpuTiming(vulkanCPUTiming.getSelection());
         sVk.clearCpuTimingCategories();
-        addCategory(vulkanCPUTimingCommandBuffer, sVk, CPU_TIMING_COMMAND_BUFFER);
         addCategory(vulkanCPUTimingDevice, sVk, CPU_TIMING_DEVICE);
         addCategory(vulkanCPUTimingPhysicalDevice, sVk, CPU_TIMING_PHYSICAL_DEVICE);
         addCategory(vulkanCPUTimingInstance, sVk, CPU_TIMING_INSTANCE);
@@ -750,7 +740,6 @@ public class TraceConfigDialog extends DialogBase {
         vulkanCPUTimingPhysicalDevice.setEnabled(enabled);
         vulkanCPUTimingDevice.setEnabled(enabled);
         vulkanCPUTimingQueue.setEnabled(enabled);
-        vulkanCPUTimingCommandBuffer.setEnabled(enabled);
       }
       if (vulkanMemoryTracking != null) {
         vulkanMemoryTracking.setEnabled(vkEnabled);
