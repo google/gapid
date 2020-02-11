@@ -152,7 +152,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		return cmds[0 : id+1], nil
 	}
 	w := &writer{rc.NewState(ctx), nil}
-	if err := transforms.Transform(ctx, cmds, w); err != nil {
+	if err := transforms.TransformAll(ctx, cmds, 0, w); err != nil {
 		return nil, err
 	}
 

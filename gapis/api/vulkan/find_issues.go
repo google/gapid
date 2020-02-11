@@ -63,7 +63,6 @@ func isValidationLayer(n string) bool {
 type findIssues struct {
 	replay.EndOfReplay
 	state           *api.GlobalState
-	numInitialCmds  int
 	issues          []replay.Issue
 	reportCallbacks map[VkInstance]VkDebugReportCallbackEXT
 }
@@ -71,7 +70,6 @@ type findIssues struct {
 func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int) *findIssues {
 	t := &findIssues{
 		state:           c.NewState(ctx),
-		numInitialCmds:  numInitialCmds,
 		reportCallbacks: map[VkInstance]VkDebugReportCallbackEXT{},
 	}
 	t.state.OnError = func(err interface{}) {
@@ -286,18 +284,21 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {
 			var issue replay.Issue
 			msg := eMsg.GetMsg()
 			label := eMsg.GetLabel()
-			if int(label) < t.numInitialCmds {
+			issue.Command = api.CmdID(label)
+			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
+
+			if issue.Command == api.CmdNoID {
 				// The debug report is issued for state rebuilding command
 				// TODO: Fix all the errors reported for initial commands.
+				// TODO: Provide a way for the UI to distinguish these issues
+				// from issues on command 0.
 				issue.Command = api.CmdID(0)
-				issue.Error = fmt.Errorf("[State rebuilding command, linearized ID: %d]: %s", label, msg)
-				// For now hide such errors from the report view so users won't get confused.
-				return
+				issue.Error = fmt.Errorf("[State rebuilding command : %s]	", msg)
+			} else {
+				// The debug report is issued for a trace command
+				issue.Error = fmt.Errorf("%s", msg)
 			}
-			// The debug report is issued for a trace command
-			issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
-			issue.Error = fmt.Errorf("%s", msg)
-			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
+
 			t.issues = append(t.issues, issue)
 		})
 	}))

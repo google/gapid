@@ -293,7 +293,7 @@ func (a API) Replay(
 	if profile == nil {
 		cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
 	}
-	return transforms.Transform(ctx, cmds, out)
+	return transforms.TransformAll(ctx, cmds, 0, out)
 }
 
 func (a API) QueryIssues(
