@@ -63,7 +63,6 @@ sub void dovkCmdBindIndexBuffer(ref!vkCmdBindIndexBufferArgs buffer) {
 }
 
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -119,7 +118,6 @@ sub void dovkCmdBindVertexBuffers(ref!vkCmdBindVertexBuffersArgs bind) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -169,7 +167,6 @@ sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
   ldi.CommandParameters.Draw = draw
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
@@ -241,7 +238,6 @@ sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
   ldi.CommandParameters.DrawIndexed = draw
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
@@ -303,7 +299,6 @@ sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
@@ -366,7 +361,6 @@ sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
@@ -406,7 +400,6 @@ sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
   lci.CommandParameters.Dispatch = args
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
@@ -451,7 +444,6 @@ sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
   lci.CommandParameters.DispatchIndirect = dispatch
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
