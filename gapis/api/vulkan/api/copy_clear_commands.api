@@ -177,7 +177,6 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
         }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -359,7 +358,6 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   trackVkCmdCopyImage(args)
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -531,7 +529,6 @@ sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   trackVkCmdBlitImage(args)
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -710,7 +707,6 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -764,7 +760,6 @@ sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -826,7 +821,6 @@ sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -879,7 +873,6 @@ sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -929,7 +922,6 @@ sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -987,7 +979,6 @@ sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args)
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1039,7 +1030,6 @@ sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
   useRenderPass()
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1107,7 +1097,6 @@ sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
