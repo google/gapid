@@ -78,10 +78,6 @@ public class FramebufferView extends Composite
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
       .setDrawMode(Service.DrawMode.WIREFRAME_ALL)
       .build();
-  private static final Service.RenderSettings RENDER_OVERDRAW = Service.RenderSettings.newBuilder()
-      .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
-      .setDrawMode(Service.DrawMode.OVERDRAW)
-      .build();
 
   private final Models models;
   private final SingleInFlight rpcController = new SingleInFlight();
@@ -160,12 +156,7 @@ public class FramebufferView extends Composite
           models.analytics.postInteraction(View.Framebuffer, ClientAction.Wireframe);
           renderSettings = RENDER_WIREFRAME;
           updateBuffer();
-        }, "Render wireframe geometry"),
-        createToggleToolItem(bar, theme.overdraw(), e -> {
-          models.analytics.postInteraction(View.Framebuffer, ClientAction.Overdraw);
-          renderSettings = RENDER_OVERDRAW;
-          updateBuffer();
-        }, "Render overdraw"));
+        }, "Render wireframe geometry"));
     createSeparator(bar);
     return bar;
   }
