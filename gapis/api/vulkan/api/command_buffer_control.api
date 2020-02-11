@@ -691,6 +691,7 @@ sub void TrimCommandPool(
   if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd void vkTrimCommandPool(
     VkDevice                device,

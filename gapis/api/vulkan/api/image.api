@@ -885,6 +885,7 @@ sub void BindImageMemory2(
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd VkResult vkBindImageMemory2(
     VkDevice                     device,
@@ -941,6 +942,7 @@ sub void CreateSamplerYcbcrConversion(
   SamplerYcbcrConversions[handle] = object
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateSamplerYcbcrConversion(
@@ -963,6 +965,7 @@ sub void DestroySamplerYcbcrConversion(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroySamplerYcbcrConversion(
