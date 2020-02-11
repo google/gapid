@@ -54,7 +54,6 @@
 }
 
 @custom
-@since("1.0")
 @threadSafety("system")
 @override
 cmd VkResult vkCreateInstance(
@@ -73,7 +72,6 @@ cmd VkResult vkCreateInstance(
   return ?
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkInstance")
 @override
@@ -87,7 +85,6 @@ cmd void vkDestroyInstance(
   }
 }
 
-@since("1.0")
 @indirect("VkInstance")
 @override
 cmd PFN_vkVoidFunction vkGetInstanceProcAddr(
