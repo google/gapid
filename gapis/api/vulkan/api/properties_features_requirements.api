@@ -40,7 +40,6 @@
 // Instance and Device //
 /////////////////////////
 
-@since("1.0")
 @override
 cmd VkResult vkEnumerateInstanceExtensionProperties(
     const char*            pLayerName,
@@ -54,7 +53,6 @@ cmd VkResult vkEnumerateInstanceExtensionProperties(
   return ?
 }
 
-@since("1.0")
 @override
 cmd VkResult vkEnumerateInstanceLayerProperties(
     u32*               pPropertyCount,
@@ -63,7 +61,6 @@ cmd VkResult vkEnumerateInstanceLayerProperties(
   return ?
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 @override
 cmd VkResult vkEnumerateDeviceExtensionProperties(
@@ -80,7 +77,6 @@ cmd VkResult vkEnumerateDeviceExtensionProperties(
   return ?
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 @override
 cmd VkResult vkEnumerateDeviceLayerProperties(
@@ -128,7 +124,6 @@ sub void queryLayerProperties(u32* pPropertyCount, VkLayerProperties* pPropertie
 // Physical Device //
 /////////////////////
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceFeatures(
     VkPhysicalDevice          physicalDevice,
@@ -138,7 +133,6 @@ cmd void vkGetPhysicalDeviceFeatures(
   pFeatures[0] = ?
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceFormatProperties(
     VkPhysicalDevice    physicalDevice,
@@ -149,7 +143,6 @@ cmd void vkGetPhysicalDeviceFormatProperties(
   pFormatProperties[0] = ?
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkResult vkGetPhysicalDeviceImageFormatProperties(
     VkPhysicalDevice         physicalDevice,
@@ -165,7 +158,6 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties(
   return ?
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceProperties(
     VkPhysicalDevice            physicalDevice,
@@ -176,7 +168,6 @@ cmd void vkGetPhysicalDeviceProperties(
   PhysicalDevices[physicalDevice].PhysicalDeviceProperties = pProperties[0]
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceQueueFamilyProperties(
     VkPhysicalDevice         physicalDevice,
@@ -203,7 +194,6 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties(
   }
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceMemoryProperties(
     VkPhysicalDevice                  physicalDevice,
@@ -217,7 +207,6 @@ cmd void vkGetPhysicalDeviceMemoryProperties(
   dev.MemoryProperties = memoryProperties
 }
 
-@since("1.0")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceSparseImageFormatProperties(
     VkPhysicalDevice               physicalDevice,
@@ -248,7 +237,6 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties(
 // Buffer //
 ////////////
 
-@since("1.0")
 @indirect("VkDevice")
 cmd void vkGetBufferMemoryRequirements(
     VkDevice              device,
@@ -275,7 +263,6 @@ cmd void vkGetBufferMemoryRequirements(
 // Image //
 ///////////
 
-@since("1.0")
 @indirect("VkDevice")
 cmd void vkGetImageMemoryRequirements(
     VkDevice              device,
@@ -295,7 +282,6 @@ cmd void vkGetImageMemoryRequirements(
   }
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd void vkGetImageSparseMemoryRequirements(
     VkDevice                         device,
