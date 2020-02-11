@@ -17,15 +17,13 @@ package com.google.gapid.models;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
-import static java.util.logging.Level.FINE;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.proto.SettingsProto.DeviceValidation;
 import com.google.gapid.proto.device.Device;
-import com.google.gapid.proto.device.Device.DeviceValidationCache;
-import com.google.gapid.proto.device.Device.DeviceValidationCacheEntry;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Value;
@@ -41,18 +39,10 @@ import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
-import com.google.gapid.util.OS;
 import com.google.gapid.util.Paths;
-import com.google.protobuf.TextFormat;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
@@ -72,18 +62,16 @@ public class Devices {
   private Device.Instance selectedReplayDevice;
   private List<DeviceCaptureInfo> devices;
   private DeviceValidationInfo deviceValidationInfo;
-  private List<DeviceCaptureInfo> validatedDevices;
 
-  public static final Flag<Boolean> skipDeviceValidation = Flags.value("skip_device_validation", false,
+  public static final Flag<Boolean> skipDeviceValidation = Flags.value("skip-device-validation", false,
       "Skips the device validation process. " +
       "Device validation verifies that the GPU events emitted are within the acceptable threshold.", true);
 
-  public Devices(Shell shell, Analytics analytics, Client client, Capture capture) {
+  public Devices(Shell shell, Analytics analytics, Client client, Capture capture, Settings settings) {
     this.shell = shell;
     this.analytics = analytics;
     this.client = client;
-    deviceValidationInfo = new DeviceValidationInfo(client);
-    validatedDevices = Lists.newArrayList();
+    deviceValidationInfo = new DeviceValidationInfo(client, settings);
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -165,20 +153,13 @@ public class Devices {
   }
 
   public ListenableFuture<DeviceValidationResult> validateDevice(DeviceCaptureInfo device) {
-    if (validatedDevices.contains(device)) {
-      return immediateFuture(DeviceValidationResult.getDefaultResult());
-    }
     return MoreFutures.transform(deviceValidationInfo.doValidation(device), e -> {
-      if (e.passed) {
-        validatedDevices.add(device);
-      }
       return e;
     });
-
   }
 
-  public boolean getValidationStatus(DeviceCaptureInfo device) {
-    return validatedDevices.contains(device);
+  public DeviceValidationResult getValidationStatus(DeviceCaptureInfo device) {
+    return deviceValidationInfo.getValidationStatus(device);
   }
 
   public void loadDevices() {
@@ -340,98 +321,83 @@ public class Devices {
    *  of the validation cache.
    */
   private static class DeviceValidationInfo {
-    private static final String VALIDATION_CACHE = ".gapic-device-validation-cache";
     private final Client client;
+    private DeviceValidation.Builder deviceValidation;
 
-    // Local list of validated devices.
-    private List<DeviceValidationCacheEntry> deviceCacheList;
-
-    public DeviceValidationInfo(Client client) {
+    public DeviceValidationInfo(Client client, Settings settings) {
       this.client = client;
-      loadFromCache();
+      deviceValidation = settings.deviceValidation();
     }
 
-    private void loadFromCache() {
-      File file = new File(OS.userHomeDir, VALIDATION_CACHE);
-      DeviceValidationCache deviceValidationCache = DeviceValidationCache.getDefaultInstance();
-      if (file.exists() && file.canRead()) {
-        try (Reader reader = new FileReader(file)) {
-          DeviceValidationCache.Builder read = DeviceValidationCache.newBuilder();
-          TextFormat.Parser.newBuilder()
-              .setAllowUnknownFields(true)
-              .build()
-              .merge(reader, read);
-          deviceValidationCache = read.build();
-        } catch (TextFormat.ParseException e) {
-          LOG.log(FINE, "Proto parse error reading properties from " + file, e);
-        } catch (IOException e) {
-          LOG.log(FINE, "IO error reading properties from " + file, e);
-        }
-      }
-      deviceCacheList = Lists.newArrayList(deviceValidationCache.toBuilder().getEntriesList());
+    private static DeviceValidation.ValidationEntry buildValidationEntry(DeviceCaptureInfo device) {
+      return DeviceValidation.ValidationEntry.newBuilder()
+          .setDevice(DeviceValidation.Device.newBuilder()
+              .setSerial(device.device.getSerial())
+              .setOs(device.device.getConfiguration().getOS())
+              .setVersion(device.device.getConfiguration().getDrivers().getVulkan().getVersion()))
+          .setResult(DeviceValidation.Result.newBuilder()
+              .setPassed(true))
+          .build();
     }
 
-    private void saveToCache() {
-      DeviceValidationCache deviceValidationCache = DeviceValidationCache.newBuilder()
-          .addAllEntries(deviceCacheList).build();
-      if (deviceValidationCache != null) {
-        File file = new File(OS.userHomeDir, VALIDATION_CACHE);
-        try (Writer writer = new FileWriter(file)) {
-          TextFormat.print(deviceValidationCache, writer);
-        } catch (IOException e) {
-          LOG.log(FINE, "IO error writing properties to " + file, e);
-        }
+    public DeviceValidationResult getValidationStatus(DeviceCaptureInfo device) {
+      if (skipDeviceValidation.get()) {
+        return DeviceValidationResult.getSkippedResult();
       }
+      DeviceValidation.ValidationEntry entry  = buildValidationEntry(device);
+      if (deviceValidation.getValidationEntriesList().contains(entry)) {
+        return DeviceValidationResult.getPassedResult();
+      }
+      return DeviceValidationResult.getFailedResult();
     }
 
     public ListenableFuture<DeviceValidationResult> doValidation(DeviceCaptureInfo device) {
       if (device == null) {
-        return immediateFuture(DeviceValidationResult.getDefaultResult());
+        return immediateFuture(DeviceValidationResult.getPassedResult());
       }
-
-      List<Integer> driverVersions = Lists.newArrayList();
-      device.device.getConfiguration().getDrivers().getVulkan().getPhysicalDevicesList().forEach(e -> {
-        driverVersions.add(e.getDriverVersion());
-      });
-
-      DeviceValidationCacheEntry currentEntry =
-          DeviceValidationCacheEntry.newBuilder()
-            .setOs(device.device.getConfiguration().getOS())
-            .addAllDriverVersion(driverVersions)
-            .setVersionCode(device.device.getConfiguration().getDrivers().getPrereleaseDriverApkVersionCode())
-            .build();
-
-      if (deviceCacheList.contains(currentEntry)) {
-        return immediateFuture(DeviceValidationResult.getDefaultResult());
+      DeviceValidation.ValidationEntry currentEntry = buildValidationEntry(device);
+      if (deviceValidation.getValidationEntriesList().contains(currentEntry)) {
+        return immediateFuture(DeviceValidationResult.getPassedResult());
       }
 
       return MoreFutures.transform(client.validateDevice(device.path), e -> {
         updateValidationStatus(currentEntry, e);
-        return new DeviceValidationResult(e.getError(), !e.hasError());
+        return new DeviceValidationResult(e.getError(), !e.hasError(), false);
       });
     }
 
-    protected void updateValidationStatus(DeviceValidationCacheEntry entry, Service.ValidateDeviceResponse response) {
+    protected void updateValidationStatus(DeviceValidation.ValidationEntry entry, Service.ValidateDeviceResponse response) {
       if (response == null || response.hasError()) {
         return;
       }
-      deviceCacheList.add(entry);
-      saveToCache();
+      deviceValidation.addValidationEntries(entry);
     }
   }
 
   public static class DeviceValidationResult {
-    private static DeviceValidationResult defaultInstance = new DeviceValidationResult(null, true);
+    private static DeviceValidationResult passedResult = new DeviceValidationResult(null, true, false);
+    private static DeviceValidationResult failedResult = new DeviceValidationResult(null, false, false);
+    private static DeviceValidationResult skippedResult = new DeviceValidationResult(null, true, true);
     public Service.Error error;
     public boolean passed;
+    public boolean skipped;
 
-    public DeviceValidationResult(Service.Error error, boolean passed) {
+    public DeviceValidationResult(Service.Error error, boolean passed, boolean skipped) {
       this.error = error;
       this.passed = passed;
+      this.skipped = skipped;
     }
 
-    public static DeviceValidationResult getDefaultResult() {
-      return defaultInstance;
+    public static DeviceValidationResult getPassedResult() {
+      return passedResult;
+    }
+
+    public static DeviceValidationResult getSkippedResult() {
+      return skippedResult;
+    }
+
+    public static DeviceValidationResult getFailedResult() {
+      return failedResult;
     }
   }
 }

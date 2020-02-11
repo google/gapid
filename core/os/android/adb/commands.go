@@ -385,11 +385,11 @@ func extrasFlags(extras []android.ActionExtra) []string {
 func (b *binding) DriverVersionCode(ctx context.Context) (int, error) {
 	driver, err := b.SystemProperty(ctx, driverProperty)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 	ip, err := b.InstalledPackage(ctx, driver)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 	return ip.VersionCode, err
 }

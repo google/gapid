@@ -100,9 +100,6 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -200,7 +197,6 @@ public class TracerDialog {
     private final Models models;
     private final Widgets widgets;
     private final Runnable refreshDevices;
-    private final Shell shell;
 
     private TraceInput traceInput;
     private List<DeviceCaptureInfo> devices;
@@ -212,7 +208,6 @@ public class TracerDialog {
       this.models = models;
       this.widgets = widgets;
       this.refreshDevices = refreshDevices;
-      this.shell = shell;
     }
 
     public void setDevices(List<DeviceCaptureInfo> devices) {
@@ -232,7 +227,7 @@ public class TracerDialog {
     @Override
     protected Control createDialogArea(Composite parent) {
       Composite area = (Composite)super.createDialogArea(parent);
-      traceInput = new TraceInput(area, models, widgets, refreshDevices, shell);
+      traceInput = new TraceInput(area, models, widgets, refreshDevices);
       traceInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
       if (devices != null) {
@@ -252,14 +247,6 @@ public class TracerDialog {
       traceInput.addModifyListener(modifyListener);
 
       modifyListener.handleEvent(null); // Set initial state of widgets.
-
-      traceInput.validationStatus.addListener(new PropertyChangeListener() {
-
-        @Override
-        public void propertyChange(PropertyChangeEvent event) {
-          ok.setEnabled(traceInput.isReady());
-        }
-      });
     }
 
     @Override
@@ -301,7 +288,7 @@ public class TracerDialog {
       private final LoadingIndicator.Widget deviceLoader;
       private final ComboViewer api;
       private final Label apiLabel;
-      private final LoadingIndicator.WithImage validationStatusLoader;
+      private final LoadingIndicator.Widget validationStatusLoader;
       private final Link validationStatusText;
       private final ActionTextbox traceTarget;
       private final Label targetLabel;
@@ -327,14 +314,13 @@ public class TracerDialog {
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
 
-
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
 
-      public final ListenableProperty<Boolean> validationStatus;
+      public boolean validationStatus;
 
-      public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices, Shell shell) {
+      public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
         super(parent, SWT.NONE);
         this.models = models;
         SettingsProto.TraceOrBuilder trace = models.settings.trace();
@@ -366,16 +352,14 @@ public class TracerDialog {
         // dummy label to fill the 3rd column
         createLabel(mainGroup, "");
 
-        validationStatusLoader = widgets.loading.createWithImage(mainGroup, widgets.theme.smile(), widgets.theme.error());
+        validationStatusLoader = widgets.loading.createWidgetWithImage(mainGroup, widgets.theme.smile(), widgets.theme.error());
         validationStatusLoader.setLayoutData(
             withIndents(new GridData(SWT.LEFT, SWT.BOTTOM, false, false), 0, 0));
-        validationStatusLoader.setVisible(false);
         validationStatusText = createLink(mainGroup, "", e-> {
           Program.launch(URLs.DEVICE_COMPATIBILITY_URL);
         });
         validationStatusText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-        validationStatusText.setVisible(false);
-        validationStatus = new ListenableProperty<Boolean>();
+        validationStatus = false;
 
         Group appGroup  = withLayoutData(
             createGroup(this, "Application", new GridLayout(2, false)),
@@ -499,11 +483,10 @@ public class TracerDialog {
 
         device.getCombo().addListener(SWT.Selection, e -> {
           updateOnDeviceChange(models.settings, getSelectedDevice());
-          runValidationCheck(getSelectedDevice(), getSelectedApi(), shell);
+          runValidationCheck(getSelectedDevice());
         });
         api.getCombo().addListener(SWT.Selection, e -> {
           updateOnApiChange(trace, getSelectedDevice(), getSelectedApi());
-          runValidationCheck(getSelectedDevice(), getSelectedApi(), shell);
         });
 
         Listener mecListener = e -> {
@@ -606,16 +589,16 @@ public class TracerDialog {
         updatePerfettoConfigLabel(settings);
       }
 
-      private void runValidationCheck(DeviceCaptureInfo dev, TraceTypeCapabilities config, Shell shell) {
-        if (dev == null || Devices.skipDeviceValidation.get()) {
+      private void runValidationCheck(DeviceCaptureInfo dev) {
+        if (dev == null) {
           return;
         }
         setValidationStatus(models.devices.getValidationStatus(dev));
-        if (isPerfetto(config) && !models.devices.getValidationStatus(dev)) {
+        if (!models.devices.getValidationStatus(dev).passed) {
           validationStatusLoader.startLoading();
           validationStatusText.setText("Device is being validated");
           rpcController.start().listen(models.devices.validateDevice(dev),
-              new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(shell, LOG) {
+              new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(validationStatusLoader, LOG) {
             @Override
             protected ResultOrError<DeviceValidationResult, DeviceValidationResult>
               onRpcThread(Rpc.Result<DeviceValidationResult> response) throws RpcException, ExecutionException {
@@ -629,33 +612,31 @@ public class TracerDialog {
 
             @Override
             protected void onUiThreadSuccess(DeviceValidationResult result) {
-              setValidationStatus(result.passed);
+              setValidationStatus(result);
             }
 
             @Override
             protected void onUiThreadError(DeviceValidationResult result) {
               LOG.log(WARNING, "UI thread error while validating device");
-              setValidationStatus(false);
+              setValidationStatus(result);
             }
           });
         }
       }
 
-      protected void setValidationStatus(boolean status) {
-        if (validationStatusLoader.isDisposed()) {
-          return;
+      protected void setValidationStatus(DeviceValidationResult result) {
+        if (result.skipped) {
+          validationStatusLoader.updateStatus(true);
+          validationStatusLoader.stopLoading();
+          validationStatusText.setText("Validation skipped.");
+          validationStatus = true;
+        } else {
+          validationStatusLoader.updateStatus(result.passed);
+          validationStatusText.setText("Validation " + (result.passed ? "Passed." : "Failed. " + VALIDATION_FAILED_LANDING_PAGE));
+          validationStatusLoader.stopLoading();
+          validationStatus = result.passed;
         }
-        validationStatusLoader.updateStatus(status);
-        validationStatusText.setText("Validation " + (status ? "Passed." : "Failed. " + VALIDATION_FAILED_LANDING_PAGE));
-        validationStatusLoader.stopLoading();
-        validationStatus.set(status);
-      }
-
-      private void resetValidationStatus() {
-        validationStatusLoader.updateStatus(false);
-        validationStatusLoader.stopLoading();
-        validationStatusText.setText("Validation Status");
-        validationStatus.set(false);
+        (TraceInput.this).notifyListeners(SWT.Modify, new Event());
       }
 
       private void updateOnApiChange(
@@ -706,9 +687,6 @@ public class TracerDialog {
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
         updateDurationSpinner(dev, config, dur.getType());
         perfettoConfig.setVisible(isPerfetto);
-        resetValidationStatus();
-        validationStatusLoader.setVisible(isPerfetto && !isValidationSkipped());
-        validationStatusText.setVisible(isPerfetto && !isValidationSkipped());
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
@@ -863,7 +841,7 @@ public class TracerDialog {
       }
 
       public boolean isReady() {
-        return isInputReady() && isDeviceValidated();
+        return isInputReady() && validationStatus;
       }
 
       public boolean isInputReady() {
@@ -873,23 +851,13 @@ public class TracerDialog {
             !directory.getText().isEmpty() && !file.getText().isEmpty();
       }
 
-      public static boolean isValidationSkipped() {
-          return Devices.skipDeviceValidation.get();
-      }
-
-      public boolean isDeviceValidated() {
-        if (!isValidationSkipped() && isPerfetto(getSelectedApi())) {
-          return getSelectedDevice() != null && models.devices.getValidationStatus(getSelectedDevice());
-        }
-        return true;
-      }
-
       public void addModifyListener(Listener listener) {
         device.getCombo().addListener(SWT.Selection, listener);
         api.getCombo().addListener(SWT.Selection, listener);
         traceTarget.addBoxListener(SWT.Modify, listener);
         directory.addBoxListener(SWT.Modify, listener);
         file.addListener(SWT.Modify, listener);
+        this.addListener(SWT.Modify, listener);
       }
 
       public void setDevices(Settings settings, List<DeviceCaptureInfo> devices) {
@@ -1049,24 +1017,6 @@ public class TracerDialog {
       private StartType(SettingsProto.Trace.Duration.Type proto) {
         this.proto = proto;
       }
-    }
-  }
-
-  public static class ListenableProperty<T> {
-    protected PropertyChangeSupport propertyChangeSupport;
-    private T property;
-
-    public ListenableProperty() {
-      propertyChangeSupport = new PropertyChangeSupport(this);
-    }
-
-    public void set(T value) {
-      property = value;
-      propertyChangeSupport.firePropertyChange("property", null, property);
-    }
-
-    public void addListener(PropertyChangeListener listener) {
-      propertyChangeSupport.addPropertyChangeListener(listener);
     }
   }
 

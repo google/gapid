@@ -75,6 +75,10 @@ public class LoadingIndicator {
     }
   }
 
+  public void paint(Image image, GC g, int x, int y, Point size) {
+    paint(image, g, x, y, size.x, size.y);
+  }
+
   public void paintRefresh(GC g, int x, int y, Point size) {
     paintRefresh(g, x, y, size.x, size.y);
   }
@@ -88,12 +92,6 @@ public class LoadingIndicator {
     g.drawImage(image, 0, 0, s.width, s.height,
         x + (w - s.width) / 2, y + (h - s.height) / 2, s.width, s.height);
     return x + (w - s.width) / 2 + s.width;
-  }
-
-  public void paintImage(Image image, GC g, int x, int y, Point size) {
-    Rectangle s = image.getBounds();
-    g.drawImage(image, 0, 0, s.width, s.height,
-        x + (size.x - s.width) / 2, y + (size.y - s.height) / 2, s.width, s.height);
   }
 
   public Image getCurrentFrame() {
@@ -142,8 +140,8 @@ public class LoadingIndicator {
     return new Widget(parent, true);
   }
 
-  public WithImage createWithImage (Composite parent, Image success, Image failure) {
-    return new WithImage(parent, false, success, failure);
+  public Widget createWidgetWithImage(Composite parent, Image success, Image failure) {
+    return new Widget(parent, success, failure);
   }
 
   /**
@@ -158,12 +156,20 @@ public class LoadingIndicator {
 
   /**
    * Widget that shows the loading indicator while loading and is blank once done.
+   * Can optionally show an image when done.
    */
   public class Widget extends Canvas implements Loadable, Repaintable {
+    private Image successImage;
+    private Image failureImage;
+
     protected boolean loading = false;
+    protected boolean status = false;
 
     public Widget(Composite parent, boolean showRefresh) {
       super(parent, SWT.DOUBLE_BUFFERED);
+      successImage = null;
+      failureImage = null;
+      status = false;
       addListener(SWT.Paint, e -> {
         if (loading) {
           paint(e.gc, 0, 0, getSize(), "");
@@ -172,6 +178,27 @@ public class LoadingIndicator {
           paintRefresh(e.gc, 0, 0, getSize());
         }
       });
+    }
+
+    public Widget(Composite parent, Image success, Image failure) {
+      super(parent, SWT.DOUBLE_BUFFERED);
+      successImage = success;
+      failureImage = failure;
+      addListener(SWT.Paint, e -> {
+        if (loading) {
+          paint(e.gc, 0, 0, getSize(), "");
+          scheduleForRedraw(this);
+        } else if (status) {
+          paint(successImage, e.gc, 0, 0, getSize());
+        }
+        else {
+          paint(failureImage, e.gc, 0, 0, getSize());
+        }
+      });
+    }
+
+    public void updateStatus(boolean status) {
+      this.status = status;
     }
 
     @Override
@@ -194,32 +221,6 @@ public class LoadingIndicator {
     @Override
     public Point computeSize(int wHint, int hHint, boolean changed) {
       return new Point(SMALL_SIZE, SMALL_SIZE);
-    }
-  }
-
-  public class WithImage extends Widget {
-    private Image successImage;
-    private Image failureImage;
-    public boolean status;
-
-    public WithImage(Composite parent, boolean showRefresh, Image success, Image failure) {
-      super(parent, showRefresh);
-      successImage = success;
-      failureImage = failure;
-      addListener(SWT.Paint, e -> {
-        if (!loading) {
-          if (status) {
-            paintImage(successImage, e.gc, 0, 0, getSize());
-          }
-          else {
-            paintImage(failureImage, e.gc, 0, 0, getSize());
-          }
-        }
-      });
-      }
-
-    public void updateStatus(boolean status) {
-      this.status = status;
     }
   }
 }
