@@ -381,6 +381,39 @@ func extrasFlags(extras []android.ActionExtra) []string {
 	return flags
 }
 
+func (b *binding) resolveDriverPath(ctx context.Context, driver string) (Driver, error) {
+	path, err := b.Shell("pm", "path", driver).Call(ctx)
+	if err != nil {
+		return Driver{}, err
+	}
+	// Check the package path of the driver.
+	if !strings.HasPrefix(path, "package:") {
+		return Driver{}, nil
+	}
+	path = path[8:]
+	if path == "" {
+		return Driver{}, nil
+	}
+
+	return Driver{
+		Package: driver,
+		Path:    path,
+	}, nil
+}
+
+// PrereleaseGraphicsDriver queries and returns info on the prerelease graphics driver.
+func (b *binding) PrereleaseGraphicsDriver(ctx context.Context) (Driver, error) {
+	driver, err := b.SystemProperty(ctx, driverProperty)
+	if err != nil {
+		return Driver{}, err
+	}
+	if driver == "" {
+		// There is no prerelease driver.
+		return Driver{}, nil
+	}
+	return b.resolveDriverPath(ctx, driver)
+}
+
 // DriverPackage queries and returns the package of the preview graphics driver.
 func (b *binding) GraphicsDriver(ctx context.Context) (Driver, error) {
 	// Check if there is an override setup.
@@ -399,22 +432,5 @@ func (b *binding) GraphicsDriver(ctx context.Context) (Driver, error) {
 			return Driver{}, nil
 		}
 	}
-
-	// Check the package path of the driver.
-	path, err := b.Shell("pm", "path", driver).Call(ctx)
-	if err != nil {
-		return Driver{}, err
-	}
-	if !strings.HasPrefix(path, "package:") {
-		return Driver{}, nil
-	}
-	path = path[8:]
-	if path == "" {
-		return Driver{}, nil
-	}
-
-	return Driver{
-		Package: driver,
-		Path:    path,
-	}, nil
+	return b.resolveDriverPath(ctx, driver)
 }

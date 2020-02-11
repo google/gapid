@@ -72,6 +72,23 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		abi = p.Device.Instance().GetConfiguration().PreferredABI(nil)
 	}
 
+	driver, err := d.PrereleaseGraphicsDriver(ctx)
+	if err != nil {
+		return nil, nil, log.Err(ctx, err, "Failed to locate pre-release driver package")
+	}
+
+	cleanup := app.Cleanup(func(ctx context.Context) {})
+	// Force the traced app to use the pre-release driver, or fail early
+	if driver.Package != "" && a != nil && a.Package != nil {
+		nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, a.Package)
+		cleanup = cleanup.Then(nextCleanup)
+		if err != nil {
+			return nil, cleanup.Invoke(ctx), err
+		}
+	} else {
+		return nil, cleanup.Invoke(ctx), log.Err(ctx, nil, "Failed to locate pre-release driver package")
+	}
+
 	// For NativeBridge emulated devices opt for the native ABI of the emulator.
 	abi = d.NativeBridgeABI(ctx, abi)
 
@@ -106,7 +123,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket(pipe)); err != nil {
 		return nil, nil, log.Err(ctx, err, "Setting up port forwarding for gapii")
 	}
-	cleanup := app.Cleanup(func(ctx context.Context) {
+	cleanup = cleanup.Then(func(ctx context.Context) {
 		d.RemoveForward(ctx, port)
 	})
 

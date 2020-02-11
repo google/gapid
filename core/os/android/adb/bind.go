@@ -38,6 +38,8 @@ type Device interface {
 	RemoveForward(ctx context.Context, local Port) error
 	// GraphicsDriver queries and returns info on the preview graphics driver.
 	GraphicsDriver(ctx context.Context) (Driver, error)
+	// PrereleaseGraphicsDriver queries and returns info on the prerelease graphics driver.
+	PrereleaseGraphicsDriver(ctx context.Context) (Driver, error)
 }
 
 // Driver contains the information about a graphics driver.

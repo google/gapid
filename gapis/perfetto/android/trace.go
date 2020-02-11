@@ -61,7 +61,11 @@ func hasRenderStageEnabled(perfettoConfig *perfetto_pb.TraceConfig) bool {
 }
 
 // SetupProfileLayersSource configures the device to allow packages to be used as layer sources for profiling
-func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName string, abi *device.ABI) (app.Cleanup, error) {
+func SetupProfileLayersSource(ctx context.Context, d adb.Device, apk *android.InstalledPackage, abi *device.ABI) (app.Cleanup, error) {
+	cleanup, err := adb.SetupPrereleaseDriver(ctx, d, apk)
+	if err != nil {
+		return cleanup.Invoke(ctx), err
+	}
 	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
 		return nil, err
@@ -71,7 +75,8 @@ func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName str
 		packages = append(packages, gapidapk.PackageName(abi))
 	}
 
-	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, []string{}, true)
+	nextCleanup, err := android.SetupLayers(ctx, d, apk.Name, packages, []string{}, true)
+	cleanup = cleanup.Then(nextCleanup)
 	if err != nil {
 		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages layer packages.")
 	}

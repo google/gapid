@@ -278,7 +278,7 @@ func newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []str
 
 	log.I(ctx, "Launching GAPIR...")
 	// Configure GAPIR to be traceable for replay profiling
-	cleanup, err := perfetto_android.SetupProfileLayersSource(ctx, d, apk.Name, abi)
+	cleanup, err := perfetto_android.SetupProfileLayersSource(ctx, d, apk.InstalledPackage, abi)
 
 	if err != nil {
 		// TODO(apbodnar) Fail here if we know we need render stages
