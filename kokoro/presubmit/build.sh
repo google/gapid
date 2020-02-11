@@ -20,7 +20,7 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
 
 # Get bazel.
-BAZEL_VERSION=1.2.0
+BAZEL_VERSION=2.0.0
 curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel

@@ -20,17 +20,17 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
 
 # Get bazel.
-BAZEL_VERSION=1.2.0
+BAZEL_VERSION=2.0.0
 curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
-# Get GCC 8
+# Get GCC 9
 sudo rm /etc/apt/sources.list.d/cuda.list*
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 sudo apt-get -q update
-sudo apt-get -qy install gcc-8 g++-8
-export CC=/usr/bin/gcc-8
+sudo apt-get -qy install gcc-9 g++-9
+export CC=/usr/bin/gcc-9
 
 # Get the Android NDK
 curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip
