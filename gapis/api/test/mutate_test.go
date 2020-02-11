@@ -63,7 +63,7 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 		b.BeginCommand(uint64(id), 0)
 		err := cmd.Mutate(ctx, id, s, b, nil)
 		assert.For(ctx, "Mutate command").ThatError(err).Succeeded()
-		b.CommitCommand()
+		b.CommitCommand(ctx, false)
 		return nil
 	})
 

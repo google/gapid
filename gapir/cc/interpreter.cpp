@@ -182,8 +182,8 @@ void Interpreter::exec() {
   mExecResult.set_value(SUCCESS);
 }
 
-BaseType Interpreter::extractType(uint32_t opcode) const {
-  return BaseType((opcode & TYPE_MASK) >> TYPE_BIT_SHIFT);
+uint32_t Interpreter::extract6bitData(uint32_t opcode) const {
+  return (opcode & TYPE_MASK) >> TYPE_BIT_SHIFT;
 }
 
 uint32_t Interpreter::extract20bitData(uint32_t opcode) const {
@@ -192,6 +192,10 @@ uint32_t Interpreter::extract20bitData(uint32_t opcode) const {
 
 uint32_t Interpreter::extract26bitData(uint32_t opcode) const {
   return opcode & DATA_MASK26;
+}
+
+BaseType Interpreter::extractType(uint32_t opcode) const {
+  return BaseType(extract6bitData(opcode));
 }
 
 bool Interpreter::registerApi(uint8_t api) {
@@ -335,6 +339,49 @@ Interpreter::Result Interpreter::store() {
 Interpreter::Result Interpreter::resource(uint32_t opcode) {
   mStack.push<uint32_t>(extract26bitData(opcode));
   return this->call(Interpreter::RESOURCE_FUNCTION_ID);
+}
+
+Interpreter::Result Interpreter::inlineResource(uint32_t opcode) {
+  unsigned int numValuePatchUps = extract6bitData(opcode);
+  unsigned int dataSize = extract20bitData(opcode);
+
+  void* destination = mStack.pop<void*>();
+  memcpy(destination, &mInstructions[mCurrentInstruction + 1],
+         (size_t)dataSize);
+
+  auto roundedDataSize = (dataSize / 4) + (dataSize % 4 != 0 ? 1 : 0);
+
+  for (unsigned int i = 0; i < numValuePatchUps; ++i) {
+    uint32_t destination =
+        mInstructions[mCurrentInstruction + 1 + roundedDataSize + i * 2];
+    uint32_t value =
+        mInstructions[mCurrentInstruction + 1 + roundedDataSize + i * 2 + 1];
+
+    *((void**)mMemoryManager->volatileToAbsolute(destination)) =
+        (void*)mMemoryManager->volatileToAbsolute(value);
+  }
+
+  uint32_t numPointerPatchUps =
+      mInstructions[mCurrentInstruction + 1 + roundedDataSize +
+                    numValuePatchUps * 2];
+
+  for (unsigned int i = 0; i < numPointerPatchUps; ++i) {
+    uint32_t destination =
+        mInstructions[mCurrentInstruction + 1 + roundedDataSize +
+                      numValuePatchUps * 2 + 1 + i * 2];
+
+    uint32_t source = mInstructions[mCurrentInstruction + 1 + roundedDataSize +
+                                    numValuePatchUps * 2 + 1 + i * 2 + 1];
+
+    *((void**)mMemoryManager->volatileToAbsolute(destination)) =
+        *((void**)mMemoryManager->volatileToAbsolute(source));
+  }
+
+  unsigned int inlineData =
+      roundedDataSize + numValuePatchUps * 2 + 1 + numPointerPatchUps * 2;
+
+  mCurrentInstruction = mCurrentInstruction + inlineData;
+  return SUCCESS;
 }
 
 Interpreter::Result Interpreter::post() {
@@ -614,6 +661,9 @@ Interpreter::Result Interpreter::interpret(uint32_t opcode) {
     case InstructionCode::RESOURCE:
       DEBUG_OPCODE_26("RESOURCE", opcode);
       return this->resource(opcode);
+    case InstructionCode::INLINE_RESOURCE:
+      DEBUG_OPCODE_26("INLINE_RESOURCE", opcode);
+      return this->inlineResource(opcode);
     case InstructionCode::POST:
       DEBUG_OPCODE("POST", opcode);
       return this->post();

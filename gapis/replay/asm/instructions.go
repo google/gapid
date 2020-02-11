@@ -15,6 +15,7 @@
 package asm
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/binary"
@@ -302,6 +303,92 @@ func (a Resource) Encode(r value.PointerResolver, w binary.Writer) error {
 	}
 	return opcode.Resource{
 		ID: a.Index,
+	}.Encode(w)
+}
+
+// InlineResource is an Instruction that loads the resource with index Index of Size
+// bytes and writes the resource to Destination. Unlike the regular Resource instruction
+// InlineResource packs the resource into the bytes following the initial 32 bit instruction
+// In turn, this "inline" resource is followed by a pair of patch up tables. First some
+// addresses to overwrite with constant values, then some pairs of addresses where the
+// first address is an address to load from and the second is an address to store the loaded
+// value.
+
+type InlineResourceValuePatchUp struct {
+	Destination value.Pointer
+	Value       value.Value
+}
+
+type InlineResourcePointerPatchUp struct {
+	Destination value.Pointer
+	Source      value.Pointer
+}
+
+type InlineResource struct {
+	Data            []byte
+	Destination     value.Pointer
+	ValuePatchUps   []InlineResourceValuePatchUp
+	PointerPatchUps []InlineResourcePointerPatchUp
+	Ctx             context.Context
+}
+
+func (a InlineResource) Encode(r value.PointerResolver, w binary.Writer) error {
+	ty, val, onStack := a.Destination.Get(r)
+	if !onStack {
+		if err := encodePush(ty, val, w); err != nil {
+			return err
+		}
+	}
+
+	valuePatchUps := make([]opcode.InlineResourceValuePatchUp, 0)
+	pointerPatchUps := make([]opcode.InlineResourcePointerPatchUp, 0)
+
+	for _, valuePatchUp := range a.ValuePatchUps {
+		valuePatchUps = append(valuePatchUps, opcode.InlineResourceValuePatchUp{Destination: valuePatchUp.Destination, Value: valuePatchUp.Value})
+	}
+
+	for _, pointerPatchUp := range a.PointerPatchUps {
+		pointerPatchUps = append(pointerPatchUps, opcode.InlineResourcePointerPatchUp{Destination: pointerPatchUp.Destination, Source: pointerPatchUp.Source})
+	}
+
+	dataInstructions := len(a.Data) / 4
+	if len(a.Data)%4 != 0 {
+		dataInstructions = dataInstructions + 1
+	}
+
+	data := make([]uint32, dataInstructions)
+
+	for i := 0; i < dataInstructions; i++ {
+
+		v0 := uint32(0)
+		v1 := uint32(0)
+		v2 := uint32(0)
+		v3 := uint32(0)
+
+		v0 = uint32(a.Data[i*4+0])
+
+		if i*4+1 < len(a.Data) {
+			v1 = uint32(a.Data[i*4+1]) * 256
+		}
+
+		if i*4+2 < len(a.Data) {
+			v2 = uint32(a.Data[i*4+2]) * 256 * 256
+		}
+
+		if i*4+3 < len(a.Data) {
+			v3 = uint32(a.Data[i*4+3]) * 256 * 256 * 256
+		}
+
+		data[i] = v0 + v1 + v2 + v3
+	}
+
+	return opcode.InlineResource{
+		Data:            data,
+		DataSize:        uint32(len(a.Data)),
+		ValuePatchUps:   valuePatchUps,
+		PointerPatchUps: pointerPatchUps,
+		Resolver:        r,
+		Ctx:             a.Ctx,
 	}.Encode(w)
 }
 
