@@ -261,6 +261,9 @@ public class TraceConfigDialog extends DialogBase {
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("gpu.renderstages");
+        config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("VulkanAPI");
       }
       if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 &&
           gpu.getCounters() && gpu.getCounterIdsCount() > 0) {
@@ -270,10 +273,6 @@ public class TraceConfigDialog extends DialogBase {
                 .getGpuCounterConfigBuilder()
                     .setCounterPeriodNs(MILLISECONDS.toNanos(gpu.getCounterRate()));
         counters.addAllCounterIds(gpu.getCounterIdsList());
-
-        config.addDataSourcesBuilder()
-            .getConfigBuilder()
-                .setName("VulkanAPI");
       }
       if (gpuCaps.getHasFrameLifecycle() && gpu.getSurfaceFlinger()) {
         config.addDataSourcesBuilder()
