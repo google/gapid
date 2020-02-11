@@ -94,6 +94,7 @@ public class TraceConfigDialog extends DialogBase {
   private static final int FTRACE_BUFFER_SIZE = 8192;
 
   private static final int PROC_SCAN_PERIOD = 2000;
+  private static final int FTRACE_DRAIN_PERIOD = 250;
 
   // These ftrace categories are always enabled to track process creation and ending.
   private static final String[] PROCESS_TRACKING_FTRACE = {
@@ -217,6 +218,7 @@ public class TraceConfigDialog extends DialogBase {
             .setName("linux.ftrace")
             .getFtraceConfigBuilder()
             .addAllFtraceEvents(Arrays.asList(PROCESS_TRACKING_FTRACE))
+            .setDrainPeriodMs(FTRACE_DRAIN_PERIOD)
             .setBufferSizeKb(FTRACE_BUFFER_SIZE);
     // Record process names at startup into the metadata buffer.
     config.addDataSourcesBuilder()
