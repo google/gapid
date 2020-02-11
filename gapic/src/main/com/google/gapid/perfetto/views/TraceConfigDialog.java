@@ -33,7 +33,6 @@ import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -87,31 +86,48 @@ import perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy;
 public class TraceConfigDialog extends DialogBase {
   protected static final Logger LOG = Logger.getLogger(TraceConfigDialog.class.getName());
 
-  private static final int BUFFER_SIZE = 131072;
+  private static final int MAIN_BUFFER_SIZE = 131072;
+  private static final int PROC_BUFFER_SIZE = 4096;
+  private static final int PROC_BUFFER = 1;
+  // Kernel ftrace buffer size per CPU.
   private static final int FTRACE_BUFFER_SIZE = 8192;
+
+  private static final int PROC_SCAN_PERIOD = 2000;
+  private static final int FTRACE_DRAIN_PERIOD = 250;
+
+  private static final int MAX_IN_MEM_DURATION = 15 * 1000;
+  private static final int FLUSH_PERIOD = 5000;
+  private static final int WRITE_PERIOD = 2000;
+  private static final long MAX_FILE_SIZE = 2l * 1024 * 1024 * 1024;
+
+  // These ftrace categories are always enabled to track process creation and ending.
+  private static final String[] PROCESS_TRACKING_FTRACE = {
+    "sched/sched_process_free",
+    "task/task_newtask",
+    "task/task_rename",
+  };
+  // These ftrace categories are used to track CPU slices.
   private static final String[] CPU_BASE_FTRACE = {
       "sched/sched_switch",
-      "sched/sched_process_exit",
-      "sched/sched_process_free",
-      "task/task_newtask",
-      "task/task_rename",
       "power/suspend_resume",
   };
+  // These ftrace categories provide CPU frequency data.
   private static final String[] CPU_FREQ_FTRACE = {
       "power/cpu_frequency",
       "power/cpu_idle"
   };
+  // These ftrace categories provide scheduling dependency data.
   private static final String[] CPU_CHAIN_FTRACE = {
       "sched/sched_wakeup",
       "sched/sched_wakeup_new",
       "sched/sched_waking",
   };
+  // These ftrace categories provide memory usage data.
+  private static final String[] MEM_FTRACE = {
+      "kmem/rss_stat",
+  };
   private static final String[] CPU_SLICES_ATRACE = {
-      // TODO: this should come from the device.
-      "adb", "aidl", "am", "audio", "binder_driver", "binder_lock", "bionic", "camera",
-      "core_services", "dalvik", "database", "disk", "freq", "gfx", "hal", "idle", "input",
-      "ion", "memory", "memreclaim", "network", "nnapi", "pdx", "pm", "power", "res", "rro", "rs",
-      "sched", "sm", "ss", "sync", "vibrator", "video", "view", "webview", "wm",
+      "am", "audio", "gfx", "hal", "input", "pm", "power", "res", "rs", "sm", "video", "view", "wm",
   };
   private static final String[] GPU_FREQ_FTRACE = {
       "power/gpu_frequency",
@@ -194,30 +210,36 @@ public class TraceConfigDialog extends DialogBase {
   }
 
   public static PerfettoConfig.TraceConfig.Builder getConfig(
-      Settings settings, Device.PerfettoCapability caps, String traceTarget) {
+      Settings settings, Device.PerfettoCapability caps, String traceTarget, int duration) {
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
     if (p.getUseCustom()) {
-      return p.getCustomConfig().toBuilder();
+      return p.getCustomConfig().toBuilder().setDurationMs(duration);
     }
 
     PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
-    PerfettoConfig.FtraceConfig.Builder ftrace = null;
-    if (p.getCpuOrBuilder().getEnabled() || (p.getGpuOrBuilder().getEnabled())) {
-      ftrace = config.addDataSourcesBuilder()
-            .getConfigBuilder()
-                .setName("linux.ftrace")
-                .getFtraceConfigBuilder()
-                    .setBufferSizeKb(FTRACE_BUFFER_SIZE);
-    }
+    PerfettoConfig.FtraceConfig.Builder ftrace = config.addDataSourcesBuilder()
+        .getConfigBuilder()
+            .setName("linux.ftrace")
+            .getFtraceConfigBuilder()
+            .addAllFtraceEvents(Arrays.asList(PROCESS_TRACKING_FTRACE))
+            .setDrainPeriodMs(FTRACE_DRAIN_PERIOD)
+            .setBufferSizeKb(FTRACE_BUFFER_SIZE);
+    // Record process names at startup into the metadata buffer.
+    config.addDataSourcesBuilder()
+        .getConfigBuilder()
+            .setName("linux.process_stats")
+            .setTargetBuffer(PROC_BUFFER)
+            .getProcessStatsConfigBuilder()
+                .setScanAllProcessesOnStart(true);
+    // Periodically record process information into the main buffer.
+    config.addDataSourcesBuilder()
+        .getConfigBuilder()
+            .setName("linux.process_stats")
+            .getProcessStatsConfigBuilder()
+                .setProcStatsPollMs(PROC_SCAN_PERIOD)
+                .setProcStatsCacheTtlMs(10 * PROC_SCAN_PERIOD);
 
     if (p.getCpuOrBuilder().getEnabled()) {
-      // Record process names.
-      config.addDataSourcesBuilder()
-          .getConfigBuilder()
-              .setName("linux.process_stats")
-              .getProcessStatsConfigBuilder()
-                  .setScanAllProcessesOnStart(true);
-
       ftrace.addAllFtraceEvents(Arrays.asList(CPU_BASE_FTRACE));
       if (p.getCpuOrBuilder().getFrequency()) {
         ftrace.addAllFtraceEvents(Arrays.asList(CPU_FREQ_FTRACE));
@@ -243,6 +265,9 @@ public class TraceConfigDialog extends DialogBase {
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("gpu.renderstages");
+        config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("VulkanAPI");
       }
       if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 &&
           gpu.getCounters() && gpu.getCounterIdsCount() > 0) {
@@ -252,10 +277,6 @@ public class TraceConfigDialog extends DialogBase {
                 .getGpuCounterConfigBuilder()
                     .setCounterPeriodNs(MILLISECONDS.toNanos(gpu.getCounterRate()));
         counters.addAllCounterIds(gpu.getCounterIdsList());
-
-        config.addDataSourcesBuilder()
-            .getConfigBuilder()
-                .setName("VulkanAPI");
       }
       if (gpuCaps.getHasFrameLifecycle() && gpu.getSurfaceFlinger()) {
         config.addDataSourcesBuilder()
@@ -265,6 +286,7 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     if (p.getMemoryOrBuilder().getEnabled()) {
+      ftrace.addAllFtraceEvents(Arrays.asList(MEM_FTRACE));
       config.addDataSourcesBuilder()
           .getConfigBuilder()
               .setName("linux.sys_stats")
@@ -279,7 +301,6 @@ public class TraceConfigDialog extends DialogBase {
               .setName("android.power")
               .getAndroidPowerConfigBuilder()
                   .setBatteryPollMs(p.getBatteryOrBuilder().getRate())
-                  .setCollectPowerRails(true)
                   .addAllBatteryCounters(Arrays.asList(BAT_COUNTERS));
     }
 
@@ -302,10 +323,22 @@ public class TraceConfigDialog extends DialogBase {
       }
     }
 
+    // Buffer 0 (default): main buffer.
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
-        .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE)
+        .setSizeKb((largeBuffer ? 8 : 1) * MAIN_BUFFER_SIZE)
         .setFillPolicy(FillPolicy.DISCARD));
-    config.setFlushPeriodMs((int)SECONDS.toMillis(5));
+    // Buffer 1: Initial process metadata.
+    config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
+        .setSizeKb(PROC_BUFFER_SIZE)
+        .setFillPolicy(FillPolicy.DISCARD));
+
+    config.setFlushPeriodMs(FLUSH_PERIOD);
+    config.setDurationMs(duration);
+    if (duration > MAX_IN_MEM_DURATION) {
+      config.setWriteIntoFile(true);
+      config.setFileWritePeriodMs(WRITE_PERIOD);
+      config.setMaxFileSizeBytes(MAX_FILE_SIZE);
+    }
 
     return config;
   }
@@ -578,7 +611,10 @@ public class TraceConfigDialog extends DialogBase {
       withLayoutData(createLink(this, "<a>Switch to advanced mode</a>", e -> {
         // Remember the input thus far and turn it into a proto to be modified by the user.
         update(settings);
-        settings.writePerfetto().setCustomConfig(getConfig(settings, caps, ""));
+        settings.writePerfetto().setCustomConfig(
+            // Use a config that writes to file for custom by default.
+            getConfig(settings, caps, "", MAX_IN_MEM_DURATION + 1)
+                .clearDurationMs());
         toAdvanced.run();
       }), new GridData(SWT.END, SWT.BEGINNING, false, false));
 
