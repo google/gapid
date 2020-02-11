@@ -88,23 +88,34 @@ public class TraceConfigDialog extends DialogBase {
   protected static final Logger LOG = Logger.getLogger(TraceConfigDialog.class.getName());
 
   private static final int BUFFER_SIZE = 131072;
+  // Kernel ftrace buffer size per CPU.
   private static final int FTRACE_BUFFER_SIZE = 8192;
+
+  // These ftrace categories are always enabled to track process creation and ending.
+  private static final String[] PROCESS_TRACKING_FTRACE = {
+    "sched/sched_process_free",
+    "task/task_newtask",
+    "task/task_rename",
+  };
+  // These ftrace categories are used to track CPU slices.
   private static final String[] CPU_BASE_FTRACE = {
       "sched/sched_switch",
-      "sched/sched_process_exit",
-      "sched/sched_process_free",
-      "task/task_newtask",
-      "task/task_rename",
       "power/suspend_resume",
   };
+  // These ftrace categories provide CPU frequency data.
   private static final String[] CPU_FREQ_FTRACE = {
       "power/cpu_frequency",
       "power/cpu_idle"
   };
+  // These ftrace categories provide scheduling dependency data.
   private static final String[] CPU_CHAIN_FTRACE = {
       "sched/sched_wakeup",
       "sched/sched_wakeup_new",
       "sched/sched_waking",
+  };
+  // These ftrace categories provide memory usage data.
+  private static final String[] MEM_FTRACE = {
+      "kmem/rss_stat",
   };
   private static final String[] CPU_SLICES_ATRACE = {
       "am", "audio", "gfx", "hal", "input", "pm", "power", "res", "rs", "sm", "video", "view", "wm",
@@ -197,14 +208,12 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
-    PerfettoConfig.FtraceConfig.Builder ftrace = null;
-    if (p.getCpuOrBuilder().getEnabled() || (p.getGpuOrBuilder().getEnabled())) {
-      ftrace = config.addDataSourcesBuilder()
-            .getConfigBuilder()
-                .setName("linux.ftrace")
-                .getFtraceConfigBuilder()
-                    .setBufferSizeKb(FTRACE_BUFFER_SIZE);
-    }
+    PerfettoConfig.FtraceConfig.Builder ftrace = config.addDataSourcesBuilder()
+        .getConfigBuilder()
+            .setName("linux.ftrace")
+            .getFtraceConfigBuilder()
+            .addAllFtraceEvents(Arrays.asList(PROCESS_TRACKING_FTRACE))
+            .setBufferSizeKb(FTRACE_BUFFER_SIZE);
 
     if (p.getCpuOrBuilder().getEnabled()) {
       // Record process names.
@@ -261,6 +270,7 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     if (p.getMemoryOrBuilder().getEnabled()) {
+      ftrace.addAllFtraceEvents(Arrays.asList(MEM_FTRACE));
       config.addDataSourcesBuilder()
           .getConfigBuilder()
               .setName("linux.sys_stats")
