@@ -68,7 +68,6 @@
   @unused ref!PhysicalDeviceShaderFloat16Int8FeaturesKHR PhysicalDeviceShaderFloat16Int8FeaturesKHR
 }
 
-@since("1.0")
 @indirect("VkDevice")
 @override
 cmd PFN_vkVoidFunction vkGetDeviceProcAddr(
@@ -79,7 +78,6 @@ cmd PFN_vkVoidFunction vkGetDeviceProcAddr(
   return ?
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 @override
@@ -107,7 +105,6 @@ cmd VkResult vkCreateDevice(
   return ?
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @override
@@ -135,7 +132,6 @@ cmd void vkDestroyDevice(
   delete(Devices, device)
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
