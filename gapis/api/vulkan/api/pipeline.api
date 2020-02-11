@@ -48,7 +48,6 @@
   @unused ref!VulkanDebugMarkerInfo                DebugInfo
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
@@ -82,7 +81,6 @@ cmd VkResult vkCreatePipelineLayout(
   return ?
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyPipelineLayout(
@@ -229,7 +227,6 @@ class CreatedGraphicsPipelines {
   map!(u32, ref!GraphicsPipelineObject) Objects
 }
 
-@since("1.0")
 @indirect("VkDevice")
 @threadsafe
 cmd VkResult vkCreateGraphicsPipelines(
@@ -617,7 +614,6 @@ class CreatedComputePipelines {
   map!(u32, ref!ComputePipelineObject) Objects
 }
 
-@since("1.0")
 @indirect("VkDevice")
 @threadsafe
 cmd VkResult vkCreateComputePipelines(
@@ -748,7 +744,6 @@ cmd VkResult vkCreateComputePipelines(
   return ?
 }
 
-@since("1.0")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyPipeline(
@@ -787,7 +782,6 @@ cmd void vkDestroyPipeline(
   @unused ref!DescriptorInfo        Descriptors
 }
 
-@since("1.0")
 @indirect("VkDevice")
 @threadsafe
 cmd VkResult vkCreateShaderModule(
@@ -823,7 +817,6 @@ cmd VkResult vkCreateShaderModule(
   return ?
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd void vkDestroyShaderModule(
     VkDevice                     device,
@@ -843,7 +836,6 @@ cmd void vkDestroyShaderModule(
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkCreatePipelineCache(
     VkDevice                         device,
@@ -874,7 +866,6 @@ cmd VkResult vkCreatePipelineCache(
   return ?
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd void vkDestroyPipelineCache(
     VkDevice                     device,
@@ -884,7 +875,6 @@ cmd void vkDestroyPipelineCache(
   delete(PipelineCaches, pipelineCache)
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkGetPipelineCacheData(
     VkDevice        device,
@@ -904,7 +894,6 @@ cmd VkResult vkGetPipelineCacheData(
   return ?
 }
 
-@since("1.0")
 @indirect("VkDevice")
 cmd VkResult vkMergePipelineCaches(
     VkDevice               device,
@@ -940,7 +929,6 @@ sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -972,7 +960,6 @@ sub void dovkCmdSetViewport(ref!vkCmdSetViewportArgs args) {
       }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1011,7 +998,6 @@ sub void dovkCmdSetScissor(ref!vkCmdSetScissorArgs args) {
       }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1046,7 +1032,6 @@ sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
   ldps.LineWidth = args.LineWidth
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1076,7 +1061,6 @@ sub void dovkCmdSetDepthBias(ref!vkCmdSetDepthBiasArgs args) {
   dyn.DepthBiasSlopeFactor = args.DepthBiasSlopeFactor
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1114,7 +1098,6 @@ sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
   dyn.BlendConstants[3] = args.A
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1146,7 +1129,6 @@ sub void dovkCmdSetDepthBounds(ref!vkCmdSetDepthBoundsArgs args) {
   dyn.MaxDepthBounds = args.MaxDepthBounds
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1181,7 +1163,6 @@ sub void dovkCmdSetStencilCompareMask(ref!vkCmdSetStencilCompareMaskArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1217,7 +1198,6 @@ sub void dovkCmdSetStencilWriteMask(ref!vkCmdSetStencilWriteMaskArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -1253,7 +1233,6 @@ sub void dovkCmdSetStencilReference(ref!vkCmdSetStencilReferenceArgs args) {
   }
 }
 
-@since("1.0")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
