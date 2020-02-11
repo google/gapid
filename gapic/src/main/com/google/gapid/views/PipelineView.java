@@ -54,6 +54,7 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.StyledCellLabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
@@ -76,6 +77,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Button;
@@ -350,7 +352,7 @@ public class PipelineView extends Composite
           Composite contentComposite = createComposite(scrollComposite, gridLayout);
 
           List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
-
+          
           boolean dynamicExists = false;
 
           for (API.KeyValuePair kvp : kvpList) {
@@ -386,7 +388,7 @@ public class PipelineView extends Composite
           scrollComposite.setExpandHorizontal(true);
           scrollComposite.addListener(SWT.Resize, event -> {
             Rectangle scrollArea = scrollComposite.getClientArea();
-
+            
             int currentNumColumns = gridLayout.numColumns;
             int numChildren = contentComposite.getChildren().length;
             Point tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
@@ -633,11 +635,20 @@ public class PipelineView extends Composite
         }
 
       case ENUMVAL:
-        return new DataValue(val.getEnumVal().getDisplayValue());
+        DataValue enumDV = new DataValue(val.getEnumVal().getDisplayValue());
+        enumDV.tooltipValue = val.getEnumVal().getStringValue();
+        return enumDV;
+
 
       case BITFIELD:
         Joiner joiner = Joiner.on((val.getBitfield().getCombined()) ? "" : " | ");
-        return new DataValue(joiner.join(val.getBitfield().getSetDisplayNamesList()));
+        DataValue bitDV = new DataValue(joiner.join(val.getBitfield().getSetDisplayNamesList()));
+        if (val.getBitfield().getCombined()) {
+          joiner = Joiner.on(" | ");
+        }
+        bitDV.tooltipValue = joiner.join(val.getBitfield().getSetBitnamesList());
+        return bitDV;
+
 
       case LINK:
         DataValue dv = convertDataValue(val.getLink().getDisplayVal());
@@ -652,11 +663,13 @@ public class PipelineView extends Composite
 
   private static class DataValue {
     public String displayValue;
+    public String tooltipValue;
     public Path.Any link;
 
     public DataValue(String displayValue) {
       this.link = null;
       this.displayValue = displayValue;
+      this.tooltipValue = null;
     }
   }
 
