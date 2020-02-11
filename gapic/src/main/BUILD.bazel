@@ -77,7 +77,7 @@ proto_library(
     name = "settings_proto",
     srcs = ["com/google/gapid/settings.proto"],
     deps = [
-      "//core/os/device:device_proto",
+        "//core/os/device:device_proto",
     ],
 )
 

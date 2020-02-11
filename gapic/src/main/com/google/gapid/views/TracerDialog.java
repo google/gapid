@@ -636,7 +636,7 @@ public class TracerDialog {
           validationStatusLoader.stopLoading();
           validationStatus = result.passed;
         }
-        (TraceInput.this).notifyListeners(SWT.Modify, new Event());
+        notifyListeners(SWT.Modify, new Event());
       }
 
       private void updateOnApiChange(

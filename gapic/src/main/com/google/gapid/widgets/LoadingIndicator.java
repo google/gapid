@@ -79,14 +79,6 @@ public class LoadingIndicator {
     paint(image, g, x, y, size.x, size.y);
   }
 
-  public void paintRefresh(GC g, int x, int y, Point size) {
-    paintRefresh(g, x, y, size.x, size.y);
-  }
-
-  public void paintRefresh(GC g, int x, int y, int w, int h) {
-    paint(refresh, g, x, y, w, h);
-  }
-
   private static int paint(Image image, GC g, int x, int y, int w, int h) {
     Rectangle s = image.getBounds();
     g.drawImage(image, 0, 0, s.width, s.height,
@@ -133,11 +125,11 @@ public class LoadingIndicator {
   }
 
   public Widget createWidget(Composite parent) {
-    return new Widget(parent, false);
+    return new Widget(parent, null, null);
   }
 
   public Widget createWidgetWithRefresh(Composite parent) {
-    return new Widget(parent, true);
+    return new Widget(parent, refresh, refresh);
   }
 
   public Widget createWidgetWithImage(Composite parent, Image success, Image failure) {
@@ -165,40 +157,32 @@ public class LoadingIndicator {
     protected boolean loading = false;
     protected boolean status = false;
 
-    public Widget(Composite parent, boolean showRefresh) {
-      super(parent, SWT.DOUBLE_BUFFERED);
-      successImage = null;
-      failureImage = null;
-      status = false;
-      addListener(SWT.Paint, e -> {
-        if (loading) {
-          paint(e.gc, 0, 0, getSize(), "");
-          scheduleForRedraw(this);
-        } else if (showRefresh) {
-          paintRefresh(e.gc, 0, 0, getSize());
-        }
-      });
-    }
+    public boolean hasImage = false;
 
     public Widget(Composite parent, Image success, Image failure) {
       super(parent, SWT.DOUBLE_BUFFERED);
+      if (success != null || failure != null) {
+        hasImage = true;
+      }
       successImage = success;
       failureImage = failure;
       addListener(SWT.Paint, e -> {
         if (loading) {
           paint(e.gc, 0, 0, getSize(), "");
           scheduleForRedraw(this);
-        } else if (status) {
-          paint(successImage, e.gc, 0, 0, getSize());
-        }
-        else {
-          paint(failureImage, e.gc, 0, 0, getSize());
+        } else if (hasImage) {
+          if (status) {
+            paint(successImage, e.gc, 0, 0, getSize());
+          } else {
+            paint(failureImage, e.gc, 0, 0, getSize());
+          }
         }
       });
     }
 
     public void updateStatus(boolean status) {
       this.status = status;
+      scheduleForRedraw(this);
     }
 
     @Override

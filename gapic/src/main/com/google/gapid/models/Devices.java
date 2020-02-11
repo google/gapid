@@ -153,9 +153,7 @@ public class Devices {
   }
 
   public ListenableFuture<DeviceValidationResult> validateDevice(DeviceCaptureInfo device) {
-    return MoreFutures.transform(deviceValidationInfo.doValidation(device), e -> {
-      return e;
-    });
+    return deviceValidationInfo.doValidation(device);
   }
 
   public DeviceValidationResult getValidationStatus(DeviceCaptureInfo device) {
@@ -326,7 +324,7 @@ public class Devices {
 
     public DeviceValidationInfo(Client client, Settings settings) {
       this.client = client;
-      deviceValidation = settings.deviceValidation();
+      deviceValidation = settings.writeDeviceValidation();
     }
 
     private static DeviceValidation.ValidationEntry buildValidationEntry(DeviceCaptureInfo device) {
@@ -353,7 +351,7 @@ public class Devices {
 
     public ListenableFuture<DeviceValidationResult> doValidation(DeviceCaptureInfo device) {
       if (device == null) {
-        return immediateFuture(DeviceValidationResult.getPassedResult());
+        return immediateFuture(DeviceValidationResult.getFailedResult());
       }
       DeviceValidation.ValidationEntry currentEntry = buildValidationEntry(device);
       if (deviceValidation.getValidationEntriesList().contains(currentEntry)) {

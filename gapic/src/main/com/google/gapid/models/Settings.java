@@ -220,7 +220,7 @@ public class Settings {
     return proto.getPerfettoBuilder();
   }
 
-  public SettingsProto.DeviceValidation.Builder deviceValidation() {
+  public SettingsProto.DeviceValidation.Builder writeDeviceValidation() {
     return proto.getDeviceValidationBuilder();
   }
 

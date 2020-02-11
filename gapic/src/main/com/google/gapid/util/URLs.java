@@ -20,5 +20,5 @@ public interface URLs {
       "https://github.com/google/gapid/issues/new?template=standard-bug-report-for-gapid.md";
   // TODO(b/148700785): Create the device compatibility doc and update here
   public static final String DEVICE_COMPATIBILITY_URL =
-      "https://github.com/google/gapid";
+      "https://github.com/google/agi";
 }
