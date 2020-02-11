@@ -317,6 +317,7 @@ cmd void vkGetImageSparseMemoryRequirements(
 // Instance //
 //////////////
 
+@since("1.1")
 @threadSafety("system")
 cmd VkResult vkEnumerateInstanceVersion(
     u32* pApiVersion) {
@@ -444,6 +445,7 @@ sub void GetPhysicalDeviceFeatures2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceFeatures2(
@@ -468,6 +470,7 @@ sub void GetPhysicalDeviceFormatProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceFormatProperties2(
@@ -526,6 +529,7 @@ sub void GetPhysicalDeviceImageFormatProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkResult vkGetPhysicalDeviceImageFormatProperties2(
@@ -674,6 +678,7 @@ sub void GetPhysicalDeviceProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceProperties2(
@@ -700,6 +705,7 @@ sub void GetPhysicalDeviceMemoryProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceMemoryProperties2(
@@ -745,6 +751,7 @@ sub void GetPhysicalDeviceSparseImageFormatProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceSparseImageFormatProperties2(
@@ -783,6 +790,7 @@ sub void GetPhysicalDeviceQueueFamilyProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceQueueFamilyProperties2(
@@ -833,6 +841,7 @@ sub void GetPhysicalDeviceExternalBufferProperties(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceExternalBufferProperties(
@@ -883,6 +892,7 @@ sub void GetPhysicalDeviceExternalSemaphoreProperties(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceExternalSemaphoreProperties(
@@ -933,6 +943,7 @@ sub void GetPhysicalDeviceExternalFenceProperties(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceExternalFenceProperties(
@@ -996,6 +1007,7 @@ sub void GetBufferMemoryRequirements2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetBufferMemoryRequirements2(
@@ -1073,6 +1085,7 @@ sub void GetImageMemoryRequirements2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetImageMemoryRequirements2(
@@ -1123,6 +1136,7 @@ sub void GetImageSparseMemoryRequirements2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetImageSparseMemoryRequirements2(

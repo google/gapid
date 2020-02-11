@@ -333,6 +333,7 @@ sub void BindBufferMemory2(
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd VkResult vkBindBufferMemory2(
     VkDevice                      device,

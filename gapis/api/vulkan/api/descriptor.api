@@ -963,6 +963,7 @@ sub void GetDescriptorSetLayoutSupport(
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd void vkGetDescriptorSetLayoutSupport(
     VkDevice                               device,

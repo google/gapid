@@ -215,6 +215,7 @@ cmd void vkDestroySemaphore(
 }
 
 // Partial implementation
+@since("1.2")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkSignalSemaphore(
@@ -224,6 +225,7 @@ cmd VkResult vkSignalSemaphore(
 }
 
 // Partial implementation
+@since("1.2")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkWaitSemaphores(
@@ -234,6 +236,7 @@ cmd VkResult vkWaitSemaphores(
 }
 
 // Partial implementation
+@since("1.2")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkGetSemaphoreCounterValue(
