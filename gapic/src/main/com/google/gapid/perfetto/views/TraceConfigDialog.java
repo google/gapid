@@ -22,6 +22,7 @@ import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU
 import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.MemoryTracking.MEMORY_TRACKING_DEVICE;
 import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.MemoryTracking.MEMORY_TRACKING_DRIVER;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
+import static com.google.gapid.widgets.Widgets.createCheckboxTableViewer;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
@@ -53,6 +54,8 @@ import com.google.protobuf.TextFormat;
 import com.google.protobuf.TextFormat.ParseException;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
@@ -65,9 +68,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableColumn;
-import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 
 import java.util.Arrays;
@@ -769,7 +769,7 @@ public class TraceConfigDialog extends DialogBase {
       private final Device.PerfettoCapability caps;
       private final Set<Integer> currentIds;
 
-      private Table table;
+      private CheckboxTableViewer table;
       private List<Integer> selectedIds;
 
       public GpuCountersDialog(
@@ -791,27 +791,23 @@ public class TraceConfigDialog extends DialogBase {
       @Override
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
-        table = withLayoutData(new Table(area, SWT.CHECK), new GridData(GridData.FILL_BOTH));
-        table.setHeaderVisible(true);
-        table.setLinesVisible(true);
-        new TableColumn(table, SWT.NONE).setText("Name");
-        new TableColumn(table, SWT.NONE).setText("Description");
-        for (GpuProfiling.GpuCounterDescriptor.GpuCounterSpec counter :
-            caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList()) {
-          TableItem item = new TableItem(table, SWT.NONE);
-          item.setText(new String[] { counter.getName(), counter.getDescription() });
-          item.setData(counter);
-          if (currentIds.contains(counter.getCounterId())) {
-            item.setChecked(true);
-          }
-        }
-        table.getColumn(0).pack();
-        table.getColumn(1).pack();
+        table = createCheckboxTableViewer(area, SWT.NONE);
+        table.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        Widgets.<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>createTableColumn(
+            table, "Name", counter -> counter.getName());
+        Widgets.<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>createTableColumn(
+            table, "Description", counter -> counter.getDescription());
+        table.setContentProvider(new ArrayContentProvider());
+        table.setInput(caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList());
+        table.setCheckedElements(
+            caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
+                .filter(counter -> currentIds.contains(counter.getCounterId()))
+                .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
+        table.getTable().getColumn(0).pack();
+        table.getTable().getColumn(1).pack();
+
         createLink(area, "Select <a>none</a> | <a>all</a>", e -> {
-          boolean checked = "all".equals(e.text);
-          for (TableItem item : table.getItems()) {
-            item.setChecked(checked);
-          }
+          table.setAllChecked("all".equals(e.text));
         });
         return area;
       }
@@ -823,9 +819,8 @@ public class TraceConfigDialog extends DialogBase {
 
       @Override
       protected void okPressed() {
-        selectedIds = Arrays.stream(table.getItems())
-            .filter(item -> item.getChecked())
-            .map(item -> (GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)item.getData())
+        selectedIds = Arrays.stream(table.getCheckedElements())
+            .map(item -> (GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)item)
             .mapToInt(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
             .boxed()
             .collect(toList());
