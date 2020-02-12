@@ -378,8 +378,9 @@ public class PipelineView extends Composite
               withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
             } else {
-              withLayoutData( createLabel(valueComposite, dv.displayValue),
+              Label valueLabel  = withLayoutData( createLabel(valueComposite, dv.displayValue),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
+              valueLabel.setToolTipText(dv.tooltipValue);
             }
           }
 
@@ -428,14 +429,18 @@ public class PipelineView extends Composite
 
           groupTable.setContentProvider(ArrayContentProvider.getInstance());
 
+          ColumnViewerToolTipSupport.enableFor(groupTable);
+
           for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
             int col = i;
             TableViewerColumn tvc = createTableColumn(groupTable, dataGroup.getTable().getHeaders(i));
 
             StyledCellLabelProvider cellLabelProvider = new StyledCellLabelProvider() {
+              DataValue dv;
+
               @Override
               public void update(ViewerCell cell) {
-                DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(col));
+                dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(col));
 
                 cell.setText(dv.displayValue);
 
@@ -447,6 +452,15 @@ public class PipelineView extends Composite
                 }
 
                 super.update(cell);
+              }
+
+              @Override
+              public String getToolTipText(Object element) {
+                if (dv != null) {
+                  return dv.tooltipValue;
+                } else {
+                  return null;
+                }
               }
             };
 
