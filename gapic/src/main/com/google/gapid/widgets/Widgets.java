@@ -28,6 +28,7 @@ import com.google.gapid.util.OS;
 import com.google.gapid.views.CommandEditor;
 
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.CheckboxTreeViewer;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.ComboViewer;
@@ -432,12 +433,38 @@ public class Widgets {
     return link;
   }
 
-  public static TableViewer createTableViewer(Composite parent, int style) {
-    TableViewer table = new VisibilityTrackingTableViewer(new Table(parent, style));
-    table.getTable().setHeaderVisible(true);
-    table.getTable().setLinesVisible(true);
-    table.setUseHashlookup(true);
+  /**
+   * Use this to create a {@link Table} that you will later wrap in a {@link TableViewer} using
+   * {@link #createTableViewer(Table)}.
+   * If using the table for {@link #createCheckboxTableViewer(Table)}, style needs to contain
+   * {@code SWT.CHECK}.
+   */
+  public static Table createTableForViewer(Composite parent, int style) {
+    Table table = new Table(parent, style);
+    table.setHeaderVisible(true);
+    table.setLinesVisible(true);
     return table;
+  }
+
+  public static TableViewer createTableViewer(Composite parent, int style) {
+    return createTableViewer(createTableForViewer(parent, style));
+  }
+
+  public static TableViewer createTableViewer(Table table) {
+    return initTableViewer(new TableViewer(table));
+  }
+
+  public static CheckboxTableViewer createCheckboxTableViewer(Composite parent, int style) {
+    return createCheckboxTableViewer(createTableForViewer(parent, style | SWT.CHECK));
+  }
+
+  public static CheckboxTableViewer createCheckboxTableViewer(Table table) {
+    return initTableViewer(new CheckboxTableViewer(table));
+  }
+
+  private static <T extends TableViewer> T initTableViewer(T viewer) {
+    viewer.setUseHashlookup(true);
+    return viewer;
   }
 
   public static TableViewerColumn createTableColumn(TableViewer viewer, String title) {
