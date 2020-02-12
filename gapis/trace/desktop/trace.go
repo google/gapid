@@ -31,8 +31,10 @@ import (
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/vulkan/loader"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/api"
 	perfetto "github.com/google/gapid/gapis/perfetto/desktop"
 	"github.com/google/gapid/gapis/service"
+	gapis_path "github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
@@ -48,7 +50,7 @@ func (t *DesktopTracer) GetDevice() bind.Device {
 	return t.b
 }
 
-func (t *DesktopTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
+func (t *DesktopTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, capture *gapis_path.Capture, handleMapping *map[uint64][]service.VulkanHandleMappingItem, submissionIds *map[api.CommandSubmissionKey][]uint64) (*service.ProfilingData, error) {
 	return nil, log.Err(ctx, nil, "Desktop replay profiling is unsupported.")
 }
 

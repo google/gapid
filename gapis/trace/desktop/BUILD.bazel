@@ -35,8 +35,10 @@ go_library(
         "//core/text:go_default_library",
         "//core/vulkan/loader:go_default_library",
         "//gapii/client:go_default_library",
+        "//gapis/api:go_default_library",
         "//gapis/perfetto/desktop:go_default_library",
         "//gapis/service:go_default_library",
+        "//gapis/service/path:go_default_library",
         "//gapis/trace/tracer:go_default_library",
     ],
 )

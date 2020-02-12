@@ -1310,7 +1310,7 @@ message ProfilingData {
       repeated Extra extras = 5;
 
       int32 trackId = 6;  // references Track.id
-      int32 group = 7;    // references Group.id
+      int32 groupId = 7;  // references Group.id
     }
 
     message Track {
@@ -1321,7 +1321,7 @@ message ProfilingData {
     message Group {
       int32 id = 1;
       int32 parent = 2;  // references Group.id
-      path.Commands link = 3;
+      path.Command link = 3;
     }
 
     repeated Slice slices = 1;

@@ -49,3 +49,9 @@ func (id CmdID) String() string {
 		return fmt.Sprintf("%v", uint64(id))
 	}
 }
+
+// TODO(apbodnar) find a more appropriate place for this
+type CommandSubmissionKey struct {
+	SubmissionOrder uint64
+	CommandBuffer   int64
+}
