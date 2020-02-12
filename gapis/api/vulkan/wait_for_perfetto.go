@@ -46,7 +46,12 @@ func addVkDeviceWaitIdle(ctx context.Context, out transform.Writer) {
 }
 
 func (t *WaitForPerfetto) waitTest(ctx context.Context, id api.CmdID, cmd api.Cmd) bool {
-	if id == t.cmdId {
+	// Set the command id we care about once we're in the "real" commands
+	if id.IsReal() && t.cmdId == api.CmdNoID {
+		t.cmdId = id
+	}
+
+	if id.IsReal() && id == t.cmdId {
 		return true
 	}
 	return false
@@ -68,7 +73,7 @@ func (t *WaitForPerfetto) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *WaitForPerfetto) PostLoop(ctx context.Context, out transform.Writer) {}
 func (t *WaitForPerfetto) BuffersCommands() bool                              { return false }
 
-func NewWaitForPerfetto(traceOptions *service.TraceOptions, h *replay.SignalHandler, buffer *bytes.Buffer, cmdId api.CmdID) *WaitForPerfetto {
+func NewWaitForPerfetto(traceOptions *service.TraceOptions, h *replay.SignalHandler, buffer *bytes.Buffer) *WaitForPerfetto {
 	tcb := func(ctx context.Context, p *gapir.FenceReadyRequest) {
 		go func() {
 			trace.TraceBuffered(ctx, traceOptions.Device, h.StartSignal, h.StopSignal, h.ReadyFunc, traceOptions, buffer)
@@ -84,7 +89,7 @@ func NewWaitForPerfetto(traceOptions *service.TraceOptions, h *replay.SignalHand
 			h.StopFunc(ctx)
 		}
 	}
-	wfp := WaitForPerfetto{cmdId: cmdId}
+	wfp := WaitForPerfetto{cmdId: api.CmdNoID}
 	wfp.wff = replay.WaitForFence{tcb, fcb, wfp.waitTest}
 
 	return &wfp

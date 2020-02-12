@@ -1062,14 +1062,10 @@ func (a API) Replay(
 			if profile == nil {
 				profile = &replay.EndOfReplay{}
 			}
-			numInitialCommands, err := expandCommands(false)
-			if err != nil {
-				return err
-			}
 			profile.AddResult(rr.Result)
 			makeReadable.imagesOnly = true
 			optimize = false
-			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer, api.CmdID(numInitialCommands)))
+			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer))
 			transforms.Add(&profilingLayers{})
 			transforms.Add(replay.NewMappingExporter(ctx, req.mappings))
 			if req.overrides.GetViewportSize() {
