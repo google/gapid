@@ -57,6 +57,8 @@ import com.google.protobuf.TextFormat.ParseException;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
@@ -795,6 +797,9 @@ public class TraceConfigDialog extends DialogBase {
       @Override
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
+        Text search = new Text(area, SWT.SINGLE | SWT.SEARCH | SWT.ICON_SEARCH | SWT.ICON_CANCEL);
+        search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+
         table = createCheckboxTableViewer(area, SWT.NONE);
         table.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
         Widgets.<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>createTableColumn(
@@ -826,6 +831,23 @@ public class TraceConfigDialog extends DialogBase {
               table.setAllChecked(true);
               break;
           }
+        });
+
+        search.addListener(SWT.Modify, e -> {
+          String query = search.getText().trim().toLowerCase();
+          if (query.isEmpty()) {
+            table.resetFilters();
+            return;
+          }
+          table.setFilters(new ViewerFilter() {
+            @Override
+            public boolean select(Viewer viewer, Object parentElement, Object element) {
+              return ((GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)element)
+                  .getName()
+                  .toLowerCase()
+                  .contains(query);
+            }
+          });
         });
         return area;
       }
