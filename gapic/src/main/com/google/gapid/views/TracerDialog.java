@@ -55,6 +55,8 @@ import com.google.gapid.proto.service.Service.TraceTypeCapabilities;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.TraceRequest;
+import com.google.gapid.util.Flags;
+import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
@@ -108,6 +110,11 @@ import java.util.logging.Logger;
  */
 public class TracerDialog {
   protected static final Logger LOG = Logger.getLogger(TracerDialog.class.getName());
+
+  public static final Flag<Integer> maxFrames = Flags.value(
+      "max-frames", 20, "The maximum number of frames to allow for graphics captures", true);
+  public static final Flag<Integer> maxPerfetto = Flags.value(
+      "max-perfetto", 10 * 60, "The maximum amount of time to allow for profile captures", true);
 
   private TracerDialog() {
   }
@@ -258,10 +265,10 @@ public class TracerDialog {
       private static final String TARGET_LABEL = "Application";
       private static final String FRAMES_LABEL = "Stop After:";
       private static final String DURATION_LABEL = "Duration:";
-      private static final int DURATION_MAX = 999999;
-      private static final String FRAMES_UNIT = "Frames (0 for manual)";
-      private static final String DURATION_UNIT = "Seconds (0 for manual)";
-      private static final String DURATION_UNIT_NO_MANUAL = "Seconds";
+      private static final int DURATION_FRAMES_MAX = maxFrames.get();
+      private static final int DURATION_PERFETTO_MAX = maxPerfetto.get();
+      private static final String DURATION_FRAMES_UNIT = "Frames";
+      private static final String DURATION_PERFETTO_UNIT = "Seconds";
       private static final String MEC_LABEL_WARNING =
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final String PERFETTO_LABEL = "Profile Config: ";
@@ -391,9 +398,9 @@ public class TracerDialog {
         mecWarningLabel = createLabel(durGroup, "");
 
         durationLabel = createLabel(durGroup, FRAMES_LABEL);
-        duration = withLayoutData(createSpinner(durGroup, 7, 0, DURATION_MAX),
+        duration = withLayoutData(createSpinner(durGroup, 7, 1, DURATION_FRAMES_MAX),
             new GridData(SWT.FILL, SWT.TOP, false, false));
-        durationUnit = createLabel(durGroup, FRAMES_UNIT);
+        durationUnit = createLabel(durGroup, DURATION_FRAMES_UNIT);
 
         Group optGroup  = withLayoutData(
             createGroup(this, "Trace Options", new GridLayout(2, false)),
@@ -466,8 +473,7 @@ public class TracerDialog {
 
         device.getCombo().addListener(SWT.Selection,
             e -> updateOnDeviceChange(models.settings, getSelectedDevice()));
-        api.getCombo().addListener(SWT.Selection,
-            e -> updateOnApiChange(trace, getSelectedDevice(), getSelectedApi()));
+        api.getCombo().addListener(SWT.Selection, e -> updateOnApiChange(trace, getSelectedApi()));
 
         Listener gpuProfilingCapabilityListener = e -> {
           // Skip if the device is not Android device, or trace type is not Perfetto.
@@ -596,7 +602,7 @@ public class TracerDialog {
       }
 
       private void updateOnApiChange(
-          SettingsProto.TraceOrBuilder trace, DeviceCaptureInfo dev, TraceTypeCapabilities config) {
+          SettingsProto.TraceOrBuilder trace, TraceTypeCapabilities config) {
         boolean pcs = config != null && config.getCanDisablePcs();
         disablePcs.setEnabled(pcs);
         disablePcs.setSelection(pcs && trace.getDisablePcs());
@@ -641,32 +647,16 @@ public class TracerDialog {
 
         duration.setSelection(dur.getDuration());
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
-        updateDurationSpinner(dev, config, dur.getType());
+        duration.setMaximum(isPerfetto ? DURATION_PERFETTO_MAX : DURATION_FRAMES_MAX);
+        durationUnit.setText(isPerfetto ? DURATION_PERFETTO_UNIT : DURATION_FRAMES_UNIT);
+        durationUnit.requestLayout();
+
         perfettoConfig.setVisible(isPerfetto);
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
           userHasChangedOutputFile = false; // cancel the modify event from set call.
         }
-      }
-
-      private void updateDurationSpinner(
-          DeviceCaptureInfo dev, TraceTypeCapabilities capabilities,
-          SettingsProto.Trace.Duration.Type type) {
-        boolean isStadia = dev != null && dev.isStadia();
-        boolean isPerfetto = isPerfetto(capabilities);
-        if (isStadia && isPerfetto) {
-          // On Stadia, force limit Perfetto traces to 10 seconds.
-          duration.setMinimum(1);
-          duration.setMaximum(10);
-          durationUnit.setText(DURATION_UNIT_NO_MANUAL);
-        } else {
-          duration.setMinimum(0);
-          duration.setMaximum(DURATION_MAX);
-          durationUnit.setText((isPerfetto || type == SettingsProto.Trace.Duration.Type.TIME) ?
-              DURATION_UNIT : FRAMES_UNIT);
-        }
-        durationUnit.requestLayout();
       }
 
       private void updateDevicesDropDown(SettingsProto.TraceOrBuilder trace) {
