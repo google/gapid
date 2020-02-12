@@ -26,7 +26,6 @@ import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
-import com.google.gapid.perfetto.PerfettoConfig;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.server.GapisProcess;
@@ -209,7 +208,6 @@ public class Main {
     Logging.logDir,
     Follower.logFollowRequests,
     Server.useCache,
-    PerfettoConfig.perfettoConfig,
     PanelCanvas.showRedraws,
   };
 }
