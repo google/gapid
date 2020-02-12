@@ -37,6 +37,7 @@ import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -766,6 +767,9 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     private static class GpuCountersDialog extends DialogBase {
+      private static final Predicate<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>
+          SELECT_DEFAULT = GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getSelectByDefault;
+
       private final Device.PerfettoCapability caps;
       private final Set<Integer> currentIds;
 
@@ -801,13 +805,27 @@ public class TraceConfigDialog extends DialogBase {
         table.setInput(caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList());
         table.setCheckedElements(
             caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
-                .filter(counter -> currentIds.contains(counter.getCounterId()))
+                .filter(currentIds.isEmpty() ?
+                    SELECT_DEFAULT : c -> currentIds.contains(c.getCounterId()))
                 .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
         table.getTable().getColumn(0).pack();
         table.getTable().getColumn(1).pack();
 
-        createLink(area, "Select <a>none</a> | <a>all</a>", e -> {
-          table.setAllChecked("all".equals(e.text));
+        createLink(area, "Select <a>none</a> | <a>default</a> | <a>all</a>", e -> {
+          switch (e.text) {
+            case "none":
+              table.setAllChecked(false);
+              break;
+            case "default":
+              table.setCheckedElements(
+                  caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
+                      .filter(SELECT_DEFAULT)
+                      .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
+              break;
+            case "all":
+              table.setAllChecked(true);
+              break;
+          }
         });
         return area;
       }
