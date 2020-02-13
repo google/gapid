@@ -436,11 +436,9 @@ public class PipelineView extends Composite
             TableViewerColumn tvc = createTableColumn(groupTable, dataGroup.getTable().getHeaders(i));
 
             StyledCellLabelProvider cellLabelProvider = new StyledCellLabelProvider() {
-              DataValue dv;
-
               @Override
               public void update(ViewerCell cell) {
-                dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(col));
+                DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(col));
 
                 cell.setText(dv.displayValue);
 
@@ -456,6 +454,7 @@ public class PipelineView extends Composite
 
               @Override
               public String getToolTipText(Object element) {
+                DataValue dv = convertDataValue(((API.Row)element).getRowValues(col));
                 if (dv != null) {
                   return dv.tooltipValue;
                 } else {
