@@ -205,7 +205,6 @@ VkResult vkSetDebugUtilsObjectNameEXT(
     return debug_utils_ext_supported ? next(device, pNameInfo) : VK_SUCCESS;
 }
 
-
 VkResult vkDebugMarkerSetObjectNameEXT(
         PFN_vkDebugMarkerSetObjectNameEXT     next,
         VkDevice                              device,
@@ -238,9 +237,9 @@ VkResult vkEnumerateDeviceExtensionProperties(PFN_vkEnumerateDeviceExtensionProp
         return res;
     }
     if (*pPropertyCount > 0) {
+        uint32_t requestedCount = *pPropertyCount;
         VkResult res = next(physicalDevice, pLayerName, pPropertyCount, pProperties);
         if (res == VK_SUCCESS) {
-            uint32_t count = std::min(NUM_EXTENSIONS, *pPropertyCount);
             for (uint32_t i = 0; i < *pPropertyCount; ++i) {
                 if (!strcmp(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, pProperties[i].extensionName)) {
                     debug_utils_ext_supported = true;
@@ -249,6 +248,9 @@ VkResult vkEnumerateDeviceExtensionProperties(PFN_vkEnumerateDeviceExtensionProp
                     debug_marker_ext_supported = true;
                 }
             }
+            // *pPropertyCount is expected to be requestedCount - NUM_EXTENSIONS.
+            *pPropertyCount = std::min(*pPropertyCount + NUM_EXTENSIONS, requestedCount);
+            uint32_t count = std::min(NUM_EXTENSIONS, *pPropertyCount);
             memcpy(
                 &pProperties[*pPropertyCount - count],
                 new_device_extensions,
