@@ -116,8 +116,8 @@ func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error)
 func (s *server) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Release, error) {
 	const (
 		githubOrg     = "google"
-		githubRepo    = "gapid"
-		devGithubRepo = "gapid-dev-releases"
+		githubRepo    = "agi"
+		devGithubRepo = "agi-dev-releases"
 	)
 	ctx = status.Start(ctx, "RPC CheckForUpdates")
 	defer status.Finish(ctx)
