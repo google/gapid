@@ -904,3 +904,184 @@ func (i AllocationCallbacks) value(b *builder.Builder, cmd api.Cmd, s *api.Globa
 	// allocator.
 	return value.AbsolutePointer(0)
 }
+
+func (a *VkCmdPipelineBarrier) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	if b == nil {
+		return a.mutate(ctx, id, s, b, w)
+	}
+	l := s.MemoryLayout
+
+	a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+	bufferMemoryBarriers := a.PBufferMemoryBarriers().Slice(0, uint64(a.BufferMemoryBarrierCount()), l).MustRead(ctx, a, s, nil)
+	hasExternBufferBarrier := processExternalBufferBarriers(&bufferMemoryBarriers)
+
+	if !hasExternBufferBarrier /* && !hasExternalImageBarrier */ {
+		return a.mutate(ctx, id, s, b, w)
+	}
+
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
+	hijack := cb.VkCmdPipelineBarrier(
+		a.CommandBuffer(),
+		a.SrcStageMask()|VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_TRANSFER_BIT),
+		a.DstStageMask(),
+		a.DependencyFlags(),
+		a.MemoryBarrierCount(),
+		a.PMemoryBarriers(),
+		a.BufferMemoryBarrierCount(),
+		a.PBufferMemoryBarriers(),
+		a.ImageMemoryBarrierCount(),
+		a.PImageMemoryBarriers(),
+	)
+	hijack.Extras().MustClone(a.Extras().All()...)
+	if hasExternBufferBarrier {
+		pBufferMemoryBarriers := s.AllocDataOrPanic(ctx, bufferMemoryBarriers)
+		defer pBufferMemoryBarriers.Free()
+		hijack.SetBufferMemoryBarrierCount(uint32(len(bufferMemoryBarriers)))
+		hijack.SetPBufferMemoryBarriers(NewVkBufferMemoryBarrierᶜᵖ(pBufferMemoryBarriers.Ptr()))
+		hijack.AddRead(pBufferMemoryBarriers.Data())
+	}
+	return hijack.mutate(ctx, id, s, b, w)
+}
+
+func processExternalBufferBarriers(barriers *[]VkBufferMemoryBarrier) bool {
+	const VK_QUEUE_FAMILY_EXTERNAL uint32 = ^uint32(0) - 1
+	hasExternBufferBarrier := false
+	for i, barrier := range *barriers {
+		if barrier.SrcQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+			barrier.SetSrcQueueFamilyIndex(barrier.DstQueueFamilyIndex())
+			barrier.SetSrcAccessMask(
+				barrier.SrcAccessMask() | VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT))
+			hasExternBufferBarrier = true
+			(*barriers)[i] = barrier
+		} else if barrier.DstQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+			barrier.SetDstQueueFamilyIndex(barrier.SrcQueueFamilyIndex())
+			hasExternBufferBarrier = true
+			(*barriers)[i] = barrier
+		}
+	}
+	return hasExternBufferBarrier
+}
+
+type vkQueueSubmitHijack struct {
+	ctx               context.Context
+	id                api.CmdID
+	s                 *api.GlobalState
+	b                 *builder.Builder
+	c                 *State
+	origSubmit        *VkQueueSubmit
+	hijackSubmit      *VkQueueSubmit
+	cb                CommandBuilder
+	origSubmitInfos   []VkSubmitInfo
+	hijackSubmitInfos *[]VkSubmitInfo
+	allocated         []*api.AllocResult
+}
+
+func newVkQueueSubmitHijack(
+	ctx context.Context,
+	a *VkQueueSubmit,
+	id api.CmdID,
+	s *api.GlobalState,
+	b *builder.Builder,
+	w api.StateWatcher,
+) vkQueueSubmitHijack {
+	a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+	submitCount := uint64(a.SubmitCount())
+	submitInfos := a.PSubmits().Slice(0, submitCount, s.MemoryLayout).MustRead(ctx, a, s, nil)
+	return vkQueueSubmitHijack{
+		ctx:          ctx,
+		id:           id,
+		s:            s,
+		b:            b,
+		c:            GetState(s),
+		origSubmit:   a,
+		hijackSubmit: nil,
+		cb: CommandBuilder{
+			Thread: a.Thread(),
+			Arena:  s.Arena,
+		},
+		origSubmitInfos:   submitInfos,
+		hijackSubmitInfos: nil,
+		allocated:         []*api.AllocResult{},
+	}
+}
+
+func (h *vkQueueSubmitHijack) cleanup() {
+	for _, d := range h.allocated {
+		d.Free()
+	}
+	h.allocated = h.allocated[:0]
+}
+
+func (h *vkQueueSubmitHijack) get() *VkQueueSubmit {
+	if h.hijackSubmit != nil {
+		return h.hijackSubmit
+	} else {
+		return h.origSubmit
+	}
+}
+
+func (h *vkQueueSubmitHijack) hijack() *VkQueueSubmit {
+	if h.hijackSubmit == nil {
+		h.hijackSubmit = h.cb.VkQueueSubmit(
+			h.origSubmit.Queue(),
+			h.origSubmit.SubmitCount(),
+			h.origSubmit.PSubmits(),
+			h.origSubmit.Fence(),
+			h.origSubmit.Result(),
+		)
+		h.hijackSubmit.Extras().MustClone(h.origSubmit.Extras().All()...)
+	}
+	return h.hijackSubmit
+}
+
+func (h *vkQueueSubmitHijack) mutate() error {
+	if h.hijackSubmitInfos != nil {
+		pSubmits := h.mustAllocData(*h.hijackSubmitInfos)
+		h.hijack().SetSubmitCount(uint32(len(*h.hijackSubmitInfos)))
+		h.hijack().SetPSubmits(NewVkSubmitInfoᶜᵖ(pSubmits.Ptr()))
+		h.hijack().AddRead(pSubmits.Data())
+	}
+	return h.get().mutate(h.ctx, h.id, h.s, h.b, nil)
+}
+
+func (h *vkQueueSubmitHijack) submitInfos() []VkSubmitInfo {
+	if h.hijackSubmitInfos != nil {
+		return *h.hijackSubmitInfos
+	} else {
+		return h.origSubmitInfos
+	}
+}
+
+func (h *vkQueueSubmitHijack) setSubmitInfos(submitInfos []VkSubmitInfo) {
+	h.hijackSubmitInfos = &submitInfos
+}
+
+func (h *vkQueueSubmitHijack) mustAllocData(v ...interface{}) api.AllocResult {
+	res := h.s.AllocDataOrPanic(h.ctx, v...)
+	h.allocated = append(h.allocated, &res)
+	if true {
+		res_ := h.s.AllocOrPanic(h.ctx, 8)
+		h.allocated = append(h.allocated, &res_)
+	}
+	return res
+}
+
+func (h *vkQueueSubmitHijack) mustAlloc(size uint64) api.AllocResult {
+	res := h.s.AllocOrPanic(h.ctx, size)
+	h.allocated = append(h.allocated, &res)
+	if true {
+		res_ := h.s.AllocOrPanic(h.ctx, 8)
+		h.allocated = append(h.allocated, &res_)
+	}
+	return res
+}
+
+func (a *VkQueueSubmit) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	if b == nil {
+		return a.mutate(ctx, id, s, b, w)
+	}
+	h := newVkQueueSubmitHijack(ctx, a, id, s, b, w)
+	defer h.cleanup()
+	h.processExternalMemory()
+	return h.mutate()
+}
