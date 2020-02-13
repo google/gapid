@@ -1230,7 +1230,7 @@ func (p GraphicsPipelineObjectʳ) inputAssembly(cmd *path.Command, drawCallInfo 
 		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()), false)
 	} else if !drawCallInfo.DrawIndexed().IsNil() {
 		callArgs := drawCallInfo.DrawIndexed()
-		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.IndexCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Index Count", api.CreatePoDDataValue("u32", callArgs.IndexCount()), false)
 		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()), false)
 		drawCallList = drawCallList.AppendKeyValuePair("First Index", api.CreatePoDDataValue("u32", callArgs.FirstIndex()), false)
 		drawCallList = drawCallList.AppendKeyValuePair("Vertex Offset", api.CreatePoDDataValue("u32", callArgs.VertexOffset()), false)
