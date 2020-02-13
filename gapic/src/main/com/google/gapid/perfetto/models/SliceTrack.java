@@ -68,10 +68,34 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     return new WithQueryEngine(qe, "gpu_slice", queue.trackId) {
       // TODO(b/148540258): Remove the copy pasted SliceTrack code and clean up
       private final String GPU_COLUMNS = "render_target, render_target_name, render_pass, render_pass_name, command_buffer, command_buffer_name, submission_id";
+      private final String GPU_SLICES_QUANT_SQL =
+          "select min(start_ts), max(end_ts), depth, label, max(cnt), " +
+          "    first_value(submission_id) over (partition by depth, label, i)  from (" +
+          "  select quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
+          "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i, " +
+          "      submission_id from (" +
+          "    select quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
+          "        substr(group_concat(name) over win1, 0, 101) label, " +
+          "        first_value(submission_id) over win1 submission_id" +
+          "    from %s" +
+          "    window win1 as (partition by quantum_ts, depth order by dur desc" +
+          "    range between unbounded preceding and unbounded following))" +
+          "  group by quantum_ts, depth)" +
+          "group by depth, label, i";
 
       @Override
       protected String baseColumns() {
         return BASE_COLUMNS + ", " + GPU_COLUMNS;
+      }
+
+      @Override
+      protected String slicesQuantSql() {
+        return format(GPU_SLICES_QUANT_SQL, tableName("span"));
+      }
+
+      @Override
+      protected void appendForQuant(Data data, QueryEngine.Result res) {
+        data.putExtraLongs("submissionIds", res.stream().mapToLong(r -> r.getLong(5)).toArray());
       }
 
       @Override
@@ -510,6 +534,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       return BASE_COLUMNS;
     }
 
+    protected void appendForQuant(Data data, QueryEngine.Result res) { /* Do nothing by default. */}
+
     protected WithQueryEngine(QueryEngine qe, String table, long trackId) {
       super(trackId);
       this.qe = qe;
@@ -555,11 +581,12 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
           }
           data.args[i] = ArgSet.EMPTY;
         });
+        appendForQuant(data, res);
         return data;
       });
     }
 
-    private String slicesQuantSql() {
+    protected String slicesQuantSql() {
       return format(SLICES_QUANT_SQL, tableName("span"));
     }
 
