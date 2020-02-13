@@ -88,5 +88,8 @@ echo "$(date): Done."
 
 # Copy the symbol file to the output.
 [ -f "$BIN/cmd/gapir/cc/gapir.sym" ] && cp "$BIN/cmd/gapir/cc/gapir.sym" gapir-$VERSION-linux.sym
+[ -f "$BIN/gapidapk/android/apk/arm64-v8a_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/arm64-v8a_gapir.sym" arm64-v8a_gapir-$VERSION-linux.sym
+[ -f "$BIN/gapidapk/android/apk/armeabi-v7a_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/armeabi-v7a_gapir.sym" armeabi-v7a_gapir-$VERSION-linux.sym
+[ -f "$BIN/gapidapk/android/apk/x86_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/x86_gapir.sym" x86_gapir-$VERSION-linux.sym
 
 popd
