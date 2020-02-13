@@ -575,6 +575,8 @@ sub void handleImageMemoryBarriersPNext(const VkImageMemoryBarrier* pBarriers, u
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@custom
+@override
 cmd void vkCmdPipelineBarrier(
     VkCommandBuffer              commandBuffer,
     VkPipelineStageFlags         srcStageMask,

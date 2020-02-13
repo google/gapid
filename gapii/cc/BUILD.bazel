@@ -153,6 +153,7 @@ cc_library(
         "//gapil/runtime/cc",
         "//gapis/api:api_cc_proto",
         "//gapis/api/gles/gles_pb:extras_cc_proto",
+        "//gapis/api/vulkan/vulkan_pb:extras_cc_proto",
         "//gapis/capture:capture_cc_proto",
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
         "@com_google_protobuf//:protobuf",

@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 #include <bitset>
+#include "gapii/cc/vulkan_external_memory.h"
 #include "gapii/cc/vulkan_layer_extras.h"
 #include "gapii/cc/vulkan_spy.h"
+#include "gapis/api/vulkan/vulkan_pb/extras.pb.h"
 
 #include <third_party/SPIRV-Reflect/spirv_reflect.h>
 
@@ -26,10 +28,6 @@ struct destroyer {
   ~destroyer() { destroy(); }
   std::function<void(void)> destroy;
 };
-
-static inline void set_dispatch_from_parent(void* child, void* parent) {
-  *((const void**)child) = *((const void**)parent);
-}
 
 // Declared in api_spy.h.tmpl
 bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
@@ -877,16 +875,11 @@ void VulkanSpy::SpyOverride_vkDestroyInstance(
 uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
     CallObserver*, VkDevice device, const VkBufferCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
-  if (is_suspended()) {
-    VkBufferCreateInfo override_create_info = *pCreateInfo;
-    override_create_info.musage |=
-        VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    return mImports.mVkDeviceFunctions[device].vkCreateBuffer(
-        device, &override_create_info, pAllocator, pBuffer);
-  } else {
-    return mImports.mVkDeviceFunctions[device].vkCreateBuffer(
-        device, pCreateInfo, pAllocator, pBuffer);
-  }
+  VkBufferCreateInfo override_create_info = *pCreateInfo;
+  override_create_info.musage |=
+      VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+  return mImports.mVkDeviceFunctions[device].vkCreateBuffer(
+      device, &override_create_info, pAllocator, pBuffer);
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateImage(
@@ -998,4 +991,101 @@ void VulkanSpy::walkImageSubRng(
     }
   }
 }
+
+void VulkanSpy::SpyOverride_vkCmdPipelineBarrier(
+    CallObserver*, VkCommandBuffer commandBuffer,
+    VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
+    VkDependencyFlags dependencyFlags, uint32_t memoryBarrierCount,
+    const VkMemoryBarrier* pMemoryBarriers, uint32_t bufferMemoryBarrierCount,
+    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+    uint32_t imageMemoryBarrierCount,
+    const VkImageMemoryBarrier* pImageMemoryBarriers) {
+  VkDevice device = mState.CommandBuffers[commandBuffer]->mDevice;
+  auto& fn = mImports.mVkDeviceFunctions[device];
+  fn.vkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask,
+                          dependencyFlags, memoryBarrierCount, pMemoryBarriers,
+                          bufferMemoryBarrierCount, pBufferMemoryBarriers,
+                          imageMemoryBarrierCount, pImageMemoryBarriers);
+
+  recordExternalBarriers(commandBuffer, bufferMemoryBarrierCount,
+                         pBufferMemoryBarriers, imageMemoryBarrierCount,
+                         pImageMemoryBarriers);
+}
+
+void VulkanSpy::SpyOverride_vkCmdExecuteCommands(
+    CallObserver*, VkCommandBuffer commandBuffer, uint32_t commandBufferCount,
+    const VkCommandBuffer* pCommandBuffers) {
+  VkDevice device = mState.CommandBuffers[commandBuffer]->mDevice;
+  auto& fn = mImports.mVkDeviceFunctions[device];
+  fn.vkCmdExecuteCommands(commandBuffer, commandBufferCount, pCommandBuffers);
+
+  auto bufIt = mExternalBufferBarriers.find(commandBuffer);
+  for (uint32_t i = 0; i < commandBufferCount; ++i) {
+    auto subBufIt = mExternalBufferBarriers.find(pCommandBuffers[i]);
+    if (subBufIt != mExternalBufferBarriers.end()) {
+      if (bufIt == mExternalBufferBarriers.end()) {
+        bufIt =
+            mExternalBufferBarriers
+                .emplace(commandBuffer, std::vector<VkBufferMemoryBarrier>())
+                .first;
+      }
+      bufIt->second.insert(bufIt->second.begin(), subBufIt->second.begin(),
+                           subBufIt->second.end());
+    }
+  }
+}
+
+uint32_t VulkanSpy::SpyOverride_vkBeginCommandBuffer(
+    CallObserver*, VkCommandBuffer commandBuffer,
+    const VkCommandBufferBeginInfo* pBeginInfo) {
+  VkDevice device = mState.CommandBuffers[commandBuffer]->mDevice;
+  auto& fn = mImports.mVkDeviceFunctions[device];
+  uint32_t res = fn.vkBeginCommandBuffer(commandBuffer, pBeginInfo);
+
+  mExternalBufferBarriers.erase(commandBuffer);
+
+  return res;
+}
+
+uint32_t VulkanSpy::SpyOverride_vkQueueSubmit(CallObserver* observer,
+                                              VkQueue queue,
+                                              uint32_t submitCount,
+                                              const VkSubmitInfo* pSubmits,
+                                              VkFence fence) {
+  auto call_orig = [this, queue, submitCount, pSubmits, fence] {
+    VkDevice device = mState.Queues[queue]->mDevice;
+    auto fn = mImports.mVkDeviceFunctions[device];
+    return fn.vkQueueSubmit(queue, submitCount, pSubmits, fence);
+  };
+  if (!should_trace(kApiIndex)) {
+    return call_orig();
+  }
+  bool hasExternalMemoryBarriers = false;
+  for (uint32_t i = 0; i < submitCount && !hasExternalMemoryBarriers; ++i) {
+    for (uint32_t j = 0; j < pSubmits[i].mcommandBufferCount; ++j) {
+      VkCommandBuffer cmdBuf = pSubmits[i].mpCommandBuffers[j];
+      if (mExternalBufferBarriers.find(cmdBuf) !=
+          mExternalBufferBarriers.end()) {
+        hasExternalMemoryBarriers = true;
+        break;
+      }
+    }
+  }
+  if (!hasExternalMemoryBarriers) {
+    VkDevice device = mState.Queues[queue]->mDevice;
+    auto fn = mImports.mVkDeviceFunctions[device];
+    return fn.vkQueueSubmit(queue, submitCount, pSubmits, fence);
+  }
+
+  ExternalMemoryStaging staging(this, observer, queue, submitCount, pSubmits,
+                                fence);
+  if (VkResult::VK_SUCCESS != staging.CreateResources()) return call_orig();
+  if (VkResult::VK_SUCCESS != staging.RecordCommandBuffers())
+    return call_orig();
+  if (VkResult::VK_SUCCESS != staging.Submit()) return call_orig();
+  staging.SendData();
+  staging.Cleanup();
+  return VkResult::VK_SUCCESS;
+}
+
 }  // namespace gapii

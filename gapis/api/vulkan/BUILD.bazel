@@ -65,6 +65,7 @@ go_library(
         "doc.go",
         "drawCall.go",
         "draw_call_mesh.go",
+        "external_memory.go",
         "externs.go",
         "find_issues.go",
         "frame_loop.go",

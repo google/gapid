@@ -46,6 +46,10 @@
 namespace gapii {
 namespace {
 
+static inline void set_dispatch_from_parent(void* child, void* parent) {
+  *((const void**)child) = *((const void**)parent);
+}
+
 // ------------------------------------------------------------------------------------------------
 // CreateInstance and CreateDevice support structures
 
