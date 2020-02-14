@@ -126,6 +126,9 @@ func toString(dataval *api.DataValue) string {
 
 	case *api.DataValue_Bitfield:
 		return strings.Join(x.Bitfield.SetBitnames, " | ")
+
+	case *api.DataValue_Link:
+		return toString(x.Link.DisplayVal)
 	}
 
 	return ""
