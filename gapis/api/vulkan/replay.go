@@ -828,11 +828,10 @@ func uniqueConfig() replay.Config {
 }
 
 type profileRequest struct {
-	overrides    *path.OverrideConfig
-	traceOptions *service.TraceOptions
-	handler      *replay.SignalHandler
-	buffer       *bytes.Buffer
-	mappings     *map[uint64][]service.VulkanHandleMappingItem
+	traceOptions   *service.TraceOptions
+	handler        *replay.SignalHandler
+	buffer         *bytes.Buffer
+	handleMappings *map[uint64][]service.VulkanHandleMappingItem
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -1054,22 +1053,6 @@ func (a API) Replay(
 			optimize = false
 			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer, api.CmdID(numInitialCommands)))
 			transforms.Add(&profilingLayers{})
-			transforms.Add(replay.NewMappingExporter(ctx, req.mappings))
-			if req.overrides.GetViewportSize() {
-				transforms.Add(minimizeViewport(ctx))
-			}
-			if req.overrides.GetTextureSize() {
-				transforms.Add(minimizeTextures(ctx))
-			}
-			if req.overrides.GetSampling() {
-				transforms.Add(simplifySampling(ctx))
-			}
-			if req.overrides.GetFragmentShader() {
-				transforms.Add(simplifyFragmentShader(ctx))
-			}
-			if req.overrides.GetVertexCount() {
-				transforms.Add(setPrimitiveCountToOne(ctx))
-			}
 		}
 	}
 
@@ -1249,14 +1232,13 @@ func (a API) Profile(
 	intent replay.Intent,
 	mgr replay.Manager,
 	hints *service.UsageHints,
-	traceOptions *service.TraceOptions,
-	overrides *path.OverrideConfig) (*service.ProfilingData, error) {
+	traceOptions *service.TraceOptions) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
 	mappings := make(map[uint64][]service.VulkanHandleMappingItem)
-	r := profileRequest{overrides, traceOptions, handler, &buffer, &mappings}
+	r := profileRequest{traceOptions, handler, &buffer, &mappings}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	handler.DoneSignal.Wait(ctx)
 

@@ -101,7 +101,7 @@ func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Dev
 		hints := &service.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if pf, ok := a.(Profiler); ok {
-				data, err := pf.Profile(ctx, intent, mgr, hints, opts, nil)
+				data, err := pf.Profile(ctx, intent, mgr, hints, opts)
 				if err != nil {
 					log.E(ctx, "Replay profiling failed.")
 					continue
