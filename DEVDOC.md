@@ -18,6 +18,9 @@ mkdir <path-outside-agi-source>/agi-gofuse
 # Run gofuse with the previous directory as a target
 bazel run //cmd/gofuse -- -dir <path-to-agi-gofuse>
 
+# If you build with bazel build -c dbg pkg, the <path-to-bazelout> is `k8-dbg` on Linux.
+bazel run //cmd/gofuse -- -dir <path-to-agi-gofuse> -bazelout <path-to-bazelout>
+
 # Add agi-gofuse directory to your GOPATH environment variable.
 # On Linux, with a bash shell, you can add the following to your ~/.bashrc file:
 export GOPATH="${GOPATH:+${GOPATH}:}<path-to-agi-gofuse>"
