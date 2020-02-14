@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 // Support is the optional interface implemented by APIs that can describe
@@ -89,8 +88,7 @@ type Profiler interface {
 		intent Intent,
 		mgr Manager,
 		hints *service.UsageHints,
-		traceOptions *service.TraceOptions,
-		overrides *path.OverrideConfig) (*service.ProfilingData, error)
+		traceOptions *service.TraceOptions) (*service.ProfilingData, error)
 }
 
 // Issue represents a single replay issue reported by QueryIssues.
