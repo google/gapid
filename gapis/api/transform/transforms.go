@@ -44,7 +44,7 @@ func (l Transforms) TransformAll(ctx context.Context, cmds []api.Cmd, numberOfIn
 	}
 	err := api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		captureCmdID := api.CmdNoID
-		if uint64(id) > numberOfInitialCommands {
+		if uint64(id) >= numberOfInitialCommands {
 			captureCmdID = id - api.CmdID(numberOfInitialCommands)
 		}
 
