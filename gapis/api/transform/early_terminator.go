@@ -32,7 +32,7 @@ func NewEarlyTerminator(api api.ID) Terminator {
 	return &earlyTerminator{api: api}
 }
 
-func (t *earlyTerminator) Add(ctx context.Context, extraCommands int, id api.CmdID, idx api.SubCmdIdx) error {
+func (t *earlyTerminator) Add(ctx context.Context, id api.CmdID, idx api.SubCmdIdx) error {
 	if id > t.lastID {
 		t.lastID = id
 	}

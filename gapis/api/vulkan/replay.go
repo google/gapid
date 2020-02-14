@@ -1000,21 +1000,17 @@ func (a API) Replay(
 			timestamps.AddResult(rr.Result)
 			optimize = false
 		case framebufferRequest:
-
 			cfg := cfg.(drawConfig)
 			if cfg.disableReplayOptimization {
 				optimize = false
 			}
-			extraCommands, err := expandCommands(optimize)
-			if err != nil {
-				return err
-			}
-			cmdid := req.after[0] + uint64(extraCommands)
+
+			cmdID := req.after[0]
 
 			if optimize {
 				// Should have been built in expandCommands()
 				if dceBuilder != nil {
-					dceBuilder.Request(ctx, api.SubCmdIdx{cmdid})
+					dceBuilder.Request(ctx, api.SubCmdIdx{cmdID})
 				} else {
 					optimize = false
 				}
@@ -1022,21 +1018,20 @@ func (a API) Replay(
 
 			if cfg.drawMode == service.DrawMode_OVERDRAW {
 				// TODO(subcommands): Add subcommand support here
-				if err := earlyTerminator.Add(ctx, extraCommands, api.CmdID(cmdid), req.after[1:]); err != nil {
+				if err := earlyTerminator.Add(ctx, api.CmdID(cmdID), req.after[1:]); err != nil {
 					return err
 				}
 
 				if overdraw == nil {
 					overdraw = newStencilOverdraw()
 				}
-				overdraw.add(ctx, uint64(extraCommands), req.after, intent.Capture, rr.Result)
+				overdraw.add(ctx, req.after, intent.Capture, rr.Result)
 				break
 			}
-			if err := earlyTerminator.Add(ctx, extraCommands, api.CmdID(cmdid), api.SubCmdIdx{}); err != nil {
+			if err := earlyTerminator.Add(ctx, api.CmdID(cmdID), api.SubCmdIdx{}); err != nil {
 				return err
 			}
 			subIdx := append(api.SubCmdIdx{}, req.after...)
-			subIdx[0] = subIdx[0] + uint64(extraCommands)
 			splitter.Split(ctx, subIdx)
 			switch cfg.drawMode {
 			case service.DrawMode_WIREFRAME_ALL:

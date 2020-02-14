@@ -27,5 +27,5 @@ type Terminator interface {
 
 	// Add relaxes the termination limit to pass-through all commands before and
 	// including the command or subcommand.
-	Add(context.Context, int, api.CmdID, api.SubCmdIdx) error
+	Add(context.Context, api.CmdID, api.SubCmdIdx) error
 }
