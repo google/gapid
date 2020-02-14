@@ -73,7 +73,7 @@ public class Models {
     Analytics analytics = new Analytics(client, settings, handler);
     Follower follower = new Follower(shell, client);
     Capture capture = new Capture(shell, analytics, client, settings);
-    Devices devices = new Devices(shell, analytics, client, capture);
+    Devices devices = new Devices(shell, analytics, client, capture, settings);
     ConstantSets constants = new ConstantSets(client, devices);
     ApiContext contexts = new ApiContext(shell, analytics, client, capture, devices);
     Timeline timeline = new Timeline(shell, analytics, client, capture, devices, contexts);

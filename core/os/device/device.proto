@@ -245,6 +245,8 @@ message VulkanDriver {
   repeated string icd_and_implicit_layer_extensions = 2;
   // Physical devices that have Vulkan support.
   repeated VulkanPhysicalDevice physical_devices = 3;
+  // Driver package version
+  string version = 4;
 }
 
 // VulkanLayer describes the layers currently installed on the device,

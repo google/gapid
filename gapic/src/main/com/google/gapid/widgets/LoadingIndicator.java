@@ -75,12 +75,8 @@ public class LoadingIndicator {
     }
   }
 
-  public void paintRefresh(GC g, int x, int y, Point size) {
-    paintRefresh(g, x, y, size.x, size.y);
-  }
-
-  public void paintRefresh(GC g, int x, int y, int w, int h) {
-    paint(refresh, g, x, y, w, h);
+  public void paint(Image image, GC g, int x, int y, Point size) {
+    paint(image, g, x, y, size.x, size.y);
   }
 
   private static int paint(Image image, GC g, int x, int y, int w, int h) {
@@ -129,11 +125,15 @@ public class LoadingIndicator {
   }
 
   public Widget createWidget(Composite parent) {
-    return new Widget(parent, false);
+    return new Widget(parent, null, null);
   }
 
   public Widget createWidgetWithRefresh(Composite parent) {
-    return new Widget(parent, true);
+    return new Widget(parent, refresh, refresh);
+  }
+
+  public Widget createWidgetWithImage(Composite parent, Image success, Image failure) {
+    return new Widget(parent, success, failure);
   }
 
   /**
@@ -148,20 +148,35 @@ public class LoadingIndicator {
 
   /**
    * Widget that shows the loading indicator while loading and is blank once done.
+   * Can optionally show an image when done.
    */
   public class Widget extends Canvas implements Loadable, Repaintable {
-    private boolean loading = false;
+    private final Image successImage;
+    private final Image failureImage;
 
-    public Widget(Composite parent, boolean showRefresh) {
+    protected boolean loading = false;
+    protected boolean status = false;
+
+    public Widget(Composite parent, Image success, Image failure) {
       super(parent, SWT.DOUBLE_BUFFERED);
+      successImage = success;
+      failureImage = failure;
       addListener(SWT.Paint, e -> {
         if (loading) {
           paint(e.gc, 0, 0, getSize(), "");
           scheduleForRedraw(this);
-        } else if (showRefresh) {
-          paintRefresh(e.gc, 0, 0, getSize());
+        } else {
+          Image image = status ? successImage : failureImage;
+          if (image != null) {
+            paint(image, e.gc, 0, 0, getSize());
+          }
         }
       });
+    }
+
+    public void updateStatus(boolean status) {
+      this.status = status;
+      scheduleForRedraw(this);
     }
 
     @Override

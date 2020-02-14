@@ -60,6 +60,8 @@ public interface GapidClient {
   public ListenableFuture<Service.PerfettoQueryResponse> perfettoQuery(
       Service.PerfettoQueryRequest request);
   public ListenableFuture<Service.GpuProfileResponse> profile(Service.GpuProfileRequest request);
+  public ListenableFuture<Service.ValidateDeviceResponse> validateDevice(
+      Service.ValidateDeviceRequest request);
 
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage);
   public ListenableFuture<Void> streamStatus(

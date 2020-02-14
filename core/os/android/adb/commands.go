@@ -414,6 +414,19 @@ func (b *binding) PrereleaseGraphicsDriver(ctx context.Context) (Driver, error) 
 	return b.resolveDriverPath(ctx, driver)
 }
 
+// Returns the package version code of the graphics driver
+func (b *binding) DriverVersionCode(ctx context.Context) (int, error) {
+	driver, err := b.SystemProperty(ctx, driverProperty)
+	if err != nil {
+		return 0, err
+	}
+	ip, err := b.InstalledPackage(ctx, driver)
+	if err != nil {
+		return 0, err
+	}
+	return ip.VersionCode, err
+}
+
 // DriverPackage queries and returns the package of the preview graphics driver.
 func (b *binding) GraphicsDriver(ctx context.Context) (Driver, error) {
 	// Check if there is an override setup.

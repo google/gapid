@@ -241,6 +241,10 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		i.GenID()
 	}
 
+	if version, err := d.DriverVersionCode(ctx); err == nil {
+		d.To.Configuration.Drivers.Vulkan.Version = strconv.Itoa(version)
+	}
+
 	return d, nil
 }
 

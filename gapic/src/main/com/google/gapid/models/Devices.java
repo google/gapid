@@ -15,12 +15,14 @@
  */
 package com.google.gapid.models;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.proto.SettingsProto.DeviceValidation;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
@@ -33,6 +35,8 @@ import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.Flags;
+import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
@@ -57,11 +61,17 @@ public class Devices {
   private List<Device.Instance> replayDevices;
   private Device.Instance selectedReplayDevice;
   private List<DeviceCaptureInfo> devices;
+  private DeviceValidationInfo deviceValidationInfo;
 
-  public Devices(Shell shell, Analytics analytics, Client client, Capture capture) {
+  public static final Flag<Boolean> skipDeviceValidation = Flags.value("skip-device-validation", false,
+      "Skips the device validation process. " +
+      "Device validation verifies that the GPU events emitted are within the acceptable threshold.", true);
+
+  public Devices(Shell shell, Analytics analytics, Client client, Capture capture, Settings settings) {
     this.shell = shell;
     this.analytics = analytics;
     this.client = client;
+    deviceValidationInfo = new DeviceValidationInfo(client, settings);
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -140,6 +150,14 @@ public class Devices {
   public void selectReplayDevice(Device.Instance dev) {
     selectedReplayDevice = dev;
     listeners.fire().onReplayDeviceChanged(dev);
+  }
+
+  public ListenableFuture<DeviceValidationResult> validateDevice(DeviceCaptureInfo device) {
+    return deviceValidationInfo.doValidation(device);
+  }
+
+  public DeviceValidationResult getValidationStatus(DeviceCaptureInfo device) {
+    return deviceValidationInfo.getValidationStatus(device);
   }
 
   public void loadDevices() {
@@ -293,6 +311,94 @@ public class Devices {
 
     public boolean isStadia() {
       return device.getConfiguration().getOS().getKind() == Device.OSKind.Stadia;
+    }
+  }
+
+  /*
+   *  Class that handles the gapis communication for device validation and the load/store
+   *  of the validation cache.
+   */
+  private static class DeviceValidationInfo {
+    private final Client client;
+    private DeviceValidation.Builder deviceValidation;
+
+    public DeviceValidationInfo(Client client, Settings settings) {
+      this.client = client;
+      deviceValidation = settings.writeDeviceValidation();
+    }
+
+    private static DeviceValidation.ValidationEntry buildValidationEntry(DeviceCaptureInfo device) {
+      return DeviceValidation.ValidationEntry.newBuilder()
+          .setDevice(DeviceValidation.Device.newBuilder()
+              .setSerial(device.device.getSerial())
+              .setOs(device.device.getConfiguration().getOS())
+              .setVersion(device.device.getConfiguration().getDrivers().getVulkan().getVersion()))
+          .setResult(DeviceValidation.Result.newBuilder()
+              .setPassed(true))
+          .build();
+    }
+
+    // TODO(b/149406313): Move to UI thread to avoid synchronization
+    public synchronized DeviceValidationResult getValidationStatus(DeviceCaptureInfo device) {
+      if (skipDeviceValidation.get()) {
+        return DeviceValidationResult.getSkippedResult();
+      }
+      DeviceValidation.ValidationEntry entry  = buildValidationEntry(device);
+      if (deviceValidation.getValidationEntriesList().contains(entry)) {
+        return DeviceValidationResult.getPassedResult();
+      }
+      return DeviceValidationResult.getFailedResult();
+    }
+
+    // TODO(b/149406313): Move to UI thread to avoid synchronization
+    public synchronized ListenableFuture<DeviceValidationResult> doValidation(DeviceCaptureInfo device) {
+      if (device == null) {
+        return immediateFuture(DeviceValidationResult.getFailedResult());
+      }
+      DeviceValidation.ValidationEntry currentEntry = buildValidationEntry(device);
+      if (deviceValidation.getValidationEntriesList().contains(currentEntry)) {
+        return immediateFuture(DeviceValidationResult.getPassedResult());
+      }
+
+      return MoreFutures.transform(client.validateDevice(device.path), e -> {
+        updateValidationStatus(currentEntry, e);
+        return new DeviceValidationResult(e.getError(), !e.hasError(), false);
+      });
+    }
+
+    // TODO(b/149406313): Move to UI thread to avoid synchronization
+    protected synchronized void updateValidationStatus(DeviceValidation.ValidationEntry entry, Service.ValidateDeviceResponse response) {
+      if (response == null || response.hasError()) {
+        return;
+      }
+      deviceValidation.addValidationEntries(entry);
+    }
+  }
+
+  public static class DeviceValidationResult {
+    private static DeviceValidationResult passedResult = new DeviceValidationResult(null, true, false);
+    private static DeviceValidationResult failedResult = new DeviceValidationResult(null, false, false);
+    private static DeviceValidationResult skippedResult = new DeviceValidationResult(null, true, true);
+    public Service.Error error;
+    public boolean passed;
+    public boolean skipped;
+
+    public DeviceValidationResult(Service.Error error, boolean passed, boolean skipped) {
+      this.error = error;
+      this.passed = passed;
+      this.skipped = skipped;
+    }
+
+    public static DeviceValidationResult getPassedResult() {
+      return passedResult;
+    }
+
+    public static DeviceValidationResult getSkippedResult() {
+      return skippedResult;
+    }
+
+    public static DeviceValidationResult getFailedResult() {
+      return failedResult;
     }
   }
 }

@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfig;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfigSummary;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.showPerfettoConfigDialog;
+import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.MoreFutures.logFailure;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
@@ -35,12 +36,14 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Devices.DeviceCaptureInfo;
+import com.google.gapid.models.Devices.DeviceValidationResult;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
@@ -52,6 +55,10 @@ import com.google.gapid.proto.service.Service.DeviceTraceConfiguration;
 import com.google.gapid.proto.service.Service.StatusResponse;
 import com.google.gapid.proto.service.Service.TraceType;
 import com.google.gapid.proto.service.Service.TraceTypeCapabilities;
+import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
+import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.TraceRequest;
@@ -60,6 +67,7 @@ import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
+import com.google.gapid.util.URLs;
 import com.google.gapid.widgets.ActionTextbox;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
@@ -78,6 +86,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
@@ -101,6 +110,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -272,19 +282,23 @@ public class TracerDialog {
       private static final String MEC_LABEL_WARNING =
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final String PERFETTO_LABEL = "Profile Config: ";
-      private static final String NO_GPU_PROFILING_CAPABILITY = "Warning: Selected device has no GPU profiling capability.";
       private static final String EMPTY_APP_WITH_RENDER_STAGE =
           "Warning: Application needs to be specified for GPU profiling data.";
+      private static final String VALIDATION_FAILED_LANDING_PAGE = "<a>Learn about device compatibility</a>";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
       private List<DeviceCaptureInfo> devices;
+      private final SingleInFlight rpcController = new SingleInFlight();
+      private final Models models;
 
       private final ComboViewer device;
       private final Label deviceLabel;
       private final LoadingIndicator.Widget deviceLoader;
       private final ComboViewer api;
       private final Label apiLabel;
+      private final LoadingIndicator.Widget validationStatusLoader;
+      private final Link validationStatusText;
       private final ActionTextbox traceTarget;
       private final Label targetLabel;
       private final Text arguments;
@@ -308,15 +322,17 @@ public class TracerDialog {
       private final Label fileLabel;
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
-      private final Label gpuProfilingCapabilityWarning;
       private final Label emptyAppWarning;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
 
+      public boolean validationStatus;
+
       public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
         super(parent, SWT.NONE);
+        this.models = models;
         SettingsProto.TraceOrBuilder trace = models.settings.trace();
 
         this.friendlyName = trace.getFriendlyName();
@@ -343,6 +359,17 @@ public class TracerDialog {
         apiLabel = createLabel(mainGroup, "Type*:");
         api = createApiDropDown(mainGroup);
         api.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+        // dummy label to fill the 3rd column
+        createLabel(mainGroup, "");
+
+        validationStatusLoader = widgets.loading.createWidgetWithImage(mainGroup, widgets.theme.smile(), widgets.theme.error());
+        validationStatusLoader.setLayoutData(
+            withIndents(new GridData(SWT.LEFT, SWT.BOTTOM, false, false), 0, 0));
+        validationStatusText = createLink(mainGroup, "", e-> {
+          Program.launch(URLs.DEVICE_COMPATIBILITY_URL);
+        });
+        validationStatusText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+        validationStatus = false;
 
         Group appGroup  = withLayoutData(
             createGroup(this, "Application", new GridLayout(2, false)),
@@ -457,12 +484,6 @@ public class TracerDialog {
         requiredFieldMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         requiredFieldMessage.setVisible(false);
 
-        gpuProfilingCapabilityWarning = withLayoutData(
-            createLabel(this, NO_GPU_PROFILING_CAPABILITY),
-            new GridData(SWT.FILL, SWT.FILL, true, false));
-        gpuProfilingCapabilityWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
-        gpuProfilingCapabilityWarning.setVisible(false);
-
         Link adbWarning = withLayoutData(
             createLink(this, "Path to adb invalid/missing. " +
                 "To trace on Android, please fix it in the <a>preferences</a>.",
@@ -471,26 +492,14 @@ public class TracerDialog {
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(!models.settings.isAdbValid());
 
-        device.getCombo().addListener(SWT.Selection,
-            e -> updateOnDeviceChange(models.settings, getSelectedDevice()));
-        api.getCombo().addListener(SWT.Selection, e -> updateOnApiChange(trace, getSelectedApi()));
 
-        Listener gpuProfilingCapabilityListener = e -> {
-          // Skip if the device is not Android device, or trace type is not Perfetto.
-          if (getSelectedDevice() == null || !getSelectedDevice().isAndroid() ||
-              getSelectedApi() == null || getSelectedApi().getType() != TraceType.Perfetto) {
-            gpuProfilingCapabilityWarning.setVisible(false);
-            return;
-          }
-          Device.GPUProfiling gpuCaps = getPerfettoCaps().getGpuProfiling();
-          if (gpuCaps.getHasRenderStage() && gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
-            gpuProfilingCapabilityWarning.setVisible(false);
-            return;
-          }
-          gpuProfilingCapabilityWarning.setVisible(true);
-        };
-        device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
-        api.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
+        device.getCombo().addListener(SWT.Selection, e -> {
+          updateOnDeviceChange(models.settings, getSelectedDevice());
+          runValidationCheck(getSelectedDevice());
+        });
+        api.getCombo().addListener(SWT.Selection, e -> {
+          updateOnApiChange(trace, getSelectedApi());
+        });
 
         emptyAppWarning = withLayoutData(
             createLabel(this, EMPTY_APP_WITH_RENDER_STAGE),
@@ -545,7 +554,7 @@ public class TracerDialog {
           return;
         }
 
-        requiredFieldMessage.setVisible(!this.isReady());
+        requiredFieldMessage.setVisible(!this.isInputReady());
         deviceLabel.setForeground(getSelectedDevice() == null ? theme.missingInput() : theme.filledInput());
         directoryLabel.setForeground(directory.getText().isEmpty() ? theme.missingInput() : theme.filledInput());
         fileLabel.setForeground(file.getText().isEmpty() ? theme.missingInput() : theme.filledInput());
@@ -599,6 +608,56 @@ public class TracerDialog {
         clearCache.setEnabled(config != null && config.getHasCache());
         updateApiDropdown(config, settings.trace());
         updatePerfettoConfigLabel(settings);
+      }
+
+      private void runValidationCheck(DeviceCaptureInfo dev) {
+        if (dev == null) {
+          return;
+        }
+        setValidationStatus(models.devices.getValidationStatus(dev));
+        if (!models.devices.getValidationStatus(dev).passed) {
+          validationStatusLoader.startLoading();
+          validationStatusText.setText("Device is being validated");
+          rpcController.start().listen(models.devices.validateDevice(dev),
+              new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(validationStatusLoader, LOG) {
+            @Override
+            protected ResultOrError<DeviceValidationResult, DeviceValidationResult>
+              onRpcThread(Rpc.Result<DeviceValidationResult> response) throws RpcException, ExecutionException {
+              try {
+                return success(response.get());
+              } catch (RpcException | ExecutionException e) {
+                throttleLogRpcError(LOG, "LoadData error", e);
+                return error(null);
+              }
+            }
+
+            @Override
+            protected void onUiThreadSuccess(DeviceValidationResult result) {
+              setValidationStatus(result);
+            }
+
+            @Override
+            protected void onUiThreadError(DeviceValidationResult result) {
+              LOG.log(WARNING, "UI thread error while validating device");
+              setValidationStatus(result);
+            }
+          });
+        }
+      }
+
+      protected void setValidationStatus(DeviceValidationResult result) {
+        if (result.skipped) {
+          validationStatusLoader.updateStatus(true);
+          validationStatusLoader.stopLoading();
+          validationStatusText.setText("Validation skipped.");
+          validationStatus = true;
+        } else {
+          validationStatusLoader.updateStatus(result.passed);
+          validationStatusText.setText("Validation " + (result.passed ? "Passed." : "Failed. " + VALIDATION_FAILED_LANDING_PAGE));
+          validationStatusLoader.stopLoading();
+          validationStatus = result.passed;
+        }
+        notifyListeners(SWT.Modify, new Event());
       }
 
       private void updateOnApiChange(
@@ -801,6 +860,10 @@ public class TracerDialog {
       }
 
       public boolean isReady() {
+        return isInputReady() && validationStatus;
+      }
+
+      public boolean isInputReady() {
         TraceTypeCapabilities config = getSelectedApi();
         return getSelectedDevice() != null && config != null &&
             (!config.getRequiresApplication() || !traceTarget.getText().isEmpty()) &&
@@ -813,6 +876,7 @@ public class TracerDialog {
         traceTarget.addBoxListener(SWT.Modify, listener);
         directory.addBoxListener(SWT.Modify, listener);
         file.addListener(SWT.Modify, listener);
+        this.addListener(SWT.Modify, listener);
       }
 
       public void setDevices(Settings settings, List<DeviceCaptureInfo> devices) {

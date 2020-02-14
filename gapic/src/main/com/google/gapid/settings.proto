@@ -19,6 +19,8 @@ import "protos/perfetto/config/perfetto_config.proto";
 option java_package = "com.google.gapid.proto";
 option java_outer_classname = "SettingsProto";
 
+import "core/os/device/device.proto";
+
 message Point {
   int32 x = 1;
   int32 y = 2;
@@ -169,4 +171,25 @@ message Settings {
   UI ui = 6;
   Trace trace = 7;
   Perfetto perfetto = 8;
+  DeviceValidation device_validation = 9;
+}
+
+// DeviceValidation contains the list of validated devices.
+message DeviceValidation {
+  message Device {
+    string serial = 1;
+    device.OS os = 2;
+    // The pre-release driver APK version code
+    string version = 3;
+  }
+
+  message Result {
+    bool passed = 1;
+  }
+
+  message ValidationEntry {
+    Device device = 1;
+    Result result = 2;
+  }
+  repeated ValidationEntry validation_entries = 1;
 }

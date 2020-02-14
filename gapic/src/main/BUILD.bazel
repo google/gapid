@@ -77,6 +77,7 @@ proto_library(
     name = "settings_proto",
     srcs = ["com/google/gapid/settings.proto"],
     deps = [
+        "//core/os/device:device_proto",
         "@perfetto//:protos_perfetto_config_merged_config_protos",
     ],
 )

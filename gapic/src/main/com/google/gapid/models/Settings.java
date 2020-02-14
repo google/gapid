@@ -220,6 +220,10 @@ public class Settings {
     return proto.getPerfettoBuilder();
   }
 
+  public SettingsProto.DeviceValidation.Builder writeDeviceValidation() {
+    return proto.getDeviceValidationBuilder();
+  }
+
   public int[] getSplitterWeights(SplitterWeights type) {
     return type.get(ui());
   }
