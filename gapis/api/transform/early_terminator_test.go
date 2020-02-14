@@ -53,9 +53,9 @@ func TestEarlyTerminator(t *testing.T) {
 	)
 
 	et := transform.NewEarlyTerminator(test.API{}.ID())
-	et.Add(ctx, 0, 20, []uint64{0})
-	et.Add(ctx, 0, 50, []uint64{})
-	et.Add(ctx, 0, 70, []uint64{1})
+	et.Add(ctx, 20, []uint64{0})
+	et.Add(ctx, 50, []uint64{})
+	et.Add(ctx, 70, []uint64{1})
 
 	CheckTransform(ctx, t, et, inputs, expected)
 }

@@ -143,7 +143,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		terminators = append(terminators, transform.NewEarlyTerminator(api.ID()))
 	}
 	for _, t := range terminators {
-		if err := t.Add(ctx, 0, id, subindex); err != nil {
+		if err := t.Add(ctx, id, subindex); err != nil {
 			return nil, err
 		}
 		transforms.Add(t)
