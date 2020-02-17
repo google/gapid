@@ -67,7 +67,7 @@ type findIssues struct {
 	reportCallbacks map[VkInstance]VkDebugReportCallbackEXT
 }
 
-func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int) *findIssues {
+func newFindIssues(ctx context.Context, c *capture.GraphicsCapture) *findIssues {
 	t := &findIssues{
 		state:           c.NewState(ctx),
 		reportCallbacks: map[VkInstance]VkDebugReportCallbackEXT{},

@@ -74,7 +74,7 @@ type queryTimestamps struct {
 	results         map[uint64]queryResults
 }
 
-func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int, Cmds []api.Cmd, willLoop bool, handler service.TimeStampsHandler) *queryTimestamps {
+func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, Cmds []api.Cmd, willLoop bool, handler service.TimeStampsHandler) *queryTimestamps {
 	transform := &queryTimestamps{
 		cmds:         Cmds,
 		commandPools: make(map[commandPoolKey]VkCommandPool),
