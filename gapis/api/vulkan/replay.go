@@ -963,14 +963,8 @@ func (a API) Replay(
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
-			var numInitialCommands int
-			var err error
 			if issues == nil {
-				numInitialCommands, err = expandCommands(false)
-				if err != nil {
-					return err
-				}
-				issues = newFindIssues(ctx, c, numInitialCommands)
+				issues = newFindIssues(ctx, c)
 			}
 			issues.AddResult(rr.Result)
 			optimize = false
@@ -979,22 +973,16 @@ func (a API) Replay(
 			}
 			willLoop := req.loopCount > 1
 			if willLoop {
-				frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), frameLoopEndCmdID(cmds), req.loopCount)
+				frameloop = newFrameLoop(ctx, c, api.CmdID(0), frameLoopEndCmdID(cmds), req.loopCount)
 			}
 		case timestampsRequest:
-			var numInitialCommands int
-			var err error
 			if timestamps == nil {
-				numInitialCommands, err = expandCommands(false)
-				if err != nil {
-					return err
-				}
 				willLoop := req.loopCount > 1
 				if willLoop {
-					frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), frameLoopEndCmdID(cmds), req.loopCount)
+					frameloop = newFrameLoop(ctx, c, api.CmdID(0), frameLoopEndCmdID(cmds), req.loopCount)
 				}
 
-				timestamps = newQueryTimestamps(ctx, c, numInitialCommands, cmds, willLoop, req.handler)
+				timestamps = newQueryTimestamps(ctx, c, cmds, willLoop, req.handler)
 			}
 			timestamps.AddResult(rr.Result)
 			optimize = false
