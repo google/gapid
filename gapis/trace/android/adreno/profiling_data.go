@@ -196,7 +196,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(hwQueueIds[i])},
 		})
 
-		if names[i] == "Surface" {
+		if names[i] == "Surface" && groupIds[i] != -1 {
 			names[i] = fmt.Sprintf("%v", groups[groupIds[i]].Link.Indices)
 		}
 
