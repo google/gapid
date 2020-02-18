@@ -1073,79 +1073,88 @@ func commonShaderDataGroups(ctx context.Context,
 			dsetRows := []*api.Row{}
 			for _, usedSet := range usedSets {
 				setInfo, ok := boundDsets[usedSet.Set()]
-				if ok {
-					setHandle := setInfo.VulkanHandle()
-					setPath := path.NewField("DescriptorSets", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(setHandle)
-
-					bindingInfo := setInfo.Bindings().Get(usedSet.Binding())
-					if !bindingInfo.IsNil() {
-						layoutBinding := setInfo.Layout().Bindings().Get(usedSet.Binding())
-
-						if layoutBinding.Stages()&VkShaderStageFlags(vkStage) != 0 {
-							bindingType := bindingInfo.BindingType()
-
-							for i := uint32(0); i < usedSet.DescriptorCount(); i++ {
-								currentSetData := []*api.DataValue{
-									api.CreateLinkedDataValue("url", setPath, api.CreatePoDDataValue("u32", usedSet.Set())),
-									api.CreatePoDDataValue("u32", usedSet.Binding()),
-									api.CreatePoDDataValue("u32", i),
-									api.CreateEnumDataValue("VkDescriptorType", bindingType),
-								}
-
-								switch bindingType {
-								case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER, VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-									VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-									VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-									descInfo := bindingInfo.ImageBinding().Get(i)
-
-									samplerHandle := descInfo.Sampler()
-									samplerPath := path.NewField("Samplers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(samplerHandle)
-									currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", samplerPath, api.CreatePoDDataValue("VkSampler", samplerHandle)))
-
-									viewHandle := descInfo.ImageView()
-									viewPath := path.NewField("ImageViews", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(viewHandle)
-									currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", viewPath, api.CreatePoDDataValue("VkImageView", viewHandle)))
-
-									currentSetData = append(currentSetData, api.CreateEnumDataValue("VkImageLayout", descInfo.ImageLayout()))
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-
-								case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-									VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-									descInfo := bindingInfo.BufferViewBindings().Get(i)
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-
-									bufferViewPath := path.NewField("BufferViews", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(descInfo)
-									currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", bufferViewPath, api.CreatePoDDataValue("VkBufferView", descInfo)))
-
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-
-								case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-									VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-									VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-									descInfo := bindingInfo.BufferBinding().Get(i)
-
-									bufferHandle := descInfo.Buffer()
-									bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(descInfo.Buffer())
-									currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", bufferHandle)))
-
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Offset()))
-									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Range()))
-
-								}
-
-								dsetRows = append(dsetRows, &api.Row{
-									RowValues: currentSetData,
-								})
-							}
-						}
-					}
+				if !ok {
+					continue
 				}
 
+				setHandle := setInfo.VulkanHandle()
+				setPath := path.NewField("DescriptorSets", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(setHandle)
+
+				layoutBinding, ok := setInfo.Layout().Bindings().Lookup(usedSet.Binding())
+				if !ok || layoutBinding.Stages()&VkShaderStageFlags(vkStage) == 0 {
+					continue
+				}
+
+				bindingType := layoutBinding.Type()
+				bindingInfo := setInfo.Bindings().Get(usedSet.Binding())
+
+				for i := uint32(0); i < usedSet.DescriptorCount(); i++ {
+					currentSetData := []*api.DataValue{
+						api.CreateLinkedDataValue("url", setPath, api.CreatePoDDataValue("u32", usedSet.Set())),
+						api.CreatePoDDataValue("u32", usedSet.Binding()),
+						api.CreatePoDDataValue("u32", i),
+						api.CreateEnumDataValue("VkDescriptorType", bindingType),
+					}
+
+					if bindingInfo.IsNil() {
+						// Missing descriptor, fill with placeholders
+						currentSetData = append(currentSetData, api.CreatePoDDataValue("", "!"))
+						currentSetData = append(currentSetData, api.CreatePoDDataValue("", "!"))
+						currentSetData = append(currentSetData, api.CreatePoDDataValue("", "!"))
+						currentSetData = append(currentSetData, api.CreatePoDDataValue("", "!"))
+						currentSetData = append(currentSetData, api.CreatePoDDataValue("", "!"))
+					} else {
+						switch bindingType {
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER, VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+							VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+							VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+							descInfo := bindingInfo.ImageBinding().Get(i)
+
+							samplerHandle := descInfo.Sampler()
+							samplerPath := path.NewField("Samplers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(samplerHandle)
+							currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", samplerPath, api.CreatePoDDataValue("VkSampler", samplerHandle)))
+
+							viewHandle := descInfo.ImageView()
+							viewPath := path.NewField("ImageViews", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(viewHandle)
+							currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", viewPath, api.CreatePoDDataValue("VkImageView", viewHandle)))
+
+							currentSetData = append(currentSetData, api.CreateEnumDataValue("VkImageLayout", descInfo.ImageLayout()))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+							VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+							descInfo := bindingInfo.BufferViewBindings().Get(i)
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+							bufferViewPath := path.NewField("BufferViews", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(descInfo)
+							currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", bufferViewPath, api.CreatePoDDataValue("VkBufferView", descInfo)))
+
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+							VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+							VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+							descInfo := bindingInfo.BufferBinding().Get(i)
+
+							bufferHandle := descInfo.Buffer()
+							bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(descInfo.Buffer())
+							currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", bufferHandle)))
+
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Offset()))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Range()))
+
+						}
+					}
+
+					dsetRows = append(dsetRows, &api.Row{
+						RowValues: currentSetData,
+					})
+				}
 			}
 
 			dsetTable := &api.Table{
