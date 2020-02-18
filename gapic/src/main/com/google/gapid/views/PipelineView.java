@@ -424,7 +424,7 @@ public class PipelineView extends Composite
             dataGroupComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
           }
 
-          TableViewer groupTable = createTableViewer(dataGroupComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+          TableViewer groupTable = createTableViewer(dataGroupComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
           List<API.Row> rows = dataGroup.getTable().getRowsList();
 
           groupTable.setContentProvider(ArrayContentProvider.getInstance());
