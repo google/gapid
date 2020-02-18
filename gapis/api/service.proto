@@ -307,12 +307,16 @@ message KeyValuePair {
   string name = 1;
   DataValue value = 2;
   bool dynamic = 3;
+  string dependee = 4;
+  bool active = 5;
 }
 
 message Table {
   repeated string headers = 1;
   repeated Row rows = 2;
   bool dynamic = 3;
+  string dependee = 4;
+  bool active = 5;
 }
 
 message Row {

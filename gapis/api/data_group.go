@@ -29,6 +29,22 @@ func (list *KeyValuePairList) AppendKeyValuePair(name string, value *DataValue, 
 			Name:    name,
 			Value:   value,
 			Dynamic: dynamic,
+			Active:  true,
+		})
+
+	return &KeyValuePairList{
+		KeyValues: values,
+	}
+}
+
+func (list *KeyValuePairList) AppendDependentKeyValuePair(name string, value *DataValue, dynamic bool, dependee string, active bool) *KeyValuePairList {
+	values := append(list.KeyValues,
+		&KeyValuePair{
+			Name:     name,
+			Value:    value,
+			Dynamic:  dynamic,
+			Dependee: dependee,
+			Active:   active,
 		})
 
 	return &KeyValuePairList{
