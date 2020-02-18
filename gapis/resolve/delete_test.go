@@ -37,7 +37,6 @@ func createSingleCommandTrace(ctx context.Context) *path.Capture {
 	cb := test.CommandBuilder{Arena: a}
 	cmds := []api.Cmd{
 		cb.CmdTypeMix(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, test.Voidᵖ(0x12345678), 2),
-		cb.PrimeState(test.U8ᵖ(0x89abcdef)),
 	}
 	p, err := capture.NewGraphicsCapture(ctx, a, "test", h, nil, cmds)
 	if err != nil {
@@ -58,7 +57,6 @@ func createMultipleCommandTrace(ctx context.Context) *path.Capture {
 		cb.CmdTypeMix(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, test.Voidᵖ(0x12345678), 2),
 		cb.CmdTypeMix(1, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, false, test.Voidᵖ(0x87654321), 3),
 		cb.CmdTypeMix(2, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, true, test.Voidᵖ(0xdeadfeed), 3),
-		cb.PrimeState(test.U8ᵖ(0x89abcdef)),
 	}
 	p, err := capture.NewGraphicsCapture(ctx, a, "test", h, nil, cmds)
 	if err != nil {

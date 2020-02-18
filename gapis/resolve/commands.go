@@ -34,22 +34,22 @@ func Commands(ctx context.Context, p *path.Commands, r *path.ResolveConfig) (*se
 	if err != nil {
 		return nil, err
 	}
+	count := uint64(len(c.Commands))
+	if count == 0 {
+		return &service.Commands{List: []*path.Command{}}, nil
+	}
 	cmdIdxFrom, cmdIdxTo := p.From[0], p.To[0]
 	if len(p.From) > 1 || len(p.To) > 1 {
 		return nil, fmt.Errorf("Subcommands currently not supported for Commands") // TODO: Subcommands
 	}
-	count := uint64(len(c.Commands))
-	if count == 0 {
-		return nil, fmt.Errorf("No commands in capture")
-	}
 	cmdIdxFrom = u64.Min(cmdIdxFrom, count-1)
 	cmdIdxTo = u64.Min(cmdIdxTo, count-1)
 	if cmdIdxFrom > cmdIdxTo {
-		cmdIdxFrom, cmdIdxTo = cmdIdxTo, cmdIdxFrom
+		return nil, fmt.Errorf("Invalid command boundaries")
 	}
-	count = cmdIdxTo - cmdIdxFrom
+	count = cmdIdxTo - cmdIdxFrom + 1
 	paths := make([]*path.Command, count)
-	for i := uint64(0); i < count; i++ {
+	for i := cmdIdxFrom; i <= cmdIdxTo; i++ {
 		paths[i] = p.Capture.Command(i)
 	}
 	return &service.Commands{List: paths}, nil
