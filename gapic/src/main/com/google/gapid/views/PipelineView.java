@@ -364,6 +364,15 @@ public class PipelineView extends Composite
 
             Label keyLabel = withLayoutData( createBoldLabel(keyComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
                 new GridData(SWT.RIGHT, SWT.CENTER, true, true));
+            
+            if (!kvp.getDependee().equals("")) {
+              if (kvp.getActive()) {
+                keyLabel.setToolTipText("Activated by " + kvp.getDependee());
+              } else {
+                keyComposite.setToolTipText("Deactivated by " + kvp.getDependee());
+                keyLabel.setEnabled(false);
+              }
+            }
 
             if (!dynamicExists && kvp.getDynamic()) {
               dataGroupComposite.setText(dataGroup.getGroupName() + " (* value set dynamically)");
@@ -378,9 +387,15 @@ public class PipelineView extends Composite
               withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
             } else {
-              Label valueLabel  = withLayoutData( createLabel(valueComposite, dv.displayValue),
+              Label valueLabel = withLayoutData( createLabel(valueComposite, dv.displayValue),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
-              valueLabel.setToolTipText(dv.tooltipValue);
+
+              if (kvp.getActive()) {
+                valueLabel.setToolTipText(kvp.getDependee().equals("") ? dv.tooltipValue : "Activated by " + kvp.getDependee());
+              } else {
+                valueComposite.setToolTipText("Deactivated by " + kvp.getDependee());
+                valueLabel.setEnabled(false);
+              }
             }
           }
 
@@ -420,20 +435,21 @@ public class PipelineView extends Composite
           break;
 
         case TABLE:
-          if (dataGroup.getTable().getDynamic()) {
+          API.Table dataTable = dataGroup.getTable();
+          if (dataTable.getDynamic()) {
             dataGroupComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
           }
 
           TableViewer groupTable = createTableViewer(dataGroupComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
-          List<API.Row> rows = dataGroup.getTable().getRowsList();
+          List<API.Row> rows = dataTable.getRowsList();
 
           groupTable.setContentProvider(ArrayContentProvider.getInstance());
 
           ColumnViewerToolTipSupport.enableFor(groupTable);
 
-          for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
+          for (int i = 0; i < dataTable.getHeadersCount(); i++) {
             int col = i;
-            TableViewerColumn tvc = createTableColumn(groupTable, dataGroup.getTable().getHeaders(i));
+            TableViewerColumn tvc = createTableColumn(groupTable, dataTable.getHeaders(i));
 
             StyledCellLabelProvider cellLabelProvider = new StyledCellLabelProvider() {
               @Override
@@ -441,6 +457,9 @@ public class PipelineView extends Composite
                 DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(col));
 
                 cell.setText(dv.displayValue);
+                if (!dataTable.getActive()) {
+                  cell.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+                }
 
                 if (dv.link != null) {
                   StyleRange style = new StyleRange();
@@ -456,10 +475,18 @@ public class PipelineView extends Composite
               public String getToolTipText(Object element) {
                 DataValue dv = convertDataValue(((API.Row)element).getRowValues(col));
                 if (dv != null) {
-                  return dv.tooltipValue;
-                } else {
-                  return null;
+                  if (!dataTable.getDependee().equals("")) {
+                    if (dataTable.getActive()) {
+                        return (dv.tooltipValue != null ? dv.tooltipValue : "Activated by " + dataTable.getDependee());
+                    } else {
+                      return "Deactivated by " + dataTable.getDependee();
+                    }
+                  } else {
+                    return dv.tooltipValue;
+                  }
                 }
+
+                return null;
               }
             };
 
