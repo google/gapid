@@ -452,6 +452,7 @@ func (t *commandSplitter) splitCommandBuffer(ctx context.Context, embedBuffer Vk
 
 	for i := 0; i < commandBuffer.CommandReferences().Len(); i++ {
 		splitAfterCommand := false
+		replaceCommand := false
 		newCuts := []api.SubCmdIdx{}
 		for _, s := range cuts {
 			if s[0] == uint64(i) {
@@ -513,6 +514,7 @@ func (t *commandSplitter) splitCommandBuffer(ctx context.Context, embedBuffer Vk
 				}
 			}
 		case VkCmdExecuteCommandsArgsʳ:
+			replaceCommand = true
 			for j := 0; j < ar.CommandBuffers().Len(); j++ {
 				splitAfterExecute := false
 				newSubCuts := []api.SubCmdIdx{}
@@ -526,6 +528,7 @@ func (t *commandSplitter) splitCommandBuffer(ctx context.Context, embedBuffer Vk
 						}
 					}
 				}
+
 				cbo := st.CommandBuffers().Get(ar.CommandBuffers().Get(uint32(j)))
 				t.splitCommandBuffer(ctx, embedBuffer, cbo, queueSubmit, append(id, uint64(i), uint64(j)), newSubCuts, out)
 				if splitAfterExecute {
@@ -537,15 +540,6 @@ func (t *commandSplitter) splitCommandBuffer(ctx context.Context, embedBuffer Vk
 					}, out)
 				}
 			}
-			if splitAfterCommand {
-				t.WriteCommand(ctx, &InsertionCommand{
-					embedBuffer,
-					append([]VkCommandBuffer{}, t.pendingCommandBuffers...),
-					append(id, uint64(i)),
-					queueSubmit,
-				}, out)
-			}
-			continue
 		}
 		if splitAfterCommand {
 			// If we are inside a renderpass, then drop out for this call.
@@ -570,12 +564,14 @@ func (t *commandSplitter) splitCommandBuffer(ctx context.Context, embedBuffer Vk
 						t.thisRenderPass.DeviceGroupBeginInfo()))
 			}
 		}
-		cleanup, cmd, err := AddCommand(ctx, cb, embedBuffer, s, s, args)
-		if err != nil {
-			panic(fmt.Errorf("Invalid command-buffer detected %+v", err))
+		if !replaceCommand {
+			cleanup, cmd, err := AddCommand(ctx, cb, embedBuffer, s, s, args)
+			if err != nil {
+				panic(fmt.Errorf("Invalid command-buffer detected %+v", err))
+			}
+			t.WriteCommand(ctx, cmd, out)
+			cleanup()
 		}
-		t.WriteCommand(ctx, cmd, out)
-		cleanup()
 		for _, ea := range extraArgs {
 			if ins, ok := ea.(api.Cmd); ok {
 				t.WriteCommand(ctx, ins, out)
