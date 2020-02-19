@@ -264,7 +264,7 @@ func (e *externalMemoryStaging) allocMemory() error {
 		pAllocInfo.Data(),
 	).AddWrite(
 		pStagingMemory.Data(),
-	).Mutate(
+	).mutate(
 		e.h.ctx, api.CmdNoID, e.h.s, e.h.b, nil,
 	)
 	if err != nil {
