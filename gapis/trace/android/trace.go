@@ -183,7 +183,7 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 
 	// Force to stop the application, ignore any error that happens as it
 	// doesn't affect validation.
-	defer d.ForceStop(ctx, gapidPackage)
+	defer d.ForceStop(context.Background(), gapidPackage)
 
 	var buf bytes.Buffer
 	var written int64
