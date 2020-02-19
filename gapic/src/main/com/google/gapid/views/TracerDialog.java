@@ -362,7 +362,7 @@ public class TracerDialog {
         // dummy label to fill the 3rd column
         createLabel(mainGroup, "");
 
-        validationStatusLoader = widgets.loading.createWidgetWithImage(mainGroup, widgets.theme.smile(), widgets.theme.error());
+        validationStatusLoader = widgets.loading.createWidgetWithImage(mainGroup, widgets.theme.check(), widgets.theme.error());
         validationStatusLoader.setLayoutData(
             withIndents(new GridData(SWT.LEFT, SWT.BOTTOM, false, false), 0, 0));
         validationStatusText = createLink(mainGroup, "", e-> {

@@ -61,6 +61,7 @@ public interface Theme {
   @Icon(file = "arrow_drop_right.png") public Image arrowDropRightLight();
   @Icon(file = "arrow_drop_down.png", color = 0xFFFFFF) public Image arrowDropDownDark();
   @Icon(file = "arrow_drop_right.png", color = 0xFFFFFF) public Image arrowDropRightDark();
+  @Icon(file = "check_circle.png") public Image check();
   @Icon(file = "clipboard.png") public Image clipboard();
   @Icon(file = "color_buffer0.png") public Image colorBuffer0();
   @Icon(file = "color_buffer1.png") public Image colorBuffer1();
