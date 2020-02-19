@@ -185,6 +185,24 @@ cmd VkResult vkCreateSwapchainKHR(
   return ?
 }
 
+sub bool imageUsedByAnotherSwapchain(
+    ref!ImageObject     imageObject,
+    ref!SwapchainObject swapchainObject) {
+  found := MutableBool(false)
+  if (swapchainObject != null) && (imageObject != null) {
+    for _, _, s in Swapchains {
+      if (s != null) && (s != swapchainObject) {
+        for _, _, i in s.SwapchainImages {
+          if i == imageObject {
+            found.b = true
+          }
+        }
+      }
+    }
+  }
+  return found.b
+}
+
 @extension("VK_KHR_swapchain")
 @indirect("VkDevice")
 cmd void vkDestroySwapchainKHR(
@@ -192,13 +210,16 @@ cmd void vkDestroySwapchainKHR(
     VkSwapchainKHR      swapchain,
     AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
   swapObject := Swapchains[swapchain]
-  if swapObject != null {
-    for _ , _ , v in swapObject.SwapchainImages {
+  for _ , _ , v in swapObject.SwapchainImages {
+    // Some images may be reused between swapchains via the oldSwapchain
+    // argument of vkCreateSwapchainKHR
+    if !imageUsedByAnotherSwapchain(v, swapObject) {
       delete(Images, v.VulkanHandle)
     }
-    delete(Swapchains, swapchain)
   }
+  delete(Swapchains, swapchain)
 }
 
 @extension("VK_KHR_swapchain")
