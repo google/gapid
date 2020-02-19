@@ -50,6 +50,7 @@ import (
 	perfetto_android "github.com/google/gapid/gapis/perfetto/android"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/trace/android/adreno"
+	"github.com/google/gapid/gapis/trace/android/mali"
 	"github.com/google/gapid/gapis/trace/android/validate"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
@@ -79,6 +80,8 @@ func newValidator(dev bind.Device) validate.Validator {
 	gpu := dev.Instance().GetConfiguration().GetHardware().GetGPU()
 	if strings.Contains(gpu.GetName(), "Adreno") {
 		return &adreno.AdrenoValidator{}
+	} else if strings.Contains(gpu.GetName(), "Mali") {
+		return &mali.MaliValidator{}
 	}
 	return nil
 }

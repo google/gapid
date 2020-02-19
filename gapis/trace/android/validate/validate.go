@@ -199,17 +199,18 @@ func ValidateGpuSlices(ctx context.Context, processor *perfetto.Processor) error
 	}
 	for _, tId := range tIds {
 		queryResult, err := processor.Query(fmt.Sprintf(renderStageSlicesQuery, tId))
-		if err != nil || queryResult.GetNumRecords() <= 0 {
+		if err != nil {
 			return log.Errf(ctx, err, "Failed to query with %v", fmt.Sprintf(renderStageSlicesQuery, tId))
 		}
-		columns := queryResult.GetColumns()
 		numRecords := queryResult.GetNumRecords()
+		if numRecords == 0 {
+			log.W(ctx, "No gpu slices found in GPU track: %v", tId)
+			continue
+		}
+		columns := queryResult.GetColumns()
 		names := columns[0].GetStringValues()
 		commandBuffers := columns[1].GetLongValues()
 		submissionIds := columns[2].GetLongValues()
-		if numRecords == 0 {
-			return log.Err(ctx, nil, "No gpu slices")
-		}
 		for i := uint64(0); i < numRecords; i++ {
 			if commandBuffers[i] == 0 {
 				return log.Errf(ctx, nil, "Gpu slice %v has null command buffer", names[i])
