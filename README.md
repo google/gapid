@@ -9,11 +9,11 @@
 <img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>
 [![Windows Build Status](https://agi-build.storage.googleapis.com/badges/build_status_windows.svg)](https://agi-build.storage.googleapis.com/badges/build_result_windows.html)
 
-## Downloads
+<!-- ## Downloads -->
 
-**[Download the latest version of AGI here.](https://github.com/google/agi/releases)**
+<!-- **[Download the latest version of AGI here.](https://github.com/google/agi/releases)** -->
 
-*Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases).
+<!-- *Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases). -->
 
 ## Documentation
 

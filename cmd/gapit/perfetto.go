@@ -729,7 +729,7 @@ func WriteResultsToJSONOutput(metricsResults MetricsResults, outputPath string) 
 
 	jsonResult, err := json.MarshalIndent(&metricsResults, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Error converting the metrics results to Json. Please file a bug and provide as much as information as possbile to address this issue. Error: %v", err)
+		return fmt.Errorf("Error converting the metrics results to Json. Please file a bug and provide as much as information as possible to address this issue. Error: %v", err)
 	}
 	if _, err := output.Write(jsonResult); err != nil {
 		return fmt.Errorf("Error writing to the output file %s: %v.", outputPath, err)
