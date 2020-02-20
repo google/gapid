@@ -612,8 +612,12 @@ public class TracerDialog {
 
       private void runValidationCheck(DeviceCaptureInfo dev) {
         if (dev == null) {
+          validationStatusLoader.setVisible(false);
+          validationStatusText.setVisible(false);
           return;
         }
+        validationStatusLoader.setVisible(true);
+        validationStatusText.setVisible(true);
         setValidationStatus(models.devices.getValidationStatus(dev));
         if (!models.devices.getValidationStatus(dev).passed) {
           validationStatusLoader.startLoading();
