@@ -28,7 +28,11 @@ import (
 	"github.com/google/gapid/gapis/service"
 )
 
-var validationLayers = [...]string{
+var validationLayerNames = [...]string{
+	// Meta layers
+	"VK_LAYER_KHRONOS_validation",
+	"VK_LAYER_LUNARG_standard_validation",
+	// Regular layers
 	"VK_LAYER_GOOGLE_threading",
 	"VK_LAYER_LUNARG_parameter_validation",
 	"VK_LAYER_LUNARG_object_tracker",
@@ -37,17 +41,16 @@ var validationLayers = [...]string{
 }
 
 const (
-	validationMetaLayer  = "VK_LAYER_LUNARG_standard_validation"
+	// Since Android NDK r21, the VK_LAYER_KHRONOS_validation meta layer
+	// is available on both desktop and Android.
+	validationMetaLayer  = "VK_LAYER_KHRONOS_validation"
 	debugReportExtension = "VK_EXT_debug_report"
 )
 
 // isValidationLayer returns true if any of the given string matches with any
 // validation layer names. Otherwise returns false.
 func isValidationLayer(n string) bool {
-	if n == validationMetaLayer {
-		return true
-	}
-	for _, v := range validationLayers {
+	for _, v := range validationLayerNames {
 		if n == v {
 			return true
 		}
@@ -115,9 +118,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	}
 
 	switch cmd := cmd.(type) {
-	// Modify the vkCreateInstance to remove any validation layers first, and
-	// insert the individual validation layers in order. This is because Android
-	// does not support the meta layer, and the order does matter.Also enable the
+	// Modify the vkCreateInstance to first remove any validation layers,
+	// and then insert the meta validation layer. Also enable the
 	// VK_EXT_debug_report extension.
 	case *VkCreateInstance:
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
@@ -130,12 +132,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			}
 		}
 
-		validationLayersData := []api.AllocResult{}
-		for _, v := range validationLayers {
-			d := mustAlloc(ctx, v)
-			validationLayersData = append(validationLayersData, d)
-			layers = append(layers, NewCharᶜᵖ(d.Ptr()))
-		}
+		validationMetaLayerData := mustAlloc(ctx, validationMetaLayer)
+		layers = append(layers, NewCharᶜᵖ(validationMetaLayerData.Ptr()))
 		layersData := mustAlloc(ctx, layers)
 
 		extCount := info.EnabledExtensionCount()
@@ -160,10 +158,9 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		infoData := mustAlloc(ctx, info)
 
 		newCmd := cb.VkCreateInstance(infoData.Ptr(), cmd.PAllocator(), cmd.PInstance(), cmd.Result())
-		for _, d := range validationLayersData {
-			newCmd.AddRead(d.Data())
-		}
 		newCmd.AddRead(
+			validationMetaLayerData.Data(),
+		).AddRead(
 			debugReportExtNameData.Data(),
 		).AddRead(
 			infoData.Data(),
@@ -181,8 +178,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		}
 		out.MutateAndWrite(ctx, id, newCmd)
 
-	// Modify the vkCreateDevice to remove any validation layers and add individual
-	// layers back later. Same reason as vkCreateInstance
+	// Modify the vkCreateDevice to remove any validation layers and add
+	// the meta layer back later. Same reason as vkCreateInstance
 	case *VkCreateDevice:
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
@@ -194,21 +191,15 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			}
 		}
 
-		validationLayersData := []api.AllocResult{}
-		for _, v := range validationLayers {
-			d := mustAlloc(ctx, v)
-			validationLayersData = append(validationLayersData, d)
-			layers = append(layers, NewCharᶜᵖ(d.Ptr()))
-		}
+		validationMetaLayerData := mustAlloc(ctx, validationMetaLayer)
+		layers = append(layers, NewCharᶜᵖ(validationMetaLayerData.Ptr()))
 		layersData := mustAlloc(ctx, layers)
 		info.SetEnabledLayerCount(uint32(len(layers)))
 		info.SetPpEnabledLayerNames(NewCharᶜᵖᶜᵖ(layersData.Ptr()))
 		infoData := mustAlloc(ctx, info)
 
 		newCmd := cb.VkCreateDevice(cmd.PhysicalDevice(), infoData.Ptr(), cmd.PAllocator(), cmd.PDevice(), cmd.Result())
-		for _, d := range validationLayersData {
-			newCmd.AddRead(d.Data())
-		}
+		newCmd.AddRead(validationMetaLayerData.Data())
 		newCmd.AddRead(infoData.Data()).AddRead(layersData.Data())
 		// Also add back the read/write observations of the original vkCreateDevice
 		for _, r := range cmd.Extras().Observations().Reads {

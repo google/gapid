@@ -59,7 +59,7 @@ cd <sdk-path>
 tools\bin\sdkmanager.bat "platforms;android-26" "build-tools;29.0.2" ndk-bundle
 ```
 
-Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The minimum required version of the NDK is r16b.
+Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The minimum required version of the NDK is **r21**.
 
 If you do not have adb installed you can do so with:
 ```

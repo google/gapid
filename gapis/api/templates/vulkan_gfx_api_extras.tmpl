@@ -55,8 +55,11 @@
 ¶
   const char kVirtualSwapchainLayerName[] = "VirtualSwapchain";
   const char kGraphicsSpyLayerName[] = "GraphicsSpy";
-  const char kValidationMetaLayerName[] = "VK_LAYER_LUNARG_standard_validation";
   const char* kValidationLayerNames[] = {
+    // Meta layers
+    "VK_LAYER_KHRONOS_validation",
+    "VK_LAYER_LUNARG_standard_validation",
+    // Regular layers
     "VK_LAYER_GOOGLE_threading",
     "VK_LAYER_LUNARG_parameter_validation",
     "VK_LAYER_LUNARG_object_tracker",
@@ -65,6 +68,14 @@
   };
   const char kDebugReportExtensionName[] = "VK_EXT_debug_report";
 
+¶
+  bool isValidationLayerName(const char* layer) {
+    return std::any_of(std::begin(kValidationLayerNames),
+                       std::end(kValidationLayerNames),
+                       [layer](const char* val) -> bool {
+                         return std::strcmp(layer, val) == 0;
+                       });
+  }
 ¶
   std::vector<Vulkan::VkPhysicalDevice> getVkPhysicalDevices(§
       LazyResolved<Vulkan::PFNVKENUMERATEPHYSICALDEVICES> vkEnumeratePhysicalDevices, Vulkan::VkInstance instance) {
@@ -119,14 +130,7 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
               return true;
             }
             if (dropValidationLayersAndDebugReport) {
-              if (strcmp(kValidationMetaLayerName, layer) == 0) {
-                return true;
-              }
-              return std::any_of(std::begin(kValidationLayerNames),
-                                 std::end(kValidationLayerNames),
-                                 [layer](const char* val) -> bool {
-                                   return strcmp(layer, val) == 0;
-                                 });
+              return isValidationLayerName(layer);
             }
             return false;
           }),
@@ -179,14 +183,7 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
       std::remove_if(layers.begin(), layers.end(),
                      [dropValidationLayers](const char* layer) -> bool {
                        if (dropValidationLayers) {
-                         if (strcmp(kValidationMetaLayerName, layer) == 0) {
-                           return true;
-                         }
-                         return std::any_of(std::begin(kValidationLayerNames),
-                                            std::end(kValidationLayerNames),
-                                            [layer](const char* val) -> bool {
-                                              return strcmp(layer, val) == 0;
-                                            });
+                         return isValidationLayerName(layer);
                        }
                        return false;
                      }),
@@ -733,11 +730,7 @@ bool Vulkan::replayDebugReportCallback(uint32_t flags, uint32_t objectType,
 ¶
 bool Vulkan::hasValidationLayers(const char* const* layers, uint32_t count) {
   return std::any_of(layers, layers + count, [](const char* layer) -> bool {
-    return std::any_of(
-      std::begin(kValidationLayerNames), std::end(kValidationLayerNames),
-      [layer](const char* val) -> bool {
-        return strcmp(layer, val) == 0;
-      }) || strcmp(layer, kValidationMetaLayerName) == 0;
+    return isValidationLayerName(layer);
   });
 }
 ¶
