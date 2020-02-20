@@ -51,6 +51,14 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
   private static final String SLICES_SQL =
       "select " + BASE_COLUMNS + " from %s " +
           "where ts >= %d - dur and ts <= %d order by ts";
+  private static final String QUEUE_GROUP_START_SQL =
+      "select submission_id, min(ts) start from gpu_track t left join gpu_slice s " +
+          "on (t.id = s.track_id) where t.scope = 'gpu_render_stage' group by submission_id";
+  private static final String SLICES_WITH_DIST_SQL =
+      "with basics as (" + SLICES_SQL + ")," +
+      "queue_starts as ("+ QUEUE_GROUP_START_SQL + ") " +
+      "select basics.*, queue_starts.start - ts dist from basics left join queue_starts " +
+          "on (basics.submission_id = queue_starts.submission_id)";
   private static final String SLICE_RANGE_SQL =
       "select " + BASE_COLUMNS + " from %s " +
           "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
@@ -84,7 +92,8 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
         transform(qe.getAllArgs(res.stream().mapToLong(r -> r.getLong(7))), args -> {
           int rows = res.getNumRows();
           Data data = new Data(req, new long[rows], new long[rows], new long[rows],
-              new String[rows], new int[rows], new long[rows], new long[rows], new ArgSet[rows]);
+              new String[rows], new int[rows], new long[rows], new long[rows], new ArgSet[rows],
+              new long[rows]);
           res.forEachRow((i, row) -> {
             long start = row.getLong(1);
             data.ids[i] = row.getLong(0);
@@ -95,13 +104,14 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
             data.commandBuffers[i] = row.getLong(5);
             data.submissionIds[i] = row.getLong(6);
             data.args[i] = args.getOrDefault(row.getLong(7), ArgSet.EMPTY);
+            data.dists[i] = row.getLong(8);
           });
           return data;
         }));
   }
 
   private String slicesSql(DataRequest req) {
-    return format(SLICES_SQL, tableName("slices"), req.range.start, req.range.end);
+    return format(SLICES_WITH_DIST_SQL, tableName("slices"), req.range.start, req.range.end);
   }
 
   public ListenableFuture<Slice> getSlice(long id) {
@@ -135,9 +145,10 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     public final long[] commandBuffers;
     public final long[] submissionIds;
     public final ArgSet[] args;
+    public final long[] dists; // Distance between a vulkan event and the linked GPU queue events.
 
     public Data(DataRequest request, long[] ids, long[] starts, long[] ends, String[] names,
-        int[] depths, long[] commandBuffers, long[] submissionIds, ArgSet[] args) {
+        int[] depths, long[] commandBuffers, long[] submissionIds, ArgSet[] args, long[] dists) {
       super(request);
       this.ids = ids;
       this.starts = starts;
@@ -147,6 +158,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
       this.commandBuffers = commandBuffers;
       this.submissionIds = submissionIds;
       this.args = args;
+      this.dists = dists;
     }
   }
 
