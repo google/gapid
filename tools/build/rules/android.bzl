@@ -107,18 +107,16 @@ android_native_app_glue = repository_rule(
 )
 
 # Retrieve Vulkan validation layers from the Android NDK
-
+# Since NDK r21, use the single VK_LAYER_KHRONOS_validation
 def _ndk_vk_validation_layer(ctx):
     build = ""
     for abi in ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]:
-
-        for layer in ["core_validation", "object_tracker", "parameter_validation", "threading", "unique_objects"]:
-            layerpath = abi + "/libVkLayer_" + layer + ".so"
-            ctx.symlink(
-                ctx.path(ctx.os.environ["ANDROID_NDK_HOME"] +
-                         "/sources/third_party/vulkan/src/build-android/jniLibs/" + layerpath),
-                ctx.path(layerpath),
-            )
+        layerpath = abi + "/libVkLayer_khronos_validation.so"
+        ctx.symlink(
+            ctx.path(ctx.os.environ["ANDROID_NDK_HOME"] +
+                        "/sources/third_party/vulkan/src/build-android/jniLibs/" + layerpath),
+            ctx.path(layerpath),
+        )
 
         build += "\n".join([
             "cc_library(",
