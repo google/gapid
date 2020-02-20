@@ -34,6 +34,7 @@
 #define GAPIR_{{Upper (Global "API")}}_GFX_API_H
 ¶
 #include "gapir/cc/gfx_api.h"
+#include "gapir/cc/cached_unordered_map.h"
 ¶
 #include "core/cc/static_array.h"
 #include "core/cc/target.h"
@@ -98,7 +99,7 @@ class {{Title (Global "API")}} : public Api {
       {{end}}
     };
     {{if $table}}
-      std::unordered_map<{{$table}}, {{$table}}FunctionStubs> m{{$table}}FunctionStubs;
+      gapir::cached_unordered_map<{{$table}}, {{$table}}FunctionStubs> m{{$table}}FunctionStubs;
     {{else}}
       FunctionStubs mFunctionStubs;
     {{end}}¶
