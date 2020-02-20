@@ -21,10 +21,10 @@
 // class Vulkan : public Api {
 // public:
 
-typedef std::unordered_map<VkPhysicalDevice, VkInstance> VkPhysicalDeviceToVkInstance;
-typedef std::unordered_map<VkDevice, VkPhysicalDevice> VkDeviceToVkPhysicalDevice;
-typedef std::unordered_map<VkQueue, VkDevice> VkQueueToVkDevice;
-typedef std::unordered_map<VkCommandBuffer, VkDevice> VkCommandBufferToVkDevice;
+typedef gapir::cached_unordered_map<VkPhysicalDevice, VkInstance> VkPhysicalDeviceToVkInstance;
+typedef gapir::cached_unordered_map<VkDevice, VkPhysicalDevice> VkDeviceToVkPhysicalDevice;
+typedef gapir::cached_unordered_map<VkQueue, VkDevice> VkQueueToVkDevice;
+typedef gapir::cached_unordered_map<VkCommandBuffer, VkDevice> VkCommandBufferToVkDevice;
 typedef struct {
     VkPhysicalDeviceToVkInstance VkPhysicalDevicesToVkInstances;
     VkDeviceToVkPhysicalDevice VkDevicesToVkPhysicalDevices;
