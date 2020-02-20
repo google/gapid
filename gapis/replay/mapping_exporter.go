@@ -118,12 +118,7 @@ func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalSt
 
 	for k, v := range b.Remappings {
 		typ := reflect.TypeOf(k)
-		var size uint64
-		if t, ok := k.(memory.SizedTy); ok {
-			size = t.TypeSize(s.MemoryLayout)
-		} else {
-			size = uint64(typ.Size())
-		}
+		size := memory.SizeOf(typ, s.MemoryLayout)
 
 		if size != 1 && size != 2 && size != 4 && size != 8 {
 			// Ignore objects that are not handles
