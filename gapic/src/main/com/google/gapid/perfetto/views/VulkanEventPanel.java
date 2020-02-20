@@ -41,7 +41,7 @@ import java.util.List;
 
 public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Selectable {
   private static final double ARROW_HEIGHT = 10;
-  private static final double ARROW_WIDTH = 10;
+  private static final double ARROW_WIDTH_MIN = 10;
   private static final double ARROW_TIP = 2;
   private static final double SLICE_Y = ARROW_HEIGHT;
   private static final double SLICE_HEIGHT = 25;
@@ -130,10 +130,12 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
         ctx.drawRect(rectStart, SLICE_Y + depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
 
         double mid = rectStart + rectWidth / 2;
+        double arrowWidth = Math.max(ARROW_WIDTH_MIN,
+            state.durationToDeltaPx(data.dists[index]) - rectWidth / 2);
         ctx.drawLine(mid, ARROW_TIP, mid, SLICE_Y);
-        ctx.drawLine(mid, ARROW_TIP, mid + ARROW_WIDTH, ARROW_TIP);
-        ctx.drawLine(mid + ARROW_WIDTH, ARROW_TIP, mid + ARROW_WIDTH - ARROW_TIP, 0);
-        ctx.drawLine(mid + ARROW_WIDTH, ARROW_TIP, mid + ARROW_WIDTH - ARROW_TIP, ARROW_TIP * 2);
+        ctx.drawLine(mid, ARROW_TIP, mid + arrowWidth, ARROW_TIP);
+        ctx.drawLine(mid + arrowWidth, ARROW_TIP, mid + arrowWidth - ARROW_TIP, 0);
+        ctx.drawLine(mid + arrowWidth, ARROW_TIP, mid + arrowWidth - ARROW_TIP, ARROW_TIP * 2);
       }
 
       if (hoveredName != null) {
