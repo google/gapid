@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service"
@@ -279,18 +280,15 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {
 			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
 
 			if issue.Command == api.CmdNoID {
-				// The debug report is issued for state rebuilding command
 				// TODO: Fix all the errors reported for initial commands.
-				// TODO: Provide a way for the UI to distinguish these issues
-				// from issues on command 0.
-				issue.Command = api.CmdID(0)
-				issue.Error = fmt.Errorf("[State rebuilding command : %s]	", msg)
+				if config.LogInitialCmdsIssues {
+					log.E(ctx, "Error in state rebuilding command : %s", msg)
+				}
 			} else {
 				// The debug report is issued for a trace command
 				issue.Error = fmt.Errorf("%s", msg)
+				t.issues = append(t.issues, issue)
 			}
-
-			t.issues = append(t.issues, issue)
 		})
 	}))
 	if err != nil {
