@@ -50,7 +50,30 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, de
 	return &service.ProfilingData{Slices: slices, Counters: counters}, nil
 }
 
-func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData_GpuSlices, error) {
+func extractTraceHandles(ctx context.Context, replayHandles *[]int64, replayHandleType string, handleMapping *map[uint64][]service.VulkanHandleMappingItem) {
+	for i, v := range *replayHandles {
+		handles, ok := (*handleMapping)[uint64(v)]
+		if !ok {
+			log.E(ctx, "%v not found in replay: %v", replayHandleType, v)
+			continue
+		}
+
+		found := false
+		for _, handle := range handles {
+			if handle.HandleType == replayHandleType {
+				(*replayHandles)[i] = int64(handle.TraceValue)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			log.E(ctx, "Incorrect Handle type for %v: %v", replayHandleType, v)
+		}
+	}
+}
+
+func processGpuSlices(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, handleMapping *map[uint64][]service.VulkanHandleMappingItem, subCommandIndicesMap *map[api.CommandSubmissionKey][]uint64) (*service.ProfilingData_GpuSlices, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "SQL query failed: %v", slicesQuery)
@@ -65,31 +88,13 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handle
 	// Grab all the column values. Depends on the order of columns selected in slicesQuery
 
 	contextIds := slicesColumns[0].GetLongValues()
-	for i, v := range contextIds {
-		if m, ok := (*handleMapping)[uint64(v)]; ok {
-			contextIds[i] = int64(m[0].TraceValue)
-		} else {
-			log.E(ctx, "Context Id not found: %v", v)
-		}
-	}
+	extractTraceHandles(ctx, &contextIds, "VkDevice", handleMapping)
 
 	renderTargets := slicesColumns[1].GetLongValues()
-	for i, v := range renderTargets {
-		if m, ok := (*handleMapping)[uint64(v)]; ok {
-			renderTargets[i] = int64(m[0].TraceValue)
-		} else {
-			log.E(ctx, "Render Target not found: %v", v)
-		}
-	}
+	extractTraceHandles(ctx, &renderTargets, "VkFramebuffer", handleMapping)
 
 	commandBuffers := slicesColumns[5].GetLongValues()
-	for i, v := range commandBuffers {
-		if m, ok := (*handleMapping)[uint64(v)]; ok {
-			commandBuffers[i] = int64(m[0].TraceValue)
-		} else {
-			log.E(ctx, "Command Buffer not found: %v", v)
-		}
-	}
+	extractTraceHandles(ctx, &commandBuffers, "VkCommandBuffer", handleMapping)
 
 	frameIds := slicesColumns[2].GetLongValues()
 	submissionIds := slicesColumns[3].GetLongValues()
