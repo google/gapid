@@ -39,17 +39,19 @@ import java.util.function.Consumer;
 
 public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   private static final String VIEW_SQL_DELTA =
-      "select ts + 1 ts, lead(ts) over win - ts dur, lead(value) over win value " +
+      "select ts + 1 ts, lead(ts) over win - ts dur, lead(value) over win value, lead(id) over win id " +
       "from counter where track_id = %d window win as (order by ts)";
   private static final String VIEW_SQL_EVENT =
-      "select ts, lead(ts, 1, (select end_ts from trace_bounds)) over win - ts dur, value " +
+      "select ts, lead(ts, 1, (select end_ts from trace_bounds)) over win - ts dur, value, id " +
       "from counter where track_id = %d window win as (order by ts)";
   private static final String SUMMARY_SQL =
-      "select min(ts), max(ts + dur), avg(value) from %s group by quantum_ts";
-  private static final String COUNTER_SQL = "select ts, ts + dur, value from %s";
-  private static final String VALUE_SQL = "select ts, ts + dur, value from %s where ts = %d";
+      "select min(ts), max(ts + dur), avg(value), best_id from " +
+        "(select *, first_value(id) over (partition by quantum_ts order by dur desc) as best_id from %s) " +
+      "group by quantum_ts";
+  private static final String COUNTER_SQL = "select ts, ts + dur, value, id from %s";
+  private static final String VALUE_SQL = "select ts, ts + dur, value, id from %s where id = %d";
   private static final String RANGE_SQL =
-      "select ts, ts + dur, value from %s " +
+      "select ts, ts + dur, value, id from %s " +
       "where ts + dur >= %d and ts <= %d order by ts";
 
   private final CounterInfo counter;
@@ -99,13 +101,15 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
         return Data.empty(req);
       }
 
-      Data data = new Data(req, new long[rows + 1], new double[rows + 1]);
+      Data data = new Data(req, new long[rows + 1], new double[rows + 1], new long[rows + 1]);
       res.forEachRow((i, r) -> {
         data.ts[i] = r.getLong(0);
         data.values[i] = r.getDouble(2);
+        data.ids[i] = r.getLong(3);
       });
       data.ts[rows] = res.getLong(rows - 1, 1, 0);
       data.values[rows] = data.values[rows - 1];
+      data.ids[rows] = data.ids[rows - 1];
       return data;
     });
   }
@@ -118,13 +122,15 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     return format(COUNTER_SQL, tableName("span"));
   }
 
-  public ListenableFuture<Data> getValue(long t) {
-    return transform(expectOneRow(qe.query(valueSql(t))), row -> {
-      Data data = new Data(null, new long[2], new double[2]);
+  public ListenableFuture<Data> getValue(long id) {
+    return transform(expectOneRow(qe.query(valueSql(id))), row -> {
+      Data data = new Data(null, new long[2], new double[2], new long[2]);
       data.ts[0] = row.getLong(0);
       data.ts[1] = row.getLong(1);
       data.values[0] = row.getDouble(2);
       data.values[1] = data.values[0];
+      data.ids[0] = row.getLong(3);
+      data.ids[1] = data.ids[0];
       return data;
     });
   }
@@ -136,19 +142,21 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
         return Data.empty(null);
       }
 
-      Data data = new Data(null, new long[rows + 1], new double[rows + 1]);
+      Data data = new Data(null, new long[rows + 1], new double[rows + 1], new long[rows + 1]);
       res.forEachRow((i, r) -> {
         data.ts[i] = r.getLong(0);
         data.values[i] = r.getDouble(2);
+        data.ids[i] = r.getLong(3);
       });
       data.ts[rows] = res.getLong(rows - 1, 1, 0);
       data.values[rows] = data.values[rows - 1];
+      data.ids[rows] = data.ids[rows - 1];
       return data;
     });
   }
 
-  private String valueSql(long t) {
-    return format(VALUE_SQL, tableName("vals"), t);
+  private String valueSql(long id) {
+    return format(VALUE_SQL, tableName("vals"), id);
   }
 
   private String rangeSql(TimeSpan ts) {
@@ -158,44 +166,46 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   public static class Data extends Track.Data {
     public final long[] ts;
     public final double[] values;
+    public final long[] ids;
 
-    public Data(DataRequest request, long[] ts, double[] values) {
+    public Data(DataRequest request, long[] ts, double[] values, long[] ids) {
       super(request);
       this.ts = ts;
       this.values = values;
+      this.ids = ids;
     }
 
     public static Data empty(DataRequest req) {
-      return new Data(req, new long[0], new double[0]);
+      return new Data(req, new long[0], new double[0], new long[0]);
     }
   }
 
-  public static class Values implements Selection<Values.Key>, Selection.Builder<Values> {
+  public static class Values implements Selection<Long>, Selection.Builder<Values> {
     public final long[] ts;
     public final String[] names;
     public final double[][] values;
-    private final Set<Values.Key> valueKeys = Sets.newHashSet();
+    public final long[][] ids;
+    private final Set<Long> valueKeys = Sets.newHashSet();
 
     public Values(String name, Data data) {
       this.ts = data.ts;
       this.names = new String[] { name };
       this.values = new double[][] { data.values };
+      this.ids = new long[][] { data.ids };
       initKeys();
     }
 
-    private Values(long[] ts, String[] names, double[][] values) {
+    private Values(long[] ts, String[] names, double[][] values, long[][] ids) {
       this.ts = ts;
       this.names = names;
       this.values = values;
+      this.ids = ids;
       initKeys();
     }
 
     private void initKeys() {
-      for (String name : names) {
-        // Skip the last dummy entry for the range end.
-        Arrays.stream(ts, 0, ts.length - 1)
-            .boxed()
-            .forEach(t -> valueKeys.add(new Values.Key(name, t)));
+      for (long[] keys : ids) {
+        Arrays.stream(keys).forEach(valueKeys::add);
       }
     }
 
@@ -205,7 +215,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     }
 
     @Override
-    public boolean contains(Values.Key key) {
+    public boolean contains(Long key) {
       return valueKeys.contains(key);
     }
 
@@ -237,34 +247,39 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
       long[] newTs = combineTs(ts, other.ts);
 
       double[][] newValues = new double[names.length + other.names.length][newTs.length];
+      long[][] newIds = new long[names.length + other.names.length][newTs.length];
       for (int i = 0, me = 0, them = 0; i < newTs.length; i++) {
         long rTs = newTs[i], meTs = ts[me], themTs = other.ts[them];
         if (rTs == meTs) {
           for (int n = 0; n < names.length; n++) {
             newValues[n][i] = values[n][me];
+            newIds[n][i] = ids[n][me];
           }
           me = Math.min(me + 1, ts.length - 1);
         } else if (i > 0) {
           for (int n = 0; n < names.length; n++) {
             newValues[n][i] = newValues[n][i - 1];
+            newIds[n][i] = newIds[n][i - 1];
           }
         }
 
         if (rTs == themTs) {
           for (int n = 0; n < other.names.length; n++) {
             newValues[n + names.length][i] = other.values[n][them];
+            newIds[n + names.length][i] = other.ids[n][them];
           }
           them = Math.min(them + 1, other.ts.length - 1);
         } else if (i > 0) {
           for (int n = 0; n < other.names.length; n++) {
             newValues[names.length + n][i] = newValues[names.length + n][i - 1];
+            newIds[names.length + n][i] = newIds[names.length + n][i - 1];
           }
         }
       }
 
       String[] newNames = Arrays.copyOf(names, names.length + other.names.length);
       System.arraycopy(other.names, 0, newNames, names.length, other.names.length);
-      return new Values(newTs, newNames, newValues);
+      return new Values(newTs, newNames, newValues, newIds);
     }
 
     private static long[] combineTs(long[] a, long[] b) {
@@ -295,34 +310,8 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     }
 
     @Override
-    public Selection<Values.Key> build() {
+    public Selection<Long> build() {
       return this;
-    }
-
-    public static class Key {
-      public final String name;
-      public final long ts;
-
-      public Key(String name, long ts) {
-        this.name = name;
-        this.ts = ts;
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-        if (obj == this) {
-          return true;
-        } else if (!(obj instanceof Key)) {
-          return false;
-        }
-        Key o = (Key)obj;
-        return name.equals(o.name) && ts == o.ts;
-      }
-
-      @Override
-      public int hashCode() {
-        return name.hashCode() ^ Long.hashCode(ts);
-      }
     }
   }
 }

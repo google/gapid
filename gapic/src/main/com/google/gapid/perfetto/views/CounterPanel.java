@@ -29,7 +29,6 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
-import com.google.gapid.perfetto.models.CounterTrack.Values;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
@@ -94,7 +93,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       CounterInfo counter = track.getCounter();
       double min = counter.range.min, range = counter.range.range();
 
-      Selection<Values.Key> selected = state.getSelection(Selection.Kind.Counter);
+      Selection<Long> selected = state.getSelection(Selection.Kind.Counter);
       List<Integer> visibleSelected = Lists.newArrayList();
       mainGradient().applyBaseAndBorder(ctx);
       ctx.path(path -> {
@@ -107,7 +106,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
           path.lineTo(nextX, nextY);
           lastX = nextX;
           lastY = nextY;
-          if (selected.contains(new Values.Key(track.getCounter().name, data.ts[i]))) {
+          if (selected.contains(data.ids[i])) {
             visibleSelected.add(i);
           }
         }
@@ -179,7 +178,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       return Hover.NONE;
     }
 
-    long t = data.ts[idx];
+    long id = data.ids[idx];
     double startX = state.timeToPx(data.ts[idx]);
     double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
     hovered = new HoverCard(m, track.getCounter(), data.values[idx], startX, endX, x);
@@ -203,10 +202,10 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       public boolean click() {
         if ((mods & SWT.MOD1) == SWT.MOD1) {
           state.addSelection(Selection.Kind.Counter,
-              transform(track.getValue(t), d -> new CounterTrack.Values(track.getCounter().name, d)));
+              transform(track.getValue(id), d -> new CounterTrack.Values(track.getCounter().name, d)));
         } else {
           state.setSelection(Selection.Kind.Counter,
-              transform(track.getValue(t), d -> new CounterTrack.Values(track.getCounter().name, d)));
+              transform(track.getValue(id), d -> new CounterTrack.Values(track.getCounter().name, d)));
         }
         return true;
       }

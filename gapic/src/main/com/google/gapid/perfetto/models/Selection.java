@@ -207,7 +207,7 @@ public interface Selection<Key> {
     public static final Kind<Long> Cpu = new Kind<Long>(2);
     public static final Kind<Slice.Key> Gpu = new Kind<Slice.Key>(3);
     public static final Kind<Long> VulkanEvent = new Kind<Long>(4);
-    public static final Kind<Values.Key> Counter = new Kind<Values.Key>(5);
+    public static final Kind<Long> Counter = new Kind<Long>(5);
     public static final Kind<FrameEventsTrack.Slice.Key> FrameEvents = new Kind<FrameEventsTrack.Slice.Key>(6);
 
     public int priority;
