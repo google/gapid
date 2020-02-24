@@ -810,8 +810,7 @@ public class TraceConfigDialog extends DialogBase {
         table.setInput(caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList());
         table.setCheckedElements(
             caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
-                .filter(currentIds.isEmpty() ?
-                    SELECT_DEFAULT : c -> currentIds.contains(c.getCounterId()))
+                .filter(c -> currentIds.contains(c.getCounterId()))
                 .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
         table.getTable().getColumn(0).pack();
         table.getTable().getColumn(1).pack();
