@@ -31,3 +31,8 @@ message ExternalMemoryData {
   sint64 res_size = 2;
   repeated ExternalBufferData buffers = 3;
 }
+
+message SemaphoreState {
+  repeated uint64 semaphores = 1;
+  repeated uint64 values = 2;
+}

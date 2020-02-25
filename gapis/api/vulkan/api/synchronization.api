@@ -161,6 +161,9 @@ cmd VkResult vkWaitForFences(
 ///////////////
 // Semaphore //
 ///////////////
+@internal class TimelineSemaphoreInfo {
+  u64 value
+}
 
 @internal class SemaphoreObject {
   @unused VkDevice                  Device
@@ -170,6 +173,7 @@ cmd VkResult vkWaitForFences(
   @unused bool                      Signaled
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   @unused VkQueue                   WaitingQueue
+  ref!TimelineSemaphoreInfo         TimelineSemaphoreInfo
 }
 
 @threadSafety("system")
@@ -182,23 +186,32 @@ cmd VkResult vkCreateSemaphore(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSemaphoreCreateInfo") }
   create_info := pCreateInfo[0]
-  // handle pNext
+
+  semaphoreObject := new!SemaphoreObject(Device: device)
+
   if create_info.pNext != null {
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: {
+          ext := as!VkSemaphoreTypeCreateInfo*(next.Ptr)[0]
+          if ext.semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE {
+            semaphoreObject.TimelineSemaphoreInfo = new!TimelineSemaphoreInfo(ext.initialValue)
+          }
+        }
+        default: {}
+      }
       _ = sType
-      // TODO: handle extensions for VkSemaphoreCreateInfo
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
 
   handle := ?
-  semaphoreObject := new!SemaphoreObject(Device: device,
-    VulkanHandle:           handle)
   if pSemaphore == null { vkErrorNullPointer("VkSemaphore") }
   pSemaphore[0] = handle
+  semaphoreObject.VulkanHandle = handle
   Semaphores[handle] = semaphoreObject
 
   return ?
@@ -214,6 +227,38 @@ cmd void vkDestroySemaphore(
   delete(Semaphores, semaphore)
 }
 
+sub void SignalSemaphore(
+    VkSemaphore                                 semaphore,
+    u64                                         value) {
+  sem := Semaphores[semaphore]
+  if sem == null {
+    vkErrorInvalidSemaphore(semaphore)
+  } else if sem.TimelineSemaphoreInfo == null {
+    vkErrorInvalidSemaphore(semaphore)
+  } else {
+    sem.TimelineSemaphoreInfo.value = value
+    recordSemaphoreSignal(semaphore, value)
+    _ = queueForwardProgress()
+  }
+}
+
+sub void WaitSemaphores(VkDevice device, const VkSemaphoreWaitInfo* wait_info, bool isKHR) {
+  info := wait_info[0]
+  count := info.semaphoreCount
+  semaphores := info.pSemaphores[0:count]
+  values := info.pValues[0:count]
+  for i in (0 .. count) {
+    s := semaphores[i]
+    if !(s in Semaphores) { vkErrorInvalidSemaphore(s) }
+    else {
+      recordSemaphoreWait(s, values[i])
+    }
+  }
+  fence
+  recordWaitedSemaphores(device, wait_info, isKHR)
+}
+
+
 // Partial implementation
 @since("1.2")
 @threadSafety("system")
@@ -221,29 +266,39 @@ cmd void vkDestroySemaphore(
 cmd VkResult vkSignalSemaphore(
     VkDevice                                    device,
     const VkSemaphoreSignalInfo*                pSignalInfo) {
-  return VK_SUCCESS
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  signal_info := pSignalInfo[0]
+  SignalSemaphore(signal_info.semaphore, signal_info.value)
+  return ?
 }
 
 // Partial implementation
 @since("1.2")
 @threadSafety("system")
 @indirect("VkDevice")
+@custom
 cmd VkResult vkWaitSemaphores(
     VkDevice                                    device,
     const VkSemaphoreWaitInfo*                  pWaitInfo,
     u64                                         timeout) {
-  return VK_SUCCESS
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  WaitSemaphores(device, pWaitInfo, false)
+  return ?
 }
 
 // Partial implementation
 @since("1.2")
 @threadSafety("system")
 @indirect("VkDevice")
+@custom
 cmd VkResult vkGetSemaphoreCounterValue(
     VkDevice                                    device,
     VkSemaphore                                 semaphore,
     u64*                                        pValue) {
-  return VK_SUCCESS
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(semaphore in Semaphores) { vkErrorInvalidSemaphore(semaphore) }
+  pValue[0] = ?
+  return ?
 }
 
 ///////////
@@ -485,9 +540,9 @@ cmd void vkCmdWaitEvents(
     for i in (0 .. imageMemoryBarrierCount) {
       args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
       img := Images[args.ImageMemoryBarriers[i].image]
-      RecordLayoutTransition(cb, 
+      RecordLayoutTransition(cb,
         img,
-        args.ImageMemoryBarriers[i].subresourceRange, 
+        args.ImageMemoryBarriers[i].subresourceRange,
         args.ImageMemoryBarriers[i].newLayout
       )
     }
@@ -614,9 +669,9 @@ cmd void vkCmdPipelineBarrier(
     for i in (0 .. imageMemoryBarrierCount) {
       args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
       img := Images[args.ImageMemoryBarriers[i].image]
-      RecordLayoutTransition(cb, 
+      RecordLayoutTransition(cb,
         img,
-        args.ImageMemoryBarriers[i].subresourceRange, 
+        args.ImageMemoryBarriers[i].subresourceRange,
         args.ImageMemoryBarriers[i].newLayout
       )
     }
@@ -633,6 +688,9 @@ extern void recordEventSet(VkEvent event)
 extern void recordFenceSignal(VkFence fence)
 extern void recordFenceWait(VkFence fence)
 extern void recordFenceReset(VkFence fence)
+extern void recordSemaphoreSignal(VkSemaphore semaphore, u64 value)
+extern void recordSemaphoreWait(VkSemaphore semaphore, u64 value)
+extern void recordWaitedSemaphores(VkDevice device,  const VkSemaphoreWaitInfo* info, bool isKHR)
 
 sub void processBarriers(VkPipelineStageFlags             srcStageMask,
                          VkPipelineStageFlags             dstStageMask,

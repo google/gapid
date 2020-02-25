@@ -108,19 +108,37 @@ func (e externs) onCommandAdded(buffer VkCommandBuffer) {
 	}
 }
 
-func (e externs) enterSubcontext() {
+func (e externs) deferSubmit(ref Submissionʳ) {
 	o := GetState(e.s)
-	o.SubCmdIdx = append(o.SubCmdIdx, 0)
+	o.deferredSubmissions[ref] = append(api.SubCmdIdx{}, o.SubCmdIdx...)
 }
 
-func (e externs) resetSubcontext() {
+func (e externs) executeDeferredSubmit(ref Submissionʳ) {
 	o := GetState(e.s)
-	o.SubCmdIdx = []uint64(nil)
+	o.LastSubCmdIdx = append(api.SubCmdIdx{}, o.SubCmdIdx...)
+	o.SubCmdIdx = append(api.SubCmdIdx{}, o.deferredSubmissions[ref]...)
+}
+
+func (e externs) finishedExecuteDeferredSubmit(ref Submissionʳ) {
+	o := GetState(e.s)
+	o.SubCmdIdx = append(api.SubCmdIdx{}, o.LastSubCmdIdx...)
+	delete(o.deferredSubmissions, ref)
+}
+
+func (e externs) enterSubcontext() {
+	o := GetState(e.s)
+	if len(o.SubCmdIdx) == 0 {
+		o.SubCmdIdx = api.SubCmdIdx{uint64(e.cmdID)}
+	}
+	o.SubCmdIdx = append(o.SubCmdIdx, 0)
 }
 
 func (e externs) leaveSubcontext() {
 	o := GetState(e.s)
 	o.SubCmdIdx = o.SubCmdIdx[:len(o.SubCmdIdx)-1]
+	if len(o.SubCmdIdx) == 1 {
+		o.SubCmdIdx = api.SubCmdIdx{}
+	}
 }
 
 func (e externs) nextSubcontext() {
@@ -134,7 +152,7 @@ func (e externs) onPreSubcommand(ref CommandReferenceʳ) {
 		o.PreSubcommand(ref)
 	}
 	if e.w != nil {
-		e.w.OnBeginSubCmd(e.ctx, o.SubCmdIdx, api.RecordIdx{uint64(ref.Buffer()), uint64(ref.CommandIndex())})
+		e.w.OnBeginSubCmd(e.ctx, o.SubCmdIdx[1:], api.RecordIdx{uint64(ref.Buffer()), uint64(ref.CommandIndex())})
 	}
 }
 
@@ -449,6 +467,44 @@ func (e externs) recordFenceReset(fence VkFence) {
 	if e.w != nil {
 		e.w.DropForwardDependency(e.ctx, fenceSignal(fence))
 	}
+}
+
+type semaphoreSignal struct {
+	semaphore uint64
+	value     uint64
+}
+
+func (e externs) recordSemaphoreSignal(semaphore VkSemaphore, val uint64) {
+	if e.w != nil {
+		st := GetState(e.s)
+		if waiting, ok := st.waitingSemaphores[semaphore]; ok {
+			newSemaphores := []uint64{}
+			for i := 0; i < len(waiting); i++ {
+				if waiting[i] <= val {
+					e.w.CloseForwardDependency(e.ctx, semaphoreSignal{uint64(semaphore), waiting[i]})
+				} else {
+					newSemaphores = append(newSemaphores, waiting[i])
+				}
+			}
+			st.waitingSemaphores[semaphore] = newSemaphores
+		}
+	}
+}
+
+func (e externs) recordSemaphoreWait(semaphore VkSemaphore, val uint64) {
+	if e.w != nil {
+		st := GetState(e.s)
+		sem := st.Semaphores().Get(semaphore)
+		if sem.TimelineSemaphoreInfo().Value() < val {
+			e.w.OpenForwardDependency(e.ctx, semaphoreSignal{uint64(semaphore), val})
+			if _, ok := st.waitingSemaphores[semaphore]; !ok {
+				st.waitingSemaphores[semaphore] = []uint64{}
+			}
+			st.waitingSemaphores[semaphore] = append(st.waitingSemaphores[semaphore], val)
+		}
+	}
+}
+func (e externs) recordWaitedSemaphores(device VkDevice, waitInfo VkSemaphoreWaitInfoᶜᵖ, isKHR bool) {
 }
 
 type eventSignal uint64

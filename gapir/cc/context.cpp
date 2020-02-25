@@ -53,9 +53,7 @@ std::unique_ptr<Context> Context::create(ReplayService* srv,
 // TODO: Make the PostBuffer size dynamic? It currently holds 2MB of data.
 Context::Context(ReplayService* srv, core::CrashHandler& crash_handler,
                  ResourceLoader* resource_loader, MemoryManager* memory_manager)
-    :
-
-      mSrv(srv),
+    : mSrv(srv),
       mCrashHandler(crash_handler),
       mResourceLoader(resource_loader),
       mMemoryManager(memory_manager),
@@ -755,6 +753,72 @@ void Context::registerCallbacks(Interpreter* interpreter) {
           GAPID_WARNING(
               "ReplayDestroyVkDebugReportCallback called without a bound "
               "Vulkan renderer");
+          return false;
+        }
+      });
+
+  interpreter->registerBuiltin(
+      Vulkan::INDEX, Builtins::ReplayGetSemaphoreCounterValue,
+      [this](uint32_t label, Stack* stack, bool pushReturn) {
+        GAPID_DEBUG("[%u]replayGetSemaphoreCounterValue()", label);
+        if (mVulkanRenderer != nullptr) {
+          auto* api = mVulkanRenderer->getApi<Vulkan>();
+          return api->replayGetSemaphoreCounterValue(stack, pushReturn);
+        } else {
+          GAPID_WARNING(
+              "[%u]replayGetSemaphoreCounterValue called without a bound "
+              "Vulkan "
+              "renderer",
+              label);
+          return false;
+        }
+      });
+
+  interpreter->registerBuiltin(
+      Vulkan::INDEX, Builtins::ReplayGetSemaphoreCounterValueKHR,
+      [this](uint32_t label, Stack* stack, bool pushReturn) {
+        GAPID_DEBUG("[%u]replayGetSemaphoreCounterValueKHR()", label);
+        if (mVulkanRenderer != nullptr) {
+          auto* api = mVulkanRenderer->getApi<Vulkan>();
+          return api->replayGetSemaphoreCounterValueKHR(stack, pushReturn);
+        } else {
+          GAPID_WARNING(
+              "[%u]replayGetSemaphoreCounterValueKHR called without a bound "
+              "Vulkan "
+              "renderer",
+              label);
+          return false;
+        }
+      });
+
+  interpreter->registerBuiltin(
+      Vulkan::INDEX, Builtins::ReplayWaitSemaphores,
+      [this](uint32_t label, Stack* stack, bool pushReturn) {
+        GAPID_DEBUG("[%u]replayWaitSemaphores()", label);
+        if (mVulkanRenderer != nullptr) {
+          auto* api = mVulkanRenderer->getApi<Vulkan>();
+          return api->replayWaitSemaphores(stack, pushReturn);
+        } else {
+          GAPID_WARNING(
+              "[%u]replayWaitSemaphores called without a bound Vulkan "
+              "renderer",
+              label);
+          return false;
+        }
+      });
+
+  interpreter->registerBuiltin(
+      Vulkan::INDEX, Builtins::ReplayWaitSemaphoresKHR,
+      [this](uint32_t label, Stack* stack, bool pushReturn) {
+        GAPID_DEBUG("[%u]replayWaitSemaphoresKHR()", label);
+        if (mVulkanRenderer != nullptr) {
+          auto* api = mVulkanRenderer->getApi<Vulkan>();
+          return api->replayWaitSemaphoresKHR(stack, pushReturn);
+        } else {
+          GAPID_WARNING(
+              "[%u]replayWaitSemaphoresKHR called without a bound Vulkan "
+              "renderer",
+              label);
           return false;
         }
       });

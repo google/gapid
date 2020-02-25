@@ -64,7 +64,7 @@ func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand api
 	}
 
 	if id > t.lastRequest {
-		t.lastRequest = id
+		t.lastRequest = t.syncData.UnblockingCommands[id]
 	}
 
 	// If we are not trying to index a subcommand, then just continue on our way.
@@ -390,7 +390,11 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 
 func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	if t.stopped {
-		return nil
+		s := out.State()
+		c := GetState(s)
+		if len(c.deferredSubmissions) == 0 {
+			return nil
+		}
 	}
 
 	doCut := false

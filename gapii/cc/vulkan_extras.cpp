@@ -469,6 +469,9 @@ void VulkanSpy::recordEventSet(CallObserver*, VkEvent) {}
 void VulkanSpy::recordFenceSignal(CallObserver*, uint64_t) {}
 void VulkanSpy::recordFenceWait(CallObserver*, uint64_t) {}
 void VulkanSpy::recordFenceReset(CallObserver*, uint64_t) {}
+void VulkanSpy::recordSemaphoreSignal(CallObserver*, uint64_t, uint64_t) {}
+void VulkanSpy::recordSemaphoreWait(CallObserver*, uint64_t, uint64_t) {}
+
 void VulkanSpy::recordAcquireNextImage(CallObserver*, uint64_t, uint32_t) {}
 void VulkanSpy::recordPresentSwapchainImage(CallObserver*, uint64_t, uint32_t) {
 }
@@ -493,8 +496,11 @@ void VulkanSpy::resetCmd(CallObserver* observer, VkCommandBuffer cmdBuf) {}
 void VulkanSpy::enterSubcontext(CallObserver*) {}
 void VulkanSpy::leaveSubcontext(CallObserver*) {}
 void VulkanSpy::nextSubcontext(CallObserver*) {}
-void VulkanSpy::resetSubcontext(CallObserver*) {}
 void VulkanSpy::onPreSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
+void VulkanSpy::deferSubmit(CallObserver*, gapil::Ref<Submission>) {}
+void VulkanSpy::executeDeferredSubmit(CallObserver*, gapil::Ref<Submission>) {}
+void VulkanSpy::finishedExecuteDeferredSubmit(CallObserver*,
+                                              gapil::Ref<Submission>) {}
 
 void VulkanSpy::onPostSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
 void VulkanSpy::onCommandAdded(CallObserver*, VkCommandBuffer) {}
@@ -1086,6 +1092,29 @@ uint32_t VulkanSpy::SpyOverride_vkQueueSubmit(CallObserver* observer,
   staging.SendData();
   staging.Cleanup();
   return VkResult::VK_SUCCESS;
+}
+
+void VulkanSpy::recordWaitedSemaphores(CallObserver* observer, VkDevice device,
+                                       const VkSemaphoreWaitInfo* wait_info,
+                                       bool isKHR) {
+  auto it = mImports.mVkDeviceFunctions.find(device);
+
+  vulkan_pb::SemaphoreState state;
+
+  for (size_t i = 0; i < wait_info->msemaphoreCount; ++i) {
+    uint64_t value;
+    if (isKHR) {
+      it->second.vkGetSemaphoreCounterValueKHR(
+          device, wait_info->mpSemaphores[i], &value);
+    } else {
+      it->second.vkGetSemaphoreCounterValue(device, wait_info->mpSemaphores[i],
+                                            &value);
+    }
+    state.add_semaphores(wait_info->mpSemaphores[i]);
+    state.add_values(value);
+  }
+
+  observer->encode_message(&state);
 }
 
 }  // namespace gapii

@@ -91,6 +91,11 @@ type Data struct {
 	SyncNodes        []SyncNode
 	CmdSyncNodes     map[api.CmdID]SyncNodeIdx
 	SubcommandLookup *api.SubCmdIdxTrie
+	// UnblockingCommands is a map of what command fully unblocks
+	// some other command. Or to put it another way, the command that answers
+	// the question: If we want to play up to command N, what command do we
+	// have to replay until, in order to prevent a deadlock.
+	UnblockingCommands map[api.CmdID]api.CmdID
 }
 
 type subCommandMarkerGroupTrie struct {
@@ -124,6 +129,7 @@ func NewData() *Data {
 		SyncNodes:              []SyncNode{},
 		CmdSyncNodes:           map[api.CmdID]SyncNodeIdx{},
 		SubcommandLookup:       new(api.SubCmdIdxTrie),
+		UnblockingCommands:     map[api.CmdID]api.CmdID{},
 	}
 }
 

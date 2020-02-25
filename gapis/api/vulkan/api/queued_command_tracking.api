@@ -40,146 +40,238 @@
   dense_map!(u32, VkQueue) m
 }
 
-sub void executeSubmit(VkQueue queue, Submission sub) {
-  q := Queues[queue]
+// queueForwardProgress will make as much forward progress
+// as possible on the given queues. It will return
+// true if forward progress could be made, and false
+// if either a) there was no work to be done on any queue
+// or b) every queue was blocked from doing work
+sub bool queueForwardProgress() {
+  forwardProgress := MutableBool(false)
+  for _, vkQueue, q in Queues {
+    if len(q.PendingSubmissions) > 0 {
+      numRun := MutableU32(0)
+      for i, _, s in q.PendingSubmissions {
+        if numRun.Val == as!u32(i) {
+          if executeSubmit(vkQueue, s, true) {
+            numRun.Val = numRun.Val + 1
+            forwardProgress.b = true
+          }
+        }
+      }
+      if numRun.Val != 0 {
+        newMap := PendingSubmissionMap()
+        for i in (numRun.Val .. as!u32(len(q.PendingSubmissions))) {
+          newMap.PendingSubmissions[i - numRun.Val] = q.PendingSubmissions[i]
+        }
+        q.PendingSubmissions = newMap.PendingSubmissions
+      }
+    }
+  }
+  // If we made forward progress try and make more
+  if forwardProgress.b {
+    _ = queueForwardProgress()
+  }
+  return forwardProgress.b
+}
+
+sub bool semaphoresAreSignaled(ref!Submission sub) {
+  signaled := MutableBool(true)
   for i in (0 .. len(sub.WaitSemaphores)) {
     sem := sub.WaitSemaphores[as!u32(i)]
     s := Semaphores[sem]
     s.Signaled = false
+    if sem in sub.WaitSemaphoreValues {
+      if s.TimelineSemaphoreInfo.value < sub.WaitSemaphoreValues[sem] {
+        signaled.b = false
+      }
+    }
   }
-  enterSubcontext()
-  for i in (0 .. len(sub.CommandBuffers)) {
-    LastDrawInfos[queue] = new!DrawInfo()
-    cb := CommandBuffers[sub.CommandBuffers[as!u32(i)]]
-    if ((cb.BeginInfo != null) && 
-        (cb.BeginInfo.DeviceGroupBegin != null)) {
-      q.DeviceMask = cb.BeginInfo.DeviceGroupBegin.DeviceMask
+  return signaled.b
+}
+
+sub void recordSubmissionWait(ref!Submission sub) {
+  for i in (0 .. len(sub.WaitSemaphores)) {
+    sem := sub.WaitSemaphores[as!u32(i)]
+    if sem in sub.WaitSemaphoreValues {
+      recordSemaphoreWait(sem, sub.WaitSemaphoreValues[sem])
+    }
+  }
+}
+
+// dont_queue define whether or not this submission is running
+// in the proper place in queue. (i.e. if it should run after everything else
+// on the queue in question)
+// This function returns true if the execution of this submission ran to completion
+// otherwise if we are allowing queueing it will get added to the queue
+sub bool executeSubmit(VkQueue queue, ref!Submission sub, bool dont_queue) {
+  q := Queues[queue]
+  did_run := MutableBool(true)
+  are_signaled := semaphoresAreSignaled(sub)
+  have_pending := len(q.PendingSubmissions) > 0
+  if (!dont_queue) && (have_pending || !are_signaled) {
+    recordSubmissionWait(sub)
+    deferSubmit(sub)
+    q.PendingSubmissions[len(q.PendingSubmissions)] = sub
+    did_run.b = false
+  } else if dont_queue && !are_signaled {
+    did_run.b = false
+  } else {
+    if dont_queue {
+      executeDeferredSubmit(sub)
+    }
+    for i in (0 .. len(sub.WaitSemaphores)) {
+      sem := sub.WaitSemaphores[as!u32(i)]
+      s := Semaphores[sem]
+      s.Signaled = false
     }
     enterSubcontext()
-    for j in (0 .. len(cb.CommandReferences)) {
-      cmd := cb.CommandReferences[as!u32(j)]
-      onPreSubcommand(cmd)
-      callCommand(cmd)
-      onPostSubcommand(cmd)
+    for i in (0 .. len(sub.CommandBuffers)) {
+      LastDrawInfos[queue] = new!DrawInfo()
+      cb := CommandBuffers[sub.CommandBuffers[as!u32(i)]]
+      if ((cb.BeginInfo != null) && 
+          (cb.BeginInfo.DeviceGroupBegin != null)) {
+        q.DeviceMask = cb.BeginInfo.DeviceGroupBegin.DeviceMask
+      }
+      enterSubcontext()
+      for j in (0 .. len(cb.CommandReferences)) {
+        cmd := cb.CommandReferences[as!u32(j)]
+        onPreSubcommand(cmd)
+        callCommand(cmd)
+        onPostSubcommand(cmd)
+        nextSubcontext()
+      }
+      leaveSubcontext()
       nextSubcontext()
     }
     leaveSubcontext()
-    nextSubcontext()
-  }
-  leaveSubcontext()
 
-  if (sub.SparseBinds != null) {
-    for _ , buf , binds in sub.SparseBinds.BufferBinds {
-      if !(buf in Buffers) { vkErrorInvalidBuffer(buf) }
-      buffer := Buffers[buf]
-      blockSize := buffer.MemoryRequirements.alignment
-      for _ , _ , bind in binds.SparseMemoryBinds {
-        numBlocks := (bind.size + blockSize - 1) / blockSize
-        memOffset := bind.memoryOffset
-        resOffset := bind.resourceOffset
-        for j in (0 .. numBlocks) {
-          buffer.SparseMemoryBindings[as!u64(resOffset)] =
-          VkSparseMemoryBind(resOffset + (j * blockSize),
-            blockSize,       bind.memory,                 memOffset + (j * blockSize),
-            bind.flags)
+    if (sub.SparseBinds != null) {
+      for _ , buf , binds in sub.SparseBinds.BufferBinds {
+        if !(buf in Buffers) { vkErrorInvalidBuffer(buf) }
+        buffer := Buffers[buf]
+        blockSize := buffer.MemoryRequirements.alignment
+        for _ , _ , bind in binds.SparseMemoryBinds {
+          numBlocks := (bind.size + blockSize - 1) / blockSize
+          memOffset := bind.memoryOffset
+          resOffset := bind.resourceOffset
+          for j in (0 .. numBlocks) {
+            buffer.SparseMemoryBindings[as!u64(resOffset)] =
+            VkSparseMemoryBind(resOffset + (j * blockSize),
+              blockSize,       bind.memory,                 memOffset + (j * blockSize),
+              bind.flags)
+          }
         }
       }
-    }
 
-    for _ , img , binds in sub.SparseBinds.OpaqueImageBinds {
-      if (!img in Images) { vkErrorInvalidImage(img) }
-      image := Images[img]
-      // TODO: Handle multi-planar images
-      blockSize := getImagePlaneMemoryInfo(image, as!VkImageAspectFlagBits(0)).MemoryRequirements.alignment
-      for _ , _ , bind in binds.SparseMemoryBinds {
-        numBlocks := (bind.size + blockSize - 1) / blockSize
-        memOffset := bind.memoryOffset
-        resOffset := bind.resourceOffset
-        for j in (0 .. numBlocks) {
-          image.OpaqueSparseMemoryBindings[as!u64(resOffset)] =
-          VkSparseMemoryBind(resOffset + (j * blockSize),
-            blockSize,       bind.memory,                 memOffset + (j * blockSize),
-            bind.flags)
+      for _ , img , binds in sub.SparseBinds.OpaqueImageBinds {
+        if (!img in Images) { vkErrorInvalidImage(img) }
+        image := Images[img]
+        // TODO: Handle multi-planar images
+        blockSize := getImagePlaneMemoryInfo(image, as!VkImageAspectFlagBits(0)).MemoryRequirements.alignment
+        for _ , _ , bind in binds.SparseMemoryBinds {
+          numBlocks := (bind.size + blockSize - 1) / blockSize
+          memOffset := bind.memoryOffset
+          resOffset := bind.resourceOffset
+          for j in (0 .. numBlocks) {
+            image.OpaqueSparseMemoryBindings[as!u64(resOffset)] =
+            VkSparseMemoryBind(resOffset + (j * blockSize),
+              blockSize,       bind.memory,                 memOffset + (j * blockSize),
+              bind.flags)
+          }
         }
-      }
-      // Creates the shadow image data memory here if has not been done so.
-      // This is exactly the same to vkBindImageMemory except for linear
-      // and preinitialized images, we also create individual pool here.
-      // TODO: Redirect to bound memories for the data of linear preinitialized
-      // images.
-      for _, _, aspectBit in unpackImageAspectFlags(image, image.ImageAspect) {
-        aspect := image.Aspects[aspectBit]
-        for lay in (0 .. image.Info.ArrayLayers) {
-          for lev in (0 .. image.Info.MipLevels) {
-            level := aspect.Layers[lay].Levels[lev]
-            if len(level.Data) == 0 {
-              elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
-              depthElementSize := getDepthElementSize(image.Info.Format, false)
-              // Roundup the width and height in the number of blocks.
-              widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
-              heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
-              elementSize := switch (aspectBit) {
-                case VK_IMAGE_ASPECT_COLOR_BIT:
-                  elementAndTexelBlockSize.ElementSize
-                case VK_IMAGE_ASPECT_DEPTH_BIT:
-                  depthElementSize
-                case VK_IMAGE_ASPECT_STENCIL_BIT:
-                  // stencil element is always 1 byte wide
-                  as!u32(1)
+        // Creates the shadow image data memory here if has not been done so.
+        // This is exactly the same to vkBindImageMemory except for linear
+        // and preinitialized images, we also create individual pool here.
+        // TODO: Redirect to bound memories for the data of linear preinitialized
+        // images.
+        for _, _, aspectBit in unpackImageAspectFlags(image, image.ImageAspect) {
+          aspect := image.Aspects[aspectBit]
+          for lay in (0 .. image.Info.ArrayLayers) {
+            for lev in (0 .. image.Info.MipLevels) {
+              level := aspect.Layers[lay].Levels[lev]
+              if len(level.Data) == 0 {
+                elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
+                depthElementSize := getDepthElementSize(image.Info.Format, false)
+                // Roundup the width and height in the number of blocks.
+                widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+                heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+                elementSize := switch (aspectBit) {
+                  case VK_IMAGE_ASPECT_COLOR_BIT:
+                    elementAndTexelBlockSize.ElementSize
+                  case VK_IMAGE_ASPECT_DEPTH_BIT:
+                    depthElementSize
+                  case VK_IMAGE_ASPECT_STENCIL_BIT:
+                    // stencil element is always 1 byte wide
+                    as!u32(1)
+                }
+                size := widthInBlocks * heightInBlocks * level.Depth * elementSize
+                level.Data = make!u8(size)
               }
-              size := widthInBlocks * heightInBlocks * level.Depth * elementSize
-              level.Data = make!u8(size)
             }
           }
         }
       }
-    }
 
-    for _ , img , binds in sub.SparseBinds.ImageBinds {
-      if (!img in Images) { vkErrorInvalidImage(img) }
-      for _ , _ , bind in binds.SparseImageMemoryBinds {
-        addSparseImageMemoryBinding(img, bind)
-      }
-      image := Images[img]
-      // Creates the shadow image data memory here if has not been done so.
-      // This is exactly the same to vkBindImageMemory except for linear
-      // and preinitialized images, we also create individual pool here.
-      // TODO: Redirect to bound memories for the data of linear preinitialized
-      // images.
-      for _, _, aspectBit in unpackImageAspectFlags(image, image.ImageAspect) {
-        aspect := image.Aspects[aspectBit]
-        for lay in (0 .. image.Info.ArrayLayers) {
-          for lev in (0 .. image.Info.MipLevels) {
-            level := aspect.Layers[lay].Levels[lev]
-            if len(level.Data) == 0 {
-              elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
-              depthElementSize := getDepthElementSize(image.Info.Format, false)
-              // Roundup the width and height in the number of blocks.
-              widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
-              heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
-              elementSize := switch (aspectBit) {
-                case VK_IMAGE_ASPECT_COLOR_BIT:
-                  elementAndTexelBlockSize.ElementSize
-                case VK_IMAGE_ASPECT_DEPTH_BIT:
-                  depthElementSize
-                case VK_IMAGE_ASPECT_STENCIL_BIT:
-                  // stencil element is always 1 byte wide
-                  as!u32(1)
+      for _ , img , binds in sub.SparseBinds.ImageBinds {
+        if (!img in Images) { vkErrorInvalidImage(img) }
+        for _ , _ , bind in binds.SparseImageMemoryBinds {
+          addSparseImageMemoryBinding(img, bind)
+        }
+        image := Images[img]
+        // Creates the shadow image data memory here if has not been done so.
+        // This is exactly the same to vkBindImageMemory except for linear
+        // and preinitialized images, we also create individual pool here.
+        // TODO: Redirect to bound memories for the data of linear preinitialized
+        // images.
+        for _, _, aspectBit in unpackImageAspectFlags(image, image.ImageAspect) {
+          aspect := image.Aspects[aspectBit]
+          for lay in (0 .. image.Info.ArrayLayers) {
+            for lev in (0 .. image.Info.MipLevels) {
+              level := aspect.Layers[lay].Levels[lev]
+              if len(level.Data) == 0 {
+                elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
+                depthElementSize := getDepthElementSize(image.Info.Format, false)
+                // Roundup the width and height in the number of blocks.
+                widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+                heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+                elementSize := switch (aspectBit) {
+                  case VK_IMAGE_ASPECT_COLOR_BIT:
+                    elementAndTexelBlockSize.ElementSize
+                  case VK_IMAGE_ASPECT_DEPTH_BIT:
+                    depthElementSize
+                  case VK_IMAGE_ASPECT_STENCIL_BIT:
+                    // stencil element is always 1 byte wide
+                    as!u32(1)
+                }
+                size := widthInBlocks * heightInBlocks * level.Depth * elementSize
+                level.Data = make!u8(size)
               }
-              size := widthInBlocks * heightInBlocks * level.Depth * elementSize
-              level.Data = make!u8(size)
             }
           }
         }
       }
-    }
-  } // Done sparse images
+    } // Done sparse images
 
-  for i in (0 .. len(sub.WaitSemaphores)) {
-    sem := sub.WaitSemaphores[as!u32(i)]
-    s := Semaphores[sem]
-    s.Signaled = true
+    for i in (0 .. len(sub.SignalSemaphores)) {
+      sem := sub.SignalSemaphores[as!u32(i)]
+      s := Semaphores[sem]
+      s.Signaled = true
+      if sem in sub.SignalSemaphoreValues {
+        val := sub.SignalSemaphoreValues[sem]
+        recordSemaphoreSignal(sem, val)
+        s.TimelineSemaphoreInfo.value =val
+      }
+    }
+    if sub.SignalFence != as!VkFence(0) {
+      fenceObj := Fences[sub.SignalFence]
+      fenceObj.Signaled = true
+      recordFenceSignal(sub.SignalFence)
+    }
+    if dont_queue {
+      finishedExecuteDeferredSubmit(sub)
+    }
   }
+  return did_run.b
 }
 
 sub void callCommand(ref!CommandReference reference) {

@@ -51,6 +51,11 @@
   @untracked @untrackedMap map!(VkBuffer, bool) ReadCoherentBuffers
   @unused u32                                   DeviceMask
   @unused VkDeviceQueueCreateFlags              CreateFlags
+  dense_map!(u32, ref!Submission)               PendingSubmissions
+}
+
+@internal class PendingSubmissionMap {
+  dense_map!(u32, ref!Submission) PendingSubmissions
 }
 
 @internal class Submission {
@@ -58,6 +63,9 @@
   map!(u32, VkSemaphore) WaitSemaphores
   map!(u32, VkSemaphore) SignalSemaphores
   ref!QueuedSparseBinds  SparseBinds
+  map!(VkSemaphore, u64) WaitSemaphoreValues
+  map!(VkSemaphore, u64) SignalSemaphoreValues
+  VkFence                SignalFence
 }
 
 @threadSafety("system")
@@ -109,6 +117,29 @@ cmd void vkGetDeviceQueue2(
   pQueue[0] = id
 }
 
+sub void addTimelineDataToSubmission(
+  ref!Submission subm,
+  const VkTimelineSemaphoreSubmitInfo* submitInfo) {
+  semaphoreInfo := submitInfo[0]
+  waitSemaphores := semaphoreInfo.pWaitSemaphoreValues[0:semaphoreInfo.waitSemaphoreValueCount]
+  signalSemaphores := semaphoreInfo.pSignalSemaphoreValues[0:semaphoreInfo.signalSemaphoreValueCount]
+  
+  for i in (0 .. semaphoreInfo.waitSemaphoreValueCount) {
+    sem := Semaphores[subm.WaitSemaphores[i]]
+    if (sem != null) && (sem.TimelineSemaphoreInfo != null) {
+      subm.WaitSemaphoreValues[subm.WaitSemaphores[i]] = 
+        waitSemaphores[i]
+    }
+  }
+  for i in (0 .. semaphoreInfo.signalSemaphoreValueCount) {
+    sem := Semaphores[subm.SignalSemaphores[i]]
+    if (sem != null) && (sem.TimelineSemaphoreInfo != null) {
+      subm.SignalSemaphoreValues[subm.SignalSemaphores[i]] = 
+        signalSemaphores[i]
+    }
+  }
+}
+
 @threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 @submission
@@ -125,8 +156,41 @@ cmd VkResult vkQueueSubmit(
   LastBoundQueue = Queues[queue]
   clear(LastBoundQueue.ReadCoherentBuffers)
   enterSubcontext()
+  did_run := MutableBool(false)
   for i in (0 .. submitCount) {
     info := submitInfo[i]
+
+    subm := new!Submission()
+    if i == submitCount - 1 {
+      subm.SignalFence = fence
+    }
+    wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
+    wait_semaphores_all_valid := MutableBool(true)
+    for j in (0 .. info.waitSemaphoreCount) {
+      if wait_semaphores_all_valid.b {
+        ws := wait_semaphores[j]
+        if !(ws in Semaphores) {
+          wait_semaphores_all_valid.b = false
+          vkErrorInvalidSemaphore(ws)
+        } else {
+          subm.WaitSemaphores[len(subm.WaitSemaphores)] = ws
+        }
+      }
+    }
+
+    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
+    signal_semaphores_all_valid := MutableBool(true)
+    for j in (0 .. info.signalSemaphoreCount) {
+      if signal_semaphores_all_valid.b {
+        ws := signal_semaphores[j]
+        if !(ws in Semaphores) {
+          signal_semaphores_all_valid.b = false
+          vkErrorInvalidSemaphore(ws)
+        } else {
+          subm.SignalSemaphores[len(subm.SignalSemaphores)] = ws
+        }
+      }
+    }
 
     // handle pNext
     if info.pNext != null {
@@ -157,40 +221,16 @@ cmd VkResult vkQueueSubmit(
               }
             }
           }
+          case VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO: {
+            ext := as!const VkTimelineSemaphoreSubmitInfo*(next.Ptr)
+            addTimelineDataToSubmission(subm, ext)
+          }
           default: {}
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
-    subm := Submission()
 
-    wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
-    wait_semaphores_all_valid := MutableBool(true)
-    for j in (0 .. info.waitSemaphoreCount) {
-      if wait_semaphores_all_valid.b {
-        ws := wait_semaphores[j]
-        if !(ws in Semaphores) {
-          wait_semaphores_all_valid.b = false
-          vkErrorInvalidSemaphore(ws)
-        } else {
-          subm.WaitSemaphores[len(subm.WaitSemaphores)] = ws
-        }
-      }
-    }
-
-    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
-    signal_semaphores_all_valid := MutableBool(true)
-    for j in (0 .. info.signalSemaphoreCount) {
-      if signal_semaphores_all_valid.b {
-        ws := signal_semaphores[j]
-        if !(ws in Semaphores) {
-          signal_semaphores_all_valid.b = false
-          vkErrorInvalidSemaphore(ws)
-        } else {
-          subm.SignalSemaphores[len(subm.SignalSemaphores)] = ws
-        }
-      }
-    }
 
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
 
@@ -208,17 +248,17 @@ cmd VkResult vkQueueSubmit(
       }
     }
     
-    executeSubmit(queue, subm)
+    if (executeSubmit(queue, subm, false)) {
+      did_run.b = true
+    }
     nextSubcontext()
   }
   leaveSubcontext()
+  if did_run.b {
+    _ = queueForwardProgress()
+  }
   fence // 'fence' keyword, marking the point where observed memory writes become visible
 
-  if fence != as!VkFence(0) {
-    fenceObj := Fences[fence]
-    fenceObj.Signaled = true
-    recordFenceSignal(fence)
-  }
   return ?
 }
 
@@ -297,27 +337,14 @@ cmd VkResult vkQueueBindSparse(
   LastBoundQueue = Queues[queue]
   infos := pBindInfo[0:bindInfoCount]
   enterSubcontext()
+  did_run := MutableBool(false)
   for i in (0 .. bindInfoCount) {
     info := infos[i]
-    // handle pNext
-    if info.pNext != null {
-      numPNext := numberOfPNext(info.pNext)
-      next := MutableVoidPtr(as!void*(info.pNext))
-      for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        switch sType {
-          case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
-            s := as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
-            _ = s
-          }
-          default: {}
-        }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
-      }
-    }
 
-    subm := Submission()
+    subm := new!Submission()
+    if i == bindInfoCount - 1 {
+      subm.SignalFence = fence
+    }
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     wait_semaphores_all_valid := MutableBool(true)
     for j in (0 .. info.waitSemaphoreCount) {
@@ -345,6 +372,29 @@ cmd VkResult vkQueueBindSparse(
         }
       }
     }
+
+    // handle pNext
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        switch sType {
+          case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
+            s := as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
+            _ = s
+          }
+          case VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO: {
+            ext := as!const VkTimelineSemaphoreSubmitInfo*(next.Ptr)
+            addTimelineDataToSubmission(subm, ext)
+          }
+          default: {}
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     clear(LastBoundQueue.ReadCoherentBuffers)
     queuedBinds := new!QueuedSparseBinds()
     
@@ -396,15 +446,14 @@ cmd VkResult vkQueueBindSparse(
       queuedBinds.ImageBinds[imageBindInfo.image] = bindsToQueue
     }
     subm.SparseBinds = queuedBinds
-    executeSubmit(queue, subm)
+    if (executeSubmit(queue, subm, false)) {
+      did_run.b = true
+    }
   }
-
+  if did_run.b {
+    _ = queueForwardProgress()
+  }
   fence
-  if fence != as!VkFence(0) {
-    fenceObj := Fences[fence]
-    fenceObj.Signaled = true
-    recordFenceSignal(fence)
-  }
 
   return ?
 }

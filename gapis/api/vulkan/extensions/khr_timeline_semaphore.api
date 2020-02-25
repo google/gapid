@@ -64,6 +64,30 @@ class VkSemaphoreWaitInfoKHR {
     const u64*              pValues
 }
 
+@extension("VK_KHR_timeline_semaphore")
+class VkPhysicalDeviceTimelineSemaphoreFeaturesKHR {
+    VkStructureType    sType
+    void*              pNext
+    VkBool32           timelineSemaphore
+}
+
+@extension("VK_KHR_timeline_semaphore")
+class VkPhysicalDeviceTimelineSemaphorePropertiesKHR {
+    VkStructureType    sType
+    void*              pNext
+    u64                maxTimelineSemaphoreValueDifference
+}
+
+@extension("VK_KHR_timeline_semaphore")
+class VkTimelineSemaphoreSubmitInfoKHR {
+    VkStructureType    sType
+    const void*        pNext
+    u32                waitSemaphoreValueCount
+    const u64*         pWaitSemaphoreValues
+    u32                signalSemaphoreValueCount
+    const u64*         pSignalSemaphoreValues
+}
+
 //////////////
 // Commands //
 //////////////
@@ -74,25 +98,35 @@ class VkSemaphoreWaitInfoKHR {
 cmd VkResult vkSignalSemaphoreKHR(
     VkDevice                                    device,
     const VkSemaphoreSignalInfoKHR*             pSignalInfo) {
-  return VK_SUCCESS
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  signal_info := pSignalInfo[0]
+  SignalSemaphore(signal_info.semaphore, signal_info.value)
+  return ?
 }
 
 // Partial implementation
 @extension("VK_KHR_timeline_semaphore")
 @indirect("VkDevice")
+@custom
 cmd VkResult vkWaitSemaphoresKHR(
     VkDevice                                    device,
     const VkSemaphoreWaitInfoKHR*               pWaitInfo,
     u64                                         timeout) {
-  return VK_SUCCESS
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  WaitSemaphores(device, as!const VkSemaphoreWaitInfo*(pWaitInfo), true)
+  return ?
 }
 
 // Partial implementation
 @extension("VK_KHR_timeline_semaphore")
 @indirect("VkDevice")
+@custom
 cmd VkResult vkGetSemaphoreCounterValueKHR(
     VkDevice                                    device,
     VkSemaphore                                 semaphore,
     u64*                                        pValue) {
-  return VK_SUCCESS
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(semaphore in Semaphores) { vkErrorInvalidSemaphore(semaphore) }
+  pValue[0] = ?
+  return ?
 }

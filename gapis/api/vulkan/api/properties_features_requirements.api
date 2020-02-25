@@ -385,6 +385,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
             _ = as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+            _ = as!VkPhysicalDeviceTimelineSemaphoreFeatures*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -437,6 +440,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
             write(as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+            write(as!VkPhysicalDeviceTimelineSemaphoreFeatures*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
@@ -575,6 +581,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
             _ = as!VkPhysicalDeviceDriverPropertiesKHR*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+            _ = as!VkPhysicalDeviceTimelineSemaphoreProperties*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -669,6 +678,8 @@ sub void GetPhysicalDeviceProperties2(
                 DriverInfo: ext.driverInfo,
                 ConformanceVersion: ext.conformanceVersion,
               )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
             }
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext

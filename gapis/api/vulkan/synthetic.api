@@ -122,6 +122,52 @@ cmd VkResult replayGetEventStatus(
 }
 
 @synthetic
+cmd VkResult replayGetSemaphoreCounterValue(
+  VkDevice device,
+  VkSemaphore semaphore,
+  u64* pValue,
+  u64 expected
+) {
+  write(pValue[0:1])
+  return ?
+}
+
+@synthetic
+cmd VkResult replayGetSemaphoreCounterValueKHR(
+  VkDevice device,
+  VkSemaphore semaphore,
+  u64* pValue,
+  u64 expected
+) {
+  write(pValue[0:1])
+  return ?
+}
+
+@synthetic
+cmd VkResult replayWaitSemaphores(
+  VkDevice device,
+  u64 count,
+  VkSemaphore* pSemaphores,
+  u64* pExpected
+) {
+  read(pExpected[0:count])
+  read(pSemaphores[0:count])
+  return ?
+}
+
+@synthetic
+cmd VkResult replayWaitSemaphoresKHR(
+  VkDevice device,
+  u64 count,
+  VkSemaphore* pSemaphores,
+  u64* pExpected
+) {
+  read(pExpected[0:count])
+  read(pSemaphores[0:count])
+  return ?
+}
+
+@synthetic
 @custom
 cmd VkResult replayAllocateImageMemory(VkDevice device, VkPhysicalDeviceMemoryProperties* pPhysicalDeviceMemoryProperties, VkImage image, VkDeviceMemory* pMemory) {
   _ = pPhysicalDeviceMemoryProperties[0]

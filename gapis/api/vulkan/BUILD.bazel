@@ -58,7 +58,6 @@ apic_template(
 go_library(
     name = "go_default_library",
     srcs = [
-        "buffer_command.go",
         "command_buffer_rebuilder.go",
         "command_splitter.go",
         "custom_replay.go",
@@ -67,6 +66,7 @@ go_library(
         "draw_call_mesh.go",
         "external_memory.go",
         "externs.go",
+        "extras.go",
         "find_issues.go",
         "frame_loop.go",
         "graph_visualization.go",

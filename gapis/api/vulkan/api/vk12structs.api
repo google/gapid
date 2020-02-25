@@ -53,3 +53,37 @@ class VkSemaphoreWaitInfo {
     const VkSemaphore*      pSemaphores
     const u64*              pValues
 }
+
+enum VkSemaphoreType : u32 {
+    VK_SEMAPHORE_TYPE_BINARY = 0,
+    VK_SEMAPHORE_TYPE_TIMELINE = 1,
+}
+
+
+class VkSemaphoreTypeCreateInfo {
+    VkStructureType    sType
+    const void*        pNext
+    VkSemaphoreType    semaphoreType
+    u64                initialValue
+}
+
+class VkPhysicalDeviceTimelineSemaphoreFeatures {
+    VkStructureType    sType
+    void*              pNext
+    VkBool32           timelineSemaphore
+}
+
+class VkPhysicalDeviceTimelineSemaphoreProperties {
+    VkStructureType    sType
+    void*              pNext
+    u64                maxTimelineSemaphoreValueDifference
+}
+
+class VkTimelineSemaphoreSubmitInfo {
+    VkStructureType    sType
+    const void*        pNext
+    u32                waitSemaphoreValueCount
+    const u64*         pWaitSemaphoreValues
+    u32                signalSemaphoreValueCount
+    const u64*         pSignalSemaphoreValues
+}
