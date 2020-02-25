@@ -67,6 +67,8 @@ public class StyleConstants {
     public final RGBA cpuFreqIdle;
     public final RGBA timelineRuler;
     public final RGBA vsyncBackground;
+    public final RGBA flagLine;
+    public final RGBA flagHover;
 
     public final RGBA textMain;
     public final RGBA textAlt;
@@ -86,6 +88,8 @@ public class StyleConstants {
         RGBA cpuFreqIdle,
         RGBA timelineRuler,
         RGBA vsyncBackground,
+        RGBA flagLine,
+        RGBA flagHover,
         RGBA textMain,
         RGBA textAlt) {
       this.background = background;
@@ -103,6 +107,8 @@ public class StyleConstants {
       this.cpuFreqIdle = cpuFreqIdle;
       this.timelineRuler = timelineRuler;
       this.vsyncBackground = vsyncBackground;
+      this.flagLine = flagLine;
+      this.flagHover = flagHover;
       this.textMain = textMain;
       this.textAlt = textAlt;
     }
@@ -122,6 +128,8 @@ public class StyleConstants {
     private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(0xf0, 0xf0, 0xf0);
     private static final RGBA LIGHT_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
     private static final RGBA LIGHT_VSYNC_BACKGROUND = rgb(0xf5, 0xf5, 0xf5);
+    private static final RGBA LIGHT_FLAG_LINE = rgb(0, 0, 0);
+    private static final RGBA LIGHT_FLAG_HOVER = rgb(0x80, 0x80, 0x80);
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
@@ -143,6 +151,8 @@ public class StyleConstants {
             LIGHT_CPU_FREQ_IDLE,
             LIGHT_TIMELINE_RULER,
             LIGHT_VSYNC_BACKGROUND,
+            LIGHT_FLAG_LINE,
+            LIGHT_FLAG_HOVER,
             LIGHT_TEXT_MAIN,
             LIGHT_TEXT_ALT);
     }
@@ -162,6 +172,8 @@ public class StyleConstants {
     private static final RGBA DARK_CPU_FREQ_IDLE = rgb(0x55, 0x55, 0x55);
     private static final RGBA DARK_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
     private static final RGBA DARK_VSYNC_BACKGROUND = rgb(0x24, 0x24, 0x24);
+    private static final RGBA DARK_FLAG_LINE = rgb(0xff, 0xff, 0xff);
+    private static final RGBA DARK_FLAG_HOVER = rgb(0x80, 0x80, 0x80);
 
     private static final RGBA DARK_TEXT_MAIN = rgb(0xf1, 0xf1, 0xf8);
     private static final RGBA DARK_TEXT_ALT = rgb(0xdd, 0xdd, 0xdd);
@@ -183,6 +195,8 @@ public class StyleConstants {
             DARK_CPU_FREQ_IDLE,
             DARK_TIMELINE_RULER,
             DARK_VSYNC_BACKGROUND,
+            DARK_FLAG_LINE,
+            DARK_FLAG_HOVER,
             DARK_TEXT_MAIN,
             DARK_TEXT_ALT);
     }
@@ -301,6 +315,18 @@ public class StyleConstants {
 
   public static Image pinInactive(Theme theme) {
     return isDark ? theme.pinInactiveDark() : theme.pinInactiveLight();
+  }
+
+  public static Image flag(Theme theme) {
+    return isDark ? theme.flagDark() : theme.flagLight();
+  }
+
+  public static Image flagFilled(Theme theme) {
+    return isDark ? theme.flagFilledDark() : theme.flagFilledLight();
+  }
+
+  public static Image flagGreyed(Theme theme) {
+    return theme.flagGreyed();
   }
 
   public static class Gradient {
