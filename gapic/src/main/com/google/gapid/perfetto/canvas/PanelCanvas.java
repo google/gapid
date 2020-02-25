@@ -99,6 +99,10 @@ public class PanelCanvas extends Canvas {
         redraw(dragger.onDragEnd(e.x, e.y), false);
         dragger = Panel.Dragger.NONE;
         updateMousePosition(e.x, e.y, 0, false, true);
+      } else if (e.button == 3) {
+        if (hover.rightClick()) {
+          structureHasChanged();
+        }
       } else if (hover.click()) {
         structureHasChanged();
       }

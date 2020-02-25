@@ -209,6 +209,11 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
         protected void preMainUiRender(RenderContext ctx, Repainter repainter) {
           // Do nothing.
         }
+
+        @Override
+        protected void postMainUiRender(RenderContext ctx) {
+          // Do nothing.
+        }
       };
     }
 
