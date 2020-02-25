@@ -82,7 +82,7 @@ gapii::VkExtensionProperties *pProperties) {
 }
 
 namespace gapii {
-PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetInstanceProcAddr(VkInstance instance, const char* pName) {
+PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetInstanceProcAddr(CallObserver*, VkInstance instance, const char* pName) {
     {{range $c := AllCommands $}}
         {{if (or (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance") (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice"))}}
             {{$name := Macro "CmdName" $c}}
@@ -100,7 +100,7 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetInstanceProcAddr(VkInstance insta
     return nullptr;
   }
 
-PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, const char* pName) {
+PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(CallObserver* observer, VkDevice device, const char* pName) {
     {{range $c := AllCommands $}}
         {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
             {{$name := Macro "CmdName" $c}}
@@ -110,7 +110,7 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, c
     {{end}}
     // This is not strictly correct, but some applications incorrectly
     // call vkGetDeviceProcAddr, when they actually mean vkGetInstanceProcAddr.
-    PFN_vkVoidFunction f = SpyOverride_vkGetInstanceProcAddr(mState.PhysicalDevices[mState.Devices[device]->mPhysicalDevice]->mInstance, pName);
+    PFN_vkVoidFunction f = SpyOverride_vkGetInstanceProcAddr(observer, mState.PhysicalDevices[mState.Devices[device]->mPhysicalDevice]->mInstance, pName);
 
     // If we do not support the function as an instance function OR a device function, then defer to the actual device.
     // It is likely that this will cause a failure in the future, as we will miss any state
@@ -130,6 +130,7 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, c
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateInstance(
+        CallObserver*,
         const VkInstanceCreateInfo*  pCreateInfo,
         const VkAllocationCallbacks* pAllocator,
         VkInstance*                  pInstance) {
@@ -214,6 +215,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateInstance(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
+        CallObserver*,
         VkPhysicalDevice             physicalDevice,
         const VkDeviceCreateInfo*    pCreateInfo,
         const VkAllocationCallbacks* pAllocator,
