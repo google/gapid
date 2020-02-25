@@ -135,6 +135,7 @@ public interface Panel {
 
     /** Returns whether the screen should be redrawn. */
     public default boolean click() { return false; }
+    public default boolean rightClick() { return click(); }
 
     public default Panel.Hover translated(double dx, double dy) {
       return transformed(a -> a.translate(dx, dy));
@@ -167,6 +168,11 @@ public interface Panel {
         public boolean click() {
           return Hover.this.click();
         }
+
+        @Override
+        public boolean rightClick() {
+          return Hover.this.rightClick();
+        }
       };
     }
 
@@ -197,6 +203,12 @@ public interface Panel {
           boolean r1 = Hover.this.click(), r2 = onClick.getAsBoolean();
           return r1 || r2;
         }
+
+        @Override
+        public boolean rightClick() {
+          boolean r1 = Hover.this.rightClick(), r2 = onClick.getAsBoolean();
+          return r1 || r2;
+        }
       };
     }
 
@@ -225,6 +237,11 @@ public interface Panel {
         @Override
         public boolean click() {
           return Hover.this.click();
+        }
+
+        @Override
+        public boolean rightClick() {
+          return Hover.this.rightClick();
         }
       };
     }
