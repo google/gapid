@@ -156,6 +156,8 @@ func (b *ReportBuilder) processMessage(msg *stringtable.Msg) (*MsgRef, error) {
 func (b *ReportBuilder) processGroups() error {
 	groupItems := map[string][]uint32{}
 	groups := map[string]*MsgRef{}
+	emitted := map[string]bool{}
+
 	for i, item := range b.report.Items {
 		ref := item.Message
 		key := ref.key()
@@ -166,11 +168,17 @@ func (b *ReportBuilder) processGroups() error {
 			groups[key] = ref
 		}
 	}
-	for key, items := range groupItems {
-		b.report.Groups = append(b.report.Groups, &ReportGroup{
-			Name:  groups[key],
-			Items: items,
-		})
+
+	for _, item := range b.report.Items {
+		key := item.Message.key()
+		if _, ok := emitted[key]; !ok {
+			emitted[key] = true
+			b.report.Groups = append(b.report.Groups, &ReportGroup{
+				Name:  groups[key],
+				Items: groupItems[key],
+			})
+		}
 	}
+
 	return nil
 }
