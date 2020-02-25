@@ -135,6 +135,25 @@ bool replayCreateVkDebugReportCallback(Stack* stack, bool pushReturn);
 // might not be enabled.
 bool replayDestroyVkDebugReportCallback(Stack* stack);
 
+// Builtin function for getting a semaphore counter value. This will make sure
+// to block until the semaphore reaches the original value
+bool replayGetSemaphoreCounterValue(Stack* stack, bool pushReturn);
+
+// Builtin function for getting a semaphore counter value. This will make sure
+// to block until the semaphore reaches the original value
+bool replayGetSemaphoreCounterValueKHR(Stack* stack, bool pushReturn);
+
+// This will wait for semaphores, and block until all semaphores are
+// at the appropriate value. This is needed because the timeout may cause
+// replay behavior to diverge from trace behavior
+bool replayWaitSemaphores(Stack* stack, bool pushReturn);
+
+// This will wait for semaphores, and block until all semaphores are
+// at the appropriate value. This is needed because the timeout may cause
+// replay behavior to diverge from trace behavior
+bool replayWaitSemaphoresKHR(Stack* stack, bool pushReturn);
+
+
 // The callback function for VkDebugReportCallbackEXT. It pipes the debug
 // report captured by validation layers to the Renderer::Listener passed in by
 // the pUserData.

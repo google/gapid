@@ -54,3 +54,8 @@ message ExternalMemoryData {
   repeated ExternalBufferData buffers = 3;
   repeated ExternalImageData images = 4;
 }
+
+message SemaphoreState {
+  repeated uint64 semaphores = 1;
+  repeated uint64 values = 2;
+}

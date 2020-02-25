@@ -66,6 +66,9 @@
   @unused ref!PhysicalDeviceShaderClockFeaturesKHR PhysicalDeviceShaderClockFeaturesKHR
   @unused ref!PhysicalDeviceVulkanMemoryModelFeaturesKHR PhysicalDeviceVulkanMemoryModelFeaturesKHR
   @unused ref!PhysicalDeviceShaderFloat16Int8FeaturesKHR PhysicalDeviceShaderFloat16Int8FeaturesKHR
+  
+  @unused ref!PhysicalDeviceShaderAtomicInt64Features PhysicalDeviceShaderAtomicInt64Features
+  @unused ref!PhysicalDeviceTimelineSemaphoreFeatures PhysicalDeviceTimelineSemaphoreFeatures
 }
 
 @indirect("VkDevice")
@@ -233,6 +236,19 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             ShaderInt8: ext.shaderInt8,
           )
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
+          ext := as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0]
+          object.PhysicalDeviceShaderAtomicInt64Features = new!PhysicalDeviceShaderAtomicInt64Features(
+            ShaderBufferInt64Atomics: ext.shaderBufferInt64Atomics,
+            ShaderSharedInt64Atomics: ext.shaderSharedInt64Atomics,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+          ext := as!VkPhysicalDeviceTimelineSemaphoreFeatures*(next.Ptr)[0]
+          object.PhysicalDeviceTimelineSemaphoreFeatures = new!PhysicalDeviceTimelineSemaphoreFeatures(
+            TimelineSemaphore: ext.timelineSemaphore,
+          )
+        }
         default: {
           // do nothing
         }
@@ -311,4 +327,13 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
 
 @internal class SamplerYcbcrConversionFeatures {
   VkBool32        SamplerYcbcrConversion
+}
+
+@internal class PhysicalDeviceShaderAtomicInt64Features {
+  VkBool32        ShaderBufferInt64Atomics
+  VkBool32        ShaderSharedInt64Atomics
+}
+
+@internal class PhysicalDeviceTimelineSemaphoreFeatures {
+  VkBool32        TimelineSemaphore
 }

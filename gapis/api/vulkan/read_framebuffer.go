@@ -72,7 +72,7 @@ func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 // the framebuffer read.
 func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	s := out.State()
-
+	st := GetState(s)
 	if cmd, ok := cmd.(*InsertionCommand); ok {
 		idx_string := keyFromIndex(cmd.idx)
 		if r, ok := t.injections[idx_string]; ok {
@@ -93,7 +93,8 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	if err := out.MutateAndWrite(ctx, id, cmd); err != nil {
 		return err
 	}
-	if len(t.pendingReads) > 0 {
+	// If we have no deferred submissions left, then we can terminate
+	if len(t.pendingReads) > 0 && len(st.deferredSubmissions) == 0 {
 		if id != api.CmdNoID {
 			return t.FlushPending(ctx, out)
 		}

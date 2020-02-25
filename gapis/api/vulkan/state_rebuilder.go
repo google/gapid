@@ -817,6 +817,25 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceShaderAtomicInt64Features().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderAtomicInt64FeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceShaderAtomicInt64Features().ShaderBufferInt64Atomics(), // shaderBufferInt64Atomics
+				d.PhysicalDeviceShaderAtomicInt64Features().ShaderSharedInt64Atomics(), // shaderSharedInt64Atomics
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceTimelineSemaphoreFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceTimelineSemaphoreFeatures(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES, // sType
+				pNext, // pNext
+				d.PhysicalDeviceTimelineSemaphoreFeatures().TimelineSemaphore(), // timelineSemaphore
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
@@ -1846,12 +1865,23 @@ func (sb *stateBuilder) createFence(fnc FenceObjectʳ) {
 }
 
 func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !sem.TimelineSemaphoreInfo().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkSemaphoreTypeCreateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO, // sType
+				pNext, // pNext,
+				VkSemaphoreType_VK_SEMAPHORE_TYPE_TIMELINE, // semaphoreType
+				sem.TimelineSemaphoreInfo().Value(),        // initialValue
+			),
+		).Ptr())
+	}
 	sb.write(sb.cb.VkCreateSemaphore(
 		sem.Device(),
 		sb.MustAllocReadData(NewVkSemaphoreCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, // sType
-			0, // pNext
-			0, // flags
+			pNext, // pNext
+			0,     // flags
 		)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(sem.VulkanHandle()).Ptr(),

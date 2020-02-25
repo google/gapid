@@ -31,22 +31,23 @@ import (
 )
 
 type customState struct {
-	SubCmdIdx         api.SubCmdIdx
-	CurrentSubmission api.Cmd
-	PreSubcommand     func(interface{})
-	PostSubcommand    func(interface{})
-	AddCommand        func(interface{})
-	IsRebuilding      bool
-	pushMarkerGroup   func(name string, next bool, ty MarkerType)
-	popMarkerGroup    func(ty MarkerType)
-	queuedCommands    map[CommandReferenceʳ]QueuedCommand
-	initialCommands   map[VkCommandBuffer][]api.Cmd
+	SubCmdIdx           api.SubCmdIdx
+	LastSubCmdIdx       api.SubCmdIdx
+	PreSubcommand       func(interface{})
+	PostSubcommand      func(interface{})
+	AddCommand          func(interface{})
+	IsRebuilding        bool
+	pushMarkerGroup     func(name string, next bool, ty MarkerType)
+	popMarkerGroup      func(ty MarkerType)
+	initialCommands     map[VkCommandBuffer][]api.Cmd
+	deferredSubmissions map[Submissionʳ]api.SubCmdIdx
+	waitingSemaphores   map[VkSemaphore][]uint64
 }
 
 func (c *customState) init(s *State) {
-	c.queuedCommands = make(map[CommandReferenceʳ]QueuedCommand)
 	c.initialCommands = make(map[VkCommandBuffer][]api.Cmd)
-
+	c.deferredSubmissions = make(map[Submissionʳ]api.SubCmdIdx)
+	c.waitingSemaphores = make(map[VkSemaphore][]uint64)
 	for b, cb := range s.CommandBuffers().All() {
 		existingCommands := cb.CommandReferences().Len()
 		c.initialCommands[b] = make([]api.Cmd, existingCommands)
@@ -328,12 +329,14 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		return refs, subgroups
 	}
 
+	blockedCommands := []api.CmdID{}
+
 	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
 		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
-
+		syncCouldHaveChanged := false
 		switch cmd := cmd.(type) {
 		case *VkQueueSubmit:
 			refs := []sync.SubcommandReference{}
@@ -358,6 +361,38 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				}
 			}
 			d.SubcommandReferences[i] = refs
+			syncCouldHaveChanged = true
+		case *VkQueueBindSparse:
+			syncCouldHaveChanged = true
+		case *VkSignalSemaphoreKHR:
+			syncCouldHaveChanged = true
+		case *VkSignalSemaphore:
+			syncCouldHaveChanged = true
+		case *VkWaitSemaphoresKHR:
+			syncCouldHaveChanged = true
+		case *VkWaitSemaphores:
+			syncCouldHaveChanged = true
+		}
+		blocked := false
+		if syncCouldHaveChanged {
+			for _, q := range st.Queues().All() {
+				if q.PendingSubmissions().Len() > 0 {
+					blocked = true
+					break
+				}
+			}
+		}
+
+		if !blocked {
+			for j := 0; j < len(blockedCommands); j++ {
+				d.UnblockingCommands[blockedCommands[j]] = id
+			}
+			blockedCommands = []api.CmdID{}
+		}
+		if len(blockedCommands) > 0 || blocked {
+			blockedCommands = append(blockedCommands, id)
+		} else {
+			d.UnblockingCommands[id] = id
 		}
 		return nil
 	})
@@ -424,12 +459,12 @@ func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
 	c := GetState(s)
 	if postSubCmdCb != nil {
 		c.PostSubcommand = func(interface{}) {
-			postSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
+			postSubCmdCb(s, append(api.SubCmdIdx{}, c.SubCmdIdx...), cmd)
 		}
 	}
 	if preSubCmdCb != nil {
 		c.PreSubcommand = func(interface{}) {
-			preSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
+			preSubCmdCb(s, append(api.SubCmdIdx{}, c.SubCmdIdx...), cmd)
 		}
 	}
 	if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
