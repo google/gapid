@@ -168,8 +168,23 @@ sub void updateDescriptorSetWithTemplate(
                     new!DescriptorBinding(BindingType: set.Layout.Bindings[entry.dstBinding].Type)
                 }
                 switch(entry.descriptorType) {
-                    case VK_DESCRIPTOR_TYPE_SAMPLER,
-                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    case VK_DESCRIPTOR_TYPE_SAMPLER: {
+                        inf := as!VkDescriptorImageInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
+                        imageBinding := setBinding.ImageBinding
+                        imageBinding[entry.dstArrayElement] = new!VkDescriptorImageInfo(
+                            Sampler: inf.Sampler,
+                            ImageView: 0,
+                            ImageLayout: as!VkImageLayout(0)
+                        )
+                        setBinding.ImageBinding = imageBinding
+                        if inf.Sampler in Samplers {
+                          samObj := Samplers[inf.Sampler]
+                          if samObj != null {
+                            registerDescriptorUser!SamplerObject(samObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
+                          }
+                        }
+                    }
+                    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                         VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
                         VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
                         VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
