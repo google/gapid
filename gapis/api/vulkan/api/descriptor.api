@@ -371,8 +371,22 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
       }
 
       switch (write.descriptorType) {
-        case VK_DESCRIPTOR_TYPE_SAMPLER,
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        case VK_DESCRIPTOR_TYPE_SAMPLER: {
+          imageInfos := write.pImageInfo[0:updating.UpdateIndex + 1]
+          imageInfo := imageInfos[updating.UpdateIndex]
+          ret_val.Map[len(ret_val.Map)] = DescriptorSetWrite(
+            Binding:            updating.Binding,
+            BindingArrayIndex:  updating.ArrayIndex,
+            DstSet:             write.dstSet,
+            Type:               write.descriptorType,
+            ImageInfo:          new!VkDescriptorImageInfo(
+              Sampler:      imageInfo.Sampler,
+              ImageView:    0,
+              ImageLayout:  as!VkImageLayout(0)
+            )
+          )
+        }
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
@@ -654,8 +668,20 @@ cmd void vkUpdateDescriptorSets(
       vkErrorInvalidDescriptorCopy(c.SrcSet, c.SrcBinding, c.DstSet, c.DstBinding)
     } else {
       switch (srcBinding.BindingType) {
-        case VK_DESCRIPTOR_TYPE_SAMPLER,
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        case VK_DESCRIPTOR_TYPE_SAMPLER: {
+          imageBinding := dstBinding.ImageBinding
+          imageBinding[c.DstArrayIndex] = srcBinding.ImageBinding[c.SrcArrayIndex]
+          dstBinding.ImageBinding = imageBinding
+
+          vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].Sampler
+          if vkSam in Samplers {
+            samObj := Samplers[vkSam]
+            if samObj != null {
+              registerDescriptorUser!SamplerObject(samObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
+            }
+          }
+        }
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
             VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
             VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {

@@ -2757,8 +2757,32 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 	for _, k := range ds.Bindings().Keys() {
 		binding := ds.Bindings().Get(k)
 		switch binding.BindingType() {
-		case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER,
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER:
+			numImages := uint32(binding.ImageBinding().Len())
+			for i := uint32(0); i < numImages; i++ {
+				im := binding.ImageBinding().Get(i)
+				if im.Sampler() == 0 {
+					continue
+				}
+
+				if im.Sampler() != 0 && !ns.Samplers().Contains(im.Sampler()) {
+					continue
+				}
+
+				writes = append(writes, NewVkWriteDescriptorSet(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
+					0,                     // pNext
+					ds.VulkanHandle(),     // dstSet
+					k,                     // dstBinding
+					i,                     // dstArrayElement
+					1,                     // descriptorCount
+					binding.BindingType(), // descriptorType
+					NewVkDescriptorImageInfoᶜᵖ(sb.MustAllocReadData(im.Get()).Ptr()), // pImageInfo
+					0, // pBufferInfo
+					0, // pTexelBufferView
+				))
+			}
+		case VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
