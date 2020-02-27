@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -75,13 +77,26 @@ func (t *WaitForPerfetto) BuffersCommands() bool                              { 
 
 func NewWaitForPerfetto(traceOptions *service.TraceOptions, h *replay.SignalHandler, buffer *bytes.Buffer) *WaitForPerfetto {
 	tcb := func(ctx context.Context, p *gapir.FenceReadyRequest) {
+		errChannel := make(chan error)
 		go func() {
-			trace.TraceBuffered(ctx, traceOptions.Device, h.StartSignal, h.StopSignal, h.ReadyFunc, traceOptions, buffer)
+			err := trace.TraceBuffered(ctx, traceOptions.Device, h.StartSignal, h.StopSignal, h.ReadyFunc, traceOptions, buffer)
+			if err != nil {
+				errChannel <- err
+			}
 			if !h.DoneSignal.Fired() {
 				h.DoneFunc(ctx)
 			}
 		}()
-		h.ReadySignal.Wait(ctx)
+
+		select {
+		case err := <-errChannel:
+			log.W(ctx, "Profiling error: %v", err)
+			return
+		case <-task.ShouldStop(ctx):
+			return
+		case <-h.ReadySignal:
+			return
+		}
 	}
 
 	fcb := func(ctx context.Context, p *gapir.FenceReadyRequest) {
