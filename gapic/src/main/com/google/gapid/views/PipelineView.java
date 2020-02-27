@@ -390,11 +390,11 @@ public class PipelineView extends Composite
               Label valueLabel = withLayoutData( createLabel(valueComposite, dv.displayValue),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
 
-              if (kvp.getActive()) {
-                valueLabel.setToolTipText(kvp.getDependee().equals("") ? dv.tooltipValue : "Activated by " + kvp.getDependee());
+              if (dv.tooltipValue == null && !kvp.getDependee().equals("")) {
+                valueLabel.setToolTipText((kvp.getActive() ?  "Activated by " : "Deactivated by ") + kvp.getDependee());
+                valueLabel.setEnabled(kvp.getActive());
               } else {
-                valueComposite.setToolTipText("Deactivated by " + kvp.getDependee());
-                valueLabel.setEnabled(false);
+                valueLabel.setToolTipText(dv.tooltipValue);
               }
             }
           }
@@ -475,12 +475,8 @@ public class PipelineView extends Composite
               public String getToolTipText(Object element) {
                 DataValue dv = convertDataValue(((API.Row)element).getRowValues(col));
                 if (dv != null) {
-                  if (!dataTable.getDependee().equals("")) {
-                    if (dataTable.getActive()) {
-                        return (dv.tooltipValue != null ? dv.tooltipValue : "Activated by " + dataTable.getDependee());
-                    } else {
-                      return "Deactivated by " + dataTable.getDependee();
-                    }
+                  if (dv.tooltipValue == null && !dataTable.getDependee().equals("")) {
+                    return ((dataTable.getActive() ? "Activated by "  : "Deactivated by ") + dataTable.getDependee());   
                   } else {
                     return dv.tooltipValue;
                   }
