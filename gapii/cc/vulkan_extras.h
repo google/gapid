@@ -17,4 +17,18 @@
 #ifndef GAPII_VULKAN_EXTRAS_H_
 #define GAPII_VULKAN_EXTRAS_H_
 
+namespace gapii {
+
+// An invalid value of memory type index
+extern const uint32_t kInvalidMemoryTypeIndex;
+// The queue family value when it is ignored
+extern const uint32_t kQueueFamilyIgnore;
+// The maxmimum number of memory types
+extern const uint32_t kMaxMemoryTypes;
+
+uint32_t GetMemoryTypeIndexForStagingResources(
+    const VkPhysicalDeviceMemoryProperties& phy_dev_prop,
+    uint32_t requirement_type_bits);
+};  // namespace gapii
+
 #endif
