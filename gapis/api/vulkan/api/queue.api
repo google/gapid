@@ -41,15 +41,16 @@
 ///////////
 
 @internal class QueueObject {
-  @unused VkDevice                                               Device
-  @unused u32                                                    Family
-  @unused u32                                                    Index
-  @unused VkQueue                                                VulkanHandle
-  map!(VkEvent, ref!EventObject)                                 PendingEvents
-  map!(VkSemaphore, ref!SemaphoreObject)                         PendingSemaphores
-  @unused ref!VulkanDebugMarkerInfo                              DebugInfo
+  @unused VkDevice                              Device
+  @unused u32                                   Family
+  @unused u32                                   Index
+  @unused VkQueue                               VulkanHandle
+  map!(VkEvent, ref!EventObject)                PendingEvents
+  map!(VkSemaphore, ref!SemaphoreObject)        PendingSemaphores
+  @unused ref!VulkanDebugMarkerInfo             DebugInfo
   @untracked @untrackedMap map!(VkBuffer, bool) ReadCoherentBuffers
-  @unused u32                                                    DeviceMask
+  @unused u32                                   DeviceMask
+  @unused VkDeviceQueueCreateFlags              CreateFlags
 }
 
 @internal class Submission {
@@ -77,6 +78,32 @@ cmd void vkGetDeviceQueue(
     dev := Devices[device]
     dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
     _ = PhysicalDevices[dev.PhysicalDevice].QueueFamilyProperties[queueFamilyIndex]
+  }
+  if pQueue == null { vkErrorNullPointer("VkQueue") }
+  pQueue[0] = id
+}
+
+@since("1.1")
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkGetDeviceQueue2(
+    VkDevice                  device,
+    const VkDeviceQueueInfo2* pQueueInfo,
+    VkQueue*                  pQueue) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pQueueInfo == null { vkErrorNullPointer("VkDeviceQueueInfo2") }
+  device_queue_info := pQueueInfo[0]
+  id := ?
+  if !(id in Queues) {
+    Queues[id] = new!QueueObject(
+      Device:  device,
+      Family:  device_queue_info.queueFamilyIndex,
+      Index:   device_queue_info.queueIndex,
+      CreateFlags:   device_queue_info.flags,
+      VulkanHandle:  id)
+    dev := Devices[device]
+    dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
+    _ = PhysicalDevices[dev.PhysicalDevice].QueueFamilyProperties[device_queue_info.queueFamilyIndex]
   }
   if pQueue == null { vkErrorNullPointer("VkQueue") }
   pQueue[0] = id
