@@ -488,7 +488,9 @@ public class TraceConfigDialog extends DialogBase {
           gpuCountersRate = createSpinner(counterGroup, sGpu.getCounterRate(), 1, 1000);
           gpuCountersLabels[2] = createLabel(counterGroup, "ms");
 
-          gpuCountersLabels[0] = createLabel(counterGroup, sGpu.getCounterIdsCount() + " selected");
+          long count = caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
+              .filter(c -> sGpu.getCounterIdsList().contains(c.getCounterId())).count();
+          gpuCountersLabels[0] = createLabel(counterGroup, count + " selected");
           gpuCountersSelect = Widgets.createButton(counterGroup, "Select", e -> {
             List<Integer> currentIds = settings.perfetto().getGpuOrBuilder().getCounterIdsList();
             GpuCountersDialog dialog = new GpuCountersDialog(getShell(), theme, caps, currentIds);
