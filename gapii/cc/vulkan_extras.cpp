@@ -147,7 +147,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   fn.vkGetImageMemoryRequirements(device, resolve_image, &image_reqs);
 
   uint32_t image_memory_req = 0xFFFFFFFF;
-  for (size_t i = 0; i < 32; ++i) {
+  for (size_t i = 0; i < kMaxMemoryTypes; ++i) {
     if (image_reqs.mmemoryTypeBits & (1 << i)) {
       image_memory_req = i;
       break;
@@ -197,7 +197,8 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   fn.vkGetBufferMemoryRequirements(device, buffer, &buffer_reqs);
 
   uint32_t buffer_memory_req = 0;
-  while (buffer_reqs.mmemoryTypeBits) {
+  while (buffer_reqs.mmemoryTypeBits &&
+         buffer_memory_req < memory_properties.mmemoryTypeCount) {
     if (buffer_reqs.mmemoryTypeBits & 0x1) {
       if (memory_properties.mmemoryTypes[buffer_memory_req].mpropertyFlags &
           VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {

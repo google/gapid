@@ -16,6 +16,7 @@
 
 #include "gapii/cc/state_serializer.h"
 #include "gapii/cc/vulkan_exports.h"
+#include "gapii/cc/vulkan_extras.h"
 #include "gapii/cc/vulkan_spy.h"
 
 #include "gapis/memory/memory_pb/memory.pb.h"
@@ -52,6 +53,8 @@ gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
 const uint32_t kInvalidMemoryTypeIndex = 0xFFFFFFFF;
 // The queue family value when it is ignored
 const uint32_t kQueueFamilyIgnore = 0xFFFFFFFF;
+// The maxmimum number of memory types
+const uint32_t kMaxMemoryTypes = 32;
 
 // Try to find memory type within the types specified in
 // |requirement_type_bits| which is host-visible and non-host-coherent. If a
@@ -63,7 +66,7 @@ uint32_t GetMemoryTypeIndexForStagingResources(
     uint32_t requirement_type_bits) {
   uint32_t index = 0;
   uint32_t backup_index = kInvalidMemoryTypeIndex;
-  while (requirement_type_bits) {
+  while (requirement_type_bits && index < phy_dev_prop.mmemoryTypeCount) {
     if (requirement_type_bits & 0x1) {
       VkMemoryPropertyFlags prop_flags =
           phy_dev_prop.mmemoryTypes[index].mpropertyFlags;
