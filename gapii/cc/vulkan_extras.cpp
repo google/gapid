@@ -1020,6 +1020,7 @@ void VulkanSpy::SpyOverride_vkCmdExecuteCommands(
   fn.vkCmdExecuteCommands(commandBuffer, commandBufferCount, pCommandBuffers);
 
   auto bufIt = mExternalBufferBarriers.find(commandBuffer);
+  auto imgIt = mExternalImageBarriers.find(commandBuffer);
   for (uint32_t i = 0; i < commandBufferCount; ++i) {
     auto subBufIt = mExternalBufferBarriers.find(pCommandBuffers[i]);
     if (subBufIt != mExternalBufferBarriers.end()) {
@@ -1032,6 +1033,17 @@ void VulkanSpy::SpyOverride_vkCmdExecuteCommands(
       bufIt->second.insert(bufIt->second.begin(), subBufIt->second.begin(),
                            subBufIt->second.end());
     }
+
+    auto subImgIt = mExternalImageBarriers.find(pCommandBuffers[i]);
+    if (subImgIt != mExternalImageBarriers.end()) {
+      if (imgIt == mExternalImageBarriers.end()) {
+        imgIt = mExternalImageBarriers
+                    .emplace(commandBuffer, std::vector<VkImageMemoryBarrier>())
+                    .first;
+      }
+      imgIt->second.insert(imgIt->second.begin(), subImgIt->second.begin(),
+                           subImgIt->second.end());
+    }
   }
 }
 
@@ -1043,6 +1055,7 @@ uint32_t VulkanSpy::SpyOverride_vkBeginCommandBuffer(
   uint32_t res = fn.vkBeginCommandBuffer(commandBuffer, pBeginInfo);
 
   mExternalBufferBarriers.erase(commandBuffer);
+  mExternalImageBarriers.erase(commandBuffer);
 
   return res;
 }
@@ -1065,7 +1078,8 @@ uint32_t VulkanSpy::SpyOverride_vkQueueSubmit(CallObserver* observer,
     for (uint32_t j = 0; j < pSubmits[i].mcommandBufferCount; ++j) {
       VkCommandBuffer cmdBuf = pSubmits[i].mpCommandBuffers[j];
       if (mExternalBufferBarriers.find(cmdBuf) !=
-          mExternalBufferBarriers.end()) {
+              mExternalBufferBarriers.end() ||
+          mExternalImageBarriers.find(cmdBuf) != mExternalImageBarriers.end()) {
         hasExternalMemoryBarriers = true;
         break;
       }

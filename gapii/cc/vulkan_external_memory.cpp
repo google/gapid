@@ -57,6 +57,18 @@ void VulkanSpy::recordExternalBarriers(
       bufBarriers.push_back(pBufferMemoryBarriers[i]);
     }
   }
+
+  std::vector<VkImageMemoryBarrier>& imgBarriers =
+      mExternalImageBarriers[commandBuffer];
+  imgBarriers.reserve(imgBarriers.size() + externalImageBarrierCount);
+  for (uint32_t i = 0; i < imageMemoryBarrierCount; ++i) {
+    if (pImageMemoryBarriers[i].msrcQueueFamilyIndex ==
+            VK_QUEUE_FAMILY_EXTERNAL &&
+        pImageMemoryBarriers[i].moldLayout !=
+            VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
+      imgBarriers.push_back(pImageMemoryBarriers[i]);
+    }
+  }
 }
 
 ExternalMemoryStaging::ExternalMemoryStaging(
@@ -79,10 +91,20 @@ ExternalMemoryStaging::ExternalMemoryStaging(
       cmdBuf.commandBuffer = pSubmits[i].mpCommandBuffers[j];
       auto bufIt = spy->mExternalBufferBarriers.find(cmdBuf.commandBuffer);
       if (bufIt != spy->mExternalBufferBarriers.end()) {
-        for (auto barrierIt = bufIt->second.begin();
-             barrierIt != bufIt->second.end(); ++barrierIt) {
+        for (const auto& barrier : bufIt->second) {
           cmdBuf.buffers.push_back(
-              ExternalBufferMemoryStaging(*barrierIt, stagingSize));
+              ExternalBufferMemoryStaging(barrier, stagingSize));
+        }
+      }
+
+      auto imgIt = spy->mExternalImageBarriers.find(cmdBuf.commandBuffer);
+      if (imgIt != spy->mExternalImageBarriers.end()) {
+        for (const auto& barrier : imgIt->second) {
+          ExternalImageMemoryStaging imgStaging(barrier);
+          imgStaging.copies =
+              spy->BufferImageCopies(spy->mState.Images[barrier.mimage],
+                                     barrier.msubresourceRange, stagingSize);
+          cmdBuf.images.push_back(std::move(imgStaging));
         }
       }
     }
@@ -294,15 +316,31 @@ uint32_t ExternalMemoryStaging::RecordStagingCommandBuffer(
   std::vector<VkBufferMemoryBarrier> releaseBufferBarriers;
   releaseBufferBarriers.reserve(cmdBuf.buffers.size());
 
-  for (auto bufIt = cmdBuf.buffers.begin(); bufIt != cmdBuf.buffers.end();
-       ++bufIt) {
-    VkBufferMemoryBarrier barrier = bufIt->barrier;
+  std::vector<VkImageMemoryBarrier> acquireImageBarriers;
+  acquireImageBarriers.reserve(cmdBuf.images.size());
+  std::vector<VkImageMemoryBarrier> releaseImageBarriers;
+  releaseImageBarriers.reserve(cmdBuf.images.size());
+  for (const auto& bufStaging : cmdBuf.buffers) {
+    VkBufferMemoryBarrier barrier = bufStaging.barrier;
     barrier.msrcAccessMask = 0;
     barrier.mdstAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
     acquireBufferBarriers.push_back(barrier);
     std::swap(barrier.msrcAccessMask, barrier.mdstAccessMask);
     std::swap(barrier.msrcQueueFamilyIndex, barrier.mdstQueueFamilyIndex);
     releaseBufferBarriers.push_back(barrier);
+  }
+
+  for (const auto& imgStaging : cmdBuf.images) {
+    VkImageMemoryBarrier barrier = imgStaging.barrier;
+    barrier.msrcAccessMask = 0;
+    barrier.mdstAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
+    barrier.mnewLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    acquireImageBarriers.push_back(barrier);
+
+    std::swap(barrier.msrcAccessMask, barrier.mdstAccessMask);
+    std::swap(barrier.msrcQueueFamilyIndex, barrier.mdstQueueFamilyIndex);
+    std::swap(barrier.moldLayout, barrier.mnewLayout);
+    releaseImageBarriers.push_back(barrier);
   }
 
   // acquire from external queue family
@@ -316,18 +354,29 @@ uint32_t ExternalMemoryStaging::RecordStagingCommandBuffer(
       nullptr,                                 // pMemoryBarriers
       (uint32_t)acquireBufferBarriers.size(),  // bufferMemoryBarrierCount
       acquireBufferBarriers.data(),            // pBufferMemoryBarriers
-      (uint32_t)0,                             // imageMemoryBarrierCount
-      nullptr                                  // pImageMemoryBarriers
+      (uint32_t)acquireImageBarriers.size(),   // imageMemoryBarrierCount
+      acquireImageBarriers.data()              // pImageMemoryBarriers
   );
 
   // copy external buffer barrier regions to staging buffer
-  for (auto bufIt = cmdBuf.buffers.begin(); bufIt != cmdBuf.buffers.end();
-       ++bufIt) {
+  for (const auto& bufStaging : cmdBuf.buffers) {
     fn->vkCmdCopyBuffer(cmdBuf.stagingCommandBuffer,  // commandBuffer
-                        bufIt->buffer,                // srcBuffer
+                        bufStaging.buffer,            // srcBuffer
                         stagingBuffer,                // dstBuffer
                         1,                            // regionCount
-                        &bufIt->copy                  // pRegions
+                        &bufStaging.copy              // pRegions
+    );
+  }
+
+  // copy external image barrier regions to staging buffer
+  for (const auto& imgStaging : cmdBuf.images) {
+    fn->vkCmdCopyImageToBuffer(
+        cmdBuf.stagingCommandBuffer,                          // commandBuffer
+        imgStaging.image,                                     // srcImage
+        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,  // srcImageLayout
+        stagingBuffer,                                        // dstBuffer
+        (uint32_t)imgStaging.copies.size(),                   // regionCount
+        imgStaging.copies.data()                              // pRegions
     );
   }
 
@@ -343,8 +392,8 @@ uint32_t ExternalMemoryStaging::RecordStagingCommandBuffer(
       nullptr,                                 // pMemoryBarriers
       (uint32_t)releaseBufferBarriers.size(),  // bufferMemoryBarrierCount
       releaseBufferBarriers.data(),            // pBufferMemoryBarriers
-      (uint32_t)0,                             // imageMemoryBarrierCount
-      nullptr                                  // pImageMemoryBarriers
+      (uint32_t)releaseImageBarriers.size(),   // imageMemoryBarrierCount
+      releaseImageBarriers.data()              // pImageMemoryBarriers
   );
 
   res = fn->vkEndCommandBuffer(cmdBuf.stagingCommandBuffer);
@@ -441,15 +490,39 @@ void ExternalMemoryStaging::SendData() {
            ++commandBufferIndex) {
         const ExternalMemoryCommandBuffer& cmdBuf =
             submit.commandBuffers[commandBufferIndex];
-        for (auto bufIt = cmdBuf.buffers.begin(); bufIt != cmdBuf.buffers.end();
-             ++bufIt) {
+        for (auto bufStaging : cmdBuf.buffers) {
           auto bufMsg = extra->add_buffers();
-          bufMsg->set_buffer(bufIt->buffer);
-          bufMsg->set_buffer_offset(bufIt->copy.msrcOffset);
-          bufMsg->set_data_offset(bufIt->copy.mdstOffset);
-          bufMsg->set_size(bufIt->copy.msize);
+          bufMsg->set_buffer(bufStaging.buffer);
+          bufMsg->set_buffer_offset(bufStaging.copy.msrcOffset);
+          bufMsg->set_data_offset(bufStaging.copy.mdstOffset);
+          bufMsg->set_size(bufStaging.copy.msize);
           bufMsg->set_submit_index(submitIndex);
           bufMsg->set_command_buffer_index(commandBufferIndex);
+        }
+        for (const auto& imgStaging : cmdBuf.images) {
+          auto imgMsg = extra->add_images();
+          imgMsg->set_image(imgStaging.image);
+          const VkImageSubresourceRange& barrierRng =
+              imgStaging.barrier.msubresourceRange;
+          imgMsg->set_aspect_mask(barrierRng.maspectMask);
+          imgMsg->set_base_mip_level(barrierRng.mbaseMipLevel);
+          imgMsg->set_level_count(barrierRng.mlevelCount);
+          imgMsg->set_base_array_layer(barrierRng.mbaseArrayLayer);
+          imgMsg->set_layer_count(barrierRng.mlayerCount);
+          imgMsg->set_old_layout(imgStaging.barrier.moldLayout);
+          imgMsg->set_new_layout(imgStaging.barrier.mnewLayout);
+          imgMsg->set_submit_index(submitIndex);
+          imgMsg->set_command_buffer_index(commandBufferIndex);
+
+          for (const auto& copy : imgStaging.copies) {
+            auto copyMsg = imgMsg->add_ranges();
+            copyMsg->set_data_offset(copy.mbufferOffset);
+            const VkImageSubresourceLayers& copyRng = copy.mimageSubresource;
+            copyMsg->set_aspect_mask(copyRng.maspectMask);
+            copyMsg->set_mip_level(copyRng.mmipLevel);
+            copyMsg->set_base_array_layer(copyRng.mbaseArrayLayer);
+            copyMsg->set_layer_count(copyRng.mlayerCount);
+          }
         }
       }
     }
@@ -479,6 +552,291 @@ void ExternalMemoryStaging::Cleanup() {
     fn->vkFreeMemory(device, stagingMemory, nullptr);
     stagingMemory = 0;
   }
+}
+
+std::vector<VkBufferImageCopy> VulkanSpy::BufferImageCopies(
+    gapil::Ref<ImageObject> img, const VkImageSubresourceRange& img_rng,
+    VkDeviceSize& offset) {
+  const ImageInfo& image_info = img->mInfo;
+
+  auto get_element_size = [this](uint32_t format, uint32_t aspect_bit,
+                                 bool in_buffer) -> uint32_t {
+    if (VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT == aspect_bit) {
+      return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
+    }
+    return subGetElementAndTexelBlockSizeForAspect(nullptr, nullptr, format,
+                                                   aspect_bit)
+        .mElementSize;
+  };
+
+  auto next_multiple_of_8 = [](size_t value) -> size_t {
+    return (value + 7) & (~7);
+  };
+
+  struct pitch {
+    size_t row_pitch;
+    size_t depth_pitch;
+    size_t linear_layout_row_pitch;
+    size_t linear_layout_depth_pitch;
+    uint32_t texel_width;
+    uint32_t texel_height;
+    uint32_t element_size;
+  };
+
+  struct byte_size_and_extent {
+    size_t level_size;
+    size_t aligned_level_size;
+    size_t level_size_in_buf;
+    size_t aligned_level_size_in_buf;
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+  };
+
+  auto level_size = [this, &get_element_size, &next_multiple_of_8](
+                        const VkExtent3D& extent, uint32_t format,
+                        uint32_t mip_level, uint32_t aspect_bit,
+                        bool account_for_plane) -> byte_size_and_extent {
+    auto elementAndTexelBlockSize =
+        subGetElementAndTexelBlockSize(nullptr, nullptr, format);
+    auto divisor =
+        subGetAspectSizeDivisor(nullptr, nullptr, format, aspect_bit);
+    if (!account_for_plane) {
+      divisor.mWidth = 1;
+      divisor.mHeight = 1;
+    }
+    const uint32_t texel_width =
+        elementAndTexelBlockSize.mTexelBlockSize.mWidth;
+    const uint32_t texel_height =
+        elementAndTexelBlockSize.mTexelBlockSize.mHeight;
+    const uint32_t width =
+        subGetMipSize(nullptr, nullptr, extent.mwidth, mip_level) /
+        divisor.mWidth;
+    const uint32_t height =
+        subGetMipSize(nullptr, nullptr, extent.mheight, mip_level) /
+        divisor.mHeight;
+    const uint32_t depth =
+        subGetMipSize(nullptr, nullptr, extent.mdepth, mip_level);
+    const uint32_t width_in_blocks =
+        subRoundUpTo(nullptr, nullptr, width, texel_width);
+    const uint32_t height_in_blocks =
+        subRoundUpTo(nullptr, nullptr, height, texel_height);
+    const uint32_t element_size = get_element_size(format, aspect_bit, false);
+    const uint32_t element_size_in_buf =
+        get_element_size(format, aspect_bit, true);
+    const size_t size =
+        width_in_blocks * height_in_blocks * depth * element_size;
+    const size_t size_in_buf =
+        width_in_blocks * height_in_blocks * depth * element_size_in_buf;
+
+    return byte_size_and_extent{size,        next_multiple_of_8(size),
+                                size_in_buf, next_multiple_of_8(size_in_buf),
+                                width,       height,
+                                depth};
+  };
+
+  std::unordered_map<ImageLevel*, byte_size_and_extent> level_sizes;
+  walkImageSubRng(
+      img, img_rng,
+      [&level_size, &img, &level_sizes](uint32_t aspect, uint32_t layer,
+                                        uint32_t level) {
+        auto img_level = img->mAspects[aspect]->mLayers[layer]->mLevels[level];
+        level_sizes[img_level.get()] = level_size(
+            img->mInfo.mExtent, img->mInfo.mFormat, level, aspect, true);
+      });
+
+  if (img->mIsSwapchainImage) {
+    // Don't bind and fill swapchain images memory here
+    return {};
+  }
+  if (image_info.mSamples != VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT) {
+    // TODO(bjoeris): Handle multisampled images here.
+    return {};
+  }
+
+  // Since we add TRANSFER_SRC_BIT to all the created images that can
+  // be bound to external memory, we can copy directly from all such images.
+
+  // TODO(bjoeris): Handle multi-planar images
+  bool denseBound =
+      subGetImagePlaneMemoryInfo(nullptr, nullptr, img, 0) != nullptr &&
+      subGetImagePlaneMemoryInfo(nullptr, nullptr, img, 0)->mBoundMemory !=
+          nullptr;
+  bool sparseBound = (img->mOpaqueSparseMemoryBindings.count() > 0) ||
+                     (img->mSparseImageMemoryBindings.count() > 0);
+  bool sparseBinding =
+      (image_info.mFlags &
+       VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_BINDING_BIT) != 0;
+  bool sparseResidency =
+      sparseBinding &&
+      (image_info.mFlags &
+       VkImageCreateFlagBits::VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) != 0;
+  if (!denseBound && !sparseBound) {
+    return {};
+  }
+  // First check for validity before we go any further.
+  if (sparseBound) {
+    if (sparseResidency) {
+      bool is_valid = true;
+      // If this is a sparsely resident image, then at least ALL metadata
+      // must be bound.
+      for (const auto& req : img->mSparseMemoryRequirements) {
+        const auto& prop = req.second.mformatProperties;
+        if (prop.maspectMask ==
+            VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
+          if (!IsFullyBound(req.second.mimageMipTailOffset,
+                            req.second.mimageMipTailSize,
+                            img->mOpaqueSparseMemoryBindings)) {
+            is_valid = false;
+            break;
+          }
+        }
+      }
+      if (!is_valid) {
+        return {};
+      }
+    } else {
+      // If we are not sparsely-resident, then all memory must
+      // be bound before we are used.
+      // TODO: Handle multi-planar images
+      auto planeMemInfo = subGetImagePlaneMemoryInfo(nullptr, nullptr, img, 0);
+      if (!IsFullyBound(0, planeMemInfo->mMemoryRequirements.msize,
+                        img->mOpaqueSparseMemoryBindings)) {
+        return {};
+      }
+    }
+  }
+
+  struct opaque_piece {
+    uint32_t aspect_bit;
+    uint32_t layer;
+    uint32_t level;
+  };
+  std::vector<opaque_piece> opaque_pieces;
+  auto append_image_level_to_opaque_pieces = [&img, &opaque_pieces](
+                                                 uint32_t aspect_bit,
+                                                 uint32_t layer,
+                                                 uint32_t level) {
+    auto& img_level = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+    if (img_level->mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
+      return;
+    }
+    opaque_pieces.push_back(opaque_piece{aspect_bit, layer, level});
+  };
+  if (denseBound || !sparseResidency) {
+    walkImageSubRng(img, img_rng, append_image_level_to_opaque_pieces);
+  } else {
+    for (const auto& req : img->mSparseMemoryRequirements) {
+      const auto& prop = req.second.mformatProperties;
+      if (prop.maspectMask == img->mImageAspect) {
+        if (prop.mflags & VkSparseImageFormatFlagBits::
+                              VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) {
+          if (!IsFullyBound(req.second.mimageMipTailOffset,
+                            req.second.mimageMipTailSize,
+                            img->mOpaqueSparseMemoryBindings)) {
+            continue;
+          }
+          VkImageSubresourceRange bound_rng = VkImageSubresourceRange{
+              img->mImageAspect,                 // aspectMask
+              req.second.mimageMipTailFirstLod,  // baseMipLevel
+              image_info.mMipLevels -
+                  req.second.mimageMipTailFirstLod,  // levelCount
+              0,                                     // baseArrayLayer
+              image_info.mArrayLayers,               // layerCount
+          };
+          walkImageSubRng(img, bound_rng, append_image_level_to_opaque_pieces);
+        } else {
+          for (uint32_t i = 0; i < uint32_t(image_info.mArrayLayers); i++) {
+            VkDeviceSize offset = req.second.mimageMipTailOffset +
+                                  i * req.second.mimageMipTailStride;
+            if (!IsFullyBound(offset, req.second.mimageMipTailSize,
+                              img->mOpaqueSparseMemoryBindings)) {
+              continue;
+            }
+            VkImageSubresourceRange bound_rng = VkImageSubresourceRange{
+                img->mImageAspect,
+                req.second.mimageMipTailFirstLod,
+                image_info.mMipLevels - req.second.mimageMipTailFirstLod,
+                i,
+                1,
+            };
+            walkImageSubRng(img, bound_rng,
+                            append_image_level_to_opaque_pieces);
+          }
+        }
+      }
+    }
+  }
+
+  // Don't capture images with undefined layout for all its subresources.
+  // The resulting data itself will be undefined.
+  if (opaque_pieces.size() == 0) {
+    return {};
+  }
+
+  offset = next_multiple_of_8(offset);
+  std::vector<VkBufferImageCopy> copies_in_order;
+  for (auto& piece : opaque_pieces) {
+    auto img_level = img->mAspects[piece.aspect_bit]
+                         ->mLayers[piece.layer]
+                         ->mLevels[piece.level];
+    auto copy = VkBufferImageCopy{
+        offset,  // bufferOffset
+        0,       // bufferRowLength
+        0,       // bufferImageHeight,
+        {
+            VkImageAspectFlags(piece.aspect_bit),  // aspectMask
+            piece.level,                           // level
+            piece.layer,                           // layer
+            1,                                     // layerCount
+        },
+        {0, 0, 0},
+        {level_sizes[img_level.get()].width,
+         level_sizes[img_level.get()].height,
+         level_sizes[img_level.get()].depth}};
+    copies_in_order.push_back(copy);
+    offset += level_sizes[img_level.get()].aligned_level_size_in_buf;
+  }
+
+  if (sparseResidency) {
+    for (auto& aspect_i :
+         subUnpackImageAspectFlags(nullptr, nullptr, img, img->mImageAspect)) {
+      uint32_t aspect_bit = aspect_i.second;
+      if (img->mSparseImageMemoryBindings.find(aspect_bit) !=
+          img->mSparseImageMemoryBindings.end()) {
+        for (const auto& layer_i :
+             img->mSparseImageMemoryBindings[aspect_bit]->mLayers) {
+          for (const auto& level_i : layer_i.second->mLevels) {
+            auto img_level = img->mAspects[aspect_bit]
+                                 ->mLayers[layer_i.first]
+                                 ->mLevels[level_i.first];
+            for (const auto& block_i : level_i.second->mBlocks) {
+              auto copy =
+                  VkBufferImageCopy{offset,  // bufferOffset,
+                                    0,       // bufferRowLength,
+                                    0,       // bufferImageHeight,
+                                    VkImageSubresourceLayers{
+                                        aspect_bit,  // aspectMask
+                                        level_i.first,
+                                        layer_i.first,  // baseArrayLayer
+                                        1               // layerCount
+                                    },
+                                    block_i.second->mOffset,
+                                    block_i.second->mExtent};
+
+              copies_in_order.push_back(copy);
+              byte_size_and_extent e =
+                  level_size(block_i.second->mExtent, image_info.mFormat, 0,
+                             aspect_bit, false);
+              offset += e.aligned_level_size_in_buf;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return copies_in_order;
 }
 
 }  // namespace gapii

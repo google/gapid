@@ -29,6 +29,11 @@ extern const uint32_t kMaxMemoryTypes;
 uint32_t GetMemoryTypeIndexForStagingResources(
     const VkPhysicalDeviceMemoryProperties& phy_dev_prop,
     uint32_t requirement_type_bits);
+
+// Returns true if the resource range from |offset| with |size| is fully
+// covered in the |bindings|.
+bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
+                  const U64ToVkSparseMemoryBind& bindings);
 };  // namespace gapii
 
 #endif

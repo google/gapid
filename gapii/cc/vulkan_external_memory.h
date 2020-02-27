@@ -34,11 +34,20 @@ struct ExternalBufferMemoryStaging {
   }
 };
 
+struct ExternalImageMemoryStaging {
+  VkImage image;
+  VkImageMemoryBarrier barrier;
+  std::vector<VkBufferImageCopy> copies;
+  inline ExternalImageMemoryStaging(const VkImageMemoryBarrier& barrier)
+      : image(barrier.mimage), barrier(barrier) {}
+};
+
 struct ExternalMemoryCommandBuffer {
   std::vector<ExternalBufferMemoryStaging> buffers;
+  std::vector<ExternalImageMemoryStaging> images;
   VkCommandBuffer commandBuffer = 0;
   VkCommandBuffer stagingCommandBuffer = 0;
-  inline bool empty() const { return buffers.empty(); }
+  inline bool empty() const { return buffers.empty() && images.empty(); }
 };
 
 struct ExternalMemorySubmitInfo {

@@ -913,9 +913,11 @@ func (a *VkCmdPipelineBarrier) Mutate(ctx context.Context, id api.CmdID, s *api.
 
 	a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 	bufferMemoryBarriers := a.PBufferMemoryBarriers().Slice(0, uint64(a.BufferMemoryBarrierCount()), l).MustRead(ctx, a, s, nil)
+	imageMemoryBarriers := a.PImageMemoryBarriers().Slice(0, uint64(a.ImageMemoryBarrierCount()), l).MustRead(ctx, a, s, nil)
 	hasExternBufferBarrier := processExternalBufferBarriers(&bufferMemoryBarriers)
+	hasExternImageBarrier := processExternalImageBarriers(&imageMemoryBarriers)
 
-	if !hasExternBufferBarrier /* && !hasExternalImageBarrier */ {
+	if !hasExternBufferBarrier && !hasExternImageBarrier {
 		return a.mutate(ctx, id, s, b, w)
 	}
 
@@ -940,6 +942,13 @@ func (a *VkCmdPipelineBarrier) Mutate(ctx context.Context, id api.CmdID, s *api.
 		hijack.SetPBufferMemoryBarriers(NewVkBufferMemoryBarrierᶜᵖ(pBufferMemoryBarriers.Ptr()))
 		hijack.AddRead(pBufferMemoryBarriers.Data())
 	}
+	if hasExternImageBarrier {
+		pImageMemoryBarriers := s.AllocDataOrPanic(ctx, imageMemoryBarriers)
+		defer pImageMemoryBarriers.Free()
+		hijack.SetImageMemoryBarrierCount(uint32(len(imageMemoryBarriers)))
+		hijack.SetPImageMemoryBarriers(NewVkImageMemoryBarrierᶜᵖ(pImageMemoryBarriers.Ptr()))
+		hijack.AddRead(pImageMemoryBarriers.Data())
+	}
 	return hijack.mutate(ctx, id, s, b, w)
 }
 
@@ -960,6 +969,26 @@ func processExternalBufferBarriers(barriers *[]VkBufferMemoryBarrier) bool {
 		}
 	}
 	return hasExternBufferBarrier
+}
+
+func processExternalImageBarriers(barriers *[]VkImageMemoryBarrier) bool {
+	const VK_QUEUE_FAMILY_EXTERNAL uint32 = ^uint32(0) - 1
+	hasExternImageBarrier := false
+	for i, barrier := range *barriers {
+		if barrier.SrcQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+			barrier.SetSrcQueueFamilyIndex(barrier.DstQueueFamilyIndex())
+			barrier.SetSrcAccessMask(
+				barrier.SrcAccessMask() | VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT))
+			barrier.SetOldLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+			hasExternImageBarrier = true
+			(*barriers)[i] = barrier
+		} else if barrier.DstQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+			barrier.SetDstQueueFamilyIndex(barrier.SrcQueueFamilyIndex())
+			hasExternImageBarrier = true
+			(*barriers)[i] = barrier
+		}
+	}
+	return hasExternImageBarrier
 }
 
 type vkQueueSubmitHijack struct {
