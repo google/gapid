@@ -26,8 +26,31 @@ message ExternalBufferData {
   uint32 command_buffer_index = 6;
 }
 
+message ExternalImageDataRange {
+  uint64 data_offset = 1;
+  uint32 aspect_mask = 2;
+  uint32 mip_level = 3;
+  uint32 base_array_layer = 4;
+  uint32 layer_count = 5;
+}
+
+message ExternalImageData {
+  uint64 image = 1;
+  uint32 aspect_mask = 2;
+  uint32 base_mip_level = 3;
+  uint32 level_count = 4;
+  uint32 base_array_layer = 5;
+  uint32 layer_count = 6;
+  uint32 old_layout = 7;
+  uint32 new_layout = 8;
+  uint32 submit_index = 9;
+  uint32 command_buffer_index = 10;
+  repeated ExternalImageDataRange ranges = 11;
+}
+
 message ExternalMemoryData {
   sint64 res_index = 1;
   sint64 res_size = 2;
   repeated ExternalBufferData buffers = 3;
+  repeated ExternalImageData images = 4;
 }

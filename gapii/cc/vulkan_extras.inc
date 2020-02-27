@@ -163,6 +163,7 @@ void parseShaderModule(
     gapil::Ref<DescriptorInfo>& descriptors);
 
 std::unordered_map<VkCommandBuffer, std::vector<VkBufferMemoryBarrier>> mExternalBufferBarriers;
+std::unordered_map<VkCommandBuffer, std::vector<VkImageMemoryBarrier>> mExternalImageBarriers;
 
 void SpyOverride_vkCmdPipelineBarrier(
     CallObserver*,
@@ -203,3 +204,7 @@ uint32_t SpyOverride_vkQueueSubmit(
     VkFence                                     fence);
 
 friend struct ExternalMemoryStaging;
+
+std::vector<VkBufferImageCopy> BufferImageCopies(
+    gapil::Ref<ImageObject> img, const VkImageSubresourceRange& img_rng,
+    VkDeviceSize &offset);

@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/vulkan/vulkan_pb"
 	"github.com/google/gapid/gapis/memory"
@@ -39,10 +40,21 @@ type ExternalImageDataRange struct {
 	Subresource VkImageSubresourceLayers
 }
 
+type ExternalImageData struct {
+	Image              VkImage
+	BarrierRange       VkImageSubresourceRange
+	OldLayout          VkImageLayout
+	NewLayout          VkImageLayout
+	SubmitIndex        uint32
+	CommandBufferIndex uint32
+	CopyRanges         []ExternalImageDataRange
+}
+
 type ExternalMemoryData struct {
 	ID      id.ID
 	Size    VkDeviceSize
 	Buffers []ExternalBufferData
+	Images  []ExternalImageData
 }
 
 // ExternalMemoryData returns a pointer to the ExternalMemoryData structure in the
@@ -60,6 +72,7 @@ type externalMemoryCommandBuffer struct {
 	commandBuffer        VkCommandBuffer
 	stagingCommandBuffer VkCommandBuffer
 	buffers              []ExternalBufferData
+	images               []ExternalImageData
 }
 
 type externalMemorySubmitInfo struct {
@@ -111,6 +124,11 @@ func (e *externalMemoryStaging) initialize(h *vkQueueSubmitHijack, externalData 
 	for _, extBuf := range externalData.Buffers {
 		buffers := &e.submits[extBuf.SubmitIndex].commandBuffers[extBuf.CommandBufferIndex].buffers
 		*buffers = append(*buffers, extBuf)
+	}
+
+	for _, extImg := range externalData.Images {
+		images := &e.submits[extImg.SubmitIndex].commandBuffers[extImg.CommandBufferIndex].images
+		*images = append(*images, extImg)
 	}
 }
 
@@ -285,7 +303,7 @@ func (e *externalMemoryStaging) createResources() error {
 	for i := range e.submits {
 		for j := range e.submits[i].commandBuffers {
 			cmdBuf := &e.submits[i].commandBuffers[j]
-			if len(cmdBuf.buffers) > 0 {
+			if len(cmdBuf.buffers) > 0 || len(cmdBuf.images) > 0 {
 				if stagingCommandBuffer, err := e.allocCommandBuffer(); err != nil {
 					return err
 				} else {
@@ -384,9 +402,50 @@ func (e *externalMemoryStaging) cmdCopyBuffer(
 	)
 }
 
+func (e *externalMemoryStaging) cmdCopyBufferToImage(
+	commandBuffer VkCommandBuffer,
+	srcBuffer VkBuffer,
+	dstImage VkImage,
+	regions []VkBufferImageCopy) error {
+	pRegions := e.h.mustAllocData(regions)
+
+	return e.h.cb.VkCmdCopyBufferToImage(
+		commandBuffer, // commandBuffer
+		srcBuffer,     // srcBuffer
+		dstImage,      // dstImage
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // dstImageLayout
+		uint32(len(regions)), // regionCount
+		pRegions.Ptr(),       // pRegions
+	).AddRead(
+		pRegions.Data(),
+	).Mutate(
+		e.h.ctx, api.CmdNoID, e.h.s, e.h.b, nil,
+	)
+}
+
 func (e *externalMemoryStaging) recordCommandBuffers() error {
 	if err := e.beginCommandBuffer(e.stagingCommandBuffer); err != nil {
 		return err
+	}
+	imageLayoutBarriers := []VkImageMemoryBarrier{}
+	for _, submit := range e.submits {
+		for _, cmdBuf := range submit.commandBuffers {
+			for _, img := range cmdBuf.images {
+				imageLayoutBarriers = append(imageLayoutBarriers, NewVkImageMemoryBarrier(
+					e.h.s.Arena,
+					VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+					NewVoidᶜᵖ(memory.Nullptr),                              // pNext
+					VkAccessFlags(0),                                       // srcAccessMask
+					VkAccessFlags(0),                                       // dstAccessMask
+					VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                // oldLayout
+					VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,     // newLayout
+					e.queueFamilyIndex,                                     // srcQueueFamilyIndex
+					e.queueFamilyIndex,                                     // dstQueueFamilyIndex
+					img.Image,                                              // image
+					img.BarrierRange,                                       // subresourceRange
+				))
+			}
+		}
 	}
 	err := e.cmdPipelineBarrier(
 		e.stagingCommandBuffer, // commandBuffer
@@ -406,7 +465,7 @@ func (e *externalMemoryStaging) recordCommandBuffers() error {
 				e.stagingBufferSize, // size
 			),
 		},
-		[]VkImageMemoryBarrier{},
+		imageLayoutBarriers,
 	)
 	if err != nil {
 		return err
@@ -436,6 +495,31 @@ func (e *externalMemoryStaging) recordCommandBuffers() error {
 							buf.Size,         // size
 						),
 					},
+				)
+				if err != nil {
+					return err
+				}
+			}
+			for _, img := range cmdBuf.images {
+				copies := make([]VkBufferImageCopy, 0, len(img.CopyRanges))
+				extent := e.h.c.Images().Get(img.Image).Info().Extent()
+				offset := NewVkOffset3D(e.h.s.Arena, 0, 0, 0)
+				for _, rng := range img.CopyRanges {
+					copies = append(copies, NewVkBufferImageCopy(
+						e.h.s.Arena,
+						rng.DataOffset,  // bufferOffset
+						0,               // bufferRowLength
+						0,               // bufferImageHeight
+						rng.Subresource, // imageSubresource
+						offset,          // imageOffset
+						extent,          // imageExtent
+					))
+				}
+				err := e.cmdCopyBufferToImage(
+					cmdBuf.stagingCommandBuffer, // commandBuffer
+					e.stagingBuffer,             // srcBuffer
+					img.Image,                   // dstImage
+					copies,
 				)
 				if err != nil {
 					return err
@@ -621,6 +705,40 @@ func init() {
 					Size:               VkDeviceSize(b.Size),
 					SubmitIndex:        b.SubmitIndex,
 					CommandBufferIndex: b.CommandBufferIndex,
+				})
+			}
+
+			o.Images = make([]ExternalImageData, 0, len(from.Images))
+			a := arena.Get(ctx)
+			for _, img := range from.Images {
+				barrierRange := NewVkImageSubresourceRange(a,
+					VkImageAspectFlags(img.AspectMask), // aspectMask
+					img.BaseMipLevel,                   // baseMipLevel
+					img.LevelCount,                     // levelCount
+					img.BaseArrayLayer,                 // baseArrayLayer
+					img.LayerCount,                     // layerCount
+				)
+				copyRanges := make([]ExternalImageDataRange, 0, len(img.Ranges))
+				for _, rng := range img.Ranges {
+					subresource := NewVkImageSubresourceLayers(a,
+						VkImageAspectFlags(rng.AspectMask), // aspectMask
+						rng.MipLevel,                       // mipLevel
+						rng.BaseArrayLayer,                 // baseArrayLayer
+						rng.LayerCount,                     // layerCount
+					)
+					copyRanges = append(copyRanges, ExternalImageDataRange{
+						DataOffset:  VkDeviceSize(rng.DataOffset),
+						Subresource: subresource,
+					})
+				}
+				o.Images = append(o.Images, ExternalImageData{
+					Image:              VkImage(img.Image),
+					BarrierRange:       barrierRange,
+					OldLayout:          VkImageLayout(img.OldLayout),
+					NewLayout:          VkImageLayout(img.NewLayout),
+					SubmitIndex:        img.SubmitIndex,
+					CommandBufferIndex: img.CommandBufferIndex,
+					CopyRanges:         copyRanges,
 				})
 			}
 			return o, nil
