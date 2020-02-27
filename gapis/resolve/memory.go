@@ -16,10 +16,12 @@ package resolve
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 
 	"github.com/google/gapid/core/app/analytics"
+	coreid "github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
@@ -105,8 +107,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	if err != nil {
 		return nil, err
 	}
-	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
 	if err != nil {
@@ -119,13 +123,16 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 
 	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
 		if id == memory.PoolID(p.Pool) {
-			pool.OnRead = func(rng memory.Range, root uint64, id uint64) {
+			pool.OnRead = func(rng memory.Range, root uint64, id uint64, apiId coreid.ID) {
 				if rng.Overlaps(r) {
 					interval.Merge(&reads, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
-								Type: &path.Type{TypeIndex: id},
+								Type: &path.Type{
+									TypeIndex: id,
+									API:       &path.API{ID: path.NewID(apiId)},
+								},
 								Range: &service.MemoryRange{
 									Base: rng.Base,
 									Size: rng.Size,
@@ -136,13 +143,16 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 					}
 				}
 			}
-			pool.OnWrite = func(rng memory.Range, root uint64, id uint64) {
+			pool.OnWrite = func(rng memory.Range, root uint64, id uint64, apiId coreid.ID) {
 				if rng.Overlaps(r) {
 					interval.Merge(&writes, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
-								Type: &path.Type{TypeIndex: id},
+								Type: &path.Type{
+									TypeIndex: id,
+									API:       &path.API{ID: path.NewID(apiId)},
+								},
 								Range: &service.MemoryRange{
 									Base: rng.Base,
 									Size: rng.Size,
@@ -157,7 +167,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	})
 
 	lastCmd := cmds[len(cmds)-1]
-	api.MutateCmds(ctx, s, nil, nil, lastCmd)
+	err = api.MutateCmds(ctx, s, nil, nil, lastCmd)
+	if err != nil {
+		return nil, err
+	}
 
 	typedRanges = filterTypedRanges(typedRanges)
 
@@ -222,8 +235,10 @@ func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveCon
 	if err != nil {
 		return nil, err
 	}
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
 	if err != nil {

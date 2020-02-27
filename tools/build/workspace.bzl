@@ -142,11 +142,22 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
 
     maybe_repository(
         new_git_repository,
+        name = "stb",
+        locals = locals,
+        remote = "https://github.com/nothings/stb",
+        commit = "f67165c2bb2af3060ecae7d20d6f731173485ad0",
+        build_file = "@gapid//tools/build/third_party:stb.BUILD",
+        shallow_since = "1572280202 -0700",
+    )
+
+    maybe_repository(
+        new_git_repository,
         name = "lss",
         locals = locals,
         remote = "https://chromium.googlesource.com/linux-syscall-support",
         commit = "e6527b0cd469e3ff5764785dadcb39bf7d787154",
         build_file = "@gapid//tools/build/third_party:lss.BUILD",
+        shallow_since = "1508355462 +0000",
     )
 
     maybe_repository(
@@ -154,8 +165,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         name = "perfetto",
         locals = locals,
         remote = "https://android.googlesource.com/platform/external/perfetto",
-        commit = "aa9175d6761d7ff7a172d637fda4a17df64453b5",
-        shallow_since = "1570644465 +0000",
+        commit = "15c8c3e5af6e843dfcaf036333b7ccdfbb1b725f",
+        shallow_since = "1580316486 +0000",
     )
 
     maybe_repository(
@@ -255,6 +266,17 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         url = "https://registry.npmjs.org/vscode-languageserver-types/-/vscode-languageserver-types-1.0.4.tgz",
         build_file = "@gapid//tools/build/third_party:vscode-languageserver-types.BUILD",
         sha256 = "0cd219ac388c41a70c3ff4f72d25bd54fa351bc0850196c25c6c3361e799ac79",
+    )
+
+    maybe_repository(
+        github_repository,
+        name = "vulkan-headers",
+        locals = locals,
+        organization = "KhronosGroup",
+        project = "Vulkan-Headers",
+        commit = "7264358702061d3ed819d62d3d6fd66ab1da33c3",  # 1.2.132
+        build_file = "@gapid//tools/build/third_party:vulkan-headers.BUILD",
+        sha256 = "d44112f625cb2152fd7c8906a15e4e98abc5946d1ef85c2e17b3cb5c247586d3",
     )
 
     if android:

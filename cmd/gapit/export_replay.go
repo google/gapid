@@ -47,7 +47,7 @@ type exportReplayVerb struct{ ExportReplayFlags }
 
 func init() {
 	verb := &exportReplayVerb{
-		ExportReplayFlags{Out: "replay_export", Apk: "", SdkPath: ""},
+		ExportReplayFlags{Out: "replay_export", Apk: "", SdkPath: "", LoopCount: 1},
 	}
 	app.AddVerb(&app.Verb{
 		Name:      "export_replay",
@@ -141,13 +141,14 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		}
 	case ExportTimestamps:
 		// There are no useful field in GetTimestampsRequest as of now.
-		tsreq = &service.GetTimestampsRequest{}
+		tsreq = &service.GetTimestampsRequest{LoopCount: int32(verb.LoopCount)}
 	}
 
 	opts := &service.ExportReplayOptions{
 		GetFramebufferAttachmentRequests: fbreqs,
 		GetTimestampsRequest:             tsreq,
 		DisplayToSurface:                 onscreen,
+		LoopCount:                        int32(verb.LoopCount),
 	}
 
 	if err := client.ExportReplay(ctx, capturePath, device, verb.Out, opts); err != nil {
@@ -275,7 +276,8 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 			"classes.dex",
 			path.Join("lib", abi, "libgapir.so"),
 			path.Join("lib", abi, "libVkLayer_VirtualSwapchain.so"),
-			path.Join("lib", abi, "libVkLayer_APITiming.so"),
+			path.Join("lib", abi, "libVkLayer_CPUTiming.so"),
+			path.Join("lib", abi, "libVkLayer_MemoryTracker.so"),
 		}
 
 		for _, f := range files {

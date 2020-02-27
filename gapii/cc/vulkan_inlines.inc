@@ -17,14 +17,16 @@
 // This file is intended to be included by vulkan_spy.h inside
 // of the gapid namespace.
 
-inline void VulkanSpy::notifyPendingCommandAdded(CallObserver*, VkQueue) {}
-
 inline void VulkanSpy::vkErrInvalidHandle(CallObserver*, std::string handleType, uint64_t handle){
     GAPID_DEBUG("Error: Invalid %s: %" PRIu64, handleType.c_str(), handle)
 }
 
 inline void VulkanSpy::vkErrNullPointer(CallObserver*, std::string pointerType) {
     GAPID_WARNING("Error: Null pointer of %s", pointerType.c_str())
+}
+
+inline void VulkanSpy::vkErrUnsupported(CallObserver*, std::string val) {
+    GAPID_WARNING("Error: Unsupported: %s", val.c_str())
 }
 
 inline void VulkanSpy::vkErrNotNullPointer(CallObserver*, std::string pointerType) {

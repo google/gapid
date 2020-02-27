@@ -90,16 +90,22 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 		resources[i] = r
 	}
 
-	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
-			log.W(ctx, "Get resources at %v: Initial cmd [%v]%v - %v", p.Indices, id, cmd, err)
+			log.E(ctx, "Get resources at %v: Initial cmd [%v]%v - %v", p.Indices, id, cmd, err)
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 		return nil
 	})
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	if err != nil {
+		return nil, err
+	}
+	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
-		cmd.Mutate(ctx, id, state, nil, nil)
+		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
 	if err != nil {
@@ -116,7 +122,7 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 			}
 			i++
 
-			res, err := v.ResourceData(ctx, state)
+			res, err := v.ResourceData(ctx, state, p)
 			if err != nil {
 				resourceData[k] = err
 			} else {
@@ -169,4 +175,43 @@ func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, erro
 	}
 
 	return nil, fmt.Errorf("Cannot find resource with id: %v", id)
+}
+
+// Pipelines resolves the data of the currently bound pipelines at the specified
+// point in the capture.
+func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := database.Build(ctx, &PipelinesResolvable{Path: p, Config: r})
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+// Resolve implements the database.Resolver interface.
+func (r *PipelinesResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{
+		After:  r.Path.After,
+		Type:   api.ResourceType_PipelineResource,
+		Config: r.Config,
+	})
+	if err != nil {
+		return nil, err
+	}
+	res, ok := resources.(*ResolvedResources)
+	if !ok {
+		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.Path.After)
+	}
+
+	pipelines := []*api.ResourceData{}
+	for _, val := range res.resourceData {
+		switch v := val.(type) {
+		case error:
+			return nil, v
+		case *api.ResourceData:
+			if p := v.GetPipeline(); p.GetBound() {
+				pipelines = append(pipelines, v)
+			}
+		}
+	}
+	return api.NewMultiResourceData(pipelines), nil
 }

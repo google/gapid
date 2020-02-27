@@ -27,14 +27,13 @@
 #include <unordered_map>
 
 namespace gapii {
+struct spy_creator;
 class ConnectionStream;
 class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
  public:
   // get lazily constructs and returns the singleton instance to the spy.
   static Spy* get();
-
-  // writeHeader encodes the capture header to the encoder.
-  void writeHeader();
+  ~Spy();
 
   // resolve the imported functions. Call if the functions change due to
   // external factors.
@@ -72,6 +71,8 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   void gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
                         const gvr_buffer_viewport_list* list,
                         gvr_mat4_abi head_space_from_start_space);
+
+  void endTraceIfRequested() override;
 
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;
@@ -120,12 +121,13 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   int mNumFrames;
   // The number of frames that we want to suspend capture for before
   // we start.
-  std::atomic<int> mSuspendCaptureFrames;
+  std::atomic_int mSuspendCaptureFrames;
 
   // The connection stream to the server
   std::shared_ptr<ConnectionStream> mConnection;
   // The number of frames that we want to capture
-  int mCaptureFrames;
+  // 0 for manual stop, -1 for ending the trace
+  std::atomic_int mCaptureFrames;
   int mNumDraws;
   int mNumDrawsPerFrame;
   int mObserveFrameFrequency;
@@ -138,7 +140,9 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   uint64_t mFrameNumber;
 
   std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
-  std::unique_ptr<core::AsyncJob> mDeferStartJob;
+  std::unique_ptr<core::AsyncJob> mMessageReceiverJob;
+
+  friend struct spy_creator;
 };
 
 }  // namespace gapii

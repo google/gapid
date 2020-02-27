@@ -16,9 +16,13 @@ package bind
 
 import (
 	"context"
+	"io"
+	"os"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/gapis/perfetto"
 )
 
 // Device represents a connection to an attached device.
@@ -32,6 +36,9 @@ type Device interface {
 	// TempFile creates a temporary file on the given Device. It returns the
 	// path to the file, and a function that can be called to clean it up.
 	TempFile(ctx context.Context) (string, func(ctx context.Context), error)
+	// TempDir makes a temporary directory, and returns the
+	// path, as well as a function to call to clean it up.
+	TempDir(ctx context.Context) (string, app.Cleanup, error)
 	// FileContents returns the contents of a given file on the Device.
 	FileContents(ctx context.Context, path string) (string, error)
 	// RemoveFile removes the given file from the device
@@ -59,4 +66,12 @@ type Device interface {
 	CanTrace() bool
 	// SupportsPerfetto returns true if this device will work with perfetto
 	SupportsPerfetto(ctx context.Context) bool
+	// ConnectPerfetto connects to a Perfetto service running on this device
+	// and returns an open socket connection to the service.
+	ConnectPerfetto(ctx context.Context) (*perfetto.Client, error)
+	// PushFile will transfer the local file at sourcePath to the remote
+	// machine at destPath
+	PushFile(ctx context.Context, sourcePath, destPath string) error
+	// WriteFile writes the given file into the given location on the remote device
+	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
 }

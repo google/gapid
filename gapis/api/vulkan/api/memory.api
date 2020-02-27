@@ -55,6 +55,12 @@
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationNV
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationKHR
+  ref!MemoryAllocateFlagsInfo MemoryAllocateFlagsInfo
+}
+
+@internal class MemoryAllocateFlagsInfo {
+  VkMemoryAllocateFlags Flags
+  u32                   DeviceMask
 }
 
 @internal class MemoryDedicatedAllocationInfo {
@@ -104,6 +110,13 @@ cmd VkResult vkAllocateMemory(
           memoryObject.DedicatedAllocationKHR = new!MemoryDedicatedAllocationInfo(
             Image:   ext.image,
             Buffer:  ext.buffer,
+          )
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: {
+          ext := as!VkMemoryAllocateFlagsInfo*(next.Ptr)[0:1][0]
+          memoryObject.MemoryAllocateFlagsInfo = new!MemoryAllocateFlagsInfo(
+            Flags: ext.flags,
+            DeviceMask: ext.deviceMask,
           )
         }
       }

@@ -26,8 +26,10 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.ThreadState;
@@ -42,11 +44,13 @@ import org.eclipse.swt.widgets.Composite;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * {@link Track} containing thread state and slices of a thread.
  */
-public class ThreadTrack extends Track<ThreadTrack.Data> {
+public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
   private static final String SCHED_VIEW =
       "select ts, dur, end_state, row_id from sched where utid = %d";
   private static final String INSTANT_VIEW =
@@ -76,10 +80,10 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
   private final ThreadInfo thread;
   private final SliceFetcher sliceTrack;
 
-  public ThreadTrack(ThreadInfo thread) {
-    super("thread_" + thread.utid);
+  public ThreadTrack(QueryEngine qe, ThreadInfo thread) {
+    super(qe, "thread_" + thread.utid);
     this.thread = thread;
-    this.sliceTrack = SliceFetcher.forThread(thread);
+    this.sliceTrack = SliceFetcher.forThread(qe, thread);
   }
 
   public ThreadInfo getThread() {
@@ -87,14 +91,14 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String wakeup = tableName("wakeup");
     String sched = tableName("sched");
     String spanJoin = tableName("span_join");
     String spanView = tableName("span_view");
     String span = tableName("span");
     String window = tableName("window");
-    return transformAsync(sliceTrack.initialize(qe), $ -> qe.queries(
+    return transformAsync(sliceTrack.initialize(), $ -> qe.queries(
         dropTable(span),
         dropView(spanView),
         dropTable(spanJoin),
@@ -110,15 +114,14 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window window = Window.compute(req);
-    return transformAsync(sliceTrack.computeData(qe, req), slices ->
+    return transformAsync(sliceTrack.computeData(req), slices ->
         transformAsync(window.update(qe, tableName("window")), $ ->
-            computeSched(qe, req, slices)));
+            computeSched(req, slices)));
   }
 
-  private ListenableFuture<Data> computeSched(
-      QueryEngine qe, DataRequest req, SliceTrack.Data slices) {
+  private ListenableFuture<Data> computeSched(DataRequest req, SliceTrack.Data slices) {
     return transform(qe.query(schedSql()), res -> {
       int rows = res.getNumRows();
       Data data = new Data(req, new long[rows], new long[rows], new long[rows],
@@ -138,16 +141,23 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     return format(SCHED_SQL, tableName("span"));
   }
 
-  public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
-    return sliceTrack.getSlice(qe, id);
+  public ListenableFuture<Slice> getSlice(long id) {
+    return sliceTrack.getSlice(id);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(
-      QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
-    return sliceTrack.getSlices(qe, ts, minDepth, maxDepth);
+  public ListenableFuture<CpuTrack.Slice> getCpuSlice(long id) {
+    return CpuTrack.getSlice(qe, id);
   }
 
-  public ListenableFuture<List<StateSlice>> getStates(QueryEngine qe, TimeSpan ts) {
+  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+    return sliceTrack.getSlices(ts, minDepth, maxDepth);
+  }
+
+  public ListenableFuture<List<CpuTrack.Slice>> getCpuSlices(TimeSpan ts) {
+    return CpuTrack.getSlices(qe, thread.utid, ts);
+  }
+
+  public ListenableFuture<List<StateSlice>> getStates(TimeSpan ts) {
     return transform(qe.query(stateRangeSql(ts)), res -> {
       List<StateSlice> slices = Lists.newArrayList();
       res.forEachRow((i, r) -> slices.add(new StateSlice(r, thread.utid)));
@@ -179,7 +189,7 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     }
   }
 
-  public static class StateSlice implements Selection {
+  public static class StateSlice implements Selection<StateSlice.Key> {
     public final long time;
     public final long dur;
     public final long utid;
@@ -205,76 +215,143 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     }
 
     @Override
+    public boolean contains(StateSlice.Key key) {
+      return key.matches(this);
+    }
+
+    @Override
     public Composite buildUi(Composite parent, State uiState) {
       return new ThreadStateSliceSelectionView(parent, uiState, this);
     }
 
     @Override
-    public void mark(State uiState) {
-      if (dur > 0) {
-        uiState.setHighlight(new TimeSpan(time, time + dur));
-      }
+    public Selection.Builder<StateSlicesBuilder> getBuilder() {
+      return new StateSlicesBuilder(Lists.newArrayList(this));
     }
 
     @Override
-    public void zoom(State uiState) {
+    public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
-        uiState.setVisibleTime(new TimeSpan(time, time + dur));
+        span.accept(new TimeSpan(time, time + dur));
+      }
+    }
+
+    public static class Key {
+      public final long time;
+      public final long dur;
+      public final long utid;
+
+      public Key(long time, long dur, long utid) {
+        this.time = time;
+        this.dur = dur;
+        this.utid = utid;
+      }
+
+      public Key(StateSlice slice) {
+        this(slice.time, slice.dur, slice.utid);
+      }
+
+      public boolean matches(StateSlice slice) {
+        return slice.time == time && slice.dur == dur && slice.utid == utid;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (obj == this) {
+          return true;
+        } else if (!(obj instanceof Key)) {
+          return false;
+        }
+        Key o = (Key)obj;
+        return time == o.time && dur == o.dur && utid == o.utid;
+      }
+
+      @Override
+      public int hashCode() {
+        return Long.hashCode(time ^ dur ^ utid);
       }
     }
   }
 
-  public static class StateSlices implements Selection.CombiningBuilder.Combinable<StateSlices> {
-    private final Map<ThreadState, Long> byState = Maps.newHashMap();
+  public static class StateSlices implements Selection<StateSlice.Key> {
+    private final List<StateSlice> slices;
+    public final ImmutableList<Entry> entries;
+    public final ImmutableSet<StateSlice.Key> sliceKeys;
 
-    public StateSlices(List<StateSlice> slices) {
+    public StateSlices(List<StateSlice> slices, ImmutableList<Entry> entries,
+        ImmutableSet<StateSlice.Key> sliceKeys) {
+      this.slices = slices;
+      this.entries = entries;
+      this.sliceKeys = sliceKeys;
+    }
+
+    @Override
+    public String getTitle() {
+      return "Thread States";
+    }
+
+    @Override
+    public boolean contains(StateSlice.Key key) {
+      return sliceKeys.contains(key);
+    }
+
+    @Override
+    public Composite buildUi(Composite parent, State state) {
+      return new ThreadStateSlicesSelectionView(parent, this);
+    }
+
+    @Override
+    public Selection.Builder<StateSlicesBuilder> getBuilder() {
+      return new StateSlicesBuilder(slices);
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
+      for (StateSlice slice : slices) {
+        slice.getRange(span);
+      }
+    }
+
+    public static class Entry {
+      public final ThreadState state;
+      public final long totalDur;
+
+      public Entry(ThreadState state, long totalDur) {
+        this.state = state;
+        this.totalDur = totalDur;
+      }
+    }
+  }
+
+  public static class StateSlicesBuilder implements Selection.Builder<StateSlicesBuilder> {
+    private final List<StateSlice> slices;
+    private final Map<ThreadState, Long> byState = Maps.newHashMap();
+    private final Set<StateSlice.Key> sliceKeys = Sets.newHashSet();
+
+    public StateSlicesBuilder(List<StateSlice> slices) {
+      this.slices = slices;
       for (StateSlice slice : slices) {
         byState.compute(slice.state, (state, old) -> (old == null) ? slice.dur : old + slice.dur);
+        sliceKeys.add(new StateSlice.Key(slice));
       }
     }
 
     @Override
-    public StateSlices combine(StateSlices other) {
+    public StateSlicesBuilder combine(StateSlicesBuilder other) {
+      this.slices.addAll(other.slices);
       for (Map.Entry<ThreadState, Long> e : other.byState.entrySet()) {
         byState.merge(e.getKey(), e.getValue(), Long::sum);
       }
+      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
     @Override
-    public Selection build() {
-      return new Selection(byState.entrySet().stream()
-          .map(e -> new Selection.Entry(e.getKey(), e.getValue()))
+    public Selection<StateSlice.Key> build() {
+      return new StateSlices(slices, byState.entrySet().stream()
+          .map(e -> new StateSlices.Entry(e.getKey(), e.getValue()))
           .sorted((e1, e2) -> Long.compare(e2.totalDur, e1.totalDur))
-          .collect(ImmutableList.toImmutableList()));
-    }
-
-    public static class Selection implements com.google.gapid.perfetto.models.Selection {
-      public final ImmutableList<Entry> entries;
-
-      public Selection(ImmutableList<Entry> entries) {
-        this.entries = entries;
-      }
-
-      @Override
-      public String getTitle() {
-        return "Thread States";
-      }
-
-      @Override
-      public Composite buildUi(Composite parent, State state) {
-        return new ThreadStateSlicesSelectionView(parent, this);
-      }
-
-      public static class Entry {
-        public final ThreadState state;
-        public final long totalDur;
-
-        public Entry(ThreadState state, long totalDur) {
-          this.state = state;
-          this.totalDur = totalDur;
-        }
-      }
+          .collect(ImmutableList.toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
   }
 
@@ -282,52 +359,51 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     public static final SliceFetcher NONE = new SliceFetcher() { /* empty */ };
 
     @SuppressWarnings("unused")
-    public default ListenableFuture<?> initialize(QueryEngine qe) {
+    public default ListenableFuture<?> initialize() {
       return Futures.immediateFuture(null);
     }
 
     @SuppressWarnings("unused")
-    public default ListenableFuture<SliceTrack.Data> computeData(QueryEngine qe, DataRequest req) {
+    public default ListenableFuture<SliceTrack.Data> computeData(DataRequest req) {
       return Futures.immediateFuture(new SliceTrack.Data(req));
     }
 
     @SuppressWarnings("unused")
-    public default ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
+    public default ListenableFuture<Slice> getSlice(long id) {
       throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unused")
     public default ListenableFuture<List<Slice>> getSlices(
-        QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
+        TimeSpan ts, int minDepth, int maxDepth) {
       return Futures.immediateFuture(Collections.emptyList());
     }
 
-    public static SliceFetcher forThread(ThreadInfo thread) {
+    public static SliceFetcher forThread(QueryEngine q, ThreadInfo thread) {
       if (thread.trackId < 0) {
         return SliceFetcher.NONE;
       }
 
-      SliceTrack track = SliceTrack.forThread(thread);
+      SliceTrack track = SliceTrack.forThread(q, thread);
       return new SliceFetcher() {
         @Override
-        public ListenableFuture<?> initialize(QueryEngine qe) {
-          return track.initialize(qe);
+        public ListenableFuture<?> initialize() {
+          return track.initialize();
         }
 
         @Override
-        public ListenableFuture<SliceTrack.Data> computeData(QueryEngine qe, DataRequest req) {
-          return track.computeData(qe, req);
+        public ListenableFuture<SliceTrack.Data> computeData(DataRequest req) {
+          return track.computeData(req);
         }
 
         @Override
-        public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
-          return track.getSlice(qe, id);
+        public ListenableFuture<Slice> getSlice(long id) {
+          return track.getSlice(id);
         }
 
         @Override
-        public ListenableFuture<List<Slice>> getSlices(
-            QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
-          return track.getSlices(qe, ts, minDepth, maxDepth);
+        public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+          return track.getSlices(ts, minDepth, maxDepth);
         }
       };
     }

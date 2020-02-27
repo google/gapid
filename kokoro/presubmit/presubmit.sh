@@ -50,9 +50,28 @@ function check() {
   echo "${green}OK${normal}"
 }
 
+function run_copyright_headers() {
+  tmpfile=`mktemp`
+  for suffix in "cc" "cpp" "frag" "glsl" "go" "h" "hpp" "java" "js" "sh" "vert" "xml"; do
+    # Grep flag '-L' print files that DO NOT match the copyright regex
+    # Filter out third party files
+    # Grep seems to match "(standard input)", filter this out in the for loop output
+    git ls-tree -r HEAD --name-only | grep "\.${suffix}$" | grep -v "tools/build/third_party" | xargs grep -L "Copyright .* Google"
+  done | grep -v "(standard input)" > ${tmpfile}
+  if test -s ${tmpfile}; then
+    # tempfile is NOT empty
+    echo "Copyright issue in these files:"
+    cat ${tmpfile}
+    rm ${tmpfile}
+    return 1
+  else
+    rm ${tmpfile}
+    return 0
+  fi
+}
+
 function run_clang_format() {
-  # Do not format files under core/vulkan/cc/include/vulkan/
-  find . -path ./core/vulkan/cc/include/vulkan -prune -o \( -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" \) -print| xargs $CLANG_FORMAT -i -style=Google
+  find . \( -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" \) -print | xargs $CLANG_FORMAT -i -style=file
 }
 
 function run_gofmt() {
@@ -84,6 +103,9 @@ function run_gazelle() {
 
 # Ensure we are clean to start out with.
 check "git workspace must be clean" true
+
+# Check copyright headers
+check copyright-headers run_copyright_headers
 
 # Check clang-format.
 check clang-format run_clang_format

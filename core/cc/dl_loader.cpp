@@ -54,6 +54,9 @@ void* load(const char* name, ConstCharPtrs... fallback_names) {
       remove(tmp);
     }
   }
+  if (res == nullptr) {
+    res = dlopen(name, RTLD_NOW | RTLD_LOCAL | RTLD_FIRST);
+  }
   ret = res;
 #elif TARGET_OS == GAPID_OS_ANDROID
   ret = dlopen(name, RTLD_NOW | RTLD_LOCAL);

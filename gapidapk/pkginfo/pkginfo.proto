@@ -31,6 +31,9 @@ message Package {
   repeated Activity activities = 4;
   // Abi, if present, represents the ABI of this package.
   string ABI = 5;
+  // DeveloperDriverEnabled is true if Debuggable is true or
+  // com.android.graphics.developerdriver.enable is set to true.
+  bool developerDriverEnabled = 6;
 }
 
 // Activity describes an activity within an Android package.

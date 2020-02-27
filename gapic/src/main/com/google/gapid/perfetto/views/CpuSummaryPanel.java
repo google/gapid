@@ -20,6 +20,7 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.gapid.perfetto.TimeSpan;
@@ -34,7 +35,7 @@ import com.google.gapid.perfetto.models.Selection;
 /**
  * Draws the CPU usage summary, aggregating the usage of all cores.
  */
-public class CpuSummaryPanel extends TrackPanel implements Selectable {
+public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Selectable {
   private static final double HEIGHT = 80;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -46,6 +47,11 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
   public CpuSummaryPanel(State state, CpuSummaryTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public CpuSummaryPanel copy() {
+    return new CpuSummaryPanel(state, track);
   }
 
   @Override
@@ -66,9 +72,7 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("CpuSummary", () -> {
-      CpuSummaryTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      CpuSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -79,8 +83,7 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
       long tStart = data.request.range.start;
       int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
 
-      ctx.setBackgroundColor(colors().cpuUsageFill);
-      ctx.setForegroundColor(colors().cpuUsageStroke);
+      mainGradient().applyBaseAndBorder(ctx);
       ctx.path(path -> {
         path.moveTo(0, h);
         double y = h, x = 0;
@@ -115,8 +118,8 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    CpuSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+    CpuSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.utilizations.length == 0) {
       return Hover.NONE;
     }
@@ -152,8 +155,10 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
   @Override
   public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Kind.Cpu, transform(CpuSummaryTrack.getSlices(state.getQueryEngine(), ts), r ->
-          new CpuTrack.Slices(state, r)));
+      builder.add(Selection.Kind.Cpu, transform(track.getSlices(ts), r -> {
+        r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
+        return new CpuTrack.SlicesBuilder(r);
+      }));
     }
   }
 

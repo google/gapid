@@ -87,7 +87,10 @@ cc_library(
     }),
     hdrs = glob(["src/**/*.h"]),
     copts = cc_copts() + select({
-        "@gapid//tools/build:linux": ["-Wno-maybe-uninitialized"],
+        "@gapid//tools/build:linux": [
+            "-Wno-maybe-uninitialized",
+            "-Wno-deprecated",
+        ],
         "@gapid//tools/build:darwin": [],
         "@gapid//tools/build:windows": [
             "-D_UNICODE",

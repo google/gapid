@@ -487,6 +487,10 @@ static int replayArchive(core::CrashHandler* crashHandler,
   std::unique_ptr<Context> context = Context::create(
       replayArchiveService, *crashHandler, resLoader.get(), &memoryManager);
 
+  if (replayArchiveService->getPayload("payload") == NULL) {
+    GAPID_ERROR("Replay payload could not be found.");
+  }
+
   if (context->initialize("payload")) {
     GAPID_DEBUG("Replay context initialized successfully");
   } else {
@@ -629,6 +633,33 @@ std::vector<std::string> getArgsFromIntents(struct android_app* app,
   return args;
 }
 
+std::string getCacheDir(struct android_app* app) {
+  JNIEnv* env;
+  app->activity->vm->AttachCurrentThread(&env, 0);
+
+  jobject cache_dir_jobject =
+      jni_call_o(env, app->activity->clazz, "getCacheDir", "()Ljava/io/File;");
+  jmethodID get_absolute_path_method_id =
+      env->GetMethodID(env->GetObjectClass(cache_dir_jobject),
+                       "getAbsolutePath", "()Ljava/lang/String;");
+
+  jstring cache_dir_jstring = (jstring)env->CallObjectMethod(
+      cache_dir_jobject, get_absolute_path_method_id);
+
+  std::string cache_dir_string;
+  if (cache_dir_jstring) {
+    const char* cache_dir_cstr =
+        env->GetStringUTFChars(cache_dir_jstring, nullptr);
+    cache_dir_string = cache_dir_cstr;
+    env->ReleaseStringUTFChars(cache_dir_jstring, cache_dir_cstr);
+    env->DeleteLocalRef(cache_dir_jstring);
+  }
+
+  app->activity->vm->DetachCurrentThread();
+
+  return cache_dir_string;
+}
+
 }  // namespace
 
 // Main function for android
@@ -660,7 +691,7 @@ void android_main(struct android_app* app) {
   // Restart logging with the correct level now that we've parsed the args.
   GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
 
-  CrashHandler crashHandler;
+  CrashHandler crashHandler(getCacheDir(app));
 
   std::thread waiting_thread;
   std::atomic<bool> thread_is_done(false);

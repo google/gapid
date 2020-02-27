@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -43,18 +42,9 @@ import (
 // remote SSH clients
 type Device interface {
 	bind.Device
-	// PushFile will transfer the local file at sourcePath to the remote
-	// machine at destPath
-	PushFile(ctx context.Context, sourcePath, destPath string) error
 	// PullFile will transfer the remote file at sourcePath to the local
 	// machine at destPath
 	PullFile(ctx context.Context, sourcePath, destPath string) error
-	// MakeTempDir makes a temporary directory, and returns the
-	// path, as well as a function to call to clean it up.
-	MakeTempDir(ctx context.Context) (string, app.Cleanup, error)
-	// WriteFile writes the given file into the given location on the remote device
-	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
-
 	// GetFilePermissions gets the unix permissions for the remote file
 	GetFilePermissions(ctx context.Context, path string) (os.FileMode, error)
 	// DefaultReplayCacheDir returns the default path for replay resource caches
@@ -244,6 +234,8 @@ func scanDevices(ctx context.Context, configurations []Configuration) error {
 			if device, err := GetConnectedDevice(ctx, cfg); err == nil {
 				registry.AddDevice(ctx, device)
 				cache[cfg.Name] = device.(*binding)
+			} else {
+				log.E(ctx, "Failed to connect to remote device %s: %v", cfg.Name, err)
 			}
 		}
 	}
@@ -319,6 +311,7 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Dial tcp: %s:%d with sshConfig: %v failed", c.Host, c.Port, sshConfig)
 	}
+
 	env := shell.NewEnv()
 
 	for _, e := range c.Env {
@@ -351,7 +344,7 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		return nil, log.Errf(ctx, nil, "Could not determine unix type")
 	}
 	b.os = kind
-	dir, cleanup, err := b.MakeTempDir(ctx)
+	dir, cleanup, err := b.TempDir(ctx)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Could not make temporary directory")
 	}

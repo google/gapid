@@ -15,8 +15,8 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.util.Loadable.Message.smile;
 import static com.google.gapid.util.Loadable.Message.info;
+import static com.google.gapid.util.Loadable.Message.smile;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
@@ -25,13 +25,14 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
+import com.google.gapid.models.ApiContext;
+import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Reports;
+import com.google.gapid.models.Settings;
 import com.google.gapid.models.Strings;
-import com.google.gapid.models.ApiContext;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
@@ -52,12 +53,11 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
@@ -75,7 +75,6 @@ public class ReportView extends Composite
   private final TreeViewer viewer;
   private final Composite detailsGroup;
   private Text reportDetails;
-  private Button runReport;
 
   // Need this flag to prevent a weird quirk where when opening a second
   // trace, the report of the previous trace will show up once everything
@@ -90,7 +89,7 @@ public class ReportView extends Composite
 
     Composite buttons = Widgets.withLayoutData(Widgets.createComposite(this, new FillLayout(SWT.VERTICAL)),
       new GridData(SWT.LEFT, SWT.TOP, false, false));
-    runReport = Widgets.createButton(buttons, "Generate Report", e-> {
+    Widgets.createButton(buttons, "Generate Report", e-> {
       models.reports.reload();
       ranReport = true;
     });
@@ -108,7 +107,7 @@ public class ReportView extends Composite
 
     detailsGroup = Widgets.createGroup(splitter, "Details");
 
-    splitter.setWeights(models.settings.reportSplitterWeights);
+    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Report));
 
     models.capture.addListener(this);
     models.reports.addListener(this);
@@ -141,13 +140,14 @@ public class ReportView extends Composite
         }
       }
     });
-    addListener(SWT.Dispose, e -> models.settings.reportSplitterWeights = splitter.getWeights());
+    addListener(SWT.Dispose, e ->
+      models.settings.setSplitterWeights(Settings.SplitterWeights.Report, splitter.getWeights()));
   }
 
   private Text getDetails() {
     // Lazy init'ed due to https://github.com/google/gapid/issues/2624
     if (reportDetails == null) {
-      reportDetails = new Text(detailsGroup, SWT.MULTI | SWT.READ_ONLY | SWT.H_SCROLL | SWT.V_SCROLL);
+      reportDetails = new Text(detailsGroup, SWT.MULTI | SWT.READ_ONLY | SWT.WRAP | SWT.V_SCROLL);
     }
     return reportDetails;
   }

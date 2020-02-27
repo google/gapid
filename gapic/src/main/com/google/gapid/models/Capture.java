@@ -73,11 +73,11 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
   }
 
   public boolean isGraphics() {
-    return isLoaded() && getData().capture.getType() == Service.TraceType.Graphics;
+    return isLoaded() && getData().isGraphics();
   }
 
   public boolean isPerfetto() {
-    return isLoaded() && getData().capture.getType() == Service.TraceType.Perfetto;
+    return isLoaded() && getData().isPerfetto();
   }
 
   @Override
@@ -98,11 +98,11 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
       File canonicalFile = file.getCanonicalFile();
       canonicalPath = canonicalFile.getAbsolutePath();
       if (canonicalFile.getParentFile() != null) {
-        settings.lastOpenDir = canonicalFile.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(canonicalFile.getParentFile().getAbsolutePath());
       }
     } catch (IOException e) {
       if (file.getParentFile() != null) {
-        settings.lastOpenDir = file.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(file.getParentFile().getAbsolutePath());
       }
 
       return Futures.immediateFailedFuture(
@@ -160,11 +160,11 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
       File canonicalFile = file.getCanonicalFile();
       canonicalPath = canonicalFile.getAbsolutePath();
       if (canonicalFile.getParentFile() != null) {
-        settings.lastOpenDir = canonicalFile.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(canonicalFile.getParentFile().getAbsolutePath());
       }
     } catch (IOException e) {
       if (file.getParentFile() != null) {
-        settings.lastOpenDir = file.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(file.getParentFile().getAbsolutePath());
       }
 
       LOG.log(Level.WARNING, "Failed to save trace", e);
@@ -226,6 +226,14 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
     public Data(Path.Capture path, Service.Capture capture) {
       this.path = path;
       this.capture = capture;
+    }
+
+    public boolean isGraphics() {
+      return capture != null && capture.getType() == Service.TraceType.Graphics;
+    }
+
+    public boolean isPerfetto() {
+      return capture != null && capture.getType() == Service.TraceType.Perfetto;
     }
   }
 

@@ -17,6 +17,7 @@ package replay
 import (
 	"context"
 
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -113,4 +114,37 @@ func (r Result) Transform(f func(in interface{}) (out interface{}, err error)) R
 type RequestAndResult struct {
 	Request Request
 	Result  Result
+}
+
+//TODO(apbodnar) move this into whatever eventually calls Profile()
+type SignalHandler struct {
+	StartSignal task.Signal
+	StartFunc   task.Task
+	ReadySignal task.Signal
+	ReadyFunc   task.Task
+	StopSignal  task.Signal
+	StopFunc    task.Task
+	DoneSignal  task.Signal
+	DoneFunc    task.Task
+	Written     int64
+	Err         error
+}
+
+func NewSignalHandler() *SignalHandler {
+	startSignal, startFunc := task.NewSignal()
+	readySignal, readyFunc := task.NewSignal()
+	stopSignal, stopFunc := task.NewSignal()
+	doneSignal, doneFunc := task.NewSignal()
+
+	handler := &SignalHandler{
+		StartSignal: startSignal,
+		StartFunc:   startFunc,
+		ReadySignal: readySignal,
+		ReadyFunc:   readyFunc,
+		StopSignal:  stopSignal,
+		StopFunc:    stopFunc,
+		DoneSignal:  doneSignal,
+		DoneFunc:    doneFunc,
+	}
+	return handler
 }

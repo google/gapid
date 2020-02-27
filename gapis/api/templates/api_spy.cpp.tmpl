@@ -236,7 +236,7 @@
         {{if not (GetAnnotation $ "synthetic")}}
           {{if not (IsVoid $.Return.Type)}}result = §{{end}}
           {{if (GetAnnotation $ "override")}}
-            SpyOverride_{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
+            SpyOverride_{{Template "CmdName" $}}(observer, {{Template "C++.CallArguments" $}});
           {{else if (GetAnnotation $ "indirect")}}
             {{Template "GetIndirectedCall" "Annotations" (GetAnnotation $ "indirect").Arguments "Element" ((index $.CallParameters 0).Name) "Function" (Macro "CmdName" $)}}({{Template "C++.CallArguments" $}});
           {{else}}
@@ -244,11 +244,13 @@
           {{end}}
         {{end}}
         {{if (GetAnnotation $ "threadsafe")}}
-        lock(observer);
+        lock();
+        observer->resume();
         {{end}}
 ¶
         {{if IsVoid $.Return.Type}}
-          observer->encodeAndDelete(new api::CmdCall);
+          api::CmdCall call;
+          observer->encode_message(&call);
         {{else}}
           observer->encode(cmd::{{.Name}}Call{§
           {{if IsString $.Return.Type}}gapil::String(arena(), result)

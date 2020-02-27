@@ -32,6 +32,7 @@ go_library(
         "cmd_observations.go",
         "cmd_service.go",
         "context.go",
+        "data_group.go",
         "doc.go",
         "graph_visualization.go",
         "labeled.go",
@@ -59,6 +60,7 @@ go_library(
         "//core/data/endian:go_default_library",
         "//core/data/generic:go_default_library",
         "//core/data/id:go_default_library",
+        "//core/data/pod:go_default_library",
         "//core/data/protoconv:go_default_library",
         "//core/data/protoutil:go_default_library",
         "//core/data/slice:go_default_library",
@@ -116,6 +118,7 @@ proto_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data/pod:pod_proto",
         "//core/image:image_proto",
         "//gapis/service/box:box_proto",
         "//gapis/service/path:path_proto",
@@ -136,6 +139,7 @@ go_proto_library(
     proto = ":api_proto",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data/pod:go_default_library",
         "//core/image:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",

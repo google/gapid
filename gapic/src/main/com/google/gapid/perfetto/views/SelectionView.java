@@ -15,30 +15,24 @@
  */
 package com.google.gapid.perfetto.views;
 
-import static com.google.gapid.widgets.Widgets.createGroup;
-
 import com.google.gapid.perfetto.models.Selection;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Group;
 
 /**
  * Displays information about the current selection.
  */
 public class SelectionView extends Composite implements State.Listener {
   private final State state;
-  private final Group group;
 
   public SelectionView(Composite parent, State state) {
     super(parent, SWT.NONE);
     this.state = state;
 
     setLayout(new FillLayout());
-
-    group = createGroup(this, "Selection");
 
     state.addListener(this);
   }
@@ -49,13 +43,13 @@ public class SelectionView extends Composite implements State.Listener {
   }
 
   @Override
-  public void onSelectionChanged(Selection selection) {
-    for (Control c : group.getChildren()) {
+  public void onSelectionChanged(Selection.MultiSelection selection) {
+    for (Control c : getChildren()) {
       c.dispose();
     }
 
     if (selection != null) {
-      selection.buildUi(group, state).requestLayout();
+      selection.buildUi(this, state).requestLayout();
     }
   }
 }

@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -28,11 +29,11 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
-	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/trace"
 )
 
 var (
@@ -141,7 +142,21 @@ func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 	return usage, false
 }
 
-func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+// Add VK_BUFFER_USAGE_TRANSFER_SRC_BIT to the buffer usage bit.
+// TODO(renfeng) using shader to do the copy instead of change the usage bit.
+func patchBufferusage(usage VkBufferUsageFlags) (VkBufferUsageFlags, bool) {
+	hasBit := func(flag VkBufferUsageFlags, bit VkBufferUsageFlagBits) bool {
+		return (uint32(flag) & uint32(bit)) == uint32(bit)
+	}
+
+	if hasBit(usage, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT) {
+		return usage, false
+	}
+
+	return VkBufferUsageFlags(uint32(usage) | uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)), true
+}
+
+func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -180,8 +195,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			for _, w := range observations.Writes {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newCmd)
-			return
+			return out.MutateAndWrite(ctx, id, newCmd)
 		}
 	} else if swapchain, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		pinfo := swapchain.PCreateInfo()
@@ -211,8 +225,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			for _, w := range observations.Writes {
 				newCmd.AddWrite(w.Range, w.ID)
 			}
-			out.MutateAndWrite(ctx, id, newCmd)
-			return
+			return out.MutateAndWrite(ctx, id, newCmd)
 		}
 	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok && !t.imagesOnly {
 		pInfo := createRenderPass.PCreateInfo()
@@ -228,8 +241,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		// Returns if no attachment description needs to be changed
 		if !changed {
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 		// Build new attachments data, new create info and new command
 		newAttachments := s.AllocDataOrPanic(ctx, attachments)
@@ -253,14 +265,12 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		for _, w := range createRenderPass.Extras().Observations().Writes {
 			newCmd.AddWrite(w.Range, w.ID)
 		}
-		out.MutateAndWrite(ctx, id, newCmd)
-		return
+		return out.MutateAndWrite(ctx, id, newCmd)
 	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok && !t.imagesOnly {
 		if e.PPhysicalDevices() == 0 {
 			// Querying for the number of devices.
 			// No changes needed here.
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 		l := s.MemoryLayout
 		cmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
@@ -276,15 +286,40 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		for _, e := range cmd.Extras().All() {
 			newEnumerate.Extras().Add(e)
 		}
-		out.MutateAndWrite(ctx, id, newEnumerate)
-		return
+		return out.MutateAndWrite(ctx, id, newEnumerate)
+	} else if buffer, ok := cmd.(*VkCreateBuffer); ok {
+		pinfo := buffer.PCreateInfo()
+		info := pinfo.MustRead(ctx, buffer, s, nil)
+
+		if newUsage, changed := patchBufferusage(info.Usage()); changed {
+
+			info.SetUsage(newUsage)
+			newInfo := s.AllocDataOrPanic(ctx, info)
+			newCmd := cb.VkCreateBuffer(buffer.Device(), newInfo.Ptr(), buffer.PAllocator(), buffer.PBuffer(), buffer.Result())
+			for _, e := range buffer.Extras().All() {
+				if _, ok := e.(*api.CmdObservations); !ok {
+					newCmd.Extras().Add(e)
+				}
+			}
+
+			observations := buffer.Extras().Observations()
+			for _, r := range observations.Reads {
+				newCmd.AddRead(r.Range, r.ID)
+			}
+			newCmd.AddRead(newInfo.Data())
+			for _, w := range observations.Writes {
+				newCmd.AddWrite(w.Range, w.ID)
+			}
+			return out.MutateAndWrite(ctx, id, newCmd)
+		}
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer)    {}
-func (t *makeAttachementReadable) PreLoop(ctx context.Context, out transform.Writer)  {}
-func (t *makeAttachementReadable) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) error { return nil }
+func (t *makeAttachementReadable) PreLoop(ctx context.Context, out transform.Writer)     {}
+func (t *makeAttachementReadable) PostLoop(ctx context.Context, out transform.Writer)    {}
+func (t *makeAttachementReadable) BuffersCommands() bool                                 { return false }
 
 func buildReplayEnumeratePhysicalDevices(
 	ctx context.Context, s *api.GlobalState, cb CommandBuilder, instance VkInstance,
@@ -309,7 +344,7 @@ func buildReplayEnumeratePhysicalDevices(
 // whose destroying targets are not recorded in the state.
 type dropInvalidDestroy struct{ tag string }
 
-func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -323,12 +358,12 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	case *VkDestroyInstance:
 		if !GetState(s).Instances().Contains(cmd.Instance()) {
 			warnDropCmd(cmd.Instance())
-			return
+			return nil
 		}
 	case *VkDestroyDevice:
 		if !GetState(s).Devices().Contains(cmd.Device()) {
 			warnDropCmd(cmd.Device())
-			return
+			return nil
 		}
 	case *VkFreeCommandBuffers:
 		cmdBufCount := cmd.CommandBufferCount()
@@ -347,7 +382,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 			if len(newCmdBufs) == 0 {
 				// no need to have this command
 				warnDropCmd(cmdBufs)
-				return
+				return nil
 			}
 			if len(newCmdBufs) != len(cmdBufs) {
 				// need to modify the command to drop the command buffers not
@@ -356,8 +391,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 				newCmdBufsData := s.AllocDataOrPanic(ctx, newCmdBufs)
 				defer newCmdBufsData.Free()
 				newCmd := cb.VkFreeCommandBuffers(cmd.Device(), cmd.CommandPool(), uint32(len(newCmdBufs)), newCmdBufsData.Ptr()).AddRead(newCmdBufsData.Data())
-				out.MutateAndWrite(ctx, id, newCmd)
-				return
+				return out.MutateAndWrite(ctx, id, newCmd)
 			}
 			// No need to modify the command, just mutate and write the command
 			// like others.
@@ -365,53 +399,53 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	case *VkFreeMemory:
 		if !GetState(s).DeviceMemories().Contains(cmd.Memory()) {
 			warnDropCmd(cmd.Memory())
-			return
+			return nil
 		}
 	case *VkDestroyBuffer:
 		if !GetState(s).Buffers().Contains(cmd.Buffer()) {
 			warnDropCmd(cmd.Buffer())
-			return
+			return nil
 		}
 	case *VkDestroyBufferView:
 		if !GetState(s).BufferViews().Contains(cmd.BufferView()) {
 			warnDropCmd(cmd.BufferView())
-			return
+			return nil
 		}
 	case *VkDestroyImage:
 		if !GetState(s).Images().Contains(cmd.Image()) {
 			warnDropCmd(cmd.Image())
-			return
+			return nil
 		}
 	case *VkDestroyImageView:
 		if !GetState(s).ImageViews().Contains(cmd.ImageView()) {
 			warnDropCmd(cmd.ImageView())
-			return
+			return nil
 		}
 	case *VkDestroyShaderModule:
 		if !GetState(s).ShaderModules().Contains(cmd.ShaderModule()) {
 			warnDropCmd(cmd.ShaderModule())
-			return
+			return nil
 		}
 	case *VkDestroyPipeline:
 		if !GetState(s).GraphicsPipelines().Contains(cmd.Pipeline()) &&
 			!GetState(s).ComputePipelines().Contains(cmd.Pipeline()) {
 			warnDropCmd(cmd.Pipeline())
-			return
+			return nil
 		}
 	case *VkDestroyPipelineLayout:
 		if !GetState(s).PipelineLayouts().Contains(cmd.PipelineLayout()) {
 			warnDropCmd(cmd.PipelineLayout())
-			return
+			return nil
 		}
 	case *VkDestroyPipelineCache:
 		if !GetState(s).PipelineCaches().Contains(cmd.PipelineCache()) {
 			warnDropCmd(cmd.PipelineCache())
-			return
+			return nil
 		}
 	case *VkDestroySampler:
 		if !GetState(s).Samplers().Contains(cmd.Sampler()) {
 			warnDropCmd(cmd.Sampler())
-			return
+			return nil
 		}
 	case *VkFreeDescriptorSets:
 		descSetCount := cmd.DescriptorSetCount()
@@ -430,7 +464,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 			if len(newDescSets) == 0 {
 				// no need to have this command
 				warnDropCmd(descSets)
-				return
+				return nil
 			}
 			if len(newDescSets) != len(descSets) {
 				// need to modify the command to drop the command buffers not
@@ -441,8 +475,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 				newCmd := cb.VkFreeDescriptorSets(
 					cmd.Device(), cmd.DescriptorPool(), uint32(len(newDescSets)),
 					newDescSetsData.Ptr(), VkResult_VK_SUCCESS).AddRead(newDescSetsData.Data())
-				out.MutateAndWrite(ctx, id, newCmd)
-				return
+				return out.MutateAndWrite(ctx, id, newCmd)
 			}
 			// No need to modify the command, just mutate and write the command
 			// like others.
@@ -450,82 +483,82 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	case *VkDestroyDescriptorSetLayout:
 		if !GetState(s).DescriptorSetLayouts().Contains(cmd.DescriptorSetLayout()) {
 			warnDropCmd(cmd.DescriptorSetLayout())
-			return
+			return nil
 		}
 	case *VkDestroyDescriptorPool:
 		if !GetState(s).DescriptorPools().Contains(cmd.DescriptorPool()) {
 			warnDropCmd(cmd.DescriptorPool())
-			return
+			return nil
 		}
 	case *VkDestroyFence:
 		if !GetState(s).Fences().Contains(cmd.Fence()) {
 			warnDropCmd(cmd.Fence())
-			return
+			return nil
 		}
 	case *VkDestroySemaphore:
 		if !GetState(s).Semaphores().Contains(cmd.Semaphore()) {
 			warnDropCmd(cmd.Semaphore())
-			return
+			return nil
 		}
 	case *VkDestroyEvent:
 		if !GetState(s).Events().Contains(cmd.Event()) {
 			warnDropCmd(cmd.Event())
-			return
+			return nil
 		}
 	case *VkDestroyQueryPool:
 		if !GetState(s).QueryPools().Contains(cmd.QueryPool()) {
 			warnDropCmd(cmd.QueryPool())
-			return
+			return nil
 		}
 	case *VkDestroyFramebuffer:
 		if !GetState(s).Framebuffers().Contains(cmd.Framebuffer()) {
 			warnDropCmd(cmd.Framebuffer())
-			return
+			return nil
 		}
 	case *VkDestroyRenderPass:
 		if !GetState(s).RenderPasses().Contains(cmd.RenderPass()) {
 			warnDropCmd(cmd.RenderPass())
-			return
+			return nil
 		}
 	case *VkDestroyCommandPool:
 		if !GetState(s).CommandPools().Contains(cmd.CommandPool()) {
 			warnDropCmd(cmd.CommandPool())
-			return
+			return nil
 		}
 	case *VkDestroySurfaceKHR:
 		if !GetState(s).Surfaces().Contains(cmd.Surface()) {
 			warnDropCmd(cmd.Surface())
-			return
+			return nil
 		}
 	case *VkDestroySwapchainKHR:
 		if !GetState(s).Swapchains().Contains(cmd.Swapchain()) {
 			warnDropCmd(cmd.Swapchain())
-			return
+			return nil
 		}
 	case *VkDestroyDebugReportCallbackEXT:
 		if !GetState(s).DebugReportCallbacks().Contains(cmd.Callback()) {
 			warnDropCmd(cmd.Callback())
-			return
+			return nil
 		}
 	}
-	out.MutateAndWrite(ctx, id, cmd)
-	return
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer)    {}
-func (t *dropInvalidDestroy) PreLoop(ctx context.Context, out transform.Writer)  {}
-func (t *dropInvalidDestroy) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer) error { return nil }
+func (t *dropInvalidDestroy) PreLoop(ctx context.Context, out transform.Writer)     {}
+func (t *dropInvalidDestroy) PostLoop(ctx context.Context, out transform.Writer)    {}
+func (t *dropInvalidDestroy) BuffersCommands() bool                                 { return false }
 
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, cmd)
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) error {
 	s := out.State()
 	so := getStateObject(s)
 	id := api.CmdNoID
@@ -535,127 +568,184 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 
 	// Wait all queues in all devices to finish their jobs first.
 	for handle := range so.Devices().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDeviceWaitIdle(handle, VkResult_VK_SUCCESS))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDeviceWaitIdle(handle, VkResult_VK_SUCCESS)); err != nil {
+			return err
+		}
 	}
 
 	// Synchronization primitives.
 	for handle, object := range so.Events().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyEvent(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyEvent(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Fences().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyFence(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyFence(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Semaphores().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// SamplerYcbcrConversions
 	for handle, object := range so.SamplerYcbcrConversions().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySamplerYcbcrConversion(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySamplerYcbcrConversion(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Framebuffers, samplers.
 	for handle, object := range so.Framebuffers().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Samplers().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySampler(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Descriptor sets.
 	for handle, object := range so.DescriptorPools().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorPool(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.DescriptorSetLayouts().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDescriptorSetLayout(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Buffers.
 	for handle, object := range so.BufferViews().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyBufferView(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyBufferView(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.Buffers().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyBuffer(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Shader modules.
 	for handle, object := range so.ShaderModules().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyShaderModule(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyShaderModule(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Pipelines.
 	for handle, object := range so.GraphicsPipelines().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.ComputePipelines().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipeline(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.PipelineLayouts().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineLayout(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineLayout(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	for handle, object := range so.PipelineCaches().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineCache(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyPipelineCache(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Render passes.
 	for handle, object := range so.RenderPasses().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyRenderPass(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyRenderPass(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	for handle, object := range so.QueryPools().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyQueryPool(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyQueryPool(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Command buffers.
 	for handle, object := range so.CommandPools().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyCommandPool(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyCommandPool(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Swapchains.
 	for handle, object := range so.Swapchains().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySwapchainKHR(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySwapchainKHR(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Memories.
 	for handle, object := range so.DeviceMemories().All() {
-		out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkFreeMemory(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Images
 	for handle, object := range so.ImageViews().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyImageView(object.Device(), handle, p)); err != nil {
+			return err
+		}
 	}
 	// Note: so.Images also contains Swapchain images. We do not want
 	// to delete those, as that must be handled by VkDestroySwapchainKHR
 	for handle, object := range so.Images().All() {
 		if !object.IsSwapchainImage() {
-			out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device(), handle, p))
+			if err := out.MutateAndWrite(ctx, id, cb.VkDestroyImage(object.Device(), handle, p)); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Devices.
 	for handle := range so.Devices().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDevice(handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDevice(handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Surfaces.
 	for handle, object := range so.Surfaces().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroySurfaceKHR(object.Instance(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Debug report callbacks
 	for handle, object := range so.DebugReportCallbacks().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyDebugReportCallbackEXT(object.Instance(), handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyDebugReportCallbackEXT(object.Instance(), handle, p)); err != nil {
+			return err
+		}
 	}
 
 	// Instances.
 	for handle := range so.Instances().All() {
-		out.MutateAndWrite(ctx, id, cb.VkDestroyInstance(handle, p))
+		if err := out.MutateAndWrite(ctx, id, cb.VkDestroyInstance(handle, p)); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *destroyResourcesAtEOS) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *destroyResourcesAtEOS) BuffersCommands() bool                              { return false }
 
 func newDisplayToSurface() *DisplayToSurface {
 	return &DisplayToSurface{
@@ -665,7 +755,7 @@ func newDisplayToSurface() *DisplayToSurface {
 
 // DisplayToSurface is a transformation that enables rendering during replay to
 // the original surface.
-func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	switch c := cmd.(type) {
 	case *VkCreateSwapchainKHR:
 		newCmd := c.clone(out.State().Arena)
@@ -673,8 +763,7 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 		// Add an extra to indicate to custom_replay to add a flag to
 		// the virtual swapchain pNext
 		newCmd.extras = append(api.CmdExtras{t}, cmd.Extras().All()...)
-		out.MutateAndWrite(ctx, id, newCmd)
-		return
+		return out.MutateAndWrite(ctx, id, newCmd)
 	case *VkCreateAndroidSurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
@@ -695,17 +784,22 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
 		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR)
+	case *VkCreateMacOSSurfaceMVK:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK)
 	case *VkCreateStreamDescriptorSurfaceGGP:
 		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
 		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP)
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer)    {}
-func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)  {}
-func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) error { return nil }
+func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)     {}
+func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer)    {}
+func (t *DisplayToSurface) BuffersCommands() bool                                 { return false }
 
 // issuesConfig is a replay.Config used by issuesRequests.
 type issuesConfig struct {
@@ -715,6 +809,7 @@ type issuesConfig struct {
 type issuesRequest struct {
 	out              chan<- replay.Issue
 	displayToSurface bool
+	loopCount        int32
 }
 
 type timestampsConfig struct {
@@ -733,7 +828,10 @@ func uniqueConfig() replay.Config {
 }
 
 type profileRequest struct {
-	overrides *path.OverrideConfig
+	traceOptions   *service.TraceOptions
+	handler        *replay.SignalHandler
+	buffer         *bytes.Buffer
+	handleMappings *map[uint64][]service.VulkanHandleMappingItem
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -746,8 +844,7 @@ func (a API) GetInitialPayload(ctx context.Context,
 	initialCmds, im, _ := initialcmds.InitialCommands(ctx, capture)
 	out.State().Allocator.ReserveRanges(im)
 
-	transforms.Transform(ctx, initialCmds, out)
-	return nil
+	return transforms.TransformAll(ctx, initialCmds, uint64(len(initialCmds)), out)
 }
 
 func (a API) CleanupResources(ctx context.Context,
@@ -755,8 +852,7 @@ func (a API) CleanupResources(ctx context.Context,
 	out transform.Writer) error {
 	transforms := transform.Transforms{}
 	transforms.Add(&destroyResourcesAtEOS{})
-	transforms.Transform(ctx, []api.Cmd{}, out)
-	return nil
+	return transforms.TransformAll(ctx, []api.Cmd{}, 0, out)
 }
 
 func (a API) Replay(
@@ -771,7 +867,6 @@ func (a API) Replay(
 	if a.GetReplayPriority(ctx, device, c.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
-
 	optimize := !config.DisableDeadCodeElimination
 
 	cmds := c.Commands
@@ -781,6 +876,7 @@ func (a API) Replay(
 	transforms.Add(makeReadable)
 	transforms.Add(&dropInvalidDestroy{tag: "Replay"})
 
+	splitter := NewCommandSplitter(ctx)
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}
 	// Gathers and reports any issues found.
@@ -847,6 +943,17 @@ func (a API) Replay(
 		return numInitialCmdWithoutOpt, nil
 	}
 
+	frameLoopEndCmdID := func(cmds []api.Cmd) api.CmdID {
+		lastCmdID := api.CmdID(0)
+		for i := len(cmds) - 1; i >= 0; i-- {
+			if cmds[i].Terminated() {
+				lastCmdID = api.CmdID(i)
+				break
+			}
+		}
+		return lastCmdID
+	}
+
 	wire := false
 	doDisplayToSurface := false
 	var overdraw *stencilOverdraw
@@ -856,87 +963,80 @@ func (a API) Replay(
 		switch req := rr.Request.(type) {
 		case issuesRequest:
 			if issues == nil {
-				n, err := expandCommands(false)
-				if err != nil {
-					return err
-				}
-				issues = newFindIssues(ctx, c, n)
+				issues = newFindIssues(ctx, c)
 			}
 			issues.AddResult(rr.Result)
 			optimize = false
 			if req.displayToSurface {
 				doDisplayToSurface = true
 			}
+			willLoop := req.loopCount > 1
+			if willLoop {
+				frameloop = newFrameLoop(ctx, c, api.CmdID(0), frameLoopEndCmdID(cmds), req.loopCount)
+			}
 		case timestampsRequest:
 			if timestamps == nil {
-				n, err := expandCommands(false)
-				if err != nil {
-					return err
-				}
-				willLoop := req.loopCount > 0
+				willLoop := req.loopCount > 1
 				if willLoop {
-					frameloop = newFrameLoop(ctx, c, 0, api.CmdID(len(cmds)-1), req.loopCount)
+					frameloop = newFrameLoop(ctx, c, api.CmdID(0), frameLoopEndCmdID(cmds), req.loopCount)
 				}
 
-				timestamps = newQueryTimestamps(ctx, c, n, cmds, willLoop, req.handler)
+				timestamps = newQueryTimestamps(ctx, c, cmds, willLoop, req.handler)
 			}
 			timestamps.AddResult(rr.Result)
 			optimize = false
 		case framebufferRequest:
-
 			cfg := cfg.(drawConfig)
 			if cfg.disableReplayOptimization {
 				optimize = false
 			}
-			extraCommands, err := expandCommands(optimize)
-			if err != nil {
-				return err
-			}
-			cmdid := req.after[0] + uint64(extraCommands)
-			// TODO(subcommands): Add subcommand support here
-			if err := earlyTerminator.Add(ctx, extraCommands, api.CmdID(cmdid), req.after[1:]); err != nil {
-				return err
-			}
 
-			after := api.CmdID(cmdid)
-			if len(req.after) > 1 {
-				// If we are dealing with subcommands, 2 things are true.
-				// 2) the earlyTerminator.lastRequest is the last command we have to actually run.
-				//     Either the VkQueueSubmit, or the VkSetEvent if synchronization comes in to play
-				after = earlyTerminator.lastRequest
-			}
+			cmdID := req.after[0]
 
 			if optimize {
 				// Should have been built in expandCommands()
 				if dceBuilder != nil {
-					dceBuilder.Request(ctx, api.SubCmdIdx{cmdid})
+					dceBuilder.Request(ctx, api.SubCmdIdx{cmdID})
 				} else {
 					optimize = false
 				}
 			}
 
+			if cfg.drawMode == service.DrawMode_OVERDRAW {
+				// TODO(subcommands): Add subcommand support here
+				if err := earlyTerminator.Add(ctx, api.CmdID(cmdID), req.after[1:]); err != nil {
+					return err
+				}
+
+				if overdraw == nil {
+					overdraw = newStencilOverdraw()
+				}
+				overdraw.add(ctx, req.after, intent.Capture, rr.Result)
+				break
+			}
+			if err := earlyTerminator.Add(ctx, api.CmdID(cmdID), api.SubCmdIdx{}); err != nil {
+				return err
+			}
+			subIdx := append(api.SubCmdIdx{}, req.after...)
+			splitter.Split(ctx, subIdx)
 			switch cfg.drawMode {
 			case service.DrawMode_WIREFRAME_ALL:
 				wire = true
 			case service.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
-			case service.DrawMode_OVERDRAW:
-				if overdraw == nil {
-					overdraw = newStencilOverdraw()
-				}
-				overdraw.add(ctx, uint64(extraCommands), req.after, intent.Capture, rr.Result)
+			// Overdraw is handled above, since it breaks out of the normal read flow.
+			default:
 			}
 
-			if cfg.drawMode != service.DrawMode_OVERDRAW {
-				switch req.attachment {
-				case api.FramebufferAttachment_Depth:
-					readFramebuffer.Depth(after, req.framebufferIndex, rr.Result)
-				case api.FramebufferAttachment_Stencil:
-					return fmt.Errorf("Stencil attachments are not currently supported")
-				default:
-					readFramebuffer.Color(after, req.width, req.height, req.framebufferIndex, rr.Result)
-				}
+			switch req.attachment {
+			case api.FramebufferAttachment_Depth:
+				readFramebuffer.Depth(ctx, subIdx, req.framebufferIndex, rr.Result)
+			case api.FramebufferAttachment_Stencil:
+				return fmt.Errorf("Stencil attachments are not currently supported")
+			default:
+				readFramebuffer.Color(ctx, subIdx, req.width, req.height, req.framebufferIndex, rr.Result)
 			}
+
 			if req.displayToSurface {
 				doDisplayToSurface = true
 			}
@@ -944,28 +1044,19 @@ func (a API) Replay(
 			if profile == nil {
 				profile = &replay.EndOfReplay{}
 			}
+			numInitialCommands, err := expandCommands(false)
+			if err != nil {
+				return err
+			}
 			profile.AddResult(rr.Result)
 			makeReadable.imagesOnly = true
 			optimize = false
-			if req.overrides.GetViewportSize() {
-				transforms.Add(minimizeViewport(ctx))
-			}
-			if req.overrides.GetTextureSize() {
-				transforms.Add(minimizeTextures(ctx))
-			}
-			if req.overrides.GetSampling() {
-				transforms.Add(simplifySampling(ctx))
-			}
-			if req.overrides.GetFragmentShader() {
-				transforms.Add(simplifyFragmentShader(ctx))
-			}
-			if req.overrides.GetVertexCount() {
-				transforms.Add(setPrimitiveCountToOne(ctx))
-			}
+			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer, api.CmdID(numInitialCommands)))
+			transforms.Add(&profilingLayers{})
 		}
 	}
 
-	_, err = expandCommands(optimize)
+	numberOfInitialCmds, err := expandCommands(optimize)
 	if err != nil {
 		return err
 	}
@@ -989,6 +1080,9 @@ func (a API) Replay(
 
 	if issues != nil {
 		transforms.Add(issues) // Issue reporting required.
+		if frameloop != nil {
+			transforms.Add(frameloop)
+		}
 	} else if profile != nil {
 		transforms.Add(profile)
 	} else {
@@ -1008,6 +1102,7 @@ func (a API) Replay(
 	}
 
 	if issues == nil && profile == nil {
+		transforms.Add(splitter)
 		transforms.Add(readFramebuffer, injector)
 	}
 
@@ -1041,11 +1136,10 @@ func (a API) Replay(
 		transforms.Add(transform.NewCaptureLog(ctx, c, "replay_log.gfxtrace"))
 	}
 	if config.LogMappingsToFile {
-		transforms.Add(replay.NewMappingPrinter(ctx, "mappings.txt"))
+		transforms.Add(replay.NewMappingExporterWithPrint(ctx, "mappings.txt"))
 	}
 
-	transforms.Transform(ctx, cmds, out)
-	return nil
+	return transforms.TransformAll(ctx, cmds, uint64(numberOfInitialCmds), out)
 }
 
 func (a API) QueryFramebufferAttachment(
@@ -1061,42 +1155,28 @@ func (a API) QueryFramebufferAttachment(
 	displayToSurface bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
-	s, err := resolve.SyncData(ctx, intent.Capture)
-	if err != nil {
-		return nil, err
-	}
 	beginIndex := api.CmdID(0)
 	endIndex := api.CmdID(0)
 	subcommand := ""
-	if len(after) == 1 {
-		a := api.CmdID(after[0])
-		// If we are not running subcommands we can probably batch
-		for _, v := range s.SortedKeys() {
-			if v > a {
-				break
-			}
-			for _, k := range s.CommandRanges[v].SortedKeys() {
-				if k > a {
-					beginIndex = v
-					endIndex = k
+	// We cant break up overdraw right now, but we can break up
+	// everything else.
+	if drawMode == service.DrawMode_OVERDRAW {
+		if len(after) > 1 { // If we are replaying subcommands, then we can't batch at all
+			beginIndex = api.CmdID(after[0])
+			endIndex = api.CmdID(after[0])
+			for i, j := range after[1:] {
+				if i != 0 {
+					subcommand += ":"
 				}
+				subcommand += fmt.Sprintf("%d", j)
 			}
-		}
-	} else { // If we are replaying subcommands, then we can't batch at all
-		beginIndex = api.CmdID(after[0])
-		endIndex = api.CmdID(after[0])
-		for i, j := range after[1:] {
-			if i != 0 {
-				subcommand += ":"
-			}
-			subcommand += fmt.Sprintf("%d", j)
 		}
 	}
 
 	c := drawConfig{beginIndex, endIndex, subcommand, drawMode, disableReplayOptimization}
 	out := make(chan imgRes, 1)
 	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out, displayToSurface: displayToSurface}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1110,11 +1190,13 @@ func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
+	loopCount int32,
 	displayToSurface bool,
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
-	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface, loopCount: loopCount}
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
+
 	if err != nil {
 		return nil, err
 	}
@@ -1135,7 +1217,7 @@ func (a API) QueryTimestamps(
 	c, r := timestampsConfig{}, timestampsRequest{
 		handler:   handler,
 		loopCount: loopCount}
-	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
 	if err != nil {
 		return err
 	}
@@ -1150,11 +1232,16 @@ func (a API) Profile(
 	intent replay.Intent,
 	mgr replay.Manager,
 	hints *service.UsageHints,
-	overrides *path.OverrideConfig) error {
+	traceOptions *service.TraceOptions) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()
-	r := profileRequest{overrides}
+	handler := replay.NewSignalHandler()
+	var buffer bytes.Buffer
+	mappings := make(map[uint64][]service.VulkanHandleMappingItem)
+	r := profileRequest{traceOptions, handler, &buffer, &mappings}
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
+	handler.DoneSignal.Wait(ctx)
 
-	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
-	return err
+	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer, &mappings)
+	return d, err
 }

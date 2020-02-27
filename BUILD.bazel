@@ -25,9 +25,12 @@ load("//tools/build:rules.bzl", "copy_to", "copy_tree")
 
 # gazelle:prefix github.com/google/gapid
 # gazelle:resolve go    go    llvm/bindings/go/llvm                        @llvm//:go
-# gazelle:resolve go    go    perfetto/config                              @gapid//tools/build/third_party/perfetto:config_go_proto
+# gazelle:resolve go    go    protos/perfetto/common                       //tools/build/third_party/perfetto:common_go_proto
+# gazelle:resolve go    go    protos/perfetto/config                       //tools/build/third_party/perfetto:config_go_proto
+# gazelle:resolve go    go    protos/perfetto/ipc                          //tools/build/third_party/perfetto:ipc_go_proto
 # gazelle:resolve proto proto protos/perfetto/config/perfetto_config.proto @perfetto//:protos_perfetto_config_merged_config_protos
 # gazelle:resolve proto go    protos/perfetto/config/perfetto_config.proto @gapid//tools/build/third_party/perfetto:config_go_proto
+# gazelle:exclude gapic
 
 gazelle(
     name = "gazelle",
@@ -85,6 +88,20 @@ filegroup(
         "//tools/build:linux": [":perfetto"],
         "//tools/build:windows": [],
         "//tools/build:darwin": [],
+    }),
+)
+
+filegroup(
+    name = "symbols",
+    srcs = [
+        "//cmd/gapir/cc:gapir.sym",
+    ] + select({
+        "//tools/build:linux": [
+            "//gapidapk/android/apk:arm64-v8a_gapir.sym",
+            "//gapidapk/android/apk:armeabi-v7a_gapir.sym",
+            "//gapidapk/android/apk:x86_gapir.sym",
+        ],
+        "//conditions:default": [],
     }),
 )
 
@@ -179,7 +196,14 @@ copy_to(
     ] + select({
         "@gapid//tools/build:linux": [
             "//core/vulkan/vk_api_timing_layer/cc:json",
-            "//core/vulkan/vk_api_timing_layer/cc:libVkLayer_APITiming",
+            "//core/vulkan/vk_api_timing_layer/cc:libVkLayer_CPUTiming",
+        ],
+        "//conditions:default": [
+        ],
+    }) + select({
+        "@gapid//tools/build:linux": [
+            "//core/vulkan/vk_memory_tracker_layer/cc:json",
+            "//core/vulkan/vk_memory_tracker_layer/cc:libVkLayer_MemoryTracker",
         ],
         "//conditions:default": [
         ],
@@ -234,7 +258,7 @@ test_suite(
         "//core/fault/stacktrace/crunch:go_default_test",
         "//core/git:go_default_test",
         "//core/image:go_default_test",
-        "//core/java/jdbg:go_default_test",
+        # "//core/java/jdbg:go_default_test", # disabled: flaky on Kokoro
         "//core/java/jdwp:go_default_test",
         "//core/langsvr:go_default_test",
         "//core/log:go_default_test",

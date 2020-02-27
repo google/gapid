@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.google.gapid.perfetto.canvas;
 
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
@@ -35,13 +50,13 @@ public class PanelCanvas extends Canvas {
   private Point lastMouse = new Point(-1, -1);
 
   public PanelCanvas(Composite parent, int style, Theme theme, Panel panel) {
-    super(parent, style | SWT.V_SCROLL | SWT.NO_BACKGROUND | SWT.DOUBLE_BUFFERED);
+    super(parent, style | SWT.NO_BACKGROUND | SWT.DOUBLE_BUFFERED);
     this.panel = panel;
     this.context = new RenderContext.Global(theme, this);
 
     addListener(SWT.Paint, e -> {
       long start = System.nanoTime();
-      e.gc.setBackground(getDisplay().getSystemColor(colors().background));
+      e.gc.setBackground(context.getColor(colors().background));
       Rectangle size = e.gc.getClipping();
       e.gc.fillRectangle(size);
       Map<String, Long> traces;
@@ -127,7 +142,7 @@ public class PanelCanvas extends Canvas {
         }
         return;
       }
-      hover = panel.onMouseMove(context, x, y);
+      hover = panel.onMouseMove(context, x, y, mods);
       if (!dragging) {
         setCursor(hover.getCursor(getDisplay()));
       }
@@ -140,7 +155,7 @@ public class PanelCanvas extends Canvas {
   public void structureHasChanged() {
     Rectangle size = getClientArea();
     panel.setSize(size.width, size.height);
-    redraw(Area.FULL, false);
+    redraw(Area.FULL, true);
   }
 
   public void redraw(Area area, boolean refreshMouse) {

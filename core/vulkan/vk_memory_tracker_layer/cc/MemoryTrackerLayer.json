@@ -1,0 +1,15 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "MemoryTracker",
+    "type": "GLOBAL",
+    "library_path": "<library>",
+    "api_version" : "1.1.0",
+    "implementation_version": "1",
+    "description" : "Vulkan Memory Tracker Layer",
+    "functions": {
+      "vkGetDeviceProcAddr": "MemoryTrackerGetDeviceProcAddr",
+      "vkGetInstanceProcAddr": "MemoryTrackerGetInstanceProcAddr"
+    }
+  }
+}

@@ -21,7 +21,7 @@
 
 {{define "convert.go"}}
   {{Global "Store" (printf "%s_pb" (Global "OutputDir"))}}
-  §{{Copyright "generated" "apic"}}§
+  §{{template "GeneratedCodeWarning"}}§
   package {{Global "OutputDir"}}¶
   ¶
   import (»¶

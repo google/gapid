@@ -36,6 +36,14 @@ type Device interface {
 	Forward(ctx context.Context, local, device Port) error
 	// RemoveForward removes a port forward made by Forward.
 	RemoveForward(ctx context.Context, local Port) error
+	// GraphicsDriver queries and returns info on the preview graphics driver.
+	GraphicsDriver(ctx context.Context) (Driver, error)
+}
+
+// Driver contains the information about a graphics driver.
+type Driver struct {
+	Package string
+	Path    string
 }
 
 // DeviceList is a list of devices.

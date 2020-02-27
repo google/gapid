@@ -13,6 +13,8 @@
 
 **[Download the latest version of GAPID here.](https://github.com/google/gapid/releases)**
 
+*Unstable* developer releases are [here](https://github.com/google/gapid-dev-releases/releases).
+
 ## Documentation
 
 **[User documentation can be found at gapid.dev](https://gapid.dev)**

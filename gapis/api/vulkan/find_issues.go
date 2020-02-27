@@ -63,15 +63,13 @@ func isValidationLayer(n string) bool {
 type findIssues struct {
 	replay.EndOfReplay
 	state           *api.GlobalState
-	numInitialCmds  int
 	issues          []replay.Issue
 	reportCallbacks map[VkInstance]VkDebugReportCallbackEXT
 }
 
-func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int) *findIssues {
+func newFindIssues(ctx context.Context, c *capture.GraphicsCapture) *findIssues {
 	t := &findIssues{
 		state:           c.NewState(ctx),
-		numInitialCmds:  numInitialCmds,
 		reportCallbacks: map[VkInstance]VkDebugReportCallbackEXT{},
 	}
 	t.state.OnError = func(err interface{}) {
@@ -82,13 +80,13 @@ func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, numInitialCm
 	return t
 }
 
-func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	ctx = log.Enter(ctx, "findIssues")
 
 	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */, nil /* no watcher */)
 	if mutateErr != nil {
 		// Ignore since downstream transform layers can only consume valid commands
-		return
+		return nil
 	}
 
 	s := out.State()
@@ -261,16 +259,19 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		))
 		t.reportCallbacks[inst] = callbackHandle
 	}
+	return nil
 }
 
-func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
+func (t *findIssues) Flush(ctx context.Context, out transform.Writer) error {
 	cb := CommandBuilder{Thread: 0, Arena: out.State().Arena}
 	for inst, ch := range t.reportCallbacks {
-		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch))
+		if err := out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch)); err != nil {
+			return err
+		}
 		// It is safe to delete keys in loop in Go
 		delete(t.reportCallbacks, inst)
 	}
-	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+	err := out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		return b.RegisterNotificationReader(builder.IssuesNotificationID, func(n gapir.Notification) {
 			vkApi := API{}
 			eMsg := n.GetErrorMsg()
@@ -283,20 +284,27 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 			var issue replay.Issue
 			msg := eMsg.GetMsg()
 			label := eMsg.GetLabel()
-			if int(label) < t.numInitialCmds {
+			issue.Command = api.CmdID(label)
+			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
+
+			if issue.Command == api.CmdNoID {
 				// The debug report is issued for state rebuilding command
 				// TODO: Fix all the errors reported for initial commands.
+				// TODO: Provide a way for the UI to distinguish these issues
+				// from issues on command 0.
 				issue.Command = api.CmdID(0)
-				issue.Error = fmt.Errorf("[State rebuilding command, linearized ID: %d]: %s", label, msg)
-				// For now hide such errors from the report view so users won't get confused.
-				return
+				issue.Error = fmt.Errorf("[State rebuilding command : %s]	", msg)
+			} else {
+				// The debug report is issued for a trace command
+				issue.Error = fmt.Errorf("%s", msg)
 			}
-			// The debug report is issued for a trace command
-			issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
-			issue.Error = fmt.Errorf("%s", msg)
-			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
+
 			t.issues = append(t.issues, issue)
 		})
 	}))
+	if err != nil {
+		return err
+	}
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.issues })
+	return nil
 }

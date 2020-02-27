@@ -43,6 +43,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -132,8 +133,9 @@ public class TextureView extends Composite
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
     imagePanel = new ImagePanel(imageAndToolbar, View.Textures, models.analytics, widgets, false);
 
-    splitter.setWeights(models.settings.texturesSplitterWeights);
-    addListener(SWT.Dispose, e -> models.settings.texturesSplitterWeights = splitter.getWeights());
+    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Textures));
+    addListener(SWT.Dispose, e ->
+      models.settings.setSplitterWeights(Settings.SplitterWeights.Textures, splitter.getWeights()));
 
     textureTable.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));

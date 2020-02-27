@@ -25,7 +25,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/copyright"
 )
 
 const maxErrors = 10
@@ -178,9 +177,4 @@ func (f *Functions) Write(fileName string, value string) (string, error) {
 	log.D(f.ctx, "Writing output to %v", outputPath)
 
 	return "", ioutil.WriteFile(outputPath, []byte(value), 0666)
-}
-
-// Copyright emits the copyright header specified by name with the «Tool» set to tool.
-func (f *Functions) Copyright(name string, tool string) (string, error) {
-	return copyright.Build(name, copyright.Info{Year: "2019", Tool: tool}), nil
 }

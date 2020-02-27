@@ -36,7 +36,7 @@ var _ api.Resource = Textureʳ{}
 
 // IsResource returns true if this instance should be considered as a resource.
 func (t Textureʳ) IsResource() bool {
-	return t.ID() != 0
+	return !t.IsNil() && t.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
@@ -60,7 +60,7 @@ func (t Textureʳ) ResourceType(ctx context.Context) api.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Texture.ResourceData()")
 	switch t.Kind() {
 	case GLenum_GL_TEXTURE_1D, GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_2D_MULTISAMPLE:
@@ -264,7 +264,7 @@ var _ api.Resource = Shaderʳ{}
 
 // IsResource returns true if this instance should be considered as a resource.
 func (s Shaderʳ) IsResource() bool {
-	return s.ID() != 0
+	return !s.IsNil() && s.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
@@ -288,7 +288,7 @@ func (s Shaderʳ) ResourceType(ctx context.Context) api.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (s Shaderʳ) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
+func (s Shaderʳ) ResourceData(ctx context.Context, t *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Shader.ResourceData()")
 	var ty api.ShaderType
 	switch s.Type() {
@@ -390,7 +390,7 @@ var _ api.Resource = Programʳ{}
 
 // IsResource returns true if this instance should be considered as a resource.
 func (p Programʳ) IsResource() bool {
-	return p.ID() != 0
+	return !p.IsNil() && p.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
@@ -414,7 +414,7 @@ func (p Programʳ) ResourceType(ctx context.Context) api.ResourceType {
 }
 
 // ResourceData returns the resource data given the current state.
-func (p Programʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (p Programʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "Program.ResourceData()")
 
 	shaders := make([]*api.Shader, 0, p.Shaders().Len())

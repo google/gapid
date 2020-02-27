@@ -790,9 +790,10 @@ func (r *traceHandler) Initialize(ctx context.Context, opts *service.TraceOption
 	}
 	r.initialized = true
 	stopSignal, stopFunc := task.NewSignal()
+	readyFunc := task.Noop()
 	r.stopFunc = stopFunc
 	go func() {
-		r.err = trace.Trace(ctx, opts.Device, r.startSignal, stopSignal, opts, &r.bytesWritten)
+		r.err = trace.Trace(ctx, opts.Device, r.startSignal, stopSignal, readyFunc, opts, &r.bytesWritten)
 		r.done = true
 		r.doneSignalFunc(ctx)
 	}()
@@ -913,6 +914,17 @@ func (s *server) GetTimestamps(ctx context.Context, req *service.GetTimestampsRe
 	return replay.GetTimestamps(ctx, req.Capture, req.Device, req.LoopCount, h)
 }
 
+func (s *server) GpuProfile(ctx context.Context, req *service.GpuProfileRequest) (*service.ProfilingData, error) {
+	ctx = status.Start(ctx, "RPC GpuProfile")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "GpuProfile")
+	res, err := replay.GpuProfile(ctx, req.Capture, req.Device)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error) {
 	ctx = status.Start(ctx, "RPC PerfettoQuery")
 	defer status.Finish(ctx)
@@ -928,4 +940,11 @@ func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query strin
 		return nil, err
 	}
 	return res, nil
+}
+
+func (s *server) ValidateDevice(ctx context.Context, d *path.Device) error {
+	ctx = status.Start(ctx, "RPC ValidateDevice")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "ValidateDevice")
+	return trace.Validate(ctx, d)
 }

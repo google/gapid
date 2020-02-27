@@ -37,6 +37,8 @@ inline PerfettoInitializer::PerfettoInitializer() {
   perfetto::TracingInitArgs init_args;
   init_args.backends = perfetto::kSystemBackend;
   init_args.platform = perfetto::Platform::GetDefaultPlatform();
+  init_args.shmem_size_hint_kb = 32 * 1024;
+  init_args.shmem_page_size_hint_kb = 32;
   perfetto::Tracing::Initialize(init_args);
 }
 }
@@ -76,7 +78,8 @@ void PerfettoProducerData<T>::UnregisterEmitter(ThreadlocalEmitterBase* v) {
 }
 
 template<typename T>
-void PerfettoProducer<T>::OnSetup(const typename perfetto::DataSourceBase::SetupArgs&) {
+void PerfettoProducer<T>::OnSetup(const typename perfetto::DataSourceBase::SetupArgs& a) {
+    Get().OnSetup(a);
 }
 
 template<typename T>
@@ -87,6 +90,16 @@ void PerfettoProducer<T>::OnStart(const typename perfetto::DataSourceBase::Start
 template<typename T>
 void PerfettoProducer<T>::OnStop(const typename perfetto::DataSourceBase::StopArgs& a) {
     Get().OnStop(a);
+}
+
+template<typename T>
+void PerfettoProducerData<T>::OnSetup(const typename perfetto::DataSourceBase::SetupArgs& a) {
+    emitter_lock_.Lock();
+    started_ = true;
+    for (auto& e : emitters_) {
+        e.first->SetupTracing(a);
+    }
+    emitter_lock_.Unlock();
 }
 
 template<typename T>

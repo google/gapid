@@ -99,11 +99,11 @@ void CallObserver::observePending() {
     uint8_t* data = reinterpret_cast<uint8_t*>(p.start());
     uint64_t size = p.end() - p.start();
     auto resIndex = mSpy->sendResource(mApi, data, size);
-    auto observation = new memory::Observation();
-    observation->set_base(p.start());
-    observation->set_size(size);
-    observation->set_res_index(resIndex);
-    encodeAndDelete(observation);
+    memory::Observation observation;
+    observation.set_base(p.start());
+    observation.set_size(size);
+    observation.set_res_index(resIndex);
+    encode_message(&observation);
   }
   mPendingObservations.clear();
 }
@@ -113,23 +113,39 @@ void CallObserver::observeTimestamp() {
     return;
   }
   // Get time
-  auto timestamp = new api::TimeStamp();
-  timestamp->set_nanoseconds(core::GetNanoseconds());
-  encodeAndDelete(timestamp);
+  api::TimeStamp timestamp;
+  timestamp.set_nanoseconds(core::GetNanoseconds());
+  encode_message(&timestamp);
 }
 
 void CallObserver::enter(const ::google::protobuf::Message* cmd) {
+  endTraceIfRequested();
   if (!mShouldTrace) {
     return;
   }
   mEncoderStack.push(encoder()->group(cmd));
 }
 
-void CallObserver::encode(const ::google::protobuf::Message* cmd) {
+void CallObserver::encode_message(const ::google::protobuf::Message* cmd) {
   if (!mShouldTrace) {
     return;
   }
   encoder()->object(cmd);
+}
+
+void CallObserver::resume() {
+  if (!mShouldTrace) {
+    // This observer was disabled from the start of the command, nothing to do.
+    return;
+  }
+  mShouldTrace = mSpy->should_trace(mApi);
+  if (!mShouldTrace) {
+    // This branch is taken when this observer was enabled for pre-fence
+    // observations, but a concurrent command terminated the trace while this
+    // command was passed on to the driver. Pop the encoder which was pushed at
+    // creation.
+    mEncoderStack.pop();
+  }
 }
 
 void CallObserver::exit() {
@@ -164,5 +180,7 @@ gapil::String CallObserver::string(const gapil::Slice<char>& slice) {
   read(slice);
   return gapil::String(mSpy->arena(), slice.begin(), slice.end());
 }
+
+void CallObserver::endTraceIfRequested() { mSpy->endTraceIfRequested(); }
 
 }  // namespace gapii

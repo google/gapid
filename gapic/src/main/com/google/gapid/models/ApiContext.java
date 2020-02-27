@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  * Model containing the different API contexts of a capture.
  */
 public class ApiContext
-    extends CaptureDependentModel<ApiContext.Contexts, ApiContext.Listener> {
+    extends CaptureDependentModel.ForPath<ApiContext.Contexts, ApiContext.Listener> {
   private static final Logger LOG = Logger.getLogger(ApiContext.class.getName());
 
   private FilteringContext selectedContext = null;
@@ -57,16 +57,16 @@ public class ApiContext
   }
 
   @Override
-  protected Path.Any getPath(Path.Capture capturePath) {
+  protected Path.Any getSource(Capture.Data capture) {
     return Path.Any.newBuilder()
         .setContexts(Path.Contexts.newBuilder()
-            .setCapture(capturePath))
+            .setCapture(capture.path))
         .build();
   }
 
   @Override
-  protected boolean shouldLoad(Capture capture) {
-    return capture.isGraphics();
+  protected boolean shouldLoad(Capture.Data capture) {
+    return capture != null && capture.isGraphics();
   }
 
   @Override

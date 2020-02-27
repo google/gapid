@@ -196,7 +196,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 	}
 
 	var t transform.Transformer
-	t = transform.Transform("compat", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	t = transform.Transform("compat", func(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 		dID := id.Derived()
 		s := out.State()
 		cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
@@ -221,14 +221,16 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 
 			// Mutate to set the context, Version and Extensions strings.
-			out.MutateAndWrite(ctx, id, cmd)
+			if err := out.MutateAndWrite(ctx, id, cmd); err != nil {
+				return err
+			}
 
 			c := GetContext(s, cmd.Thread())
 			if c.IsNil() || !c.Other().Initialized() {
-				return
+				return nil
 			}
 			if _, found := contexts[c]; found {
-				return
+				return nil
 			}
 
 			source, _, err := getFeatures(ctx, c.Constants().Version(), translateExtensions(c.Constants().Extensions()))
@@ -237,7 +239,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					"version":    c.Constants().Version(),
 					"extensions": c.Constants().Extensions(),
 				}.Bind(ctx), "Error getting feature list: %v", err)
-				return
+				return err
 			}
 
 			contexts[c] = source
@@ -250,35 +252,35 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				// which we will use instead of the default VAO (id 0).
 				tmp := s.AllocDataOrPanic(ctx, VertexArrayId(DefaultVertexArrayId))
 				defer tmp.Free()
-				out.MutateAndWrite(ctx, dID, cb.GlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()))
-				out.MutateAndWrite(ctx, dID, cb.GlBindVertexArray(DefaultVertexArrayId))
+				if err := out.MutateAndWrite(ctx, dID, cb.GlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data())); err != nil {
+					return err
+				}
+				if err := out.MutateAndWrite(ctx, dID, cb.GlBindVertexArray(DefaultVertexArrayId)); err != nil {
+					return err
+				}
 			}
-			return
+			return nil
 
 		case *EglCreateImageKHR:
 			if target.eglImageExternal == unsupported {
 				// Only mutate, don't write. EGL images are treated as regular textures.
-				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
-				return
+				return cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 			}
 
 			if cmd.Target() == EGLenum_EGL_NATIVE_BUFFER_ANDROID {
 				// Need to create a texture, but probably don't have a context.
 				// This case is handled in glEGLImageTargetTexture2DOES below.
 				// Only mutate, don't write.
-				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
-				return
+				return cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 			}
 
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 
 		c := GetContext(s, cmd.Thread())
 		if c.IsNil() || !c.Other().Initialized() {
 			// The compatibility translations below assume that we have a valid context.
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 		}
 
 		if cmd.CmdFlags(ctx, id, s).IsDrawCall() {
@@ -297,7 +299,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				if buf.IsNil() {
 					// The buffer is already unbound. Thus this command is a no-op.
 					// It is helpful to remove those no-ops in case the replay driver does not support the target.
-					return
+					return nil
 				}
 			} else if !c.Objects().GeneratedNames().Buffers().Get(cmd.Buffer()) {
 				// glGenBuffers() was not used to generate the buffer. Legal in GLES 2.
@@ -318,8 +320,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 				convertTexTarget(cmd)
 
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		case *GlBindVertexArray:
@@ -329,8 +330,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					// NB: This leaks state change upstream.
 					// In particular, when the tweaker saves and then restores vertex array binding,
 					// it will restore it to DefaultVertexArrayId instead of 0.  It is harmless.
-					out.MutateAndWrite(ctx, id, cb.GlBindVertexArray(DefaultVertexArrayId))
-					return
+					return out.MutateAndWrite(ctx, id, cb.GlBindVertexArray(DefaultVertexArrayId))
 				}
 			}
 
@@ -338,20 +338,17 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if cmd.Array() == VertexArrayId(0) {
 				if target.vertexArrayObjects == required &&
 					contexts[c].vertexArrayObjects != required {
-					out.MutateAndWrite(ctx, id, cb.GlBindVertexArray(DefaultVertexArrayId))
-					return
+					return out.MutateAndWrite(ctx, id, cb.GlBindVertexArray(DefaultVertexArrayId))
 				}
 			}
 			// Translate to non-OES call.
-			out.MutateAndWrite(ctx, id, cb.GlBindVertexArray(cmd.Array()))
-			return
+			return out.MutateAndWrite(ctx, id, cb.GlBindVertexArray(cmd.Array()))
 
 		case *GlGenVertexArraysOES:
 			// Translate to non-OES call.
 			c := cb.GlGenVertexArrays(cmd.Count(), cmd.Arrays())
 			c.Extras().Add(cmd.Extras().All()...)
-			out.MutateAndWrite(ctx, id, c)
-			return
+			return out.MutateAndWrite(ctx, id, c)
 
 		case *GlBindBufferBase:
 			if cmd.Buffer() == 0 {
@@ -366,32 +363,32 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				if genBuf.IsNil() && idxBuf.IsNil() {
 					// Both of the binding points are already clear. Thus this command is a no-op.
 					// It is helpful to remove those no-ops in case the replay driver does not support the target.
-					return
+					return nil
 				}
 			}
 
 		case *GlBufferData:
 			bufferCompat.modifyBufferData(ctx, out, cb, c, id, cmd.Target(), func() { out.MutateAndWrite(ctx, id, cmd) })
-			return
+			return nil
 
 		case *GlBufferSubData:
 			bufferCompat.modifyBufferData(ctx, out, cb, c, id, cmd.Target(), func() { out.MutateAndWrite(ctx, id, cmd) })
-			return
+			return nil
 
 		case *GlCopyBufferSubData:
 			bufferCompat.modifyBufferData(ctx, out, cb, c, id, cmd.WriteTarget(), func() { out.MutateAndWrite(ctx, id, cmd) })
-			return
+			return nil
 
 		case *GlBindBufferRange:
 			bufferCompat.bindBufferRange(ctx, out, cb, c, id, cmd)
-			return
+			return nil
 
 		case *GlDisableVertexAttribArray:
 			if c.Bound().VertexArray().VertexAttributeArrays().Get(cmd.Location()).Enabled() == GLboolean_GL_FALSE {
 				// Ignore the call if it is redundant (i.e. it is already disabled).
 				// Some applications iterate over all arrays and explicitly disable them.
 				// This is a problem if the target supports fewer arrays than the capture.
-				return
+				return nil
 			}
 
 		case *GlVertexAttrib4fv:
@@ -405,11 +402,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					// Ignore the call if it is redundant.
 					// Some applications iterate over all arrays and explicitly initialize them.
 					// This is a problem if the target supports fewer arrays than the capture.
-					return
+					return nil
 				}
 			}
-			out.MutateAndWrite(ctx, id, cmd)
-			return
+			return out.MutateAndWrite(ctx, id, cmd)
 
 		case *GlGetVertexAttribIiv,
 			*GlGetVertexAttribIuiv,
@@ -419,24 +415,21 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// Some applications iterate over all arrays and query their state.
 			// This may fail if the target supports fewer arrays than the capture.
 			// As these should have no side-effects, just drop them.
-			return
+			return nil
 
 		case *GlShaderSource:
 			if version.IsES { // No compat required.
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 			// Apply the state mutation of the unmodified glShaderSource
 			// command.
 			// This is so we can grab the source string from the Shader object.
 			// We will actually provide the source to driver at compile time.
-			cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
-			return
+			return cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 
 		case *GlCompileShader:
 			if version.IsES { // No compat required.
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 			shader := c.Objects().Shaders().Get(cmd.Shader())
 			src := ""
@@ -461,8 +454,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err != nil {
 				// Could not convert the shader.
 				onError(ctx, id, cmd, err)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 			src = res.SourceCode
@@ -474,7 +466,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			srcCmd := cb.GlShaderSource(cmd.Shader(), 1, tmpPtrToSrc.Ptr(), memory.Nullptr).
 				AddRead(tmpSrc.Data()).
 				AddRead(tmpPtrToSrc.Data())
-			out.MutateAndWrite(ctx, id, srcCmd)
+			return out.MutateAndWrite(ctx, id, srcCmd)
 
 		// TODO: glVertexAttribIPointer
 		case *GlVertexAttribPointer:
@@ -489,9 +481,9 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				clientVAs[vaa] = cmd
 			} else {
 				delete(clientVAs, vaa)
-				out.MutateAndWrite(ctx, id, cmd)
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
-			return
+			return nil
 
 		case *GlDrawBuffers:
 			// Currently the default framebuffer for replay is single-buffered
@@ -505,8 +497,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 			tmp := s.AllocDataOrPanic(ctx, bufs)
 			defer tmp.Free()
-			out.MutateAndWrite(ctx, id, cb.GlDrawBuffers(cmd.N(), tmp.Ptr()).AddRead(tmp.Data()))
-			return
+			return out.MutateAndWrite(ctx, id, cb.GlDrawBuffers(cmd.N(), tmp.Ptr()).AddRead(tmp.Data()))
 
 		case *GlDrawArrays:
 			if target.vertexArrayObjects == required {
@@ -519,7 +510,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				}
 			}
 			compatMultiviewDraw(ctx, id, cmd, out)
-			return
+			return nil
 
 		case drawElements:
 			if target.vertexArrayObjects != required {
@@ -529,12 +520,12 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				defer t.revert(ctx)
 				compatDrawElements(ctx, t, clientVAs, id, cmd, s, out)
 			}
-			return
+			return nil
 
 		case *GlCompressedTexImage2D:
 			if _, supported := target.compressedTextureFormats[cmd.Internalformat()]; !supported {
 				if err := decompressTexImage2D(ctx, id, cmd, s, out); err == nil {
-					return
+					return nil
 				}
 				onError(ctx, id, cmd, fmt.Errorf("Error decompressing texture: %v", err))
 			}
@@ -542,7 +533,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlCompressedTexSubImage2D:
 			if _, supported := target.compressedTextureFormats[cmd.Internalformat()]; !supported {
 				if err := decompressTexSubImage2D(ctx, id, cmd, s, out); err == nil {
-					return
+					return nil
 				}
 				onError(ctx, id, cmd, fmt.Errorf("Error decompressing texture: %v", err))
 			}
@@ -550,8 +541,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlTexBufferEXT:
 			if version.AtLeastGL(3, 1) { // Strip suffix on desktop.
 				cmd := cb.GlTexBuffer(cmd.Target(), cmd.Internalformat(), cmd.Buffer())
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		// TODO: glTexStorage functions are not guaranteed to be supported. Consider replacing with glTexImage calls.
@@ -563,19 +553,16 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
 					cmd := cb.GlTexStorage1D(cmd.Target(), cmd.Levels(), cmd.Internalformat(), cmd.Width())
-					out.MutateAndWrite(ctx, id, cmd)
-					return
+					return out.MutateAndWrite(ctx, id, cmd)
 				}
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexStorage2D:
 			{
 				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexStorage2DEXT:
 			{
@@ -584,11 +571,9 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
 					cmd := cb.GlTexStorage2D(cmd.Target(), cmd.Levels(), cmd.Internalformat(), cmd.Width(), cmd.Height())
-					out.MutateAndWrite(ctx, id, cmd)
-					return
+					return out.MutateAndWrite(ctx, id, cmd)
 				}
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexStorage2DMultisample:
 			if version.IsES || version.AtLeastGL(4, 3) {
@@ -596,23 +581,21 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				return out.MutateAndWrite(ctx, id, cmd)
 			} else {
 				// glTexStorage2DMultisample is not supported by replay device.
 				// Use glTexImage2DMultisample instead.
 				cmd := cb.GlTexImage2DMultisample(cmd.Target(), cmd.Samples(), cmd.Internalformat(), cmd.Width(), cmd.Height(), cmd.Fixedsamplelocations())
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
-			return
 		case *GlTexStorage3D:
 			{
 				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexStorage3DEXT:
 			{
@@ -621,19 +604,16 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
 					cmd := cb.GlTexStorage3D(cmd.Target(), cmd.Levels(), cmd.Internalformat(), cmd.Width(), cmd.Height(), cmd.Depth())
-					out.MutateAndWrite(ctx, id, cmd)
-					return
+					return out.MutateAndWrite(ctx, id, cmd)
 				}
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexStorage3DMultisample:
 			{
 				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexStorage3DMultisampleOES:
 			{
@@ -642,11 +622,9 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
 					cmd := cb.GlTexStorage3DMultisample(cmd.Target(), cmd.Samples(), cmd.Internalformat(), cmd.Width(), cmd.Height(), cmd.Depth(), cmd.Fixedsamplelocations())
-					out.MutateAndWrite(ctx, id, cmd)
-					return
+					return out.MutateAndWrite(ctx, id, cmd)
 				}
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexImage2D:
 			{
@@ -658,8 +636,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, fmt, ty, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexImage3D:
 			{
@@ -671,8 +648,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, fmt, ty, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexImage3DOES:
 			{
@@ -685,11 +661,9 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					extras := cmd.extras
 					cmd := cb.GlTexImage3D(cmd.Target(), cmd.Level(), GLint(cmd.Internalformat()), cmd.Width(), cmd.Height(), cmd.Depth(), cmd.Border(), cmd.Fmt(), cmd.Type(), memory.Pointer(cmd.Pixels()))
 					cmd.extras = extras
-					out.MutateAndWrite(ctx, id, cmd)
-					return
+					return out.MutateAndWrite(ctx, id, cmd)
 				}
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexSubImage2D:
 			{
@@ -697,8 +671,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
 				textureCompat.convertFormat(ctx, cmd.Target(), nil, fmt, ty, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexSubImage3D:
 			{
@@ -706,8 +679,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
 				textureCompat.convertFormat(ctx, cmd.Target(), nil, fmt, ty, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlTexSubImage3DOES:
 			{
@@ -719,100 +691,97 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					extras := cmd.extras
 					cmd := cb.GlTexSubImage3D(cmd.Target(), cmd.Level(), cmd.Xoffset(), cmd.Yoffset(), cmd.Zoffset(), cmd.Width(), cmd.Height(), cmd.Depth(), cmd.Fmt(), cmd.Type(), memory.Pointer(cmd.Pixels()))
 					cmd.extras = extras
-					out.MutateAndWrite(ctx, id, cmd)
-					return
+					return out.MutateAndWrite(ctx, id, cmd)
 				}
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 		case *GlCopyTexImage2D:
 			{
 				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		case *GlTexParameterIivOES:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameterIuivOES:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameterIiv:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameterIuiv:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameterf:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Parameter(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameterfv:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameteri:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Parameter(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameteriv:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameterIivEXT:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 		case *GlTexParameterIuivEXT:
 			{
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
-				out.MutateAndWrite(ctx, id, cmd)
+				err := out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
-				return
+				return err
 			}
 
 		case *GlProgramBinary:
@@ -820,7 +789,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				for _, cmd := range buildStubProgram(ctx, cmd.Thread(), cmd.Extras(), s, cmd.Program()) {
 					t.Transform(ctx, id, cmd, out)
 				}
-				return
+				return nil
 			}
 
 		case *GlProgramBinaryOES:
@@ -828,12 +797,12 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				for _, cmd := range buildStubProgram(ctx, cmd.Thread(), cmd.Extras(), s, cmd.Program()) {
 					t.Transform(ctx, id, cmd, out)
 				}
-				return
+				return nil
 			}
 
 		case *GlHint:
 			if cmd.Target() == GLenum_GL_GENERATE_MIPMAP_HINT && !target.supportGenerateMipmapHint {
-				return // Not supported in the core profile of OpenGL.
+				return nil // Not supported in the core profile of OpenGL.
 			}
 
 		case *GlDebugMessageCallback,
@@ -841,7 +810,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			*GlDebugMessageCallbackKHR,
 			*GlDebugMessageControlKHR:
 			// Ignore - the callback function address is invalid in replay.
-			return
+			return nil
 
 		case *GlGetBooleani_v,
 			*GlGetBooleanv,
@@ -855,7 +824,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			*GlGetStringi:
 			// The acceptable values of these get functions vary between GL versions.
 			// As these should have no side-effects, just drop them.
-			return
+			return nil
 
 		case *GlGetActiveAttrib,
 			*GlGetActiveUniform:
@@ -863,12 +832,12 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// depending on their ability to eliminate dead code. In particular,
 			// dead code in pixel shader can allow code removal in the vertex shader.
 			// As these should have no side-effects, just drop them.
-			return
+			return nil
 
 		case *GlGetProgramInterfaceiv:
 			// Introduced as core in 4.3, but macOS caps out at 4.1.
 			// As this should have no side-effects, just drop them.
-			return
+			return nil
 
 		case *GlLabelObjectEXT,
 			*GlGetObjectLabelEXT,
@@ -880,7 +849,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			*GlGetObjectLabelKHR:
 			// These methods require non-trivial remapping for replay.
 			// As they do not affect rendering output, just drop them.
-			return
+			return nil
 
 		case *GlInsertEventMarkerEXT,
 			*GlPushGroupMarkerEXT,
@@ -892,14 +861,14 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			*GlDebugMessageInsertKHR:
 			// Debug markers may not be supported on the replay device.
 			// As they do not affect rendering output, just drop them.
-			return
+			return nil
 
 		case *GlGetProgramBinary,
 			*GlGetProgramBinaryOES:
 			// Program binaries are very driver specific. This command may fail on replay
 			// because one of the arguments must be GL_PROGRAM_BINARY_LENGTH.
 			// It has no side effects, so just drop it.
-			return
+			return nil
 
 		case *GlEnable:
 			if cmd.Capability() == GLenum_GL_FRAMEBUFFER_SRGB &&
@@ -911,8 +880,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				// framebuffer. The state is mutated so that when a non-default
 				// framebuffer is bound later on, FRAMEBUFFER_SRGB will be enabled.
 				// (see GlBindFramebuffer below)
-				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
-				return
+				return cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 			}
 
 		case *GlDisable:
@@ -920,38 +888,36 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// It seems that applications only disable it to make sure it is off, so
 			// we can safely ignore it. We should not ignore glEnable for it though.
 			if cmd.Capability() == GLenum_GL_ALPHA_TEST_QCOM {
-				return
+				return nil
 			}
 
 		case *GlGetGraphicsResetStatusEXT:
 			// From extension GL_EXT_robustness
 			// It may not be implemented by the replay driver.
 			// It has no effect on rendering so just drop it.
-			return
+			return nil
 
 		case *GlDiscardFramebufferEXT: // GL_EXT_discard_framebuffer
 			// It may not be implemented by the replay driver.
 			// It is only a hint so we can just drop it.
 			// TODO: It has performance impact so we should not ignore it when profiling.
-			return
+			return nil
 
 		case *GlInvalidateFramebuffer, *GlInvalidateSubFramebuffer:
 			if !version.AtLeastES(3, 0) || !version.AtLeastGL(4, 3) {
-				return // Not supported. Only a hint. Drop it.
+				return nil // Not supported. Only a hint. Drop it.
 			}
 
 		case *GlMapBufferOES:
 			if !version.IsES { // Remove extension suffix on desktop.
 				cmd := cb.GlMapBuffer(cmd.Target(), cmd.Access(), memory.Pointer(cmd.Result()))
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		case *GlMapBufferRangeEXT:
 			if !version.IsES { // Remove extension suffix on desktop.
 				cmd := cb.GlMapBufferRange(cmd.Target(), cmd.Offset(), cmd.Length(), cmd.Access(), memory.Pointer(cmd.Result()))
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		case *GlFlushMappedBufferRangeEXT:
@@ -959,8 +925,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				extras := cmd.extras
 				cmd := cb.GlFlushMappedBufferRange(cmd.Target(), cmd.Offset(), cmd.Length())
 				cmd.extras = extras
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		case *GlUnmapBufferOES:
@@ -968,8 +933,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				extras := cmd.extras
 				cmd := cb.GlUnmapBuffer(cmd.Target(), cmd.Result())
 				cmd.extras = extras
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		case *GlDeleteBuffers:
@@ -978,7 +942,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Buffers()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteBuffers(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteFramebuffers:
@@ -1001,7 +965,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 				deleteCompat(ctx, fbs, dID, dictionary.From(c.Objects().Framebuffers()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteFramebuffers(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteProgramPipelines:
@@ -1010,7 +974,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Pipelines()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteProgramPipelines(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteQueries:
@@ -1019,7 +983,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Queries()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteQueries(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteRenderbuffers:
@@ -1028,7 +992,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Renderbuffers()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteRenderbuffers(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteSamplers:
@@ -1037,7 +1001,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Samplers()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteSamplers(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteTextures:
@@ -1046,7 +1010,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().Textures()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTextures(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteTransformFeedbacks:
@@ -1055,7 +1019,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().TransformFeedbacks()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteTransformFeedbacks(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlDeleteVertexArrays:
@@ -1064,7 +1028,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if err == nil {
 				deleteCompat(ctx, ids, dID, dictionary.From(c.Objects().VertexArrays()), s, out,
 					func(cnt GLsizei, buf memory.Pointer) api.Cmd { return cb.GlDeleteVertexArrays(cnt, buf) })
-				return
+				return nil
 			}
 
 		case *GlBindFramebuffer:
@@ -1103,7 +1067,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *EglDestroyContext:
 			// Removing the context would interfere with the EGLImage compat below,
 			// since TextureID remapping relies on being able to find the Context by ID.
-			return
+			return nil
 
 		case *GlEGLImageTargetTexture2DOES:
 			{
@@ -1111,8 +1075,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				if eglImage.IsNil() {
 					analytics.SendBug(1498)
 					onError(ctx, id, cmd, fmt.Errorf("Encountered nil eglImage. Replay may be corrupt. See: https://github.com/google/gapid/issues/1498"))
-					out.MutateAndWrite(ctx, id, cmd)
-					return
+					return out.MutateAndWrite(ctx, id, cmd)
 				}
 
 				t := newTweaker(out, dID, cb)
@@ -1196,7 +1159,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				if target.eglImageExternal != unsupported {
 					out.MutateAndWrite(ctx, id, cmd)
 				}
-				return
+				return nil
 			}
 
 		// EXT_multisampled_render_to_texture
@@ -1204,8 +1167,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			{
 				// TODO: Support multi-sample rendering.
 				cmd := cb.GlRenderbufferStorage(cmd.Target(), cmd.Internalformat(), cmd.Width(), cmd.Height())
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		// EXT_multisampled_render_to_texture
@@ -1213,8 +1175,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			{
 				// TODO: Support multi-sample rendering.
 				cmd := cb.GlFramebufferTexture2D(cmd.Target(), cmd.Attachment(), cmd.Textarget(), cmd.Texture(), cmd.Level())
-				out.MutateAndWrite(ctx, id, cmd)
-				return
+				return out.MutateAndWrite(ctx, id, cmd)
 			}
 
 		case *GlFramebufferTextureMultiviewOVR:
@@ -1222,11 +1183,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
-				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+				return out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					cb.GlFramebufferTextureLayer(cmd.Target(), cmd.Attachment(), cmd.Texture(), cmd.Level(), cmd.BaseViewIndex()).Call(ctx, s, b)
 					return nil
 				}))
-				return
 			}
 
 		case *GlFramebufferTextureMultisampleMultiviewOVR:
@@ -1235,11 +1195,10 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
-				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+				return out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					cb.GlFramebufferTextureLayer(cmd.Target(), cmd.Attachment(), cmd.Texture(), cmd.Level(), cmd.BaseViewIndex()).Call(ctx, s, b)
 					return nil
 				}))
-				return
 			}
 
 		case *GlLinkProgram:
@@ -1267,32 +1226,32 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 						}
 					}
 				}
-				return
+				return nil
 			}
 
 		case *GlStartTilingQCOM, *GlEndTilingQCOM,
 			*EglCreateNativeClientBufferANDROID:
 			if !version.IsES {
 				// This extension is not applicable on desktop.
-				return
+				return nil
 			}
 
 		default:
 			flags := cmd.CmdFlags(ctx, id, s)
 			if flags.IsClear() {
 				compatMultiviewDraw(ctx, id, cmd, out)
-				return
+				return nil
 			}
 			if flags.IsDrawCall() {
 				if clientVAsBound(c, clientVAs) {
 					onError(ctx, id, cmd, fmt.Errorf("Draw call with client-pointers not handled by the compatability layer. Command: %v", cmd))
 				}
 				compatMultiviewDraw(ctx, id, cmd, out)
-				return
+				return nil
 			}
 		}
 
-		out.MutateAndWrite(ctx, id, cmd)
+		return out.MutateAndWrite(ctx, id, cmd)
 	})
 
 	return t, nil

@@ -516,4 +516,13 @@ void glDriverPlatform(device::OpenGLDriver* driver) {
   }
 }
 
+device::VulkanProfilingLayers* get_vulkan_profiling_layers() {
+  auto layers = new device::VulkanProfilingLayers();
+  layers->set_cpu_timing(true);
+  layers->set_memory_tracker(true);
+  return layers;
+}
+
+bool hasAtrace() { return true; }
+
 }  // namespace query

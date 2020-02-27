@@ -102,6 +102,9 @@ public class PackageInfoService extends GapidService {
      */
     private static final String DEFAULT_SOCKET_NAME = "gapid-pkginfo";
 
+    private static final String METADATA_DEVELOPER_DRIVER_ENABLE =
+            "com.android.graphics.developerdriver.enable";
+
     private static final class Caches {
         private final PackageManager packageManager;
         private final Cache<ApplicationInfo, Resources> resources;
@@ -253,7 +256,8 @@ public class PackageInfoService extends GapidService {
         List<PackageInfo> packages;
         try (Counter.Scope t = Counter.time("getInstalledPackages")) {
             packages = caches.packageManager.getInstalledPackages(
-                    PackageManager.GET_ACTIVITIES | PackageManager.GET_SIGNATURES);
+                    PackageManager.GET_ACTIVITIES | PackageManager.GET_SIGNATURES |
+                    PackageManager.GET_META_DATA);
         }
 
         // The ApplicationInfo.primaryCpuAbi field is hidden. Use reflection to get at it.
@@ -297,6 +301,9 @@ public class PackageInfoService extends GapidService {
             boolean isDebuggable) throws JSONException {
 
         ApplicationInfo applicationInfo = packageInfo.applicationInfo;
+
+        boolean developerDriverEnabled = applicationInfo.metaData != null &&
+                applicationInfo.metaData.getBoolean(METADATA_DEVELOPER_DRIVER_ENABLE);
 
         Map<String, List<IntentFilter>> activityIntents = new HashMap<String, List<IntentFilter>>();
 
@@ -385,6 +392,9 @@ public class PackageInfoService extends GapidService {
             packageJson.put("ABI", primaryCpuAbi);
         }
         packageJson.put("activities", activitiesJson);
+        // An application can use developer driver if it's debuggable or it has the
+        // com.android.graphics.developerdriver.enable set to true.
+        packageJson.put("developerDriverEnabled", isDebuggable || developerDriverEnabled);
         return packageJson;
     }
 

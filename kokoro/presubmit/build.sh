@@ -20,9 +20,10 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/gapid/
 
 # Get bazel.
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.25.1/bazel-0.25.1-installer-linux-x86_64.sh
+BAZEL_VERSION=1.2.0
+curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
 mkdir bazel
-bash bazel-0.25.1-installer-linux-x86_64.sh --prefix=$PWD/bazel
+bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
 # Get bazel build tools.
 mkdir tools

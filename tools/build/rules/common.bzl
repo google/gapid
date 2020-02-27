@@ -82,15 +82,20 @@ copy_to = rule(
     },
 )
 
+def _dirname_ignoring_repository(f):
+    if (len(f.owner.workspace_root) == 0):
+        return f.dirname
+    return f.dirname[f.dirname.find(f.owner.workspace_root)+len(f.owner.workspace_root)+1:]
 
 def _copy_tree_impl(ctx):
     outs = []
     for src in ctx.files.srcs:
-        path = src.path
-        if path.startswith(ctx.attr.strip):
-            path = path[len(ctx.attr.strip):]
+        dir = _dirname_ignoring_repository(src)
+        if dir.startswith(ctx.attr.strip):
+            dir = dir[len(ctx.attr.strip):]
         if ctx.attr.to:
-            path = ctx.attr.to + "/" + path
+            dir = ctx.attr.to + "/" + dir
+        path = dir + "/" + ctx.attr.rename.get(src.basename, default = src.basename)
         dst = ctx.actions.declare_file(path)
         outs += [dst]
         _copy(ctx, src, dst)
@@ -107,6 +112,7 @@ copy_tree = rule(
             mandatory = True,
         ),
         "strip": attr.string(),
+        "rename": attr.string_dict(),
         "to": attr.string(),
     },
 )

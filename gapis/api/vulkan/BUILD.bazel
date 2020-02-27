@@ -24,6 +24,7 @@ filegroup(
         "extensions/*.api",
         "linux/*.api",
         "windows/*.api",
+        "mac/*.api",
         "android/*.api",
         "ggp/*.api",
     ]),
@@ -59,6 +60,7 @@ go_library(
     srcs = [
         "buffer_command.go",
         "command_buffer_rebuilder.go",
+        "command_splitter.go",
         "custom_replay.go",
         "doc.go",
         "drawCall.go",
@@ -74,25 +76,23 @@ go_library(
         "image_primer_resources.go",
         "image_primer_shaders.go",
         "image_primer_store.go",
+        "links.go",
         "mem_binding_list.go",
         "memory_breakdown.go",
-        "minimize_textures.go",
-        "minimize_viewport.go",
         "overdraw.go",
         "primeable_image_data.go",
+        "profiling_layers.go",
         "query_timestamps.go",
         "queue_task.go",
         "read_framebuffer.go",
         "replay.go",
         "resources.go",
         "scratch_resources.go",
-        "set_primitive_count_to_one.go",
-        "simplify_fragment_shader.go",
-        "simplify_sampling.go",
         "state.go",
         "state_rebuilder.go",
         "vulkan.go",
         "vulkan_terminator.go",
+        "wait_for_perfetto.go",
         "wireframe.go",
     ],
     embed = [
@@ -109,13 +109,11 @@ go_library(
         "//core/data/id:go_default_library",
         #TODO: remove protoconv when it's supplied by deps
         "//core/data/protoconv:go_default_library",  # keep
-        "//core/data/protoutil:go_default_library",
         "//core/event/task:go_default_library",  # keep
         "//core/image:go_default_library",
         "//core/image/astc:go_default_library",
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
-        "//core/math/u32:go_default_library",
         "//core/memory/arena:go_default_library",  # keep
         "//core/os/device:go_default_library",
         "//core/stream:go_default_library",
@@ -145,6 +143,7 @@ go_library(
         "//gapis/service/types:go_default_library",  #keep
         "//gapis/shadertools:go_default_library",
         "//gapis/stringtable:go_default_library",  # keep
+        "//gapis/trace:go_default_library",
         "//gapis/vertex:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],

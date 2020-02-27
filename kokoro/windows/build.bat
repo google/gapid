@@ -24,10 +24,16 @@ set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
 
 REM Install the Android SDK components and NDK.
 set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
-echo y | %ANDROID_HOME%\tools\bin\sdkmanager build-tools;26.0.1 platforms;android-26
-wget -q https://dl.google.com/android/repository/android-ndk-r18b-windows-x86_64.zip
-unzip -q android-ndk-r18b-windows-x86_64.zip
-set ANDROID_NDK_HOME=%CD%\android-ndk-r18b
+
+REM Install a license file for the Android SDK to avoid license query.
+REM This file might need to be updated in the future.
+copy /Y "%SRC%\kokoro\windows\android-sdk-license" "%ANDROID_HOME%\licenses\"
+
+REM Install Android SDK platform, build tools and NDK
+call %ANDROID_HOME%\tools\bin\sdkmanager.bat platforms;android-26 build-tools;29.0.2
+wget -q https://dl.google.com/android/repository/android-ndk-r20b-windows-x86_64.zip
+unzip -q android-ndk-r20b-windows-x86_64.zip
+set ANDROID_NDK_HOME=%CD%\android-ndk-r20b
 
 REM Install WiX Toolset.
 wget -q https://github.com/wixtoolset/wix3/releases/download/wix311rtm/wix311-binaries.zip
@@ -45,8 +51,9 @@ set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
 set BAZEL_SH=C:\tools\msys64\usr\bin\bash.exe
 
 REM Install Bazel.
-wget -q https://github.com/bazelbuild/bazel/releases/download/0.25.1/bazel-0.25.1-windows-x86_64.zip
-unzip -q bazel-0.25.1-windows-x86_64.zip
+set BAZEL_VERSION=1.2.0
+wget -q https://github.com/bazelbuild/bazel/releases/download/%BAZEL_VERSION%/bazel-%BAZEL_VERSION%-windows-x86_64.zip
+unzip -q bazel-%BAZEL_VERSION%-windows-x86_64.zip
 set PATH=C:\python27;%PATH%
 
 cd %SRC%
@@ -76,7 +83,7 @@ REM Build everything else.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
     --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
-    //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests
+    //:pkg //:symbols //cmd/smoketests //cmd/vulkan_sample:vulkan_sample
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 

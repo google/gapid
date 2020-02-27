@@ -22,9 +22,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
@@ -39,6 +41,8 @@ const (
 	ErrInvalidStatus = fault.Const("Invalid status string")
 	// Frequency at which to print scan errors.
 	printScanErrorsEveryNSeconds = 120
+	// Global settings for opting to use prerelease driver.
+	prereleaseDriverSettingVariable = "game_driver_prerelease_opt_in_apps"
 )
 
 var (
@@ -110,6 +114,24 @@ func Devices(ctx context.Context) (DeviceList, error) {
 	return out, nil
 }
 
+func SetupPrereleaseDriver(ctx context.Context, d Device, p *android.InstalledPackage) (app.Cleanup, error) {
+	oldOptinApps, err := d.SystemSetting(ctx, "global", prereleaseDriverSettingVariable)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to get prerelease driver opt in apps.")
+	}
+	if strings.Contains(oldOptinApps, p.Name) {
+		return nil, nil
+	}
+	newOptinApps := oldOptinApps + "," + p.Name
+	// TODO(b/145893290) Check whether application has developer driver enabled once b/145893290 is fixed.
+	if err := d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, newOptinApps); err != nil {
+		return nil, log.Errf(ctx, err, "Failed to set up prerelease driver for app: %v.", p.Name)
+	}
+	return func(ctx context.Context) {
+		d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, oldOptinApps)
+	}, nil
+}
+
 func newDevice(ctx context.Context, serial string, status bind.Status) (*binding, error) {
 	d := &binding{
 		Simple: bind.Simple{
@@ -167,6 +189,11 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
+	// Make sure Perfetto daemons are running.
+	if err := d.EnsurePerfettoPersistent(ctx); err != nil {
+		log.W(ctx, "Failed to singal Perfetto services to start", err)
+	}
+
 	// Run device info providers only if the API is supported
 	if d.To.Configuration.OS != nil && d.To.Configuration.OS.APIVersion >= device.AndroidMinimalSupportedAPIVersion {
 		devInfoProvidersMutex.Lock()
@@ -181,6 +208,27 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 	// Query device Perfetto service state
 	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
 		d.To.Configuration.PerfettoCapability = perfettoCapability
+	}
+
+	// If the VkRenderStagesProducer layer exist, we assume the render stages producer is
+	// implemented in the layer.
+	for _, l := range d.To.Configuration.GetDrivers().GetVulkan().GetLayers() {
+		if l.Name == "VkRenderStagesProducer" {
+			capability := d.To.Configuration.PerfettoCapability
+			if capability == nil {
+				capability = &device.PerfettoCapability{
+					GpuProfiling: &device.GPUProfiling{},
+				}
+			}
+			gpu := capability.GpuProfiling
+			if gpu == nil {
+				gpu = &device.GPUProfiling{}
+				capability.GpuProfiling = gpu
+			}
+			gpu.HasRenderStageProducerLayer = true
+			gpu.HasRenderStage = true
+			break
+		}
 	}
 
 	if d.To.Configuration == nil ||

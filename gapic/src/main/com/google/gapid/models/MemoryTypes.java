@@ -39,12 +39,14 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 
 public class MemoryTypes {
-  protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
+  protected static final Logger LOG = Logger.getLogger(MemoryTypes.class.getName());
 
   protected final FutureCache<Path.Type, TypeInfo.Type> cache;
+  protected final ConstantSets constants;
   private final Client client;
 
-  public MemoryTypes(Client client, Devices devices) {
+  public MemoryTypes(Client client, Devices devices, ConstantSets constants) {
+    this.constants = constants;
     this.client = client;
 
     Function<Path.Type, ListenableFuture<TypeInfo.Type>> fetcher = path -> {
@@ -73,17 +75,19 @@ public class MemoryTypes {
     return transformAsync(cache.get(path), intermediate -> {
       switch (intermediate.getTyCase()) {
         case SLICE:
-          return loadTypes(type(intermediate.getSlice().getUnderlying()));
+          return loadTypes(type(intermediate.getSlice().getUnderlying(), path.getAPI()));
         case STRUCT:
           List<ListenableFuture<Void>> structChildrenTypes = Lists.newArrayList();
           for (TypeInfo.StructField childField : intermediate.getStruct().getFieldsList()) {
-            structChildrenTypes.add(loadTypes(type(childField.getType())));
+            structChildrenTypes.add(loadTypes(type(childField.getType(), path.getAPI())));
           }
           return combine(structChildrenTypes, $ -> null);
         case ARRAY:
-          return loadTypes(type(intermediate.getArray().getElementType()));
+          return loadTypes(type(intermediate.getArray().getElementType(), path.getAPI()));
         case PSEUDONYM:
-          return loadTypes(type(intermediate.getPseudonym().getUnderlying()));
+          return loadTypes(type(intermediate.getPseudonym().getUnderlying(), path.getAPI()));
+        case ENUM:
+          return transform(constants.loadConstants(intermediate.getEnum()), $ -> null);
         default:
           return Futures.immediateFuture(null);
       }
@@ -106,7 +110,8 @@ public class MemoryTypes {
     Path.Any memoryAsType = memoryAsType(structOb.source.command, structOb.source.pool, structOb.range);
     return transformAsync(client.get(memoryAsType, structOb.device),
         val -> transform(loadTypes(structOb.getRange().getType()),
-            $ -> new StructNode(getType(structOb.getRange().getType()), val.getMemoryBox(),
+            $ -> new StructNode(structOb.getRange().getType().getAPI(),
+                getType(structOb.getRange().getType()), val.getMemoryBox(),
                 structOb.range.getRoot(), this)));
   }
 

@@ -106,6 +106,7 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
                                       pCreateInfo->ppEnabledExtensionNames +
                                           pCreateInfo->enabledExtensionCount);
   extensions.reserve(pCreateInfo->enabledExtensionCount + 1);
+
   // Drop the GraphicsSpy and VirtualSwapchain layers, plus validation layers if requested.
   layers.erase(
       std::remove_if(
@@ -141,6 +142,7 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
                                     }),
                      extensions.end());
   }
+
   VkInstanceCreateInfo new_info = *pCreateInfo;
   new_info.pNext = nullptr;
   new_info.ppEnabledLayerNames = layers.data();
@@ -724,7 +726,7 @@ bool Vulkan::replayDebugReportCallback(uint32_t flags, uint32_t objectType,
   std::ostringstream ss;
   ss << "Flags: " << uint32_t(flags) << ", ObjectType: " << objectType
      << ", Object: " << object << ", LayerPrefix: " << pLayerPrefix
-     << ", Layer Mesage Code: " << messageCode << ", Message: " << pMessage;
+     << ", Layer Message Code: " << messageCode << ", Message: " << pMessage;
   ctx->onDebugMessage(sev, Vulkan::INDEX, ss.str().c_str());
   return false;
 }

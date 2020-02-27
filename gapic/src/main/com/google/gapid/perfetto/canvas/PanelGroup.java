@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.google.gapid.perfetto.canvas;
 
 import com.google.common.collect.Lists;
@@ -27,8 +42,30 @@ public class PanelGroup extends Panel.Base {
     panels.add(new Child(panel, y, 0));
   }
 
+  public void remove(int idx) {
+    double y = panels.remove(idx).y;
+    for (int i = idx; i < panels.size(); i++) {
+      Child child = panels.get(i);
+      child.y = y;
+      y += child.h;
+    }
+  }
+
+  public void remove(Panel panel) {
+    for (int i = 0; i < panels.size(); i++) {
+      if (panels.get(i).panel == panel) {
+        remove(i);
+        return;
+      }
+    }
+  }
+
   public void clear() {
     panels.clear();
+  }
+
+  public boolean isVisible(int idx) {
+    return panels.get(idx).visible;
   }
 
   public void setVisible(int idx, boolean visible) {
@@ -103,12 +140,12 @@ public class PanelGroup extends Panel.Base {
   }
 
   @Override
-  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     Child child = findPanel(y);
     if (child == null) {
       return Hover.NONE;
     }
-    return child.panel.onMouseMove(m, x, y - child.y).translated(0, child.y);
+    return child.panel.onMouseMove(m, x, y - child.y, mods).translated(0, child.y);
   }
 
   private int findPanelIdx(double y) {

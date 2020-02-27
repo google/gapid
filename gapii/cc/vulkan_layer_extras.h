@@ -63,12 +63,12 @@ typedef enum VkLayerFunction_ {
  * exact instance being used.
  */
 typedef struct VkLayerInstanceInfo_ {
-  void *instance_info;
+  void* instance_info;
   gapii::VulkanImports::PFNVKGETINSTANCEPROCADDR pfnNextGetInstanceProcAddr;
 } VkLayerInstanceInfo;
 
 typedef struct VkLayerInstanceLink_ {
-  struct VkLayerInstanceLink_ *pNext;
+  struct VkLayerInstanceLink_* pNext;
   gapii::VulkanImports::PFNVKGETINSTANCEPROCADDR pfnNextGetInstanceProcAddr;
 } VkLayerInstanceLink;
 
@@ -80,32 +80,32 @@ typedef struct VkLayerInstanceLink_ {
  * exact instance being used.
  */
 typedef struct VkLayerDeviceInfo_ {
-  void *device_info;
+  void* device_info;
   gapii::VulkanImports::PFNVKGETINSTANCEPROCADDR pfnNextGetInstanceProcAddr;
 } VkLayerDeviceInfo;
 
 typedef struct {
   uint32_t sType;  // VK_STRUCTURE_TYPE_LAYER_INSTANCE_CREATE_INFO
-  const void *pNext;
+  const void* pNext;
   VkLayerFunction function;
   union {
-    VkLayerInstanceLink *pLayerInfo;
+    VkLayerInstanceLink* pLayerInfo;
     VkLayerInstanceInfo instanceInfo;
   } u;
 } VkLayerInstanceCreateInfo;
 
 typedef struct VkLayerDeviceLink_ {
-  struct VkLayerDeviceLink_ *pNext;
+  struct VkLayerDeviceLink_* pNext;
   gapii::VulkanImports::PFNVKGETINSTANCEPROCADDR pfnNextGetInstanceProcAddr;
   gapii::VulkanImports::PFNVKGETDEVICEPROCADDR pfnNextGetDeviceProcAddr;
 } VkLayerDeviceLink;
 
 typedef struct {
   uint32_t sType;  // VK_STRUCTURE_TYPE_LAYER_DEVICE_CREATE_INFO
-  const void *pNext;
+  const void* pNext;
   VkLayerFunction function;
   union {
-    VkLayerDeviceLink *pLayerInfo;
+    VkLayerDeviceLink* pLayerInfo;
     VkLayerDeviceInfo deviceInfo;
   } u;
 } VkLayerDeviceCreateInfo;
@@ -147,20 +147,20 @@ struct link_info_traits {
 // VkLayerDeviceCreateInfo depending on the type of the pCreateInfo
 // passed in.
 template <typename T>
-typename link_info_traits<T>::layer_info_type *get_layer_link_info(
-    const T *pCreateInfo) {
+typename link_info_traits<T>::layer_info_type* get_layer_link_info(
+    const T* pCreateInfo) {
   using layer_info_type = typename link_info_traits<T>::layer_info_type;
 
-  auto layer_info = const_cast<layer_info_type *>(
-      static_cast<const layer_info_type *>(pCreateInfo->mpNext));
+  auto layer_info = const_cast<layer_info_type*>(
+      static_cast<const layer_info_type*>(pCreateInfo->mpNext));
 
   while (layer_info) {
     if (layer_info->sType == link_info_traits<T>::sType &&
         layer_info->function == VK_LAYER_LINK_INFO) {
       return layer_info;
     }
-    layer_info = const_cast<layer_info_type *>(
-        static_cast<const layer_info_type *>(layer_info->pNext));
+    layer_info = const_cast<layer_info_type*>(
+        static_cast<const layer_info_type*>(layer_info->pNext));
   }
   return layer_info;
 }

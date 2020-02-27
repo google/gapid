@@ -16,6 +16,7 @@ package gles_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -122,7 +123,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 			AddRead(memory.Store(ctx, ml, p(0x200000), indices)),
 	}...)
 
-	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		ct.Transform(ctx, api.CmdNoID, cmd, r)
 		return nil
 	})
@@ -130,9 +131,9 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	// Find glDrawElements and check it is using a buffer instead of client's memory now
 	s := newState(ctx)
 	var found bool
-	err = api.ForeachCmd(ctx, r.Cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, r.Cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
-			return err
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 
 		if _, ok := cmd.(*gles.GlDrawElements); ok {

@@ -1,0 +1,297 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+/*
+** Copyright (c) 2015-2019 The Khronos Group Inc.
+**
+** Licensed under the Apache License, Version 2.0 (the "License");
+** you may not use this file except in compliance with the License.
+** You may obtain a copy of the License at
+**
+**     http://www.apache.org/licenses/LICENSE-2.0
+**
+** Unless required by applicable law or agreed to in writing, software
+** distributed under the License is distributed on an "AS IS" BASIS,
+** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+** See the License for the specific language governing permissions and
+** limitations under the License.
+*/
+
+/*
+** This header is generated from the Khronos Vulkan XML API Registry.
+**
+*/
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_KHR_descriptor_update_template") define VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_SPEC_VERSION   1
+@extension("VK_KHR_descriptor_update_template") define VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME "VK_KHR_descriptor_update_template"
+
+
+@internal class UpdateEntryMap {
+  dense_map!(u32, VkDescriptorUpdateTemplateEntry) Map
+}
+
+
+// Rewrites all descriptorupdatetemplateentries to be
+//   single updates (which avoid the overflow issues)
+sub dense_map!(u32, VkDescriptorUpdateTemplateEntry) rewriteDescriptorUpdateEntries
+    (u32                                    descriptorUpdateEntryCount,
+     const VkDescriptorUpdateTemplateEntry* pDescriptorUpdateEntries,
+     VkDescriptorSetLayout                  descriptorSetLayout) {
+  descriptor_updates := pDescriptorUpdateEntries[0:descriptorUpdateEntryCount]
+  ret_val := UpdateEntryMap()
+  layout := DescriptorSetLayouts[descriptorSetLayout]
+  for i in (0 .. descriptorUpdateEntryCount) {
+    update := descriptor_updates[i]
+    count := update.descriptorCount
+    updating := DescriptorUpdateRecord(
+      Binding:      update.dstBinding,
+      ArrayIndex:   update.dstArrayElement,
+      UpdateIndex:  0,
+    )
+
+    for j in (0 .. count) {
+      // Find the right descriptor binding/array index for j descriptor
+      found := MutableBool(false)
+      for k in (updating.Binding .. layout.MaximumBinding + 1) {
+        if !found.b {
+          if k in layout.Bindings {
+            if updating.ArrayIndex < layout.Bindings[k].Count {
+              updating.Binding = k
+              found.b = true
+            } else {
+              updating.ArrayIndex -= layout.Bindings[k].Count
+            }
+          }
+        }
+      }
+      if !found.b {
+        vkErrInvalidDescriptorArrayElement(as!u64(descriptorSetLayout),
+          update.dstBinding,                update.dstArrayElement + j)
+      }
+      ret_val.Map[len(ret_val.Map)]  = VkDescriptorUpdateTemplateEntry(
+        updating.Binding,
+        updating.ArrayIndex,
+        1,
+        update.descriptorType,
+        update.offset + (as!size(updating.UpdateIndex) * update.stride),
+        update.stride,
+      )
+
+      updating.ArrayIndex += 1
+      updating.UpdateIndex += 1
+    }
+  }
+  return ret_val.Map
+}
+
+@internal
+class DescriptorUpdateTemplateObject {
+    @unused VkDevice                           Device
+    VkDescriptorUpdateTemplate                 VulkanHandle
+    VkDescriptorUpdateTemplateCreateFlags      Flags
+    dense_map!(u32, VkDescriptorUpdateTemplateEntry) Entries
+    VkDescriptorUpdateTemplateType             TemplateType
+    VkDescriptorSetLayout                      DescriptorSetLayout
+    VkPipelineBindPoint                        PipelineBindPoint
+    VkPipelineLayout                           PipelineLayout
+    u32                                        SetNumber
+    bool                                       FromKHR
+}
+
+sub ref!DescriptorUpdateTemplateObject createDescriptorUpdateTemplate(
+    VkDevice device,
+    const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
+    VkDescriptorUpdateTemplate*                 pDescriptorUpdateTemplate,
+    bool fromKHR) {
+    obj := new!DescriptorUpdateTemplateObject()
+    if !(device in Devices) { vkErrorInvalidDevice(device) }
+    if pCreateInfo == null {
+        vkErrorNullPointer("pDescriptorUpdateTemplate")
+    } else if !(pCreateInfo[0].descriptorSetLayout in DescriptorSetLayouts) {
+        vkErrorInvalidDescriptorSetLayout(pCreateInfo[0].descriptorSetLayout)
+    } else {
+        info := pCreateInfo[0]
+        obj.Device = device
+        obj.Flags = info.flags
+        obj.TemplateType = info.templateType
+        obj.DescriptorSetLayout = info.descriptorSetLayout
+        obj.PipelineBindPoint = info.pipelineBindPoint
+        obj.PipelineLayout = info.pipelineLayout
+        obj.SetNumber = info.set
+        obj.FromKHR = fromKHR
+        obj.Entries = rewriteDescriptorUpdateEntries(
+            info.descriptorUpdateEntryCount,
+            info.pDescriptorUpdateEntries,
+            info.descriptorSetLayout)
+    }
+    return obj
+}
+
+sub void updateDescriptorSetWithTemplate(
+    VkDescriptorSet                             descriptorSet,
+    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
+    const void*                                 pData) {
+    if !(descriptorSet in DescriptorSets) {
+        vkErrorInvalidDescriptorSet(descriptorSet)
+    } else {
+        if !(descriptorUpdateTemplate in DescriptorUpdateTemplates) {
+	    vkErrorInvalidDescriptorUpdateTemplate(descriptorUpdateTemplate)
+	} else {
+            dat := as!const char*(pData)
+            template := DescriptorUpdateTemplates[descriptorUpdateTemplate]
+            set := DescriptorSets[descriptorSet]
+
+            for i in (0 .. len(template.Entries)) {
+                entry := template.Entries[as!u32(i)]
+                setBinding := switch set.Bindings[entry.dstBinding] == null {
+                case false:
+                    set.Bindings[entry.dstBinding]
+                case true:
+                    new!DescriptorBinding(BindingType: set.Layout.Bindings[entry.dstBinding].Type)
+                }
+                switch(entry.descriptorType) {
+                    case VK_DESCRIPTOR_TYPE_SAMPLER,
+                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                        VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+                        inf := as!VkDescriptorImageInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
+                        imageBinding := setBinding.ImageBinding
+                        imageBinding[entry.dstArrayElement] = new!VkDescriptorImageInfo(
+                            Sampler: inf.Sampler,
+                            ImageView: inf.ImageView,
+                            ImageLayout: inf.ImageLayout
+                        )
+                        setBinding.ImageBinding = imageBinding
+                        if inf.Sampler in Samplers {
+                          samObj := Samplers[inf.Sampler]
+                          if samObj != null {
+                            registerDescriptorUser!SamplerObject(samObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
+                          }
+                        }
+                        if inf.ImageView in ImageViews {
+                          viewObj := ImageViews[inf.ImageView]
+                          if viewObj != null {
+                            registerDescriptorUser!ImageViewObject(viewObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
+                          }
+                        }
+                    }
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+                        VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+                        view := as!VkBufferView[](dat[entry.offset:entry.offset + as!size(8)])[0]
+                        viewBindings := setBinding.BufferViewBindings
+                        viewBindings[entry.dstArrayElement] = view
+                        setBinding.BufferViewBindings = viewBindings
+                        if view in BufferViews {
+                          viewObj := BufferViews[view]
+                          if viewObj != null {
+                            registerDescriptorUser!BufferViewObject(viewObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
+                          }
+                        }
+                    }
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+                        bufferInfo := as!VkDescriptorBufferInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
+                        bufferBindings := setBinding.BufferBinding
+                        bufferBindings[entry.dstArrayElement] = new!VkDescriptorBufferInfo(
+                            Buffer: bufferInfo.Buffer,
+                            Offset: bufferInfo.Offset,
+                            Range: bufferInfo.Range
+                        )
+                        setBinding.BufferBinding = bufferBindings
+                    }
+                }
+                set.Bindings[entry.dstBinding] = setBinding
+            }
+        }
+    }
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateDescriptorUpdateTemplateKHR(
+    VkDevice                                    device,
+    const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkDescriptorUpdateTemplate*                 pDescriptorUpdateTemplate) {
+    obj := createDescriptorUpdateTemplate(device, pCreateInfo, pDescriptorUpdateTemplate, true)
+
+    handle := ?
+    pDescriptorUpdateTemplate[0] = handle
+    obj.VulkanHandle = handle
+    DescriptorUpdateTemplates[handle] = obj
+    return ?
+}
+
+@indirect("VkDevice")
+cmd void vkDestroyDescriptorUpdateTemplateKHR(
+    VkDevice                                    device,
+    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
+    const VkAllocationCallbacks*                pAllocator) {
+    if !(device in Devices) { vkErrorInvalidDevice(device) }
+    if descriptorUpdateTemplate in DescriptorUpdateTemplates {
+         delete(DescriptorUpdateTemplates, descriptorUpdateTemplate)
+    }
+}
+
+@indirect("VkDevice")
+cmd void vkUpdateDescriptorSetWithTemplateKHR(
+    VkDevice                                    device,
+    VkDescriptorSet                             descriptorSet,
+    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
+    const void*                                 pData) {
+    updateDescriptorSetWithTemplate(descriptorSet, descriptorUpdateTemplate, pData)
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateDescriptorUpdateTemplate(
+    VkDevice                                    device,
+    const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkDescriptorUpdateTemplate*                 pDescriptorUpdateTemplate) {
+    obj := createDescriptorUpdateTemplate(device, pCreateInfo, pDescriptorUpdateTemplate, false)
+    handle := ?
+    pDescriptorUpdateTemplate[0] = handle
+    obj.VulkanHandle = handle
+    DescriptorUpdateTemplates[handle] = obj
+    return ?
+}
+
+@indirect("VkDevice")
+cmd void vkDestroyDescriptorUpdateTemplate(
+    VkDevice                                    device,
+    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
+    const VkAllocationCallbacks*                pAllocator) {
+    if !(device in Devices) { vkErrorInvalidDevice(device) }
+    if descriptorUpdateTemplate in DescriptorUpdateTemplates {
+         delete(DescriptorUpdateTemplates, descriptorUpdateTemplate)
+    }
+}
+
+@indirect("VkDevice")
+cmd void vkUpdateDescriptorSetWithTemplate(
+    VkDevice                                    device,
+    VkDescriptorSet                             descriptorSet,
+    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
+    const void*                                 pData) {
+    updateDescriptorSetWithTemplate(descriptorSet, descriptorUpdateTemplate, pData)
+}

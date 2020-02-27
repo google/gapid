@@ -45,25 +45,25 @@ namespace interceptor {
 
 class CodeGenerator {
  public:
-  static CodeGenerator *Create(const llvm::Triple &triple,
+  static CodeGenerator* Create(const llvm::Triple& triple,
                                size_t start_alignment = 0);
 
-  void AddInstruction(const llvm::MCInst &inst);
+  void AddInstruction(const llvm::MCInst& inst);
 
   size_t LayoutCode();
 
   Error LinkCode(uintptr_t location);
 
-  const llvm::SmallVectorImpl<char> &GetCode() const;
+  const llvm::SmallVectorImpl<char>& GetCode() const;
 
   uint32_t GetAlignmentOffset(uint32_t alignment_base) const;
 
   template <typename T, size_t A = alignof(T)>
-  const llvm::MCExpr *CreateDataExpr(T value, size_t alignment = A);
+  const llvm::MCExpr* CreateDataExpr(T value, size_t alignment = A);
 
-  const llvm::MCSubtargetInfo &GetSubtargetInfo() const;
+  const llvm::MCSubtargetInfo& GetSubtargetInfo() const;
 
-  std::string PrintInstruction(const llvm::MCInst &inst);
+  std::string PrintInstruction(const llvm::MCInst& inst);
 
   void ReserveRegister(unsigned int reg) { reserved_regs_.insert(reg); }
 
@@ -72,7 +72,7 @@ class CodeGenerator {
   }
 
  private:
-  CodeGenerator(const llvm::Triple &triple, size_t start_alignment);
+  CodeGenerator(const llvm::Triple& triple, size_t start_alignment);
 
   bool Initialize();
 
@@ -88,7 +88,7 @@ class CodeGenerator {
   std::unique_ptr<llvm::MCAssembler> asm_;
 
   std::vector<llvm::MCInst> instructions_;
-  std::vector<const ConstantPoolDataExpr *> const_pool_exprs_;
+  std::vector<const ConstantPoolDataExpr*> const_pool_exprs_;
 
   llvm::SmallVector<char, 32> code_;
   llvm::raw_svector_ostream code_stream_;
@@ -98,8 +98,8 @@ class CodeGenerator {
 };
 
 template <typename T, size_t A>
-const llvm::MCExpr *CodeGenerator::CreateDataExpr(T value, size_t alignment) {
-  const llvm::MCExpr *value_exp = llvm::MCConstantExpr::create(value, *ctx_);
+const llvm::MCExpr* CodeGenerator::CreateDataExpr(T value, size_t alignment) {
+  const llvm::MCExpr* value_exp = llvm::MCConstantExpr::create(value, *ctx_);
   const_pool_exprs_.emplace_back(
       ConstantPoolDataExpr::Create(value_exp, sizeof(T), alignment, *ctx_));
   return const_pool_exprs_.back();

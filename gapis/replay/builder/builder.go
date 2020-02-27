@@ -60,6 +60,8 @@ type NotificationReader func(p gapir.Notification)
 // replay virtual machine.
 type NotificationHandler func(p *gapir.Notification)
 
+type FenceReadyRequestCallback func(p *gapir.FenceReadyRequest)
+
 // PostDataHandler handles the original PostData messages, which may contains
 // multiple pieces of post back data issued by multiple POST instructions, from
 // the replay virual machine.
@@ -108,6 +110,7 @@ type Builder struct {
 	decoders            []postBackDecoder
 	nextNotificationID  uint64
 	notificationReaders map[uint64]NotificationReader
+	fenceReadyCallbacks map[uint32]FenceReadyRequestCallback
 	stack               []stackItem
 	memoryLayout        *device.MemoryLayout
 	inCmd               bool   // true if between BeginCommand and CommitCommand/RevertCommand
@@ -158,6 +161,7 @@ func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
 		instructions:        []asm.Instruction{},
 		nextNotificationID:  InitialNextNotificationID,
 		notificationReaders: map[uint64]NotificationReader{},
+		fenceReadyCallbacks: map[uint32]FenceReadyRequestCallback{},
 		memoryLayout:        memoryLayout,
 		lastLabel:           ^uint64(0),
 		volatileSpace:       volatileSpace,
@@ -710,6 +714,14 @@ func (b *Builder) RegisterReplayStatusReader(ctx context.Context, r *status.Repl
 	return b.RegisterNotificationReader(ReplayProgressNotificationID, reader)
 }
 
+func (b *Builder) RegisterFenceReadyRequestCallback(fenceID uint32, callback FenceReadyRequestCallback) error {
+	if _, ok := b.fenceReadyCallbacks[fenceID]; ok {
+		return fmt.Errorf("fenceID callback %d already registered", fenceID)
+	}
+	b.fenceReadyCallbacks[fenceID] = callback
+	return nil
+}
+
 // Export compiles the replay instructions, returning a Payload that can be
 // sent to the replay virtual-machine.
 func (b *Builder) Export(ctx context.Context) (gapir.Payload, error) {
@@ -717,7 +729,7 @@ func (b *Builder) Export(ctx context.Context) (gapir.Payload, error) {
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "Export")
 
-	payload, _, _, err := b.Build(ctx)
+	payload, _, _, _, err := b.Build(ctx)
 	if err != nil {
 		return payload, err
 	}
@@ -730,10 +742,18 @@ func (b *Builder) Export(ctx context.Context) (gapir.Payload, error) {
 	return payload, err
 }
 
+func (b *Builder) Memcpy(target value.Pointer, src value.Pointer, size uint64) {
+	b.instructions = append(b.instructions,
+		asm.Push{Value: b.remap(src)},
+		asm.Push{Value: b.remap(target)},
+		asm.Copy{Count: size},
+	)
+}
+
 // Build compiles the replay instructions, returning a Payload that can be
 // sent to the replay virtual-machine and a PostDataHandler for interpreting
 // the responses.
-func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, NotificationHandler, error) {
+func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, NotificationHandler, FenceReadyRequestCallback, error) {
 	ctx = status.Start(ctx, "Build")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "Build")
@@ -760,7 +780,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		}
 		if err := i.Encode(vml, w); err != nil {
 			err = fmt.Errorf("Encode %T failed for command with id %v: %v", i, id, err)
-			return gapir.Payload{}, nil, nil, err
+			return gapir.Payload{}, nil, nil, nil, err
 		}
 	}
 
@@ -832,7 +852,21 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		})
 	}
 
-	return payload, handlePost, handleNotification, nil
+	callbacks := b.fenceReadyCallbacks
+	fenceReadyCallback := func(n *gapir.FenceReadyRequest) {
+		if n == nil {
+			log.E(ctx, "Cannot handle nil FenceReadyRequest")
+			return
+		}
+		id := n.GetId()
+		if r, ok := callbacks[id]; ok {
+			r(n)
+		} else {
+			log.W(ctx, "Unknown fence ready received, ID is %d: %v", id, n)
+		}
+	}
+
+	return payload, handlePost, handleNotification, fenceReadyCallback, nil
 }
 
 const ErrInvalidResource = fault.Const("Invaid resource")

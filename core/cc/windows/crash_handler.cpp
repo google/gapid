@@ -64,6 +64,22 @@ CrashHandler::CrashHandler() : mNextHandlerID(0) {
   registerHandler(defaultHandler);
 }
 
+CrashHandler::CrashHandler(const std::string& crashDir) : mNextHandlerID(0) {
+  size_t length =
+      MultiByteToWideChar(CP_UTF8, 0, crashDir.c_str(), -1, NULL, 0);
+  std::unique_ptr<wchar_t[]> crashDirBuffer(new wchar_t[length]);
+  MultiByteToWideChar(CP_UTF8, 0, crashDir.c_str(), -1, crashDirBuffer.get(),
+                      length);
+  std::wstring crashDirW(crashDirBuffer.get());
+
+  std::unique_ptr<google_breakpad::ExceptionHandler>(
+      new google_breakpad::ExceptionHandler(
+          crashDirW, NULL, ::handleCrash, reinterpret_cast<void*>(this),
+          google_breakpad::ExceptionHandler::HandlerType::HANDLER_ALL));
+
+  registerHandler(defaultHandler);
+}
+
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error
 // from inlining the destructor. The incomplete type is the previously forward
 // declared google_breakpad::ExceptionHandler.

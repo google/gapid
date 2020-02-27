@@ -30,9 +30,9 @@
 import (
     "reflect"
 
+    "github.com/google/gapid/gapis/service/path"
     ϟt "github.com/google/gapid/gapis/service/types"
 )
-
 
 const api_index       = uint64({{$.Index}}) << 59
 const pseudonym_index = uint64(1 << 55)
@@ -240,7 +240,10 @@ const slice_index     = uint64(8 << 55)
       TypeId: {{$ptr_ty}}TypeIndex,
       Name: "E_{{Template "Go.Type" $.Type}}",
       Ty: &ϟt.Type_Enum{
-        &ϟt.EnumType{ Underlying: {{Template "GetIndex" $.Type.NumberType}} },
+        &ϟt.EnumType{
+          Underlying: {{Template "GetIndex" $.Type.NumberType}},
+          Constants : &path.ConstantSet{Index: {{$ptr_ty}}Constants()},
+        },
       },
     }
   }

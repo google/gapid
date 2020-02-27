@@ -19,9 +19,10 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -29,20 +30,28 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.GpuInfo;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
+import com.google.gapid.perfetto.models.SliceTrack.Slice;
+import com.google.gapid.perfetto.models.VulkanEventTrack;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
+import java.util.Set;
 
 /**
  * Draws the GPU Queue slices.
  */
-public class GpuQueuePanel extends TrackPanel implements Selectable {
+public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectable {
   private static final double SLICE_HEIGHT = 25 - 2 * TRACK_MARGIN;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
   private final GpuInfo.Queue queue;
   protected final SliceTrack track;
@@ -58,6 +67,10 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
     this.track = track;
   }
 
+  @Override
+  public GpuQueuePanel copy() {
+    return new GpuQueuePanel(state, queue, track);
+  }
 
   @Override
   public String getTitle() {
@@ -72,9 +85,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("GpuQueue", () -> {
-      SliceTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      SliceTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -82,6 +93,12 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
       }
 
       TimeSpan visible = state.getVisibleTime();
+      Selection<Slice.Key> selected = state.getSelection(Selection.Kind.Gpu);
+      List<Highlight> visibleSelected = Lists.newArrayList();
+
+      Set<Long> selectedSIds = getSelectedSubmissionIdsInVulkanEventTrack(state);
+      long[] sIds = data.getExtraLongs("submissionIds");
+
       for (int i = 0; i < data.starts.length; i++) {
         long tStart = data.starts[i];
         long tEnd = data.ends[i];
@@ -95,19 +112,36 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = depth * SLICE_HEIGHT;
 
-        float hue = (title.hashCode() & 0x7fffffff) % 360;
-        float saturation = Math.min(20 + depth * 10, 70) / 100f;
-        ctx.setBackgroundColor(hsl(hue, saturation, .65f));
+        // Render slice entity.
+        // Grey out if there's vulkan api event selection but this GPU queue slice is not linked.
+        StyleConstants.Gradient color = getSliceColor(data.titles[i]);
+        if (!selectedSIds.isEmpty() && i < sIds.length && !selectedSIds.contains(sIds[i])) {
+          ctx.setBackgroundColor(color.disabled);
+        } else {
+          color.applyBase(ctx);
+        }
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
+
+        // Highlight GPU queue slice if it's selected or linked by a vulkan api event.
+        if (selected.contains(new Slice.Key(tStart, tEnd - tStart, depth)) ||
+            (i < sIds.length && selectedSIds.contains(sIds[i]))) {
+          visibleSelected.add(new Highlight(color.border, rectStart, y, rectWidth));
+        }
 
         // Don't render text when we have less than 7px to play with.
         if (rectWidth < 7) {
           continue;
         }
 
-        ctx.setForegroundColor(colors().textInvertedMain);
+        ctx.setForegroundColor(colors().textMain);
         ctx.drawText(
             Fonts.Style.Normal, title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
+      }
+
+      // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
+      for (Highlight highlight : visibleSelected) {
+        ctx.setForegroundColor(highlight.color);
+        ctx.drawRect(highlight.x, highlight.y, highlight.w, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
 
       if (hoveredTitle != null) {
@@ -134,8 +168,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    SliceTrack.Data data = track.getData(state, () -> { /* nothing */ });
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+    SliceTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
@@ -187,10 +221,15 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
 
           @Override
           public boolean click() {
-            if (id >= 0) {
-              state.setSelection(track.getSlice(state.getQueryEngine(), id));
+            if (id < 0) {
+              return false;
             }
-            return false;
+            if ((mods & SWT.MOD1) == SWT.MOD1) {
+              state.addSelection(Selection.Kind.Gpu, track.getSlice(id));
+            } else {
+              state.setSelection(Selection.Kind.Gpu, track.getSlice(id));
+            }
+            return true;
           }
         };
       }
@@ -220,9 +259,32 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         endDepth = Integer.MAX_VALUE;
       }
 
-      builder.add(Kind.Gpu, transform(
-          track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
-          SliceTrack.Slices::new));
+      builder.add(Selection.Kind.Gpu, transform(
+          track.getSlices(ts, startDepth, endDepth),
+          SliceTrack.SlicesBuilder::new));
+    }
+  }
+
+  private static Set<Long> getSelectedSubmissionIdsInVulkanEventTrack(State state) {
+    Selection<Long> selection = state.getSelection(Selection.Kind.VulkanEvent);
+    Set<Long> res = Sets.newHashSet();    // On Vulkan Event Track.
+    if (selection instanceof VulkanEventTrack.Slice) {
+      res = Sets.newHashSet(((VulkanEventTrack.Slice)selection).submissionId);
+    } else if (selection instanceof VulkanEventTrack.Slices) {
+      res = ((VulkanEventTrack.Slices)selection).getSubmissionIds();
+    }
+    return res;
+  }
+
+  private static class Highlight {
+    public final RGBA color;
+    public final double x, y, w;
+
+    public Highlight(RGBA color, double x, double y, double w) {
+      this.color = color;
+      this.x = x;
+      this.y = y;
+      this.w = w;
     }
   }
 }

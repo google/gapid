@@ -24,6 +24,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.function.Function.identity;
 import static java.util.logging.Level.WARNING;
+import static java.util.stream.Collectors.groupingBy;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
@@ -31,12 +32,14 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.models.CounterInfo;
+import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.perfetto.models.TrackConfig;
 import com.google.gapid.perfetto.models.Tracks;
+import com.google.gapid.perfetto.models.VSync;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -48,6 +51,7 @@ import com.google.gapid.views.StatusBar;
 
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -96,7 +100,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
   private static ListenableFuture<Data.Builder> examineTrace(Data.Builder data) {
     return transformAsync(data.qe.getTraceTimeBounds(), traceTime -> {
       data.setTraceTime(traceTime);
-      return transform(data.qe.getNumberOfCpus(), numCpus -> data.setNumCpus(numCpus));
+      return CpuInfo.listCpus(data);
     });
   }
 
@@ -168,35 +172,38 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
   public static class Data {
     public final QueryEngine qe;
     public final TimeSpan traceTime;
-    public final int numCpus;
+    public final CpuInfo cpu;
     public final ImmutableMap<Long, ProcessInfo> processes;
     public final ImmutableMap<Long, ThreadInfo> threads;
     public final GpuInfo gpu;
     public final ImmutableMap<Long, CounterInfo> counters;
+    public final VSync vsync;
     public final TrackConfig tracks;
 
-    public Data(QueryEngine queries, TimeSpan traceTime, int numCpus,
+    public Data(QueryEngine queries, TimeSpan traceTime, CpuInfo cpu,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
-        GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
+        GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, VSync vsync, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
-      this.numCpus = numCpus;
+      this.cpu = cpu;
       this.processes = processes;
       this.threads = threads;
       this.gpu = gpu;
       this.counters = counters;
+      this.vsync = vsync;
       this.tracks = tracks;
     }
 
     public static class Builder {
       public final QueryEngine qe;
       private TimeSpan traceTime;
-      private int numCpus;
+      private CpuInfo cpu = CpuInfo.NONE;
       private ImmutableMap<Long, ProcessInfo> processes;
       private ImmutableMap<Long, ThreadInfo> threads;
       private GpuInfo gpu = GpuInfo.NONE;
       private ImmutableMap<Long, CounterInfo> counters;
-      private ImmutableListMultimap<String, CounterInfo> countersByName;
+      private Map<CounterInfo.Type, ImmutableListMultimap<String, CounterInfo>> countersByName;
+      private VSync vsync = VSync.EMPTY;
       public final TrackConfig.Builder tracks = new TrackConfig.Builder();
 
       public Builder(QueryEngine qe) {
@@ -212,12 +219,12 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return this;
       }
 
-      public int getNumCpus() {
-        return numCpus;
+      public CpuInfo getCpu() {
+        return cpu;
       }
 
-      public Builder setNumCpus(int numCpus) {
-        this.numCpus = numCpus;
+      public Builder setCpu(CpuInfo cpu) {
+        this.cpu = cpu;
         return this;
       }
 
@@ -252,19 +259,30 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return counters;
       }
 
-      public ImmutableListMultimap<String, CounterInfo> getCountersByName() {
-        return countersByName;
+      public ImmutableListMultimap<String, CounterInfo> getCounters(CounterInfo.Type type) {
+        ImmutableListMultimap<String, CounterInfo> r = countersByName.get(type);
+        return (r == null) ? ImmutableListMultimap.of() : r;
       }
 
       public Builder setCounters(ImmutableMap<Long, CounterInfo> counters) {
         this.counters = counters;
         this.countersByName = counters.values().stream()
-            .collect(toImmutableListMultimap(c -> c.name, identity()));
+            .collect(groupingBy(c -> c.type, toImmutableListMultimap(c -> c.name, identity())));
+        return this;
+      }
+
+      public VSync getVSync() {
+        return vsync;
+      }
+
+      public Builder setVSync(VSync vsync) {
+        this.vsync = vsync;
         return this;
       }
 
       public Data build() {
-        return new Data(qe, traceTime, numCpus, processes, threads, gpu, counters, tracks.build());
+        return new Data(
+            qe, traceTime, cpu, processes, threads, gpu, counters, vsync, tracks.build());
       }
     }
   }

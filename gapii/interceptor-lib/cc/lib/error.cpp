@@ -21,7 +21,7 @@
 
 using namespace interceptor;
 
-Error::Error(const char *format, ...) {
+Error::Error(const char* format, ...) {
   va_list args, copy_args;
   va_start(args, format);
   va_copy(copy_args, args);

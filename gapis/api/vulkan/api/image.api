@@ -86,10 +86,20 @@
   map!(VkImageView, ref!ImageViewObject)                        Views
 }
 
+@internal class MutableImageDeviceGroupBinding {
+  ref!ImageDeviceGroupBinding Binding
+}
+
+@internal class ImageDeviceGroupBinding {
+  map!(u32, u32)                     Bindings
+  map!(u32, VkRect2D)                SplitInstanceBindings
+}
+
 @internal class ImagePlaneMemoryInfo {
   ref!DeviceMemoryObject  BoundMemory
   VkDeviceSize            BoundMemoryOffset
   VkMemoryRequirements    MemoryRequirements
+  ref!ImageDeviceGroupBinding  ImageDeviceGroupBinding
 }
 
 @internal class ImageAspect {
@@ -161,7 +171,6 @@ cmd VkResult vkCreateImage(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkImageCreateInfo") }
   info := pCreateInfo[0]
-  queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
   imageInfo := ImageInfo(
     Flags:          info.flags,
@@ -177,8 +186,11 @@ cmd VkResult vkCreateImage(
     InitialLayout:  info.initialLayout,
   )
 
-  for i in (0 .. info.queueFamilyIndexCount) {
-    imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+  if (info.sharingMode == VK_SHARING_MODE_CONCURRENT) {
+    queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
+    for i in (0 .. info.queueFamilyIndexCount) {
+      imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+    }
   }
 
   imageAspect := as!VkImageAspectFlags(getAspectBitsFromImageFormat(info.format))
@@ -336,7 +348,8 @@ sub void BindImageMemory(
     VkImage        image,
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset,
-    VkImageAspectFlagBits plane) {
+    VkImageAspectFlagBits plane,
+    ref!ImageDeviceGroupBinding deviceGroupBinding) {
   if !(memory in DeviceMemories) {
     vkErrorInvalidDeviceMemory(memory)
   } else {
@@ -349,6 +362,7 @@ sub void BindImageMemory(
       }
       imageObject.PlaneMemoryInfo[plane].BoundMemory = DeviceMemories[memory]
       imageObject.PlaneMemoryInfo[plane].BoundMemoryOffset = memoryOffset
+      imageObject.PlaneMemoryInfo[plane].ImageDeviceGroupBinding = deviceGroupBinding
       DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
 
       for _ , _ , aspectBit in unpackImageAspectFlags(imageObject, imageObject.ImageAspect) {
@@ -404,7 +418,7 @@ cmd VkResult vkBindImageMemory(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   // BindImageMemory only handles non-disjoint images, meaning
   // we always use plane-0 for allocation.
-  BindImageMemory(image, memory, memoryOffset, as!VkImageAspectFlagBits(0))
+  BindImageMemory(image, memory, memoryOffset, as!VkImageAspectFlagBits(0), null)
   return ?
 }
 
@@ -836,6 +850,7 @@ sub void BindImageMemory2(
     p := MutablePlane(as!VkImageAspectFlagBits(0))
     infos := pBindInfos[0:bindInfoCount]
     for i in (0 .. bindInfoCount) {
+      dg := MutableImageDeviceGroupBinding()
       info := infos[i]
       // handle pNext
       if info.pNext != null {
@@ -848,15 +863,29 @@ sub void BindImageMemory2(
               ext := as!VkBindImagePlaneMemoryInfo*(next.Ptr)[0]
               p.aspect = ext.planeAspect
             }
+            case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: {
+              ext := as!VkBindImageMemoryDeviceGroupInfo*(next.Ptr)[0:1][0]
+              dg.Binding = new!ImageDeviceGroupBinding()
+              indices := ext.pDeviceIndices[0:ext.deviceIndexCount]
+              for j in (0 .. ext.deviceIndexCount) {
+                dg.Binding.Bindings[j] = indices[j]
+              }
+              regions := ext.pSplitInstanceBindRegions[0:ext.splitInstanceBindRegionCount]
+              for j in (0 .. ext.splitInstanceBindRegionCount) {
+                dg.Binding.SplitInstanceBindings[j] = regions[j]
+              }
+            }
+            default: {}
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
-      BindImageMemory(info.image, info.memory, info.memoryOffset, p.aspect)
+      BindImageMemory(info.image, info.memory, info.memoryOffset, p.aspect, dg.Binding)
     }
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd VkResult vkBindImageMemory2(
     VkDevice                     device,
@@ -913,6 +942,7 @@ sub void CreateSamplerYcbcrConversion(
   SamplerYcbcrConversions[handle] = object
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateSamplerYcbcrConversion(
@@ -935,6 +965,7 @@ sub void DestroySamplerYcbcrConversion(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroySamplerYcbcrConversion(

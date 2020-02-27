@@ -59,14 +59,15 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 		s.Memory.ApplicationPool().Write(w.at.Address(), w.src)
 	}
 
-	api.ForeachCmd(ctx, test.cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, test.cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		b.BeginCommand(uint64(id), 0)
-		cmd.Mutate(ctx, id, s, b, nil)
+		err := cmd.Mutate(ctx, id, s, b, nil)
+		assert.For(ctx, "Mutate command").ThatError(err).Succeeded()
 		b.CommitCommand()
 		return nil
 	})
 
-	payload, _, _, err := b.Build(ctx)
+	payload, _, _, _, err := b.Build(ctx)
 	assert.For(ctx, "Build opcodes").ThatError(err).Succeeded()
 
 	ops := bytes.NewBuffer(payload.Opcodes)

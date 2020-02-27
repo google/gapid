@@ -15,6 +15,8 @@
  */
 package com.google.gapid;
 
+import static java.util.stream.Collectors.toList;
+
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -22,6 +24,7 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.views.CommandTree;
@@ -30,13 +33,13 @@ import com.google.gapid.views.FramebufferView;
 import com.google.gapid.views.GeometryView;
 import com.google.gapid.views.LogView;
 import com.google.gapid.views.MemoryView;
+import com.google.gapid.views.PipelineView;
 import com.google.gapid.views.ReportView;
 import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
 import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
 import com.google.gapid.views.ThumbnailScrubber;
-import com.google.gapid.widgets.FixedTopSplitter;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;
 import com.google.gapid.widgets.TabArea.Persistance;
@@ -67,7 +70,6 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
   private final Widgets widgets;
   protected final Set<MainTab.Type> hiddenTabs;
 
-  private final FixedTopSplitter splitter;
   protected TabArea tabs;
 
   public GraphicsTraceView(Composite parent, Models models, Widgets widgets) {
@@ -80,34 +82,20 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
 
     new ContextSelector(this, models)
         .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-    splitter = new FixedTopSplitter(this, models.settings.splitterTopHeight) {
+
+    tabs = new TabArea(this, models.analytics, widgets.theme, new Persistance() {
       @Override
-      protected Control createTopControl() {
-        return new ThumbnailScrubber(this, models, widgets);
+      public void store(TabArea.FolderInfo[] folders) {
+        MainTab.store(models, folders);
       }
 
       @Override
-      protected Control createBottomControl() {
-        tabs = new TabArea(this, models.analytics, widgets.theme, new Persistance() {
-          @Override
-          public void store(TabArea.FolderInfo[] folders) {
-            MainTab.store(models, folders);
-          }
-
-          @Override
-          public TabArea.FolderInfo[] restore() {
-            return MainTab.getFolders(models, widgets, hiddenTabs);
-          }
-        });
-        return tabs;
+      public TabArea.FolderInfo[] restore() {
+        return MainTab.getFolders(models, widgets, hiddenTabs);
       }
-    };
-    splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    splitter.setTopVisible(!models.settings.hideScrubber);
-
-    splitter.addListener(SWT.Dispose, e -> {
-      models.settings.splitterTopHeight = splitter.getTopHeight();
     });
+
+    tabs.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.follower.addListener(new Follower.Listener() {
       @Override
@@ -124,7 +112,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
 
   private static Set<MainTab.Type> getHiddenTabs(Settings settings) {
     Set<MainTab.Type> hiddenTabs = Sets.newHashSet();
-    for (String hidden : settings.hiddenTabs) {
+    for (String hidden : settings.tabs().getHiddenList()) {
       try {
         hiddenTabs.add(MainTab.Type.valueOf(hidden));
       } catch (IllegalArgumentException e) {
@@ -137,18 +125,6 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
   @Override
   public void updateViewMenu(MenuManager manager) {
     manager.removeAll();
-
-    Action viewScrubber = MainWindow.MenuItems.ViewThumbnails.createCheckbox(show -> {
-      if (splitter != null) {
-        models.analytics.postInteraction(
-            View.FilmStrip, show ? ClientAction.Enable : ClientAction.Disable);
-        splitter.setTopVisible(show);
-        models.settings.hideScrubber = !show;
-      }
-    });
-    viewScrubber.setChecked(!models.settings.hideScrubber);
-
-    manager.add(viewScrubber);
     manager.add(createViewTabsMenu());
   }
 
@@ -159,19 +135,25 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
         models.analytics.postInteraction(
             type.view, shown ? ClientAction.Enable : ClientAction.Disable);
         if (shown) {
-          tabs.addTabToLargestFolder(new MainTab(type, parent -> {
+          TabInfo tabInfo = new MainTab(type, parent -> {
             Tab tab = type.factory.create(parent, models, widgets);
             tab.reinitialize();
             return tab.getControl();
-          }));
+          });
+          if (type.top) {
+            tabs.addTabToFirstFolder(tabInfo);
+          } else {
+            tabs.addTabToLargestFolder(tabInfo);
+          }
           tabs.showTab(type);
           hiddenTabs.remove(type);
         } else {
           tabs.disposeTab(type);
           hiddenTabs.add(type);
         }
-        models.settings.hiddenTabs =
-            hiddenTabs.stream().map(MainTab.Type::name).toArray(n -> new String[n]);
+        models.settings.writeTabs()
+            .clearHidden()
+            .addAllHidden(hiddenTabs.stream().map(MainTab.Type::name).collect(toList()));
       });
       action.setChecked(!hiddenTabs.contains(type));
       manager.add(action);
@@ -196,15 +178,16 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
      * recursive children in case of groups, or the number of tabs in case of folders.
      */
     public static FolderInfo[] getFolders(Models models, Widgets widgets, Set<Type> hidden) {
+      SettingsProto.TabsOrBuilder sTabs = models.settings.tabs();
       Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
       allTabs.removeAll(hidden);
       Iterator<String> structs = Splitter.on(';')
           .trimResults()
           .omitEmptyStrings()
-          .split(models.settings.tabStructure)
+          .split(sTabs.getStructure())
           .iterator();
-      Iterator<Integer> weights = Arrays.stream(models.settings.tabWeights).iterator();
-      Iterator<String> tabs = Arrays.asList(models.settings.tabs).iterator();
+      Iterator<Integer> weights = sTabs.getWeightsList().iterator();
+      Iterator<String> tabs = sTabs.getTabsList().iterator();
 
       FolderInfo root = parse(models, widgets, structs, weights, tabs, allTabs);
       if (structs.hasNext()) {
@@ -267,6 +250,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
         Models models, Widgets widgets, Set<Type> hidden) {
       Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
       allTabs.removeAll(hidden);
+      boolean hasFilmStrip = allTabs.remove(Type.Filmstrip);
       List<FolderInfo> folders = Lists.newArrayList();
       if (allTabs.contains(Type.ApiCalls)) {
         folders.add(new FolderInfo(new TabInfo[] {
@@ -300,7 +284,20 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
         }
         folders.add(new FolderInfo(right, 1));
       }
-      return folders.toArray(new FolderInfo[folders.size()]);
+
+      FolderInfo[] result = folders.toArray(new FolderInfo[folders.size()]);
+      if (hasFilmStrip) {
+        result = new FolderInfo[] {
+            new FolderInfo(new TabInfo[] {
+                new MainTab(Type.Filmstrip,
+                    parent -> Type.Filmstrip.factory.create(parent, models, widgets).getControl()),
+            }, 1),
+            new FolderInfo(result, 4),
+        };
+      } else {
+        result = new FolderInfo[] { new FolderInfo(result, 1) };
+      }
+      return result;
     }
 
     /**
@@ -314,9 +311,10 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
       for (FolderInfo folder : folders) {
         flatten(folder, weights, structure, tabs);
       }
-      models.settings.tabs = tabs.toArray(new String[tabs.size()]);
-      models.settings.tabWeights = weights.stream().mapToInt(x -> x).toArray();
-      models.settings.tabStructure = structure.toString();
+      models.settings.writeTabs()
+          .setStructure(structure.toString())
+          .clearTabs().addAllTabs(tabs)
+          .clearWeights().addAllWeights(weights);
     }
 
     private static void flatten(
@@ -358,25 +356,30 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
      * Information about the available tabs.
      */
     public static enum Type {
-      ApiCalls(View.Commands, "Commands", CommandTree::new),
+      Filmstrip(View.FilmStrip, "Filmstrip", true, ThumbnailScrubber::new),
 
-      Framebuffer(View.Framebuffer, "Framebuffer", FramebufferView::new),
-      Textures(View.Textures, "Textures", TextureView::new),
-      Geometry(View.Geometry, "Geometry", GeometryView::new),
-      Shaders(View.Shaders, "Shaders", ShaderView::new),
-      Report(View.Report, "Report", ReportView::new),
-      Log(View.Log, "Log", (p, m, w) -> new LogView(p, w)),
+      ApiCalls(View.Commands, "Commands", false, CommandTree::new),
 
-      ApiState(View.State, "State", StateView::new),
-      Memory(View.Memory, "Memory", MemoryView::new);
+      Framebuffer(View.Framebuffer, "Framebuffer", false, FramebufferView::new),
+      Pipeline(View.Pipeline, "Pipeline", false, PipelineView::new),
+      Textures(View.Textures, "Textures", false, TextureView::new),
+      Geometry(View.Geometry, "Geometry", false, GeometryView::new),
+      Shaders(View.Shaders, "Shaders", false, ShaderView::new),
+      Report(View.Report, "Report", false, ReportView::new),
+      Log(View.Log, "Log", false, (p, m, w) -> new LogView(p, w)),
+
+      ApiState(View.State, "State", false, StateView::new),
+      Memory(View.Memory, "Memory", false, MemoryView::new);
 
       public final View view;
       public final String label;
+      public final boolean top;
       public final TabFactory factory;
 
-      private Type(View view, String label, TabFactory factory) {
+      private Type(View view, String label, boolean top, TabFactory factory) {
         this.view = view;
         this.label = label;
+        this.top = top;
         this.factory = factory;
       }
 

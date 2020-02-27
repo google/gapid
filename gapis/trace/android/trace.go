@@ -16,6 +16,7 @@ package android
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -27,7 +28,13 @@ import (
 	"strings"
 	"time"
 
+	perfetto_pb "protos/perfetto/config"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -37,9 +44,22 @@ import (
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapidapk/pkginfo"
 	gapii "github.com/google/gapid/gapii/client"
-	perfetto "github.com/google/gapid/gapis/perfetto/android"
+	"github.com/google/gapid/gapis/perfetto"
+	perfetto_android "github.com/google/gapid/gapis/perfetto/android"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/trace/android/adreno"
+	"github.com/google/gapid/gapis/trace/android/validate"
 	"github.com/google/gapid/gapis/trace/tracer"
+)
+
+const (
+	activityName                            = "com.google.android.gapid.VkSampleActivity"
+	intentAction                            = "android.intent.action.MAIN"
+	bufferSizeKb                            = uint32(131072)
+	counterPeriodNs                         = uint64(50000000)
+	durationMs                              = 7000
+	gpuCountersDataSourceDescriptorName     = "gpu.counters"
+	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
 )
 
 // Only update the package list every 30 seconds at most
@@ -50,10 +70,160 @@ type androidTracer struct {
 	packages             *pkginfo.PackageList
 	lastIconDensityScale float32
 	lastPackageUpdate    time.Time
+	v                    validate.Validator
+}
+
+func newValidator(dev bind.Device) validate.Validator {
+	gpu := dev.Instance().GetConfiguration().GetHardware().GetGPU()
+	if strings.Contains(gpu.GetName(), "Adreno") {
+		return &adreno.AdrenoValidator{}
+	}
+	return nil
+}
+
+func traceOptions(ctx context.Context, v validate.Validator) (*service.TraceOptions, error) {
+	counters := v.GetCounters()
+	ids := make([]uint32, len(counters))
+	for i, counter := range counters {
+		ids[i] = counter.Id
+	}
+	return &service.TraceOptions{
+		DeferStart: true,
+		PerfettoConfig: &perfetto_pb.TraceConfig{
+			Buffers: []*perfetto_pb.TraceConfig_BufferConfig{
+				{SizeKb: proto.Uint32(bufferSizeKb)},
+			},
+			DurationMs: proto.Uint32(durationMs),
+			DataSources: []*perfetto_pb.TraceConfig_DataSource{
+				{
+					Config: &perfetto_pb.DataSourceConfig{
+						Name: proto.String(gpuRenderStagesDataSourceDescriptorName),
+					},
+				},
+				{
+					Config: &perfetto_pb.DataSourceConfig{
+						Name: proto.String(gpuCountersDataSourceDescriptorName),
+						GpuCounterConfig: &perfetto_pb.GpuCounterConfig{
+							CounterPeriodNs: proto.Uint64(counterPeriodNs),
+							CounterIds:      ids,
+						},
+					},
+				},
+			},
+		},
+	}, nil
 }
 
 func (t *androidTracer) GetDevice() bind.Device {
 	return t.b
+}
+
+func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, handleMappings *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
+	// Load Perfetto trace and create trace processor.
+	rawData := make([]byte, buffer.Len())
+	_, err := buffer.Read(rawData)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to read trace buffer")
+	}
+	processor, err := perfetto.NewProcessor(ctx, rawData)
+	defer processor.Close()
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Failed to create trace processor")
+	}
+	conf := t.b.Instance().GetConfiguration()
+	gpu := conf.GetHardware().GetGPU()
+	desc := conf.GetPerfettoCapability().GetGpuProfiling().GetGpuCounterDescriptor()
+	gpuName := gpu.GetName()
+	if strings.Contains(gpuName, "Adreno") {
+		return adreno.ProcessProfilingData(ctx, processor, desc, handleMappings)
+	}
+	return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
+}
+
+func (t *androidTracer) Validate(ctx context.Context) error {
+	ctx = status.Start(ctx, "Android Device Validation")
+	defer status.Finish(ctx)
+	if t.v == nil {
+		return log.Errf(ctx, nil, "No validator found for device %d", t.b.Instance().ID.ID())
+	}
+	d := t.b.(adb.Device)
+	osConfiguration := d.Instance().GetConfiguration()
+	if osConfiguration.GetPerfettoCapability() == nil {
+		return log.Errf(ctx, nil, "No Perfetto Capability found on device %d", d.Instance().ID.ID())
+	}
+	if gpuProfiling := osConfiguration.GetPerfettoCapability().GetGpuProfiling(); gpuProfiling == nil || gpuProfiling.GetGpuCounterDescriptor() == nil {
+		return log.Errf(ctx, nil, "No GPU profiling capabilities found on device %d", d.Instance().ID.ID())
+	}
+
+	// Get ActivityAction
+	gapidPackage := gapidapk.PackageName(osConfiguration.PreferredABI(d.Instance().GetConfiguration().GetABIs()))
+	packages, _ := d.InstalledPackages(ctx)
+	pkg := packages.FindByName(gapidPackage)
+	if pkg == nil {
+		return log.Errf(ctx, nil, "Package %v not found", gapidPackage)
+	}
+	activityAction := pkg.ActivityActions.FindByName(intentAction, activityName)
+	if activityAction == nil {
+		return log.Errf(ctx, nil, "Activity %v not found in %v", activityName, gapidPackage)
+	}
+
+	// Construct trace config
+	traceOpts, err := traceOptions(ctx, t.v)
+	if err != nil {
+		return log.Err(ctx, err, "Could not get the trace configuration")
+	}
+	process, cleanup, err := perfetto_android.Start(ctx, d, activityAction, traceOpts, nil, []string{})
+	if err != nil {
+		cleanup.Invoke(ctx)
+		return log.Err(ctx, err, "Error when start Perfetto tracing.")
+	}
+	defer cleanup.Invoke(ctx)
+
+	// Force to stop the application, ignore any error that happens as it
+	// doesn't affect validation.
+	defer d.ForceStop(ctx, gapidPackage)
+
+	var buf bytes.Buffer
+	var written int64
+	// Start to capture.
+	status.Do(ctx, "Tracing", func(ctx context.Context) {
+		startSignal, startFunc := task.NewSignal()
+		readyFunc := task.Noop()
+		stopSignal, _ := task.NewSignal()
+		doneSignal, doneFunc := task.NewSignal()
+
+		crash.Go(func() {
+			// TODO(b/142824856): This is a workaround to a problem that render stages data
+			// is not captured if the application starts after tracing.
+			time.Sleep(2 * time.Second)
+			_, err = process.Capture(ctx, startSignal, stopSignal, readyFunc, &buf, &written)
+			doneFunc(ctx)
+		})
+
+		startFunc(ctx)
+		if !doneSignal.Wait(ctx) {
+			err = log.Err(ctx, err, "Fail to wait for done signal from Perfetto.")
+		}
+		log.I(ctx, "Perfetto trace size %v bytes", written)
+	})
+	if err != nil {
+		return err
+	}
+
+	var processor *perfetto.Processor
+	status.Do(ctx, "Trace loading", func(ctx context.Context) {
+		// Load Perfetto trace and create trace processor.
+		rawData := make([]byte, written)
+		_, err = buf.Read(rawData)
+		processor, err = perfetto.NewProcessor(ctx, rawData)
+	})
+	if err != nil {
+		return err
+	}
+	defer processor.Close()
+	ctx = status.Start(ctx, "Validation")
+	defer status.Finish(ctx)
+	return t.v.Validate(ctx, processor)
 }
 
 func (t *androidTracer) GetPackages(ctx context.Context, isRoot bool, iconDensityScale float32) (*pkginfo.PackageList, error) {
@@ -92,7 +262,7 @@ func (t *androidTracer) GetPackages(ctx context.Context, isRoot bool, iconDensit
 
 // NewTracer returns a new Tracer for Android.
 func NewTracer(dev bind.Device) tracer.Tracer {
-	return &androidTracer{dev.(adb.Device), nil, 1.0, time.Time{}}
+	return &androidTracer{dev.(adb.Device), nil, 1.0, time.Time{}, newValidator(dev)}
 }
 
 // TraceConfiguration returns the device's supported trace configuration.
@@ -476,8 +646,22 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 
 	var process tracer.Process
 	if o.Type == service.TraceType_Perfetto {
+		var layers []string
+		var packageABI *device.ABI
+		if pkg != nil {
+
+			d := pkg.Device.(adb.Device)
+			abi := pkg.ABI
+			if abi.SameAs(device.UnknownABI) {
+				abi = pkg.Device.Instance().GetConfiguration().PreferredABI(nil)
+			}
+			// For NativeBridge emulated devices opt for the native ABI of the emulator.
+			packageABI = d.NativeBridgeABI(ctx, abi)
+			layers = tracer.LayersFromOptions(ctx, o)
+		}
 		var perfettoCleanup app.Cleanup
-		process, perfettoCleanup, err = perfetto.Start(ctx, t.b, a, o)
+		log.E(ctx, "Setting up layers %+v: %+v", packageABI, layers)
+		process, perfettoCleanup, err = perfetto_android.Start(ctx, t.b, a, o, packageABI, layers)
 		cleanup = cleanup.Then(perfettoCleanup)
 	} else {
 		log.I(ctx, "Starting with options %+v", tracer.GapiiOptions(o))

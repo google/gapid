@@ -23,7 +23,7 @@
     <uses-sdk
         android:minSdkVersion="21"
         android:targetSdkVersion="26" />
-
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/logo"
@@ -31,12 +31,25 @@
         android:supportsRtl="true"
         android:debuggable="true"
         >
-        <activity android:name="android.app.NativeActivity"
+        <meta-data
+            android:name="com.android.graphics.developerdriver.enable"
+            android:value="true" />
+        <activity android:name="com.google.android.gapid.ReplayerActivity"
                   android:label="GAPID - ${name}">
             <meta-data android:name="android.app.lib_name"
                        android:value="gapir"/>
             <intent-filter>
                 <action android:name=".gapir"/>
+            </intent-filter>
+        </activity>
+        <activity android:name="com.google.android.gapid.VkSampleActivity"
+                  android:label="GAPID - Vulkan Sample"
+                  android:configChanges="orientation|screenSize"
+                  android:screenOrientation="portrait">
+            <meta-data android:name="android.app.lib_name"
+                       android:value="vulkan_sample" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
         <service

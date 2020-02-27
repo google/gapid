@@ -92,19 +92,6 @@ func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
 	delete(GetState(e.s).initialCommands, commandBuffer)
 }
 
-func (e externs) notifyPendingCommandAdded(queue VkQueue) {
-	s := GetState(e.s)
-	queueObject := s.Queuesʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, queue)
-	command := queueObject.PendingCommandsʷ(e.ctx, e.w, false).Getʷ(e.ctx, e.w, true, uint32(queueObject.PendingCommandsʷ(e.ctx, e.w, true).Lenʷ(e.ctx, e.w, false)-1))
-	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndexʷ(e.ctx, e.w, true))
-	s.queuedCommands[command] = QueuedCommand{
-		submit:          e.cmd,
-		submissionIndex: append([]uint64(nil), s.SubCmdIdx...),
-	}
-
-	queueObject.PendingCommandsʷ(e.ctx, e.w, true).Addʷ(e.ctx, e.w, false, uint32(queueObject.PendingCommandsʷ(e.ctx, e.w, true).Lenʷ(e.ctx, e.w, false)-1), command)
-}
-
 func (e externs) onCommandAdded(buffer VkCommandBuffer) {
 	o := GetState(e.s)
 	o.initialCommands[buffer] =
@@ -143,20 +130,12 @@ func (e externs) nextSubcontext() {
 
 func (e externs) onPreSubcommand(ref CommandReferenceʳ) {
 	o := GetState(e.s)
-	cmd := o.queuedCommands[ref]
-	o.CurrentSubmission = cmd.submit
 	if o.PreSubcommand != nil {
 		o.PreSubcommand(ref)
 	}
 	if e.w != nil {
 		e.w.OnBeginSubCmd(e.ctx, o.SubCmdIdx, api.RecordIdx{uint64(ref.Buffer()), uint64(ref.CommandIndex())})
 	}
-}
-
-func (e externs) onPreProcessCommand(ref CommandReferenceʳ) {
-	o := GetState(e.s)
-	cmd := o.queuedCommands[ref]
-	o.SubCmdIdx = append([]uint64{}, cmd.submissionIndex...)
 }
 
 func (e externs) onPostSubcommand(ref CommandReferenceʳ) {
@@ -166,20 +145,6 @@ func (e externs) onPostSubcommand(ref CommandReferenceʳ) {
 	}
 	if e.w != nil {
 		e.w.OnEndSubCmd(e.ctx)
-	}
-}
-
-func (e externs) onDeferSubcommand(ref CommandReferenceʳ) {
-	o := GetState(e.s)
-	r := o.queuedCommands[ref]
-	r.submit = o.CurrentSubmission
-	o.queuedCommands[ref] = r
-}
-
-func (e externs) postBindSparse(binds QueuedSparseBindsʳ) {
-	o := GetState(e.s)
-	if o.postBindSparse != nil {
-		o.postBindSparse(binds)
 	}
 }
 
@@ -219,50 +184,6 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 		pNext = Voidᶜᵖᵖ(pNext).Slice(1, 2, l).MustReadʷ(e.ctx, e.cmd, e.s, e.b, e.w)[0]
 	}
 	return counter
-}
-
-func (e externs) pushDebugMarker(name string) {
-	if GetState(e.s).pushMarkerGroup != nil {
-		GetState(e.s).pushMarkerGroup(name, false, DebugMarker)
-	}
-}
-
-func (e externs) popDebugMarker() {
-	if GetState(e.s).popMarkerGroup != nil {
-		GetState(e.s).popMarkerGroup(DebugMarker)
-	}
-}
-
-func (e externs) pushRenderPassMarker(rp VkRenderPass) {
-	if GetState(e.s).pushMarkerGroup != nil {
-		rpObj := GetState(e.s).RenderPassesʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, rp)
-		var name string
-		if !rpObj.DebugInfoʷ(e.ctx, e.w, true).IsNil() && len(rpObj.DebugInfoʷ(e.ctx, e.w, true).ObjectNameʷ(e.ctx, e.w, true)) > 0 {
-			name = rpObj.DebugInfoʷ(e.ctx, e.w, true).ObjectNameʷ(e.ctx, e.w, true)
-		} else {
-			name = fmt.Sprintf("RenderPass: %v", rp)
-		}
-		GetState(e.s).pushMarkerGroup(name, false, RenderPassMarker)
-		if rpObj.SubpassDescriptionsʷ(e.ctx, e.w, true).Lenʷ(e.ctx, e.w, true) > 1 {
-			GetState(e.s).pushMarkerGroup("Subpass: 0", false, RenderPassMarker)
-		}
-	}
-}
-
-func (e externs) popRenderPassMarker() {
-	if GetState(e.s).popMarkerGroup != nil {
-		GetState(e.s).popMarkerGroup(RenderPassMarker)
-	}
-}
-
-func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
-	if GetState(e.s).popMarkerGroup != nil {
-		GetState(e.s).popMarkerGroup(RenderPassMarker)
-	}
-	name := fmt.Sprintf("Subpass: %v", nextSubpass)
-	if GetState(e.s).pushMarkerGroup != nil {
-		GetState(e.s).pushMarkerGroup(name, true, RenderPassMarker)
-	}
 }
 
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
@@ -499,6 +420,14 @@ func (e externs) vkErrInvalidDescriptorCopy(srcSet VkDescriptorSet, srcBinding u
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_ErrorLevel
 	issue.Error = fmt.Errorf("Copy descriptor set from %v to %v for the binding %v to %v is invalid", srcSet, dstSet, srcBinding, dstBinding)
+	e.onVkError(issue)
+}
+
+func (e externs) vkErrUnsupported(str string) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Unsupported: %v", str)
 	e.onVkError(issue)
 }
 

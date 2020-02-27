@@ -15,6 +15,7 @@
 package desktop
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path"
@@ -45,6 +46,14 @@ func NewTracer(dev bind.Device) *DesktopTracer {
 
 func (t *DesktopTracer) GetDevice() bind.Device {
 	return t.b
+}
+
+func (t *DesktopTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
+	return nil, log.Err(ctx, nil, "Desktop replay profiling is unsupported.")
+}
+
+func (t *DesktopTracer) Validate(ctx context.Context) error {
+	return nil
 }
 
 // TraceConfiguration returns the device's supported trace configuration.
@@ -234,6 +243,12 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 	var boundPort int
 
 	if o.Type == service.TraceType_Perfetto {
+		layers := tracer.LayersFromOptions(ctx, o)
+		c, err := loader.SetupLayers(ctx, layers, false, t.b, t.b.Instance().Configuration.ABIs[0], env)
+		if err != nil {
+			cleanup.Invoke(ctx)
+		}
+		cleanup = cleanup.Then(c)
 		p, err = perfetto.Start(ctx, t.b, t.b.Instance().Configuration.ABIs[0], o)
 	}
 

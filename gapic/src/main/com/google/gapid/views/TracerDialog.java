@@ -32,7 +32,9 @@ import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.models.Analytics;
@@ -42,6 +44,7 @@ import com.google.gapid.models.Devices.DeviceCaptureInfo;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -91,13 +94,14 @@ import org.eclipse.swt.widgets.Text;
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Arrays;
 
 /**
  * Dialogs used for capturing a trace.
@@ -123,7 +127,7 @@ public class TracerDialog {
         "*.perfetto",
         "*"
     });
-    dialog.setFilterPath(models.settings.lastOpenDir);
+    dialog.setFilterPath(models.settings.files().getLastOpenDir());
     String result = dialog.open();
     if (result != null) {
       models.capture.loadCapture(new File(result));
@@ -138,7 +142,7 @@ public class TracerDialog {
         "Trace Files (" + (isPerfetto ? "*.perfetto" : "*.gfxtrace") + ")", "All Files"
     });
     dialog.setFilterExtensions(new String[] { isPerfetto ? "*.perfetto" : "*.gfxtrace", "*" });
-    dialog.setFilterPath(models.settings.lastOpenDir);
+    dialog.setFilterPath(models.settings.files().getLastOpenDir());
     String result = dialog.open();
     if (result != null) {
       models.capture.saveCapture(new File(result));
@@ -239,6 +243,9 @@ public class TracerDialog {
     protected void buttonPressed(int buttonId) {
       if (buttonId == IDialogConstants.OK_ID) {
         value = traceInput.getTraceRequest(models.settings);
+        if (LOG.isLoggable(Level.FINE)) {
+          LOG.log(Level.FINE, "Trace request: {0}", value.options);
+        }
       }
       super.buttonPressed(buttonId);
     }
@@ -251,17 +258,16 @@ public class TracerDialog {
       private static final String TARGET_LABEL = "Application";
       private static final String FRAMES_LABEL = "Stop After:";
       private static final String DURATION_LABEL = "Duration:";
+      private static final int DURATION_MAX = 999999;
       private static final String FRAMES_UNIT = "Frames (0 for manual)";
       private static final String DURATION_UNIT = "Seconds (0 for manual)";
+      private static final String DURATION_UNIT_NO_MANUAL = "Seconds";
       private static final String MEC_LABEL_WARNING =
           "NOTE: Mid-Execution capture for %s is experimental";
-      private static final int DEFAULT_START_FRAME = 100;
       private static final String PERFETTO_LABEL = "Profile Config: ";
       private static final String NO_GPU_PROFILING_CAPABILITY = "Warning: Selected device has no GPU profiling capability.";
-
-      private static enum StartType {
-        Beginning, Manual, Frame;
-      }
+      private static final String EMPTY_APP_WITH_RENDER_STAGE =
+          "Warning: Application needs to be specified for GPU profiling data.";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -296,6 +302,7 @@ public class TracerDialog {
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
       private final Label gpuProfilingCapabilityWarning;
+      private final Label emptyAppWarning;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
@@ -303,7 +310,9 @@ public class TracerDialog {
 
       public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
         super(parent, SWT.NONE);
-        this.friendlyName = models.settings.traceFriendlyName;
+        SettingsProto.TraceOrBuilder trace = models.settings.trace();
+
+        this.friendlyName = trace.getFriendlyName();
 
         setLayout(new GridLayout(1, false));
 
@@ -332,7 +341,7 @@ public class TracerDialog {
             createGroup(this, "Application", new GridLayout(2, false)),
             new GridData(GridData.FILL_HORIZONTAL));
         targetLabel = createLabel(appGroup, TARGET_LABEL + ":");
-        traceTarget = withLayoutData(new ActionTextbox(appGroup, models.settings.traceUri) {
+        traceTarget = withLayoutData(new ActionTextbox(appGroup, trace.getUri()) {
           @Override
           protected String createAndShowDialog(String current) {
             DeviceCaptureInfo dev = getSelectedDevice();
@@ -356,16 +365,16 @@ public class TracerDialog {
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(appGroup, "Additional Arguments:");
-        arguments = withLayoutData(createTextbox(appGroup, models.settings.traceArguments),
+        arguments = withLayoutData(createTextbox(appGroup, trace.getArguments()),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(appGroup, "Working Directory:");
-        cwd = withLayoutData(createTextbox(appGroup, models.settings.traceCwd),
+        cwd = withLayoutData(createTextbox(appGroup, trace.getCwd()),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         cwd.setEnabled(false);
 
         createLabel(appGroup, "Environment Variables:");
-        envVars = withLayoutData(createTextbox(appGroup, models.settings.traceEnv),
+        envVars = withLayoutData(createTextbox(appGroup, trace.getEnv()),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         envVars.setEnabled(false);
 
@@ -375,24 +384,14 @@ public class TracerDialog {
         createLabel(durGroup, "Start at:");
         startType = Widgets.createDropDown(durGroup);
         startType.setItems(Arrays.stream(StartType.values()).map(Enum::name).toArray(String[]::new));
-        startFrame = withLayoutData(
-            createSpinner(durGroup, Math.max(1, models.settings.traceStartAt), 1, 999999),
+        startType.select(StartType.Manual.ordinal());
+        startFrame = withLayoutData(createSpinner(durGroup, 100, 1, 999999),
             new GridData(SWT.FILL, SWT.TOP, false, false));
+        startFrame.setVisible(false);
         mecWarningLabel = createLabel(durGroup, "");
 
-        if (models.settings.traceStartAt < 0) {
-          startType.select(StartType.Manual.ordinal());
-          startFrame.setSelection(DEFAULT_START_FRAME);
-        } else if (models.settings.traceStartAt > 0) {
-          startType.select(StartType.Frame.ordinal());
-        } else {
-          startType.select(StartType.Beginning.ordinal());
-          startFrame.setSelection(DEFAULT_START_FRAME);
-        }
-
         durationLabel = createLabel(durGroup, FRAMES_LABEL);
-        duration = withLayoutData(
-            createSpinner(durGroup, models.settings.traceDuration, 0, 999999),
+        duration = withLayoutData(createSpinner(durGroup, 7, 0, DURATION_MAX),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         durationUnit = createLabel(durGroup, FRAMES_UNIT);
 
@@ -400,16 +399,16 @@ public class TracerDialog {
             createGroup(this, "Trace Options", new GridLayout(2, false)),
             new GridData(GridData.FILL_HORIZONTAL));
         withoutBuffering = createCheckbox(
-            optGroup, "Disable Buffering", models.settings.traceWithoutBuffering);
+            optGroup, "Disable Buffering", trace.getWithoutBuffering());
         withoutBuffering.setEnabled(true);
         disablePcs = createCheckbox(
-            optGroup, "Disable pre-compiled shaders", models.settings.traceDisablePcs);
+            optGroup, "Disable pre-compiled shaders", trace.getDisablePcs());
         disablePcs.setEnabled(false);
         clearCache = createCheckbox(
-            optGroup, "Clear package cache", models.settings.traceClearCache);
+            optGroup, "Clear package cache", trace.getClearCache());
         clearCache.setEnabled(false);
         hideUnknownExtensions = createCheckbox(
-            optGroup, "Hide Unknown Extensions", models.settings.traceHideUnknownExtensions);
+            optGroup, "Hide Unknown Extensions", trace.getHideUnknownExtensions());
         hideUnknownExtensions.setEnabled(false);
 
         perfettoConfig = withLayoutData(
@@ -420,6 +419,7 @@ public class TracerDialog {
         Widgets.createButton(perfettoConfig, "Configure", e -> {
           showPerfettoConfigDialog(getShell(), models, widgets, getPerfettoCaps());
           updatePerfettoConfigLabel(models.settings);
+          updateEmptyAppWithRenderStageWarning(models.settings);
         });
         perfettoConfig.setVisible(false);
 
@@ -427,7 +427,7 @@ public class TracerDialog {
             createGroup(this, "Output", new GridLayout(2, false)),
             new GridData(GridData.FILL_HORIZONTAL));
         directoryLabel = createLabel(outGroup, "Output Directory*:");
-        directory = withLayoutData(new FileTextbox.Directory(outGroup, models.settings.traceOutDir) {
+        directory = withLayoutData(new FileTextbox.Directory(outGroup, trace.getOutDir()) {
           @Override
           protected void configureDialog(DirectoryDialog dialog) {
             dialog.setText(Messages.CAPTURE_DIRECTORY);
@@ -442,7 +442,7 @@ public class TracerDialog {
             createLabel(this, "Warning: Pre-compiled shaders are not supported in the replay."),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         pcsWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
-        pcsWarning.setVisible(!models.settings.traceDisablePcs);
+        pcsWarning.setVisible(!trace.getDisablePcs());
 
         requiredFieldMessage = withLayoutData(
             createLabel(this, "Please fill out required information (labeled with *)."),
@@ -464,9 +464,10 @@ public class TracerDialog {
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(!models.settings.isAdbValid());
 
-        device.getCombo().addListener(
-            SWT.Selection, e -> update(models.settings, getSelectedDevice()));
-        api.getCombo().addListener(SWT.Selection, e -> update(models.settings, getSelectedApi()));
+        device.getCombo().addListener(SWT.Selection,
+            e -> updateOnDeviceChange(models.settings, getSelectedDevice()));
+        api.getCombo().addListener(SWT.Selection,
+            e -> updateOnApiChange(trace, getSelectedDevice(), getSelectedApi()));
 
         Listener gpuProfilingCapabilityListener = e -> {
           // Skip if the device is not Android device, or trace type is not Perfetto.
@@ -485,6 +486,15 @@ public class TracerDialog {
         device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
         api.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
 
+        emptyAppWarning = withLayoutData(
+            createLabel(this, EMPTY_APP_WITH_RENDER_STAGE),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        emptyAppWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
+        emptyAppWarning.setVisible(false);
+        device.getCombo().addListener(SWT.Selection, e -> updateEmptyAppWithRenderStageWarning(models.settings));
+        api.getCombo().addListener(SWT.Selection, e -> updateEmptyAppWithRenderStageWarning(models.settings));
+        traceTarget.addBoxListener(SWT.Modify, e -> updateEmptyAppWithRenderStageWarning(models.settings));
+
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
           boolean beginning = startType.getSelectionIndex() == StartType.Beginning.ordinal();
@@ -496,8 +506,8 @@ public class TracerDialog {
           }
           mecWarningLabel.requestLayout();
 
-          boolean startAtFrame = startType.getSelectionIndex() == StartType.Frame.ordinal();
-          startFrame.setVisible(startAtFrame);
+          StartType start = StartType.values()[startType.getSelectionIndex()];
+          startFrame.setVisible(start == StartType.Frame || start == StartType.Time);
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
         startType.addListener(SWT.Selection, mecListener);
@@ -519,7 +529,7 @@ public class TracerDialog {
 
         addModifyListener(e -> colorFilledInput(widgets.theme));
 
-        updateDevicesDropDown(models.settings);
+        updateDevicesDropDown(trace);
         colorFilledInput(widgets.theme);
       }
 
@@ -575,47 +585,63 @@ public class TracerDialog {
         return combo;
       }
 
-      private void update(Settings settings, DeviceCaptureInfo dev) {
+      private void updateOnDeviceChange(Settings settings, DeviceCaptureInfo dev) {
         DeviceTraceConfiguration config = (dev == null) ? null : dev.config;
         traceTarget.setActionEnabled(dev != null);
         cwd.setEnabled(config != null && config.getCanSpecifyCwd());
         envVars.setEnabled(config != null && config.getCanSpecifyEnv());
         clearCache.setEnabled(config != null && config.getHasCache());
-        updateApiDropdown(config, settings);
+        updateApiDropdown(config, settings.trace());
         updatePerfettoConfigLabel(settings);
       }
 
-      private void update(Settings settings, TraceTypeCapabilities config) {
+      private void updateOnApiChange(
+          SettingsProto.TraceOrBuilder trace, DeviceCaptureInfo dev, TraceTypeCapabilities config) {
         boolean pcs = config != null && config.getCanDisablePcs();
         disablePcs.setEnabled(pcs);
-        disablePcs.setSelection(pcs && settings.traceDisablePcs);
-        pcsWarning.setVisible(pcs && !settings.traceDisablePcs);
+        disablePcs.setSelection(pcs && trace.getDisablePcs());
+        pcsWarning.setVisible(pcs && !trace.getDisablePcs());
 
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
         hideUnknownExtensions.setEnabled(ext);
-        hideUnknownExtensions.setSelection(!ext || settings.traceHideUnknownExtensions);
+        hideUnknownExtensions.setSelection(!ext || trace.getHideUnknownExtensions());
 
         boolean appRequired = config != null && config.getRequiresApplication();
         targetLabel.setText(TARGET_LABEL + (appRequired ? "*:" : ":"));
         targetLabel.requestLayout();
 
         boolean isPerfetto = isPerfetto(config);
+        SettingsProto.Trace.DurationOrBuilder dur = isPerfetto ?
+            trace.getProfileDurationOrBuilder() : trace.getGfxDurationOrBuilder();
         getShell().setText(
             isPerfetto ? Messages.CAPTURE_TRACE_PERFETTO : Messages.CAPTURE_TRACE_GRAPHICS);
         withoutBuffering.setEnabled(!isPerfetto);
-        withoutBuffering.setSelection(!isPerfetto && settings.traceWithoutBuffering);
-        if (isPerfetto && startType.getItemCount() == 3) {
-          if (startType.getSelectionIndex() == StartType.Frame.ordinal()) {
-            // Switch to manual if it was "start at frame x".
-            startType.select(StartType.Manual.ordinal());
-          }
+        withoutBuffering.setSelection(!isPerfetto && trace.getWithoutBuffering());
+        if (isPerfetto && startType.getItemCount() == 4) {
           startType.remove(StartType.Frame.ordinal());
-        } else if (!isPerfetto && startType.getItemCount() == 2) {
-          startType.add(StartType.Frame.name());
+        } else if (!isPerfetto && startType.getItemCount() == 3) {
+          startType.add(StartType.Frame.name(), StartType.Frame.ordinal());
         }
+        switch (dur.getType()) {
+          case BEGINNING:
+            startType.select(StartType.Beginning.ordinal());
+            break;
+          case FRAME:
+            startType.select(StartType.Frame.ordinal());
+            startFrame.setSelection(dur.getStartFrame());
+            break;
+          case TIME:
+            startType.select(StartType.Time.ordinal());
+            startFrame.setSelection(dur.getStartTime());
+            break;
+          case MANUAL:
+          default:
+            startType.select(StartType.Manual.ordinal());
+        }
+
+        duration.setSelection(dur.getDuration());
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
-        durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
-        durationUnit.requestLayout();
+        updateDurationSpinner(dev, config, dur.getType());
         perfettoConfig.setVisible(isPerfetto);
 
         if (!userHasChangedOutputFile) {
@@ -624,11 +650,30 @@ public class TracerDialog {
         }
       }
 
-      private void updateDevicesDropDown(Settings settings) {
+      private void updateDurationSpinner(
+          DeviceCaptureInfo dev, TraceTypeCapabilities capabilities,
+          SettingsProto.Trace.Duration.Type type) {
+        boolean isStadia = dev != null && dev.isStadia();
+        boolean isPerfetto = isPerfetto(capabilities);
+        if (isStadia && isPerfetto) {
+          // On Stadia, force limit Perfetto traces to 10 seconds.
+          duration.setMinimum(1);
+          duration.setMaximum(10);
+          durationUnit.setText(DURATION_UNIT_NO_MANUAL);
+        } else {
+          duration.setMinimum(0);
+          duration.setMaximum(DURATION_MAX);
+          durationUnit.setText((isPerfetto || type == SettingsProto.Trace.Duration.Type.TIME) ?
+              DURATION_UNIT : FRAMES_UNIT);
+        }
+        durationUnit.requestLayout();
+      }
+
+      private void updateDevicesDropDown(SettingsProto.TraceOrBuilder trace) {
         if (device != null && devices != null) {
           deviceLoader.stopLoading();
           device.setInput(devices);
-          DeviceCaptureInfo deflt = getPreviouslySelectedDevice(settings).orElseGet(() -> {
+          DeviceCaptureInfo deflt = getPreviouslySelectedDevice(trace).orElseGet(() -> {
             if (devices.size() == 1) {
               return devices.get(0);
             } else if (devices.size() == 2) {
@@ -639,6 +684,12 @@ public class TracerDialog {
               boolean secondIsAndroid = devices.get(1).isAndroid();
               if (firstIsAndroid != secondIsAndroid) {
                 return firstIsAndroid ? devices.get(0) : devices.get(1);
+              }
+              // Same reasoning for Stadia instances.
+              boolean firstIsStadia = devices.get(0).isStadia();
+              boolean secondIsStadia = devices.get(1).isStadia();
+              if (firstIsStadia != secondIsStadia) {
+                return firstIsStadia ? devices.get(0) : devices.get(1);
               }
             }
             return null;
@@ -652,21 +703,32 @@ public class TracerDialog {
         }
       }
 
-      private Optional<DeviceCaptureInfo> getPreviouslySelectedDevice(Settings settings) {
-        return (settings.traceDevice.isEmpty()) ? Optional.empty() : devices.stream()
-            .filter(dev -> settings.traceDevice.equals(dev.device.getSerial()))
-            .findAny();
+      private Optional<DeviceCaptureInfo> getPreviouslySelectedDevice(
+          SettingsProto.TraceOrBuilder trace) {
+        if (!trace.getDeviceSerial().isEmpty()) {
+          return devices.stream()
+              .filter(dev -> trace.getDeviceSerial().equals(dev.device.getSerial()))
+              .findAny();
+        } else if (!trace.getDeviceName().isEmpty()) {
+          return devices.stream()
+              .filter(dev -> "".equals(dev.device.getSerial()) &&
+                  trace.getDeviceName().equals(dev.device.getName()))
+              .findAny();
+        } else {
+          return Optional.empty();
+        }
       }
 
-      private void updateApiDropdown(DeviceTraceConfiguration config, Settings settings) {
+      private void updateApiDropdown(
+          DeviceTraceConfiguration config, SettingsProto.TraceOrBuilder trace) {
         if (api != null && config != null) {
           List<TraceTypeCapabilities> caps = config.getApisList();
           api.setInput(config.getApisList());
           if (!caps.isEmpty()) {
             TraceTypeCapabilities deflt = caps.get(0);
             for (TraceTypeCapabilities c : caps) {
-              if (c.getType().name().equals(settings.traceType) &&
-                  (c.getApi().isEmpty() || c.getApi().equals(settings.traceApi))) {
+              if (c.getType().name().equals(trace.getType()) &&
+                  (c.getApi().isEmpty() || c.getApi().equals(trace.getApi()))) {
                 deflt = c;
                 break;
               }
@@ -681,6 +743,20 @@ public class TracerDialog {
         perfettoConfigLabel.setText(
             PERFETTO_LABEL + getConfigSummary(settings, getPerfettoCaps()));
         perfettoConfigLabel.requestLayout();
+      }
+
+      private void updateEmptyAppWithRenderStageWarning(Settings settings) {
+        if (getSelectedDevice() == null || !getSelectedDevice().isAndroid() ||
+            getSelectedApi() == null || getSelectedApi().getType() != TraceType.Perfetto) {
+          emptyAppWarning.setVisible(false);
+          return;
+        }
+        SettingsProto.Perfetto.GPUOrBuilder gpu = settings.perfetto().getGpuOrBuilder();
+        if (traceTarget.getText().isEmpty() && gpu.getEnabled() && gpu.getSlices()) {
+          emptyAppWarning.setVisible(true);
+        } else  {
+          emptyAppWarning.setVisible(false);
+        }
       }
 
       protected static TraceTargets.Target showTraceTargetPicker(
@@ -751,34 +827,35 @@ public class TracerDialog {
 
       public void setDevices(Settings settings, List<DeviceCaptureInfo> devices) {
         this.devices = devices;
-        updateDevicesDropDown(settings);
+        updateDevicesDropDown(settings.trace());
       }
 
       public TraceRequest getTraceRequest(Settings settings) {
         DeviceCaptureInfo dev = devices.get(device.getCombo().getSelectionIndex());
         TraceTypeCapabilities config = getSelectedApi();
         File output = getOutputFile();
+        SettingsProto.Trace.Builder trace = settings.writeTrace();
+        StartType start = StartType.values()[startType.getSelectionIndex()];
 
-        settings.traceDevice = dev.device.getSerial();
-        settings.traceType = config.getType().name();
-        settings.traceApi = config.getApi();
-        settings.traceUri = traceTarget.getText();
-        settings.traceArguments = arguments.getText();
-        switch (startType.getSelectionIndex()) {
-          case 0: // Beginning
-            settings.traceStartAt = 0;
-            break;
-          case 1: // Manual
-            settings.traceStartAt = -1;
-            break;
-          default: // Frame
-            settings.traceStartAt = startFrame.getSelection();
+        trace.setDeviceSerial(dev.device.getSerial());
+        trace.setDeviceName(dev.device.getName());
+        trace.setType(config.getType().name());
+        trace.setApi(config.getApi());
+        trace.setUri(traceTarget.getText());
+        trace.setArguments(arguments.getText());
+        SettingsProto.Trace.Duration.Builder dur = isPerfetto(config) ?
+            trace.getProfileDurationBuilder() : trace.getGfxDurationBuilder();
+        dur.setType(start.proto);
+        if (start == StartType.Frame) {
+          dur.setStartFrame(startFrame.getSelection());
+        } else if (start == StartType.Time) {
+          dur.setStartTime(startFrame.getSelection());
         }
-        settings.traceDuration = duration.getSelection();
-        settings.traceWithoutBuffering = withoutBuffering.getSelection();
-        settings.traceHideUnknownExtensions = hideUnknownExtensions.getSelection();
-        settings.traceOutDir = directory.getText();
-        settings.traceFriendlyName = friendlyName;
+        dur.setDuration(duration.getSelection());
+        trace.setWithoutBuffering(withoutBuffering.getSelection());
+        trace.setHideUnknownExtensions(hideUnknownExtensions.getSelection());
+        trace.setOutDir(directory.getText());
+        trace.setFriendlyName(friendlyName);
 
         Service.TraceOptions.Builder options = Service.TraceOptions.newBuilder()
             .setDevice(dev.path)
@@ -792,25 +869,35 @@ public class TracerDialog {
             .setServerLocalSavePath(output.getAbsolutePath());
 
         if (dev.config.getCanSpecifyCwd()) {
-          settings.traceCwd = cwd.getText();
+          trace.setCwd(cwd.getText());
           options.setCwd(cwd.getText());
         }
         if (dev.config.getCanSpecifyEnv()) {
-          settings.traceEnv = envVars.getText();
+          trace.setEnv(envVars.getText());
           options.addAllEnvironment(splitEnv(envVars.getText()));
         }
+        int delay = 0;
         if (config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported) {
-          options.setDeferStart(settings.traceStartAt < 0);
-          if (settings.traceStartAt > 0) {
-            options.setStartFrame(settings.traceStartAt);
+          switch (start) {
+            case Time:
+              delay = startFrame.getSelection();
+              // $FALL-THROUGH$
+            case Manual:
+              options.setDeferStart(true);
+              break;
+            case Frame:
+              options.setStartFrame(startFrame.getSelection());
+              break;
+            default:
+              // Do nothing.
           }
         }
         if (dev.config.getHasCache()) {
-          settings.traceClearCache = clearCache.getSelection();
+          trace.setClearCache(clearCache.getSelection());
           options.setClearCache(clearCache.getSelection());
         }
         if (config.getCanDisablePcs()) {
-          settings.traceDisablePcs = disablePcs.getSelection();
+          trace.setDisablePcs(disablePcs.getSelection());
           options.setDisablePcs(disablePcs.getSelection());
         }
 
@@ -818,11 +905,11 @@ public class TracerDialog {
           int durationMs = duration.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
           durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
-          options.setPerfettoConfig(getConfig(settings, getPerfettoCaps())
-              .setDurationMs(durationMs));
+          options.setPerfettoConfig(
+              getConfig(settings, getPerfettoCaps(), traceTarget.getText(), durationMs));
         }
 
-        return new TraceRequest(output, options.build());
+        return new TraceRequest(output, options.build(), delay);
       }
 
       private static List<String> splitEnv(String env) {
@@ -880,7 +967,20 @@ public class TracerDialog {
       }
 
       private static boolean isPerfetto(TraceTypeCapabilities config) {
-        return config.getType() == TraceType.Perfetto;
+        return config != null && config.getType() == TraceType.Perfetto;
+      }
+    }
+
+    private static enum StartType {
+      Beginning(SettingsProto.Trace.Duration.Type.BEGINNING),
+      Manual(SettingsProto.Trace.Duration.Type.MANUAL),
+      Time(SettingsProto.Trace.Duration.Type.TIME),
+      Frame(SettingsProto.Trace.Duration.Type.FRAME);
+
+      public final SettingsProto.Trace.Duration.Type proto;
+
+      private StartType(SettingsProto.Trace.Duration.Type proto) {
+        this.proto = proto;
       }
     }
   }
@@ -897,11 +997,14 @@ public class TracerDialog {
     private Label bytesLabel;
     private Text errorText;
     private Button errorButton;
+    private Label autoStartLabel;
 
     private Tracer.Trace trace;
 
     private StatusResponse status;
     private Throwable error;
+    private long autoStartTime = -1;
+    private boolean started = false;
 
     public TraceProgressDialog(
         Shell shell, Analytics analytics, Tracer.TraceRequest request, Theme theme) {
@@ -986,7 +1089,33 @@ public class TracerDialog {
         } else {
           bytesLabel.setText(String.format("%.2f GBytes", bytes / 1024.0 / 1024.0 / 1024.0));
         }
+
+        if (request.delay > 0 && !started &&
+            status.getStatus() == Service.TraceStatus.WaitingToStart) {
+          if (autoStartTime < 0) {
+            autoStartTime = System.currentTimeMillis() + SECONDS.toMillis(request.delay);
+          } else if (autoStartTime <= System.currentTimeMillis()) {
+            Button button = getButton(IDialogConstants.OK_ID);
+            if (button != null) {
+              button.setEnabled(false);
+            }
+            started = true;
+            trace.start();
+          }
+
+          if (autoStartLabel != null) {
+            autoStartLabel.setVisible(true);
+            long left = Math.max(0,
+                MILLISECONDS.toSeconds(autoStartTime - System.currentTimeMillis() + 999));
+            autoStartLabel.setText("Automatically starting in " + left + "s...");
+            autoStartLabel.requestLayout();
+            Widgets.scheduleIfNotDisposed(autoStartLabel, 100, () -> update());
+          }
+        } else if (autoStartLabel != null) {
+          autoStartLabel.setVisible(false);
+        }
       }
+
       if (error != null) {
         statusLabel.setText("Failed.");
         errorText.setText(getErrorMessage());
@@ -1057,6 +1186,11 @@ public class TracerDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
+      if (request.delay > 0) {
+        ((GridLayout) parent.getLayout()).numColumns++;
+        autoStartLabel = createLabel(parent, "Automatically starting in " + request.delay + "s...");
+        autoStartLabel.setVisible(false);
+      }
       createButton(parent, IDialogConstants.OK_ID, "Cancel", true);
     }
 
@@ -1070,7 +1204,10 @@ public class TracerDialog {
           switch (status.getStatus()) {
             case WaitingToStart:
               button.setEnabled(false);
-              trace.start();
+              if (!started) {
+                started = true;
+                trace.start();
+              }
               break;
             case Capturing:
               button.setEnabled(false);

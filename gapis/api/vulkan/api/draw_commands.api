@@ -394,6 +394,10 @@ cmd void vkCmdDrawIndexedIndirect(
 sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
   readComputeState()
   readWriteMemoryInBoundComputeDescriptorSets()
+
+  clearLastComputeInfoDispatchCommandParameters()
+  lci := lastComputeInfo()
+  lci.CommandParameters.Dispatch = args
 }
 
 @threadSafety("app")
@@ -434,6 +438,10 @@ sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
   readComputeState()
   readIndirectDispatchBuffer(dispatch.Buffer, dispatch.Offset)
   readWriteMemoryInBoundComputeDescriptorSets()
+
+  clearLastComputeInfoDispatchCommandParameters()
+  lci := lastComputeInfo()
+  lci.CommandParameters.DispatchIndirect = dispatch
 }
 
 @threadSafety("app")

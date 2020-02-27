@@ -96,7 +96,7 @@ type grpcServer struct {
 	handler         Server
 	bindCtx         func(context.Context) context.Context
 	keepAlive       chan struct{}
-	inFlightRPCs    uint32
+	inFlightRPCs    int64
 	interrupters    map[int]func()
 	lastInterrupter int
 }
@@ -104,7 +104,7 @@ type grpcServer struct {
 // inRPC should be called at the start of an RPC call. The returned function
 // should be called when the RPC call finishes.
 func (s *grpcServer) inRPC() func() {
-	atomic.AddUint32(&s.inFlightRPCs, 1)
+	atomic.AddInt64(&s.inFlightRPCs, 1)
 	select {
 	case s.keepAlive <- struct{}{}:
 	default:
@@ -114,7 +114,10 @@ func (s *grpcServer) inRPC() func() {
 		case s.keepAlive <- struct{}{}:
 		default:
 		}
-		atomic.AddUint32(&s.inFlightRPCs, ^uint32(0))
+		if atomic.LoadInt64(&s.inFlightRPCs) == 0 {
+			panic("Should never happen: inFlightRPCs counter is going below zero")
+		}
+		atomic.AddInt64(&s.inFlightRPCs, -1)
 	}
 }
 
@@ -144,7 +147,7 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTi
 		case <-task.ShouldStop(ctx):
 			return
 		case <-time.After(waitTime):
-			if rpcs := atomic.LoadUint32(&s.inFlightRPCs); rpcs != 0 {
+			if rpcs := atomic.LoadInt64(&s.inFlightRPCs); rpcs != 0 {
 				continue
 			}
 			idleTime += waitTime
@@ -559,6 +562,15 @@ func (s *grpcServer) Find(req *service.FindRequest, server service.Gapid_FindSer
 	return s.handler.Find(s.bindCtx(ctx), req, server.Send)
 }
 
+func (s *grpcServer) GpuProfile(ctx xctx.Context, req *service.GpuProfileRequest) (*service.GpuProfileResponse, error) {
+	defer s.inRPC()()
+	res, err := s.handler.GpuProfile(s.bindCtx(ctx), req)
+	if err := service.NewError(err); err != nil {
+		return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_Error{Error: err}}, nil
+	}
+	return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_ProfilingData{ProfilingData: res}}, nil
+}
+
 func (s *grpcServer) UpdateSettings(ctx xctx.Context, req *service.UpdateSettingsRequest) (*service.UpdateSettingsResponse, error) {
 	defer s.inRPC()()
 	err := s.handler.UpdateSettings(s.bindCtx(ctx), req)
@@ -658,4 +670,12 @@ func (s *grpcServer) PerfettoQuery(ctx xctx.Context, req *service.PerfettoQueryR
 		return &service.PerfettoQueryResponse{Res: &service.PerfettoQueryResponse_Error{Error: err}}, nil
 	}
 	return &service.PerfettoQueryResponse{Res: &service.PerfettoQueryResponse_Result{Result: data}}, nil
+}
+
+func (s *grpcServer) ValidateDevice(ctx xctx.Context, req *service.ValidateDeviceRequest) (*service.ValidateDeviceResponse, error) {
+	err := s.handler.ValidateDevice(s.bindCtx(ctx), req.Device)
+	if err := service.NewError(err); err != nil {
+		return &service.ValidateDeviceResponse{Error: err}, nil
+	}
+	return &service.ValidateDeviceResponse{}, nil
 }

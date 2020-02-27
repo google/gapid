@@ -175,14 +175,23 @@ message Configuration {
   PerfettoCapability perfetto_capability = 5;
 }
 
+message VulkanProfilingLayers {
+  bool cpu_timing = 1;
+  bool memory_tracker = 2;
+}
+
 message PerfettoCapability {
   GPUProfiling gpu_profiling = 1;
+  VulkanProfilingLayers vulkan_profile_layers = 2;
+  bool can_specify_atrace_apps = 3;
 }
 
 message GPUProfiling {
   bool hasRenderStage = 1;
   // The GPU performance counters.
   GpuCounterDescriptor gpu_counter_descriptor = 2;
+  bool hasFrameLifecycle = 3;
+  bool has_render_stage_producer_layer = 4;
 }
 
 // Instance represents a physical device.

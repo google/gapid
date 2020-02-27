@@ -25,16 +25,20 @@ type Transformer interface {
 	// Transform takes a given command and identifier and Writes out a possibly
 	// transformed set of commands to the output.
 	// Transform must not modify cmd in any way.
-	Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer)
+	Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, output Writer) error
 	// Flush is called at the end of a command stream to cause Transformers
 	// that cache commands to send any they have stored into the output.
-	Flush(ctx context.Context, output Writer)
+	Flush(ctx context.Context, output Writer) error
 	// Preloop is called at the beginning of the loop if the trace is going to
 	// be looped.
 	PreLoop(ctx context.Context, output Writer)
 	// PostLoop is called at the end of the loop if the trace is going to
 	// be looped.
 	PostLoop(ctx context.Context, output Writer)
+
+	// BuffersCommands returns true if the transformer is going to buffer
+	// commands, return false otherwise.
+	BuffersCommands() bool
 }
 
 // Writer is the interface which consumes the output of an Transformer.
@@ -52,7 +56,7 @@ type Writer interface {
 	State() *api.GlobalState
 	// MutateAndWrite mutates the state object associated with this writer,
 	// and it passes the command to further consumers.
-	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
+	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error
 	//Notify next transformer it's ready to start loop the trace.
 	NotifyPreLoop(ctx context.Context)
 	//Notify next transformer it's the end of the loop.

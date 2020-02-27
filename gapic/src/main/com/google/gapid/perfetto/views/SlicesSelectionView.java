@@ -33,7 +33,7 @@ import org.eclipse.swt.widgets.Composite;
  * Displays information about a list of selected slices.
  */
 public class SlicesSelectionView extends Composite {
-  public SlicesSelectionView(Composite parent, SliceTrack.Slices.Selection sel) {
+  public SlicesSelectionView(Composite parent, SliceTrack.Slices sel) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
@@ -72,7 +72,7 @@ public class SlicesSelectionView extends Composite {
     packColumns(viewer.getTree());
   }
 
-  protected static SliceTrack.Slices.Node n(Object o) {
-    return (SliceTrack.Slices.Node)o;
+  protected static SliceTrack.Node n(Object o) {
+    return (SliceTrack.Node)o;
   }
 }

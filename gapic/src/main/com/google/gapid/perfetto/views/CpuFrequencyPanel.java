@@ -17,8 +17,7 @@ package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.hueForCpu;
-import static com.google.gapid.util.Colors.hsl;
+import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
@@ -30,7 +29,7 @@ import com.google.gapid.perfetto.models.CpuFrequencyTrack;
 /**
  * Draws the CPU frequency and idle graph.
  */
-public class CpuFrequencyPanel extends TrackPanel {
+public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
   private static final double HEIGHT = 30;
 
   private final CpuFrequencyTrack track;
@@ -48,8 +47,13 @@ public class CpuFrequencyPanel extends TrackPanel {
   }
 
   @Override
+  public CpuFrequencyPanel copy() {
+    return new CpuFrequencyPanel(state, track);
+  }
+
+  @Override
   public String getTitle() {
-    return "CPU " + (track.getCpu() + 1) + " Frequency";
+    return "CPU " + track.getCpu().id + " Frequency";
   }
 
   @Override
@@ -60,9 +64,7 @@ public class CpuFrequencyPanel extends TrackPanel {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("CpuFrequencyPanel", () -> {
-      CpuFrequencyTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      CpuFrequencyTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null || data.tsStarts.length == 0) {
@@ -74,17 +76,15 @@ public class CpuFrequencyPanel extends TrackPanel {
       double endPx = state.timeToPx(visible.end);
 
       final String[] kUnits = new String[] { "", "K", "M", "G", "T", "E" };
-      double exp = Math.ceil(Math.log10(Math.max(data.maximumValue, 1)));
+      double exp = Math.ceil(Math.log10(Math.max(track.getCpu().maxFreq, 1)));
       double pow10 = Math.pow(10, exp);
-      double yMax = Math.ceil(data.maximumValue / (pow10 / 4)) * (pow10 / 4);
+      double yMax = Math.ceil(track.getCpu().maxFreq / (pow10 / 4)) * (pow10 / 4);
       int unitGroup = (int)Math.floor(exp / 3);
       // The values we have for cpufreq are in kHz so +1 to unitGroup.
       String yLabel = (yMax / Math.pow(10, unitGroup * 3)) + " " + kUnits[unitGroup + 1] + "Hz";
 
       // Draw the CPU frequency graph.
-      float hue = hueForCpu(track.getCpu());
-      ctx.setBackgroundColor(hsl(hue, .45f, .7f));
-      ctx.setForegroundColor(hsl(hue,  .45f, .55f));
+      gradient(track.getCpu().id).applyBaseAndBorder(ctx);
       ctx.path(path -> {
         double lastX = startPx, lastY = h;
         path.moveTo(lastX, lastY);
@@ -127,8 +127,7 @@ public class CpuFrequencyPanel extends TrackPanel {
       }
 
       if (hoveredValue != null && hoveredTs != null) {
-        ctx.setBackgroundColor(hsl(hue, .45f, .75f));
-        ctx.setForegroundColor(hsl(hue, .45f, .45f));
+        gradient(track.getCpu().id).applyBaseAndBorder(ctx);
 
         Size textSize = ctx.measure(Fonts.Style.Normal, hoverLabel);
         double xStart = Math.floor(state.timeToPx(hoveredTs));
@@ -173,8 +172,8 @@ public class CpuFrequencyPanel extends TrackPanel {
   }
 
   @Override
-  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    CpuFrequencyTrack.Data data = track.getData(state, () -> { /* nothing */ });
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+    CpuFrequencyTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }

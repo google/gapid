@@ -23,8 +23,9 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"time"
 
-	perfetto_pb "perfetto/config"
+	perfetto_pb "protos/perfetto/config"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app/crash"
@@ -33,11 +34,11 @@ import (
 )
 
 var (
-	ansiRegex = regexp.MustCompile("\u001b\\[\\d+m")
+	AnsiRegex = regexp.MustCompile("\u001b\\[\\d+m")
 )
 
 // StartPerfettoTrace starts a perfetto trace on this device.
-func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal) error {
+func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal, ready task.Task) error {
 	// Silently attempt to delete the old trace in case the user has changed
 	// If the user has changed from shell => root, this is fine. For root => shell,
 	// the root user will have still have to manually delete the old trace if it exists
@@ -45,6 +46,8 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 
 	reader, stdout := io.Pipe()
 	logRing := ring.New(10)
+	// TODO(apbodnar) Find a way to reliably know when Perfetto/producers are ready (b/147388497)
+	readyOnce := task.Once(task.Delay(ready, 250*time.Millisecond))
 	data, err := proto.Marshal(config)
 	if err != nil {
 		return err
@@ -55,6 +58,9 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 		buf := bufio.NewReader(reader)
 		for {
 			line, e := buf.ReadString('\n')
+			// Remove ANSI color codes from perfetto output
+			line = AnsiRegex.ReplaceAllString(line, "")
+			readyOnce(ctx)
 			logRing.Value = line
 			logRing = logRing.Next()
 			switch e {
@@ -97,8 +103,6 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 					msg += "\n" + s
 				}
 			})
-			// Remove ANSI color codes from perfetto output
-			msg = ansiRegex.ReplaceAllString(msg, "")
 
 			if msg != "" {
 				err = errors.New(err.Error() + "\nPerfetto Output:" + msg)

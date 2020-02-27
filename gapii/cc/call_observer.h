@@ -156,7 +156,7 @@ class CallObserver : public context_t {
   void enter(const ::google::protobuf::Message* cmd);
 
   // encode encodes cmd the proto message to the PackEncoder.
-  void encode(const ::google::protobuf::Message* cmd);
+  void encode_message(const ::google::protobuf::Message* cmd);
 
   // encodeAndDelete encodes the proto message to the PackEncoder and then
   // deletes the message.
@@ -170,6 +170,11 @@ class CallObserver : public context_t {
   // encode encodes the encodable to the PackEncoder.
   template <typename T, typename = enable_if_encodable<T> >
   inline void encode(const T& obj);
+
+  // resume updates whether the observer should keep on tracing or not. It is
+  // meant to be called when observation of a threadsafe command is resumed
+  // after the actual driver call, and after re-acquiring the Spy lock.
+  void resume();
 
   // exit returns encoding to the group bound before calling enter().
   void exit();
@@ -192,6 +197,9 @@ class CallObserver : public context_t {
   // Make a slice on a new Pool.
   template <typename T>
   inline gapil::Slice<T> make(uint64_t count);
+
+  // Ends the current trace if requested by client.
+  void endTraceIfRequested();
 
   // A pointer to the spy instance.
   SpyBase* mSpy;
@@ -296,6 +304,7 @@ inline PackEncoder::SPtr CallObserver::encoder() { return mEncoderStack.top(); }
 
 template <typename T, typename /* = enable_if_encodable<T> */>
 inline void CallObserver::enter(const T& obj) {
+  endTraceIfRequested();
   if (!mShouldTrace) {
     return;
   }

@@ -70,6 +70,8 @@ public interface Theme {
   @Icon(file = "culling_enabled.png") public Image cullingEnabled();
   @Icon(file = "depth_buffer.png") public Image depthBuffer();
   @Icon(file = "error.png") public Image error();
+  @Icon(file = "expand_less.png") public Image expandLess();
+  @Icon(file = "expand_more.png") public Image expandMore();
   @Icon(file = "faceted.png") public Image faceted();
   @Icon(file = "flat.png") public Image flat();
   @Icon(file = "flip_vertically.png") public Image flipVertically();
@@ -84,6 +86,11 @@ public interface Theme {
   @Icon(file = "normals.png") public Image normals();
   @Icon(file = "open.png") public Image open();
   @Icon(file = "overdraw.png") public Image overdraw();
+  @Icon(file = "pan_mode.png") public Image panMode();
+  @Icon(file = "pin_active.png") public Image pinActiveLight();
+  @Icon(file = "pin_inactive.png") public Image pinInactiveLight();
+  @Icon(file = "pin_active.png", color = 0xFFFFFF) public Image pinActiveDark();
+  @Icon(file = "pin_inactive.png", color = 0xFFFFFF) public Image pinInactiveDark();
   @Icon(file = "point_cloud.png") public Image pointCloud();
   @Icon(file = "range_start.png") public Image rangeStartLight();
   @Icon(file = "range_end.png") public Image rangeEndLight();
@@ -92,9 +99,11 @@ public interface Theme {
   @Icon(file = "recent.png") public Image recent();
   @Icon(file = "refresh.png") public Image refresh();
   @Icon(file = "save.png") public Image save();
+  @Icon(file = "selection_mode.png") public Image selectionMode();
   @Icon(file = "settings.png") public Image settings();
   @Icon(file = "smile.png") public Image smile();
   @Icon(file = "smooth.png") public Image smooth();
+  @Icon(file = "timing_mode.png") public Image timingMode();
   @Icon(file = "transparency.png") public Image transparency();
   @Icon(file = "unfold_less.png") public Image unfoldLessLight();
   @Icon(file = "unfold_more.png") public Image unfoldMoreLight();
@@ -110,6 +119,7 @@ public interface Theme {
   @Icon(file = "zoom_actual.png") public Image zoomActual();
   @Icon(file = "zoom_fit.png") public Image zoomFit();
   @Icon(file = "zoom_in.png") public Image zoomIn();
+  @Icon(file = "zoom_mode.png") public Image zoomMode();
   @Icon(file = "zoom_out.png") public Image zoomOut();
 
   @IconSequence(names = {
@@ -188,6 +198,7 @@ public interface Theme {
   @Text(Text.Mono) public Font monoSpaceFont();
   @Text(Text.Big) public Font bigBoldFont();
   @Text(Text.TabTitle) public Font selectedTabTitleFont();
+  @Text(Text.SubTitle) public Font subTitleFont();
 
   public void dispose();
 
@@ -283,7 +294,7 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Text {
-    public static final int Mono = 1, Big = 2, TabTitle = 3;
+    public static final int Mono = 1, Big = 2, TabTitle = 3, SubTitle = 4;
 
     public int value();
   }
@@ -452,6 +463,15 @@ public interface Theme {
           case Text.TabTitle: {
             Font dflt = JFaceResources.getDefaultFont();
             Font font = FontDescriptor.createFrom(dflt)
+                .setStyle(SWT.BOLD)
+                .createFont(display);
+            resources.put(method.getName(), font);
+            return true;
+          }
+          case Text.SubTitle: {
+            Font dflt = JFaceResources.getDefaultFont();
+            Font font = FontDescriptor.createFrom(dflt)
+                .setHeight(dflt.getFontData()[0].getHeight() * 5 / 4)
                 .setStyle(SWT.BOLD)
                 .createFont(display);
             resources.put(method.getName(), font);

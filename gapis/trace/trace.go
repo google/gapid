@@ -15,7 +15,9 @@
 package trace
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,39 +26,37 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
-func Trace(ctx context.Context, device *path.Device, start task.Signal, stop task.Signal, options *service.TraceOptions, written *int64) error {
+func trace(ctx context.Context, device *path.Device, start task.Signal, stop task.Signal, ready task.Task, options *service.TraceOptions, written *int64, buffer *bytes.Buffer) error {
 	gapiiOpts := tracer.GapiiOptions(options)
 	var process tracer.Process
 	var cleanup app.Cleanup
-	mgr := GetManager(ctx)
-	if device == nil {
-		return log.Errf(ctx, nil, "Invalid device path")
+
+	t, err := GetTracer(ctx, device)
+	if err != nil {
+		return err
 	}
-	tracer, ok := mgr.tracers[device.ID.ID()]
-	if !ok {
-		return log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
-	}
-	config, err := tracer.TraceConfiguration(ctx)
+	conf, err := t.TraceConfiguration(ctx)
 	if err != nil {
 		return err
 	}
 
-	if !isSupported(config, options) {
+	if !isSupported(conf, options) {
 		return log.Errf(ctx, nil, "Cannot take the requested type of trace on this device")
 	}
 
 	if port := options.GetPort(); port != 0 {
-		if !config.ServerLocalPath {
+		if !conf.ServerLocalPath {
 			return log.Errf(ctx, nil, "Cannot attach to a remote device by port")
 		}
-		process = &gapii.Process{Port: int(port), Device: tracer.GetDevice(), Options: gapiiOpts}
+		process = &gapii.Process{Port: int(port), Device: t.GetDevice(), Options: gapiiOpts}
 	} else {
-		process, cleanup, err = tracer.SetupTrace(ctx, options)
+		process, cleanup, err = t.SetupTrace(ctx, options)
 	}
 
 	if err != nil {
@@ -64,30 +64,92 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, stop tas
 	}
 	defer cleanup.Invoke(ctx)
 
-	os.MkdirAll(filepath.Dir(options.ServerLocalSavePath), 0755)
-	file, err := os.Create(options.ServerLocalSavePath)
-	if err != nil {
-		return err
+	var writer io.Writer
+	if buffer != nil {
+		writer = buffer
+	} else {
+		os.MkdirAll(filepath.Dir(options.ServerLocalSavePath), 0755)
+		writer, err = os.Create(options.ServerLocalSavePath)
+		if err != nil {
+			return err
+		}
+		defer writer.(*os.File).Close()
 	}
-
-	defer file.Close()
 
 	if options.Duration > 0 {
 		ctx, _ = task.WithTimeout(ctx, time.Duration(options.Duration)*time.Second)
 	}
 
-	_, err = process.Capture(ctx, start, stop, file, written)
+	_, err = process.Capture(ctx, start, stop, ready, writer, written)
+
+	return err
+}
+
+func Trace(ctx context.Context, device *path.Device, start task.Signal, stop task.Signal, ready task.Task, options *service.TraceOptions, written *int64) error {
+	return trace(ctx, device, start, stop, ready, options, written, nil)
+}
+
+func TraceBuffered(ctx context.Context, device *path.Device, start task.Signal, stop task.Signal, ready task.Task, options *service.TraceOptions, buffer *bytes.Buffer) error {
+	var written int64 = 0
+	err := trace(ctx, device, start, stop, ready, options, &written, buffer)
+	if config.DumpReplayProfile {
+		dumpTrace(ctx, buffer)
+	}
 	return err
 }
 
 func TraceConfiguration(ctx context.Context, device *path.Device) (*service.DeviceTraceConfiguration, error) {
+	t, err := GetTracer(ctx, device)
+	if err != nil {
+		return nil, err
+	}
+	return t.TraceConfiguration(ctx)
+}
+
+func ProcessProfilingData(ctx context.Context, device *path.Device, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
+	t, err := GetTracer(ctx, device)
+	if err != nil {
+		return nil, err
+	}
+	return t.ProcessProfilingData(ctx, buffer, handleMapping)
+}
+
+func Validate(ctx context.Context, device *path.Device) error {
+	t, err := GetTracer(ctx, device)
+	if err != nil {
+		return err
+	}
+	return t.Validate(ctx)
+}
+
+func GetTracer(ctx context.Context, device *path.Device) (tracer.Tracer, error) {
 	mgr := GetManager(ctx)
-	tracer, ok := mgr.tracers[device.ID.ID()]
+	if device == nil {
+		return nil, log.Errf(ctx, nil, "Invalid device path")
+	}
+	t, ok := mgr.tracers[device.ID.ID()]
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
 	}
+	return t, nil
+}
 
-	return tracer.TraceConfiguration(ctx)
+func dumpTrace(ctx context.Context, buffer *bytes.Buffer) {
+	dumpPath, err := filepath.Abs("./dump.perfetto")
+	if err != nil {
+		log.W(ctx, "Unable to resolve working directory")
+	} else {
+		dumpFile, err := os.Create(dumpPath)
+		if err != nil {
+			log.W(ctx, "Unable to create local trace file")
+		} else {
+			_, err = dumpFile.Write(buffer.Bytes())
+			if err != nil {
+				log.W(ctx, "Unable write local trace file")
+			}
+			log.I(ctx, "Saved %v", dumpPath)
+		}
+	}
 }
 
 func isSupported(config *service.DeviceTraceConfiguration, options *service.TraceOptions) bool {

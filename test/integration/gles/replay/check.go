@@ -65,7 +65,7 @@ func checkIssues(ctx context.Context, c *path.Capture, d *device.Instance, expec
 		Capture: c,
 		Device:  path.NewDevice(d.ID.ID()),
 	}
-	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, false, nil)
+	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, 1, false, nil)
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
 		assert.For(ctx, "issues").ThatSlice(issues).DeepEquals(expected)
 	}
@@ -144,7 +144,7 @@ func checkTextureBuffer(ctx context.Context, c *path.Capture, d *device.Instance
 		return
 	}
 
-	res, err := t.ResourceData(ctx, globalState)
+	res, err := t.ResourceData(ctx, globalState, cmdPath)
 	if !assert.For(ctx, "resource data").ThatError(err).Succeeded() {
 		return
 	}

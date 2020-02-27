@@ -26,25 +26,24 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.models.CpuTrack.Slice;
 
 /**
  * {@link Track} containing CPU usage data of all threads in a process.
  */
-public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
+public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTrack.Data> {
   // "where cpu < %numCpus%" is for performance reasons of the window table.
   private static final String PROCESS_VIEW_SQL = "select * from sched where utid in (%s)";
   private static final String SUMMARY_SQL =
       "select quantum_ts, sum(dur)/cast(%d * %d as float) " +
-      "from %s where cpu < %d " +
-      "group by quantum_ts";
-  private static final String SLICES_SQL =
-      "select ts, dur, cpu, utid, row_id from %s where cpu < %d";
+      "from %s group by quantum_ts";
+  private static final String SLICES_SQL = "select ts, dur, cpu, utid, row_id from %s";
 
   private final int numCpus;
   private final ProcessInfo process;
 
-  public ProcessSummaryTrack(int numCpus, ProcessInfo process) {
-    super("proc_" + process.upid + "_sum");
+  public ProcessSummaryTrack(QueryEngine qe, int numCpus, ProcessInfo process) {
+    super(qe, "proc_" + process.upid + "_sum");
     this.numCpus = numCpus;
     this.process = process;
   }
@@ -54,7 +53,7 @@ public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String sched = tableName("sched"), span = tableName("span"), window = tableName("window");
     String tids = process.utids.stream()
         .map(String::valueOf)
@@ -69,13 +68,13 @@ public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window window = Window.compute(req, 10);
     return transformAsync(window.update(qe, tableName("window")),
-        $ -> window.quantized ? computeSummary(qe, req, window) : computeSlices(qe, req));
+        $ -> window.quantized ? computeSummary(req, window) : computeSlices(req));
   }
 
-  private ListenableFuture<Data> computeSummary(QueryEngine qe, DataRequest req, Window w) {
+  private ListenableFuture<Data> computeSummary(DataRequest req, Window w) {
     return transform(qe.query(summarySql(w.bucketSize)), result -> {
       Data data = new Data(req, w.bucketSize, new double[w.getNumberOfBuckets()]);
       result.forEachRow(($, r) -> data.utilizations[r.getInt(0)] = r.getDouble(1));
@@ -84,10 +83,10 @@ public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
   }
 
   private String summarySql(long ns) {
-    return format(SUMMARY_SQL, numCpus, ns, tableName("span"), numCpus);
+    return format(SUMMARY_SQL, numCpus, ns, tableName("span"));
   }
 
-  private ListenableFuture<Data> computeSlices(QueryEngine qe, DataRequest req) {
+  private ListenableFuture<Data> computeSlices(DataRequest req) {
     return transform(qe.query(slicesSql()), result -> {
       int rows = result.getNumRows();
       Data data = new Data(
@@ -105,7 +104,11 @@ public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
   }
 
   private String slicesSql() {
-    return format(SLICES_SQL, tableName("span"), numCpus);
+    return format(SLICES_SQL, tableName("span"));
+  }
+
+  public ListenableFuture<Slice> getSlice(long id) {
+    return CpuTrack.getSlice(qe, id);
   }
 
   public static class Data extends Track.Data {

@@ -28,12 +28,12 @@ class BaseSwapchain {
  public:
   BaseSwapchain(VkInstance instance, VkDevice device, uint32_t queue,
                 VkCommandPool command_pool, uint32_t num_images,
-                const InstanceData *instance_functions,
-                const DeviceData *device_functions,
-                const VkSwapchainCreateInfoKHR *swapchain_info,
-                const VkAllocationCallbacks *pAllocator,
-                const void *platform_info);
-  void Destroy(const VkAllocationCallbacks *pAllocator);
+                const InstanceData* instance_functions,
+                const DeviceData* device_functions,
+                const VkSwapchainCreateInfoKHR* swapchain_info,
+                const VkAllocationCallbacks* pAllocator,
+                const void* platform_info);
+  void Destroy(const VkAllocationCallbacks* pAllocator);
   bool Valid() const;
 
   VkResult PresentFrom(VkQueue queue, size_t index, VkImage image);
@@ -42,8 +42,8 @@ class BaseSwapchain {
  private:
   VkInstance instance_;
   VkDevice device_;
-  const InstanceData *instance_functions_;
-  const DeviceData *device_functions_;
+  const InstanceData* instance_functions_;
+  const DeviceData* device_functions_;
   VkSwapchainCreateInfoKHR swapchain_info_;
 
   threading::mutex present_lock_;

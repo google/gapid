@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.google.gapid.perfetto.canvas;
 
 import org.eclipse.swt.graphics.Cursor;
@@ -22,7 +37,7 @@ public interface Panel {
   }
 
   @SuppressWarnings("unused")
-  public default Panel.Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public default Panel.Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     return Hover.NONE;
   }
 
@@ -127,10 +142,6 @@ public interface Panel {
 
     public default Panel.Hover transformed(Function<Area, Area> transform) {
       Area redraw = getRedraw();
-      if (redraw == Area.NONE) {
-        return this;
-      }
-
       return new Hover() {
         @Override
         public Area getRedraw() {
@@ -185,6 +196,35 @@ public interface Panel {
         public boolean click() {
           boolean r1 = Hover.this.click(), r2 = onClick.getAsBoolean();
           return r1 || r2;
+        }
+      };
+    }
+
+    public default Panel.Hover withRedraw(Area newRedraw) {
+      return new Hover() {
+        @Override
+        public Area getRedraw() {
+          return Hover.this.getRedraw().combine(newRedraw);
+        }
+
+        @Override
+        public Cursor getCursor(Display display) {
+          return Hover.this.getCursor(display);
+        }
+
+        @Override
+        public void stop() {
+          Hover.this.stop();
+        }
+
+        @Override
+        public boolean isOverlay() {
+          return Hover.this.isOverlay();
+        }
+
+        @Override
+        public boolean click() {
+          return Hover.this.click();
         }
       };
     }

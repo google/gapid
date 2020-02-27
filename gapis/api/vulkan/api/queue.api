@@ -48,8 +48,15 @@
   map!(VkEvent, ref!EventObject)                                 PendingEvents
   map!(VkSemaphore, ref!SemaphoreObject)                         PendingSemaphores
   @unused ref!VulkanDebugMarkerInfo                              DebugInfo
-  @untracked @untrackedMap dense_map!(u32, ref!CommandReference) PendingCommands
   @untracked @untrackedMap map!(VkBuffer, bool) ReadCoherentBuffers
+  @unused u32                                                    DeviceMask
+}
+
+@internal class Submission {
+  map!(u32, VkCommandBuffer) CommandBuffers
+  map!(u32, VkSemaphore) WaitSemaphores
+  map!(u32, VkSemaphore) SignalSemaphores
+  ref!QueuedSparseBinds  SparseBinds
 }
 
 @threadSafety("system")
@@ -87,7 +94,7 @@ cmd VkResult vkQueueSubmit(
   LastSubmission = SUBMIT
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
-
+  clear(LastBoundQueue.ReadCoherentBuffers)
   enterSubcontext()
   for i in (0 .. submitCount) {
     info := submitInfo[i]
@@ -99,10 +106,34 @@ cmd VkResult vkQueueSubmit(
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
         _ = sType
-        // TODO: handle extensions for VkQueueSubmitInfo
+        switch sType {
+          case VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO: {
+            ext := as!VkDeviceGroupSubmitInfo*(next.Ptr)[0:1][0]
+            waitsemaphoreindices := ext.pWaitSemaphoreDeviceIndices[0:ext.waitSemaphoreCount]
+            for j in (0 .. ext.waitSemaphoreCount) {
+              if waitsemaphoreindices[j] != 0 {
+                vkErrUnsupported("Multiple devices in a group not supported yet")
+              }
+            }
+            cbmasks := ext.pCommandBufferDeviceMasks[0:ext.commandBufferCount]
+            for j in (0 .. ext.commandBufferCount) {
+              if cbmasks[j] > 1 {
+                vkErrUnsupported("Multiple devices in a group are not yet supported")
+              }
+            }
+            signalsemaphoreindices := ext.pSignalSemaphoreDeviceIndices[0:ext.signalSemaphoreCount]
+            for j in (0 .. ext.signalSemaphoreCount) {
+              if signalsemaphoreindices[j] != 0 {
+                vkErrUnsupported("Multiple devices in a group not supported yet")
+              }
+            }
+          }
+          default: {}
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
+    subm := Submission()
 
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     wait_semaphores_all_valid := MutableBool(true)
@@ -113,130 +144,55 @@ cmd VkResult vkQueueSubmit(
           wait_semaphores_all_valid.b = false
           vkErrorInvalidSemaphore(ws)
         } else {
-          semaphore := Semaphores[ws]
-
-          if(semaphore.SubmitCount == 0) {
-            vkErrorSemaphoreNotSubmitted(ws)
-          } else {
-            LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-            = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-              Unsignal,    ws,    null, as!VkFence(0))
-            semaphore.SubmitCount = semaphore.SubmitCount - 1
-          }
+          subm.WaitSemaphores[len(subm.WaitSemaphores)] = ws
         }
       }
     }
-    read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
-
-    command_buffers := info.pCommandBuffers[0:info.commandBufferCount]
-    command_buffers_all_valid := MutableBool(true)
-
-    enterSubcontext()
-    for j in (0 .. info.commandBufferCount) {
-      // all state is undefined at the start of each command buffer.
-      if (LastBoundQueue.VulkanHandle in LastDrawInfos) {
-        LastDrawInfos[LastBoundQueue.VulkanHandle] = new!DrawInfo()
-      }
-      if command_buffers_all_valid.b {
-        if !(command_buffers[j] in CommandBuffers) {
-          command_buffers_all_valid.b = false
-          vkErrorInvalidCommandBuffer(command_buffers[j])
-        } else {
-          enterSubcontext()
-          cb := CommandBuffers[command_buffers[j]]
-          if cb.Recording != COMPLETED {
-            vkErrorCommandBufferIncomplete(command_buffers[j])
-          }
-          if (as!u32(cb.BeginInfo.Flags) & as!u32(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) != as!u32(0) {
-            cb.Recording = TO_BE_RESET
-          }
-          numCmdRefs := len(cb.CommandReferences)
-          for k in (0 .. numCmdRefs) {
-            ref := cb.CommandReferences[as!u32(k)]
-            LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-            = new!CommandReference(
-              ref.Buffer,
-              ref.CommandIndex,
-              ref.Type,
-              ref.MapIndex,
-              ref.SemaphoreUpdate,
-              ref.Semaphore,
-              ref.SparseBinds,
-              ref.SignalFence,
-            )
-            notifyPendingCommandAdded(queue)
-            if ref.Type == cmd_vkCmdExecuteCommands {
-              enterSubcontext()
-              ec := cb.BufferCommands.vkCmdExecuteCommands[ref.MapIndex]
-              numCmdBufs := len(ec.CommandBuffers)
-              for l in (0 .. numCmdBufs) {
-                scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
-                if scb.Recording != COMPLETED {
-                  vkErrorCommandBufferIncomplete(ec.CommandBuffers[as!u32(l)])
-                }
-                enterSubcontext()
-                numSubCmdRefs := len(scb.CommandReferences)
-                for c in (0 .. numSubCmdRefs) {
-                  sref := scb.CommandReferences[as!u32(c)]
-                  LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-                  = new!CommandReference(
-                    sref.Buffer,
-                    sref.CommandIndex,
-                    sref.Type,
-                    sref.MapIndex,
-                    sref.SemaphoreUpdate,
-                    sref.Semaphore,
-                    sref.SparseBinds,
-                    sref.SignalFence,
-                  )
-                  notifyPendingCommandAdded(queue)
-                }
-                leaveSubcontext()
-                nextSubcontext()
-              }
-              leaveSubcontext()
-            }
-          }
-          leaveSubcontext()
-          nextSubcontext()
-        }
-      }
-    }
-    leaveSubcontext()
 
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
     signal_semaphores_all_valid := MutableBool(true)
     for j in (0 .. info.signalSemaphoreCount) {
       if signal_semaphores_all_valid.b {
-        ss := signal_semaphores[j]
-        if !(ss in Semaphores) {
+        ws := signal_semaphores[j]
+        if !(ws in Semaphores) {
           signal_semaphores_all_valid.b = false
-          vkErrorInvalidSemaphore(ss)
+          vkErrorInvalidSemaphore(ws)
         } else {
-          semaphore := Semaphores[ss]
-          semaphore.SubmitCount = semaphore.SubmitCount + 1
-          LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-          = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-            Signal,      ss,  null, as!VkFence(0))
+          subm.SignalSemaphores[len(subm.SignalSemaphores)] = ws
         }
       }
     }
+
+    read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
+
+    command_buffers := info.pCommandBuffers[0:info.commandBufferCount]
+    command_buffers_all_valid := MutableBool(true)
+    for j in (0 .. info.commandBufferCount) {
+      if command_buffers_all_valid.b {
+        cb := command_buffers[j]
+        if !(cb in CommandBuffers) {
+          command_buffers_all_valid.b = false
+          vkErrorInvalidCommandBuffer(cb)
+        } else {
+          subm.CommandBuffers[len(subm.CommandBuffers)] = cb
+        }
+      }
+    }
+    
+    executeSubmit(queue, subm)
     nextSubcontext()
   }
   leaveSubcontext()
-  if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
-      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-        as!VkSemaphore(0), null, fence)
-    }
-  }
-
-  execPendingCommands(queue, true)
   fence // 'fence' keyword, marking the point where observed memory writes become visible
 
+  if fence != as!VkFence(0) {
+    fenceObj := Fences[fence]
+    fenceObj.Signaled = true
+    recordFenceSignal(fence)
+  }
   return ?
 }
+
 
 @threadSafety("system")
 @indirect("VkQueue", "VkDevice")
@@ -321,20 +277,48 @@ cmd VkResult vkQueueBindSparse(
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
         _ = sType
-        // TODO: handle extensions for VkBindSparseInfo
+        switch sType {
+          case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
+            s := as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
+            _ = s
+          }
+          default: {}
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
 
+    subm := Submission()
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
+    wait_semaphores_all_valid := MutableBool(true)
     for j in (0 .. info.waitSemaphoreCount) {
-      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Unsignal,    wait_semaphores[j],    null)
+      if wait_semaphores_all_valid.b {
+        ws := wait_semaphores[j]
+        if !(ws in Semaphores) {
+          wait_semaphores_all_valid.b = false
+          vkErrorInvalidSemaphore(ws)
+        } else {
+          subm.WaitSemaphores[len(subm.WaitSemaphores)] = ws
+        }
+      }
     }
 
+    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
+    signal_semaphores_all_valid := MutableBool(true)
+    for j in (0 .. info.signalSemaphoreCount) {
+      if signal_semaphores_all_valid.b {
+        ws := signal_semaphores[j]
+        if !(ws in Semaphores) {
+          signal_semaphores_all_valid.b = false
+          vkErrorInvalidSemaphore(ws)
+        } else {
+          subm.SignalSemaphores[len(subm.SignalSemaphores)] = ws
+        }
+      }
+    }
+    clear(LastBoundQueue.ReadCoherentBuffers)
     queuedBinds := new!QueuedSparseBinds()
-
+    
     bufferBinds := info.pBufferBinds[0:info.bufferBindCount]
     for j in (0 .. info.bufferBindCount) {
       bufferBindInfo := bufferBinds[j]
@@ -382,29 +366,16 @@ cmd VkResult vkQueueBindSparse(
       }
       queuedBinds.ImageBinds[imageBindInfo.image] = bindsToQueue
     }
-
-    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-      None,          as!VkSemaphore(0),     queuedBinds)
-
-    signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
-    for j in (0 .. info.signalSemaphoreCount) {
-      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Signal,      signal_semaphores[j],  null)
-    }
-  }
-  leaveSubcontext()
-
-  if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
-      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-        as!VkSemaphore(0), null, fence)
-    }
+    subm.SparseBinds = queuedBinds
+    executeSubmit(queue, subm)
   }
 
-  execPendingCommands(queue, true)
   fence
+  if fence != as!VkFence(0) {
+    fenceObj := Fences[fence]
+    fenceObj.Signaled = true
+    recordFenceSignal(fence)
+  }
+
   return ?
 }

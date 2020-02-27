@@ -111,11 +111,16 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	})
 
 	isVulkan := o.APIs&VulkanAPI != uint32(0)
-	useLayers := android.SupportsLayersViaSystemSettings(d)
+	var useLayers bool
+	if isVulkan {
+		useLayers = android.SupportsVulkanLayersViaSystemSettings(d)
+	} else {
+		useLayers = android.SupportsGLESLayersViaSystemSettings(d)
+	}
 
 	if useLayers {
 		log.I(ctx, "Setting up Layer")
-		cu, err := android.SetupLayer(ctx, d, p.Name, gapidapk.PackageName(abi), gapidapk.LayerName(isVulkan), isVulkan)
+		cu, err := android.SetupLayers(ctx, d, p.Name, []string{gapidapk.PackageName(abi)}, []string{gapidapk.LayerName(isVulkan)}, isVulkan)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up the layer")
 		}

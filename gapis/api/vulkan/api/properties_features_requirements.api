@@ -317,6 +317,7 @@ cmd void vkGetImageSparseMemoryRequirements(
 // Instance //
 //////////////
 
+@since("1.1")
 @threadSafety("system")
 cmd VkResult vkEnumerateInstanceVersion(
     u32* pApiVersion) {
@@ -357,6 +358,33 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
             _ = as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceHostQueryResetFeaturesEXT*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+            _ = as!VkPhysicalDevice8BitStorageFeaturesKHR*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+            _ = as!VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR: {
+            _ = as!VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
+            _ = as!VkPhysicalDeviceShaderClockFeaturesKHR*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
+            _ = as!VkPhysicalDeviceVulkanMemoryModelFeaturesKHR*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR: {
+            _ = as!VkPhysicalDeviceShaderFloat16Int8FeaturesKHR*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
+            _ = as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -383,6 +411,33 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
             write(as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0:1])
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceHostQueryResetFeaturesEXT*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+            write(as!VkPhysicalDevice8BitStorageFeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+            write(as!VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR: {
+            write(as!VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
+            write(as!VkPhysicalDeviceShaderClockFeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
+            write(as!VkPhysicalDeviceVulkanMemoryModelFeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR: {
+            write(as!VkPhysicalDeviceShaderFloat16Int8FeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
+            write(as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0:1])
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -390,6 +445,7 @@ sub void GetPhysicalDeviceFeatures2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceFeatures2(
@@ -414,6 +470,7 @@ sub void GetPhysicalDeviceFormatProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceFormatProperties2(
@@ -472,6 +529,7 @@ sub void GetPhysicalDeviceImageFormatProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkResult vkGetPhysicalDeviceImageFormatProperties2(
@@ -504,6 +562,18 @@ sub void GetPhysicalDeviceProperties2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
             _ = as!VkPhysicalDeviceIDProperties*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
+            _ = as!VkPhysicalDevicePCIBusInfoPropertiesEXT*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD: {
+            _ = as!VkPhysicalDeviceShaderCorePropertiesAMD*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR :{
+            _ = as!VkPhysicalDeviceFloatControlsPropertiesKHR*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
+            _ = as!VkPhysicalDeviceDriverPropertiesKHR*(next.Ptr)[0]
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
@@ -541,6 +611,65 @@ sub void GetPhysicalDeviceProperties2(
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
+              ext := as!VkPhysicalDevicePCIBusInfoPropertiesEXT*(next.Ptr)[0]
+              phyDev.PhysicalDevicePCIBusInfoPropertiesEXT = new!PhysicalDevicePCIBusInfoPropertiesEXT(
+                pciDomain:   ext.pciDomain,
+                pciBus:      ext.pciBus,
+                pciDevice:   ext.pciDevice,
+                pciFunction: ext.pciFunction,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD: {
+              ext := as!VkPhysicalDeviceShaderCorePropertiesAMD*(next.Ptr)[0]
+              phyDev.PhysicalDeviceShaderCorePropertiesAMD = new!PhysicalDeviceShaderCorePropertiesAMD(
+                shaderEngineCount: ext.shaderEngineCount,
+                shaderArraysPerEngineCount: ext.shaderArraysPerEngineCount,
+                computeUnitsPerShaderArray: ext.computeUnitsPerShaderArray,
+                simdPerComputeUnit: ext.simdPerComputeUnit,
+                wavefrontsPerSimd: ext.wavefrontsPerSimd,
+                wavefrontSize: ext.wavefrontSize,
+                sgprsPerSimd: ext.sgprsPerSimd,
+                minSgprAllocation: ext.minSgprAllocation,
+                maxSgprAllocation: ext.maxSgprAllocation,
+                sgprAllocationGranularity: ext.sgprAllocationGranularity,
+                vgprsPerSimd: ext.vgprsPerSimd,
+                minVgprAllocation: ext.minVgprAllocation,
+                maxVgprAllocation: ext.maxVgprAllocation,
+                vgprAllocationGranularity: ext.vgprAllocationGranularity,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR :{
+              ext := as!VkPhysicalDeviceFloatControlsPropertiesKHR*(next.Ptr)[0]
+              phyDev.PhysicalDeviceFloatControlsPropertiesKHR = new!PhysicalDeviceFloatControlsPropertiesKHR(
+                DenormBehaviorIndependence: ext.denormBehaviorIndependence,
+                RoundingModeIndependence: ext.roundingModeIndependence,
+                ShaderSignedZeroInfNanPreserveFloat16: ext.shaderSignedZeroInfNanPreserveFloat16,
+                ShaderSignedZeroInfNanPreserveFloat32: ext.shaderSignedZeroInfNanPreserveFloat32,
+                ShaderSignedZeroInfNanPreserveFloat64: ext.shaderSignedZeroInfNanPreserveFloat64,
+                ShaderDenormPreserveFloat16: ext.shaderDenormPreserveFloat16,
+                ShaderDenormPreserveFloat32: ext.shaderDenormPreserveFloat32,
+                ShaderDenormPreserveFloat64: ext.shaderDenormPreserveFloat64,
+                ShaderDenormFlushToZeroFloat16: ext.shaderDenormFlushToZeroFloat16,
+                ShaderDenormFlushToZeroFloat32: ext.shaderDenormFlushToZeroFloat32,
+                ShaderDenormFlushToZeroFloat64: ext.shaderDenormFlushToZeroFloat64,
+                ShaderRoundingModeRTEFloat16: ext.shaderRoundingModeRTEFloat16,
+                ShaderRoundingModeRTEFloat32: ext.shaderRoundingModeRTEFloat32,
+                ShaderRoundingModeRTEFloat64: ext.shaderRoundingModeRTEFloat64,
+                ShaderRoundingModeRTZFloat16: ext.shaderRoundingModeRTZFloat16,
+                ShaderRoundingModeRTZFloat32: ext.shaderRoundingModeRTZFloat32,
+                ShaderRoundingModeRTZFloat64: ext.shaderRoundingModeRTZFloat64,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
+              ext := as!VkPhysicalDeviceDriverPropertiesKHR*(next.Ptr)[0]
+              phyDev.PhysicalDeviceDriverPropertiesKHR = new!PhysicalDeviceDriverPropertiesKHR(
+                DriverID: ext.driverID,
+                DriverName: ext.driverName,
+                DriverInfo: ext.driverInfo,
+                ConformanceVersion: ext.conformanceVersion,
+              )
+            }
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
@@ -549,6 +678,7 @@ sub void GetPhysicalDeviceProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceProperties2(
@@ -575,6 +705,7 @@ sub void GetPhysicalDeviceMemoryProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceMemoryProperties2(
@@ -620,6 +751,7 @@ sub void GetPhysicalDeviceSparseImageFormatProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceSparseImageFormatProperties2(
@@ -658,6 +790,7 @@ sub void GetPhysicalDeviceQueueFamilyProperties2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceQueueFamilyProperties2(
@@ -708,6 +841,7 @@ sub void GetPhysicalDeviceExternalBufferProperties(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceExternalBufferProperties(
@@ -758,6 +892,7 @@ sub void GetPhysicalDeviceExternalSemaphoreProperties(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceExternalSemaphoreProperties(
@@ -808,6 +943,7 @@ sub void GetPhysicalDeviceExternalFenceProperties(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd void vkGetPhysicalDeviceExternalFenceProperties(
@@ -871,6 +1007,7 @@ sub void GetBufferMemoryRequirements2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetBufferMemoryRequirements2(
@@ -948,6 +1085,7 @@ sub void GetImageMemoryRequirements2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetImageMemoryRequirements2(
@@ -998,6 +1136,7 @@ sub void GetImageSparseMemoryRequirements2(
   }
 }
 
+@since("1.1")
 @threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetImageSparseMemoryRequirements2(

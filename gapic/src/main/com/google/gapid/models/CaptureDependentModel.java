@@ -15,13 +15,15 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.models.DeviceDependentModel.Source.withSource;
+import static com.google.gapid.util.MoreFutures.transform;
+
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
-import com.google.gapid.util.MoreFutures;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -31,8 +33,9 @@ import java.util.logging.Logger;
  * Base class for models that depend on a capture. I.e. models that will trigger a load whenever
  * the capture changes and require a capture to be loaded.
  */
-abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L extends Events.Listener>
-    extends DeviceDependentModel.ForPath<T, Void, L> {
+abstract class CaptureDependentModel
+    <T extends DeviceDependentModel.Data, S, E, L extends Events.Listener>
+    extends DeviceDependentModel<T, S, E, L> {
 
   public CaptureDependentModel(Logger log, Shell shell, Analytics analytics, Client client,
       Class<L> listenerClass, Capture capture, Devices devices) {
@@ -46,8 +49,8 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
 
       @Override
       public void onCaptureLoaded(Loadable.Message error) {
-        if (error == null && shouldLoad(capture)) {
-          load(getPath(capture.getData().path), false);
+        if (error == null && shouldLoad(capture.getData())) {
+          load(withSource(getSource(), getSource(capture.getData())), false);
         } else {
           reset(false);
         }
@@ -55,7 +58,12 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
     });
   }
 
-  protected abstract Path.Any getPath(Path.Capture capturePath);
+  /**
+   * Whether this model should be loaded for the given capture.
+   */
+  protected abstract boolean shouldLoad(Capture.Data capture);
+
+  protected abstract S getSource(Capture.Data capture);
 
   /**
    * @param maintainState whether the model should attempt to maintain its state.
@@ -64,13 +72,21 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
     reset();
   }
 
-  /**
-   * Whether this model should be loaded for the given capture.
-   */
-  protected abstract boolean shouldLoad(Capture capture);
+  public abstract static class ForPath<T extends Data, L extends Events.Listener>
+      extends CaptureDependentModel<T, Path.Any, Void, L> {
+
+    public ForPath(Logger log, Shell shell, Analytics analytics, Client client,
+        Class<L> listenerClass, Capture capture, Devices devices) {
+      super(log, shell, analytics, client, listenerClass, capture, devices);
+    }
+
+    public void load(Path.Any path, boolean force) {
+      load(withSource(getSource(), path), force);
+    }
+  }
 
   public abstract static class ForValue<T extends Data, L extends Events.Listener>
-      extends CaptureDependentModel<T, L> {
+      extends CaptureDependentModel.ForPath<T, L> {
     public ForValue(Logger log, Shell shell, Analytics analytics, Client client,
         Class<L> listenerClass, Capture capture, Devices devices) {
       super(log, shell, analytics, client, listenerClass, capture, devices);
@@ -78,7 +94,7 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
 
     @Override
     protected ListenableFuture<T> doLoad(Path.Any path, Path.Device device) {
-      return MoreFutures.transform(client.get(path, device), val -> unbox(val, device));
+      return transform(client.get(path, device), val -> unbox(val, device));
     }
 
     protected abstract T unbox(Service.Value value, Path.Device device);

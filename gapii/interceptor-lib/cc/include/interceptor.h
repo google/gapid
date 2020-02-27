@@ -29,13 +29,13 @@ extern "C" {
 // Initializes the internal state of the interceptor library and returns a baton
 // what have to be passed in to every other function. If called multiple times
 // then multiple independent copies of the interceptor will be created.
-void *InitializeInterceptor();
+void* InitializeInterceptor();
 
 // Terminate an instance of the interceptor, deletes the trampolines set up by
 // the instance and frees up all resources allocated by it. After this call the
 // baton is a dangling pointer and passing it to any of the API function is
 // undefined behaviour.
-void TerminateInterceptor(void *interceptor);
+void TerminateInterceptor(void* interceptor);
 
 // Intercepts a function specified by "old_function" with the one specified by
 // "new_function". If "callback_function" is not nullptr then a callback stub
@@ -48,10 +48,10 @@ void TerminateInterceptor(void *interceptor);
 // interception was successfull (return true) or not (return false). In case
 // of an interception failure the error_callback (if specified) called at least
 // once and the original function isn't modified.
-bool InterceptFunction(void *interceptor, void *old_function,
-                       void *new_function, void **callback_function = nullptr,
-                       void (*error_callback)(void *, const char *) = nullptr,
-                       void *error_callback_baton = nullptr);
+bool InterceptFunction(void* interceptor, void* old_function,
+                       void* new_function, void** callback_function = nullptr,
+                       void (*error_callback)(void*, const char*) = nullptr,
+                       void* error_callback_baton = nullptr);
 
 }  // extern "C"
 

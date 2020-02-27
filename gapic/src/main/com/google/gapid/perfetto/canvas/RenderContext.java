@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.google.gapid.perfetto.canvas;
 
 import com.google.common.base.Preconditions;
@@ -7,6 +22,7 @@ import com.google.gapid.perfetto.canvas.Fonts.Style;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.RGBA;
@@ -130,8 +146,28 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     gc.drawLine(scale(x1), scale(y1), scale(x2), scale(y2));
   }
 
+  public void drawLine(double x1, double y1, double x2, double y2, int lineWidthScale) {
+    int lineWidth = gc.getLineWidth();
+    try {
+      gc.setLineWidth(lineWidth * lineWidthScale);
+      drawLine(x1, y1, x2, y2);
+    } finally {
+      gc.setLineWidth(lineWidth);
+    }
+  }
+
   public void drawRect(double x, double y, double w, double h) {
     gc.drawRectangle(rect(x, y, w, h));
+  }
+
+  public void drawRect(double x, double y, double w, double h, int lineWidthScale) {
+    int lineWidth = gc.getLineWidth();
+    try {
+      gc.setLineWidth(lineWidth * lineWidthScale);
+      drawRect(x, y, w, h);
+    } finally {
+      gc.setLineWidth(lineWidth);
+    }
   }
 
   public void fillRect(double x, double y, double w, double h) {
@@ -141,6 +177,24 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
   public void drawCircle(double cx, double cy, double r) {
     int d = 2 * scale(r);
     gc.drawOval(scale(cx - r), scale(cy - r), d, d);
+  }
+
+  public void fillPolygon(double[] xPoints, double[] yPoints, int n) {
+    int[] points = new int[2 * n];
+    for (int i = 0, j = 0; i < n; i++, j += 2) {
+      points[j + 0] = scale(xPoints[i]);
+      points[j + 1] = scale(yPoints[i]);
+    }
+    gc.fillPolygon(points);
+  }
+
+  public void drawPolygon(double[] xPoints, double[] yPoints, int n) {
+    int[] points = new int[2 * n];
+    for (int i = 0, j = 0; i < n; i++, j += 2) {
+      points[j + 0] = scale(xPoints[i]);
+      points[j + 1] = scale(yPoints[i]);
+    }
+    gc.drawPolygon(points);
   }
 
   // x, y is top left corner of text.
@@ -188,14 +242,25 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     }
   }
 
-  // draws the text centered vertically and left truncated to fit into the given width.
+  // draws text centered vertically, left truncated to fit into the given width.
   public void drawTextLeftTruncate(
       Fonts.Style style, String text, double x, double y, double w, double h) {
+    drawTextLeftTruncate(style, text, x, y, w, h, false);
+  }
+
+  // draws text centered horizontally and vertically, left truncated to fit into the given width.
+  public void drawTextCenteredLeftTruncate(
+      Fonts.Style style, String text, double x, double y, double w, double h) {
+    drawTextLeftTruncate(style, text, x, y, w, h, true);
+  }
+
+  private void drawTextLeftTruncate(
+      Fonts.Style style, String text, double x, double y, double w, double h, boolean centered) {
     String toDisplay = text;
     for (int l = text.length(); ; ) {
       Size size = fontContext.measure(style, toDisplay);
       if (size.w < w) {
-        drawText(style, toDisplay, x, y + (h - size.h) / 2);
+        drawText(style, toDisplay, x + (centered ? (w - size.w) / 2 : 0), y + (h - size.h) / 2);
         break;
       }
 
@@ -204,6 +269,18 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
         break;
       }
       toDisplay = "..." + text.substring(text.length() - l);
+    }
+  }
+
+  // draws text centered vertically and horizontally, left truncated to fit into the given width.
+  // If the primary text is too long, it falls back to using the alternative.
+  public void drawTextLeftTruncate(
+      Fonts.Style style, String text, String alternative, double x, double y, double w, double h) {
+    Size size = fontContext.measure(style, text);
+    if (size.w < w) {
+      drawText(style, text, x + (w - size.w)/ 2 , y + (h - size.h) / 2);
+    } else {
+      drawTextCenteredLeftTruncate(style, alternative, x, y, w, h);
     }
   }
 
@@ -339,6 +416,10 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
 
     public RenderContext newContext(GC gc) {
       return new RenderContext(theme, gc, colors, fontContext);
+    }
+
+    public Color getColor(RGBA rgba) {
+      return colors.get(rgba);
     }
 
     @Override

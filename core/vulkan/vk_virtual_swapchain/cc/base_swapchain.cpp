@@ -21,9 +21,9 @@
 namespace swapchain {
 
 namespace {
-VkResult createSemaphore(const DeviceData *device_functions, VkDevice device,
-                         const VkAllocationCallbacks *pAllocator,
-                         VkSemaphore *pSem) {
+VkResult createSemaphore(const DeviceData* device_functions, VkDevice device,
+                         const VkAllocationCallbacks* pAllocator,
+                         VkSemaphore* pSem) {
   VkSemaphoreCreateInfo createInfo = {
       VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,  // sType
       nullptr,                                  // pNext
@@ -32,11 +32,11 @@ VkResult createSemaphore(const DeviceData *device_functions, VkDevice device,
   return device_functions->vkCreateSemaphore(device, &createInfo, pAllocator,
                                              pSem);
 }
-VkResult createSemaphores(const DeviceData *device_functions, VkDevice device,
-                          const VkAllocationCallbacks *pAllocator, size_t count,
-                          std::vector<VkSemaphore> &sems) {
+VkResult createSemaphores(const DeviceData* device_functions, VkDevice device,
+                          const VkAllocationCallbacks* pAllocator, size_t count,
+                          std::vector<VkSemaphore>& sems) {
   sems.resize(count);
-  for (VkSemaphore &sem : sems) {
+  for (VkSemaphore& sem : sems) {
     VkResult res;
     if ((res = createSemaphore(device_functions, device, pAllocator, &sem)) !=
         VK_SUCCESS) {
@@ -46,9 +46,9 @@ VkResult createSemaphores(const DeviceData *device_functions, VkDevice device,
   return VK_SUCCESS;
 }
 
-void destroySemaphores(const DeviceData *device_functions, VkDevice device,
-                       const VkAllocationCallbacks *pAllocator,
-                       std::vector<VkSemaphore> &sems) {
+void destroySemaphores(const DeviceData* device_functions, VkDevice device,
+                       const VkAllocationCallbacks* pAllocator,
+                       std::vector<VkSemaphore>& sems) {
   for (VkSemaphore sem : sems) {
     device_functions->vkDestroySemaphore(device, sem, pAllocator);
   }
@@ -59,11 +59,11 @@ void destroySemaphores(const DeviceData *device_functions, VkDevice device,
 BaseSwapchain::BaseSwapchain(VkInstance instance, VkDevice device,
                              uint32_t queue, VkCommandPool command_pool,
                              uint32_t num_images,
-                             const InstanceData *instance_functions,
-                             const DeviceData *device_functions,
-                             const VkSwapchainCreateInfoKHR *swapchain_info,
-                             const VkAllocationCallbacks *pAllocator,
-                             const void *platform_info)
+                             const InstanceData* instance_functions,
+                             const DeviceData* device_functions,
+                             const VkSwapchainCreateInfoKHR* swapchain_info,
+                             const VkAllocationCallbacks* pAllocator,
+                             const void* platform_info)
     : instance_(instance),
       device_(device),
       instance_functions_(instance_functions),
@@ -157,7 +157,7 @@ BaseSwapchain::BaseSwapchain(VkInstance instance, VkDevice device,
   valid_ = true;
 }
 
-void BaseSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
+void BaseSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
   device_functions_->vkDestroySemaphore(device_, acquire_semaphore_,
                                         pAllocator);
   acquire_semaphore_ = VK_NULL_HANDLE;

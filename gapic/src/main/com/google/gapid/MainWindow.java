@@ -44,6 +44,7 @@ import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.StatusWatcher;
+import com.google.gapid.util.URLs;
 import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.views.StatusBar;
 import com.google.gapid.widgets.CopyPaste;
@@ -52,6 +53,7 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.window.ApplicationWindow;
@@ -65,6 +67,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
@@ -138,7 +142,7 @@ public class MainWindow extends ApplicationWindow {
           file -> models.capture.loadCapture(new File(file)));
     }
 
-    if (settings.autoCheckForUpdates) {
+    if (settings.preferences().getCheckForUpdates()) {
       // Only show the status message if we're actually checking for updates. watchForUpdates only
       //schedules a periodic check to see if we should check for updates and if so, checks.
       showLoadingMessage("Watching for updates...");
@@ -149,6 +153,29 @@ public class MainWindow extends ApplicationWindow {
     trackServerStatus(client);
 
     showLoadingMessage("Ready! Please open or capture a trace file.");
+
+    getShell().getDisplay().addFilter(SWT.KeyDown, new Listener() {
+      private final int[] codes = {
+          SWT.ARROW_UP, SWT.ARROW_UP, SWT.ARROW_DOWN, SWT.ARROW_DOWN,
+          SWT.ARROW_LEFT, SWT.ARROW_RIGHT, SWT.ARROW_LEFT, SWT.ARROW_RIGHT,
+          'b', 'a'
+      };
+      private int seen = 0;
+
+      @Override
+      public void handleEvent(Event event) {
+        if (event.keyCode == codes[seen]) {
+          if (++seen == codes.length) {
+            seen = 0;
+            setTopControl(mainUi);
+            mainUi.stopLoading();
+            mainUi.getContents().showSnake();
+          }
+        } else {
+          seen = 0;
+        }
+      }
+    });
   }
 
   private void watchForUpdates(Client client, Models models) {
@@ -187,8 +214,10 @@ public class MainWindow extends ApplicationWindow {
 
     super.configureShell(shell);
 
-    shell.addListener(SWT.Move, e -> settings.windowLocation = shell.getLocation());
-    shell.addListener(SWT.Resize, e -> settings.windowSize = shell.getSize());
+    shell.addListener(
+        SWT.Move, e -> settings.writeWindow().setLocation(Settings.setPoint(shell.getLocation())));
+    shell.addListener(
+        SWT.Resize, e -> settings.writeWindow().setSize(Settings.setPoint(shell.getSize())));
   }
 
   @Override
@@ -212,7 +241,7 @@ public class MainWindow extends ApplicationWindow {
 
   @Override
   protected Point getInitialSize() {
-    Point size = settings.windowSize;
+    Point size = Settings.getPoint(settings.window().getSize());
     return (size != null) ? size : getDefaultInitialSize();
   }
 
@@ -223,7 +252,7 @@ public class MainWindow extends ApplicationWindow {
 
   @Override
   protected Point getInitialLocation(Point initialSize) {
-    Point location = settings.windowLocation;
+    Point location = Settings.getPoint(settings.window().getLocation());
     return (location != null) ? location : getDefaultInitialLocation(initialSize);
   }
 
@@ -264,7 +293,8 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = findMenu(MenuItems.FILE_ID);
     manager.removeAll();
 
-    Action save = MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models));
+    ActionContributionItem save = new ActionContributionItem(
+        MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models)));
 
     manager.add(MenuItems.FileOpen.create(() -> showOpenTraceDialog(getShell(), models)));
     manager.add(save);
@@ -273,16 +303,15 @@ public class MainWindow extends ApplicationWindow {
         () -> showTracingDialog(client, getShell(), models, widgets)));
     manager.add(MenuItems.FileExit.create(() -> close()));
 
-    save.setEnabled(false);
     models.capture.addListener(new Capture.Listener() {
       @Override
-      public void onCaptureLoadingStart(boolean maintainState) {
-        save.setEnabled(false);
-      }
-
-      @Override
       public void onCaptureLoaded(Message error) {
-        save.setEnabled(models.capture.isGraphics());
+        if (models.capture.isGraphics() && manager.find(save.getId()) == null) {
+          manager.insertAfter(MenuItems.FileOpen.getLabel(), save);
+        } else if (!models.capture.isGraphics() && manager.find(save.getId()) != null) {
+          manager.remove(save);
+        }
+        manager.updateAll(true);
       }
     });
 
@@ -374,6 +403,8 @@ public class MainWindow extends ApplicationWindow {
     manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models.analytics)));
     manager.add(MenuItems.HelpLicenses.create(
         () -> showLicensesDialog(getShell(), models.analytics, widgets.theme)));
+    manager.add(MenuItems.HelpFileBug.create(
+        () -> Program.launch(URLs.FILE_BUG_URL)));
     return manager;
   }
 
@@ -382,7 +413,7 @@ public class MainWindow extends ApplicationWindow {
     private final Widgets widgets;
 
     private Service.TraceType current;
-    private MainView view;
+    private MainView mainView;
 
     public MainViewContainer(Composite parent, Models models, Widgets widgets) {
       super(parent, SWT.NONE);
@@ -394,25 +425,37 @@ public class MainWindow extends ApplicationWindow {
 
     public MainView updateAndGet(Service.TraceType traceType) {
       if (traceType == current) {
-        return view;
+        return mainView;
       }
-      if (view != null) {
-        ((Control)view).dispose();
+      if (mainView != null) {
+        ((Control)mainView).dispose();
       }
 
       current = traceType;
       switch (traceType) {
         case Graphics:
-          view = new GraphicsTraceView(this, models, widgets);
+          mainView = new GraphicsTraceView(this, models, widgets);
           break;
         case Perfetto:
-          view = new PerfettoTraceView(this, models, widgets);
+          mainView = new PerfettoTraceView(this, models, widgets);
           break;
         default:
           throw new AssertionError("Trace type not supported: " + traceType);
       }
       layout();
-      return view;
+      return mainView;
+    }
+
+    public void showSnake() {
+      if (!(mainView instanceof SnakeView)) {
+        if (mainView != null) {
+          ((Control)mainView).dispose();
+        }
+        SnakeView snake = new SnakeView(this);
+        mainView = snake;
+        layout();
+        scheduleIfNotDisposed(snake, snake::setFocus);
+      }
     }
   }
 
@@ -431,14 +474,14 @@ public class MainWindow extends ApplicationWindow {
     GotoCommand("&Command", 'G'),
     GotoMemory("&Memory Location", 'M'),
 
-    ViewThumbnails("Show Filmstrip"),
     ViewDarkMode("Dark Mode", 'D'),
     ViewQueryShell("Open &Query Shell", 'M'),
 
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
     HelpAbout("&About"),
     HelpShowLogs("Open &Log Directory"),
-    HelpLicenses("&Licenses");
+    HelpLicenses("&Licenses"),
+    HelpFileBug("File a &Bug");
 
     public static final String FILE_ID = "file";
     public static final String VIEW_ID = "view";
@@ -457,6 +500,10 @@ public class MainWindow extends ApplicationWindow {
     private MenuItems(String label, int accelerator) {
       this.label = label;
       this.accelerator = accelerator;
+    }
+
+    public String getLabel() {
+      return label;
     }
 
     public Action create(Runnable listener) {
@@ -478,6 +525,7 @@ public class MainWindow extends ApplicationWindow {
     }
 
     private Action configure(Action action) {
+      action.setId(label);
       action.setText(label);
       action.setAccelerator(accelerator);
       return action;

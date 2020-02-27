@@ -21,7 +21,7 @@
 
 namespace swapchain {
 
-void RegisterInstance(VkInstance instance, const InstanceData &data) {
+void RegisterInstance(VkInstance instance, const InstanceData& data) {
   uint32_t num_devices = 0;
   data.vkEnumeratePhysicalDevices(instance, &num_devices, nullptr);
 
@@ -48,15 +48,15 @@ struct VirtualSurface {
 };
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
-    VkInstance instance, const CreateNext *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator, VkSurfaceKHR *pSurface) {
-  auto *surf = new VirtualSurface();
+    VkInstance instance, const CreateNext* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+  auto* surf = new VirtualSurface();
   surf->always_return_given_surface_formats_and_present_modes = false;
   if (pCreateInfo != nullptr) {
-    for (const CreateNext *pNext =
-             static_cast<const CreateNext *>(pCreateInfo->pNext);
+    for (const CreateNext* pNext =
+             static_cast<const CreateNext*>(pCreateInfo->pNext);
          pNext != nullptr;
-         pNext = static_cast<const CreateNext *>(pNext->pNext)) {
+         pNext = static_cast<const CreateNext*>(pNext->pNext)) {
       if (pNext->sType == VIRTUAL_SWAPCHAIN_CREATE_PNEXT) {
         surf->always_return_given_surface_formats_and_present_modes = true;
       }
@@ -68,7 +68,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceSupportKHR(
     VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex,
-    VkSurfaceKHR surface, VkBool32 *pSupported) {
+    VkSurfaceKHR surface, VkBool32* pSupported) {
   const auto instance_dat = *GetGlobalContext().GetInstanceData(
       GetGlobalContext().GetPhysicalDeviceData(physicalDevice)->instance_);
 
@@ -98,12 +98,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceSupportKHR(
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
-    VkSurfaceCapabilitiesKHR *pSurfaceCapabilities) {
+    VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) {
   // It would be illegal for the program to call VkDestroyInstance here.
   // We do not need to lock the map for the whole time, just
   // long enough to get the data out. unordered_map guarantees that
   // even if re-hashing occurs, references remain valid.
-  VkPhysicalDeviceProperties &properties =
+  VkPhysicalDeviceProperties& properties =
       GetGlobalContext()
           .GetPhysicalDeviceData(physicalDevice)
           ->physical_device_properties_;
@@ -136,8 +136,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
-    uint32_t *pSurfaceFormatCount, VkSurfaceFormatKHR *pSurfaceFormats) {
-  VirtualSurface *suf = reinterpret_cast<VirtualSurface *>(surface);
+    uint32_t* pSurfaceFormatCount, VkSurfaceFormatKHR* pSurfaceFormats) {
+  VirtualSurface* suf = reinterpret_cast<VirtualSurface*>(surface);
   if (suf->always_return_given_surface_formats_and_present_modes) {
     return VK_SUCCESS;
   }
@@ -158,8 +158,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
-    uint32_t *pPresentModeCount, VkPresentModeKHR *pPresentModes) {
-  VirtualSurface *suf = reinterpret_cast<VirtualSurface *>(surface);
+    uint32_t* pPresentModeCount, VkPresentModeKHR* pPresentModes) {
+  VirtualSurface* suf = reinterpret_cast<VirtualSurface*>(surface);
   if (suf->always_return_given_surface_formats_and_present_modes) {
     return VK_SUCCESS;
   }
@@ -177,12 +177,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfacePresentModesKHR(
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
-    VkDevice device, const VkSwapchainCreateInfoKHR *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator, VkSwapchainKHR *pSwapchain) {
-  DeviceData &dev_dat = *GetGlobalContext().GetDeviceData(device);
-  PhysicalDeviceData &pdd =
+    VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pSwapchain) {
+  DeviceData& dev_dat = *GetGlobalContext().GetDeviceData(device);
+  PhysicalDeviceData& pdd =
       *GetGlobalContext().GetPhysicalDeviceData(dev_dat.physicalDevice);
-  InstanceData &inst_dat = *GetGlobalContext().GetInstanceData(pdd.instance_);
+  InstanceData& inst_dat = *GetGlobalContext().GetInstanceData(pdd.instance_);
 
   uint32_t property_count = 0;
   inst_dat.vkGetPhysicalDeviceQueueFamilyProperties(dev_dat.physicalDevice,
@@ -203,10 +203,9 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
       device, queue, &pdd.physical_device_properties_, &pdd.memory_properties_,
       &dev_dat, pCreateInfo, pAllocator);
 
-  for (const CreateNext *pNext =
-           static_cast<const CreateNext *>(pCreateInfo->pNext);
-       pNext != nullptr;
-       pNext = static_cast<const CreateNext *>(pNext->pNext)) {
+  for (const CreateNext* pNext =
+           static_cast<const CreateNext*>(pCreateInfo->pNext);
+       pNext != nullptr; pNext = static_cast<const CreateNext*>(pNext->pNext)) {
     if (pNext->sType == VIRTUAL_SWAPCHAIN_CREATE_PNEXT) {
       swp->SetAlwaysGetAcquiredImage(true);
       if (pNext->surfaceCreateInfo) {
@@ -221,25 +220,31 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
   return VK_SUCCESS;
 }
 
+VKAPI_ATTR void VKAPI_CALL vkSetHdrMetadataEXT(
+    VkDevice device, uint32_t swapchainCount, const VkSwapchainKHR* pSwapchains,
+    const VkHdrMetadataEXT* pMetadata) {
+  // This is a no-op for the virtual swapchain
+}
+
 VKAPI_ATTR void VKAPI_CALL
 vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain,
-                      const VkAllocationCallbacks *pAllocator) {
-  VirtualSwapchain *swp = reinterpret_cast<VirtualSwapchain *>(swapchain);
+                      const VkAllocationCallbacks* pAllocator) {
+  VirtualSwapchain* swp = reinterpret_cast<VirtualSwapchain*>(swapchain);
   swp->Destroy(pAllocator);
   delete swp;
 }
 
 VKAPI_ATTR void VKAPI_CALL
 vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface,
-                    const VkAllocationCallbacks *pAllocator) {
-  VirtualSurface *suf = reinterpret_cast<VirtualSurface *>(surface);
+                    const VkAllocationCallbacks* pAllocator) {
+  VirtualSurface* suf = reinterpret_cast<VirtualSurface*>(surface);
   delete suf;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainImagesKHR(
-    VkDevice device, VkSwapchainKHR swapchain, uint32_t *pSwapchainImageCount,
-    VkImage *pSwapchainImages) {
-  VirtualSwapchain *swp = reinterpret_cast<VirtualSwapchain *>(swapchain);
+    VkDevice device, VkSwapchainKHR swapchain, uint32_t* pSwapchainImageCount,
+    VkImage* pSwapchainImages) {
+  VirtualSwapchain* swp = reinterpret_cast<VirtualSwapchain*>(swapchain);
   const auto images =
       swp->GetImages(*pSwapchainImageCount, pSwapchainImages != nullptr);
   if (!pSwapchainImages) {
@@ -260,10 +265,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainImagesKHR(
   return res;
 }
 
-VKAPI_ATTR void VKAPI_CALL vkSetSwapchainCallback(
-    VkSwapchainKHR swapchain, void callback(void *, uint8_t *, size_t),
-    void *user_data) {
-  VirtualSwapchain *swp = reinterpret_cast<VirtualSwapchain *>(swapchain);
+VKAPI_ATTR void VKAPI_CALL vkSetSwapchainCallback(VkSwapchainKHR swapchain,
+                                                  void callback(void*, uint8_t*,
+                                                                size_t),
+                                                  void* user_data) {
+  VirtualSwapchain* swp = reinterpret_cast<VirtualSwapchain*>(swapchain);
   swp->SetCallback(callback, user_data);
 }
 
@@ -273,8 +279,8 @@ VKAPI_ATTR void VKAPI_CALL vkSetSwapchainCallback(
 // a command to the queue to signal these.
 VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
     VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout,
-    VkSemaphore semaphore, VkFence fence, uint32_t *pImageIndex) {
-  VirtualSwapchain *swp = reinterpret_cast<VirtualSwapchain *>(swapchain);
+    VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex) {
+  VirtualSwapchain* swp = reinterpret_cast<VirtualSwapchain*>(swapchain);
   if (!swp->GetImage(timeout, pImageIndex)) {
     return timeout == 0 ? VK_NOT_READY : VK_TIMEOUT;
   }
@@ -286,7 +292,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
   // then the lock will be let go when dat is destroyed, which is
   // AFTER swapchain::vkQueueSubmit, this would be a priority
   // inversion on the locks.
-  DeviceData &dat = *GetGlobalContext().GetDeviceData(device);
+  DeviceData& dat = *GetGlobalContext().GetDeviceData(device);
   VkQueue q;
 
   dat.vkGetDeviceQueue(device, swp->DeviceQueue(), 0, &q);
@@ -311,8 +317,21 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
   return swapchain::vkQueueSubmit(q, 1, &info, fence);
 }
 
+// We actually have to be able to submit data to the Queue right now.
+// The user can supply either a semaphore, or a fence or both to this function.
+// Because of this, once the image is available we have to submit
+// a command to the queue to signal these.
+VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImage2KHR(
+    VkDevice device, const VkAcquireNextImageInfoKHR* pAcquireInfo,
+    uint32_t* pImageIndex) {
+  // TODO(awoloszyn): Implement proper multiGPU here eventually.
+  return swapchain::vkAcquireNextImageKHR(
+      device, pAcquireInfo->swapchain, pAcquireInfo->timeout,
+      pAcquireInfo->semaphore, pAcquireInfo->fence, pImageIndex);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
-vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
+vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
   // We submit to the queue the commands set up by the virtual swapchain.
   // This will start a copy operation from the image to the swapchain
   // buffers.
@@ -321,8 +340,8 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
       pPresentInfo->waitSemaphoreCount, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
   for (size_t i = 0; i < pPresentInfo->swapchainCount; ++i) {
     uint32_t image_index = pPresentInfo->pImageIndices[i];
-    VirtualSwapchain *swp =
-        reinterpret_cast<VirtualSwapchain *>(pPresentInfo->pSwapchains[i]);
+    VirtualSwapchain* swp =
+        reinterpret_cast<VirtualSwapchain*>(pPresentInfo->pSwapchains[i]);
 
     VkSubmitInfo submitInfo{
         VK_STRUCTURE_TYPE_SUBMIT_INFO,                     // sType
@@ -347,7 +366,7 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
 
 VKAPI_ATTR VkResult VKAPI_CALL vkQueueSubmit(VkQueue queue,
                                              uint32_t submitCount,
-                                             const VkSubmitInfo *pSubmits,
+                                             const VkSubmitInfo* pSubmits,
                                              VkFence fence) {
   // We actually DO have to lock here, we may share this queue with
   // vkAcquireNextImageKHR, which is not externally synchronized on Queue.
@@ -365,11 +384,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkQueueSubmit(VkQueue queue,
 VKAPI_ATTR void VKAPI_CALL vkCmdPipelineBarrier(
     VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
     VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags,
-    uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
+    uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers,
     uint32_t bufferMemoryBarrierCount,
-    const VkBufferMemoryBarrier *pBufferMemoryBarriers,
+    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     uint32_t imageMemoryBarrierCount,
-    const VkImageMemoryBarrier *pImageMemoryBarriers) {
+    const VkImageMemoryBarrier* pImageMemoryBarriers) {
   std::vector<VkImageMemoryBarrier> imageBarriers(imageMemoryBarrierCount);
   for (size_t i = 0; i < imageMemoryBarrierCount; ++i) {
     imageBarriers[i] = pImageMemoryBarriers[i];
@@ -393,13 +412,13 @@ VKAPI_ATTR void VKAPI_CALL vkCmdPipelineBarrier(
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdWaitEvents(
-    VkCommandBuffer commandBuffer, uint32_t eventCount, const VkEvent *pEvents,
+    VkCommandBuffer commandBuffer, uint32_t eventCount, const VkEvent* pEvents,
     VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
-    uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
+    uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers,
     uint32_t bufferMemoryBarrierCount,
-    const VkBufferMemoryBarrier *pBufferMemoryBarriers,
+    const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     uint32_t imageMemoryBarrierCount,
-    const VkImageMemoryBarrier *pImageMemoryBarriers) {
+    const VkImageMemoryBarrier* pImageMemoryBarriers) {
   std::vector<VkImageMemoryBarrier> imageBarriers(imageMemoryBarrierCount);
   for (size_t i = 0; i < imageMemoryBarrierCount; ++i) {
     imageBarriers[i] = pImageMemoryBarriers[i];
@@ -421,8 +440,8 @@ VKAPI_ATTR void VKAPI_CALL vkCmdWaitEvents(
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateRenderPass(
-    VkDevice device, const VkRenderPassCreateInfo *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator, VkRenderPass *pRenderPass) {
+    VkDevice device, const VkRenderPassCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator, VkRenderPass* pRenderPass) {
   VkRenderPassCreateInfo intercepted = *pCreateInfo;
   std::vector<VkAttachmentDescription> attachments(
       pCreateInfo->attachmentCount);

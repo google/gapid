@@ -18,6 +18,8 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.memoryBuffersGradient;
+import static com.google.gapid.perfetto.views.StyleConstants.memoryUsedGradient;
 
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -28,7 +30,7 @@ import com.google.gapid.perfetto.models.MemorySummaryTrack;
 /**
  * Displays information about the system memory usage.
  */
-public class MemorySummaryPanel extends TrackPanel {
+public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
   private static final double HEIGHT = 80;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -36,12 +38,18 @@ public class MemorySummaryPanel extends TrackPanel {
   private static final double LEGEND_SIZE = 8;
 
   private final MemorySummaryTrack track;
+
   protected HoverCard hovered = null;
   protected double mouseXpos, mouseYpos;
 
   public MemorySummaryPanel(State state, MemorySummaryTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public MemorySummaryPanel copy() {
+    return new MemorySummaryPanel(state, track);
   }
 
   @Override
@@ -57,16 +65,14 @@ public class MemorySummaryPanel extends TrackPanel {
   @Override
   protected void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("MemSummary", () -> {
-      MemorySummaryTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      MemorySummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
         return;
       }
 
-      ctx.setBackgroundColor(colors().memoryBufferedCached);
+      memoryBuffersGradient().applyBase(ctx);
       ctx.path(path -> {
         path.moveTo(0, h);
         double lastX = 0, lastY = h;
@@ -83,7 +89,7 @@ public class MemorySummaryPanel extends TrackPanel {
         ctx.fillPath(path);
       });
 
-      ctx.setBackgroundColor(colors().memoryUsed);
+      memoryUsedGradient().applyBase(ctx);
       ctx.path(path -> {
         path.moveTo(0, h);
         double lastX = 0, lastY = h;
@@ -116,9 +122,9 @@ public class MemorySummaryPanel extends TrackPanel {
         double dy = hovered.allSize.h / 4;
         ctx.setBackgroundColor(colors().background);
         ctx.fillRect(x, y + 1 * dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
-        ctx.setBackgroundColor(colors().memoryBufferedCached);
+        memoryBuffersGradient().applyBase(ctx);
         ctx.fillRect(x, y + 2 * dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
-        ctx.setBackgroundColor(colors().memoryUsed);
+        memoryUsedGradient().applyBase(ctx);
         ctx.fillRect(x, y + 3 * dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
 
         x += LEGEND_SIZE + HOVER_PADDING;
@@ -141,8 +147,8 @@ public class MemorySummaryPanel extends TrackPanel {
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    MemorySummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+    MemorySummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
     }

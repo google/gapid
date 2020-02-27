@@ -20,21 +20,18 @@ import static com.google.gapid.perfetto.models.QueryEngine.createSpan;
 import static com.google.gapid.perfetto.models.QueryEngine.createWindow;
 import static com.google.gapid.perfetto.models.QueryEngine.dropTable;
 import static com.google.gapid.perfetto.models.QueryEngine.expectOneRow;
-import static com.google.gapid.perfetto.views.TrackContainer.single;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
-import static java.util.function.Function.identity;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.views.CpuFrequencyPanel;
-import com.google.gapid.perfetto.views.CpuPanel;
 import com.google.gapid.perfetto.views.CpuSliceSelectionView;
 import com.google.gapid.perfetto.views.CpuSlicesSelectionView;
 import com.google.gapid.perfetto.views.State;
@@ -44,17 +41,13 @@ import org.eclipse.swt.widgets.Composite;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * {@link Track} containing CPU slices for a single core.
  */
-public class CpuTrack extends Track<CpuTrack.Data> {
-  private static final String FREQ_IDLE_QUERY = "with " +
-      "freq as (select ref, counter_id freq_id, max(value) freq " +
-        "from counter_definitions cd left join counter_values cv using(counter_id) " +
-        "where name = 'cpufreq' group by counter_id), " +
-      "idle as (select ref, counter_id idle_id from counter_definitions where name = 'cpuidle') " +
-      "select ref, freq_id, freq, idle_id from idle innter join freq using (ref)";
+public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
   private static final String SUMMARY_SQL =
       "select quantum_ts, sum(dur)/cast(%d as float) " +
       "from %s where cpu = %d and utid != 0 " +
@@ -62,24 +55,30 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   private static final String SLICES_SQL =
       "select ts, dur, utid, row_id from %s where cpu = %d and utid != 0";
   private static final String SLICE_SQL =
-      "select row_id, ts, dur, cpu, utid, end_state, priority from sched where row_id = %d";
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) where row_id = %d";
   private static final String SLICE_RANGE_SQL =
-      "select row_id, ts, dur, cpu, utid, end_state, priority from sched " +
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) " +
       "where cpu = %d and utid != 0 and ts < %d and ts_end >= %d";
+  private static final String SLICE_RANGE_FOR_THREAD_SQL =
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) " +
+      "where utid = %d and ts < %d and ts_end >= %d";
 
-  private final int cpu;
+  private final CpuInfo.Cpu cpu;
 
-  public CpuTrack(int cpu) {
-    super("cpu_" + cpu);
+  public CpuTrack(QueryEngine qe, CpuInfo.Cpu cpu) {
+    super(qe, "cpu_" + cpu.id);
     this.cpu = cpu;
   }
 
-  public int getCpu() {
+  public CpuInfo.Cpu getCpu() {
     return cpu;
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String span = tableName("span"), window = tableName("window");
     return qe.queries(
         dropTable(span),
@@ -89,13 +88,13 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window window = Window.compute(req, 10);
     return transformAsync(window.update(qe, tableName("window")),
-        $ -> window.quantized ? computeSummary(qe, req, window) : computeSlices(qe, req));
+        $ -> window.quantized ? computeSummary(req, window) : computeSlices(req));
   }
 
-  private ListenableFuture<Data> computeSummary(QueryEngine qe, DataRequest req, Window w) {
+  private ListenableFuture<Data> computeSummary(DataRequest req, Window w) {
     return transform(qe.query(summarySql(w.bucketSize)), result -> {
       Data data = new Data(req, w.bucketSize, new double[w.getNumberOfBuckets()]);
       result.forEachRow(($, r) -> data.utilizations[r.getInt(0)] = r.getDouble(1));
@@ -104,10 +103,10 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   }
 
   private String summarySql(long ns) {
-    return format(SUMMARY_SQL, ns, tableName("span"), cpu);
+    return format(SUMMARY_SQL, ns, tableName("span"), cpu.id);
   }
 
-  private ListenableFuture<Data> computeSlices(QueryEngine qe, DataRequest req) {
+  private ListenableFuture<Data> computeSlices(DataRequest req) {
     return transform(qe.query(slicesSql()), result -> {
       int rows = result.getNumRows();
       Data data = new Data(req, new long[rows], new long[rows], new long[rows], new long[rows]);
@@ -123,7 +122,11 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   }
 
   private String slicesSql() {
-    return format(SLICES_SQL, tableName("span"), cpu);
+    return format(SLICES_SQL, tableName("span"), cpu.id);
+  }
+
+  public ListenableFuture<Slice> getSlice(long id) {
+    return getSlice(qe, id);
   }
 
   public static ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
@@ -134,8 +137,16 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     return format(SLICE_SQL, id);
   }
 
-  public static ListenableFuture<List<Slice>> getSlices(QueryEngine qe, int cpu, TimeSpan ts) {
-    return transform(qe.query(sliceRangeSql(cpu, ts)), result -> {
+  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts) {
+    return transform(qe.query(sliceRangeSql(cpu.id, ts)), result -> {
+      List<Slice> slices = Lists.newArrayList();
+      result.forEachRow((i, r) -> slices.add(new Slice(r)));
+      return slices;
+    });
+  }
+
+  public static ListenableFuture<List<Slice>> getSlices(QueryEngine qe, long utid, TimeSpan ts) {
+    return transform(qe.query(sliceRangeForThreadSql(utid, ts)), result -> {
       List<Slice> slices = Lists.newArrayList();
       result.forEachRow((i, r) -> slices.add(new Slice(r)));
       return slices;
@@ -146,40 +157,8 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     return format(SLICE_RANGE_SQL, cpu, ts.end, ts.start);
   }
 
-  public static ListenableFuture<List<CpuConfig>> enumerate(
-      String parent, Perfetto.Data.Builder data) {
-    return transform(freqMap(data.qe), freqMap -> {
-      List<CpuConfig> configs = Lists.newArrayList();
-      for (int i = 0; i < data.getNumCpus(); i++) {
-        QueryEngine.Row freq = freqMap.get(Long.valueOf(i));
-        CpuTrack track = new CpuTrack(i);
-        data.tracks.addTrack(parent, track.getId(), "CPU " + (i + 1),
-            single(state -> new CpuPanel(state, track), false));
-        if (freq != null) {
-          CpuFrequencyTrack freqTrack =
-              new CpuFrequencyTrack(i, freq.getLong(1), freq.getDouble(2), freq.getLong(3));
-          data.tracks.addTrack(
-              parent, freqTrack.getId(), "CPU " + (i + 1) + " Frequency",
-              single(state -> new CpuFrequencyPanel(state, freqTrack), false));
-        }
-        configs.add(new CpuConfig(i, freq != null));
-      }
-      return configs;
-    });
-  }
-
-  private static ListenableFuture<Map<Long, QueryEngine.Row>> freqMap(QueryEngine qe) {
-    return transform(qe.query(FREQ_IDLE_QUERY), res -> res.map(row -> row.getLong(0), identity()));
-  }
-
-  public static class CpuConfig {
-    public final int id;
-    public final boolean hasFrequency;
-
-    public CpuConfig(int id, boolean hasFrequency) {
-      this.id = id;
-      this.hasFrequency = hasFrequency;
-    }
+  private static String sliceRangeForThreadSql(long utid, TimeSpan ts) {
+    return format(SLICE_RANGE_FOR_THREAD_SQL, utid, ts.end, ts.start);
   }
 
   public static class Data extends Track.Data {
@@ -220,29 +199,32 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
   }
 
-  public static class Slice implements Selection {
+  public static class Slice implements Selection<Long> {
     public final long id;
     public final long time;
     public final long dur;
     public final int cpu;
     public final long utid;
+    public final long upid;
     public final ThreadState endState;
     public final int priority;
 
     public Slice(
-        long id, long time, long dur, int cpu, long utid, ThreadState endState, int priority) {
+        long id, long time, long dur, int cpu, long utid, long upid, ThreadState endState, int priority) {
       this.id = id;
       this.time = time;
       this.dur = dur;
       this.cpu = cpu;
       this.utid = utid;
+      this.upid = upid;
       this.endState = endState;
       this.priority = priority;
     }
 
     public Slice(QueryEngine.Row row) {
-      this(row.getLong(0), row.getLong(1), row.getLong(2), row.getInt(3), row.getLong(4),
-          ThreadState.of(row.getString(5)), row.getInt(6));
+      this(row.getLong(0), row.getLong(1), row.getLong(2),
+          row.getInt(3), row.getLong(4), row.getLong(5),
+          ThreadState.of(row.getString(6)), row.getInt(7));
     }
 
     @Override
@@ -251,21 +233,24 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
 
     @Override
+    public boolean contains(Long key) {
+      return id == key;
+    }
+
+    @Override
     public Composite buildUi(Composite parent, State state) {
       return new CpuSliceSelectionView(parent, state, this);
     }
 
     @Override
-    public void mark(State state) {
-      if (dur > 0) {
-        state.setHighlight(new TimeSpan(time, time + dur));
-      }
+    public Selection.Builder<SlicesBuilder> getBuilder() {
+      return new SlicesBuilder(Lists.newArrayList(this));
     }
 
     @Override
-    public void zoom(State state) {
+    public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
-        state.setVisibleTime(new TimeSpan(time, time + dur));
+        span.accept(new TimeSpan(time, time + dur));
       }
     }
 
@@ -275,130 +260,156 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
   }
 
-  public static class Slices implements Selection.CombiningBuilder.Combinable<Slices> {
-    private final Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
+  public static class Slices implements Selection<Long> {
+    private final List<Slice> slices;
+    public final ImmutableList<ByProcess> processes;
+    public final ImmutableSet<Long> sliceKeys;
 
-    public Slices(State state, List<Slice> slices) {
+    public Slices(List<Slice> slices, ImmutableList<ByProcess> processes,
+        ImmutableSet<Long> sliceKeys) {
+      this.slices = slices;
+      this.processes = processes;
+      this.sliceKeys = sliceKeys;
+    }
+
+    @Override
+    public String getTitle() {
+      return "CPU Slices";
+    }
+
+    @Override
+    public boolean contains(Long key) {
+      return sliceKeys.contains(key);
+    }
+
+    @Override
+    public Composite buildUi(Composite parent, State state) {
+      return new CpuSlicesSelectionView(parent, state, this);
+    }
+
+    @Override
+    public Selection.Builder<SlicesBuilder> getBuilder() {
+      return new SlicesBuilder(slices);
+    }
+
+    @Override
+    public void getRange(Consumer<TimeSpan> span) {
       for (Slice slice : slices) {
-        ThreadInfo ti = state.getThreadInfo(slice.utid);
-        long pid = (ti == null) ? 0 : ti.upid;
-        processes.computeIfAbsent(pid, ByProcess.Builder::new).add(slice);
+        slice.getRange(span);
+      }
+    }
+  }
+
+  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
+    private final List<Slice> slices;
+    private final Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
+    private final Set<Long> sliceKeys = Sets.newHashSet();
+
+    public SlicesBuilder(List<Slice> slices) {
+      this.slices = slices;
+      for (Slice slice : slices) {
+        processes.computeIfAbsent(slice.upid, ByProcess.Builder::new).add(slice);
+        sliceKeys.add(slice.id);
       }
     }
 
     @Override
-    public Slices combine(Slices other) {
+    public SlicesBuilder combine(SlicesBuilder other) {
+      this.slices.addAll(other.slices);
       for (Map.Entry<Long, ByProcess.Builder> e : other.processes.entrySet()) {
         processes.merge(e.getKey(), e.getValue(), ByProcess.Builder::combine);
       }
+      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
     @Override
-    public Selection build() {
-      return new Selection(processes.values().stream()
+    public Selection<Long> build() {
+      return new Slices(slices, processes.values().stream()
           .map(ByProcess.Builder::build)
           .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))
-          .collect(toImmutableList()));
+          .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
+    }
+  }
+
+  public static class ByProcess {
+    public final long pid;
+    public final long dur;
+    public final ImmutableList<ByThread> threads;
+
+    public ByProcess(long pid, long dur, ImmutableList<ByThread> threads) {
+      this.pid = pid;
+      this.dur = dur;
+      this.threads = threads;
     }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection {
-      public final ImmutableList<ByProcess> processes;
-
-      public Selection(ImmutableList<ByProcess> processes) {
-        this.processes = processes;
-      }
-
-      @Override
-      public String getTitle() {
-        return "CPU Slices";
-      }
-
-      @Override
-      public Composite buildUi(Composite parent, State state) {
-        return new CpuSlicesSelectionView(parent, state, this);
-      }
-    }
-
-    public static class ByProcess {
+    public static class Builder {
       public final long pid;
-      public final long dur;
-      public final ImmutableList<ByThread> threads;
+      public long dur = 0;
+      public final Map<Long, ByThread.Builder> threads = Maps.newHashMap();
 
-      public ByProcess(long pid, long dur, ImmutableList<ByThread> threads) {
+      public Builder(long pid) {
         this.pid = pid;
-        this.dur = dur;
-        this.threads = threads;
       }
 
-      public static class Builder {
-        public final long pid;
-        public long dur = 0;
-        public final Map<Long, ByThread.Builder> threads = Maps.newHashMap();
+      public void add(Slice slice) {
+        dur += slice.dur;
+        threads.computeIfAbsent(slice.utid, ByThread.Builder::new).add(slice);
+      }
 
-        public Builder(long pid) {
-          this.pid = pid;
+      public Builder combine(Builder other) {
+        dur += other.dur;
+        for (Map.Entry<Long, ByThread.Builder> e : other.threads.entrySet()) {
+          threads.merge(e.getKey(), e.getValue(), ByThread.Builder::combine);
         }
+        return this;
+      }
 
-        public void add(Slice slice) {
-          dur += slice.dur;
-          threads.computeIfAbsent(slice.utid, ByThread.Builder::new).add(slice);
-        }
-
-        public Builder combine(Builder other) {
-          dur += other.dur;
-          for (Map.Entry<Long, ByThread.Builder> e : other.threads.entrySet()) {
-            threads.merge(e.getKey(), e.getValue(), ByThread.Builder::combine);
-          }
-          return this;
-        }
-
-        public ByProcess build() {
-          return new ByProcess(pid, dur, threads.values().stream()
-              .map(ByThread.Builder::build)
-              .sorted((t1, t2) -> Long.compare(t2.dur, t1.dur))
-              .collect(toImmutableList()));
-        }
+      public ByProcess build() {
+        return new ByProcess(pid, dur, threads.values().stream()
+            .map(ByThread.Builder::build)
+            .sorted((t1, t2) -> Long.compare(t2.dur, t1.dur))
+            .collect(toImmutableList()));
       }
     }
+  }
 
-    public static class ByThread {
-      public final long tid;
-      public final long dur;
-      public final ImmutableList<Slice> slices;
+  public static class ByThread {
+    public final long tid;
+    public final long dur;
+    public final ImmutableList<Slice> slices;
 
-      public ByThread(long tid, long dur, ImmutableList<Slice> slices) {
+    public ByThread(long tid, long dur, ImmutableList<Slice> slices) {
+      this.tid = tid;
+      this.dur = dur;
+      this.slices = slices;
+    }
+
+    public static class Builder {
+      private final long tid;
+      private long dur = 0;
+      private final List<Slice> slices = Lists.newArrayList();
+
+      public Builder(long tid) {
         this.tid = tid;
-        this.dur = dur;
-        this.slices = slices;
       }
 
-      public static class Builder {
-        private final long tid;
-        private long dur = 0;
-        private final List<Slice> slices = Lists.newArrayList();
+      public void add(Slice slice) {
+        dur += slice.dur;
+        slices.add(slice);
+      }
 
-        public Builder(long tid) {
-          this.tid = tid;
-        }
+      public Builder combine(Builder other) {
+        dur += other.dur;
+        slices.addAll(other.slices);
+        return this;
+      }
 
-        public void add(Slice slice) {
-          dur += slice.dur;
-          slices.add(slice);
-        }
-
-        public Builder combine(Builder other) {
-          dur += other.dur;
-          slices.addAll(other.slices);
-          return this;
-        }
-
-        public ByThread build() {
-          Collections.sort(slices, (s1, s2) -> Long.compare(s2.dur, s1.dur));
-          return new ByThread(tid, dur, slices.stream()
-              .sorted((s1, s2) -> Long.compare(s2.dur, s1.dur))
-              .collect(toImmutableList()));
-        }
+      public ByThread build() {
+        Collections.sort(slices, (s1, s2) -> Long.compare(s2.dur, s1.dur));
+        return new ByThread(tid, dur, slices.stream()
+            .sorted((s1, s2) -> Long.compare(s2.dur, s1.dur))
+            .collect(toImmutableList()));
       }
     }
   }

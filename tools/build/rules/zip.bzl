@@ -24,7 +24,7 @@ def _extract_impl(ctx):
         ctx.actions.run_shell(
             inputs = [ctx.file.zip],
             outputs = [out],
-            command = "unzip -q -d {} {} {}".format(to, ctx.file.zip.path, entry),
+            command = "unzip -q -DD -d {} {} {}".format(to, ctx.file.zip.path, entry),
         )
     return struct(
         files = depset(outs)

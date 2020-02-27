@@ -180,15 +180,11 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	for _, buf := range s.Buffers().Keys() {
 		sb.createBuffer(s.Buffers().Get(buf))
 	}
-
-	{
-		imgPrimer := newImagePrimer(sb)
-		defer imgPrimer.Free()
-		for _, img := range s.Images().Keys() {
-			subRange, err := sb.createImage(s.Images().Get(img), sb.oldState, img)
-			if len(subRange) != 0 && err == nil {
-				sb.primeImage(s.Images().Get(img), imgPrimer, subRange)
-			}
+	imgPrimer := newImagePrimer(sb)
+	for _, img := range s.Images().Keys() {
+		subRange, err := sb.createImage(s.Images().Get(img), sb.oldState, img)
+		if len(subRange) != 0 && err == nil {
+			sb.primeImage(s.Images().Get(img), imgPrimer, subRange)
 		}
 	}
 
@@ -222,6 +218,10 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 
 	for _, dsl := range s.DescriptorSetLayouts().Keys() {
 		sb.createDescriptorSetLayout(s.DescriptorSetLayouts().Get(dsl))
+	}
+
+	for _, dut := range s.DescriptorUpdateTemplates().Keys() {
+		sb.createDescriptorUpdateTemplate(s.DescriptorUpdateTemplates().Get(dut))
 	}
 
 	for _, pl := range s.PipelineLayouts().Keys() {
@@ -279,7 +279,7 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	}
 
 	sb.scratchRes.Free(sb)
-
+	imgPrimer.Free()
 	return out.cmds, sb.memoryIntervals
 }
 
@@ -637,6 +637,19 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
 			VkResult_VK_SUCCESS,
 		))
+	case SurfaceType_SURFACE_TYPE_MACOS_MVK:
+		sb.write(sb.cb.VkCreateMacOSSurfaceMVK(
+			s.Instance(),
+			sb.MustAllocReadData(NewVkMacOSSurfaceCreateInfoMVK(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK, // sType
+				0, // pNext
+				0, // flags
+				0, // window
+			)).Ptr(),
+			memory.Nullptr,
+			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
 	}
 	for phyDev, familyIndices := range s.PhysicalDeviceSupports().All() {
 		for index, supported := range familyIndices.QueueFamilySupports().All() {
@@ -717,12 +730,90 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.Vk8BitStorageFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDevice8BitStorageFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.Vk8BitStorageFeatures().StorageBuffer8BitAccess(),           // storageBuffer8BitAccess
+				d.Vk8BitStorageFeatures().UniformAndStorageBuffer8BitAccess(), // uniformAndStorageBuffer8BitAccess
+				d.Vk8BitStorageFeatures().StoragePushConstant8(),              // storagePushConstant8
+			),
+		).Ptr())
+	}
 	if !d.SamplerYcbcrConversionFeatures().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
 			NewVkPhysicalDeviceSamplerYcbcrConversionFeatures(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES, // sType
 				pNext, // pNext
 				d.SamplerYcbcrConversionFeatures().SamplerYcbcrConversion(), // samplerYcbcrConversion
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceScalarBlockLayoutFeaturesEXT(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT, // sType
+				pNext, // pNext
+				d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().ScalarBlockLayout(), // samplerYcbcrConversion
+			),
+		).Ptr())
+	}
+	if d.HostQueryReset() != 0 {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceHostQueryResetFeaturesEXT(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT, // sType
+				pNext,              // pNext
+				d.HostQueryReset(), // hostQueryReset
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().UniformBufferStandardLayout(), // uniformBufferStandardLayout
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR().ShaderSubgroupExtendedTypes(), // shaderSubgroupExtendedTypes
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceShaderClockFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderClockFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceShaderClockFeaturesKHR().ShaderSubgroupClock(), // shaderSubgroupClock
+				d.PhysicalDeviceShaderClockFeaturesKHR().ShaderDeviceClock(),   // shaderDeviceClock
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceVulkanMemoryModelFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().VulkanMemoryModel(),                             // vulkanMemoryModel
+				d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().VulkanMemoryModelDeviceScope(),                  // vulkanMemoryModelDeviceScope
+				d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().VulkanMemoryModelAvailabilityVisibilityChains(), // vulkanMemoryModelAvailabilityVisibilityChains
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderFloat16Int8FeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().ShaderFloat16(), // shaderFloat16
+				d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().ShaderInt8(),    // shaderInt8
 			),
 		).Ptr())
 	}
@@ -874,7 +965,7 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		sb.MustAllocReadData(NewVkSwapchainCreateInfoKHR(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // sType
 			0,                                   // pNext
-			0,                                   // flags
+			swp.Flags(),                         // flags
 			swp.Surface().VulkanHandle(),        // surface
 			uint32(swp.SwapchainImages().Len()), // minImageCount
 			swp.Info().Fmt(),                    // imageFormat
@@ -896,13 +987,25 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		VkResult_VK_SUCCESS,
 	))
 
-	sb.write(sb.cb.VkGetSwapchainImagesKHR(
-		swp.Device(),
-		swp.VulkanHandle(),
-		NewU32ᶜᵖ(sb.MustAllocWriteData(uint32(swp.SwapchainImages().Len())).Ptr()),
-		memory.Nullptr,
-		VkResult_VK_SUCCESS,
-	))
+	if !swp.HDRMetadata().IsNil() {
+		sb.write(sb.cb.VkSetHdrMetadataEXT(
+			swp.Device(),
+			1,
+			sb.MustAllocReadData(swp.VulkanHandle()).Ptr(),
+			sb.MustAllocReadData(NewVkHdrMetadataEXT(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_HDR_METADATA_EXT,
+				0, // pNext
+				swp.HDRMetadata().DisplayPrimaryRed(),
+				swp.HDRMetadata().DisplayPrimaryGreen(),
+				swp.HDRMetadata().DisplayPrimaryBlue(),
+				swp.HDRMetadata().WhitePoint(),
+				swp.HDRMetadata().MaxLuminance(),
+				swp.HDRMetadata().MinLuminance(),
+				swp.HDRMetadata().MaxContentLightLevel(),
+				swp.HDRMetadata().MaxFrameAverageLightLevel(),
+			)).Ptr(),
+		))
+	}
 
 	images := []VkImage{}
 	for _, v := range swp.SwapchainImages().Keys() {
@@ -968,6 +1071,18 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 				0,                                    // pNext
 				mem.DedicatedAllocationNV().Image(),  // image
 				mem.DedicatedAllocationNV().Buffer(), // buffer
+			),
+		).Ptr())
+	}
+
+	if !mem.MemoryAllocateFlagsInfo().IsNil() {
+		flags := mem.MemoryAllocateFlagsInfo()
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkMemoryAllocateFlagsInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+				pNext,              // pNext
+				flags.Flags(),      // flags
+				flags.DeviceMask(), // deviceMask
 			),
 		).Ptr())
 	}
@@ -1127,7 +1242,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		buffer.LastBoundQueue())
 	newBuffer := buffer.VulkanHandle()
 
-	if err := sb.createSameBuffer(buffer, newBuffer); err != nil {
+	mem := GetState(sb.newState).DeviceMemories().Get(buffer.Memory().VulkanHandle())
+	if err := sb.createSameBuffer(buffer, newBuffer, mem, buffer.MemoryOffset()); err != nil {
 		log.E(sb.ctx, "create buffer %v failed", buffer)
 		return
 	}
@@ -1506,8 +1622,35 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
 		// TODO: Handle multi-planar images
 		planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, srcState, GetState(srcState), 0, nil, nil, img, VkImageAspectFlagBits(0))
-		vkBindImageMemory(sb, img.Device(), vkImage,
-			planeMemInfo.BoundMemory().VulkanHandle(), planeMemInfo.BoundMemoryOffset())
+
+		if !planeMemInfo.ImageDeviceGroupBinding().IsNil() {
+			dg := planeMemInfo.ImageDeviceGroupBinding()
+			sb.write(sb.cb.VkBindImageMemory2(
+				img.Device(),
+				1,
+				sb.MustAllocReadData(
+					NewVkBindImageMemoryInfo(sb.ta,
+						VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO, // sType
+						NewVoidᶜᵖ(sb.MustAllocReadData(
+							NewVkBindImageMemoryDeviceGroupInfo(sb.ta,
+								VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO, // sType
+								NewVoidᶜᵖ(memory.Nullptr),
+								uint32(dg.Bindings().Len()),
+								NewU32ᶜᵖ(sb.MustUnpackReadMap(dg.Bindings().All()).Ptr()),
+								uint32(dg.SplitInstanceBindings().Len()),
+								NewVkRect2Dᶜᵖ(sb.MustUnpackReadMap(dg.SplitInstanceBindings().All()).Ptr()),
+							),
+						).Ptr()),
+						img.VulkanHandle(),
+						planeMemInfo.BoundMemory().VulkanHandle(),
+						planeMemInfo.BoundMemoryOffset(),
+					)).Ptr(),
+				VkResult_VK_SUCCESS,
+			))
+		} else {
+			vkBindImageMemory(sb, img.Device(), vkImage,
+				planeMemInfo.BoundMemory().VulkanHandle(), planeMemInfo.BoundMemoryOffset())
+		}
 	}
 
 	return opaqueRanges, nil
@@ -1839,6 +1982,47 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 		sb.MustAllocWriteData(dsl.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+}
+
+func (sb *stateBuilder) createDescriptorUpdateTemplate(dut DescriptorUpdateTemplateObjectʳ) {
+	entries := []VkDescriptorUpdateTemplateEntry{}
+	for _, k := range dut.Entries().Keys() {
+		entry := dut.Entries().Get(k)
+		entries = append(entries, entry)
+	}
+
+	createInfo := sb.MustAllocReadData(NewVkDescriptorUpdateTemplateCreateInfo(sb.ta,
+		VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO, //sType
+		0,                    // pNext
+		0,                    // flags
+		uint32(len(entries)), // descriptorUpdateEntryCount
+		NewVkDescriptorUpdateTemplateEntryᶜᵖ( // pDescriptorUpdateEntries
+			sb.MustAllocReadData(entries).Ptr(),
+		),
+		dut.TemplateType(),        // templateType
+		dut.DescriptorSetLayout(), // descriptorSetLayout
+		dut.PipelineBindPoint(),   // pipelineBindPoint
+		dut.PipelineLayout(),      // pipelineLayout
+		0,                         // set
+	)).Ptr()
+
+	if dut.FromKHR() {
+		sb.write(sb.cb.VkCreateDescriptorUpdateTemplateKHR(
+			dut.Device(),
+			createInfo,
+			memory.Nullptr, // pAllocator
+			sb.MustAllocWriteData(dut.VulkanHandle()).Ptr(), // pDescriptorUpdateTemplate
+			VkResult_VK_SUCCESS,
+		))
+	} else {
+		sb.write(sb.cb.VkCreateDescriptorUpdateTemplate(
+			dut.Device(),
+			createInfo,
+			memory.Nullptr, // pAllocator
+			sb.MustAllocWriteData(dut.VulkanHandle()).Ptr(), // pDescriptorUpdateTemplate
+			VkResult_VK_SUCCESS,
+		))
+	}
 }
 
 func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
@@ -2769,9 +2953,20 @@ func (sb *stateBuilder) recordCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 		return
 	}
 
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !cb.BeginInfo().DeviceGroupBegin().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkDeviceGroupCommandBufferBeginInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO, // sType
+				pNext, // pNext
+				cb.BeginInfo().DeviceGroupBegin().DeviceMask(), // deviceMask
+			),
+		).Ptr())
+	}
+
 	beginInfo := NewVkCommandBufferBeginInfo(sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
-		0, // pNext
+		pNext, // pNext
 		VkCommandBufferUsageFlags(cb.BeginInfo().Flags()), // flags
 		0, // pInheritanceInfo
 	)
@@ -2834,7 +3029,7 @@ func queueFamilyIndicesToU32Slice(m U32ːu32ᵐ) []uint32 {
 }
 
 // createSameBuffer creates a new buffer with ID |buffer| using the same information from |src| object
-func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) error {
+func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, mem DeviceMemoryObjectʳ, memoryOffset VkDeviceSize) error {
 	os := sb.s
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 
@@ -2892,18 +3087,8 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) er
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
 			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(src.Memory().VulkanHandle()))
 	}
-	mem := dst.Memory()
-	if mem.IsNil() {
-		mem = src.Memory().Clone(sb.ta, api.CloneContext{})
-		memID := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
-			return os.DeviceMemories().Contains(VkDeviceMemory(x))
-		}))
-		mem.SetVulkanHandle(memID)
-		mem.SetMappedLocation(Voidᵖ(0))
-		mem.SetMappedOffset(VkDeviceSize(uint64(0)))
-		mem.SetMappedSize(VkDeviceSize(uint64(0)))
-		sb.createDeviceMemory(mem, false)
-	} else if dedicatedMemoryNV {
+
+	if dedicatedMemoryNV {
 		sb.createDeviceMemory(mem, true)
 	}
 
@@ -2973,14 +3158,37 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) er
 			return fmt.Errorf("buffer memory is nil for buffer %v", src)
 		}
 
-		sb.write(sb.cb.VkBindBufferMemory(
-			dst.Device(),
-			dst.VulkanHandle(),
-			mem.VulkanHandle(),
-			dst.MemoryOffset(),
-			VkResult_VK_SUCCESS,
-		))
-
+		if !src.DeviceGroupBinding().IsNil() {
+			dg := src.DeviceGroupBinding()
+			sb.write(sb.cb.VkBindBufferMemory2(
+				dst.Device(),
+				1,
+				sb.MustAllocReadData(
+					NewVkBindBufferMemoryInfo(sb.ta,
+						VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO, // sType
+						NewVoidᶜᵖ(sb.MustAllocReadData(
+							NewVkBindBufferMemoryDeviceGroupInfo(sb.ta,
+								VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO, // sType
+								0, // pNext
+								uint32(dg.Bindings().Len()),
+								NewU32ᶜᵖ(sb.MustUnpackReadMap(dg.Bindings().All()).Ptr()),
+							),
+						).Ptr()),
+						dst.VulkanHandle(),
+						mem.VulkanHandle(),
+						memoryOffset,
+					)).Ptr(),
+				VkResult_VK_SUCCESS,
+			))
+		} else {
+			sb.write(sb.cb.VkBindBufferMemory(
+				dst.Device(),
+				dst.VulkanHandle(),
+				mem.VulkanHandle(),
+				memoryOffset,
+				VkResult_VK_SUCCESS,
+			))
+		}
 	}
 
 	return nil

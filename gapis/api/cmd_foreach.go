@@ -32,7 +32,8 @@ import (
 // complexity in the callback function.
 // If cb panics, the error will be annotated with the panicing command index and
 // command.
-func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID, Cmd) error) error {
+// onlyTerminated: skip commands that were not terminated as capture time
+func ForeachCmd(ctx context.Context, cmds []Cmd, onlyTerminated bool, cb func(context.Context, CmdID, Cmd) error) error {
 	ctx = status.Start(ctx, "ForeachCmd<count: %v>", len(cmds))
 	defer status.Finish(ctx)
 
@@ -51,6 +52,9 @@ func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID,
 			status.UpdateProgress(ctx, uint64(i), uint64(len(cmds)))
 		}
 		idx, cmd = CmdID(i), c
+		if onlyTerminated && !cmd.Terminated() {
+			continue
+		}
 		if err := cb(subctx, idx, cmd); err != nil {
 			if err != Break {
 				return err
@@ -67,9 +71,11 @@ func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID,
 
 // MutateCmds calls Mutate on each of cmds.
 func MutateCmds(ctx context.Context, state *GlobalState, builder *builder.Builder,
-	watcher StateWatcher, cmds ...Cmd) {
-	ForeachCmd(ctx, cmds, func(ctx context.Context, id CmdID, cmd Cmd) error {
-		cmd.Mutate(ctx, id, state, builder, watcher)
+	watcher StateWatcher, cmds ...Cmd) error {
+	return ForeachCmd(ctx, cmds, true, func(ctx context.Context, id CmdID, cmd Cmd) error {
+		if err := cmd.Mutate(ctx, id, state, builder, watcher); err != nil {
+			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+		}
 		return nil
 	})
 }

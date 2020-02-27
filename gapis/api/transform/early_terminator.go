@@ -32,26 +32,29 @@ func NewEarlyTerminator(api api.ID) Terminator {
 	return &earlyTerminator{api: api}
 }
 
-func (t *earlyTerminator) Add(ctx context.Context, extraCommands int, id api.CmdID, idx api.SubCmdIdx) error {
+func (t *earlyTerminator) Add(ctx context.Context, id api.CmdID, idx api.SubCmdIdx) error {
 	if id > t.lastID {
 		t.lastID = id
 	}
 	return nil
 }
 
-func (t *earlyTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *earlyTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) error {
 	if t.done && (cmd.API() == nil || cmd.API().ID() == t.api) {
-		return
+		return nil
 	}
 
-	out.MutateAndWrite(ctx, id, cmd)
+	if err := out.MutateAndWrite(ctx, id, cmd); err != nil {
+		return err
+	}
 	// Keep a.API() == nil so that we can test without an API
 	if t.lastID == id {
 		t.done = true
-		return
 	}
+	return nil
 }
 
-func (t *earlyTerminator) Flush(ctx context.Context, out Writer)       {}
+func (t *earlyTerminator) Flush(ctx context.Context, out Writer) error { return nil }
 func (t *earlyTerminator) PreLoop(ctx context.Context, output Writer)  {}
 func (t *earlyTerminator) PostLoop(ctx context.Context, output Writer) {}
+func (t *earlyTerminator) BuffersCommands() bool                       { return false }

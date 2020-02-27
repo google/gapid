@@ -42,10 +42,12 @@ func (TestCmd) Extras() *api.CmdExtras                                          
 func (TestCmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder, api.StateWatcher) error {
 	return nil
 }
-func (TestCmd) Clone(arena.Arena) api.Cmd { return TestCmd{} }
-func (TestCmd) Alive() bool               { return false }
-func (TestCmd) CmdParams() api.Properties { return api.Properties{} }
-func (TestCmd) CmdResult() *api.Property  { return nil }
+func (TestCmd) Clone(arena.Arena) api.Cmd     { return TestCmd{} }
+func (TestCmd) Alive() bool                   { return false }
+func (TestCmd) CmdParams() api.Properties     { return api.Properties{} }
+func (TestCmd) CmdResult() *api.Property      { return nil }
+func (TestCmd) Terminated() bool              { return true }
+func (TestCmd) SetTerminated(terminated bool) {}
 
 type TestRef struct {
 	refID api.RefID

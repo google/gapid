@@ -529,6 +529,17 @@ func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettings
 	return nil
 }
 
+func (c *client) GpuProfile(ctx context.Context, req *service.GpuProfileRequest) (*service.ProfilingData, error) {
+	res, err := c.client.GpuProfile(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetProfilingData(), nil
+}
+
 func (c *client) GetTimestamps(ctx context.Context, req *service.GetTimestampsRequest, handler service.TimeStampsHandler) error {
 	stream, err := c.client.GetTimestamps(ctx, req)
 	if err != nil {
@@ -564,4 +575,17 @@ func (c *client) PerfettoQuery(ctx context.Context, capture *path.Capture, query
 		return nil, err.Get()
 	}
 	return res.GetResult(), nil
+}
+
+func (c *client) ValidateDevice(ctx context.Context, device *path.Device) error {
+	res, err := c.client.ValidateDevice(ctx, &service.ValidateDeviceRequest{
+		Device: device,
+	})
+	if err != nil {
+		return err
+	}
+	if err := res.GetError(); err != nil {
+		return err.Get()
+	}
+	return nil
 }

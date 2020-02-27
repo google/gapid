@@ -17,19 +17,23 @@
 #include "virtual_swapchain.h"
 #include <cassert>
 #include <chrono>
+#include <cstring>
 #include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <thread>
+
+#include "core/vulkan/tools/image.h"
 
 namespace {
 
 // Determines what heap memory should be allocated from, given
 // a set of bits.
 int32_t FindMemoryType(
-    const VkPhysicalDeviceMemoryProperties *memory_properties,
+    const VkPhysicalDeviceMemoryProperties* memory_properties,
     uint32_t memoryTypeBits, VkMemoryPropertyFlags properties) {
   for (uint32_t i = 0; i < memory_properties->memoryTypeCount; ++i) {
     if ((memoryTypeBits & (1 << i)) &&
@@ -40,17 +44,30 @@ int32_t FindMemoryType(
   return -1;
 }
 
-void null_callback(void *, uint8_t *, size_t) {}
+void null_callback(void*, uint8_t*, size_t) {}
+
+const char* kImageDumpPathEnv = "IMAGE_DUMP_PATH";
+
+void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
+                  std::string file_name, uint32_t width, uint32_t height,
+                  VkFormat image_format) {
+  std::ofstream output_file;
+  output_file.open(file_name, std::ios::binary | std::ios::out);
+  vk_tools::WritePng(&output_file, image_data.get(), size, width, height,
+                     image_format);
+  output_file.close();
+}
+
 }  // namespace
 
 namespace swapchain {
 VirtualSwapchain::VirtualSwapchain(
     VkDevice device, uint32_t queue,
-    const VkPhysicalDeviceProperties *pProperties,
-    const VkPhysicalDeviceMemoryProperties *memory_properties,
-    const DeviceData *functions,
-    const VkSwapchainCreateInfoKHR *_swapchain_info,
-    const VkAllocationCallbacks *pAllocator,
+    const VkPhysicalDeviceProperties* pProperties,
+    const VkPhysicalDeviceMemoryProperties* memory_properties,
+    const DeviceData* functions,
+    const VkSwapchainCreateInfoKHR* _swapchain_info,
+    const VkAllocationCallbacks* pAllocator,
     uint32_t pending_image_timeout_in_milliseconds,
     bool always_get_acquired_image)
     : swapchain_info_(*_swapchain_info),
@@ -63,6 +80,7 @@ VirtualSwapchain::VirtualSwapchain(
       device_(device),
       should_close_(false),
       callback_(null_callback),
+      callback_user_data_(nullptr),
       queue_(queue),
       functions_(functions),
       pending_image_timeout_in_milliseconds_(
@@ -254,22 +272,26 @@ VirtualSwapchain::VirtualSwapchain(
 
 #ifdef _WIN32
   thread_ = CreateThread(NULL, 0,
-                         [](void *data) -> DWORD {
-                           ((VirtualSwapchain *)data)->CopyThreadFunc();
+                         [](void* data) -> DWORD {
+                           ((VirtualSwapchain*)data)->CopyThreadFunc();
                            return 0;
                          },
                          this, 0, nullptr);
 #else
   pthread_create(&thread_, nullptr,
-                 +[](void *data) -> void * {
-                   ((VirtualSwapchain *)data)->CopyThreadFunc();
+                 +[](void* data) -> void* {
+                   ((VirtualSwapchain*)data)->CopyThreadFunc();
                    return nullptr;
                  },
                  this);
 #endif
+  const char* const image_dump_dir = std::getenv(kImageDumpPathEnv);
+  if (image_dump_dir != nullptr) {
+    image_dump_dir_ = std::string(image_dump_dir);
+  }
 }
 
-void VirtualSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
+void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
   should_close_.store(true);
 #ifdef _WIN32
   WaitForSingleObject(thread_, INFINITE);
@@ -294,28 +316,41 @@ void VirtualSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
   functions_->vkDestroyCommandPool(device_, command_pool_, pAllocator);
 }
 
+void VirtualSwapchain::DumpImageToFile(uint8_t* image_data, size_t size) {
+  std::unique_ptr<uint8_t[]> image_data_owned(new uint8_t[size]());
+  memcpy(image_data_owned.get(), image_data, size);
+
+  auto now = std::chrono::system_clock::now().time_since_epoch().count();
+  auto image_path = image_dump_dir_ + "/image_" +
+                    std::to_string(dumped_frame_count_++) + "_ts_" +
+                    std::to_string(now) + ".png";
+
+  std::thread file_writer(WritePngFile, std::move(image_data_owned), size,
+                          image_path, width_, height_,
+                          swapchain_info_.imageFormat);
+  file_writer.detach();
+}
+
 void VirtualSwapchain::CopyThreadFunc() {
   while (true) {
     uint32_t pending_image = 0;
-    // We have to wait until there is a pending image.
-    {
-      // Wait 10ms for our next image.
+    while (true) {
       std::unique_lock<threading::mutex> pl(pending_images_lock_);
-      while (pending_images_.empty()) {
-        if (threading::cv_status::timeout ==
-            pending_images_condition_.wait_for(
-                pl, std::chrono::milliseconds(
-                        pending_image_timeout_in_milliseconds_))) {
-          if (should_close_.load()) {
-            // One last check to see if there are any more pending images.
-            // If not we can return.
-            if (!pending_images_.empty()) break;
-            return;
-          }
+
+      if (pending_images_.empty() == false) {
+        pending_image = pending_images_.front();
+        pending_images_.pop_front();
+
+        break;
+      } else {
+        pending_images_condition_.wait_for(
+            pl,
+            std::chrono::milliseconds(pending_image_timeout_in_milliseconds_));
+
+        if (should_close_.load() && pending_images_.empty()) {
+          return;
         }
       }
-      pending_image = pending_images_.front();
-      pending_images_.pop_front();
     }
 
     VkResult ret = functions_->vkWaitForFences(
@@ -323,7 +358,7 @@ void VirtualSwapchain::CopyThreadFunc() {
     (void)ret;  // TODO: Check this?
     functions_->vkResetFences(device_, 1, &image_data_[pending_image].fence_);
 
-    void *mapped_value;
+    void* mapped_value;
     functions_->vkMapMemory(device_, image_data_[pending_image].buffer_memory_,
                             0, VK_WHOLE_SIZE, 0, &mapped_value);
     VkMappedMemoryRange range{
@@ -336,7 +371,13 @@ void VirtualSwapchain::CopyThreadFunc() {
     functions_->vkInvalidateMappedMemoryRanges(device_, 1, &range);
 
     uint32_t length = ImageByteSize();
-    { callback_(callback_user_data_, (uint8_t *)mapped_value, length); }
+    {
+      callback_(callback_user_data_, (uint8_t*)mapped_value, length);
+      if (image_dump_dir_ != "") {
+        DumpImageToFile((uint8_t*)mapped_value, length);
+      }
+    }
+
     functions_->vkUnmapMemory(device_,
                               image_data_[pending_image].buffer_memory_);
     {
@@ -347,9 +388,9 @@ void VirtualSwapchain::CopyThreadFunc() {
   }
 }
 
-bool VirtualSwapchain::GetImage(uint64_t timeout, uint32_t *image) {
+bool VirtualSwapchain::GetImage(uint64_t timeout, uint32_t* image) {
   // A helper function that tries to get a free image.
-  auto try_get_image_index = [&](uint32_t *index) {
+  auto try_get_image_index = [&](uint32_t* index) {
     uint32_t i = 0;
     if (always_get_acquired_image_) {
       for (auto iter = free_images_.begin(); iter != free_images_.end();
@@ -384,8 +425,8 @@ bool VirtualSwapchain::GetImage(uint64_t timeout, uint32_t *image) {
   }
 }
 
-void VirtualSwapchain::SetCallback(void callback(void *, uint8_t *, size_t),
-                                   void *user_data) {
+void VirtualSwapchain::SetCallback(void callback(void*, uint8_t*, size_t),
+                                   void* user_data) {
   callback_ = callback;
   callback_user_data_ = user_data;
 }
@@ -397,8 +438,8 @@ uint32_t VirtualSwapchain::ImageByteSize() const {
 }
 
 void VirtualSwapchain::CreateBaseSwapchain(
-    VkInstance instance, const InstanceData *instance_functions,
-    const VkAllocationCallbacks *pAllocator, const void *platform_info) {
+    VkInstance instance, const InstanceData* instance_functions,
+    const VkAllocationCallbacks* pAllocator, const void* platform_info) {
   base_swapchain_ = std::unique_ptr<BaseSwapchain>(new BaseSwapchain(
       instance, device_, queue_, command_pool_, num_images_, instance_functions,
       functions_, &swapchain_info_, pAllocator, platform_info));

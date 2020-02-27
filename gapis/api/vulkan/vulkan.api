@@ -44,6 +44,7 @@ import "api/enums.api"
 import "api/types.api"
 import "api/structs.api"
 import "api/vk11structs.api"
+import "api/vk12structs.api"
 
 import "api/properties_features_requirements.api"
 import "api/instance.api"
@@ -68,6 +69,7 @@ import "api/util.api"
 import "extensions/ext_debug_marker.api"
 import "extensions/ext_debug_report.api"
 import "extensions/ext_debug_utils.api"
+import "extensions/ext_pipeline_creation_feedback.api"
 import "extensions/amd_buffer_marker.api"
 import "extensions/khr_dedicated_allocation.api"
 import "extensions/khr_display.api"
@@ -92,10 +94,30 @@ import "extensions/khr_sampler_ycbcr_conversion.api"
 import "extensions/amd_draw_indirect_count.api"
 import "extensions/khr_draw_indirect_count.api"
 import "extensions/khr_image_format_list.api"
+import "extensions/ext_scalar_block_layout.api"
+import "extensions/ext_hdr_metadata.api"
+import "extensions/khr_descriptor_update_template.api"
+import "extensions/khr_device_group_creation.api"
+import "extensions/khr_device_group.api"
+import "extensions/google_display_timing.api"
+import "extensions/ext_host_query_reset.api"
+import "extensions/ext_pci_bus_info.api"
+import "extensions/khr_8bit_storage.api"
+import "extensions/amd_shader_core_properties.api"
+import "extensions/khr_uniform_buffer_standard_layout.api"
+import "extensions/khr_shader_subgroup_extended_types.api"
+import "extensions/khr_shader_clock.api"
+import "extensions/khr_vulkan_memory_model.api"
+import "extensions/khr_shader_float_controls.api"
+import "extensions/khr_shader_float16_int8.api"
+import "extensions/khr_shader_atomic_int64.api"
+import "extensions/khr_driver_properties.api"
+import "extensions/khr_timeline_semaphore.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
 import "windows/vulkan_windows.api"
+import "mac/vulkan_mac.api"
 import "ggp/vulkan_ggp.api"
 import "synthetic.api"
 import "errors.api"
@@ -110,21 +132,12 @@ extern void trackMappedCoherentMemory(u64 start, size size)
 extern void readMappedCoherentMemory(VkDeviceMemory memory, u64 offset_in_mapped, size readSize)
 extern void untrackMappedCoherentMemory(u64 start, size size)
 extern bool hasDynamicProperty(const VkPipelineDynamicStateCreateInfo* info, VkDynamicState state)
-extern void notifyPendingCommandAdded(VkQueue queue)
 extern void enterSubcontext()
 extern void nextSubcontext()
 extern void leaveSubcontext()
 extern void resetSubcontext()
-extern void pushDebugMarker(string name)
-extern void popDebugMarker()
-extern void pushRenderPassMarker(VkRenderPass renderPass)
-extern void popRenderPassMarker()
-extern void popAndPushMarkerForNextSubpass(u32 nextSubpass)
-extern void postBindSparse(ref!QueuedSparseBinds binds)
 extern void onPreSubcommand(ref!CommandReference ref)
-extern void onPreProcessCommand(ref!CommandReference ref)
 extern void onPostSubcommand(ref!CommandReference ref)
-extern void onDeferSubcommand(ref!CommandReference ref)
 extern void onCommandAdded(VkCommandBuffer buffer)
 extern void resetCmd(VkCommandBuffer buffer)
 extern ref!PhysicalDevicesAndProperties fetchPhysicalDeviceProperties(VkInstance instance, VkPhysicalDevice[] devs)
@@ -212,6 +225,8 @@ sub ref!ExtensionSet supportedInstanceExtensions() {
   supported.ExtensionNames["VK_KHR_external_semaphore_capabilities"] = true
   supported.ExtensionNames["VK_KHR_external_fence_capabilities"] = true
   supported.ExtensionNames["VK_GGP_stream_descriptor_surface"] = true
+  supported.ExtensionNames["VK_EXT_swapchain_colorspace"] = true
+  supported.ExtensionNames["VK_KHR_device_group_creation"] = true
   return supported
 }
 
@@ -239,6 +254,33 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_AMD_buffer_marker"] = true
   supported.ExtensionNames["VK_KHR_sampler_ycbcr_conversion"] = true
   supported.ExtensionNames["VK_KHR_image_format_list"] = true
+  supported.ExtensionNames["VK_KHR_sampler_mirror_clamp_to_edge"] = true
+  supported.ExtensionNames["VK_EXT_pipeline_creation_feedback"] = true
+  supported.ExtensionNames["VK_EXT_scalar_block_layout"] = true
+  supported.ExtensionNames["VK_EXT_hdr_metadata"] = true
+  supported.ExtensionNames["VK_KHR_descriptor_update_template"] = true
+  supported.ExtensionNames["VK_KHR_device_group"] = true
+  supported.ExtensionNames["VK_GOOGLE_display_timing"] = true
+  supported.ExtensionNames["VK_EXT_host_query_reset"] = true
+  supported.ExtensionNames["VK_EXT_depth_range_unrestricted"] = true
+  supported.ExtensionNames["VK_EXT_pci_bus_info"] = true
+  supported.ExtensionNames["VK_EXT_shader_stencil_export"] = true
+  supported.ExtensionNames["VK_EXT_shader_subgroup_ballot"] = true
+  supported.ExtensionNames["VK_EXT_shader_subgroup_vote"] = true
+  supported.ExtensionNames["VK_EXT_shader_viewport_index_layer"] = true
+  supported.ExtensionNames["VK_KHR_storage_buffer_storage_class"] = true
+  supported.ExtensionNames["VK_KHR_8bit_storage"] = true
+  supported.ExtensionNames["VK_AMD_shader_core_properties"] = true
+  supported.ExtensionNames["VK_GOOGLE_decorate_string"] = true
+  supported.ExtensionNames["VK_GOOGLE_hlsl_functionality1"] = true
+  supported.ExtensionNames["VK_KHR_spirv_1_4"] = true
+  supported.ExtensionNames["VK_KHR_shader_subgroup_extended_types"] = true
+  supported.ExtensionNames["VK_KHR_shader_clock"] = true
+  supported.ExtensionNames["VK_KHR_vulkan_memory_model"] = true
+  supported.ExtensionNames["VK_KHR_shader_float_controls"] = true
+  supported.ExtensionNames["VK_KHR_shader_float16_int8"] = true
+  supported.ExtensionNames["VK_KHR_shader_atomic_int64"] = true
+  supported.ExtensionNames["VK_KHR_driver_properties"] = true
   return supported
 }
 
@@ -309,14 +351,23 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   VkStencilOpState StencilBack
 }
 
+// This contains the dispatch command parameters. Only one of the dispatch data should be
+// valid at a time. Others should be null.
+@internal class DispatchParameters {
+  ref!vkCmdDispatchArgs           Dispatch
+  ref!vkCmdDispatchIndirectArgs   DispatchIndirect
+}
+
 @internal class ComputeInfo {
   // A mapping from the descriptor set bound numbers to descriptor set objects
   map!(u32, ref!DescriptorSetObject) DescriptorSets
-  // The compute pipeline used for the draw
+  // The compute pipeline used for the dispatch
   ref!ComputePipelineObject ComputePipeline
   // BufferBindingOffsets[setNum][bindingNum][bufferBindingNum] :=
   //    buffer offset for given descriptor set number, binding number, and index of buffer binding
   map!(u32, map!(u32, map!(u32, VkDeviceSize))) BufferBindingOffsets
+  // The dispatch parameters used for the dispatch
+  DispatchParameters CommandParameters
 }
 
 @internal class PresentInfo {
@@ -376,6 +427,7 @@ enum LastSubmissionType {
 @handleMap @serialize map!(VkDebugReportCallbackEXT, ref!DebugReportCallbackObject) DebugReportCallbacks
 // Vulkan 1.1 core
 @handleMap @serialize map!(VkSamplerYcbcrConversion, ref!SamplerYcbcrConversionObject) SamplerYcbcrConversions
+@handleMap @serialize map!(VkDescriptorUpdateTemplate, ref!DescriptorUpdateTemplateObject) DescriptorUpdateTemplates
 // Other state Tracking
 @hidden @serialize map!(VkDevice, VkMemoryRequirements) TransferBufferMemoryRequirements
 @serialize @untracked ref!QueueObject                   LastBoundQueue
@@ -445,6 +497,12 @@ sub ref!ComputeInfo lastComputeInfo() {
       new!ComputeInfo()
   }
   return lci
+}
+
+sub void clearLastComputeInfoDispatchCommandParameters() {
+  lci := lastComputeInfo()
+  lci.CommandParameters.Dispatch = null
+  lci.CommandParameters.DispatchIndirect = null
 }
 
 sub ref!PushConstantInfo lastPushConstants() {

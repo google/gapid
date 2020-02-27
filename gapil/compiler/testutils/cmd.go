@@ -78,6 +78,16 @@ func (c *Cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Buil
 	return nil
 }
 
+// Terminated stubs the api.Cmd interface.
+func (c *Cmd) Terminated() bool {
+	return true
+}
+
+// SetTerminated stubs the api.Cmd interface.
+func (c *Cmd) SetTerminated(terminated bool) {
+	return
+}
+
 // Encode implements the executor.Encodable interface to encode the command to
 // a buffer used by the compiler generated execute function.
 func (c Cmd) Encode(out []byte) bool {

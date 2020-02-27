@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path"
 	"runtime"
@@ -30,12 +29,11 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
-	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/text"
+	"github.com/google/gapid/gapis/perfetto"
 )
 
 // remoteProcess is the interface to a running process, as started by a Target.
@@ -165,9 +163,9 @@ func (b binding) createWindowsTempDirectory(ctx context.Context) (string, app.Cl
 	return "", nil, fmt.Errorf("Windows remote targets are not yet supported.")
 }
 
-// MakeTempDir creates a temporary directory on the remote machine. It returns the
+// TempDir creates a temporary directory on the remote machine. It returns the
 // full path, and a function that can be called to clean up the directory.
-func (b binding) MakeTempDir(ctx context.Context) (string, app.Cleanup, error) {
+func (b binding) TempDir(ctx context.Context) (string, app.Cleanup, error) {
 	switch b.os {
 	case device.Linux, device.OSX, device.Stadia:
 		return b.createPosixTempDirectory(ctx)
@@ -241,87 +239,6 @@ func (b binding) PullFile(ctx context.Context, source, dest string) error {
 	}
 	err = contents.Wait(ctx)
 	return err
-}
-
-// doTunnel tunnels a single connection through the SSH connection.
-func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) error {
-	remote, err := b.connection.Dial("tcp", fmt.Sprintf("localhost:%d", remotePort))
-	if err != nil {
-		local.Close()
-		return err
-	}
-
-	wg := sync.WaitGroup{}
-
-	copy := func(writer net.Conn, reader net.Conn) {
-		// Use the same buffer size used in io.Copy
-		buf := make([]byte, 32*1024)
-		var err error
-		for {
-			nr, er := reader.Read(buf)
-			if nr > 0 {
-				nw, ew := writer.Write(buf[0:nr])
-				if ew != nil {
-					err = ew
-					break
-				}
-				if nr != nw {
-					err = fmt.Errorf("short write")
-					break
-				}
-			}
-			if er != nil {
-				if er != io.EOF {
-					err = er
-				}
-				break
-			}
-		}
-		writer.Close()
-		if err != nil {
-			log.E(ctx, "Copy Error %s", err)
-		}
-		wg.Done()
-	}
-
-	wg.Add(2)
-	crash.Go(func() { copy(local, remote) })
-	crash.Go(func() { copy(remote, local) })
-
-	crash.Go(func() {
-		defer local.Close()
-		defer remote.Close()
-		wg.Wait()
-	})
-	return nil
-}
-
-// SetupLocalPort forwards a local TCP port to the remote machine on the remote port.
-// The local port that was opened is returned.
-func (b binding) SetupLocalPort(ctx context.Context, remotePort int) (int, error) {
-	listener, err := net.Listen("tcp", ":0")
-
-	if err != nil {
-		return 0, err
-	}
-	crash.Go(func() {
-		<-task.ShouldStop(ctx)
-		listener.Close()
-	})
-	crash.Go(func() {
-		defer listener.Close()
-		for {
-			local, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			if err = b.doTunnel(ctx, local, remotePort); err != nil {
-				return
-			}
-		}
-	})
-
-	return listener.Addr().(*net.TCPAddr).Port, nil
 }
 
 // TempFile creates a temporary file on the given Device. It returns the
@@ -446,4 +363,18 @@ func (b binding) SupportsPerfetto(ctx context.Context) bool {
 		return support
 	}
 	return false
+}
+
+// ConnectPerfetto connects to a Perfetto service running on this device
+// and returns an open socket connection to the service.
+func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
+	if !b.SupportsPerfetto(ctx) {
+		return nil, fmt.Errorf("Perfetto is not supported on this device")
+	}
+
+	conn, err := UnixPort("/tmp/perfetto-consumer").dial(b.connection)
+	if err != nil {
+		return nil, err
+	}
+	return perfetto.NewClient(ctx, conn, nil)
 }

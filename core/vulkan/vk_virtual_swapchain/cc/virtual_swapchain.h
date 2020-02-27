@@ -23,6 +23,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 #include "base_swapchain.h"
 #include "layer.h"
 
@@ -39,22 +40,22 @@ class VirtualSwapchain {
   // secondary thread will wake up less frequently un-necessarily, at the
   // expense of a longer stall on shutdown.
   VirtualSwapchain(VkDevice device, uint32_t queue,
-                   const VkPhysicalDeviceProperties *pProperties,
-                   const VkPhysicalDeviceMemoryProperties *memory_properties,
-                   const DeviceData *functions,
-                   const VkSwapchainCreateInfoKHR *_swapchain_info,
-                   const VkAllocationCallbacks *pAllocator,
+                   const VkPhysicalDeviceProperties* pProperties,
+                   const VkPhysicalDeviceMemoryProperties* memory_properties,
+                   const DeviceData* functions,
+                   const VkSwapchainCreateInfoKHR* _swapchain_info,
+                   const VkAllocationCallbacks* pAllocator,
                    uint32_t pending_image_timeout_in_milliseconds = 10,
                    bool always_get_acquired_image = false);
   // Call this to release all of the resources associated with this object.
-  void Destroy(const VkAllocationCallbacks *pAllocator);
+  void Destroy(const VkAllocationCallbacks* pAllocator);
   // Sets the function to be called when a frame has completed, along with
   // a piece of user-data to be passed.
-  void SetCallback(void callback(void *, uint8_t *, size_t), void *);
+  void SetCallback(void callback(void*, uint8_t*, size_t), void*);
   // Returns in *image the index of the next free image. Returns false
   // if timeout nanoseconds have passed and no image could be returned.
   // If timeout is UINT64_MAX, then this function will wait forever.
-  bool GetImage(uint64_t timeout, uint32_t *image);
+  bool GetImage(uint64_t timeout, uint32_t* image);
   // Returns a vector of all of the images contained in this swapchain.
   std::vector<VkImage> GetImages(uint32_t num_images, bool create_new_images) {
     std::unique_lock<threading::mutex> sl(free_images_lock_);
@@ -66,7 +67,7 @@ class VirtualSwapchain {
     }
     std::vector<VkImage> image_vec;
     image_vec.reserve(num_images_);
-    for (const auto &data : image_data_) {
+    for (const auto& data : image_data_) {
       image_vec.push_back(data.image_);
     }
     return image_vec;
@@ -78,15 +79,15 @@ class VirtualSwapchain {
   // Returns the VkFence associated with the i'th image.
   VkFence GetFence(size_t i) { return image_data_[i].fence_; }
   // Returns the VkCommandBuffer with the i'th image.
-  VkCommandBuffer &GetCommandBuffer(size_t i) {
+  VkCommandBuffer& GetCommandBuffer(size_t i) {
     return image_data_[i].command_buffer_;
   }
 
   // If we have create info, create a surface to render to.
   void CreateBaseSwapchain(VkInstance instance,
-                           const InstanceData *instance_functions_,
-                           const VkAllocationCallbacks *pAllocator,
-                           const void *platform_info);
+                           const InstanceData* instance_functions_,
+                           const VkAllocationCallbacks* pAllocator,
+                           const void* platform_info);
 
   // If we have a base surface, blit and present the image to that.
   VkResult PresentToSurface(VkQueue queue, size_t i) {
@@ -112,7 +113,7 @@ class VirtualSwapchain {
   // that the image in question is no longer needed.
   void NotifySubmitted(size_t i) {
     {
-      std::lock_guard<threading::mutex> lock(pending_images_lock_);
+      std::unique_lock<threading::mutex> lock(pending_images_lock_);
       pending_images_.push_back(static_cast<uint32_t>(i));
     }
     pending_images_condition_.notify_one();
@@ -196,11 +197,11 @@ class VirtualSwapchain {
                                                          // for free_images_ to
                                                          // contain an image.
 
-  void (*callback_)(void *, uint8_t *, size_t);  // The user-supplied callback.
-  void *callback_user_data_;  // The user-data to pass to this callback.
+  void (*callback_)(void*, uint8_t*, size_t);  // The user-supplied callback.
+  void* callback_user_data_;  // The user-data to pass to this callback.
 
   const uint32_t queue_;  // the queue that we need to use to signal things
-  const DeviceData *functions_;  // All of the resolved function pointers that
+  const DeviceData* functions_;  // All of the resolved function pointers that
                                  // we need to call.
 
   // This is how many milliseconds we should wait for an image before waking up
@@ -217,6 +218,15 @@ class VirtualSwapchain {
 
   // The actual surface and swapchain if we're using one.
   std::unique_ptr<BaseSwapchain> base_swapchain_;
+
+  // The path to dump the swapchain image to file. This can be set via
+  // the environment variable "IMAGE_DUMP_PATH" before replay the trace.
+  std::string image_dump_dir_;
+  // The number of image dumped.
+  uint32_t dumped_frame_count_ = 1;
+  // Function to dump the image to dir |image_dump_dir_| if environment
+  // variable "IMAGE_DUMP_PATH" is set.
+  void DumpImageToFile(uint8_t* image_data, size_t size);
 };
 }  // namespace swapchain
 

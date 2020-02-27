@@ -45,7 +45,9 @@ public abstract class GapidService extends IntentService {
         .setOngoing(true)
         .setContentTitle("Graphics API Debugger")
         .setContentText("GAPID is examining your device...")
-        .setSmallIcon(main.R.drawable.logo)
+        // the package name for resources "R" is derived from the "custom_package" field in
+        // gapidapk/android/app/src/main/BUILD.bazel
+        .setSmallIcon(com.google.android.gapid.R.drawable.logo)
         // TODO: Show something if the user taps the notification?
         .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(), 0));
 

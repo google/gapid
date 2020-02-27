@@ -58,7 +58,7 @@ func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTer
 // Add adds the command with identifier id to the set of commands that must be
 // seen before the VulkanTerminator will consume all commands (excluding the EOS
 // command).
-func (t *VulkanTerminator) Add(ctx context.Context, extraCommands int, id api.CmdID, subcommand api.SubCmdIdx) error {
+func (t *VulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand api.SubCmdIdx) error {
 	if len(t.requestSubIndex) != 0 {
 		return log.Errf(ctx, nil, "Cannot handle multiple requests when requesting a subcommand")
 	}
@@ -73,25 +73,7 @@ func (t *VulkanTerminator) Add(ctx context.Context, extraCommands int, id api.Cm
 	}
 
 	t.requestSubIndex = append([]uint64{uint64(id)}, subcommand...)
-	sc := api.SubCmdIdx(t.requestSubIndex[1:])
-	handled := false
-	if rng, ok := t.syncData.CommandRanges[api.CmdID(uint64(id)-uint64(extraCommands))]; ok {
-		for _, k := range rng.SortedKeys() {
-			if !rng.Ranges[k].LessThan(sc) {
-				t.lastRequest = k + api.CmdID(extraCommands)
-				handled = true
-				break
-			}
-		}
-	} else {
-		return log.Errf(ctx, nil, "The given command does not have a subcommands")
-	}
-
-	// If we cannot find the subindex, backtrack to the main command
-	if !handled {
-		t.lastRequest = id
-		t.requestSubIndex = []uint64{uint64(id)}
-	}
+	t.lastRequest = id
 
 	return nil
 }
@@ -135,7 +117,6 @@ func resolveCurrentRenderPass(ctx context.Context, s *api.GlobalState, submit *V
 	}
 	a := submit
 	c := GetState(s)
-	queue := c.Queues().Get(submit.Queue())
 	l := s.MemoryLayout
 
 	f := func(o CommandReferenceʳ) {
@@ -152,7 +133,6 @@ func resolveCurrentRenderPass(ctx context.Context, s *api.GlobalState, submit *V
 		}
 	}
 
-	walkCommands(c, queue.PendingCommands(), f)
 	submitInfo := submit.PSubmits().Slice(0, uint64(submit.SubmitCount()), l)
 	loopLevel := 0
 	for sub := 0; sub < int(idx[0])+getExtra(idx, loopLevel); sub++ {
@@ -367,25 +347,35 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 		}
 		extraCommands = append(extraCommands, NewVkCmdEndRenderPassArgsʳ(s.Arena))
 	}
-
+	var cleanup []func()
 	cmdBuffer := c.CommandBuffers().Get(newCommandBuffers[lastCommandBuffer])
 	subIdx := make(api.SubCmdIdx, 0)
-	if !skipAll {
-		subIdx = idx[2:]
-	}
-	b, newCommands, cleanup :=
-		rebuildCommandBuffer(ctx, cb, cmdBuffer, s, subIdx, extraCommands)
-	newCommandBuffers[lastCommandBuffer] = b
+	allocResults := []api.AllocResult{}
+	if len(idx) > 1 {
+		if !skipAll {
+			subIdx = idx[2:]
+		}
+		var b VkCommandBuffer
+		var newCommands []api.Cmd
 
-	bufferMemory := s.AllocDataOrPanic(ctx, newCommandBuffers)
-	newSubmits[lastSubmit].SetPCommandBuffers(NewVkCommandBufferᶜᵖ(bufferMemory.Ptr()))
+		b, newCommands, cleanup =
+			rebuildCommandBuffer(ctx, cb, cmdBuffer, s, subIdx, extraCommands)
+		newCommandBuffers[lastCommandBuffer] = b
 
-	newSubmitData := s.AllocDataOrPanic(ctx, newSubmits)
-	submitCopy.SetPSubmits(NewVkSubmitInfoᶜᵖ(newSubmitData.Ptr()))
-	submitCopy.AddRead(bufferMemory.Data()).AddRead(newSubmitData.Data())
+		bufferMemory := s.AllocDataOrPanic(ctx, newCommandBuffers)
+		newSubmits[lastSubmit].SetPCommandBuffers(NewVkCommandBufferᶜᵖ(bufferMemory.Ptr()))
 
-	for _, c := range newCommands {
-		out.MutateAndWrite(ctx, api.CmdNoID, c)
+		newSubmitData := s.AllocDataOrPanic(ctx, newSubmits)
+		submitCopy.SetPSubmits(NewVkSubmitInfoᶜᵖ(newSubmitData.Ptr()))
+		submitCopy.AddRead(bufferMemory.Data()).AddRead(newSubmitData.Data())
+		allocResults = append(allocResults, bufferMemory)
+		allocResults = append(allocResults, newSubmitData)
+
+		for _, c := range newCommands {
+			out.MutateAndWrite(ctx, api.CmdNoID, c)
+		}
+	} else {
+		submitCopy.SetSubmitCount(uint32(lastSubmit + 1))
 	}
 
 	out.MutateAndWrite(ctx, id, submitCopy)
@@ -393,32 +383,18 @@ func cutCommandBuffer(ctx context.Context, id api.CmdID,
 	for _, f := range cleanup {
 		f()
 	}
-
-	bufferMemory.Free()
-	newSubmitData.Free()
+	for _, res := range allocResults {
+		res.Free()
+	}
 }
 
-func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	if t.stopped {
-		return
+		return nil
 	}
 
 	doCut := false
 	cutIndex := api.SubCmdIdx(nil)
-	if rng, ok := t.syncData.CommandRanges[id]; ok {
-		for k, v := range rng.Ranges {
-			if api.CmdID(k) > t.lastRequest {
-				doCut = true
-			} else {
-				if len(cutIndex) == 0 || cutIndex.LessThan(v) {
-					// Make a copy of v, we do not want to modify the original.
-					cutIndex = append(api.SubCmdIdx(nil), v...)
-					cutIndex.Decrement()
-				}
-			}
-		}
-	}
-
 	// If we have been requested to cut at a particular subindex,
 	// then do that instead of cutting at the derived cutIndex.
 	// It is guaranteed to be safe as long as the requestedSubIndex is
@@ -440,8 +416,10 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.
 	if id == t.lastRequest {
 		t.stopped = true
 	}
+	return nil
 }
 
-func (t *VulkanTerminator) Flush(ctx context.Context, out transform.Writer)       {}
+func (t *VulkanTerminator) Flush(ctx context.Context, out transform.Writer) error { return nil }
 func (t *VulkanTerminator) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (t *VulkanTerminator) PostLoop(ctx context.Context, output transform.Writer) {}
+func (t *VulkanTerminator) BuffersCommands() bool                                 { return false }

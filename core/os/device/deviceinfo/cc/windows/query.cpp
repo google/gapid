@@ -237,4 +237,8 @@ int osPoint() { return gContext.mOsVersion.dwBuildNumber; }
 
 void glDriverPlatform(device::OpenGLDriver*) {}
 
+device::VulkanProfilingLayers* get_vulkan_profiling_layers() { return nullptr; }
+
+bool hasAtrace() { return false; }
+
 }  // namespace query

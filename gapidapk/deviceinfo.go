@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/flock"
@@ -41,12 +42,8 @@ const (
 	startServiceAttempts     = 3
 	portListeningAttempts    = 5
 	perfettoProducerLauncher = "launch_producer"
-
-	launcherScript = "" +
-		"trap \"killall %[1]s; rm -f %[1]s\" SIGHUP;" +
-		"trap \"rm -f %[1]s\" EXIT;" +
-		"%[1]s &" +
-		"wait"
+	launcherPath             = "/data/local/tmp/gapid_launch_producer"
+	launcherScript           = "nohup %[1]s &"
 )
 
 func init() {
@@ -111,6 +108,30 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return nil
 	}
 
+	driver, err := d.GraphicsDriver(ctx)
+	if err != nil {
+		return err
+	}
+
+	var cleanup app.Cleanup
+
+	// Set up device info service to use prerelease driver.
+	nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, apk.InstalledPackage)
+	cleanup = cleanup.Then(nextCleanup)
+	if err != nil {
+		cleanup.Invoke(ctx)
+		return err
+	}
+
+	// Set driver package
+	nextCleanup, err = android.SetupLayers(ctx, d, apk.Name, []string{driver.Package}, []string{}, true)
+	cleanup = cleanup.Then(nextCleanup)
+	if err != nil {
+		cleanup.Invoke(ctx)
+		return err
+	}
+	defer cleanup.Invoke(ctx)
+
 	if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
 		startSignal, startFunc := task.NewSignal()
 		startFunc = task.Once(startFunc)
@@ -155,34 +176,31 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	return nil
 }
 
-func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) (string, app.Cleanup, error) {
-	launcherPath, cleanupFunc, err := d.TempFile(ctx)
-	if err != nil {
-		return "", nil, log.Errf(ctx, err, "Can't create temporary file for perfetto producer launcher.")
-	}
-	cleanup := app.Cleanup(cleanupFunc)
-
+func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) error {
 	packageName := PackageName(d.Instance().GetConfiguration().PreferredABI(nil))
 	res, err := d.Shell("pm", "path", packageName).Call(ctx)
 	if err != nil {
-		return "", cleanup.Invoke(ctx), log.Errf(ctx, err, "Failed to query path to apk %v", packageName)
+		return log.Errf(ctx, err, "Failed to query path to apk %v", packageName)
 	}
 	packagePath := strings.Split(res, ":")[1]
+	d.Shell("rm", "-f", launcherPath).Call(ctx)
 	if _, err := d.Shell("unzip", "-o", packagePath, "assets/"+perfettoProducerLauncher, "-p", ">", launcherPath).Call(ctx); err != nil {
-		return "", cleanup.Invoke(ctx), log.Errf(ctx, err, "Failed to unzip %v from %v", perfettoProducerLauncher, packageName)
+		return log.Errf(ctx, err, "Failed to unzip %v from %v", perfettoProducerLauncher, packageName)
 	}
 
 	// Finally, make sure the binary is executable
 	d.Shell("chmod", "a+x", launcherPath).Call(ctx)
-	return launcherPath, cleanup, nil
+	return nil
 }
 
 func launchPerfettoProducerFromApk(ctx context.Context, d adb.Device, startFunc task.Task) error {
-	// Firstly, extract the producer launcher from Apk.
-	binaryPath, cleanup, err := preparePerfettoProducerLauncherFromApk(ctx, d)
-	defer cleanup.Invoke(ctx)
-
+	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
+		return err
+	}
+
+	// Extract the producer launcher from the APK.
+	if err := preparePerfettoProducerLauncherFromApk(ctx, d); err != nil {
 		return err
 	}
 
@@ -205,19 +223,25 @@ func launchPerfettoProducerFromApk(ctx context.Context, d adb.Device, startFunc 
 				fail <- nil
 				return
 			case nil:
-				log.E(ctx, "[launch producer] %s", strings.TrimSuffix(line, "\n"))
+				log.E(ctx, "[launch producer] %s", strings.TrimSuffix(adb.AnsiRegex.ReplaceAllString(line, ""), "\n"))
 			}
 		}
 	})
 
 	// Start the shell command to launch producer
-	process, err := d.Shell(fmt.Sprintf(launcherScript, binaryPath)).
+	script := fmt.Sprintf(launcherScript, launcherPath)
+	if driver.Package != "" {
+		abi := d.Instance().GetConfiguration().PreferredABI(nil)
+		script = "export LD_LIBRARY_PATH=\"" + driver.Path + "!/lib/" + abi.Name + "/\";" + script
+	}
+	process, err := d.Shell(script).
 		Capture(stdout, stdout).
 		Start(ctx)
 	if err != nil {
 		stdout.Close()
 		return err
 	}
+
 	wait := make(chan error, 1)
 	crash.Go(func() {
 		wait <- process.Wait(ctx)

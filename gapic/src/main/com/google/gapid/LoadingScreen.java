@@ -125,10 +125,10 @@ public class LoadingScreen extends Composite {
     recentBar = OptionBar.withDropDown(theme, optionsContainer, theme.recent(), "Open recent trace",
         e -> {
       Menu popup = new Menu(optionsContainer);
-      if (checkNotNull(models).settings.recentFiles.length == 0) {
+      if (checkNotNull(models).settings.files().getRecentCount() == 0) {
         createMenuItem(popup, "No recent files.", 0,  ev -> { /* empty */ }).setEnabled(false);
       } else {
-        for (String file : checkNotNull(models).settings.recentFiles) {
+        for (String file : checkNotNull(models).settings.files().getRecentList()) {
           createMenuItem(popup, truncate(file), 0, ev -> {
             checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
             checkNotNull(models).capture.loadCapture(new File(file));

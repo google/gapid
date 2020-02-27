@@ -17,95 +17,208 @@ package com.google.gapid.perfetto.models;
 
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.joining;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.models.CounterTrack.Values;
+import com.google.gapid.perfetto.models.SliceTrack.Slice;
+import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
 import com.google.gapid.perfetto.views.MultiSelectionView;
 import com.google.gapid.perfetto.views.State;
 
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
+import java.util.function.Consumer;
 
 /**
  * Data about the current selection in the UI.
  */
-public interface Selection {
+public interface Selection<Key> {
   public String getTitle();
+  public boolean contains(Key key);
   public Composite buildUi(Composite parent, State state);
-  public default void mark(@SuppressWarnings("unused") State state) { /* do nothing */ }
-  public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
+  public Selection.Builder<?> getBuilder();
 
-  public static class MultiSelection implements Selection {
-    private final Selection[] selections;
+  public default void getRange(@SuppressWarnings("unused") Consumer<TimeSpan> span) {
+    /* do nothing */
+  }
 
-    public MultiSelection(Selection[] selections) {
-      this.selections = selections;
+  public default boolean isEmpty() {
+    return false;
+  }
+
+  public static final Selection<?> EMPTY_SELECTION = new EmptySelection<Object>();
+
+  @SuppressWarnings("unchecked")
+  public static <K> Selection<K> emptySelection() {
+      return (Selection<K>)EMPTY_SELECTION;
+  }
+
+  public static class EmptySelection<K> implements Selection<K>, Builder<EmptySelection<K>> {
+    @Override
+    public String getTitle() {
+      return "";
     }
 
     @Override
-    public String getTitle() {
-      return stream(selections).map(Selection::getTitle).collect(joining(", "));
+    public boolean contains(K key) {
+      return false;
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return true;
     }
 
     @Override
     public Composite buildUi(Composite parent, State state) {
-      if (selections.length == 1) {
-        return selections[0].buildUi(parent, state);
+      return new Composite(parent, SWT.NONE);
+    }
+
+    @Override
+    public Selection.Builder<?> getBuilder() {
+      return this;
+    }
+
+    @Override
+    public EmptySelection<K> combine(EmptySelection<K> other) {
+      return this;
+    }
+
+    @Override
+    public Selection<?> build() {
+      return this;
+    }
+  }
+
+  /**
+   * MultiSelection stores selections across different {@link Kind}s.
+   * */
+  public static class MultiSelection {
+    private final NavigableMap<Kind<?>, Selection<?>> selections;
+
+    public <Key> MultiSelection(Kind<Key> type, Selection<Key> selection) {
+      this.selections = Maps.newTreeMap();
+      this.selections.put(type, selection);
+    }
+
+    public MultiSelection(NavigableMap<Kind<?>, Selection<?>> selections) {
+      this.selections = selections;
+    }
+
+    public Composite buildUi(Composite parent, State state) {
+      if (selections.size() == 1) {
+        return firstSelection().buildUi(parent, state);
       } else {
         return new MultiSelectionView(parent, selections, state);
       }
     }
 
-    @Override
-    public void mark(State state) {
-      // TODO: is this good enough?
-      if (selections.length == 1) {
-        selections[0].mark(state);
+    @SuppressWarnings("unchecked")
+    public <Key> Selection<Key> getSelection(Kind<Key> type) {
+      return selections.containsKey(type) ?
+          (Selection<Key>) selections.get(type) : Selection.emptySelection();
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public void addSelection(MultiSelection other) {
+      for (Selection.Kind k : other.selections.keySet()) {
+        this.addSelection(k, other.selections.get(k));
       }
     }
 
-    @Override
-    public void zoom(State state) {
-      // TODO: handle zooming into multiple selections.
-      if (selections.length == 1) {
-        selections[0].zoom(state);
+    @SuppressWarnings("unchecked")
+    public <Key, T extends Builder<T>> void addSelection(Kind<Key> kind, Selection<Key> selection) {
+      Selection<Key>  old = getSelection(kind);
+      if (old == null || old == Selection.EMPTY_SELECTION) {
+        selections.put(kind, selection);
+      } else {
+        selections.put(kind, ((T)old.getBuilder()).combine((T)selection.getBuilder()).build());
       }
+    }
+
+    public void markTime(State state) {
+      getRange().ifNotEmpty(state::setHighlight);
+    }
+
+    public void zoom(State state) {
+      getRange().ifNotEmpty(state::setVisibleTime);
+    }
+
+    private TimeSpan getRange() {
+      TimeSpan[] range = new TimeSpan[] { TimeSpan.ZERO };
+      for (Selection<?> sel : selections.values()) {
+        sel.getRange(r -> range[0] = range[0].expand(r));
+      }
+      return range[0];
+    }
+
+    private Selection<?> firstSelection() {
+      return selections.firstEntry().getValue();
     }
   }
 
+  /**
+   * Selection builder for combining selections across different {@link Kind}s.
+   * */
   public static class CombiningBuilder {
-    private final Map<Comparable<?>, ListenableFuture<Combinable<?>>> selections =
+    private final Map<Kind<?>, ListenableFuture<Selection.Builder<?>>> selections =
         Maps.newTreeMap();
 
     @SuppressWarnings("unchecked")
-    public <T extends Combinable<T>> void add(
-        Comparable<?> type, ListenableFuture<Combinable<?>> selection) {
+    public <T extends Selection.Builder<T>> void add(
+        Kind<?> type, ListenableFuture<Selection.Builder<?>> selection) {
       selections.merge(type, selection, (f1, f2) -> transformAsync(f1, r1 ->
         transform(f2, r2 -> (((T)r1).combine((T)r2)))));
     }
 
-    public ListenableFuture<? extends Selection> build() {
-      if (selections.size() == 1) {
-        return transform(Iterables.getOnlyElement(selections.values()), Combinable::build);
-      }
-
+    public ListenableFuture<MultiSelection> build() {
       return transform(Futures.allAsList(selections.values()), sels -> {
-        Selection[] res = new Selection[sels.size()];
-        for (int i = 0; i < res.length; i++) {
-          res[i] = sels.get(i).build();
+        Iterator<Kind<?>> keys = selections.keySet().iterator();
+        Iterator<Selection.Builder<?>> vals = sels.iterator();
+        TreeMap<Kind<?>, Selection<?>> res = Maps.newTreeMap();
+        while (keys.hasNext()) {
+          res.put(keys.next(), vals.next().build());
         }
         return new MultiSelection(res);
       });
     }
+  }
 
-    public static interface Combinable<T extends Combinable<T>> {
-      public T combine(T other);
-      public Selection build();
+  /**
+  * Selection builder for combining selections within a {@link Kind}.
+  * */
+  public static interface Builder<T extends Builder<T>> {
+    public T combine(T other);
+    public Selection<?> build();
+  }
+
+  @SuppressWarnings("unused")
+  public static class Kind<Key> implements Comparable<Kind<?>>{
+    public static final Kind<Slice.Key> Thread = new Kind<Slice.Key>(0);
+    public static final Kind<StateSlice.Key> ThreadState = new Kind<StateSlice.Key>(1);
+    public static final Kind<Long> Cpu = new Kind<Long>(2);
+    public static final Kind<Slice.Key> Gpu = new Kind<Slice.Key>(3);
+    public static final Kind<Long> VulkanEvent = new Kind<Long>(4);
+    public static final Kind<Values.Key> Counter = new Kind<Values.Key>(5);
+    public static final Kind<FrameEventsTrack.Slice.Key> FrameEvents = new Kind<FrameEventsTrack.Slice.Key>(6);
+
+    public int priority;
+
+    public Kind(int priority) {
+      this.priority = priority;
+    }
+
+    @Override
+    public int compareTo(Kind<?> other) {
+      return this.priority - other.priority;
     }
   }
 }

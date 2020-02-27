@@ -1102,14 +1102,14 @@ void GlesSpy::GetEGLImageData(CallObserver* observer, EGLImageKHR handle,
 
   if (!img.data->empty()) {
     auto resIndex = sendResource(kApiIndex, img.data->data(), img.data->size());
-    auto extra = new gles_pb::EGLImageData();
-    extra->set_res_index(resIndex);
-    extra->set_size(img.data->size());
-    extra->set_width(width);
-    extra->set_height(height);
-    extra->set_format(img.dataFormat);
-    extra->set_type(img.dataType);
-    observer->encodeAndDelete(extra);
+    gles_pb::EGLImageData extra;
+    extra.set_res_index(resIndex);
+    extra.set_size(img.data->size());
+    extra.set_width(width);
+    extra.set_height(height);
+    extra.set_format(img.dataFormat);
+    extra.set_type(img.dataType);
+    observer->encode_message(&extra);
   }
 }
 

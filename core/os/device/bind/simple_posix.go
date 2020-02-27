@@ -18,8 +18,16 @@ package bind
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
+	"net"
 	"path/filepath"
+
+	"github.com/google/gapid/gapis/perfetto"
+)
+
+const (
+	perfettoSocket = "/tmp/perfetto-consumer"
 )
 
 // ListExecutables returns the executables in a particular directory as given by path
@@ -65,8 +73,21 @@ func (b *Simple) ListDirectories(ctx context.Context, path string) ([]string, er
 // SupportsPerfetto returns true if the given device supports taking a
 // Perfetto trace.
 func (b *Simple) SupportsPerfetto(ctx context.Context) bool {
-	if support, err := b.IsFile(ctx, "/tmp/perfetto-consumer"); err == nil {
+	if support, err := b.IsFile(ctx, perfettoSocket); err == nil {
 		return support
 	}
 	return false
+}
+
+// ConnectPerfetto connects to a Perfetto service running on this device
+// and returns an open socket connection to the service.
+func (b *Simple) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
+	if !b.SupportsPerfetto(ctx) {
+		return nil, fmt.Errorf("Perfetto is not supported on this device")
+	}
+	conn, err := net.Dial("unix", perfettoSocket)
+	if err != nil {
+		return nil, err
+	}
+	return perfetto.NewClient(ctx, conn, nil)
 }

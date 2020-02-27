@@ -22,6 +22,7 @@ package sync
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/gapis/api"
@@ -31,7 +32,7 @@ import (
 )
 
 // NoMECSubcommandsError is used to notify the caller that this API does not
-// support MEC subcomands.
+// support MEC subcommands.
 type NoMECSubcommandsError struct{}
 
 func (e NoMECSubcommandsError) Error() string {
@@ -79,9 +80,12 @@ type writer struct {
 
 func (s *writer) State() *api.GlobalState { return s.state }
 
-func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
-	cmd.Mutate(ctx, id, s.state, nil, nil)
+func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	if err := cmd.Mutate(ctx, id, s.state, nil, nil); err != nil {
+		return err
+	}
 	s.cmds = append(s.cmds, cmd)
+	return nil
 }
 
 func (s *writer) NotifyPreLoop(ctx context.Context)  {}
@@ -139,7 +143,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		terminators = append(terminators, transform.NewEarlyTerminator(api.ID()))
 	}
 	for _, t := range terminators {
-		if err := t.Add(ctx, 0, id, subindex); err != nil {
+		if err := t.Add(ctx, id, subindex); err != nil {
 			return nil, err
 		}
 		transforms.Add(t)
@@ -148,7 +152,9 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		return cmds[0 : id+1], nil
 	}
 	w := &writer{rc.NewState(ctx), nil}
-	transforms.Transform(ctx, cmds, w)
+	if err := transforms.TransformAll(ctx, cmds, 0, w); err != nil {
+		return nil, err
+	}
 
 	return w.cmds, nil
 }
@@ -174,11 +180,15 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	}
 	s := rc.NewState(ctx)
 
-	return api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	return api.ForeachCmd(ctx, cmds, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
-			sync.MutateSubcommands(ctx, id, cmd, s, preSubCmdCb, postSubCmdCb)
+			if err := sync.MutateSubcommands(ctx, id, cmd, s, preSubCmdCb, postSubCmdCb); err != nil {
+				return err
+			}
 		} else {
-			cmd.Mutate(ctx, id, s, nil, nil)
+			if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+				return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
+			}
 		}
 		postCmdCb(s, api.SubCmdIdx{uint64(id)}, cmd)
 		return nil

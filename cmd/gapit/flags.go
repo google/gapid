@@ -43,6 +43,18 @@ const (
 	ExportTimestamps
 )
 
+const (
+	ModeMetrics PerfettoMode = iota
+	ModeInteractive
+	ModeList
+)
+
+const (
+	OutputDefault PerfettoOutputFormat = iota
+	OutputText
+	OutputJson
+)
+
 type VideoType uint8
 
 var videoTypeNames = map[VideoType]string{
@@ -90,6 +102,36 @@ func (v *ExportMode) Choose(c interface{}) {
 }
 func (v ExportMode) String() string {
 	return exportModeNames[v]
+}
+
+type PerfettoMode uint8
+
+var perfettoModeNames = map[PerfettoMode]string{
+	ModeMetrics:     "metrics",
+	ModeInteractive: "interactive",
+	ModeList:        "list",
+}
+
+func (v *PerfettoMode) Choose(c interface{}) {
+	*v = c.(PerfettoMode)
+}
+func (v PerfettoMode) String() string {
+	return perfettoModeNames[v]
+}
+
+type PerfettoOutputFormat uint8
+
+var PerfettoOutputFormatNames = map[PerfettoOutputFormat]string{
+	OutputDefault: "default",
+	OutputText:    "text",
+	OutputJson:    "json",
+}
+
+func (v *PerfettoOutputFormat) Choose(c interface{}) {
+	*v = c.(PerfettoOutputFormat)
+}
+func (v PerfettoOutputFormat) String() string {
+	return PerfettoOutputFormatNames[v]
 }
 
 type (
@@ -153,6 +195,7 @@ type (
 		Mode           ExportMode `help:"generate special purposed trace"`
 		Apk            string     `help:"(experimental) name of the stand-alone APK created to perform the replay. This name must be <app_package>.apk (e.g. com.example.replay.apk)"`
 		SdkPath        string     `help:"Path to Android SDK directory (default: ANDROID_SDK_HOME environment variable)"`
+		LoopCount      int        `help:"_The number of times to loop the trace. (experimental)"`
 		CommandFilterFlags
 		CaptureFileFlags
 	}
@@ -232,9 +275,9 @@ type (
 	StateFlags struct {
 		Gapis  GapisFlags
 		Gapir  GapirFlags
-		At     flags.U64Slice    `help:"command/subcommand index to get the state after. Empty for last"`
+		At     flags.U64Slice    `help:"command/subcommand index to get the state after. 0 for first command. Empty for last"`
 		Depth  int               `help:"How many nodes deep should the state tree be displayed. -1 for all"`
-		Filter flags.StringSlice `help:"Which path through the tree should we filter to, default All"`
+		Filter flags.StringSlice `help:"Which path (e.g. '[root, Devices]') through the tree should we filter to, default All"`
 		CaptureFileFlags
 	}
 	StressTestFlags struct {
@@ -338,14 +381,7 @@ type (
 	UnpackFlags struct {
 		Verbose bool `help:"if true, then output will not be truncated"`
 	}
-	StatsFlags struct {
-		Gapis  GapisFlags
-		Frames struct {
-			Start int `help:"frame to start stats from"`
-			Count int `help:"number of frames after Start to process: -1 for all frames"`
-		}
-		CaptureFileFlags
-	}
+
 	MemoryFlags struct {
 		Gapis GapisFlags
 		At    flags.U64Slice `help:"command/subcommand index to get the memory after. Empty for last"`
@@ -380,6 +416,12 @@ type (
 		Out       string `help:"output file to save the profiling result"`
 	}
 
+	GpuProfileFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Json  bool `help:"Return replay profiling data as JSON instead of text"`
+	}
+
 	CreateGraphVisualizationFlags struct {
 		Gapis  GapisFlags
 		Out    string `help:"path to save graph visualization"`
@@ -397,5 +439,18 @@ type (
 	}
 
 	MakeDocFlags struct {
+	}
+
+	ValidateGpuProfilingFlags struct {
+		DeviceFlags
+		Gapis GapisFlags
+	}
+
+	PerfettoFlags struct {
+		Mode       PerfettoMode         `help:"Run mode: {metrics|interactive}. Default: metrics."`
+		In         string               `help:"Input file. Refer to documentation for file format."`
+		Categories string               `help:"Comma separated list of metric categories from the input file. Only valid if 'metrics' mode is selected."`
+		Out        string               `help:"Output file."`
+		Format     PerfettoOutputFormat `help:"Output file format: {text|json}."`
 	}
 )

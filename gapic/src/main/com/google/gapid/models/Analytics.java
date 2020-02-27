@@ -32,9 +32,9 @@ public class Analytics implements ExceptionHandler {
 
   public static enum View {
     Main, FilmStrip, LeftTabs, RightTabs,
-    About, GotoCommand, GotoMemory, Licenses, Settings, Trace, Welcome,
+    About, Help, GotoCommand, GotoMemory, Licenses, Settings, Trace, Welcome,
     // See MainWindow.MainTab.Type
-    Commands, Framebuffer, Textures, Geometry, Shaders, Report, Log, State, Memory,
+    Commands, Framebuffer, Pipeline, Textures, Geometry, Shaders, Report, Log, State, Memory,
     ContextSelector, ReplayDeviceSelector;
   }
 
@@ -50,7 +50,7 @@ public class Analytics implements ExceptionHandler {
 
   @Override
   public void reportException(Throwable thrown) {
-    if (settings.reportCrashes) {
+    if (settings.preferences().getReportCrashes()) {
       handler.reportException(thrown);
     }
   }

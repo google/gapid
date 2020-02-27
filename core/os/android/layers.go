@@ -16,6 +16,7 @@ package android
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -23,14 +24,9 @@ import (
 
 const eglLayersExt = "EGL_ANDROID_GLES_layers"
 
-// SupportsLayersViaSystemSettings returns whether the given device supports
-// loading GLES and Vulkan layers via the system settings.
-func SupportsLayersViaSystemSettings(d Device) bool {
-	// TODO: this currently looks for the EGL extension that advertises the
-	// GLES layer loading capability. Technically, the extension could be
-	// absent, but the device could still support loading Vulkan layers via
-	// the settings. There doesn't appear to be a way to detect Vulkan support
-	// and we currently assume a device either supports both, or none.
+// SupportsGLESLayersViaSystemSettings returns whether the given device supports
+// loading GLES layers via the system settings.
+func SupportsGLESLayersViaSystemSettings(d Device) bool {
 	exts := d.Instance().GetConfiguration().GetDrivers().GetOpengl().GetExtensions()
 	for _, ext := range exts {
 		if ext == eglLayersExt {
@@ -40,12 +36,19 @@ func SupportsLayersViaSystemSettings(d Device) bool {
 	return false
 }
 
-// SetupLayer initializes d to use either a Vulkan or GLES layer from layerPkg
+// SupportsVulkanLayersViaSystemSettings returns whether the given device supports
+// loading Vulkan layers via the system settings.
+func SupportsVulkanLayersViaSystemSettings(d Device) bool {
+	// Supported since Android P / API level 28
+	apiVersion := d.Instance().GetConfiguration().GetOS().GetAPIVersion()
+	return apiVersion >= 28
+}
+
+// SetupLayer initializes d to use either a Vulkan or GLES layer from layerPkgs
 // limited to the app with package appPkg using the system settings and returns
 // a cleanup to remove the layer settings.
-func SetupLayer(ctx context.Context, d Device, appPkg, layerPkg, layer string, vulkan bool) (app.Cleanup, error) {
+func SetupLayers(ctx context.Context, d Device, appPkg string, layerPkgs []string, layers []string, vulkan bool) (app.Cleanup, error) {
 	var cleanup app.Cleanup
-
 	// pushSetting changes a device property for the duration of the trace.
 	pushSetting := func(ns, key, val string) error {
 		cleanup = cleanup.Then(func(ctx context.Context) {
@@ -61,16 +64,24 @@ func SetupLayer(ctx context.Context, d Device, appPkg, layerPkg, layer string, v
 	if err := pushSetting("global", "gpu_debug_app", appPkg); err != nil {
 		return cleanup.Invoke(ctx), err
 	}
-	if err := pushSetting("global", "gpu_debug_layer_app", layerPkg); err != nil {
+	if err := pushSetting("global", "gpu_debug_layer_app", "\""+strings.Join(layerPkgs, ":")+"\""); err != nil {
 		return cleanup.Invoke(ctx), err
 	}
-	if vulkan {
-		if err := pushSetting("global", "gpu_debug_layers", layer); err != nil {
-			return cleanup.Invoke(ctx), err
+	if len(layers) > 0 {
+		if vulkan {
+			if err := pushSetting("global", "gpu_debug_layers", "\""+strings.Join(layers, ":")+"\""); err != nil {
+				return cleanup.Invoke(ctx), err
+			}
+		} else {
+			if err := pushSetting("global", "gpu_debug_layers_gles", "\""+strings.Join(layers, ":")+"\""); err != nil {
+				return cleanup.Invoke(ctx), err
+			}
 		}
 	} else {
-		if err := pushSetting("global", "gpu_debug_layers_gles", layer); err != nil {
-			return cleanup.Invoke(ctx), err
+		if vulkan {
+			d.DeleteSystemSetting(ctx, "global", "gpu_debug_layers")
+		} else {
+			d.DeleteSystemSetting(ctx, "global", "gpu_debug_layers_gles")
 		}
 	}
 

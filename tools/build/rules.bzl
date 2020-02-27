@@ -24,6 +24,7 @@ load("//tools/build/rules:cc.bzl",
     _cc_copts = "cc_copts",
     _cc_stripped_binary = "cc_stripped_binary",
     _strip = "strip",
+    _symbols = "symbols",
 )
 load("//tools/build/rules:common.bzl",
     _generate = "generate",
@@ -78,6 +79,7 @@ apic_compile = _apic_compile
 apic_template = _apic_template
 cc_copts = _cc_copts
 cc_stripped_binary = _cc_stripped_binary
+symbols = _symbols
 strip = _strip
 generate = _generate
 copy = _copy

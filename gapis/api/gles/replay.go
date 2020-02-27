@@ -30,7 +30,6 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 var (
@@ -73,7 +72,6 @@ type framebufferRequest struct {
 }
 
 type profileRequest struct {
-	overrides *path.OverrideConfig
 }
 
 // GetReplayPriority returns a uint32 representing the preference for
@@ -293,19 +291,23 @@ func (a API) Replay(
 	if profile == nil {
 		cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
 	}
-	transforms.Transform(ctx, cmds, out)
-	return nil
+	return transforms.TransformAll(ctx, cmds, 0, out)
 }
 
 func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
+	loopCount int32,
 	displayToSurface bool,
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
+	if loopCount != 1 {
+		return nil, log.Errf(ctx, nil, "GLES does not support frame looping")
+	}
+
 	c, r := issuesConfig{}, issuesRequest{}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +347,7 @@ func (a API) QueryFramebufferAttachment(
 		fb:         FramebufferId(framebufferIndex),
 		attachment: attachment,
 	}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err
 	}
@@ -357,13 +359,13 @@ func (a API) Profile(
 	intent replay.Intent,
 	mgr replay.Manager,
 	hints *service.UsageHints,
-	overrides *path.OverrideConfig) error {
+	traceOptions *service.TraceOptions) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()
-	r := profileRequest{overrides}
+	r := profileRequest{}
 
-	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
-	return err
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
+	return nil, err
 }
 
 // destroyResourcesAtEOS is a transform that destroys all textures,
@@ -372,11 +374,11 @@ func (a API) Profile(
 type destroyResourcesAtEOS struct {
 }
 
-func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	out.MutateAndWrite(ctx, id, cmd)
+func (t *destroyResourcesAtEOS) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) {
+func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer) error {
 	s := out.State()
 	cmds := []api.Cmd{}
 
@@ -477,13 +479,17 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		// Mutating the delete command ensures the object is removed from all maps,
 		// and that we will not try to remove it again when iterating over the second context.
 		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
-		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-			out.MutateAndWrite(ctx, api.CmdNoID, cmd)
-			return nil
+		err := api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+			return out.MutateAndWrite(ctx, api.CmdNoID, cmd)
 		})
+		if err != nil {
+			return err
+		}
 		cmds = []api.Cmd{}
 	}
+	return nil
 }
 
 func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *destroyResourcesAtEOS) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *destroyResourcesAtEOS) BuffersCommands() bool                              { return false }

@@ -27,9 +27,45 @@ cc_library(
 ######## Perfetto Proto libraries ########
 
 go_proto_library(
+    name = "common_go_proto",
+    importpath = "protos/perfetto/common",
+    proto = "@perfetto//:protos_perfetto_common_protos",
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
     name = "config_go_proto",
-    importpath = "perfetto/config",
-    proto = "@perfetto//:protos_perfetto_config_merged_config_protos",
+    importpath = "protos/perfetto/config",
+    protos = [
+        "@perfetto//:protos_perfetto_config_android_protos",
+        "@perfetto//:protos_perfetto_config_ftrace_protos",
+        "@perfetto//:protos_perfetto_config_gpu_protos",
+        "@perfetto//:protos_perfetto_config_inode_file_protos",
+        "@perfetto//:protos_perfetto_config_power_protos",
+        "@perfetto//:protos_perfetto_config_process_stats_protos",
+        "@perfetto//:protos_perfetto_config_profiling_protos",
+        "@perfetto//:protos_perfetto_config_protos",
+        "@perfetto//:protos_perfetto_config_sys_stats_protos",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [":common_go_proto"],
+)
+
+go_proto_library(
+    name = "ipc_go_proto",
+    importpath = "protos/perfetto/ipc",
+    proto = "@perfetto//:protos_perfetto_ipc_protos",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common_go_proto",
+        ":config_go_proto",
+    ],
+)
+
+go_proto_library(
+    name = "wire_go_proto",
+    importpath = "protos/perfetto/wire",
+    proto = "@perfetto//:protos_perfetto_ipc_wire_protocol_protos",
     visibility = ["//visibility:public"],
 )
 

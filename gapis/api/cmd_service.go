@@ -27,8 +27,9 @@ import (
 // CmdToService returns the service command representing command c.
 func CmdToService(c Cmd) (*Command, error) {
 	out := &Command{
-		Name:   c.CmdName(),
-		Thread: c.Thread(),
+		Name:       c.CmdName(),
+		Thread:     c.Thread(),
+		Terminated: c.Terminated(),
 	}
 
 	if api := c.API(); api != nil {
@@ -43,7 +44,10 @@ func CmdToService(c Cmd) (*Command, error) {
 		param := &Parameter{
 			Name:  p.Name,
 			Value: box.NewValue(p.Get()),
-			Type:  &path.Type{TypeIndex: t},
+			Type: &path.Type{
+				TypeIndex: t,
+				API:       out.API,
+			},
 		}
 		if p.Constants > 0 {
 			param.Constants = out.API.ConstantSet(p.Constants)

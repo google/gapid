@@ -642,9 +642,15 @@ cmd void vkUpdateDescriptorSets(
     srcSet := DescriptorSets[c.SrcSet]
     dstSet := DescriptorSets[c.DstSet]
     srcBinding := srcSet.Bindings[c.SrcBinding]
-    dstBinding := dstSet.Bindings[c.DstBinding]
 
-    if ((srcBinding == null) || (dstBinding == null)) {
+    dstBinding := switch dstSet.Bindings[c.DstBinding] == null {
+      case false:
+        dstSet.Bindings[c.DstBinding]
+      case true:
+        new!DescriptorBinding(BindingType: dstSet.Layout.Bindings[c.DstBinding].Type)
+    }
+
+    if ((srcBinding == null) || (srcBinding.BindingType != dstBinding.BindingType)) {
       vkErrorInvalidDescriptorCopy(c.SrcSet, c.SrcBinding, c.DstSet, c.DstBinding)
     } else {
       switch (srcBinding.BindingType) {
@@ -957,6 +963,7 @@ sub void GetDescriptorSetLayoutSupport(
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd void vkGetDescriptorSetLayoutSupport(
     VkDevice                               device,

@@ -16,9 +16,13 @@
 package com.google.gapid.perfetto;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.threadStateBlockedOk;
+import static com.google.gapid.perfetto.views.StyleConstants.threadStateBlockedWarn;
+import static com.google.gapid.perfetto.views.StyleConstants.threadStateRunnable;
+import static com.google.gapid.perfetto.views.StyleConstants.threadStateRunning;
+import static com.google.gapid.perfetto.views.StyleConstants.threadStateSleeping;
 
-import org.eclipse.swt.graphics.RGBA;
+import com.google.gapid.perfetto.views.StyleConstants;
 
 import java.util.function.Supplier;
 
@@ -27,46 +31,45 @@ import java.util.function.Supplier;
  */
 public class ThreadState {
   public static final ThreadState DEBUG = new ThreadState(
-      "Debug", () -> colors().threadStateUninterruptile, 9);
+      "Debug", () -> threadStateBlockedWarn(), 9);
   public static final ThreadState EXIT_DEAD = new ThreadState(
-      "Exit Dead", () -> colors().threadStateUninterruptile, 8);
+      "Exit Dead", () -> threadStateBlockedWarn(), 8);
   public static final ThreadState RUNNABLE = new ThreadState(
-      "Runnable", () -> colors().threadStateRunnable, 1);
+      "Runnable", () -> threadStateRunnable(), 1);
   public static final ThreadState RUNNING = new ThreadState(
-      "Running", () -> colors().threadStateRunning, 0);
+      "Running", () -> threadStateRunning(), 0);
   public static final ThreadState SLEEPING = new ThreadState(
-      "Sleeping", () -> colors().threadStateSleep, 5);
+      "Sleeping", () -> threadStateSleeping(), 5);
   public static final ThreadState STOPPED = new ThreadState(
-      "Stopped", () -> colors().threadStateUninterruptile, 8);
+      "Stopped", () -> threadStateBlockedWarn(), 8);
   public static final ThreadState TASK_DEAD = new ThreadState(
-      "Task Dead", () -> colors().threadStateUninterruptile, 8);
+      "Task Dead", () -> threadStateBlockedWarn(), 8);
   public static final ThreadState UNINTR_SLEEP = new ThreadState(
-      "Uninterruptible Sleep", () -> colors().threadStateUninterruptile, 6);
+      "Uninterruptible Sleep", () -> threadStateBlockedWarn(), 6);
   public static final ThreadState UNINTR_SLEEP_WAKE_KILL = new ThreadState(
-      "Uninterruptible Sleep | WakeKill", () -> colors().threadStateUninterruptile, 7);
+      "Uninterruptible Sleep | WakeKill", () -> threadStateBlockedWarn(), 7);
   public static final ThreadState UNINTR_SLEEP_WAKING = new ThreadState(
-      "Uninterruptible Sleep | Waking", () -> colors().threadStateUninterruptile, 7);
+      "Uninterruptible Sleep | Waking", () -> threadStateBlockedWarn(), 7);
   public static final ThreadState UNINTR_SLEEP_IO = new ThreadState(
-      "Uninterruptible Sleep - Block I/O", () -> colors().threadStateIowait, 3);
+      "Uninterruptible Sleep - Block I/O", () -> threadStateBlockedOk(), 3);
   public static final ThreadState UNINTR_SLEEP_WAKE_KILL_IO = new ThreadState(
-      "Uninterruptible Sleep | WakeKill - Block I/O", () -> colors().threadStateIowait, 4);
+      "Uninterruptible Sleep | WakeKill - Block I/O", () -> threadStateBlockedOk(), 4);
   public static final ThreadState UNINTR_SLEEP_WAKING_IO = new ThreadState(
-      "Uninterruptible Sleep | Waking - Block I/O", () -> colors().threadStateIowait, 4);
+      "Uninterruptible Sleep | Waking - Block I/O", () -> threadStateBlockedOk(), 4);
   public static final ThreadState WAKE_KILL = new ThreadState(
-      "Wakekill", () -> colors().threadStateUninterruptile, 8);
+      "Wakekill", () -> threadStateBlockedWarn(), 8);
   public static final ThreadState WAKING = new ThreadState(
-      "Waking", () -> colors().threadStateUninterruptile, 8);
+      "Waking", () -> threadStateBlockedWarn(), 8);
   public static final ThreadState ZOMBIE = new ThreadState(
-      "Zombie", () -> colors().threadStateUninterruptile, 8);
-
+      "Zombie", () -> threadStateBlockedWarn(), 8);
   public static final ThreadState NONE = new ThreadState(
-      "", () -> colors().threadStateUnknown, 10);
+      "", () -> threadStateBlockedWarn(), 10);
 
   public final String label;
-  public final Supplier<RGBA> color;
+  public final Supplier<StyleConstants.Gradient> color;
   public final int mergePriority;
 
-  private ThreadState(String label, Supplier<RGBA> color, int mergePriority) {
+  private ThreadState(String label, Supplier<StyleConstants.Gradient> color, int mergePriority) {
     this.label = checkNotNull(label);
     this.color = color;
     this.mergePriority = mergePriority;
@@ -104,7 +107,7 @@ public class ThreadState {
       case "Z":
         return ZOMBIE;
       default:
-        return new ThreadState("Unknown (" + state + ")", () -> colors().threadStateUnknown, 10);
+        return new ThreadState("Unknown (" + state + ")", () -> threadStateBlockedWarn(), 10);
     }
   }
 

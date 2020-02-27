@@ -24,13 +24,13 @@ namespace interceptor {
 class Error {
  public:
   Error() = default;
-  Error(const char *format, ...) __attribute__((format(printf, 2, 3)));
+  Error(const char* format, ...) __attribute__((format(printf, 2, 3)));
 
   bool Fail() const { return !Success(); }
   bool Success() const { return message_.empty(); }
   bool operator()() const { return Success(); }
 
-  const std::string &GetMessage() const { return message_; }
+  const std::string& GetMessage() const { return message_; }
 
  private:
   std::string message_;

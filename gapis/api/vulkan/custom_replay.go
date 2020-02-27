@@ -251,6 +251,13 @@ func (i VkDebugUtilsMessengerEXT) remap(api.Cmd, *api.GlobalState) (key interfac
 	return
 }
 
+func (i VkDescriptorUpdateTemplate) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
+	if i != 0 {
+		key, remap = i, true
+	}
+	return
+}
+
 func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
@@ -429,10 +436,31 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	// Note that this is only necessary for building replay instructions
 	err := a.mutate(ctx, id, s, nil, w)
+	if err != nil {
+		return err
+	}
 	if b != nil {
 		l := s.MemoryLayout
 		// Ensure that the builder reads pImageIndex (which points to the correct image index at this point).
 		a.PImageIndex().Slice(0, 1, l).OnRead(ctx, a, s, b)
+		a.Call(ctx, s, b)
+	}
+	return err
+}
+
+func (a *VkAcquireNextImage2KHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	// Do the mutation, including applying memory write observations, before having the replay device call the vkAcquireNextImageKHR() command.
+	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
+	// Note that this is only necessary for building replay instructions
+	err := a.mutate(ctx, id, s, nil, w)
+	if err != nil {
+		return err
+	}
+	if b != nil {
+		l := s.MemoryLayout
+		// Ensure that the builder reads pImageIndex (which points to the correct image index at this point).
+		a.PImageIndex().Slice(0, 1, l).OnRead(ctx, a, s, b)
+		a.PAcquireInfo().Slice(0, 1, l).OnRead(ctx, a, s, b)
 		a.Call(ctx, s, b)
 	}
 	return err
@@ -703,6 +731,53 @@ func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 	return nil
 }
 
+func (c *VkCreateMacOSSurfaceMVK) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	if b == nil {
+		return c.mutate(ctx, id, g, b, w)
+	}
+	// When building replay instructions, insert a pNext struct to enable the
+	// virtual surface on the replay device.
+	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	newInfoData, pNextData := insertVirtualSwapchainPNext(ctx, c, id, c.PCreateInfo().MustRead(ctx, c, g, nil), g)
+	defer newInfoData.Free()
+	defer pNextData.Free()
+	cb := CommandBuilder{Thread: c.Thread(), Arena: g.Arena}
+	hijack := cb.VkCreateMacOSSurfaceMVK(
+		c.Instance(), newInfoData.Ptr(), c.PAllocator(), c.PSurface(), c.Result(),
+	).AddRead(newInfoData.Data()).AddRead(pNextData.Data())
+	for _, r := range c.Extras().Observations().Reads {
+		hijack.AddRead(r.Range, r.ID)
+	}
+	for _, w := range c.Extras().Observations().Writes {
+		hijack.AddWrite(w.Range, w.ID)
+	}
+	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
+	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
+	if (info.PNext()) != (Voidᶜᵖ(0)) {
+		numPNext := (externs{ctx, hijack, id, g, b, nil}.numberOfPNext(info.PNext()))
+		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
+		for i := uint32(0); i < numPNext; i++ {
+			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
+			next.SetPtr(VulkanStructHeaderᵖ(next.Ptr()).MustRead(ctx, hijack, g, b).PNext())
+		}
+	}
+	surface := NewSurfaceObjectʳ(
+		g.Arena, VkInstance(0), VkSurfaceKHR(0), SurfaceType(0),
+		NilVulkanDebugMarkerInfoʳ, NewVkPhysicalDeviceːQueueFamilySupportsʳᵐ(g.Arena))
+	surface.SetInstance(hijack.Instance())
+	surface.SetType(SurfaceType_SURFACE_TYPE_MACOS_MVK)
+
+	hijack.Call(ctx, g, b)
+
+	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
+	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
+	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	surface.SetVulkanHandle(handle)
+	GetState(g).Surfaces().Add(handle, surface)
+	hijack.Result()
+	return nil
+}
+
 func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
@@ -815,6 +890,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 		NilVulkanDebugMarkerInfoʳ,         // DebugInfo
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationNV
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationKHR
+		NilMemoryAllocateFlagsInfoʳ,       // MemoryAllocateFlagsInfo
 	)
 
 	c.DeviceMemories().Add(memory, memoryObject)

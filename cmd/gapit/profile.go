@@ -16,27 +16,25 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/service"
-	"github.com/google/gapid/gapis/service/path"
 )
 
-type profileVerb struct{ GetTimestampsFlags }
+type profileVerb struct{ GpuProfileFlags }
 
 func init() {
-	verb := &profileVerb{}
+	verb := &profileVerb{GpuProfileFlags{}}
 	app.AddVerb(&app.Verb{
 		Name:      "profile",
-		ShortHelp: "Profile a replay to get the time of executing the commands.",
+		ShortHelp: "Profile a replay to get time slices for gpu render stages.",
 		Action:    verb,
 	})
 }
@@ -67,46 +65,27 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	var out io.Writer = os.Stdout
-	if verb.Out != "" {
-		f, err := os.OpenFile(verb.Out, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	req := &service.GpuProfileRequest{
+		Capture: capturePath,
+		Device:  device,
+	}
+
+	res, err := client.GpuProfile(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if verb.Json {
+		jsonBytes, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
-			return log.Err(ctx, err, "Failed to open report output file")
+			return log.Err(ctx, err, "Couldn't marshal trace to JSON")
 		}
-		defer f.Close()
-		out = f
-	}
-
-	reportWriter := csv.NewWriter(out)
-	defer reportWriter.Flush()
-
-	header := []string{"BeginCmd", "EndCmd", "Time(ns)"}
-	if err = reportWriter.Write(header); err != nil {
-		log.Err(ctx, err, "Failed to write header")
-	}
-
-	cmdToString := func(cmd *path.Command) string {
-		return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(cmd.Indices)), "."), "[]")
-	}
-
-	req := &service.GetTimestampsRequest{
-		Capture:   capturePath,
-		Device:    device,
-		LoopCount: int32(verb.LoopCount),
-	}
-
-	client.GetTimestamps(ctx, req, func(r *service.GetTimestampsResponse) error {
-		if ts := r.GetTimestamps(); ts != nil {
-			for _, t := range ts.Timestamps {
-				begin := cmdToString(t.Begin)
-				end := cmdToString(t.End)
-				record := []string{begin, end, fmt.Sprint(t.TimeInNanoseconds)}
-				if err := reportWriter.Write(record); err != nil {
-					log.Err(ctx, err, "Failed to write record")
-				}
-			}
+		fmt.Fprintln(os.Stdout, string(jsonBytes))
+	} else {
+		err = proto.MarshalText(os.Stdout, res)
+		if err != nil {
+			return log.Err(ctx, err, "Couldn't marshal trace to text")
 		}
-		return nil
-	})
+	}
 	return nil
 }

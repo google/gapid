@@ -26,7 +26,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.Futures;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.views.MemorySummaryPanel;
@@ -34,17 +34,17 @@ import com.google.gapid.perfetto.views.MemorySummaryPanel;
 /**
  * {@link Track} containing the total system memory usage data.
  */
-public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
+public class MemorySummaryTrack extends Track.WithQueryEngine<MemorySummaryTrack.Data> {
   private static final String VIEW_SQL =
       "select ts, lead(ts) over (order by ts) - ts dur, max(a) total, max(b) unused," +
       "   max(c) + max(d) + max(e) buffCache " +
       "from (select ts," +
-      "  case when counter_id = %d then cast(value as int) end a," +
-      "  case when counter_id = %d then cast(value as int) end b," +
-      "  case when counter_id = %d then cast(value as int) end c," +
-      "  case when counter_id = %d then cast(value as int) end d," +
-      "  case when counter_id = %d then cast(value as int) end e " +
-      "  from counter_values where counter_id in (%d, %d, %d, %d, %d))" +
+      "  case when track_id = %d then cast(value as int) end a," +
+      "  case when track_id = %d then cast(value as int) end b," +
+      "  case when track_id = %d then cast(value as int) end c," +
+      "  case when track_id = %d then cast(value as int) end d," +
+      "  case when track_id = %d then cast(value as int) end e " +
+      "  from counter where track_id in (%d, %d, %d, %d, %d))" +
       "group by ts";
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), cast(avg(total) as int), cast(avg(unused) as int)," +
@@ -60,9 +60,9 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   private final long cachedId;
   private final long swapCachedId;
 
-  public MemorySummaryTrack(long maxTotal, long totalId, long unusedId, long buffersId,
-      long cachedId, long swapCachedId) {
-    super("mem_sum");
+  public MemorySummaryTrack(QueryEngine qe, long maxTotal, long totalId, long unusedId,
+      long buffersId, long cachedId, long swapCachedId) {
+    super(qe, "mem_sum");
     this.maxTotal = maxTotal;
     this.totalId = totalId;
     this.unusedId = unusedId;
@@ -76,7 +76,7 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String vals = tableName("vals");
     String span = tableName("span");
     String window = tableName("window");
@@ -95,12 +95,12 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window win = Window.compute(req, 5);
-    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(qe, req, win));
+    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(req, win));
   }
 
-  private ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req, Window win) {
+  private ListenableFuture<Data> computeData(DataRequest req, Window win) {
     return transform(qe.query(win.quantized ? summarySql() : counterSQL()), res -> {
       int rows = res.getNumRows();
       if (rows == 0) {
@@ -131,22 +131,23 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
     return format(COUNTER_SQL, tableName("span"));
   }
 
-  public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
-    CounterInfo total = onlyOne(data.getCountersByName().get("MemTotal"));
-    CounterInfo free = onlyOne(data.getCountersByName().get("MemFree"));
-    CounterInfo buffers = onlyOne(data.getCountersByName().get("Buffers"));
-    CounterInfo cached = onlyOne(data.getCountersByName().get("Cached"));
-    CounterInfo swapCached = onlyOne(data.getCountersByName().get("SwapCached"));
+  public static Perfetto.Data.Builder enumerate(Perfetto.Data.Builder data) {
+    ImmutableListMultimap<String, CounterInfo> counters = data.getCounters(CounterInfo.Type.Global);
+    CounterInfo total = onlyOne(counters.get("MemTotal"));
+    CounterInfo free = onlyOne(counters.get("MemFree"));
+    CounterInfo buffers = onlyOne(counters.get("Buffers"));
+    CounterInfo cached = onlyOne(counters.get("Cached"));
+    CounterInfo swapCached = onlyOne(counters.get("SwapCached"));
     if ((total == null) || (free  == null) || (buffers  == null) || (cached  == null) ||
         (swapCached  == null)) {
-      return Futures.immediateFuture(data);
+      return data;
     }
 
     MemorySummaryTrack track = new MemorySummaryTrack(
-        (long)total.max, total.id, free.id, buffers.id, cached.id, swapCached.id);
+        data.qe, (long)total.max, total.id, free.id, buffers.id, cached.id, swapCached.id);
     data.tracks.addTrack(null, track.getId(), "Memory Usage",
         single(state -> new MemorySummaryPanel(state, track), true));
-    return Futures.immediateFuture(data);
+    return data;
   }
 
   private static CounterInfo onlyOne(ImmutableList<CounterInfo> counters) {

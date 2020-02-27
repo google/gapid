@@ -20,17 +20,20 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
-	perfetto_pb "perfetto/config"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/gapis/perfetto"
+
+	common_pb "protos/perfetto/common"
 )
 
 const (
@@ -41,6 +44,11 @@ const (
 
 	maxRootAttempts                         = 5
 	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
+
+	perfettoPort = NamedFileSystemSocket("/dev/socket/traced_consumer")
+
+	driverOverride = "gapid.driver_package_override"
+	driverProperty = "ro.gfx.driver.1"
 )
 
 func isRootSuccessful(line string) bool {
@@ -271,49 +279,98 @@ func (b *binding) SupportsPerfetto(ctx context.Context) bool {
 	return os.GetAPIVersion() >= 28
 }
 
-func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
-	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() < 29 {
-		return &device.PerfettoCapability{}, log.Errf(ctx, nil, "Querying perfetto capability requires Android API >= 29")
+func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
+	if !b.SupportsPerfetto(ctx) {
+		return nil, fmt.Errorf("Perfetto is not supported on this device")
 	}
-	res, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
+
+	localPort, err := LocalFreeTCPPort()
 	if err != nil {
-		return &device.PerfettoCapability{}, log.Errf(ctx, err, "adb shell perfetto returned error: %s", res)
-	}
-	decoded, _ := base64.StdEncoding.DecodeString(res)
-	tracingServiceState := &perfetto_pb.TracingServiceState{}
-	if err = proto.Unmarshal(decoded, tracingServiceState); err != nil {
-		return &device.PerfettoCapability{}, log.Errf(ctx, err, "Unmarshal returned error")
-	}
-	perfettoCapability := &device.PerfettoCapability{
-		GpuProfiling: &device.GPUProfiling{},
-	}
-	dataSources := tracingServiceState.GetDataSources()
-	for _, dataSource := range dataSources {
-		dataSourceDescriptor := dataSource.GetDsDescriptor()
-		if dataSourceDescriptor.GetName() == gpuRenderStagesDataSourceDescriptorName {
-			perfettoCapability.GpuProfiling.HasRenderStage = true
-			continue
-		}
-		gpuCounterDescriptor := dataSourceDescriptor.GetGpuCounterDescriptor()
-		specs := gpuCounterDescriptor.GetSpecs()
-		if len(specs) == 0 || perfettoCapability.GpuProfiling.GpuCounterDescriptor != nil {
-			continue
-		}
-
-		// We mirror the Perfetto GpuCounterDescriptor proto into GAPID, hence
-		// they are binary format compatible.
-		data, err := proto.Marshal(gpuCounterDescriptor)
-		if err != nil {
-			continue
-		}
-		deviceGpuCounterDescriptor := &device.GpuCounterDescriptor{}
-		if err = proto.Unmarshal(data, deviceGpuCounterDescriptor); err != nil {
-			continue
-		}
-		perfettoCapability.GpuProfiling.GpuCounterDescriptor = deviceGpuCounterDescriptor
+		return nil, err
 	}
 
-	return perfettoCapability, nil
+	if err := b.Forward(ctx, localPort, perfettoPort); err != nil {
+		return nil, err
+	}
+	cleanup := app.Cleanup(func(ctx context.Context) {
+		b.RemoveForward(ctx, localPort)
+	})
+
+	conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%v", localPort))
+	if err != nil {
+		cleanup.Invoke(ctx)
+		return nil, err
+	}
+	return perfetto.NewClient(ctx, conn, cleanup)
+}
+
+// EnsurePerfettoPersistent ensures that Perfetto daemons, traced and
+// traced_probes, are running. Note that there is a delay between setting the
+// system property and daemons finish starting, hence this function needs to be
+// called as early as possible.
+func (b *binding) EnsurePerfettoPersistent(ctx context.Context) error {
+	if !b.SupportsPerfetto(ctx) {
+		return nil
+	}
+	if err := b.SetSystemProperty(ctx, "persist.traced.enable", "1"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
+	result := b.To.Configuration.PerfettoCapability
+	if result == nil {
+		result = &device.PerfettoCapability{
+			GpuProfiling: &device.GPUProfiling{},
+		}
+	}
+	gpu := result.GpuProfiling
+	if gpu == nil {
+		gpu = &device.GPUProfiling{}
+		result.GpuProfiling = gpu
+	}
+
+	if b.Instance().GetConfiguration().GetOS().GetName() == "R" {
+		// TODO(b/146384733): Change this to API version when it releases
+		gpu.HasFrameLifecycle = true
+	}
+
+	if !b.SupportsPerfetto(ctx) {
+		return result, fmt.Errorf("Perfetto is not supported on this device")
+	}
+
+	encoded, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
+	if err != nil {
+		return result, log.Errf(ctx, err, "adb shell perfetto returned error: %s", encoded)
+	}
+	decoded, _ := base64.StdEncoding.DecodeString(encoded)
+	state := &common_pb.TracingServiceState{}
+	if err = proto.Unmarshal(decoded, state); err != nil {
+		return result, log.Errf(ctx, err, "Unmarshal returned error")
+	}
+
+	for _, ds := range state.GetDataSources() {
+		desc := ds.GetDsDescriptor()
+		if desc.GetName() == gpuRenderStagesDataSourceDescriptorName {
+			gpu.HasRenderStage = true
+			continue
+		}
+		counters := desc.GetGpuCounterDescriptor().GetSpecs()
+		if len(counters) != 0 {
+			if gpu.GpuCounterDescriptor == nil {
+				gpu.GpuCounterDescriptor = &device.GpuCounterDescriptor{}
+			}
+			// We mirror the Perfetto GpuCounterDescriptor proto into GAPID, hence
+			// they are binary format compatible.
+			data, err := proto.Marshal(desc.GetGpuCounterDescriptor())
+			if err != nil {
+				continue
+			}
+			proto.UnmarshalMerge(data, gpu.GpuCounterDescriptor)
+		}
+	}
+	return result, nil
 }
 
 func extrasFlags(extras []android.ActionExtra) []string {
@@ -322,4 +379,42 @@ func extrasFlags(extras []android.ActionExtra) []string {
 		flags = append(flags, e.Flags()...)
 	}
 	return flags
+}
+
+// DriverPackage queries and returns the package of the preview graphics driver.
+func (b *binding) GraphicsDriver(ctx context.Context) (Driver, error) {
+	// Check if there is an override setup.
+	driver, err := b.SystemSetting(ctx, "global", driverOverride)
+	if err != nil {
+		driver = ""
+	}
+
+	if driver == "" || driver == "null" {
+		driver, err = b.SystemProperty(ctx, driverProperty)
+		if err != nil {
+			return Driver{}, err
+		}
+		if driver == "" {
+			// There is no prerelease driver.
+			return Driver{}, nil
+		}
+	}
+
+	// Check the package path of the driver.
+	path, err := b.Shell("pm", "path", driver).Call(ctx)
+	if err != nil {
+		return Driver{}, err
+	}
+	if !strings.HasPrefix(path, "package:") {
+		return Driver{}, nil
+	}
+	path = path[8:]
+	if path == "" {
+		return Driver{}, nil
+	}
+
+	return Driver{
+		Package: driver,
+		Path:    path,
+	}, nil
 }

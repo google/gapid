@@ -36,12 +36,15 @@ func (r *Recorder) State() *api.GlobalState {
 
 // MutateAndWrite records the command and id into the Cmds and CmdsAndIDs lists
 // and if the Recorder has a state, mutates this state object.
-func (r *Recorder) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
+func (r *Recorder) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 	if r.S != nil {
-		cmd.Mutate(ctx, id, r.S, nil, nil)
+		if err := cmd.Mutate(ctx, id, r.S, nil, nil); err != nil {
+			return err
+		}
 	}
 	r.Cmds = append(r.Cmds, cmd)
 	r.CmdsAndIDs = append(r.CmdsAndIDs, CmdAndID{cmd, id})
+	return nil
 }
 
 // Required to implement Writer interface

@@ -24,18 +24,22 @@ import static com.google.gapid.perfetto.views.TimelinePanel.drawGridLines;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
+import com.google.gapid.perfetto.models.Track;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * {@link Panel} displaying a {@link Track}.
  */
-public abstract class TrackPanel extends Panel.Base implements TitledPanel {
+public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
+    implements TitledPanel, CopyablePanel<T> {
   private static final double HOVER_X_OFF = 10;
   private static final double HOVER_Y_OFF = 7;
   private static final double HOVER_PADDING = 4;
@@ -89,7 +93,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
   }
 
   @Override
-  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
+  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
     if (x < LABEL_WIDTH) {
       String text = getTooltip();
       if (text.isEmpty()) {
@@ -117,11 +121,47 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
     } else if (y < TRACK_MARGIN || y > height - TRACK_MARGIN) {
       return Hover.NONE;
     }
-    return onTrackMouseMove(m, x - LABEL_WIDTH, y - TRACK_MARGIN)
+    return onTrackMouseMove(m, x - LABEL_WIDTH, y - TRACK_MARGIN, mods)
         .translated(LABEL_WIDTH, TRACK_MARGIN);
   }
 
-  protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y);
+  protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods);
+
+  // Helper functions for the track.getData(..) calls.
+  protected <D> Track.OnUiThread<D> onUiThread() {
+    return onUiThread(state, () -> { /* do nothing */ });
+  }
+
+  // Helper functions for the track.getData(..) calls.
+  protected <D> Track.OnUiThread<D> onUiThread(Repainter repainter) {
+    return onUiThread(state, () -> repainter.repaint(new Area(0, 0, width, height)));
+  }
+
+  public static <D> Track.OnUiThread<D> onUiThread(State state, Runnable repaint) {
+    return new Track.OnUiThread<D>() {
+      @Override
+      public void onUiThread(ListenableFuture<D> future, Consumer<D> callback) {
+        state.thenOnUiThread(future, callback);
+      }
+
+      @Override
+      public void repaint() {
+        repaint.run();
+      }
+    };
+  }
+
+  // Helper function to determine the color of a slice.
+  protected StyleConstants.Gradient getSliceColor(String title, int depth) {
+    int commaIndex = title.indexOf(',');
+    int colorCode = (commaIndex == -1) ? title.hashCode() :
+        title.substring(0, commaIndex).hashCode();
+    return StyleConstants.gradient(colorCode ^ depth);
+  }
+
+  protected StyleConstants.Gradient getSliceColor(String title) {
+    return getSliceColor(title, 0);
+  }
 
   private static class Tooltip {
     private static final Splitter LINE_SPLITTER =

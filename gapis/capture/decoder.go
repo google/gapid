@@ -1,3 +1,17 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package capture
 
 import (
@@ -67,13 +81,14 @@ func (d *decoder) BeginChildGroup(ctx context.Context, msg proto.Message, id, pa
 	return d.add(ctx, obj, d.groups[parentID])
 }
 
-func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
+func (d *decoder) endGroupImpl(ctx context.Context, id uint64, terminated bool) error {
 	obj := d.groups[id]
 	delete(d.groups, id)
 
 	switch obj := obj.(type) {
 	case *cmdGroup:
 		obj.invoked = true
+		obj.cmd.SetTerminated(terminated)
 		id := d.builder.addCmd(ctx, obj.cmd)
 		for _, c := range obj.children {
 			c.SetCaller(id)
@@ -81,6 +96,14 @@ func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
 	}
 
 	return nil
+}
+
+func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
+	return d.endGroupImpl(ctx, id, true)
+}
+
+func (d *decoder) EndGroupNonTerminated(ctx context.Context, id uint64) error {
+	return d.endGroupImpl(ctx, id, false)
 }
 
 func (d *decoder) Object(ctx context.Context, msg proto.Message) error {
@@ -193,6 +216,6 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 
 func (d *decoder) flush(ctx context.Context) {
 	for k := range d.groups {
-		d.EndGroup(ctx, k)
+		d.EndGroupNonTerminated(ctx, k)
 	}
 }

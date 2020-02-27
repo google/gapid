@@ -18,32 +18,39 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
-import static com.google.gapid.perfetto.views.StyleConstants.colorForThread;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
-import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.ThreadInfo;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Displays the CPU usage summary of a process, aggregating all threads.
  */
-public class ProcessSummaryPanel extends TrackPanel {
+public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
   private static final double HEIGHT = 50;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 1;
 
-  private final ProcessSummaryTrack track;
+  protected final ProcessSummaryTrack track;
+
   protected double mouseXpos;
   protected ThreadInfo.Display hoveredThread;
   protected double hoveredWidth;
@@ -52,6 +59,11 @@ public class ProcessSummaryPanel extends TrackPanel {
   public ProcessSummaryPanel(State state, ProcessSummaryTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public ProcessSummaryPanel copy() {
+    return new ProcessSummaryPanel(state, track);
   }
 
   @Override
@@ -78,9 +90,7 @@ public class ProcessSummaryPanel extends TrackPanel {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("ProcessSummaryPanel", () -> {
-      ProcessSummaryTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      ProcessSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -100,8 +110,7 @@ public class ProcessSummaryPanel extends TrackPanel {
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
 
-    ctx.setBackgroundColor(colors().cpuUsageFill);
-    ctx.setForegroundColor(colors().cpuUsageStroke);
+    mainGradient().applyBaseAndBorder(ctx);
     ctx.path(path -> {
       path.moveTo(0, h);
       double y = h, x = 0;
@@ -137,23 +146,35 @@ public class ProcessSummaryPanel extends TrackPanel {
   private void renderSlices(RenderContext ctx, ProcessSummaryTrack.Data data, double h) {
     // TODO: dedupe with CpuRenderer
     TimeSpan visible = state.getVisibleTime();
-    double cpuH = (h - state.getData().numCpus + 1) / state.getData().numCpus;
+    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    List<Highlight> visibleSelected = Lists.newArrayList();
+    int cpuCount = state.getCpuInfo().count();
+    double cpuH = (h - cpuCount + 1) / cpuCount;
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
-      int cpu = data.cpus[i];
+      CpuInfo.Cpu cpu = state.getCpuInfo().getById(data.cpus[i]);
       long utid = data.utids[i];
-      if (tEnd <= visible.start || tStart >= visible.end) {
+      if (cpu == null || tEnd <= visible.start || tStart >= visible.end) {
         continue;
       }
       double rectStart = state.timeToPx(tStart);
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
+      ThreadInfo thread = state.getThreadInfo(utid);
 
-      StyleConstants.HSL color = colorForThread(state.getThreadInfo(utid));
-      color = color.adjusted(color.h, color.s - 20, Math.min(color.l + 10,  60));
-      double y = cpuH * cpu + cpu;
-      ctx.setBackgroundColor(color.rgb());
+      double y = cpuH * cpu.index + cpu.index;
+      ctx.setBackgroundColor(state.getSliceColorForThread(thread));
       ctx.fillRect(rectStart, y, rectWidth, cpuH);
+
+      if (selected.contains(data.ids[i])) {
+        visibleSelected.add(new Highlight(thread.getColor().border, rectStart, y, rectWidth));
+      }
+    }
+
+    // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
+    for (Highlight highlight : visibleSelected) {
+      ctx.setForegroundColor(highlight.color);
+      ctx.drawRect(highlight.x, highlight.y, highlight.w, cpuH, BOUNDING_BOX_LINE_WIDTH);
     }
 
     if (hoveredThread != null) {
@@ -171,31 +192,33 @@ public class ProcessSummaryPanel extends TrackPanel {
   }
 
   @Override
-  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    ProcessSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+    ProcessSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
 
     switch (data.kind) {
-      case slice: return sliceHover(data, m, x, y);
+      case slice: return sliceHover(data, m, x, y, mods);
       case summary: return summaryHover(data, m, x);
       default: return Hover.NONE;
     }
   }
 
   private Hover sliceHover(
-      ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y) {
-    int cpu = (int)(y * state.getData().numCpus / HEIGHT);
-    if (cpu < 0 || cpu >= state.getData().numCpus) {
+      ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y, int mods) {
+    int cpuCount = state.getCpuInfo().count();
+    int cpuIdx = (int)(y * cpuCount / HEIGHT);
+    if (cpuIdx < 0 || cpuIdx >= cpuCount) {
       return Hover.NONE;
     }
+    int cpu = state.getCpuInfo().get(cpuIdx).id;
 
     mouseXpos = x;
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
       if (data.cpus[i] == cpu && data.starts[i] <= t && t <= data.ends[i]) {
-        hoveredThread = ThreadInfo.getDisplay(state.getData(), data.utids[i], true);
+        hoveredThread = ThreadInfo.getDisplay(state, data.utids[i], true);
         if (hoveredThread == null) {
           return Hover.NONE;
         }
@@ -203,6 +226,7 @@ public class ProcessSummaryPanel extends TrackPanel {
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
+        long utid = data.utids[i];
 
         return new Hover() {
           @Override
@@ -223,8 +247,14 @@ public class ProcessSummaryPanel extends TrackPanel {
 
           @Override
           public boolean click() {
-            state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
-            return false;
+            if ((mods & SWT.MOD1) == SWT.MOD1) {
+              state.addSelection(Selection.Kind.Cpu, track.getSlice(id));
+              state.addSelectedThread(state.getThreadInfo(utid));
+            } else {
+              state.setSelection(Selection.Kind.Cpu, track.getSlice(id));
+              state.setSelectedThread(state.getThreadInfo(utid));
+            }
+            return true;
           }
         };
       }
@@ -272,6 +302,18 @@ public class ProcessSummaryPanel extends TrackPanel {
       this.utilization = utilization;
       this.text = text;
       this.size = size;
+    }
+  }
+
+  private static class Highlight {
+    public final RGBA color;
+    public final double x, y, w;
+
+    public Highlight(RGBA color, double x, double y, double w) {
+      this.color = color;
+      this.x = x;
+      this.y = y;
+      this.w = w;
     }
   }
 }

@@ -194,11 +194,12 @@ untagSocket(48) failed with errno -22
 `),
 
 		// Common responses to all devices
-		stub.Regex(`adb -s .* shell getprop ro\.build\.product`, stub.Respond("hammerhead")),
-		stub.Regex(`adb -s .* shell getprop ro\.build\.version\.release`, stub.Respond("6.0.1")),
-		stub.Regex(`adb -s .* shell getprop ro\.build\.description`, stub.Respond("hammerhead-user 6.0.1 MMB29Q 2480792 release-keys")),
-		stub.Regex(`adb -s .* shell getprop ro\.product\.cpu\.abi`, stub.Respond("armeabi-v7a")),
-		stub.Regex(`adb -s .* shell getprop ro\.build\.version\.sdk`, stub.Respond("26")),
+		stub.Regex(`adb -s .* shell getprop ro\.build\.product`, stub.Respond("flame")),
+		stub.Regex(`adb -s .* shell getprop ro\.build\.version\.release`, stub.Respond("10")),
+		stub.Regex(`adb -s .* shell getprop ro\.build\.description`, stub.Respond("flame-user 10 QQ1A.191003.005 5926727 release-keys")),
+		stub.Regex(`adb -s .* shell getprop ro\.product\.cpu\.abi`, stub.Respond("arm64-v8a")),
+		stub.Regex(`adb -s .* shell getprop ro\.build\.version\.sdk`, stub.Respond("29")),
+		stub.Regex(`adb -s .* shell setprop persist\.traced\.enable 1`, stub.Respond("")),
 
 		stub.Regex(`adb -s .* shell input .*`, stub.Respond("")),
 	)

@@ -17,6 +17,7 @@ package com.google.gapid.models;
 
 import static com.google.gapid.util.Paths.compare;
 import static com.google.gapid.util.Paths.isNull;
+import static com.google.gapid.util.Paths.pipelinesAfter;
 import static com.google.gapid.util.Paths.resourceAfter;
 import static java.util.Collections.emptyList;
 
@@ -59,16 +60,16 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
   }
 
   @Override
-  protected Path.Any getPath(Path.Capture capturePath) {
+  protected Path.Any getSource(Capture.Data data) {
     return Path.Any.newBuilder()
         .setResources(Path.Resources.newBuilder()
-            .setCapture(capturePath))
+            .setCapture(data.path))
         .build();
   }
 
   @Override
-  protected boolean shouldLoad(Capture c) {
-    return c.isGraphics();
+  protected boolean shouldLoad(Capture.Data data) {
+    return data.isGraphics();
   }
 
   @Override
@@ -115,6 +116,18 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     return MoreFutures.transform(
         client.get(resourceAfter(after, resource.getID()), getData().device),
         Service.Value::getResourceData);
+  }
+
+  public ListenableFuture<API.MultiResourceData> loadBoundPipelines() {
+    CommandIndex after = commands.getSelectedCommands();
+    if (after == null) {
+      return Futures.immediateFailedFuture(new RuntimeException("No command selected"));
+    }
+
+    // TODO: don't get the device via getData
+    return MoreFutures.transform(
+        client.get(pipelinesAfter(after), getData().device),
+        Service.Value::getMultiResourceData);
   }
 
   public void updateResource(Service.Resource resource, API.ResourceData data) {

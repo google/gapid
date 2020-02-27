@@ -1,0 +1,109 @@
+{{/*
+ * Copyright (C) 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{Global "Vulkan.LayerName" "MemoryTracker"}}
+{{Global "Vulkan.LayerNamespace" "memory_tracker"}}
+{{Global "Vulkan.Layer Description" "Vulkan Memory Tracker Layer"}}
+
+
+{{Include "../../../../gapis/api/templates/cpp_common.tmpl"}}
+
+
+{{define "TrackedForGpuAllocations"}}
+vkCreateDevice
+vkDestroyDevice
+vkAllocateMemory
+vkFreeMemory
+vkCreateBuffer
+vkBindBufferMemory
+vkBindBufferMemory2
+vkBindBufferMemoryKHR
+vkDestroyBuffer
+vkCreateImage
+vkBindImageMemory
+vkBindImageMemory2
+vkBindImageMemoryKHR
+vkDestroyImage
+{{end}}
+
+{{define "BeginPlatformIfDef"}}
+  {{$a := GetAnnotation $ "platform"}}
+  {{if $a}}#if defined({{(index $a.Arguments 0)}}){{end}}
+{{end}}
+
+{{define "EndPlatformIfDef"}}
+  {{$a := GetAnnotation $ "platform"}}
+  {{if $a}}#endif // {{(index $a.Arguments 0)}}{{end}}
+{{end}}
+
+{{define "GetVkReturnType"}}
+  {{$return_type := (Macro "C++.ReturnType" $)}}
+  {{if eq ($return_type) "uint32_t"}}VkResult{{else}}{{$return_type}}{{end}}
+{{end}}
+
+{{define "DoesGpuAllocation"}}
+  {{$filters := Strings (Macro "TrackedForGpuAllocations") | SplitEOL}}
+  {{range $f := $filters}}
+    {{if eq $.Name $f}}true{{end}}
+  {{end}}
+{{end}}
+
+{{define "DoesHaveAllocatorParam"}}
+  {{if (and (HasPrefix $.Name "vk") (Contains "pAllocator" (Macro "C++.CallArguments" $)) )}}true{{end}}
+{{end}}
+
+{{Global "Vulkan.OverrideFunctions" "dummy\n"}}
+{{/* We need to override all the functions that use allocation callback or relate to gpu allocation */}}
+{{range $c := AllCommands $}}
+  {{if (or (Macro "DoesGpuAllocation" $c) (Macro "DoesHaveAllocatorParam" $c) )}}
+    {{$alloctionCallbacks := Global "Vulkan.OverrideFunctions"}}
+    {{Global "Vulkan.OverrideFunctions" ($c.Name | Strings $alloctionCallbacks | JoinWith "\n") }}
+  {{end}}
+{{end}}
+
+{{Global "Vulkan.OverrideFunctions" ((Global "Vulkan.OverrideFunctions") | SplitEOL)}}
+{{Global "Vulkan.OtherUsedFunctions" "dummy" "vkGetPhysicalDeviceMemoryProperties" "vkGetBufferMemoryRequirements" "vkGetImageMemoryRequirements"}}
+
+{{$ | Macro "AllocationCallbackTracking" | Reflow 4 | Write "allocation_callbacks_impl.cpp"}}
+
+{{define "AllocationCallbackTracking"}}
+
+{{Template "C++.Copyright"}}
+#include "core/vulkan/vk_memory_tracker_layer/cc/memory_tracker_layer_impl.h"
+¶
+namespace {{(Global "Vulkan.LayerNamespace")}} {
+¶
+extern MemoryTracker memory_tracker_instance;
+¶
+{{range $c := AllCommands $}}
+  {{if (and (not (Macro "DoesGpuAllocation" $c)) (Macro "DoesHaveAllocatorParam" $c) )}}
+    {{Template "BeginPlatformIfDef" $c}}
+    {{Macro "GetVkReturnType" $c}} {{$c.Name}}(PFN_{{$c.Name}} fn, {{Macro "C++.BaseCallParameters" $c | JoinWith ", "}}) {
+      AllocationCallbacks trackedAllocator = memory_tracker_instance.GetTrackedAllocator(pAllocator, "{{$c.Name}}");
+      return fn({{range $i, $p := $c.CallParameters}}{{if $i}}, {{end}}{{if eq $p.Name "pAllocator"}}trackedAllocator§{{else}}{{$p.Name}}§{{end}}
+      {{end}}
+      );
+    }
+  {{Template "EndPlatformIfDef" $c}}
+¶
+{{end}}
+{{end}}
+¶
+}  // namespace {{(Global "Vulkan.LayerNamespace")}}
+{{end}}
+
+{{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
+

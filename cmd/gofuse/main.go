@@ -208,8 +208,17 @@ func run() error {
 		extMapping = append(extMapping, m...)
 	}
 
+	thirdPartiesOut := filepath.Join(projectRoot, "bazel-out", *bazelOutDirectory, "bin", "tools", "build", "third_party")
+	fmt.Println("Collecting generated .go from:", thirdPartiesOut)
+	perfettoProtosMappingOut := collect(thirdPartiesOut, always).ifTrue(and(
+		isFile,
+		contains(filepath.Join("protos", "perfetto")),
+		hasSuffix(".go")),
+	).mapping(func(path string) string {
+		return filepath.Join(fusedRoot, "src", trimUpTo(rel(projectRoot, path), "protos"))
+	})
 	// Every mapping we're going to deal with.
-	allMappings := join(srcMapping, genfilesMappingOut, binMappingOut, templateGenedGofiles, templateGenedCppfiles, extMapping)
+	allMappings := join(srcMapping, genfilesMappingOut, binMappingOut, templateGenedGofiles, templateGenedCppfiles, extMapping, perfettoProtosMappingOut)
 
 	// Remove all existing symlinks in the fused directory that are not part of the
 	// mappings. This may never happen if the OS automatically deletes deleted

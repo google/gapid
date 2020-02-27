@@ -1,3 +1,17 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package transform
 
 import (
@@ -35,7 +49,7 @@ func (t *Tasks) sort() {
 	}
 }
 
-func (t *Tasks) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
+func (t *Tasks) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) error {
 	if id.IsReal() {
 		t.sort()
 		for len(t.tasks) > 0 && t.tasks[0].at < id {
@@ -43,16 +57,18 @@ func (t *Tasks) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Wr
 			t.tasks = t.tasks[1:]
 		}
 	}
-	out.MutateAndWrite(ctx, id, cmd)
+	return out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *Tasks) Flush(ctx context.Context, out Writer) {
+func (t *Tasks) Flush(ctx context.Context, out Writer) error {
 	t.sort()
 	for _, task := range t.tasks {
 		task.work(ctx, out)
 	}
 	t.tasks = nil
+	return nil
 }
 
 func (t *Tasks) PreLoop(ctx context.Context, output Writer)  {}
 func (t *Tasks) PostLoop(ctx context.Context, output Writer) {}
+func (t *Tasks) BuffersCommands() bool                       { return false }

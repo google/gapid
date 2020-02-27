@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.gapid.perfetto.canvas.Panel;
+import com.google.gapid.perfetto.views.CopyablePanel;
 import com.google.gapid.perfetto.views.State;
 
 import java.util.List;
@@ -48,21 +49,21 @@ public class TrackConfig {
       this.uiFactory = uiFactory;
     }
 
-    public abstract Panel createUi(State state);
+    public abstract CopyablePanel<?> createUi(State.ForSystemTrace state);
   }
 
-  public static class Track<T extends Panel> extends Element<Track.UiFactory<T>> {
+  public static class Track<T extends CopyablePanel<T>> extends Element<Track.UiFactory<T>> {
     public Track(String id, String name, UiFactory<T> uiFactory) {
       super(id, name, uiFactory);
     }
 
     @Override
-    public T createUi(State state) {
+    public T createUi(State.ForSystemTrace state) {
       return uiFactory.createPanel(state);
     }
 
     public interface UiFactory<T extends Panel> {
-      public T createPanel(State state);
+      public T createPanel(State.ForSystemTrace state);
     }
   }
 
@@ -75,14 +76,15 @@ public class TrackConfig {
     }
 
     @Override
-    public Panel createUi(State state) {
-      ImmutableList.Builder<Panel> children = ImmutableList.builder();
+    public CopyablePanel<?> createUi(State.ForSystemTrace state) {
+      ImmutableList.Builder<CopyablePanel<?>> children = ImmutableList.builder();
       tracks.forEach(track -> children.add(track.createUi(state)));
       return uiFactory.createPanel(state, children.build());
     }
 
     public interface UiFactory {
-      public Panel createPanel(State state, ImmutableList<Panel> children);
+      public CopyablePanel<?> createPanel(
+          State.ForSystemTrace state, ImmutableList<CopyablePanel<?>> children);
     }
   }
 
@@ -163,7 +165,7 @@ public class TrackConfig {
       }
 
       @SuppressWarnings("unchecked")
-      public <T extends Panel> Track<T> track() {
+      public <T extends CopyablePanel<T>> Track<T> track() {
         return new Track<T>(id, name, (Track.UiFactory<T>)uiFactory);
       }
 

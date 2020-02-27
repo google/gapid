@@ -46,8 +46,8 @@ import (
 //      always be a slice at this point.
 type Pool struct {
 	writes  poolWriteList
-	OnRead  func(rng Range, root uint64, t uint64)
-	OnWrite func(rng Range, root uint64, t uint64)
+	OnRead  func(rng Range, root uint64, t uint64, api id.ID)
+	OnWrite func(rng Range, root uint64, t uint64, api id.ID)
 }
 
 // PoolID is an identifier of a Pool.

@@ -41,6 +41,6 @@ func mustConnect(ctx context.Context, serial string) adb.Device {
 func TestADBShell(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	d := mustConnect(ctx, "production_device")
-	assert.For(ctx, "Device").ThatString(d).Equals("hammerhead")
-	assert.For(ctx, "Device shell").ThatString(d.Shell("").Target).Equals("shell:hammerhead")
+	assert.For(ctx, "Device").ThatString(d).Equals("flame")
+	assert.For(ctx, "Device shell").ThatString(d.Shell("").Target).Equals("shell:flame")
 }

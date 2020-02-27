@@ -52,6 +52,7 @@ java_grpc_library(
 java_library(
     name = "protos",
     exports = [
+        ":settings_java_proto",
         "//core/data/pod:pod_java_proto",
         "//core/image:image_java_proto",
         "//core/log/log_pb:log_pb_java_proto",
@@ -70,4 +71,17 @@ java_library(
         "//gapis/vertex:vertex_java_proto",
         "//tools/build/third_party/perfetto:config_java_proto",
     ],
+)
+
+proto_library(
+    name = "settings_proto",
+    srcs = ["com/google/gapid/settings.proto"],
+    deps = [
+        "@perfetto//:protos_perfetto_config_merged_config_protos",
+    ],
+)
+
+java_proto_library(
+    name = "settings_java_proto",
+    deps = [":settings_proto"],
 )

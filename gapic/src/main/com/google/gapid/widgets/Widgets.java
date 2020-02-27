@@ -45,6 +45,7 @@ import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
@@ -65,6 +66,7 @@ import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Sash;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.TabFolder;
@@ -86,6 +88,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -278,7 +281,10 @@ public class Widgets {
     return new ToolItem(bar, SWT.SEPARATOR);
   }
 
-  public static void exclusiveSelection(ToolItem... items) {
+  /**
+   * Returns a function that allows manually selecting the ith item.
+   */
+  public static IntConsumer exclusiveSelection(ToolItem... items) {
     Listener listener = e -> {
       for (ToolItem item : items) {
         item.setSelection(e.widget == item);
@@ -289,6 +295,12 @@ public class Widgets {
       item.setSelection(false);
     }
     items[0].setSelection(true);
+
+    return index -> {
+      for (int i = 0; i < items.length; i++) {
+        items[i].setSelection(i == index);
+      }
+    };
   }
 
   public static Label createLabel(Composite parent, String label) {
@@ -357,10 +369,24 @@ public class Widgets {
     return result;
   }
 
+  public static Button createButtonWithImage(Composite parent, Image image, Listener listener) {
+    Button result = new Button(parent, SWT.PUSH);
+    result.setImage(image);
+    result.addListener(SWT.Selection, listener);
+    return result;
+  }
+
   public static Spinner createSpinner(Composite parent, int value, int min, int max) {
     Spinner result = new Spinner(parent, SWT.BORDER);
-    result.setMinimum(min);
-    result.setMaximum(max);
+    // Avoid not being able to update the minimum value.
+    // According to SWT's API, min will be ignored if it's greater then the previous max.
+    if (min > result.getMaximum()) {
+      result.setMaximum(max);
+      result.setMinimum(min);
+    } else {
+      result.setMinimum(min);
+      result.setMaximum(max);
+    }
     result.setSelection(value);
 
     if (OS.isMac) {
@@ -742,6 +768,26 @@ public class Widgets {
 
   public static Composite createComposite(Composite parent, Layout layout, int style) {
     Composite composite = new Composite(parent, style);
+    composite.setLayout(layout);
+    return composite;
+  }
+
+  public static Sash createHorizontalSash(Composite parent, Listener selectionListener) {
+    return createSash(parent, SWT.HORIZONTAL, selectionListener);
+  }
+
+  public static Sash createVerticalSash(Composite parent, Listener selectionListener) {
+    return createSash(parent, SWT.VERTICAL, selectionListener);
+  }
+
+  public static Sash createSash(Composite parent, int style, Listener selectionListener) {
+    Sash sash = new Sash(parent, style);
+    sash.addListener(SWT.Selection, selectionListener);
+    return sash;
+  }
+
+  public static ScrolledComposite createScrolledComposite(Composite parent, Layout layout, int style) {
+    ScrolledComposite composite = new ScrolledComposite(parent, style);
     composite.setLayout(layout);
     return composite;
   }

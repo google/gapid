@@ -138,6 +138,11 @@ func run(ctx context.Context) error {
 	} else {
 		os.RemoveAll(tmpdir)
 	}
+
+	if nbErr > 0 {
+		// Return a non-nil error to force a non-zero exit value
+		return fmt.Errorf("Smoketests: %d %s found", nbErr, errStr)
+	}
 	return nil
 }
 
@@ -150,7 +155,6 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 
 		{"commands", tracepath},
 		{"commands", "-context", "0", tracepath},
-		{"commands", "-context", "1000", tracepath},
 		{"commands", "-groupbyapi", tracepath},
 		{"commands", "-groupbycontext", tracepath},
 		{"commands", "-groupbydrawcall", tracepath},
@@ -167,11 +171,8 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 		{"dump", tracepath},
 		{"dump_fbo", tracepath},
 		{"dump_pipeline", tracepath},
-		{"dump_replay", tracepath},
 		{"dump_resources", tracepath},
-		{"export_replay", tracepath},
 		{"memory", tracepath},
-		{"stats", tracepath},
 		{"trim", tracepath},
 		{"unpack", tracepath},
 	}

@@ -286,7 +286,7 @@ import (
     return {{$name}}({{Template "Go.Decode" $.NumberType}})
   }
 
-  func {{$name}}Constants() int {
+  func {{$name}}Constants() int32 {
     return {{ConstantSetIndex $}}
   }
 {{end}}
@@ -1168,7 +1168,7 @@ import (
     }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnRead; f != nil {
-        f(s.Range(),  s.root, {{$slice_ty}}TypeIndex)
+        f(s.Range(),  s.root, {{$slice_ty}}TypeIndex, ϟc.API().ID().CoreId())
       }
     }
     if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
@@ -1225,7 +1225,7 @@ import (
     }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnWrite; f != nil {
-        f(s.Range(), s.root, {{$slice_ty}}TypeIndex)
+        f(s.Range(), s.root, {{$slice_ty}}TypeIndex, ϟc.API().ID().CoreId())
       }
     }
     if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
@@ -1747,6 +1747,8 @@ import (
     {{end}}
     arena arena.Arena
     refID ϟapi.RefID
+    // Use "notTerminated" such that default (false) is terminated command
+    notTerminated bool
   }
 
   // Arena returns the memory arena used to allocate this command.
@@ -1759,6 +1761,10 @@ import (
   func (ϟc *{{$name}}) Caller() ϟapi.CmdID { return ϟc.caller }
 
   func (ϟc *{{$name}}) SetCaller(id ϟapi.CmdID) { ϟc.caller = id }
+
+  func (ϟc *{{$name}}) Terminated() bool { return !ϟc.notTerminated }
+
+  func (ϟc *{{$name}}) SetTerminated(terminated bool) { ϟc.notTerminated = !terminated }
 
   func (ϟc *{{$name}}) CmdName() string { return "{{$.Name}}" }
 

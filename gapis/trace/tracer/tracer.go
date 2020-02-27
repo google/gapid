@@ -15,10 +15,12 @@
 package tracer
 
 import (
+	"bytes"
 	"context"
 	"io"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device/bind"
 	gapii "github.com/google/gapid/gapii/client"
@@ -46,7 +48,7 @@ type Process interface {
 	// until start is fired.
 	// Capturing will stop when the stop signal is fired (clean stop) or the
 	// context is cancelled (abort).
-	Capture(ctx context.Context, start task.Signal, stop task.Signal, w io.Writer, written *int64) (size int64, err error)
+	Capture(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (size int64, err error)
 }
 
 // Tracer is an option interface that a bind.Device can implement.
@@ -68,6 +70,33 @@ type Tracer interface {
 
 	// GetDevice returns the device associated with this tracer
 	GetDevice() bind.Device
+	// ProcessProfilingData takes a buffer for a Perfetto trace and translates it into
+	// a ProfilingData
+	ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error)
+	// Validate validates the GPU profiling capabilities of the given device and returns
+	// an error if validation failed or the GPU profiling data is invalid.
+	Validate(ctx context.Context) error
+}
+
+// LayersFromOptions Parses the perfetto options, and returns the required layers
+func LayersFromOptions(ctx context.Context, o *service.TraceOptions) []string {
+	ret := []string{}
+	if o.PerfettoConfig == nil {
+		return ret
+	}
+
+	added := map[string]struct{}{}
+	for _, x := range o.PerfettoConfig.GetDataSources() {
+		if layer, err := layout.LayerFromDataSource(x.GetConfig().GetName()); err == nil {
+			if _, err := layout.LibraryFromLayerName(layer); err == nil {
+				if _, ok := added[layer]; !ok {
+					added[layer] = struct{}{}
+					ret = append(ret, layer)
+				}
+			}
+		}
+	}
+	return ret
 }
 
 // GapiiOptions converts the given TraceOptions to gapii.Options.

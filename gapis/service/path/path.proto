@@ -54,18 +54,19 @@ message Any {
     Messages messages = 26;
     MultiResourceData multi_resource_data = 27;
     Parameter parameter = 28;
-    Report report = 29;
-    ResourceData resource_data = 30;
-    Resources resources = 31;
-    Result result = 32;
-    Slice slice = 33;
-    State state = 34;
-    StateTree state_tree = 35;
-    StateTreeNode state_tree_node = 36;
-    StateTreeNodeForPath state_tree_node_for_path = 37;
-    Stats stats = 38;
-    Thumbnail thumbnail = 39;
-    Type type = 40;
+    Pipelines pipelines = 29;
+    Report report = 30;
+    ResourceData resource_data = 31;
+    Resources resources = 32;
+    Result result = 33;
+    Slice slice = 34;
+    State state = 35;
+    StateTree state_tree = 36;
+    StateTreeNode state_tree_node = 37;
+    StateTreeNodeForPath state_tree_node_for_path = 38;
+    Stats stats = 39;
+    Thumbnail thumbnail = 40;
+    Type type = 41;
   }
 }
 
@@ -148,7 +149,7 @@ message Commands {
 // Resolves to a service.ConstantSet.
 message ConstantSet {
   API API = 1;
-  uint32 index = 2;
+  int32 index = 2;
 }
 
 // Events is a path to a list of events in a capture.
@@ -179,6 +180,7 @@ message Parameter {
 // Type is the path to a type used in an API.
 message Type {
   uint64 type_index = 1;
+  API API = 2;
 }
 
 // Result is the path to the result value of a command.
@@ -400,6 +402,12 @@ message Metrics {
   bool memory_breakdown = 2;
 }
 
+// Pipelines requests the currently bound piplines for a given command.
+message Pipelines {
+  // The command after which to get the currently bound piplines.
+  Command after = 1;
+}
+
 // Report is a path to a list of report items for a capture.
 message Report {
   Capture capture = 1;
@@ -518,14 +526,6 @@ message Thumbnail {
   }
 
   bool disable_optimization = 7;
-}
-
-message OverrideConfig {
-  bool viewport_size = 1;
-  bool fragment_shader = 2;
-  bool vertex_count = 3;
-  bool sampling = 4;
-  bool texture_size = 5;
 }
 
 message ResolveConfig {

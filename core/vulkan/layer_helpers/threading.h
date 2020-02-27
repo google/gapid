@@ -33,8 +33,8 @@ namespace threading {
 
 class mutex {
  public:
-  mutex(const mutex &) = delete;
-  mutex &operator=(const mutex &) = delete;
+  mutex(const mutex&) = delete;
+  mutex& operator=(const mutex&) = delete;
   mutex() {
 #ifdef _WIN32
     InitializeCriticalSection(&mutex_);
@@ -68,9 +68,9 @@ class mutex {
   }
 
 #ifdef _WIN32
-  CRITICAL_SECTION &native_handle() { return mutex_; }
+  CRITICAL_SECTION& native_handle() { return mutex_; }
 #else
-  pthread_mutex_t &native_handle() { return mutex_; }
+  pthread_mutex_t& native_handle() { return mutex_; }
 #endif
 
  private:
@@ -85,8 +85,8 @@ enum class cv_status { timeout, no_timeout };
 
 class condition_variable {
  public:
-  condition_variable(const condition_variable &) = delete;
-  condition_variable &operator=(const condition_variable &) = delete;
+  condition_variable(const condition_variable&) = delete;
+  condition_variable& operator=(const condition_variable&) = delete;
   condition_variable() {
 #ifdef _WIN32
     InitializeConditionVariable(&condition_);
@@ -102,9 +102,9 @@ class condition_variable {
 #endif
   }
   template <class Rep, class Period>
-  cv_status wait_for(std::unique_lock<mutex> &lock,
-                     const std::chrono::duration<Rep, Period> &rel_time) {
-    auto &native_handle = lock.mutex()->native_handle();
+  cv_status wait_for(std::unique_lock<mutex>& lock,
+                     const std::chrono::duration<Rep, Period>& rel_time) {
+    auto& native_handle = lock.mutex()->native_handle();
 #ifdef _WIN32
     auto time =
         std::chrono::duration_cast<std::chrono::milliseconds>(rel_time).count();
@@ -126,8 +126,8 @@ class condition_variable {
 #endif
   }
 
-  void wait(std::unique_lock<mutex> &lock) {
-    auto &native_handle = lock.mutex()->native_handle();
+  void wait(std::unique_lock<mutex>& lock) {
+    auto& native_handle = lock.mutex()->native_handle();
 #ifdef _WIN32
     SleepConditionVariableCS(&condition_, &native_handle, INFINITE);
 #else
@@ -157,6 +157,85 @@ class condition_variable {
 #else
   pthread_cond_t condition_;
 #endif
+};
+
+class rwlock {
+ public:
+  rwlock(const rwlock&) = delete;
+  rwlock& operator=(const rwlock&) = delete;
+
+  rwlock() {
+#ifdef _WIN32
+    rwlock_ = SRWLOCK_INIT;
+#else
+    pthread_rwlock_init(&rwlock_, nullptr);
+#endif
+  }
+
+  ~rwlock() {
+#ifdef _WIN32
+    ;
+#else
+    pthread_rwlock_destroy(&rwlock_);
+#endif
+  }
+
+  void wlock() {
+#ifdef _WIN32
+    AcquireSRWLockExclusive(&rwlock_);
+#else
+    pthread_rwlock_wrlock(&rwlock_);
+#endif
+  }
+
+  void rlock() {
+#ifdef _WIN32
+    AcquireSRWLockShared(&rwlock_);
+#else
+    pthread_rwlock_rdlock(&rwlock_);
+#endif
+  }
+
+  void wunlock() {
+#ifdef _WIN32
+    ReleaseSRWLockExclusive(&rwlock_);
+#else
+    pthread_rwlock_unlock(&rwlock_);
+#endif
+  }
+
+  void runlock() {
+#ifdef _WIN32
+    ReleaseSRWLockShared(&rwlock_);
+#else
+    pthread_rwlock_unlock(&rwlock_);
+#endif
+  }
+
+ private:
+#ifdef _WIN32
+  PSRWLOCK rwlock_;
+#else
+  pthread_rwlock_t rwlock_;
+#endif
+};
+
+class scoped_read_lock {
+ public:
+  scoped_read_lock(rwlock* lock) : lock_(lock) { lock_->rlock(); }
+  ~scoped_read_lock() { lock_->runlock(); }
+
+ private:
+  rwlock* lock_;
+};
+
+class scoped_write_lock {
+ public:
+  scoped_write_lock(rwlock* lock) : lock_(lock) { lock_->wlock(); }
+  ~scoped_write_lock() { lock_->wunlock(); }
+
+ private:
+  rwlock* lock_;
 };
 
 }  // namespace threading

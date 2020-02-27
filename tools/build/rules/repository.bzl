@@ -111,3 +111,57 @@ def maybe_repository(repo_rule, name, locals, **kwargs):
             path = locals.get(name),
             build_file = build_file
         )
+
+# This is *not* a complete maven implementation, it's just good enough for our rules.
+
+_MAVEN_URL = "https://repo.maven.apache.org/maven2"
+_MAVEN_RULE = """java_import(
+    name = "jar{}",
+    jars = ["{}"],
+    visibility = ["//visibility:public"],
+)
+"""
+
+def _maven_download(ctx, baseUrl, artifact, type, sha256):
+    ctx.download(
+        url = baseUrl + type + ".jar",
+        output = artifact + type + ".jar",
+        sha256 = sha256,
+    )
+    return [_MAVEN_RULE.format(type, artifact + type + ".jar")]
+
+def _maven_jar_impl(ctx):
+    toks = ctx.attr.artifact.split(":")
+    if len(toks) != 3:
+        fail("Invalid maven artifact: " + ctx.attr.artifact)
+
+    baseUrl = "{}/{}/{}/{}/{}-{}".format(
+        _MAVEN_URL, toks[0].replace(".", "/"), # group
+        toks[1], toks[2], toks[1], toks[2])    # 2x (artifact and version)
+
+    parts = _maven_download(ctx, baseUrl, toks[1], "", ctx.attr.sha256)
+    if ctx.attr.sha256_src:
+        parts += _maven_download(ctx, baseUrl, toks[1], "-sources", ctx.attr.sha256_src)
+    if ctx.attr.sha256_linux:
+        parts += _maven_download(ctx, baseUrl, toks[1], "-natives-linux", ctx.attr.sha256_linux)
+    if ctx.attr.sha256_windows:
+        parts += _maven_download(ctx, baseUrl, toks[1], "-natives-windows", ctx.attr.sha256_windows)
+    if ctx.attr.sha256_macos:
+        parts += _maven_download(ctx, baseUrl, toks[1], "-natives-macos", ctx.attr.sha256_macos)
+
+    ctx.file("BUILD.bazel",
+        content = "\n".join(parts),
+        executable = False,
+    )
+
+maven_jar = repository_rule(
+    _maven_jar_impl,
+    attrs = {
+        "artifact": attr.string(mandatory = True),
+        "sha256": attr.string(mandatory = True),
+        "sha256_src": attr.string(mandatory = False),
+        "sha256_linux": attr.string(mandatory = False),
+        "sha256_windows": attr.string(mandatory = False),
+        "sha256_macos": attr.string(mandatory = False),
+    },
+)

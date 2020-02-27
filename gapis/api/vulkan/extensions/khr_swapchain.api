@@ -52,6 +52,13 @@
 ///////////////
 // Bitfields //
 ///////////////
+@unused
+bitfield VkSwapchainCreateFlagBitsKHR {
+    VK_SWAPCHAIN_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR = 0x00000001,
+    VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR = 0x00000002,
+    VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR = 0x00000004,
+    VK_SWAPCHAIN_CREATE_FLAG_BITS_MAX_ENUM_KHR = 0x7FFFFFFF
+}
 
 @extension("VK_KHR_swapchain")
 @reserved_flags
@@ -132,7 +139,8 @@ cmd VkResult vkCreateSwapchainKHR(
     PreTransform:    create_info.preTransform,
     CompositeAlpha:  create_info.compositeAlpha,
     PresentMode:     create_info.presentMode,
-    Clipped:         create_info.clipped
+    Clipped:         create_info.clipped,
+    Flags:           create_info.flags
   )
 
   for i in (0 .. create_info.queueFamilyIndexCount) {
@@ -177,6 +185,24 @@ cmd VkResult vkCreateSwapchainKHR(
   return ?
 }
 
+sub bool imageUsedByAnotherSwapchain(
+    ref!ImageObject     imageObject,
+    ref!SwapchainObject swapchainObject) {
+  found := MutableBool(false)
+  if (swapchainObject != null) && (imageObject != null) {
+    for _, _, s in Swapchains {
+      if (s != null) && (s != swapchainObject) {
+        for _, _, i in s.SwapchainImages {
+          if i == imageObject {
+            found.b = true
+          }
+        }
+      }
+    }
+  }
+  return found.b
+}
+
 @extension("VK_KHR_swapchain")
 @indirect("VkDevice")
 cmd void vkDestroySwapchainKHR(
@@ -184,13 +210,16 @@ cmd void vkDestroySwapchainKHR(
     VkSwapchainKHR      swapchain,
     AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
   swapObject := Swapchains[swapchain]
-  if swapObject != null {
-    for _ , _ , v in swapObject.SwapchainImages {
+  for _ , _ , v in swapObject.SwapchainImages {
+    // Some images may be reused between swapchains via the oldSwapchain
+    // argument of vkCreateSwapchainKHR
+    if !imageUsedByAnotherSwapchain(v, swapObject) {
       delete(Images, v.VulkanHandle)
     }
-    delete(Swapchains, swapchain)
   }
+  delete(Swapchains, swapchain)
 }
 
 @extension("VK_KHR_swapchain")
@@ -269,6 +298,7 @@ cmd VkResult vkAcquireNextImageKHR(
   pImageIndex[0] = imageIndex
   if (semaphore != as!VkSemaphore(0)) {
     Semaphores[semaphore].Signaled = true
+    Semaphores[semaphore].SubmitCount = Semaphores[semaphore].SubmitCount + 1
   }
   if (fence != 0) {
     if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
@@ -397,6 +427,8 @@ cmd VkResult vkQueuePresentKHR(
   map!(u32, ref!ImageObject)            SwapchainImages
   map!(u32, bool)                       ImagesAcquired
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
+  @unused ref!ExtHDRMetadata            HDRMetadata
+  VkSwapchainCreateFlagsKHR             Flags
 }
 
 extern void recordAcquireNextImage(VkSwapchainKHR swapchain, u32 imageIndex)

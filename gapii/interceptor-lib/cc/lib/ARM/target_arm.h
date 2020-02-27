@@ -23,28 +23,28 @@ namespace interceptor {
 
 class TargetARM : public Target {
  public:
-  CodeGenerator *GetCodeGenerator(void *address,
+  CodeGenerator* GetCodeGenerator(void* address,
                                   size_t start_alignment) override;
 
-  Disassembler *CreateDisassembler(void *address) override;
+  Disassembler* CreateDisassembler(void* address) override;
 
   size_t GetCodeAlignment() const override { return 4; }
 
-  void *GetLoadAddress(void *addr) override;
+  void* GetLoadAddress(void* addr) override;
 
   std::vector<TrampolineConfig> GetTrampolineConfigs(
       uintptr_t start_address) const override;
 
-  Error EmitTrampoline(const TrampolineConfig &config, CodeGenerator &codegen,
-                       void *target) override;
+  Error EmitTrampoline(const TrampolineConfig& config, CodeGenerator& codegen,
+                       void* target) override;
 
-  Error RewriteInstruction(const llvm::MCInst &inst, CodeGenerator &codegen,
-                           void *data, size_t offset,
-                           bool &possible_end_of_function) override;
+  Error RewriteInstruction(const llvm::MCInst& inst, CodeGenerator& codegen,
+                           void* data, size_t offset,
+                           bool& possible_end_of_function) override;
 
-  void *FixupCallbackFunction(void *old_function, void *new_function) override;
+  void* FixupCallbackFunction(void* old_function, void* new_function) override;
 
-  void *CheckIsPLT(void *old_function, void *new_function) override;
+  void* CheckIsPLT(void* old_function, void* new_function) override;
 
  private:
   enum TrampolineType {

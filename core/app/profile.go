@@ -17,6 +17,8 @@ package app
 import (
 	"bufio"
 	"context"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -69,6 +71,12 @@ func applyProfiler(ctx context.Context, flags *ProfileFlags) func() {
 			f.Close()
 			log.I(ctx, "Trace profile written")
 		})
+	}
+	if flags.Pprof {
+		log.I(ctx, "Enabling pprof on :6060")
+		go func() {
+			http.ListenAndServe("localhost:6060", nil)
+		}()
 	}
 	return func() {
 		for _, closer := range closers {

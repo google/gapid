@@ -26,7 +26,7 @@ import (
 
 	"sync/atomic"
 
-	perfetto_pb "perfetto/config"
+	perfetto_pb "protos/perfetto/config"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
@@ -95,7 +95,7 @@ func (*localSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error)
 }
 
 func (r *remoteSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error) {
-	return r.device.MakeTempDir(ctx)
+	return r.device.TempDir(ctx)
 }
 
 func (l *localSetup) initializePerfetto(ctx context.Context, tempdir string) (string, error) {
@@ -142,9 +142,10 @@ func (l *remoteSetup) pullTrace(ctx context.Context, source string, dest string)
 	return dest, nil
 }
 
-func startPerfettoTrace(ctx context.Context, perfettocmd string, b bind.Device, opts *perfetto_pb.TraceConfig, fileLoc string) (shell.Process, chan error, error) {
+func startPerfettoTrace(ctx context.Context, perfettocmd string, b bind.Device, ready task.Task, opts *perfetto_pb.TraceConfig, fileLoc string) (shell.Process, chan error, error) {
 	reader, stdout := io.Pipe()
 	data, err := proto.Marshal(opts)
+	readyOnce := task.Once(ready)
 
 	if err != nil {
 		return nil, nil, err
@@ -155,6 +156,7 @@ func startPerfettoTrace(ctx context.Context, perfettocmd string, b bind.Device, 
 		buf := bufio.NewReader(reader)
 		for {
 			line, e := buf.ReadString('\n')
+			readyOnce(ctx)
 			switch e {
 			default:
 				log.E(ctx, "[perfetto] Read error %v", e)
@@ -199,6 +201,7 @@ func Start(ctx context.Context, d bind.Device, abi *device.ABI, opts *service.Tr
 	}
 
 	perfettoTraceFile := tempdir + "/gapis-trace"
+	readyFunc := task.Noop()
 
 	var fail chan error
 	var cmd shell.Process
@@ -208,7 +211,7 @@ func Start(ctx context.Context, d bind.Device, abi *device.ABI, opts *service.Tr
 	}
 
 	if !opts.DeferStart {
-		cmd, fail, err = startPerfettoTrace(ctx, c, d, opts.PerfettoConfig, perfettoTraceFile)
+		cmd, fail, err = startPerfettoTrace(ctx, c, d, readyFunc, opts.PerfettoConfig, perfettoTraceFile)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +231,7 @@ func Start(ctx context.Context, d bind.Device, abi *device.ABI, opts *service.Tr
 }
 
 // Capture starts the perfetto capture.
-func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Signal, w io.Writer, written *int64) (int64, error) {
+func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (int64, error) {
 	tmp, err := file.Temp()
 	if err != nil {
 		return 0, log.Err(ctx, err, "Failed to create a temp file")
@@ -241,7 +244,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 		if !start.Wait(ctx) {
 			return 0, log.Err(ctx, nil, "Cancelled")
 		}
-		cmd, fail, err := startPerfettoTrace(ctx, p.perfettoCmd, p.device, p.config, p.tracefile)
+		cmd, fail, err := startPerfettoTrace(ctx, p.perfettoCmd, p.device, ready, p.config, p.tracefile)
 		if err != nil {
 			return 0, err
 		}
@@ -274,6 +277,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	if err != nil {
 		return 0, err
 	}
+	defer p.cleanup.Invoke(ctx)
 
 	f := file.Abs(traceLoc)
 	size := f.Info().Size()

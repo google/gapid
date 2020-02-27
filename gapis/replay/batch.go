@@ -83,7 +83,7 @@ func (m *manager) batch(ctx context.Context, r *status.Replay, e []scheduler.Exe
 		}.Bind(ctx)
 		log.I(ctx, "Replay for %d requests", len(e))
 
-		return m.execute(ctx, d, r, batch.device, batch.capture, batch.config, batch.generator, requests)
+		return m.execute(ctx, d, r, batch.device, batch.capture, batch.config, batch.generator, batch.forceNonSplitReplay, requests)
 	}()
 
 	if err != nil {
@@ -167,7 +167,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	var payload gapir.Payload
 	builderBuildTimer.Time(func() {
 		log.D(ctx, "Initial Payload:")
-		payload, _, _, err = b.Build(ctx)
+		payload, _, _, _, err = b.Build(ctx)
 	})
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to build initial payload")
@@ -204,7 +204,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	var cleanupPayload gapir.Payload
 	builderBuildTimer.Time(func() {
 		log.D(ctx, "Cleanup Payload:")
-		cleanupPayload, _, _, err = b.Build(ctx)
+		cleanupPayload, _, _, _, err = b.Build(ctx)
 	})
 
 	id, err := database.Store(ctx, &payload)
@@ -232,6 +232,7 @@ func (m *manager) execute(
 	deviceID, captureID id.ID,
 	cfg Config,
 	generator Generator,
+	forceNonSplitReplay bool,
 	requests []RequestAndResult) error {
 
 	capturePath := path.NewCapture(captureID)
@@ -268,7 +269,7 @@ func (m *manager) execute(
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
-	connection, err := m.connect(ctx, d, replayABI)
+	conn, err := m.connect(ctx, d, replayABI)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to device")
 	}
@@ -276,30 +277,32 @@ func (m *manager) execute(
 	var depID string
 	var depBuilder *builder.Builder
 	var depState *api.GlobalState
-	if g, ok := generator.(SplitGenerator); ok {
-		a, ok := g.(api.API)
-		if ok {
-			ipl := InitialPayloadResolvable{
-				CaptureID: NewID(captureID),
-				ApiID:     NewID(id.ID(a.ID())),
-				DeviceID:  NewID(d.Instance().ID.ID()),
-			}
-			ipr, err := database.Build(ctx, &ipl)
-			if err != nil {
-				return err
-			}
-			i, ok := ipr.(InitialPayloadResult)
-			if !ok {
-				return log.Err(ctx, nil, "Invalid Initial Payload")
-			}
+	if !forceNonSplitReplay {
+		if g, ok := generator.(SplitGenerator); ok {
+			a, ok := g.(api.API)
+			if ok {
+				ipl := InitialPayloadResolvable{
+					CaptureID: NewID(captureID),
+					ApiID:     NewID(id.ID(a.ID())),
+					DeviceID:  NewID(d.Instance().ID.ID()),
+				}
+				ipr, err := database.Build(ctx, &ipl)
+				if err != nil {
+					return err
+				}
+				i, ok := ipr.(InitialPayloadResult)
+				if !ok {
+					return log.Err(ctx, nil, "Invalid Initial Payload")
+				}
 
-			depID = i.prerunID
-			depBuilder = i.oldBuilder
-			depState = i.oldState
+				depID = i.prerunID
+				depBuilder = i.oldBuilder
+				depState = i.oldState
 
-			err = connection.PrewarmReplay(ctx, i.prerunID, i.cleanupID)
-			if err != nil {
-				return log.Err(ctx, err, "Replay returned error")
+				err = m.PrewarmReplay(ctx, conn, i.prerunID, i.cleanupID)
+				if err != nil {
+					return log.Err(ctx, err, "Replay returned error")
+				}
 			}
 		}
 	}
@@ -348,9 +351,10 @@ func (m *manager) execute(
 	var payload gapir.Payload
 	var handlePost builder.PostDataHandler
 	var handleNotification builder.NotificationHandler
+	var fenceReadyCallback builder.FenceReadyRequestCallback
 	builderBuildTimer.Time(func() {
 		log.D(ctx, "Main Payload:")
-		payload, handlePost, handleNotification, err = b.Build(ctx)
+		payload, handlePost, handleNotification, fenceReadyCallback, err = b.Build(ctx)
 	})
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
@@ -371,7 +375,9 @@ func (m *manager) execute(
 			payload,
 			handlePost,
 			handleNotification,
-			connection,
+			fenceReadyCallback,
+			m,
+			conn,
 			replayABI.MemoryLayout,
 			d.Instance().GetConfiguration().GetOS(),
 		)
@@ -390,14 +396,17 @@ func (w *adapter) State() *api.GlobalState {
 	return w.state
 }
 
-func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
+func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 	w.builder.BeginCommand(uint64(id), cmd.Thread())
-	if err := cmd.Mutate(ctx, id, w.state, w.builder, nil); err == nil {
+	err := cmd.Mutate(ctx, id, w.state, w.builder, nil)
+	if err == nil {
 		w.builder.CommitCommand()
 	} else {
 		w.builder.RevertCommand(err)
 		log.W(ctx, "Failed to write command %v %v for replay: %v", id, cmd, err)
 	}
+	return err
 }
+
 func (w *adapter) NotifyPreLoop(ctx context.Context)  {}
 func (w *adapter) NotifyPostLoop(ctx context.Context) {}

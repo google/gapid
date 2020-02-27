@@ -318,7 +318,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   fn.vkCmdBlitImage(command_buffer, image->mVulkanHandle,
                     VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     resolve_image,
-                    VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 1,
+                    VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
                     &blit, VkFilter::VK_FILTER_NEAREST);
 
   barriers[0].msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
@@ -496,18 +496,9 @@ void VulkanSpy::leaveSubcontext(CallObserver*) {}
 void VulkanSpy::nextSubcontext(CallObserver*) {}
 void VulkanSpy::resetSubcontext(CallObserver*) {}
 void VulkanSpy::onPreSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
-void VulkanSpy::onPreProcessCommand(CallObserver*,
-                                    gapil::Ref<CommandReference>) {}
+
 void VulkanSpy::onPostSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
-void VulkanSpy::onDeferSubcommand(CallObserver*, gapil::Ref<CommandReference>) {
-}
 void VulkanSpy::onCommandAdded(CallObserver*, VkCommandBuffer) {}
-void VulkanSpy::postBindSparse(CallObserver*, gapil::Ref<QueuedSparseBinds>) {}
-void VulkanSpy::pushDebugMarker(CallObserver*, std::string) {}
-void VulkanSpy::popDebugMarker(CallObserver*) {}
-void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
-void VulkanSpy::popRenderPassMarker(CallObserver*) {}
-void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
 uint32_t VulkanSpy::onesCount(CallObserver*, uint32_t x) {
   return std::bitset<32>(x).count();
 }
@@ -708,7 +699,7 @@ gapil::Ref<DescriptorInfo> VulkanSpy::fetchUsedDescriptors(
 // the their function table to be created through the template system, so they
 // won't be defined here, but vk_spy_helpers.cpp.tmpl
 uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceLayerProperties(
-    uint32_t* pCount, VkLayerProperties* pProperties) {
+    CallObserver*, uint32_t* pCount, VkLayerProperties* pProperties) {
   if (pProperties == NULL) {
     *pCount = 1;
     return VkResult::VK_SUCCESS;
@@ -726,7 +717,8 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceLayerProperties(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceLayerProperties(
-    VkPhysicalDevice dev, uint32_t* pCount, VkLayerProperties* pProperties) {
+    CallObserver*, VkPhysicalDevice dev, uint32_t* pCount,
+    VkLayerProperties* pProperties) {
   if (pProperties == NULL) {
     *pCount = 1;
     return VkResult::VK_SUCCESS;
@@ -743,15 +735,53 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceLayerProperties(
   return VkResult::VK_SUCCESS;
 }
 uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceExtensionProperties(
-    const char* pLayerName, uint32_t* pCount,
+    CallObserver*, const char* pLayerName, uint32_t* pCount,
     VkExtensionProperties* pProperties) {
   *pCount = 0;
   return VkResult::VK_SUCCESS;
 }
 
+uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroups(
+    CallObserver*, VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
+    VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties) {
+  auto inst_func_iter = mImports.mVkInstanceFunctions.find(instance);
+  gapii::VulkanImports::PFNVKENUMERATEPHYSICALDEVICEGROUPS next =
+      inst_func_iter->second.vkEnumeratePhysicalDeviceGroups;
+
+  auto ret =
+      next(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
+  if (!pPhysicalDeviceGroupProperties) {
+    return ret;
+  }
+  for (size_t i = 0; i < *pPhysicalDeviceGroupCount; ++i) {
+    pPhysicalDeviceGroupProperties[i].mphysicalDeviceCount = 1;
+    pPhysicalDeviceGroupProperties[i].msubsetAllocation = 0;
+  }
+  return ret;
+}
+
+uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroupsKHR(
+    CallObserver*, VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
+    VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties) {
+  auto inst_func_iter = mImports.mVkInstanceFunctions.find(instance);
+  gapii::VulkanImports::PFNVKENUMERATEPHYSICALDEVICEGROUPSKHR next =
+      inst_func_iter->second.vkEnumeratePhysicalDeviceGroupsKHR;
+
+  auto ret =
+      next(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
+  if (!pPhysicalDeviceGroupProperties) {
+    return ret;
+  }
+  for (size_t i = 0; i < *pPhysicalDeviceGroupCount; ++i) {
+    pPhysicalDeviceGroupProperties[i].mphysicalDeviceCount = 1;
+    pPhysicalDeviceGroupProperties[i].msubsetAllocation = 0;
+  }
+  return ret;
+}
+
 uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
-    VkPhysicalDevice physicalDevice, const char* pLayerName, uint32_t* pCount,
-    VkExtensionProperties* pProperties) {
+    CallObserver*, VkPhysicalDevice physicalDevice, const char* pLayerName,
+    uint32_t* pCount, VkExtensionProperties* pProperties) {
   gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES
       next_layer_enumerate_extensions = NULL;
   auto phy_dev_iter = mState.PhysicalDevices.find(physicalDevice);
@@ -828,7 +858,8 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
 }
 
 void VulkanSpy::SpyOverride_vkDestroyInstance(
-    VkInstance instance, const VkAllocationCallbacks* pAllocator) {
+    CallObserver*, VkInstance instance,
+    const VkAllocationCallbacks* pAllocator) {
   // First we have to find the function to chain to, then we have to
   // remove this instance from our list, then we forward the call.
   auto it = mImports.mVkInstanceFunctions.find(instance);
@@ -843,7 +874,7 @@ void VulkanSpy::SpyOverride_vkDestroyInstance(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
-    VkDevice device, const VkBufferCreateInfo* pCreateInfo,
+    CallObserver*, VkDevice device, const VkBufferCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
   if (is_suspended()) {
     VkBufferCreateInfo override_create_info = *pCreateInfo;
@@ -858,7 +889,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateImage(
-    VkDevice device, const VkImageCreateInfo* pCreateInfo,
+    CallObserver*, VkDevice device, const VkImageCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkImage* pImage) {
   VkImageCreateInfo override_create_info = *pCreateInfo;
   override_create_info.musage |=
@@ -868,7 +899,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateImage(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateSwapchainKHR(
-    VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
+    CallObserver*, VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pImage) {
   if (is_observing() || is_suspended()) {
     VkSwapchainCreateInfoKHR override_create_info = *pCreateInfo;
@@ -883,7 +914,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateSwapchainKHR(
 }
 
 void VulkanSpy::SpyOverride_vkDestroyDevice(
-    VkDevice device, const VkAllocationCallbacks* pAllocator) {
+    CallObserver*, VkDevice device, const VkAllocationCallbacks* pAllocator) {
   // First we have to find the function to chain to, then we have to
   // remove this instance from our list, then we forward the call.
   auto it = mImports.mVkDeviceFunctions.find(device);
@@ -897,7 +928,7 @@ void VulkanSpy::SpyOverride_vkDestroyDevice(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(
-    VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo,
+    CallObserver*, VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo,
     const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
   uint32_t r = mImports.mVkDeviceFunctions[device].vkAllocateMemory(
       device, pAllocateInfo, pAllocator, pMemory);

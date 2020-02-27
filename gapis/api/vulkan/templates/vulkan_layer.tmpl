@@ -23,6 +23,7 @@
     {{Global "Vulkan.LayerNamespace" "<The namespace of your vulkan functions>"}}
     {{Global "Vulkan.OverrideFunctions" List Of Functions That Should Be Overriden}}
     {{Global "Vulkan.OtherUsedFunctions" List Of Functions That your layer will call down into}}
+    {{Global "Vulkan.ImplementedFunctions" List Of Functions That your layer implements regardless of if the underlying driver does}}
 */}}
 
 {{Include "vulkan_common.tmpl"}}
@@ -57,17 +58,25 @@
   {{if not (GetAnnotation $ "synthetic")}}{{if not (GetAnnotation $ "pfn")}}{{if not (eq (IndexOf (Global "Vulkan.OtherUsedFunctions") $.Name) -1)}}1{{end}}{{end}}{{end}}
 {{end}}
 
+{{define "InImplemented"}}
+  {{if not (GetAnnotation $ "synthetic")}}{{if not (GetAnnotation $ "pfn")}}{{if not (eq (IndexOf (Global "Vulkan.ImplementedFunctions") $.Name) -1)}}1{{end}}{{end}}{{end}}
+{{end}}
+
+
 {{define "layer.h"}}
 {{Template "C++.Copyright"}}
 
 #include <unordered_map>
 #include <vector>
+
 #include "vulkan/vulkan.h"
 #include "core/vulkan/layer_helpers/vulkan_layer_helpers.h"
 
 #include "core/vulkan/layer_helpers/threading.h"
 
+
 namespace {{(Global "Vulkan.LayerNamespace")}} {
+
 typedef const VkAllocationCallbacks* AllocationCallbacks;
 typedef size_t size_val;
 ¶
@@ -98,6 +107,7 @@ struct InstanceData {
   PFN_vkEnumeratePhysicalDevices enumerate_physical_devices;
   PFN_vkCreateDevice create_device;
   PFN_vkDestroyInstance destroy_instance;
+  PFN_vkEnumerateDeviceExtensionProperties enumerate_device_extension_properties;
   InstanceFunctions* functions;
 };
 ¶
@@ -230,6 +240,7 @@ static const VkLayerProperties global_layer_properties[] = { {
 
 VKAPI_ATTR VkResult VKAPI_CALL get_layer_properties(uint32_t *pPropertyCount,
                               VkLayerProperties *pProperties) {
+
   if (pProperties == NULL) {
     *pPropertyCount = 1;
     return VK_SUCCESS;
@@ -238,6 +249,7 @@ VKAPI_ATTR VkResult VKAPI_CALL get_layer_properties(uint32_t *pPropertyCount,
   if (pPropertyCount == 0) {
     return VK_INCOMPLETE;
   }
+
   *pPropertyCount = 1;
   memcpy(pProperties, global_layer_properties, sizeof(global_layer_properties));
   return VK_SUCCESS;
@@ -278,19 +290,42 @@ vkEnumerateDeviceLayerProperties(VkPhysicalDevice device, uint32_t *pPropertyCou
 
 // Overload vkEnumerateInstanceExtensionProperties
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+enumerate_instance_layer_properties(
+    const char *, uint32_t * pPropertyCount,
+    VkExtensionProperties *) {
+    *pPropertyCount = 0;
+    return VK_SUCCESS;
+}
+// Overload vkEnumerateInstanceExtensionProperties
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateInstanceExtensionProperties(
-    const char * /*pLayerName*/, uint32_t *pPropertyCount,
-    VkExtensionProperties * /*pProperties*/) {
-  *pPropertyCount = 0;
-  return VK_SUCCESS;
+    const char * pLayerName, uint32_t *pPropertyCount,
+    VkExtensionProperties * pProperties) {
+  PFN_vkEnumerateInstanceExtensionProperties next = &enumerate_instance_layer_properties;
+  {{if Macro "NameInOverrides" "vkEnumerateInstanceExtensionProperties"}}
+    return (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkEnumerateInstanceExtensionProperties(next, pLayerName, pPropertyCount, pProperties);
+  {{else}}
+    return next(pLayerName, pPropertyCount, pProperties);
+  {{end}}
 }
 
 // Overload vkEnumerateDeviceExtensionProperties
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice device,
-    const char * /*pLayerName*/, uint32_t *pPropertyCount,
-    VkExtensionProperties * /*pProperties*/) {
+    const char * pLayerName, uint32_t *pPropertyCount,
+    VkExtensionProperties * pProperties) {
+
+  if (!device) { return VK_SUCCESS; }
+  auto instance = GetGlobalContext().GetVkPhysicalDeviceData(device)->instance;
+
+  PFN_vkEnumerateDeviceExtensionProperties next = GetGlobalContext().GetVkInstanceData(instance)->enumerate_device_extension_properties;
+  {{if Macro "NameInOverrides" "vkEnumerateDeviceExtensionProperties"}}
+    return (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkEnumerateDeviceExtensionProperties(next, device, pLayerName, pPropertyCount, pProperties);
+  {{else}}
+    return next(device, pLayerName, pPropertyCount, pProperties);
+  {{end}}
+
   *pPropertyCount = 0;
   return VK_SUCCESS;
 }
@@ -345,10 +380,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
   InstanceData data;
   data.get_instance_proc_addr = get_instance_proc_addr;
   data.enumerate_physical_devices = enumerate_physical_devices;
+
   data.create_device = reinterpret_cast<PFN_vkCreateDevice>(
       get_instance_proc_addr(*pInstance, "vkCreateDevice"));
   data.destroy_instance = reinterpret_cast<PFN_vkDestroyInstance>(
       get_instance_proc_addr(*pInstance, "vkDestroyInstance"));
+  data.enumerate_device_extension_properties = enumerate_device_extension_properties;
   data.functions = new InstanceFunctions();
 
 #define GET_PROC(name) \
@@ -387,6 +424,32 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
     }
     (*instances)[*pInstance] = data;
   }
+
+
+  {
+      auto instance = *pInstance;
+      std::vector<VkPhysicalDevice> devices;
+      uint32_t device_count = 0;
+
+      enumerate_physical_devices(*pInstance, &device_count, nullptr);
+      devices.resize(device_count);
+      enumerate_physical_devices(*pInstance, &device_count, devices.data());
+
+      auto instanceFunctions = GetGlobalContext().GetVkInstanceData(instance)->functions;
+      auto create_device = GetGlobalContext().GetVkInstanceData(instance)->create_device;
+      auto physicalDevices = GetGlobalContext().GetVkPhysicalDeviceMap();
+      for (size_t i = 0; i < device_count; ++i) {
+        PhysicalDeviceData dat;
+        dat.create_device = create_device;
+        dat.functions = instanceFunctions;
+        dat.instance = instance;
+        if (physicalDevices->find(devices[i]) != physicalDevices->end()) {
+          continue;
+        }
+        (*physicalDevices)[devices[i]] = dat;
+      }
+    }
+
   return result;
 }
 
@@ -443,8 +506,9 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
   PFN_vkGetInstanceProcAddr get_instance_proc_addr =
       layer_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
 
+  auto instance = GetGlobalContext().GetVkPhysicalDeviceData(physicalDevice)->instance;
   PFN_vkCreateDevice next = reinterpret_cast<PFN_vkCreateDevice>(
-      get_instance_proc_addr(NULL, "vkCreateDevice"));
+      get_instance_proc_addr(instance, "vkCreateDevice"));
 
   if (!next) {
     return VK_ERROR_INITIALIZATION_FAILED;
@@ -472,7 +536,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
   DeviceData data;
   data.functions = new DeviceFunctions();
   data.physical_device = physicalDevice;
-  data.instance = GetGlobalContext().GetVkPhysicalDeviceData(physicalDevice)->instance;
+  data.instance = instance;
   data.get_device_proc_addr = get_device_proc_addr;
   data.allocate_command_buffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_device_proc_addr(*pDevice, "vkAllocateCommandBuffers"));
   data.get_device_queue = reinterpret_cast<PFN_vkGetDeviceQueue>(get_device_proc_addr(*pDevice, "vkGetDeviceQueue"));
@@ -512,11 +576,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
 
   return res;
 }
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+vkGetDeviceProcAddr(VkDevice device, const char *pName);
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
     const VkInstance  instance,
     const char* pName) {
-
     if (strcmp(pName, "vkCreateInstance") == 0) {
       return (PFN_vkVoidFunction)(internal::vkCreateInstance);
     }
@@ -526,10 +591,21 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
     if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0 ) {
       return (PFN_vkVoidFunction)(internal::vkEnumerateInstanceLayerProperties);
     }
+
+    if (strcmp(pName, "vkEnumerateDeviceExtensionProperties") == 0) {
+      return (PFN_vkVoidFunction)internal::vkEnumerateDeviceExtensionProperties;
+    }
+    if (strcmp(pName, "vkGetInstanceProcAddr") == 0) {
+      return (PFN_vkVoidFunction)internal::vkGetInstanceProcAddr;
+    }
+
+    if (strcmp(pName, "vkGetDeviceProcAddr") == 0) {
+      return (PFN_vkVoidFunction)internal::vkGetDeviceProcAddr;
+    }
+
   if (instance == 0) {
     return nullptr;
   }
-
 
 if (strcmp(pName, "vkEnumeratePhysicalDevices") == 0) {
   return (PFN_vkVoidFunction)(internal::vkEnumeratePhysicalDevices);
@@ -539,7 +615,13 @@ if (strcmp(pName, "vkCreateDevice") == 0) {
   return (PFN_vkVoidFunction)(internal::vkCreateDevice);
 }
 
+  PFN_vkGetInstanceProcAddr instance_proc_addr =
+      GetGlobalContext().GetVkInstanceData(instance)->get_instance_proc_addr;
+  auto fn = instance_proc_addr(instance, pName);
 #define INTERCEPT(func)         \
+  if ((strcmp(pName, #func) == 0) && fn) \
+          return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
+#define ALWAYS_INTERCEPT(func)  \
   if (strcmp(pName, #func) == 0) \
           return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
 
@@ -548,16 +630,19 @@ if (strcmp(pName, "vkCreateDevice") == 0) {
       {{if Macro "InOverrides" $c}}
         {{$name := Macro "CmdName" $c}}
          {{Template "BeginPlatformIfDef" $c}}
+         {{if not (Macro "InImplemented" $c)}}
           INTERCEPT({{$name}});
+         {{else}}
+          ALWAYS_INTERCEPT({{$name}});
+         {{end}}
          {{Template "EndPlatformIfDef" $c}}
       {{end}}
     {{end}}
   {{end}}
 
 #undef INTERCEPT
-  PFN_vkGetInstanceProcAddr instance_proc_addr =
-      GetGlobalContext().GetVkInstanceData(instance)->get_instance_proc_addr;
-  return instance_proc_addr(instance, pName);
+#undef ALWAYS_INTERCEPT
+  return fn;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkAllocateCommandBuffers(
@@ -805,8 +890,21 @@ vkGetDeviceProcAddr(VkDevice device, const char *pName) {
   if (strcmp(pName, "vkFreeCommandBuffers") == 0) {
     return (PFN_vkVoidFunction)internal::vkFreeCommandBuffers;
   }
+  if (strcmp(pName, "vkEnumerateDeviceExtensionProperties") == 0) {
+    return (PFN_vkVoidFunction)internal::vkEnumerateDeviceExtensionProperties;
+  }
 
+  if (strcmp(pName, "vkGetDeviceProcAddr") == 0) {
+    return (PFN_vkVoidFunction)internal::vkGetDeviceProcAddr;
+  }
+
+  PFN_vkGetDeviceProcAddr device_proc_addr =
+      GetGlobalContext().GetVkDeviceData(device)->get_device_proc_addr;
+  auto fn = device_proc_addr(device, pName);
 #define INTERCEPT(func)         \
+  if ((strcmp(pName, #func) == 0) && fn) \
+          return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
+#define ALWAYS_INTERCEPT(func)         \
   if (strcmp(pName, #func) == 0) \
           return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
   {{range $c := AllCommands $}}
@@ -814,16 +912,19 @@ vkGetDeviceProcAddr(VkDevice device, const char *pName) {
       {{if Macro "InOverrides" $c}}
         {{$name := Macro "CmdName" $c}}
           {{Template "BeginPlatformIfDef" $c}}
-          INTERCEPT({{$name}});
+          {{if not (Macro "InImplemented" $c)}}
+            INTERCEPT({{$name}});
+          {{else}}
+            ALWAYS_INTERCEPT({{$name}});
+          {{end}}
           {{Template "EndPlatformIfDef" $c}}
       {{end}}
     {{end}}
   {{end}}
 #undef INTERCEPT
+#undef ALWAYS_INTERCEPT
 
-  PFN_vkGetDeviceProcAddr device_proc_addr =
-      GetGlobalContext().GetVkDeviceData(device)->get_device_proc_addr;
-  return device_proc_addr(device, pName);
+  return fn;
 }
 
 

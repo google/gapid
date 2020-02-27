@@ -1,0 +1,85 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+@extension("VK_KHR_driver_properties") define VK_KHR_SHADER_FLOAT16_INT8_SPEC_VERSION   1
+@extension("VK_KHR_driver_properties") define VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME "VK_KHR_driver_properties"
+
+define VK_MAX_DRIVER_NAME_SIZE_KHR         256 /// Vulkan 1.1
+define VK_MAX_DRIVER_INFO_SIZE_KHR         256 /// Vulkan 1.1
+
+@extension("VK_KHR_driver_properties")
+enum VkDriverIdKHR {
+    VK_DRIVER_ID_AMD_PROPRIETARY_KHR = 1,
+    VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR = 2,
+    VK_DRIVER_ID_MESA_RADV_KHR = 3,
+    VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR = 4,
+    VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR = 5,
+    VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR = 6,
+    VK_DRIVER_ID_IMAGINATION_PROPRIETARY_KHR = 7,
+    VK_DRIVER_ID_QUALCOMM_PROPRIETARY_KHR = 8,
+    VK_DRIVER_ID_ARM_PROPRIETARY_KHR = 9,
+    VK_DRIVER_ID_GOOGLE_SWIFTSHADER_KHR = 10,
+    VK_DRIVER_ID_GGP_PROPRIETARY_KHR = 11,
+    VK_DRIVER_ID_BROADCOM_PROPRIETARY_KHR = 12,
+    VK_DRIVER_ID_MAX_ENUM_KHR = 0x7FFFFFFF
+}
+
+@extension("VK_KHR_driver_properties")
+class VkPhysicalDeviceDriverPropertiesKHR {
+    VkStructureType                      sType
+    void*                                pNext
+    VkDriverIdKHR                        driverID
+    char[VK_MAX_DRIVER_NAME_SIZE_KHR]    driverName
+    char[VK_MAX_DRIVER_INFO_SIZE_KHR]    driverInfo
+    VkConformanceVersionKHR              conformanceVersion
+}
+
+@extension("VK_KHR_driver_properties")
+class VkConformanceVersionKHR {
+    u8    major
+    u8    minor
+    u8    subminor
+    u8    patch
+}
+
+class PhysicalDeviceDriverPropertiesKHR {
+    VkDriverIdKHR                              DriverID
+    char[VK_MAX_DRIVER_NAME_SIZE_KHR]          DriverName
+    char[VK_MAX_DRIVER_INFO_SIZE_KHR]          DriverInfo
+    VkConformanceVersionKHR                    ConformanceVersion
+}

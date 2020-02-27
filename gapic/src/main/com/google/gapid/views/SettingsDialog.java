@@ -26,6 +26,7 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
@@ -74,8 +75,9 @@ public class SettingsDialog extends DialogBase {
     form = new SettingsFormBase(models, area, false) {
       @Override
       protected void beforeAnalytics() {
-        disableReplayOptimization = withLayoutData(createCheckbox(
-            this, "Disable replay optimization", models.settings.disableReplayOptimization),
+        disableReplayOptimization = withLayoutData(createCheckbox(this,
+            "Disable replay optimization",
+            models.settings.preferences().getDisableReplayOptimization()),
             withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       }
     };
@@ -99,7 +101,8 @@ public class SettingsDialog extends DialogBase {
   }
 
   private void update() {
-    models.settings.disableReplayOptimization = disableReplayOptimization.getSelection();
+    models.settings.writePreferences().setDisableReplayOptimization(
+        disableReplayOptimization.getSelection());
   }
 
   public static class SettingsFormBase extends Composite {
@@ -120,8 +123,9 @@ public class SettingsDialog extends DialogBase {
       this.models = models;
       setLayout(withMargin(new GridLayout(2, false), marginWidth, marginHeight));
 
+      SettingsProto.PreferencesOrBuilder prefs = models.settings.preferences();
       createLabel(this, "Path to adb:");
-      adbPath = withLayoutData(new FileTextbox.File(this, models.settings.adb) {
+      adbPath = withLayoutData(new FileTextbox.File(this, prefs.getAdb()) {
         @Override
         protected void configureDialog(FileDialog dialog) {
           dialog.setText("Path to adb:");
@@ -136,15 +140,15 @@ public class SettingsDialog extends DialogBase {
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       allowCrashReports = withLayoutData(
           createCheckbox(this, Messages.CRASH_REPORTING_OPTION,
-              override || models.settings.reportCrashes),
+              override || prefs.getReportCrashes()),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       allowUpdateChecks = withLayoutData(
           createCheckbox(this, Messages.UPDATE_CHECK_OPTION,
-              override || models.settings.autoCheckForUpdates),
+              override || prefs.getCheckForUpdates()),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       includeDevReleases = withLayoutData(
           createCheckbox(this, Messages.UPDATE_CHECK_DEV_RELEASE_OPTION,
-              models.settings.includeDevReleases),
+              prefs.getIncludeDevReleases()),
           withSpans(withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 20, 0), 2, 1));
       Label adbWarning = withLayoutData(createLabel(this, ""),
           withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
@@ -178,13 +182,15 @@ public class SettingsDialog extends DialogBase {
     }
 
     public void save() {
-      models.settings.adb = adbPath.getText().trim();
+      SettingsProto.Preferences.Builder prefs = models.settings.writePreferences();
+      prefs.setAdb(adbPath.getText().trim());
       models.settings.setAnalyticsEnabled(allowAnalytics.getSelection());
-      models.settings.reportCrashes = allowCrashReports.getSelection();
-      models.settings.autoCheckForUpdates = allowUpdateChecks.getSelection();
-      models.settings.includeDevReleases = includeDevReleases.getSelection();
+      prefs.setReportCrashes(allowCrashReports.getSelection());
+      prefs.setCheckForUpdates(allowUpdateChecks.getSelection());
+      prefs.setIncludeDevReleases(includeDevReleases.getSelection());
       // When settings are saved, reset the update timer, to force update check on next start
-      models.settings.lastCheckForUpdates = 0;
+      prefs.setLastCheckForUpdates(0);
+
       models.settings.save();
       models.analytics.updateSettings();
     }

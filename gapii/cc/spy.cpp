@@ -18,6 +18,7 @@
 
 #include "connection_header.h"
 #include "connection_stream.h"
+#include "protocol.h"
 
 #include "gapil/runtime/cc/runtime.h"
 
@@ -40,6 +41,7 @@
 #include <cstdlib>
 #include <memory>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
@@ -91,30 +93,30 @@ const EGLint EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR = 0x30FD;
 const uint32_t kMaxFramebufferObservationWidth = 3840;
 const uint32_t kMaxFramebufferObservationHeight = 2560;
 
-const uint32_t kStartMidExecutionCapture = 0xdeadbeef;
-
 const int32_t kSuspendIndefinitely = -1;
 
-std::recursive_mutex gMutex;  // Guards gSpy.
-std::unique_ptr<gapii::Spy> gSpy;
 thread_local gapii::CallObserver* gContext = nullptr;
 
 }  // anonymous namespace
 
 namespace gapii {
 
-Spy* Spy::get() {
-  std::lock_guard<std::recursive_mutex> lock(gMutex);
-  if (!gSpy) {
+struct spy_creator {
+  spy_creator() {
     GAPID_LOGGER_INIT(LOG_LEVEL_INFO, "gapii", nullptr);
     GAPID_INFO("Constructing spy...");
-    gSpy.reset(new Spy());
+    m_spy.reset(new Spy());
     GAPID_INFO("Registering spy symbols...");
     for (int i = 0; kGLESExports[i].mName != NULL; ++i) {
-      gSpy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
+      m_spy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
     }
   }
-  return gSpy.get();
+  std::unique_ptr<gapii::Spy> m_spy;
+};
+
+Spy* Spy::get() {
+  static spy_creator creator;
+  return creator.m_spy.get();
 }
 
 Spy::Spy()
@@ -147,10 +149,10 @@ Spy::Spy()
       pipe = envPipe;
     }
     mConnection = ConnectionStream::listenPipe(pipe.c_str(), true);
-#else                                       // TARGET_OS
+#else                                           // TARGET_OS
     mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
-#endif                                      // TARGET_OS
-    if (!mConnection->write("gapii", 5)) {  // handshake magic
+#endif                                          // TARGET_OS
+    if (mConnection->write("gapii", 5) != 5) {  // handshake magic
       GAPID_FATAL("Couldn't send handshake magic");
     }
 
@@ -181,13 +183,10 @@ Spy::Spy()
   set_record_timestamps(
       0 != (header.mFlags & ConnectionHeader::FLAG_STORE_TIMESTAMPS));
 
-  // This will be over-written if we also set the header flags
-  mSuspendCaptureFrames = header.mStartFrame;
+  mSuspendCaptureFrames = (header.mFlags & ConnectionHeader::FLAG_DEFER_START)
+                              ? kSuspendIndefinitely
+                              : header.mStartFrame;
   mCaptureFrames = header.mNumFrames;
-  mSuspendCaptureFrames.store(
-      (header.mFlags & ConnectionHeader::FLAG_DEFER_START)
-          ? kSuspendIndefinitely
-          : mSuspendCaptureFrames.load());
 
   set_valid_apis(header.mAPIs);
   GAPID_ERROR("APIS %08x", header.mAPIs);
@@ -234,26 +233,56 @@ Spy::Spy()
   SpyBase::init(context);
   exit();
 
-  if (mSuspendCaptureFrames.load() == kSuspendIndefinitely && this_executable) {
-    mDeferStartJob =
+  if (this_executable) {
+    mMessageReceiverJob =
         std::unique_ptr<core::AsyncJob>(new core::AsyncJob([this]() {
-          uint32_t buffer;
-          if (4 == mConnection->read(&buffer, 4)) {
-            if (buffer == kStartMidExecutionCapture) {
-              mSuspendCaptureFrames.store(1);
+          uint8_t buffer[protocol::kHeaderSize] = {};
+          uint64_t count;
+          do {
+            count = mConnection->read(&buffer[0], protocol::kHeaderSize);
+            if (count == protocol::kHeaderSize) {
+              switch (static_cast<protocol::MessageType>(buffer[0])) {
+                case protocol::MessageType::kStartTrace:
+                  GAPID_DEBUG("Received start trace message");
+                  if (is_suspended()) {
+                    GAPID_DEBUG("Starting capture");
+                    mSuspendCaptureFrames = 1;
+                  }
+                  break;
+                case protocol::MessageType::kEndTrace:
+                  GAPID_DEBUG("Received end trace message");
+                  if (!is_suspended()) {
+                    GAPID_DEBUG("Ending capture");
+                    // If app uses frame boundaries, end capture at next one
+                    // otherwise at next traced graphics API call
+                    const bool usesFrameBounds = mFrameNumber > 0u;
+                    mCaptureFrames = usesFrameBounds ? 1 : -1;
+                  }
+                  break;
+                default:
+                  GAPID_WARNING("Invalid message type: %u", buffer[0]);
+                  break;
+              }
+            } else if (count > 0u) {
+              GAPID_WARNING("Received unexpected data");
             }
-          }
+          } while (count == protocol::kHeaderSize);
         }));
   }
-  set_suspended(mSuspendCaptureFrames.load() != 0);
+  set_suspended(mSuspendCaptureFrames != 0);
   set_observing(mObserveFrameFrequency != 0 || mObserveDrawFrequency != 0);
+}
+
+Spy::~Spy() {
+  mCaptureFrames = -1;
+  endTraceIfRequested();
 }
 
 void Spy::resolveImports() { GlesSpy::mImports.resolve(); }
 
 CallObserver* Spy::enter(const char* name, uint32_t api) {
+  lock();
   auto ctx = new CallObserver(this, gContext, api);
-  lock(ctx);
   ctx->setCurrentCommandName(name);
   gContext = ctx;
   return ctx;
@@ -460,6 +489,22 @@ void Spy::gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
   GvrSpy::gvr_frame_submit(observer, frame, list, head_space_from_start_space);
 }
 
+void Spy::endTraceIfRequested() {
+  if (!is_suspended() && mCaptureFrames < 0) {
+    GAPID_DEBUG("Ended capture");
+    mEncoder->flush();
+    // Error messages can be transferred any time during the trace, e.g.:
+    // auto err = protocol::createError("end of the world");
+    // mConnection->write(err.data(), err.size());
+    auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
+    mConnection->write(msg.data(), msg.size());
+    // allow some time for the message to arrive
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    mConnection->close();
+    set_suspended(true);
+  }
+}
+
 void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
   if (is_suspended()) {
     return;
@@ -536,20 +581,24 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
     mEncoder->object(&timestamp);
   }
 
-  if (!is_suspended() && mCaptureFrames >= 1) {
-    mCaptureFrames -= 1;
-    if (mCaptureFrames == 0) {
-      mEncoder->flush();
-      mConnection->close();
-      set_suspended(true);
+  if (is_suspended()) {
+    if (mSuspendCaptureFrames > 0) {
+      if (--mSuspendCaptureFrames == 0) {
+        GAPID_DEBUG("Started capture");
+        // We must change suspended state BEFORE releasing the Spy lock with
+        // exit(), because the suspended state affects concurrent CallObservers.
+        set_suspended(false);
+        exit();
+        saveInitialState();
+        enter("RecreateState", 2);
+      }
     }
-  }
-  if (mSuspendCaptureFrames.load() > 0) {
-    if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
-      exit();
-      set_suspended(false);
-      saveInitialState();
-      enter("RecreateState", 2);
+  } else {
+    if (mCaptureFrames > 0) {
+      if (--mCaptureFrames == 0) {
+        mCaptureFrames = -1;
+        endTraceIfRequested();
+      }
     }
   }
 }
@@ -668,13 +717,13 @@ void Spy::observeFramebuffer(CallObserver* observer, uint8_t api) {
   if (downsamplePixels(data, w, h, &downsampledData, &downsampledW,
                        &downsampledH, kMaxFramebufferObservationWidth,
                        kMaxFramebufferObservationHeight)) {
-    auto observation = new capture::FramebufferObservation();
-    observation->set_original_width(w);
-    observation->set_original_height(h);
-    observation->set_data_width(downsampledW);
-    observation->set_data_height(downsampledH);
-    observation->set_data(downsampledData.data(), downsampledData.size());
-    observer->encodeAndDelete(observation);
+    capture::FramebufferObservation observation;
+    observation.set_original_width(w);
+    observation.set_original_height(h);
+    observation.set_data_width(downsampledW);
+    observation.set_data_height(downsampledH);
+    observation.set_data(downsampledData.data(), downsampledData.size());
+    observer->encode_message(&observation);
   }
 }
 
@@ -688,10 +737,10 @@ void Spy::onPostFence(CallObserver* observer) {
       setFakeGlError(observer, traceErr);
     }
 
-    auto es = new gles_pb::ErrorState();
-    es->set_trace_drivers_gl_error(traceErr);
-    es->set_interceptors_gl_error(observer->getError());
-    observer->encodeAndDelete(es);
+    gles_pb::ErrorState es;
+    es.set_trace_drivers_gl_error(traceErr);
+    es.set_interceptors_gl_error(observer->getError());
+    observer->encode_message(&es);
   }
 }
 

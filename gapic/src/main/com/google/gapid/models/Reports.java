@@ -36,14 +36,14 @@ public class Reports extends DeviceDependentModel.ForPath<Reports.Data, Void, Re
 
   private final Devices devices;
   private final Capture capture;
-  private final ApiContext context;
+  private final ApiContext contexts;
 
   public Reports(Shell shell, Analytics analytics, Client client, Capture capture,
-      Devices devices, ApiContext context) {
+      Devices devices, ApiContext contexts) {
     super(LOG, shell, analytics, client, Listener.class, devices);
     this.devices = devices;
     this.capture = capture;
-    this.context = context;
+    this.contexts = contexts;
   }
 
   protected Path.Any getPath(Path.Capture capturePath, FilteringContext context) {
@@ -59,7 +59,7 @@ public class Reports extends DeviceDependentModel.ForPath<Reports.Data, Void, Re
   }
 
   public void reload() {
-    load(getPath(capture.getData().path, context.getSelectedContext()), false);
+    load(getPath(capture.getData().path, contexts.getSelectedContext()), false);
   }
 
   @Override

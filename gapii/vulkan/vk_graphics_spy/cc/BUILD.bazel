@@ -35,7 +35,7 @@ cc_library(
         ],
     }),
     visibility = ["//visibility:public"],
-    deps = ["//core/vulkan/cc/include/vulkan"],
+    deps = ["@vulkan-headers//:vulkan"],
 )
 
 android_dynamic_library(

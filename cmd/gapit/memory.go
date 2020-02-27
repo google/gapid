@@ -78,7 +78,7 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if mem.AllocationFlagsIndex != -1 {
 		boxedConstants, err := client.Get(ctx, (&path.ConstantSet{
 			API:   mem.API,
-			Index: uint32(mem.AllocationFlagsIndex),
+			Index: mem.AllocationFlagsIndex,
 		}).Path(), nil)
 		if err != nil {
 			return log.Errf(ctx, err, "Failed to load allocation flag names")

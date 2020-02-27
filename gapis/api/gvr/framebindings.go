@@ -16,6 +16,7 @@ package gvr
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
@@ -73,7 +74,7 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 	}
 	frameToBuffer := map[GvrFrameᵖ]gles.FramebufferId{}
 
-	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		switch cmd := cmd.(type) {
 		case *Gvr_frame_submit:
 			// Annoyingly gvr_frame_submit takes a pointer to the frame pointer,
@@ -97,9 +98,15 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 				}
 			}
 		}
-		cmd.Mutate(ctx, id, s, nil, nil)
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			return fmt.Errorf("Fail to mutate cmd %v: %v", cmd, err)
+		}
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	return out, nil
 }

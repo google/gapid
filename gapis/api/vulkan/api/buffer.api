@@ -49,6 +49,14 @@
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
 }
 
+@internal class MutableDeviceGroupBinding {
+  ref!DeviceGroupBinding Binding
+}
+
+@internal class DeviceGroupBinding {
+  map!(u32, u32)                     Bindings
+}
+
 @internal class BufferObject {
   @unused VkDevice                   Device
   @unused VkBuffer                   VulkanHandle
@@ -61,6 +69,7 @@
   VkMemoryRequirements               MemoryRequirements
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!DedicatedRequirements          DedicatedRequirements
+  ref!DeviceGroupBinding             DeviceGroupBinding
 }
 
 @threadSafety("system")
@@ -75,8 +84,6 @@ cmd VkResult vkCreateBuffer(
   if pCreateInfo == null { vkErrorNullPointer("VkBufferCreateInfo") }
   buffer_create_info := pCreateInfo[0]
 
-  queueFamilyIndices := buffer_create_info.pQueueFamilyIndices[
-  0:buffer_create_info.queueFamilyIndexCount]
 
   bufferInfo := BufferInfo(
     CreateFlags:  buffer_create_info.flags,
@@ -84,8 +91,13 @@ cmd VkResult vkCreateBuffer(
     Usage:        buffer_create_info.usage,
     SharingMode:  buffer_create_info.sharingMode,
   )
-  for i in (0 .. buffer_create_info.queueFamilyIndexCount) {
-    bufferInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+
+  if (buffer_create_info.sharingMode == VK_SHARING_MODE_CONCURRENT) {
+    queueFamilyIndices := buffer_create_info.pQueueFamilyIndices[
+    0:buffer_create_info.queueFamilyIndexCount]
+    for i in (0 .. buffer_create_info.queueFamilyIndexCount) {
+      bufferInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+    }
   }
 
   // Handle pNext
@@ -242,7 +254,8 @@ cmd void vkDestroyBufferView(
 sub void BindBufferMemory(
     VkBuffer       buffer,
     VkDeviceMemory memory,
-    VkDeviceSize   memoryOffset) {
+    VkDeviceSize   memoryOffset,
+    ref!DeviceGroupBinding deviceGroupBinding) {
   if !(memory in DeviceMemories) {
     vkErrorInvalidDeviceMemory(memory)
   } else {
@@ -251,6 +264,7 @@ sub void BindBufferMemory(
     } else {
       Buffers[buffer].Memory = DeviceMemories[memory]
       Buffers[buffer].MemoryOffset = memoryOffset
+      Buffers[buffer].DeviceGroupBinding = deviceGroupBinding
       DeviceMemories[memory].BoundObjects[as!u64(buffer)] = memoryOffset
       if (Buffers[buffer].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
         vkErrorExpectNVDedicatedlyAllocatedHandle("VkBuffer", as!u64(buffer))
@@ -269,7 +283,7 @@ cmd VkResult vkBindBufferMemory(
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  BindBufferMemory(buffer, memory, memoryOffset)
+  BindBufferMemory(buffer, memory, memoryOffset, null)
   return ?
 }
 
@@ -291,6 +305,7 @@ sub void BindBufferMemory2(
   } else {
     infos := pBindInfos[0:bindInfoCount]
     for i in (0 .. bindInfoCount) {
+      dg := MutableDeviceGroupBinding()
       info := infos[i]
       // handle pNext
       if info.pNext != null {
@@ -299,15 +314,26 @@ sub void BindBufferMemory2(
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
           _ = sType
-          // TODO: handle extensions for VkBindBufferMemoryInfo
+          switch sType {
+            case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO: {
+              ext := as!VkBindBufferMemoryDeviceGroupInfo*(next.Ptr)[0:1][0]
+              dg.Binding = new!DeviceGroupBinding()
+              indices := ext.pDeviceIndices[0:ext.deviceIndexCount]
+              for j in (0 .. ext.deviceIndexCount) {
+                dg.Binding.Bindings[j] = indices[j]
+              }
+            }
+            default: {}
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
-      BindBufferMemory(info.buffer, info.memory, info.memoryOffset)
+      BindBufferMemory(info.buffer, info.memory, info.memoryOffset, dg.Binding)
     }
   }
 }
 
+@since("1.1")
 @indirect("VkDevice")
 cmd VkResult vkBindBufferMemory2(
     VkDevice                      device,

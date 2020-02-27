@@ -346,11 +346,11 @@ func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
 	mutateD := func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		return mutate(ctx, id.Derived(), cmd)
 	}
-	err := api.ForeachCmd(ctx, initialCmds, mutateD)
+	err := api.ForeachCmd(ctx, initialCmds, true, mutateD)
 	if err != nil {
 		return nil, err
 	}
-	err = api.ForeachCmd(ctx, c.Commands, mutate)
+	err = api.ForeachCmd(ctx, c.Commands, true, mutate)
 	if err != nil {
 		return nil, err
 	}
