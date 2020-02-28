@@ -1146,7 +1146,19 @@ func commonShaderDataGroups(ctx context.Context,
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Offset()))
-							currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Range()))
+
+							if descInfo.Range() == ^VkDeviceSize(0) {
+								bufferObject, ok := GetState(s).Buffers().Lookup(descInfo.Buffer())
+
+								if ok {
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", fmt.Sprintf("VK_WHOLE_SIZE(%d)", bufferObject.Info().Size())))
+								} else {
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VKDeviceSize", "VK_WHOLE_SIZE"))
+								}
+
+							} else {
+								currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Range()))
+							}
 
 						}
 					}
