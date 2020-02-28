@@ -28,5 +28,6 @@ go_library(
         "//core/data/endian:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/replay/protocol:go_default_library",
+        "//gapis/replay/value:go_default_library",
     ],
 )

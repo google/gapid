@@ -400,7 +400,7 @@ func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
 	w.builder.BeginCommand(uint64(id), cmd.Thread())
 	err := cmd.Mutate(ctx, id, w.state, w.builder, nil)
 	if err == nil {
-		w.builder.CommitCommand()
+		w.builder.CommitCommand(ctx, true)
 	} else {
 		w.builder.RevertCommand(err)
 		log.W(ctx, "Failed to write command %v %v for replay: %v", id, cmd, err)
