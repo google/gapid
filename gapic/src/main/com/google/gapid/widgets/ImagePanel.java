@@ -597,7 +597,7 @@ public class ImagePanel extends Composite implements Loadable {
   private static final class SceneData {
     public Image[] images = {};
     public MatD[] transforms = {};
-    public final boolean channels[] = { true, true, true, true };
+    public final boolean channels[] = { true, true, true, false };
     public Histogram histogram;
     public Range displayRange = Range.IDENTITY;
     public boolean histogramVisible;
