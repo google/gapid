@@ -94,7 +94,11 @@ void Interpreter::registerBuiltin(uint8_t api, FunctionTable::Id id,
 
 void Interpreter::setRendererFunctions(uint8_t api,
                                        FunctionTable* functionTable) {
-  mRendererFunctions[api] = functionTable;
+  if (functionTable != nullptr) {
+    mRendererFunctions[api] = functionTable;
+  } else {
+    mRendererFunctions.erase(api);
+  }
 }
 
 void Interpreter::resetInstructions() {
@@ -207,7 +211,7 @@ Interpreter::Result Interpreter::call(uint32_t opcode) {
     checkReplayStatusCallback(label, mInstructionCount, mCurrentInstruction);
   }
   if (func == nullptr) {
-    if (mRendererFunctions[api] != nullptr) {
+    if (mRendererFunctions.count(api) > 0) {
       func = mRendererFunctions[api]->lookup(id);
     } else {
       if (apiRequestCallback && apiRequestCallback(this, api)) {
