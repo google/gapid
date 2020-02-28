@@ -80,11 +80,11 @@ public class Tracks {
     for (CpuInfo.Cpu cpu : data.getCpu().cpus()) {
       CpuTrack track = new CpuTrack(data.qe, cpu);
       data.tracks.addTrack(summary.getId(), track.getId(), "CPU " + cpu.id,
-          single(state -> new CpuPanel(state, track), false));
+          single(state -> new CpuPanel(state, track), false, false));
       if (cpu.hasFrequency()) {
         CpuFrequencyTrack freqTrack = new CpuFrequencyTrack(data.qe, cpu);
         data.tracks.addTrack(summary.getId(), freqTrack.getId(), "CPU " + cpu.id + " Frequency",
-            single(state -> new CpuFrequencyPanel(state, freqTrack), false));
+            single(state -> new CpuFrequencyPanel(state, freqTrack), false, false));
         hasAnyFrequency = true;
       }
     }
@@ -131,7 +131,7 @@ public class Tracks {
       for (GpuInfo.Queue queue : data.getGpu().queues()) {
         SliceTrack track = SliceTrack.forGpuQueue(data.qe, queue);
         data.tracks.addTrack(parent, track.getId(), queue.getDisplay(),
-            single(state -> new GpuQueuePanel(state, queue, track), true));
+            single(state -> new GpuQueuePanel(state, queue, track), true, false));
       }
     }
 
@@ -145,7 +145,7 @@ public class Tracks {
       for (GpuInfo.VkApiEvent vkApiEvent : data.getGpu().vkApiEvents()) {
         VulkanEventTrack track = new VulkanEventTrack(data.qe, vkApiEvent);
         data.tracks.addTrack(parent, track.getId(), vkApiEvent.getDisplay(),
-            single(state -> new VulkanEventPanel(state, vkApiEvent, track), true));
+            single(state -> new VulkanEventPanel(state, vkApiEvent, track), true, false));
       }
     }
 
@@ -159,7 +159,7 @@ public class Tracks {
       for (GpuInfo.Buffer buffer : data.getGpu().buffers()) {
         FrameEventsTrack track = FrameEventsTrack.forBuffer(data.qe, buffer);
         data.tracks.addTrack(parent, track.getId(), buffer.getDisplay(),
-            single(state -> new FrameEventsSummaryPanel(state, buffer, track), true));
+            single(state -> new FrameEventsSummaryPanel(state, buffer, track), true, false));
       }
     }
 
@@ -173,7 +173,8 @@ public class Tracks {
       for (CounterInfo counter : counters) {
         CounterTrack track = new CounterTrack(data.qe, counter);
         data.tracks.addTrack(parent, track.getId(), counter.name,
-            single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true));
+            single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true,
+                /*right truncate*/ true));
       }
     }
     return data;
@@ -213,7 +214,7 @@ public class Tracks {
         for (CounterInfo counter : counters) {
           CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack(groupId, track.getId(), counter.name,
-              single(state -> new VulkanCounterPanel(state, track), false));
+              single(state -> new VulkanCounterPanel(state, track), false, false));
         }
       }
 
@@ -232,7 +233,8 @@ public class Tracks {
         for (CounterInfo counter : counters) {
           CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack(parentId, track.getId(), counter.name,
-              single(state -> new CounterPanel(state, track, PROCESS_COUNTER_TRACK_HIGHT), false));
+              single(state -> new CounterPanel(state, track, PROCESS_COUNTER_TRACK_HIGHT),false,
+                  false));
         }
       }
 
@@ -251,11 +253,12 @@ public class Tracks {
         boolean isIdleThread = hasIdleThreads && track.getThread().totalDur < idleCutoffThread;
         TrackConfig.Track.UiFactory<Panel> ui;
         if (track.getThread().maxDepth == 0) {
-          ui = single(state -> new ThreadPanel(state, track, false), false);
+          ui = single(state -> new ThreadPanel(state, track, false), false, false);
         } else {
           boolean expanded = !isIdleProcess && !isIdleThread;
           ui = single(state ->
-            new ThreadPanel(state, track, expanded), false, ThreadPanel::setCollapsed, !expanded);
+            new ThreadPanel(state, track, expanded), false, ThreadPanel::setCollapsed, !expanded,
+            false);
         }
         String threadParent = isIdleThread ? summary.getId() + "_idle" : summary.getId();
         data.tracks.addTrack(threadParent, track.getId(), track.getThread().getDisplay(), ui);
