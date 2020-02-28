@@ -53,19 +53,19 @@ public class TrackContainer {
   }
 
   public static <T extends TrackPanel<T>> TrackConfig.Track.UiFactory<Panel> single(
-      TrackConfig.Track.UiFactory<T> track, boolean sep) {
-    return state -> new Single<T>(state, track.createPanel(state), sep, null, true);
+      TrackConfig.Track.UiFactory<T> track, boolean sep, boolean rightTruncate) {
+    return state -> new Single<T>(state, track.createPanel(state), sep, null, true, rightTruncate);
   }
 
   public static <T extends TrackPanel<T>> TrackConfig.Track.UiFactory<Panel> single(
       TrackConfig.Track.UiFactory<T> track, boolean sep, BiConsumer<T, Boolean> filter,
-      boolean initial) {
+      boolean initial, boolean rightTruncate) {
     return state -> {
       T panel = track.createPanel(state);
       if (initial) {
         filter.accept(panel, initial);
       }
-      return new Single<T>(state, panel, sep, filter, initial);
+      return new Single<T>(state, panel, sep, filter, initial, rightTruncate);
     };
   }
 
@@ -101,31 +101,33 @@ public class TrackContainer {
     private final boolean sep;
     protected final BiConsumer<T, Boolean> filter;
     private final PinState pinState;
+    private final boolean rightTruncate; // False -> Left truncate, True -> Right truncate
 
     protected boolean filtered;
     protected boolean hovered = false;
 
     public Single(State.ForSystemTrace state, T track, boolean sep, BiConsumer<T, Boolean> filter,
-        boolean filtered) {
-      this(track ,sep, filter, filtered, new PinState(state));
+        boolean filtered, boolean rightTruncate) {
+      this(track ,sep, filter, filtered, new PinState(state), rightTruncate);
     }
 
     private Single(T track, boolean sep, BiConsumer<T, Boolean> filter,
-        boolean filtered, PinState pinState) {
+        boolean filtered, PinState pinState, boolean rightTruncate) {
       this.track = track;
       this.sep = sep;
       this.filter = filter;
       this.pinState = pinState;
       this.filtered = filtered;
+      this.rightTruncate = rightTruncate;
     }
 
     @Override
     public Single<T> copy() {
-      return new Single<T>(track.copy(), sep, filter, filtered, pinState);
+      return new Single<T>(track.copy(), sep, filter, filtered, pinState, rightTruncate);
     }
 
     private Single<T> copyWithSeparator() {
-      return new Single<T>(track.copy(), true, filter, filtered, pinState);
+      return new Single<T>(track.copy(), true, filter, filtered, pinState, rightTruncate);
     }
 
     @Override
@@ -143,9 +145,9 @@ public class TrackContainer {
     public void render(RenderContext ctx, Repainter repainter) {
       ctx.withClip(0, 0, LABEL_WIDTH, height, () -> {
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawTextLeftTruncate(Fonts.Style.Normal, track.getTitle(), LABEL_OFFSET, 0,
+        ctx.drawTextTruncate(Fonts.Style.Normal, track.getTitle(), LABEL_OFFSET, 0,
             ((filter == null) ? LABEL_PIN_X  : LABEL_TOGGLE_X) - LABEL_MARGIN - LABEL_OFFSET,
-            TITLE_HEIGHT);
+            TITLE_HEIGHT, rightTruncate);
         if (filter != null) {
           ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
               LABEL_TOGGLE_X, 0, TITLE_HEIGHT);
