@@ -180,29 +180,10 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	}
 
 	popMarker := func(ty MarkerType, id uint64, nCommands uint64) {
-		numMarkers := len(markerStack)
-		inStack := false
-		for i := numMarkers - 1; i >= 0 && len(markerStack) > 0; i-- {
+		if len(markerStack) > 0 {
 			marker := markerStack[len(markerStack)-1]
-			if marker.ty == ty {
-				inStack = true
-				break
-			}
-		}
-		if !inStack {
-			return
-		}
-
-		if id < nCommands-1 {
-			id++
-		}
-		for i := numMarkers - 1; i >= 0 && len(markerStack) > 0; i-- {
-			marker := markerStack[len(markerStack)-1]
-			d.SubCommandMarkerGroups.NewMarkerGroup(marker.parent, marker.name, marker.start, id)
+			d.SubCommandMarkerGroups.NewMarkerGroup(marker.parent, marker.name, marker.start, id+1)
 			markerStack = markerStack[0 : len(markerStack)-1]
-			if marker.ty != ty {
-				break
-			}
 		}
 	}
 	var walkCommandBuffer func(cb CommandBufferObjectʳ, idx api.SubCmdIdx) ([]sync.SubcommandReference, []api.SubCmdIdx)
