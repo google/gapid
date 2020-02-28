@@ -1105,7 +1105,19 @@ func commonShaderDataGroups(ctx context.Context,
 						currentSetData = append(currentSetData, api.CreatePoDDataValue("", "!"))
 					} else {
 						switch bindingType {
-						case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER, VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER:
+							descInfo := bindingInfo.ImageBinding().Get(i)
+
+							samplerHandle := descInfo.Sampler()
+							samplerPath := path.NewField("Samplers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(samplerHandle)
+							currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", samplerPath, api.CreatePoDDataValue("VkSampler", samplerHandle)))
+
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 							VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 							VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 							descInfo := bindingInfo.ImageBinding().Get(i)
