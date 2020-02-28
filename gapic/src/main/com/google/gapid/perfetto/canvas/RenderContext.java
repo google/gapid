@@ -284,6 +284,45 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     }
   }
 
+  // draws text centered vertically, right truncated to fit into the given width.
+  public void drawTextRightTruncate(
+      Fonts.Style style, String text, double x, double y, double w, double h) {
+    drawTextRightTruncate(style, text, x, y, w, h, false);
+  }
+
+  // draws text centered horizontally and vertically, right truncated to fit into the given width.
+  public void drawTextCenteredRightTruncate(
+      Fonts.Style style, String text, double x, double y, double w, double h) {
+    drawTextRightTruncate(style, text, x, y, w, h, true);
+  }
+
+  private void drawTextRightTruncate(
+      Fonts.Style style, String text, double x, double y, double w, double h, boolean centered) {
+    String toDisplay = text;
+    for (int l = text.length(); ; ) {
+      Size size = fontContext.measure(style, toDisplay);
+      if (size.w < w) {
+        drawText(style, toDisplay, x + (centered ? (w - size.w) / 2 : 0), y + (h - size.h) / 2);
+        break;
+      }
+
+      l = Math.min(l - textSizeGreediness, (int)(w / (size.w / toDisplay.length())));
+      if (l <= 0) {
+        break;
+      }
+      toDisplay = text.substring(0, l) + "...";
+    }
+  }
+
+  public void drawTextTruncate(
+      Fonts.Style style, String text, double x, double y, double w, double h, boolean rightTruncate) {
+    if (rightTruncate) {
+      drawTextRightTruncate(style, text, x, y, w, h);
+    } else {
+      drawTextLeftTruncate(style, text, x, y, w, h);
+    }
+  }
+
   // draws the text centered vertically and on the left of x.
   public void drawTextRightJustified(Fonts.Style style, String text, double x, double y, double h) {
     Size size = fontContext.measure(style, text);
