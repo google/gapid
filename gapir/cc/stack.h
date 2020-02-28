@@ -163,7 +163,7 @@ class Stack {
     template <class T>
     const T& get() {
       assertCanStore<T>();
-      GAPID_ASSERT(sizeof(T) == mDataSize && mDataType == typeid(T));
+      GAPID_DEBUG_ASSERT(sizeof(T) == mDataSize && mDataType == typeid(T));
       return *((T*)&mData);
     }
 
@@ -174,6 +174,7 @@ class Stack {
 
     Entry& operator=(const Entry& rhs) {
       this->mDataSize = rhs.mDataSize;
+      this->mDataType = rhs.mDataType;
       memcpy((void*)&mData, (void*)&rhs.mData, maxEntrySize);
       return *this;
     }

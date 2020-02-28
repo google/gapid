@@ -339,6 +339,7 @@ Interpreter::Result Interpreter::pushI(uint32_t opcode) {
   }
 
   uint64_t data = extract20bitData(opcode);
+  GAPID_WARNING("data: %u", data);
 
   switch (type) {
     case BaseType::Bool:
@@ -389,7 +390,7 @@ Interpreter::Result Interpreter::pushI(uint32_t opcode) {
       // Shifting the value into the exponent for floating point types
       data <<= 23;
       float val = 0;
-      memcpy(&data, &val, sizeof(float));
+      memcpy(&val, &data, sizeof(float));
       mStack.push(val);
     } break;
 
@@ -397,13 +398,13 @@ Interpreter::Result Interpreter::pushI(uint32_t opcode) {
       // Shifting the value into the exponent for floating point types
       data <<= 52;
       double val = 0;
-      memcpy(&data, &val, sizeof(double));
+      memcpy(&val, &data, sizeof(double));
       mStack.push(val);
     } break;
 
     case BaseType::AbsolutePointer: {
       void* val = nullptr;
-      memcpy(&data, &val, sizeof(void*));
+      memcpy(&val, &data, sizeof(void*));
       mStack.push(val);
     } break;
 

@@ -49,76 +49,37 @@ class StackTest : public ::testing::Test {
   std::unique_ptr<Stack> mStack;
 };
 
-void fillStack(Stack* stack, uint32_t n) {
-  for (unsigned i = 0; i < n; ++i) {
-    stack->push<uint32_t>(0);
-  }
-}
 }  // anonymous namespace
-
-TEST_F(StackTest, IsValid) { EXPECT_TRUE(mStack->isValid()); }
 
 TEST_F(StackTest, GetType) {
   mStack->push<uint32_t>(123);
   EXPECT_EQ(std::type_index(typeid(uint32_t)), mStack->typeAtTop());
-  EXPECT_TRUE(mStack->isValid());
   mStack->discard(1);
-  EXPECT_TRUE(mStack->isValid());
 
   mStack->push<void*>(nullptr);
   EXPECT_EQ(std::type_index(typeid(void*)), mStack->typeAtTop());
-  EXPECT_TRUE(mStack->isValid());
   mStack->discard(1);
-  EXPECT_TRUE(mStack->isValid());
-}
-
-TEST_F(StackTest, GetTypeErrorEmptyStack) {
-  mStack->typeAtTop();
-  EXPECT_FALSE(mStack->isValid());
-
-  mStack->typeAtTop();
-  EXPECT_FALSE(mStack->isValid());
 }
 
 TEST_F(StackTest, PushValue) {
   uint32_t x = 123456789;
   mStack->push(x);
   EXPECT_EQ(123456789, mStack->pop<uint32_t>());
-  EXPECT_TRUE(mStack->isValid());
-}
-
-TEST_F(StackTest, PushValueErrorStackOverflow) {
-  fillStack(mStack.get(), STACK_CAPACITY);
-  EXPECT_TRUE(mStack->isValid());
-
-  uint32_t x = 123456789;
-  mStack->push(x);
-  EXPECT_FALSE(mStack->isValid());
-
-  mStack->push(x);
-  EXPECT_FALSE(mStack->isValid());
 }
 
 TEST_F(StackTest, PopVolatilePtrWithoutConvert) {
   uint32_t offset = 0x123;
   mStack->push(Stack::VolatilePointer(offset));
 
-  auto pointer = mStack->pop<Stack::VolatilePointer>();
-  EXPECT_TRUE(mStack->isValid());
-
-  EXPECT_EQ(Stack::VolatilePointer(offset), pointer);
+  Stack::VolatilePointer pointer = mStack->pop<Stack::VolatilePointer>();
+  EXPECT_EQ(offset, pointer.getOffset());
 }
 
 TEST_F(StackTest, PopVolatilePtrWithConvert) {
   uint32_t offset = 0x123;
-  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
   mStack->push(Stack::VolatilePointer(offset));
-  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
 
   const void* pointer = mStack->pop<const void*>();
-  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
-  EXPECT_TRUE(mStack->isValid());
-
   EXPECT_EQ(mMemoryManager->volatileToAbsolute(offset), pointer);
 }
 
@@ -127,9 +88,7 @@ TEST_F(StackTest, PopConstantPtrWithoutConvert) {
   mStack->push(Stack::ConstantPointer(offset));
 
   Stack::ConstantPointer pointer = mStack->pop<Stack::ConstantPointer>();
-  EXPECT_TRUE(mStack->isValid());
-
-  EXPECT_EQ(Stack::ConstantPointer(offset), pointer);
+  EXPECT_EQ(offset, pointer.getOffset());
 }
 
 TEST_F(StackTest, PopConstantPtrWithConvert) {
@@ -137,39 +96,15 @@ TEST_F(StackTest, PopConstantPtrWithConvert) {
   mStack->push(Stack::ConstantPointer(offset));
 
   const void* pointer = mStack->pop<const void*>();
-  EXPECT_TRUE(mStack->isValid());
-
   EXPECT_EQ(mMemoryManager->constantToAbsolute(offset), pointer);
-}
-
-TEST_F(StackTest, PopErrorEmptyStack) {
-  mStack->pop<uint32_t>();
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, PopConstantErrorEmptyStack) {
-  mStack->pop<const void*>();
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, PopVolatileErrorEmptyStack) {
-  mStack->pop<void*>();
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, PopBaseValueErrorEmptyStack) {
-  mStack->pop<uint32_t>();
-  EXPECT_FALSE(mStack->isValid());
 }
 
 TEST_F(StackTest, Discard) {
   mStack->push<uint32_t>(1234);
   mStack->push<uint32_t>(2345);
   mStack->push<uint32_t>(3356);
-  EXPECT_TRUE(mStack->isValid());
 
   mStack->discard(2);
-  EXPECT_TRUE(mStack->isValid());
   EXPECT_EQ(1234, mStack->pop<uint32_t>());
 }
 
@@ -181,124 +116,40 @@ TEST_F(StackTest, SequentialDiscard) {
   mStack->push<uint32_t>(345);
   mStack->discard(1);
 
-  EXPECT_TRUE(mStack->isValid());
   EXPECT_EQ(123, mStack->pop<uint32_t>());
-}
-
-TEST_F(StackTest, DiscardErrorStackUnderflow) {
-  mStack->push<uint32_t>(1234);
-  EXPECT_TRUE(mStack->isValid());
-
-  mStack->discard(2);
-  EXPECT_FALSE(mStack->isValid());
-
-  mStack->discard(1);
-  EXPECT_FALSE(mStack->isValid());
 }
 
 TEST_F(StackTest, Clone) {
   mStack->push<uint32_t>(1234);
   mStack->push<uint32_t>(2345);
-  EXPECT_TRUE(mStack->isValid());
 
   mStack->clone(1);
-  EXPECT_TRUE(mStack->isValid());
 
   EXPECT_EQ(1234, mStack->pop<uint32_t>());
   EXPECT_EQ(2345, mStack->pop<uint32_t>());
   EXPECT_EQ(1234, mStack->pop<uint32_t>());
-  EXPECT_TRUE(mStack->isValid());
-}
-
-TEST_F(StackTest, CloneErrorNonExistantIndex) {
-  mStack->clone(1);
-  EXPECT_FALSE(mStack->isValid());
-
-  mStack->clone(1);
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, CloneErrorOutsideOfCapacity) {
-  mStack->push<uint32_t>(1234);
-  mStack->push<uint32_t>(2345);
-  EXPECT_TRUE(mStack->isValid());
-
-  mStack->clone(3);
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, CloneErrorStackOverflow) {
-  fillStack(mStack.get(), STACK_CAPACITY);
-  EXPECT_TRUE(mStack->isValid());
-
-  mStack->clone(1);
-  EXPECT_FALSE(mStack->isValid());
-
-  mStack->clone(1);
-  EXPECT_FALSE(mStack->isValid());
 }
 
 TEST_F(StackTest, PushPop) {
   mStack->push<uint32_t>(123);
-  EXPECT_TRUE(mStack->isValid());
-
   ASSERT_EQ(123, mStack->pop<uint32_t>());
-  EXPECT_TRUE(mStack->isValid());
 }
 
 TEST_F(StackTest, PopVolatilePointer) {
   uint32_t a = 0;
   mStack->push(Stack::VolatilePointer(a));
-  EXPECT_TRUE(mStack->isValid());
   EXPECT_EQ(mMemoryManager->volatileToAbsolute(0), mStack->pop<void*>());
 }
 
 TEST_F(StackTest, PopConstantPointer) {
   uint32_t a = 0;
   mStack->push(Stack::ConstantPointer(a));
-  EXPECT_TRUE(mStack->isValid());
   EXPECT_EQ(mMemoryManager->constantToAbsolute(0), mStack->pop<const void*>());
 }
 
 TEST_F(StackTest, PopAbsolutePointer) {
   mStack->push<void*>(nullptr);
-  EXPECT_TRUE(mStack->isValid());
   EXPECT_EQ(nullptr, mStack->pop<void*>());
-}
-
-TEST_F(StackTest, PopErrorStackUnderflow) {
-  mStack->pop<uint32_t>();
-  EXPECT_FALSE(mStack->isValid());
-
-  mStack->pop<uint32_t>();
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, PopErrorTypeMissmatch) {
-  mStack->push<uint16_t>(123);
-  EXPECT_TRUE(mStack->isValid());
-
-  mStack->pop<uint32_t>();
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, PopErrorMismatchingPointerType) {
-  mStack->push<uint32_t>(123);
-  EXPECT_TRUE(mStack->isValid());
-
-  mStack->pop<void*>();
-  EXPECT_FALSE(mStack->isValid());
-}
-
-TEST_F(StackTest, PushErrorOverCapacity) {
-  fillStack(mStack.get(), STACK_CAPACITY);
-  EXPECT_TRUE(mStack->isValid());
-
-  mStack->push<uint32_t>(1);
-  EXPECT_FALSE(mStack->isValid());
-
-  mStack->push<uint32_t>(1);
-  EXPECT_FALSE(mStack->isValid());
 }
 
 }  // namespace test

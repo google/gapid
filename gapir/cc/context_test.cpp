@@ -170,26 +170,6 @@ TEST_F(ContextTest, PostData) {
   EXPECT_THAT(actual, ContainerEq(expected));
 }
 
-TEST_F(ContextTest, PostDataErrorPop) {
-  auto payload =
-      createPayload(128, 1024, {0, 1, 2, 3, 4, 5, 6, 7}, {},
-                    {instruction(Interpreter::InstructionCode::PUSH_I,
-                                 BaseType::ConstantPointer, 1),
-                     instruction(Interpreter::InstructionCode::PUSH_I,
-                                 BaseType::Uint8, 6),  // Wrong type
-                     instruction(Interpreter::InstructionCode::POST)});
-
-  EXPECT_CALL(*mSrv, getPayload("payload"))
-      .WillOnce(Return(ByMove(std::move(payload))));
-  core::CrashHandler crash_handler;
-  auto context = Context::create(mSrv.get(), crash_handler,
-                                 mResourceLoader.get(), mMemoryManager.get());
-
-  EXPECT_THAT(context, NotNull());
-  context->initialize("payload");
-  EXPECT_FALSE(context->interpret());
-}
-
 TEST_F(ContextTest, PostDataErrorPost) {
   auto payload = createPayload(
       128, 1024, {0, 1, 2, 3, 4, 5, 6, 7}, {},

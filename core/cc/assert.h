@@ -17,7 +17,6 @@
 #ifndef CORE_ASSERT_H
 #define CORE_ASSERT_H
 
-#include <cassert>
 #include "log.h"
 
 #define GAPID_ASSERT(cond)                     \
@@ -32,5 +31,23 @@
       GAPID_FATAL("Assert: <" GAPID_STR(cond) ">: " msg, ##__VA_ARGS__); \
     }                                                                    \
   } while (false)
+
+#ifndef NDEBUG
+#define GAPID_DEBUG_ASSERT(cond)               \
+  do {                                         \
+    if (!(cond)) {                             \
+      GAPID_FATAL("Assert: " GAPID_STR(cond)); \
+    }                                          \
+  } while (false)
+#define GAPID_DEBUG_ASSERT_MSG(cond, msg, ...)                           \
+  do {                                                                   \
+    if (!(cond)) {                                                       \
+      GAPID_FATAL("Assert: <" GAPID_STR(cond) ">: " msg, ##__VA_ARGS__); \
+    }                                                                    \
+  } while (false)
+#else
+#define GAPID_DEBUG_ASSERT(cond)
+#define GAPID_DEBUG_ASSERT_MSG(cond, msg, ...)
+#endif
 
 #endif  // CORE_ASSERT_H
