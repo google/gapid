@@ -96,7 +96,7 @@ public class Settings {
               .setSlices(true)
               .setCounters(true)
               .setCounterRate(1)
-              .setSurfaceFlinger(true))
+              .setSurfaceFlinger(false))
           .setMemory(SettingsProto.Perfetto.Memory.newBuilder()
               .setEnabled(true)
               .setRate(10))
