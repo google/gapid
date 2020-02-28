@@ -93,7 +93,7 @@ static bool debug_marker_ext_supported = false;
 {{range $c := AllCommands $}}
 {{$ind := Title (Macro "InitialIndirection" $c)}}
 {{if and (not (GetAnnotation $c "pfn")) (not (GetAnnotation $c "synthetic"))}}
-{{if and (not (Macro "IS_DEBUG_UTILS_FUNCTIONS" $c)) (not (Macro "IS_DEBUG_MARKER_FUNCTIONS" $c)) (not (eq $c.Name "vkEnumerateDeviceExtensionProperties"))}}
+{{if and (not (Macro "IS_DEBUG_UTILS_FUNCTIONS" $c)) (not (Macro "IS_DEBUG_MARKER_FUNCTIONS" $c)) (not (eq $c.Name "vkEnumerateInstanceExtensionProperties")) (not (eq $c.Name "vkEnumerateDeviceExtensionProperties"))}}
 {{Template "BeginPlatformIfDef" $c}}
 {{Template "C++.BaseType" $c.Return.Type}} {{$c.Name}}(PFN_{{$c.Name}} next, {{Macro "C++.BaseCallParameters" $c | JoinWith ", "}}) {
     timer t("{{$ind}}", "{{$c.Name}}");
@@ -219,20 +219,87 @@ VkResult vkDebugMarkerSetObjectNameEXT(
     return debug_marker_ext_supported ? next(device, pNameInfo) : VK_SUCCESS;
 }
 
-static const uint32_t NUM_EXTENSIONS = 2;
-static const VkExtensionProperties new_device_extensions[] = {
+
+namespace {
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
+const char* LAYER_NAME = "CPUTiming";
+const VkExtensionProperties INSTANCE_EXTENSIONS[] = {
     {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_SPEC_VERSION},
+};
+const uint32_t NUM_INSTANCE_EXTENSIONS = ARRAY_SIZE(INSTANCE_EXTENSIONS);
+const VkExtensionProperties DEVICE_EXTENSIONS[] = {
     {VK_EXT_DEBUG_MARKER_EXTENSION_NAME, VK_EXT_DEBUG_MARKER_SPEC_VERSION},
 };
+const uint32_t NUM_DEVICE_EXTENSIONS = ARRAY_SIZE(DEVICE_EXTENSIONS);
+
+#undef ARRAY_SIZE
+
+/**
+ * Enumerate extension properties for a specific layer.
+ *
+ * This should expose only the new extensions added by the layer.
+ */
+VkResult enumerateExtensionPropertiesForLayer(
+        uint32_t* pPropertyCount,
+        VkExtensionProperties* pProperties,
+        uint32_t numExtensions,
+        const VkExtensionProperties extensions[]) {
+    if (pProperties == nullptr) {
+        *pPropertyCount = numExtensions;
+        return VK_SUCCESS;
+    }
+    uint32_t capacity = std::min(*pPropertyCount, numExtensions);
+    memcpy(pProperties, extensions, capacity * sizeof(VkExtensionProperties));
+    if (*pPropertyCount < numExtensions) {
+        return VK_INCOMPLETE;
+    } else {
+        *pPropertyCount = numExtensions;
+        return VK_SUCCESS;
+    }
+}
+} // end of anonymous namespace
 
 // This layer needs to add VK_EXT_debug_utils and VK_EXT_debug_marker as a supported extension.
-VkResult vkEnumerateDeviceExtensionProperties(PFN_vkEnumerateDeviceExtensionProperties next, VkPhysicalDevice physicalDevice, char const* pLayerName, uint32_t* pPropertyCount, VkExtensionProperties* pProperties) {
 
+VkResult vkEnumerateInstanceExtensionProperties(
+        PFN_vkEnumerateInstanceExtensionProperties next,
+        char const* pLayerName,
+        uint32_t* pPropertyCount,
+        VkExtensionProperties* pProperties) {
+    timer t("", "vkEnumerateInstanceExtensionProperties");
+    if (pLayerName != nullptr && strcmp(pLayerName, LAYER_NAME) == 0) {
+        return enumerateExtensionPropertiesForLayer(
+                pPropertyCount,
+                pProperties,
+                NUM_INSTANCE_EXTENSIONS,
+                INSTANCE_EXTENSIONS);
+    }
+    return next(pLayerName, pPropertyCount, pProperties);
+}
+
+VkResult vkEnumerateDeviceExtensionProperties(
+        PFN_vkEnumerateDeviceExtensionProperties next,
+        VkPhysicalDevice physicalDevice,
+        char const* pLayerName,
+        uint32_t* pPropertyCount,
+        VkExtensionProperties* pProperties) {
     timer t("VkPhysicalDevice", "vkEnumerateDeviceExtensionProperties");
-    if (pProperties == NULL) {
+
+    if (pLayerName != nullptr && strcmp(pLayerName, LAYER_NAME) == 0) {
+        return enumerateExtensionPropertiesForLayer(
+                pPropertyCount,
+                pProperties,
+                NUM_DEVICE_EXTENSIONS,
+                DEVICE_EXTENSIONS);
+    }
+    // Manually append device extension.  This should not be necessary, but the Android vulkan
+    // loader does not expose extensions from implicit layer (b/143293104).
+    if (pProperties == nullptr) {
         VkResult res = next(physicalDevice, pLayerName, pPropertyCount, pProperties);
         if (res == VK_SUCCESS) {
-            (*pPropertyCount) += NUM_EXTENSIONS;
+            (*pPropertyCount) += NUM_DEVICE_EXTENSIONS;
         }
         return res;
     }
@@ -248,13 +315,13 @@ VkResult vkEnumerateDeviceExtensionProperties(PFN_vkEnumerateDeviceExtensionProp
                     debug_marker_ext_supported = true;
                 }
             }
-            // *pPropertyCount is expected to be requestedCount - NUM_EXTENSIONS.
-            *pPropertyCount = std::min(*pPropertyCount + NUM_EXTENSIONS, requestedCount);
-            uint32_t count = std::min(NUM_EXTENSIONS, *pPropertyCount);
+            // *pPropertyCount is expected to be requestedCount - NUM_DEVICE_EXTENSIONS.
+            *pPropertyCount = std::min(*pPropertyCount + NUM_DEVICE_EXTENSIONS, requestedCount);
+            uint32_t count = std::min(NUM_DEVICE_EXTENSIONS, *pPropertyCount);
             memcpy(
-                &pProperties[*pPropertyCount - count],
-                new_device_extensions,
-                count * sizeof(VkExtensionProperties));
+                    &pProperties[*pPropertyCount - count],
+                    DEVICE_EXTENSIONS,
+                    count * sizeof(VkExtensionProperties));
         }
         return res;
     }
