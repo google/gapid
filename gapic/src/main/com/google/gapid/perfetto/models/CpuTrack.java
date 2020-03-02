@@ -36,6 +36,7 @@ import com.google.gapid.perfetto.views.CpuSliceSelectionView;
 import com.google.gapid.perfetto.views.CpuSlicesSelectionView;
 import com.google.gapid.perfetto.views.State;
 
+import java.util.Arrays;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.Collections;
@@ -49,7 +50,7 @@ import java.util.function.Consumer;
  */
 public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
   private static final String SUMMARY_SQL =
-      "select quantum_ts, sum(dur)/cast(%d as float) " +
+      "select quantum_ts, group_concat(row_id) ids, sum(dur)/cast(%d as float) util " +
       "from %s where cpu = %d and utid != 0 " +
       "group by quantum_ts";
   private static final String SLICES_SQL =
@@ -61,6 +62,10 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
       "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
       "where cpu = %d and utid != 0 and ts < %d and ts_end >= %d";
+  private static final String SLICE_RANGE_FOR_IDS_SQL =
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) " +
+      "where cpu = %d and row_id in (%s)";
   private static final String SLICE_RANGE_FOR_THREAD_SQL =
       "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
@@ -96,8 +101,14 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
 
   private ListenableFuture<Data> computeSummary(DataRequest req, Window w) {
     return transform(qe.query(summarySql(w.bucketSize)), result -> {
-      Data data = new Data(req, w.bucketSize, new double[w.getNumberOfBuckets()]);
-      result.forEachRow(($, r) -> data.utilizations[r.getInt(0)] = r.getDouble(1));
+      int len = w.getNumberOfBuckets();
+      String[] concatedIds = new String[len];
+      Arrays.fill(concatedIds, "");
+      Data data = new Data(req, w.bucketSize, concatedIds, new double[len]);
+      result.forEachRow(($, r) -> {
+        data.concatedIds[r.getInt(0)] = r.getString(1);
+        data.utilizations[r.getInt(0)] = r.getDouble(2);
+      });
       return data;
     });
   }
@@ -145,6 +156,14 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     });
   }
 
+  public ListenableFuture<List<Slice>> getSlices(String ids) {
+    return transform(qe.query(sliceRangeForIdsSql(cpu.id, ids)), result -> {
+      List<Slice> slices = Lists.newArrayList();
+      result.forEachRow((i, r) -> slices.add(new Slice(r)));
+      return slices;
+    });
+  }
+
   public static ListenableFuture<List<Slice>> getSlices(QueryEngine qe, long utid, TimeSpan ts) {
     return transform(qe.query(sliceRangeForThreadSql(utid, ts)), result -> {
       List<Slice> slices = Lists.newArrayList();
@@ -157,6 +176,10 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     return format(SLICE_RANGE_SQL, cpu, ts.end, ts.start);
   }
 
+  private static String sliceRangeForIdsSql(int cpu, String ids) {
+    return format(SLICE_RANGE_FOR_IDS_SQL, cpu, ids);
+  }
+
   private static String sliceRangeForThreadSql(long utid, TimeSpan ts) {
     return format(SLICE_RANGE_FOR_THREAD_SQL, utid, ts.end, ts.start);
   }
@@ -165,6 +188,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     public final Kind kind;
     // Summary.
     public final long bucketSize;
+    public final String[] concatedIds;    // Concated ids for all cpu slices in a each time bucket.
     public final double[] utilizations;
     // Slice.
     public final long[] ids;
@@ -172,10 +196,11 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     public final long[] ends;
     public final long[] utids;
 
-    public Data(DataRequest request, long bucketSize, double[] utilizations) {
+    public Data(DataRequest request, long bucketSize, String[] concatedIds, double[] utilizations) {
       super(request);
       this.kind = Kind.summary;
       this.bucketSize = bucketSize;
+      this.concatedIds = concatedIds;
       this.utilizations = utilizations;
       this.ids = null;
       this.starts = null;
@@ -191,6 +216,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
       this.ends = ends;
       this.utids = utids;
       this.bucketSize = 0;
+      this.concatedIds = null;
       this.utilizations = null;
     }
 
