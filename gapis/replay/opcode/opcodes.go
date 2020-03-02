@@ -468,54 +468,6 @@ func (r TrivialPointerResolver) ResolvePointerIndex(value.PointerIndex) (protoco
 	panic("unimplemented")
 }
 
-// type InlineResourceValuePatchUp struct {
-// 	Destination value.Pointer
-// 	Value       value.Value
-// }
-
-// type InlineResourcePointerPatchUp struct {
-// 	Destination value.Pointer
-// 	Source      value.Value
-// }
-
-// func (c InlineResource) Encode(w binary.Writer) error {
-
-// 	w.Uint32(packCYZ(protocol.OpInlineResource, uint32(len(c.ValuePatchUps)), c.DataSize))
-
-// 	for _, val := range c.Data {
-// 		w.Uint32(val)
-// 	}
-
-// 	for _, valuePatchUp := range c.ValuePatchUps {
-
-// 		_, destination, onStack1 := valuePatchUp.Destination.Get(c.Resolver)
-// 		_, value, onStack2 := valuePatchUp.Value.Get(c.Resolver)
-
-// 		if onStack1 || onStack2 {
-// 			panic("InlineResource does not support patchups with stack pointers")
-// 		}
-
-// 		w.Uint32(uint32(destination))
-// 		w.Uint32(uint32(value))
-// 	}
-
-// 	w.Uint32(uint32(len(c.PointerPatchUps)))
-// 	for _, pointerPatchUp := range c.PointerPatchUps {
-
-// 		_, destination, onStack1 := pointerPatchUp.Destination.Get(c.Resolver)
-// 		_, source, onStack2 := pointerPatchUp.Source.Get(c.Resolver)
-
-// 		if onStack1 || onStack2 {
-// 			panic("InlineResource does not support patchups with stack pointers")
-// 		}
-
-// 		w.Uint32(uint32(destination))
-// 		w.Uint32(uint32(source))
-// 	}
-
-// 	return w.Error()
-// }
-
 func DecodeInlineResource(opcode uint32, reader binary.Reader) InlineResource {
 
 	numValuePatchUps := unpackY(opcode)
