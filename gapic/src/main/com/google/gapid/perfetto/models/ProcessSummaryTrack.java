@@ -25,8 +25,11 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.models.CpuTrack.Slice;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * {@link Track} containing CPU usage data of all threads in a process.
@@ -35,9 +38,13 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
   // "where cpu < %numCpus%" is for performance reasons of the window table.
   private static final String PROCESS_VIEW_SQL = "select * from sched where utid in (%s)";
   private static final String SUMMARY_SQL =
-      "select quantum_ts, sum(dur)/cast(%d * %d as float) " +
+      "select quantum_ts, group_concat(row_id) ids, sum(dur)/cast(%d * %d as float) util " +
       "from %s group by quantum_ts";
   private static final String SLICES_SQL = "select ts, dur, cpu, utid, row_id from %s";
+  private static final String SLICE_RANGE_FOR_IDS_SQL =
+      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) " +
+      "where row_id in (%s)";
 
   private final int numCpus;
   private final ProcessInfo process;
@@ -76,8 +83,14 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
 
   private ListenableFuture<Data> computeSummary(DataRequest req, Window w) {
     return transform(qe.query(summarySql(w.bucketSize)), result -> {
-      Data data = new Data(req, w.bucketSize, new double[w.getNumberOfBuckets()]);
-      result.forEachRow(($, r) -> data.utilizations[r.getInt(0)] = r.getDouble(1));
+      int len = w.getNumberOfBuckets();
+      String[] concatedIds = new String[len];
+      Arrays.fill(concatedIds, "");
+      Data data = new Data(req, w.bucketSize, concatedIds, new double[len]);
+      result.forEachRow(($, r) -> {
+        data.concatedIds[r.getInt(0)] = r.getString(1);
+        data.utilizations[r.getInt(0)] = r.getDouble(2);
+      });
       return data;
     });
   }
@@ -107,6 +120,18 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
     return format(SLICES_SQL, tableName("span"));
   }
 
+  public ListenableFuture<List<Slice>> getSlices(String ids) {
+    return transform(qe.query(sliceRangeForIdsSql(ids)), result -> {
+      List<Slice> slices = Lists.newArrayList();
+      result.forEachRow((i, r) -> slices.add(new Slice(r)));
+      return slices;
+    });
+  }
+
+  private static String sliceRangeForIdsSql(String ids) {
+    return format(SLICE_RANGE_FOR_IDS_SQL, ids);
+  }
+
   public ListenableFuture<Slice> getSlice(long id) {
     return CpuTrack.getSlice(qe, id);
   }
@@ -115,6 +140,7 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
     public final Kind kind;
     // Summary.
     public final long bucketSize;
+    public final String[] concatedIds;    // Concated ids for all cpu slices in a each time bucket.
     public final double[] utilizations;
     // Slice.
     public final long[] ids;
@@ -123,10 +149,11 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
     public final int[] cpus;
     public final long[] utids;
 
-    public Data(DataRequest request, long bucketSize, double[] utilizations) {
+    public Data(DataRequest request, long bucketSize, String[] concatedIds, double[] utilizations) {
       super(request);
       this.kind = Kind.summary;
       this.bucketSize = bucketSize;
+      this.concatedIds = concatedIds;
       this.utilizations = utilizations;
       this.ids = null;
       this.starts = null;
@@ -145,6 +172,7 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
       this.cpus = cpus;
       this.utids = utids;
       this.bucketSize = 0;
+      this.concatedIds = null;
       this.utilizations = null;
     }
 
