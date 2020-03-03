@@ -388,7 +388,7 @@ public class ImagePanel extends Composite implements Loadable {
           analyticsView, show ? ClientAction.ShowHistogram : ClientAction.HideHistogram);
       setShowHistogram(show);
     }, "Toggle histogram");
-    colorChanelsItem = createBaloonToolItem(bar, theme.colorChannels()[15], shell -> {
+    colorChanelsItem = createBaloonToolItem(bar, theme.colorChannels()[7], shell -> {
       analytics.postInteraction(analyticsView, ClientAction.ShowColorChannels);
       Composite c = createComposite(shell, new RowLayout(SWT.HORIZONTAL), SWT.BORDER);
       final ImageComponent i = imageComponent;
