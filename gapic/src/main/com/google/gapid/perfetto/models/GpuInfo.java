@@ -88,7 +88,7 @@ public class GpuInfo {
       res.forEachRow(($, r) -> {
         switch (r.getString(2)) {
           case "gpu_render_stage":
-            queues.add(new Queue(queues.size(), r));
+            queues.add(new Queue(r));
             break;
           case "vulkan_events":
             vkApiEvents.add(new VkApiEvent(r));
@@ -106,22 +106,22 @@ public class GpuInfo {
   }
 
   public static class Queue {
-    public final int id;
+    public final String name;
     public final long trackId;
     public final int maxDepth;
 
-    public Queue(int id, long trackId, int maxDepth) {
-      this.id = id;
+    public Queue(long trackId, String name, int maxDepth) {
       this.trackId = trackId;
+      this.name = name;
       this.maxDepth = maxDepth;
     }
 
-    public Queue(int id, QueryEngine.Row row) {
-      this(id, row.getLong(0), row.getInt(3));
+    public Queue(QueryEngine.Row row) {
+      this(row.getLong(0), row.getString(1), row.getInt(3));
     }
 
     public String getDisplay() {
-      return "GPU Queue " + id;
+      return name;
     }
   }
 
