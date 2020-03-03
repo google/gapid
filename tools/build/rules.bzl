@@ -42,6 +42,9 @@ load("//tools/build/rules:embed.bzl",
 load("//tools/build/rules:filehash.bzl",
     _filehash = "filehash",
 )
+load("//tools/build/rules:images.bzl",
+    _img2h = "img2h",
+)
 load("//tools/build/rules:jni.bzl",
     _jni_library = "jni_library",
 )
@@ -89,6 +92,7 @@ android_dynamic_library = _android_dynamic_library
 cc_dynamic_library = _cc_dynamic_library
 embed = _embed
 filehash = _filehash
+img2h = _img2h
 jni_library = _jni_library
 api_library = _api_library
 api_template = _api_template
