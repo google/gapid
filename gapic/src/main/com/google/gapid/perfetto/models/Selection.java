@@ -209,6 +209,8 @@ public interface Selection<Key> {
     public static final Kind<Long> VulkanEvent = new Kind<Long>(4);
     public static final Kind<Long> Counter = new Kind<Long>(5);
     public static final Kind<FrameEventsTrack.Slice.Key> FrameEvents = new Kind<FrameEventsTrack.Slice.Key>(6);
+    public static final Kind<Long> Memory = new Kind<Long>(7);
+    public static final Kind<Long> Battery = new Kind<Long>(8);
 
     public int priority;
 

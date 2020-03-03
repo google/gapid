@@ -20,17 +20,25 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.perfetto.views.StyleConstants.memoryBuffersGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.memoryUsedGradient;
+import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Lists;
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.MemorySummaryTrack;
+import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
+import com.google.gapid.perfetto.models.Selection.Kind;
+import java.util.List;
+import org.eclipse.swt.SWT;
 
 /**
  * Displays information about the system memory usage.
  */
-public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
+public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implements Selectable {
   private static final double HEIGHT = 80;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -72,6 +80,9 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
         return;
       }
 
+      Selection<Long> selected = state.getSelection(Selection.Kind.Memory);
+      List<Integer> visibleSelected = Lists.newArrayList();
+
       memoryBuffersGradient().applyBase(ctx);
       ctx.path(path -> {
         path.moveTo(0, h);
@@ -83,6 +94,9 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
           path.lineTo(nextX, nextY);
           lastX = nextX;
           lastY = nextY;
+          if (selected.contains(data.id[i])) {
+            visibleSelected.add(i);
+          }
         }
         path.lineTo(lastX, h);
         path.close();
@@ -112,6 +126,16 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
       ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
       ctx.setForegroundColor(colors().textMain);
       ctx.drawText(Fonts.Style.Normal, label, 4, 4);
+
+      // Draw highlight line after the whole graph is rendered, so that the highlight is on the top.
+      for (int index : visibleSelected) {
+        double startX = state.timeToPx(data.ts[index]);
+        double endX = (index >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[index + 1]);
+        ctx.setBackgroundColor(memoryBuffersGradient().highlight);
+        ctx.fillRect(startX, h * data.unused[index] / data.total[index] - 1, endX - startX, 3);
+        ctx.setBackgroundColor(memoryUsedGradient().highlight);
+        ctx.fillRect(startX, h * (data.unused[index] + data.buffCache[index]) / data.total[index] - 1, endX - startX, 3);
+      }
 
       if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
@@ -164,6 +188,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
       }
     }
 
+    long id = data.id[idx];
     hovered = new HoverCard(m, data.total[idx], data.unused[idx], data.buffCache[idx]);
     mouseXpos = x;
     mouseYpos = (height - 2 * TRACK_MARGIN - hovered.allSize.h) / 2;
@@ -178,6 +203,16 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
       @Override
       public void stop() {
         hovered = null;
+      }
+
+      @Override
+      public boolean click() {
+        if ((mods & SWT.MOD1) == SWT.MOD1) {
+          state.addSelection(Kind.Memory, track.getValue(id));
+        } else {
+          state.setSelection(Kind.Memory, track.getValue(id));
+        }
+        return true;
       }
     };
   }
@@ -200,6 +235,11 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
     }
     v /= 1024;
     return String.format("%.1fTb", v);
+  }
+
+  @Override
+  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+    builder.add(Selection.Kind.Memory, transform(track.getValues(ts), v -> v));
   }
 
   private static class HoverCard {
