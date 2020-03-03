@@ -90,9 +90,10 @@ mv gapid.deb gapid-$VERSION-linux.deb
 echo "$(date): Done."
 
 # Copy the symbol file to the output.
+# Warning: the name MUST be gapir-$VERSION-... , as this format is expected in our release script.
 [ -f "$BIN/cmd/gapir/cc/gapir.sym" ] && cp "$BIN/cmd/gapir/cc/gapir.sym" gapir-$VERSION-linux.sym
-[ -f "$BIN/gapidapk/android/apk/arm64-v8a_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/arm64-v8a_gapir.sym" arm64-v8a_gapir-$VERSION-linux.sym
-[ -f "$BIN/gapidapk/android/apk/armeabi-v7a_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/armeabi-v7a_gapir.sym" armeabi-v7a_gapir-$VERSION-linux.sym
-[ -f "$BIN/gapidapk/android/apk/x86_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/x86_gapir.sym" x86_gapir-$VERSION-linux.sym
+[ -f "$BIN/gapidapk/android/apk/arm64-v8a_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/arm64-v8a_gapir.sym" gapir-$VERSION-android-arm64-v8a.sym
+[ -f "$BIN/gapidapk/android/apk/armeabi-v7a_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/armeabi-v7a_gapir.sym" gapir-$VERSION-android-armeabi-v7a.sym
+[ -f "$BIN/gapidapk/android/apk/x86_gapir.sym" ] && cp "$BIN/gapidapk/android/apk/x86_gapir.sym" gapir-$VERSION-android-x86.sym
 
 popd
