@@ -162,7 +162,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
           }
         }
         panels.add(new Container(new GpuQueuePanel(state,
-            new GpuInfo.Queue(track.getId(), track.getId(), maxDepth + 1),
+            new GpuInfo.Queue(track.getId(), track.getName(), maxDepth + 1),
             new GpuSliceTrack(track.getId(), matched))));
       }
 
