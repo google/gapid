@@ -20,15 +20,23 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.batteryInGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.batteryOutGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Lists;
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Fonts.TextMeasurer;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.BatterySummaryTrack;
+import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
+import com.google.gapid.perfetto.models.Selection.Kind;
+import java.util.List;
+import org.eclipse.swt.SWT;
 
-public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
+public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> implements Selectable {
   private static final double HEIGHT = 50;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -70,6 +78,8 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
       }
 
       double maxAbs = track.getMaxAbsCurrent();
+      Selection<Long> selected = state.getSelection(Selection.Kind.Battery);
+      List<Integer> visibleSelected = Lists.newArrayList();
 
       // Draw outgoing battery current above the x axis.
       batteryOutGradient().applyBase(ctx);
@@ -83,6 +93,9 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
           path.lineTo(nextX, nextY);
           lastX = nextX;
           lastY = nextY;
+          if (selected.contains(data.id[i])) {
+            visibleSelected.add(i);
+          }
         }
         path.lineTo(lastX, h / 2);
         path.close();
@@ -106,6 +119,15 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
         path.close();
         ctx.fillPath(path);
       });
+
+      // Draw highlight line after the whole graph is rendered, so that the highlight is on the top.
+      for (int index : visibleSelected) {
+        double startX = state.timeToPx(data.ts[index]);
+        double endX = (index >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[index + 1]);
+        ctx.setBackgroundColor(data.current[index] > 0 ?
+            batteryOutGradient().highlight : batteryInGradient().highlight);
+        ctx.fillRect(startX, h / 2 - h / 2 * data.current[index] / maxAbs - 1, endX - startX, 3);
+      }
 
       // Draw hovered card.
       if (hovered != null) {
@@ -153,6 +175,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
       }
     }
 
+    long id = data.id[idx];
     hovered = new HoverCard(m, data.capacity[idx], data.charge[idx], data.current[idx]);
     mouseXpos = x;
     mouseYpos = (height - 2 * TRACK_MARGIN - hovered.allSize.h) / 2;
@@ -168,7 +191,22 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
       public void stop() {
         hovered = null;
       }
+
+      @Override
+      public boolean click() {
+        if ((mods & SWT.MOD1) == SWT.MOD1) {
+          state.addSelection(Kind.Battery, track.getValue(id));
+        } else {
+          state.setSelection(Kind.Battery, track.getValue(id));
+        }
+        return true;
+      }
     };
+  }
+
+  @Override
+  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+    builder.add(Selection.Kind.Battery, transform(track.getValues(ts), v -> v));
   }
 
   private static class HoverCard {
