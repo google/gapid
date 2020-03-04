@@ -224,7 +224,9 @@ public class TraceConfigDialog extends DialogBase {
             .getFtraceConfigBuilder()
             .addAllFtraceEvents(Arrays.asList(PROCESS_TRACKING_FTRACE))
             .setDrainPeriodMs(FTRACE_DRAIN_PERIOD)
-            .setBufferSizeKb(FTRACE_BUFFER_SIZE);
+            .setBufferSizeKb(FTRACE_BUFFER_SIZE)
+            .setCompactSched(PerfettoConfig.FtraceConfig.CompactSchedConfig.newBuilder()
+                .setEnabled(true));
     // Record process names at startup into the metadata buffer.
     config.addDataSourcesBuilder()
         .getConfigBuilder()
