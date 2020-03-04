@@ -52,7 +52,7 @@ import java.util.function.Consumer;
  */
 public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
   private static final String SCHED_VIEW =
-      "select ts, dur, end_state, row_id from sched where utid = %d";
+      "select ts, dur, end_state, id from sched where utid = %d";
   private static final String INSTANT_VIEW =
       "with" +
       "  events as (select ts from instants where name = 'sched_wakeup' and ref = %d)," +
@@ -68,11 +68,11 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
       "  when end_state is not null then 'r'" +
       "  when lag(end_state) over ts_win is not null then lag(end_state) over ts_win" +
       "  else 'R'" +
-      "end as state, row_id " +
+      "end as state, id " +
       "from %s window ts_win as (order by ts)";
 
   private static final String SCHED_SQL =
-      "select ts, dur, state, row_id from %s where state != 'S' and state != 'x'";
+      "select ts, dur, state, id from %s where state != 'S' and state != 'x'";
   private static final String SCHED_RANGE_SQL =
       "select ts, dur, state from %s where ts < %d and ts + dur >= %d";
 

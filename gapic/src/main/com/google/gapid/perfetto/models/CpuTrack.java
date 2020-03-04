@@ -50,24 +50,24 @@ import java.util.function.Consumer;
  */
 public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
   private static final String SUMMARY_SQL =
-      "select quantum_ts, group_concat(row_id) ids, sum(dur)/cast(%d as float) util " +
+      "select quantum_ts, group_concat(id) ids, sum(dur)/cast(%d as float) util " +
       "from %s where cpu = %d and utid != 0 " +
       "group by quantum_ts";
   private static final String SLICES_SQL =
-      "select ts, dur, utid, row_id from %s where cpu = %d and utid != 0";
+      "select ts, dur, utid, id from %s where cpu = %d and utid != 0";
   private static final String SLICE_SQL =
-      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
-      "from sched left join thread using(utid) where row_id = %d";
+      "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) where sched.id = %d";
   private static final String SLICE_RANGE_SQL =
-      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
       "where cpu = %d and utid != 0 and ts < %d and ts_end >= %d";
   private static final String SLICE_RANGE_FOR_IDS_SQL =
-      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
-      "where cpu = %d and row_id in (%s)";
+      "where cpu = %d and sched.id in (%s)";
   private static final String SLICE_RANGE_FOR_THREAD_SQL =
-      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
       "where utid = %d and ts < %d and ts_end >= %d";
 
