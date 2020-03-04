@@ -129,6 +129,7 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 		)
 		inheritanceInfoData := s.AllocDataOrPanic(ctx, inheritanceInfo)
 		cleanup = append(cleanup, func() { inheritanceInfoData.Free() })
+		mem = append(mem, inheritanceInfoData)
 		beginInfo.SetPInheritanceInfo(NewVkCommandBufferInheritanceInfoᶜᵖ(inheritanceInfoData.Ptr()))
 	}
 	beginInfoData := s.AllocDataOrPanic(ctx, beginInfo)

@@ -1638,7 +1638,6 @@ func (s *stencilOverdraw) renderAspect(ctx context.Context,
 	out transform.Writer,
 ) error {
 	sb := st.newStateBuilder(ctx, newTransformerOutput(out))
-	ip := newImagePrimer(sb)
 	queueHandler, err := newQueueCommandHandler(sb, queue, cmdBuffer)
 	if err != nil {
 		return log.Errf(sb.ctx, err, "failed at creating queue command handler")
@@ -1668,6 +1667,8 @@ func (s *stencilOverdraw) renderAspect(ctx context.Context,
 		framebufferWidth:      uint32(sizes.width),
 		framebufferHeight:     uint32(sizes.height),
 	}
+	ip := newImagePrimer(sb)
+	queueHandler.RecordPostExecuted(func() { ip.Free() })
 	renderKitBuilder := ip.GetRenderKitBuilder(device)
 	kits, err := renderKitBuilder.BuildRenderKits(sb, recipe)
 	if err != nil {
@@ -1731,7 +1732,6 @@ func (s *stencilOverdraw) renderAspect(ctx context.Context,
 	// Make sure it doesn't use temporary memory as that would cause a flush of the scratch resources
 	// queueScratch.memorySize = scratchTask.totalAllocationSize
 
-	queueHandler.RecordPostExecuted(func() { ip.Free() })
 	addCleanup(func() {
 		queueHandler.Submit(sb)
 		queueHandler.WaitUntilFinish(sb)
