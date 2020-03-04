@@ -86,7 +86,8 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 				if devPhyInfo.GetDeviceId() != tracePhyInfo.GetDeviceId() {
 					continue
 				}
-				if devPhyInfo.GetApiVersion() != tracePhyInfo.GetApiVersion() {
+				// Ignore the API patch level (bottom 12 bits) when comparing the API version.
+				if (devPhyInfo.GetApiVersion() & ^uint32(0xfff)) != (tracePhyInfo.GetApiVersion() & ^uint32(0xfff)) {
 					continue
 				}
 				return 1
