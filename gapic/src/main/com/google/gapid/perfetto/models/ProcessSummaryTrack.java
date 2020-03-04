@@ -38,13 +38,13 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
   // "where cpu < %numCpus%" is for performance reasons of the window table.
   private static final String PROCESS_VIEW_SQL = "select * from sched where utid in (%s)";
   private static final String SUMMARY_SQL =
-      "select quantum_ts, group_concat(row_id) ids, sum(dur)/cast(%d * %d as float) util " +
+      "select quantum_ts, group_concat(id) ids, sum(dur)/cast(%d * %d as float) util " +
       "from %s group by quantum_ts";
-  private static final String SLICES_SQL = "select ts, dur, cpu, utid, row_id from %s";
+  private static final String SLICES_SQL = "select ts, dur, cpu, utid, id from %s";
   private static final String SLICE_RANGE_FOR_IDS_SQL =
-      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
-      "where row_id in (%s)";
+      "where sched.id in (%s)";
 
   private final int numCpus;
   private final ProcessInfo process;
