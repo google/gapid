@@ -45,3 +45,33 @@ img2h = rule(
     },
     output_to_genfiles = True,
 )
+
+def _img2ico_impl(ctx):
+    out = ctx.actions.declare_file(ctx.label.name + ".ico")
+    ctx.actions.run(
+        inputs = ctx.files.srcs,
+        outputs = [out],
+        arguments = ["-out", out.path] + [img.path for img in ctx.files.srcs],
+        executable = ctx.executable._img2ico,
+        use_default_shell_env = True,
+    )
+    return [
+       DefaultInfo(files = depset([out])),
+    ]
+
+img2ico = rule(
+    _img2ico_impl,
+    attrs = {
+        "srcs": attr.label_list(
+            allow_files = True,
+            mandatory = True,
+        ),
+        "_img2ico": attr.label(
+            cfg = "host",
+            executable = True,
+            allow_files = True,
+            default = Label("//cmd/img2ico"),
+        ),
+    },
+    output_to_genfiles = True,
+)
