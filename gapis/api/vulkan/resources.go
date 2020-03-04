@@ -1117,9 +1117,21 @@ func commonShaderDataGroups(ctx context.Context,
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
 
-						case VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-							VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 							VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+							descInfo := bindingInfo.ImageBinding().Get(i)
+
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+							viewHandle := descInfo.ImageView()
+							viewPath := path.NewField("ImageViews", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(viewHandle)
+							currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", viewPath, api.CreatePoDDataValue("VkImageView", viewHandle)))
+
+							currentSetData = append(currentSetData, api.CreateEnumDataValue("VkImageLayout", descInfo.ImageLayout()))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 							descInfo := bindingInfo.ImageBinding().Get(i)
 
 							samplerHandle := descInfo.Sampler()
