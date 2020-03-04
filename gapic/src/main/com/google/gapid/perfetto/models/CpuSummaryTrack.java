@@ -36,7 +36,7 @@ public class CpuSummaryTrack extends Track.WithQueryEngine<CpuSummaryTrack.Data>
       "select quantum_ts, sum(dur)/cast(%d * %d as float) " +
       "from %s where utid != 0 group by quantum_ts";
   private static final String SLICE_RANGE_SQL =
-      "select row_id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
       "where utid != 0 and ts < %d and ts_end >= %d";
 
