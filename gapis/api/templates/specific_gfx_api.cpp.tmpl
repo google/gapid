@@ -145,13 +145,7 @@
         {{$args := (GetAnnotation $ "indirect").Arguments}}
         {{$elem := (index $.CallParameters 0).Name}}
         {{$func := Macro "CmdName" $}}
-        if (
-        #ifndef NDEBUG
-        {{Template "GetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}
-        #else
-        true
-        #endif
-        ) {
+        if ({{Template "GetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}) {
       {{else}}
         if (mFunctionStubs.{{$name}} != nullptr) {
       {{end}}
