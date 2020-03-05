@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
+	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
@@ -833,7 +834,6 @@ type profileRequest struct {
 	handler        *replay.SignalHandler
 	buffer         *bytes.Buffer
 	handleMappings *map[uint64][]service.VulkanHandleMappingItem
-	submissionIds  *map[api.CommandSubmissionKey][]uint64
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -1049,7 +1049,6 @@ func (a API) Replay(
 			profile.AddResult(rr.Result)
 			makeReadable.imagesOnly = true
 			optimize = false
-			transforms.Add(newSliceCommandMapper(req.submissionIds))
 			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer))
 			transforms.Add(&profilingLayers{})
 			transforms.Add(replay.NewMappingExporter(ctx, req.handleMappings))
@@ -1238,11 +1237,15 @@ func (a API) Profile(
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
 	handleMappings := make(map[uint64][]service.VulkanHandleMappingItem)
-	submissionIds := make(map[api.CommandSubmissionKey][]uint64)
-	r := profileRequest{traceOptions, handler, &buffer, &handleMappings, &submissionIds}
+	r := profileRequest{traceOptions, handler, &buffer, &handleMappings}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	handler.DoneSignal.Wait(ctx)
 
-	d, err := trace.ProcessProfilingData(ctx, intent.Device, intent.Capture, &buffer, &handleMappings, &submissionIds)
+	s, err := resolve.SyncData(ctx, intent.Capture)
+	if err != nil {
+		return nil, err
+	}
+
+	d, err := trace.ProcessProfilingData(ctx, intent.Device, intent.Capture, &buffer, &handleMappings, s)
 	return d, err
 }

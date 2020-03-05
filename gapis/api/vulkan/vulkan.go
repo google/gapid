@@ -185,8 +185,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			markerStack = markerStack[0 : len(markerStack)-1]
 		}
 	}
-	var walkCommandBuffer func(cb CommandBufferObjectʳ, idx api.SubCmdIdx) ([]sync.SubcommandReference, []api.SubCmdIdx)
-	walkCommandBuffer = func(cb CommandBufferObjectʳ, idx api.SubCmdIdx) ([]sync.SubcommandReference, []api.SubCmdIdx) {
+	var walkCommandBuffer func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order uint64) ([]sync.SubcommandReference, []api.SubCmdIdx)
+	walkCommandBuffer = func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order uint64) ([]sync.SubcommandReference, []api.SubCmdIdx) {
 		refs := make([]sync.SubcommandReference, 0)
 		subgroups := make([]api.SubCmdIdx, 0)
 		lastSubpass := 0
@@ -224,7 +224,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					cbo := st.CommandBuffers().Get(args.CommandBuffers().Get(uint32(j)))
 					subIdx := append(api.SubCmdIdx{}, idx...)
 					subIdx = append(subIdx, uint64(i), j)
-					newRefs, newSubgroups := walkCommandBuffer(cbo, subIdx)
+					newRefs, newSubgroups := walkCommandBuffer(cbo, subIdx, id, order)
 					refs = append(refs, newRefs...)
 					subgroups = append(subgroups, newSubgroups...)
 					if cbo.CommandReferences().Len() > 0 {
@@ -233,6 +233,15 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				}
 			case VkCmdBeginRenderPassArgsʳ:
 				rp := st.RenderPasses().Get(args.RenderPass())
+				if id.IsReal() {
+					key := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), uint64(rp.VulkanHandle()), uint64(args.Framebuffer())}
+					if _, ok := d.SubmissionIndices[key]; ok {
+						d.SubmissionIndices[key] = append(d.SubmissionIndices[key], append(idx, uint64(i)))
+					} else {
+						d.SubmissionIndices[key] = []api.SubCmdIdx{append(idx, uint64(i))}
+					}
+				}
+
 				name := fmt.Sprintf("RenderPass: %v", rp.VulkanHandle())
 				if !rp.DebugInfo().IsNil() && len(rp.DebugInfo().ObjectName()) > 0 {
 					name = rp.DebugInfo().ObjectName()
@@ -309,6 +318,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		return refs, subgroups
 	}
 
+	order := uint64(0)
 	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
 		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
@@ -328,7 +338,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					cmdBuff := st.CommandBuffers().Get(buff)
 					// If a submitted command-buffer is empty, we shouldn't show it
 					if cmdBuff.CommandReferences().Len() > 0 {
-						additionalRefs, additionalSubgroups := walkCommandBuffer(cmdBuff, api.SubCmdIdx{uint64(i), uint64(submitIdx), uint64(j)})
+						additionalRefs, additionalSubgroups := walkCommandBuffer(cmdBuff, api.SubCmdIdx{uint64(i), uint64(submitIdx), uint64(j)}, i, order)
 						for _, sg := range additionalSubgroups {
 							d.SubcommandGroups[i] = append(d.SubcommandGroups[i], sg[1:])
 						}
@@ -338,6 +348,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					}
 				}
 			}
+			order++
 			d.SubcommandReferences[i] = refs
 		}
 		return nil

@@ -88,7 +88,6 @@ go_library(
         "replay.go",
         "resources.go",
         "scratch_resources.go",
-        "slice_command_mapper.go",
         "state.go",
         "state_rebuilder.go",
         "vulkan.go",

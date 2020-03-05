@@ -51,7 +51,4 @@ func (id CmdID) String() string {
 }
 
 // TODO(apbodnar) find a more appropriate place for this
-type CommandSubmissionKey struct {
-	SubmissionOrder uint64
-	CommandBuffer   int64
-}
+type CmdSubmissionKey [4]uint64

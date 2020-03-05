@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/perfetto"
 	perfetto_service "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service"
@@ -29,9 +30,9 @@ import (
 
 var (
 	slicesQuery = "" +
-		"SELECT s.context_id, s.render_target, s.frame_id, s.submission_id, s.hw_queue_id, s.command_buffer, s.ts, s.dur, s.name, depth, arg_set_id, track_id, t.name " +
+		"SELECT s.context_id, s.render_target, s.frame_id, s.submission_id, s.hw_queue_id, s.command_buffer, s.render_pass, s.ts, s.dur, s.name, depth, arg_set_id, track_id, t.name " +
 		"FROM gpu_track t LEFT JOIN gpu_slice s " +
-		"ON s.track_id = t.id WHERE t.scope = 'gpu_render_stage'"
+		"ON s.track_id = t.id WHERE t.scope = 'gpu_render_stage' ORDER BY s.ts"
 	argsQueryFmt = "" +
 		"SELECT key, string_value FROM args WHERE args.arg_set_id = %d"
 	queueSubmitQuery = "" +
@@ -40,10 +41,11 @@ var (
 		"SELECT id, name, unit, description FROM gpu_counter_track ORDER BY id"
 	countersQueryFmt = "" +
 		"SELECT ts, value FROM counter c WHERE c.track_id = %d ORDER BY ts"
+	renderPassSliceName = "Surface"
 )
 
-func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, desc *device.GpuCounterDescriptor, handleMapping *map[uint64][]service.VulkanHandleMappingItem, submissionIds *map[api.CommandSubmissionKey][]uint64) (*service.ProfilingData, error) {
-	slices, err := processGpuSlices(ctx, processor, capture, handleMapping, submissionIds)
+func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, desc *device.GpuCounterDescriptor, handleMapping *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+	slices, err := processGpuSlices(ctx, processor, capture, handleMapping, syncData)
 	if err != nil {
 		log.Err(ctx, err, "Failed to get GPU slices")
 	}
@@ -77,7 +79,7 @@ func extractTraceHandles(ctx context.Context, replayHandles *[]int64, replayHand
 	}
 }
 
-func processGpuSlices(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, handleMapping *map[uint64][]service.VulkanHandleMappingItem, subCommandIndicesMap *map[api.CommandSubmissionKey][]uint64) (*service.ProfilingData_GpuSlices, error) {
+func processGpuSlices(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, handleMapping *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData_GpuSlices, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "SQL query failed: %v", slicesQuery)
@@ -114,27 +116,42 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 	commandBuffers := slicesColumns[5].GetLongValues()
 	extractTraceHandles(ctx, &commandBuffers, "VkCommandBuffer", handleMapping)
 
+	renderPasses := slicesColumns[6].GetLongValues()
+	extractTraceHandles(ctx, &renderPasses, "VkRenderPass", handleMapping)
+
+	frameIds := slicesColumns[2].GetLongValues()
 	submissionIds := slicesColumns[3].GetLongValues()
-	currentSubId := int64(-1)
-	subCommandGroupMap := make(map[api.CommandSubmissionKey]bool)
+	hwQueueIds := slicesColumns[4].GetLongValues()
+	timestamps := slicesColumns[7].GetLongValues()
+	durations := slicesColumns[8].GetLongValues()
+	names := slicesColumns[9].GetStringValues()
+	depths := slicesColumns[10].GetLongValues()
+	argSetIds := slicesColumns[11].GetLongValues()
+	trackIds := slicesColumns[12].GetLongValues()
+	trackNames := slicesColumns[13].GetStringValues()
+
+	subCommandGroupMap := make(map[api.CmdSubmissionKey]int)
 	for i, v := range submissionIds {
-		if v != currentSubId {
-			currentSubId = v
-			// We'll never need the previous keys again
-			subCommandGroupMap = make(map[api.CommandSubmissionKey]bool)
-		}
 		subOrder, ok := submissionOrdering[v]
 		if ok {
-			cb := commandBuffers[i]
-			key := api.CommandSubmissionKey{SubmissionOrder: subOrder, CommandBuffer: cb}
-			if _, ok := subCommandGroupMap[key]; !ok {
-				if indices, ok := (*subCommandIndicesMap)[key]; ok {
+			cb := uint64(commandBuffers[i])
+			key := api.CmdSubmissionKey{subOrder, cb, uint64(renderPasses[i]), uint64(renderTargets[i])}
+			if indices, ok := syncData.SubmissionIndices[key]; ok {
+				if names[i] == renderPassSliceName {
+					var idx []uint64
+					if c, ok := subCommandGroupMap[key]; ok {
+						idx = indices[c]
+					} else {
+						idx = indices[0]
+						subCommandGroupMap[key] = 0
+					}
+
 					group := &service.ProfilingData_GpuSlices_Group{
 						Id:   int32(len(groups)),
-						Link: &path.Command{Capture: capture, Indices: indices},
+						Link: &path.Command{Capture: capture, Indices: idx},
 					}
 					groups = append(groups, group)
-					subCommandGroupMap[key] = true
+					subCommandGroupMap[key]++
 				}
 			}
 		} else {
@@ -143,16 +160,6 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 
 		groupIds[i] = int32(len(groups)) - 1
 	}
-
-	frameIds := slicesColumns[2].GetLongValues()
-	hwQueueIds := slicesColumns[4].GetLongValues()
-	timestamps := slicesColumns[6].GetLongValues()
-	durations := slicesColumns[7].GetLongValues()
-	names := slicesColumns[8].GetStringValues()
-	depths := slicesColumns[9].GetLongValues()
-	argSetIds := slicesColumns[10].GetLongValues()
-	trackIds := slicesColumns[11].GetLongValues()
-	trackNames := slicesColumns[12].GetStringValues()
 
 	for i := uint64(0); i < numSliceRows; i++ {
 		var argsQueryResult *perfetto_service.QueryResult
@@ -189,6 +196,10 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(commandBuffers[i])},
 		})
 		extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
+			Name:  "renderPass",
+			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(renderPasses[i])},
+		})
+		extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 			Name:  "frameId",
 			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(frameIds[i])},
 		})
@@ -201,7 +212,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(hwQueueIds[i])},
 		})
 
-		if names[i] == "Surface" && groupIds[i] != -1 {
+		if names[i] == renderPassSliceName && groupIds[i] != -1 {
 			names[i] = fmt.Sprintf("%v", groups[groupIds[i]].Link.Indices)
 		}
 
