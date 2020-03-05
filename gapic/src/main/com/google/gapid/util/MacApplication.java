@@ -15,25 +15,44 @@
  */
 package com.google.gapid.util;
 
+import static java.util.logging.Level.INFO;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 /**
  * Special handling for OSX application menus.
  */
 public class MacApplication {
+  private static final Logger LOG = Logger.getLogger(MacApplication.class.getName());
+
+  private static Consumer<String> onOpen = null;
+  private static String documentToOpen;
+
   private MacApplication() {
+  }
+
+  public static void listenForOpenDocument(Display display) {
+    display.addListener(SWT.OpenDocument, e -> {
+      LOG.log(INFO, "OpenDocument Event: " + e);
+      if (onOpen != null) {
+        onOpen.accept(e.text);
+      } else {
+        documentToOpen = e.text;
+      }
+    });
   }
 
   /**
    * Initializes the OSX application menus.
    */
   public static void init(
-      Display display, Runnable onAbout, Runnable onSettings, Consumer<String> onOpen) {
+      Display display, Runnable onAbout, Runnable onSettings, Consumer<String> newOnOpen) {
     Menu menu = display.getSystemMenu();
     if (menu == null) {
       return;
@@ -50,6 +69,9 @@ public class MacApplication {
       }
     }
 
-    display.addListener(SWT.OpenDocument, e -> onOpen.accept(e.text));
+    onOpen = newOnOpen;
+    if (documentToOpen != null) {
+      onOpen.accept(documentToOpen);
+    }
   }
 }
