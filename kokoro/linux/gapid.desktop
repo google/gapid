@@ -7,4 +7,4 @@ Categories=Development;Debugger;Graphics;3DGraphics
 Icon=/opt/agi/icon.png
 Exec=/opt/agi/agi %f
 Terminal=false
-MimeType=application/x-gfxtrace
+MimeType=application/x-gfxtrace;application/x-perfetto
