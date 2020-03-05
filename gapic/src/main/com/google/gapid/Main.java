@@ -35,7 +35,9 @@ import com.google.gapid.util.ExceptionHandler;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
+import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.views.TracerDialog;
 import com.google.gapid.widgets.Theme;
@@ -65,6 +67,10 @@ public class Main {
     Settings settings = Settings.load();
     Theme theme = Theme.load(Display.getDefault());
     ExceptionHandler handler = Crash2ExceptionHandler.register(settings);
+
+    if (OS.isMac) {
+      MacApplication.listenForOpenDocument(Display.getDefault());
+    }
 
     try {
       new UI(settings, theme, handler, args).show();
