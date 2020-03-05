@@ -71,10 +71,13 @@
         <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\agi.exe" Name="Path" Value="[AGI]" Type="string" />
 
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\SupportedTypes" Name=".gfxtrace" Value="" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\SupportedTypes" Name=".perfetto" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\agi.exe\shell\open\command" Value="&quot;[!agi.exe]&quot; &quot;%1&quot;" Type="string" />
 
         <RegistryValue Root="HKLM" Key="Software\Classes\.gfxtrace" Value="AGI.Trace" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\.perfetto" Value="AGI.Trace" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gfxtrace\shell\edit\command" Value="&quot;[!agi.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.perfetto\shell\edit\command" Value="&quot;[!agi.exe]&quot; &quot;%1&quot;" Type="string" />
       </Component>
     </DirectoryRef>
 
