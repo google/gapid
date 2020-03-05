@@ -38,6 +38,20 @@
     <key>LSHandlerRank</key>
     <string>Owner</string>
    </dict>
+    <dict>
+    <key>CFBundleTypeExtensions</key>
+    <array>
+     <string>perfetto</string>
+    </array>
+    <key>CFBundleTypeIconFile</key>
+    <string>AGI.icns</string>
+    <key>CFBundleTypeName</key>
+    <string>System Profile Trace</string>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>LSHandlerRank</key>
+    <string>Owner</string>
+   </dict>
   </array>
  </dict>
 </plist>
