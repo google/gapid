@@ -16,11 +16,21 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["validate.go"],
+    srcs = [
+        "profiling_data.go",
+        "validate.go",
+    ],
     importpath = "github.com/google/gapid/gapis/trace/android/mali",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/api/sync:go_default_library",
         "//gapis/perfetto:go_default_library",
+        "//gapis/perfetto/service:go_default_library",
+        "//gapis/service:go_default_library",
+        "//gapis/service/path:go_default_library",
         "//gapis/trace/android/validate:go_default_library",
     ],
 )

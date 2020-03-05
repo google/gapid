@@ -1050,7 +1050,9 @@ func (a API) Replay(
 			makeReadable.imagesOnly = true
 			optimize = false
 			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer))
-			transforms.Add(&profilingLayers{})
+			if strings.Contains(device.GetConfiguration().GetHardware().GetGPU().GetName(), "Adreno") {
+				transforms.Add(&profilingLayers{})
+			}
 			transforms.Add(replay.NewMappingExporter(ctx, req.handleMappings))
 		}
 	}

@@ -141,6 +141,8 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 	gpuName := gpu.GetName()
 	if strings.Contains(gpuName, "Adreno") {
 		return adreno.ProcessProfilingData(ctx, processor, capture, desc, handleMappings, syncData)
+	} else if strings.Contains(gpuName, "Mali") {
+		return mali.ProcessProfilingData(ctx, processor, capture, desc, handleMappings, syncData)
 	}
 	return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
 }
