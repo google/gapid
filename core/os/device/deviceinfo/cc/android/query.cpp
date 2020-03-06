@@ -345,9 +345,14 @@ bool createContext() {
   }
 
   switch (gContext.mOSVersion) {
+    case 30:  // Android 11
+      gContext.mOSVersionMajor = 11;
+      gContext.mOSVersionMinor = 0;
+      break;
     case 29:  // Android 10
       gContext.mOSVersionMajor = 10;
       gContext.mOSVersionMinor = 0;
+      break;
     case 28:  // Pie
       gContext.mOSVersionMajor = 9;
       gContext.mOSVersionMinor = 0;
