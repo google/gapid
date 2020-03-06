@@ -263,8 +263,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   VkImageMemoryBarrier barriers[2] = {
       {VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,  // sType
        nullptr,                                                  // pNext
-       (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) -
-           1,                                          // srcAccessMask
+       VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT,   // srcAccessMask
        VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,  // dstAccessMask
        image->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
            ->mLayers[frame_buffer_img_layer]
@@ -284,8 +283,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
        }},
       {VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,  // sType
        nullptr,                                                  // pNext
-       (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) -
-           1,                                                // srcAccessMask
+       VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT,         // srcAccessMask
        VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,       // dstAccessMask
        VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED,             // srcLayout
        VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,  // dstLayout
@@ -304,7 +302,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
 
   fn.vkCmdPipelineBarrier(
       command_buffer,
-      VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+      VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
       VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
       nullptr, 2, barriers);
   VkImageBlit blit = {
@@ -322,8 +320,8 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
                     &blit, VkFilter::VK_FILTER_NEAREST);
 
   barriers[0].msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
-  barriers[0].mdstAccessMask =
-      (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
+  barriers[0].mdstAccessMask = VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT |
+                               VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT;
   barriers[0].moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
   barriers[0].mnewLayout =
       image->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
@@ -337,7 +335,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
 
   fn.vkCmdPipelineBarrier(
       command_buffer, VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0,
+      VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0,
       nullptr, 0, nullptr, 2, barriers);
 
   VkBufferImageCopy copy_region = {
@@ -364,8 +362,8 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   };
   fn.vkCmdPipelineBarrier(
       command_buffer, VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0,
-      nullptr, 1, &buffer_barrier, 0, nullptr);
+      VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1,
+      &buffer_barrier, 0, nullptr);
 
   fn.vkEndCommandBuffer(command_buffer);
 
