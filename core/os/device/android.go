@@ -27,6 +27,8 @@ func AndroidOS(major, minor, point int32) *OS {
 		PointVersion: point,
 	}
 	switch {
+	case major == 11:
+		os.Name = "Android 11"
 	case major == 10:
 		os.Name = "Android 10"
 	case major == 9:
