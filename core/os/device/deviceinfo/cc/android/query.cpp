@@ -328,6 +328,12 @@ bool createContext() {
 
   GET_STRING_PROP("ro.build.version.release", gContext.mOSName);
   GET_INT_PROP("ro.build.version.sdk", gContext.mOSVersion);
+  // preview_sdk is used to determine the version for the next OS release
+  // Until the official release, the new OS releases will use the same sdk
+  // version as the previous OS while setting the preview_sdk
+  int previewSdk = 0;
+  GET_INT_PROP("ro.build.version.preview_sdk", previewSdk);
+  gContext.mOSVersion += previewSdk;
 
   if (gContext.mSupportedABIs.size() > 0) {
     auto primaryABI = gContext.mSupportedABIs[0];
