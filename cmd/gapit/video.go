@@ -228,12 +228,18 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	case RegularVideo:
 		vidSrc = verb.regularVideoSource
 		vidOut = verb.encodeVideo
+	case SxsFrames:
+		fallthrough
 	case SxsVideo:
 		if len(fboEvents) == 0 {
 			return fmt.Errorf("Capture does not contain framebuffer observations")
 		}
 		vidSrc = verb.sxsVideoSource
-		vidOut = verb.encodeVideo
+		if verb.Type == SxsFrames {
+			vidOut = verb.writeFrames
+		} else {
+			vidOut = verb.encodeVideo
+		}
 	case AutoVideo:
 		if len(fboEvents) > 0 {
 			vidSrc = verb.sxsVideoSource
