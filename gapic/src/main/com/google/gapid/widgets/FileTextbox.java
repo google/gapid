@@ -86,5 +86,10 @@ public abstract class FileTextbox extends ActionTextbox {
     protected void configureDialog(DirectoryDialog dialog) {
       // Empty.
     }
+
+    @Override
+    public String getText() {
+      return super.getText().replaceFirst("^~", System.getProperty("user.home"));
+    }
   }
 }
