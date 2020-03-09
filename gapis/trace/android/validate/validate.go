@@ -156,7 +156,7 @@ func ValidateGpuCounters(ctx context.Context, processor *perfetto.Processor, cou
 			longValues := column.GetLongValues()
 			if len(longValues) != 1 {
 				// This should never happen, but sill have a check.
-				return log.Err(ctx, nil, "Query result is not 1.")
+				return log.Errf(ctx, nil, "Query result is not 1: %v", counter)
 			}
 			counterID = longValues[0]
 			break
