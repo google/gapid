@@ -331,8 +331,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		result.GpuProfiling = gpu
 	}
 
-	if b.Instance().GetConfiguration().GetOS().GetName() == "R" {
-		// TODO(b/146384733): Change this to API version when it releases
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 {
 		gpu.HasFrameLifecycle = true
 	}
 
