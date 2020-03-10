@@ -46,7 +46,7 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
 # Combine package contents.
 mkdir -p agi/DEBIAN agi/opt/agi agi/usr/share/applications agi/usr/share/menu agi/usr/share/mime/packages
 cp -r $BIN/pkg/* agi/opt/agi
-cp "$SRC/../../gapic/res/icons/logo_256.png" agi/opt/agi/icon.png
+cp "$SRC/../../tools/logo/logo_256.png" agi/opt/agi/icon.png
 cp "$SRC/gapid.desktop" agi/usr/share/applications/google-agi.desktop
 cp "$SRC/gapid.menu" agi/usr/share/menu/google-agi.menu
 cp "$SRC/gapid-mime.xml" agi/usr/share/mime/packages/agi.xml

@@ -58,8 +58,8 @@ cp "$SRC/Info.plist" AGI.app/Contents/
 
 mkdir -p AGI.iconset AGI.app/Contents/Resources
 for i in 512 256 128 64 32 16; do
-  cp "$SRC/../../gapic/res/icons/logo_${i}.png" AGI.iconset/icon_${i}x${i}.png
-  cp "$SRC/../../gapic/res/icons/logo_$((i*2)).png" AGI.iconset/icon_${i}x${i}\@2x.png
+  cp "$SRC/../../tools/logo/logo_${i}.png" AGI.iconset/icon_${i}x${i}.png
+  cp "$SRC/../../tools/logo/logo_$((i*2)).png" AGI.iconset/icon_${i}x${i}\@2x.png
 done
 iconutil -c icns -o AGI.app/Contents/Resources/AGI.icns AGI.iconset
 

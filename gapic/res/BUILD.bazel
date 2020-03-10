@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "copy_tree")
+load("//tools/build:rules.bzl", "copy_to", "copy_tree")
 
 # This is an ugly ugly hack
 # The bazel resource rules expect a specific directory structure, so we copy_resources
@@ -24,8 +24,28 @@ copy_tree(
     to = "java",
 )
 
+copy_to(
+    name = "copy_logo",
+    # buildifier: leave-alone
+    srcs = [
+        "//tools/logo:logo_16.png",
+        "//tools/logo:logo_32.png",
+        "//tools/logo:logo_48.png",
+        "//tools/logo:logo_64.png",
+        "//tools/logo:logo_128.png",
+        "//tools/logo:logo_256.png",
+    ],
+    rename = {
+        "logo_256.png": "logo_128@2x.png",
+    },
+    to = "java/icons",
+)
+
 java_library(
     name = "res",
-    resources = [":copy_resources"],
+    resources = [
+        ":copy_logo",
+        ":copy_resources",
+    ],
     visibility = ["//visibility:public"],
 )
