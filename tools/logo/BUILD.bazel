@@ -14,7 +14,10 @@
 
 load("//tools/build:rules.bzl", "img2h")
 
-exports_files(glob(["*.png"]))
+exports_files(glob([
+    "*.png",
+    "*.svg",
+]))
 
 img2h(
     name = "logo_256_h",
