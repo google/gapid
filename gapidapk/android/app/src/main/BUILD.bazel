@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools/build:rules.bzl", "copy_to")
+
 filegroup(
     name = "source",
     srcs = glob([
@@ -26,7 +28,18 @@ android_library(
     custom_package = "com.google.android.gapid",
     manifest = "//tools/build/rules:AndroidManifest.xml",
     resource_files = [
-        "res/drawable-xxxhdpi/logo.png",
+        ":logo_resource",
     ],
     visibility = ["//visibility:public"],
+)
+
+copy_to(
+    name = "logo_resource",
+    srcs = [
+        "//tools/logo:logo_256.png",
+    ],
+    rename = {
+        "logo_256.png": "logo.png",
+    },
+    to = "res/drawable-xxxhdpi",
 )
