@@ -7,4 +7,4 @@ Categories=Development;Debugger;Graphics;3DGraphics
 Icon=/opt/gapid/icon.png
 Exec=/opt/gapid/gapid %f
 Terminal=false
-MimeType=application/x-gfxtrace
+MimeType=application/x-gfxtrace;application/x-perfetto

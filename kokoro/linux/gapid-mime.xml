@@ -19,4 +19,8 @@
      <comment>Graphics API Trace</comment>
      <glob pattern="*.gfxtrace"/>
    </mime-type>
+   <mime-type type="application/x-perfetto">
+     <comment>System Profile Trace</comment>
+     <glob pattern="*.perfetto"/>
+   </mime-type>
 </mime-info>
