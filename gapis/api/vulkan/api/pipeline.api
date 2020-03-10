@@ -227,6 +227,11 @@ class CreatedGraphicsPipelines {
   map!(u32, ref!GraphicsPipelineObject) Objects
 }
 
+
+@internal class MutableSet {
+  map!(u64, bool) Set
+}
+
 @indirect("VkDevice")
 @threadsafe
 cmd VkResult vkCreateGraphicsPipelines(
@@ -274,6 +279,8 @@ cmd VkResult vkCreateGraphicsPipelines(
     }
     obj.Flags = create_info.flags
 
+    seenDescs := MutableSet()
+
     pipeline_shader_stage_create_infos :=
     create_info.pStages[0:create_info.stageCount]
     for j in (0 .. create_info.stageCount) {
@@ -305,24 +312,31 @@ cmd VkResult vkCreateGraphicsPipelines(
         spec_data.Data = clone(as!u8*(spec_info.pData)[0:spec_info.dataSize])
         stage_data.Specialization = spec_data
       }
-      
+
       if stage_data.Module.Descriptors != null {
         moduleDescriptors := stage_data.Module.Descriptors.Descriptors[as!string(stage_create_info.pName)]
         for _, _, d in moduleDescriptors {
-          obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
-        }
+          if !seenDescs.Set[(as!u64(d.Set)<<32) | as!u64(d.Binding)] {
+            obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
+            seenDescs.Set[(as!u64(d.Set)<<32) | as!u64(d.Binding)] = true
+          }
+        } 
       } else {
         nSets := len(obj.Layout.SetLayouts)
         for ii in (0 .. nSets) {
           set := obj.Layout.SetLayouts[as!u32(ii)]
           for _, k, v in set.Bindings {
-            obj.UsedDescriptors[len(obj.UsedDescriptors)] =
-              DescriptorUsage(Set: as!u32(ii),
-                Binding: k,
-                DescriptorCount: v.Count)
+            if !seenDescs.Set[(as!u64(ii)<<32) | as!u64(k)] {
+              obj.UsedDescriptors[len(obj.UsedDescriptors)] = 
+                DescriptorUsage(Set: as!u32(ii),
+                  Binding: k, 
+                  DescriptorCount: v.Count) 
+              seenDescs.Set[(as!u64(ii)<<32) | as!u64(k)] = true
+            }
           }
         }
       }
+
       obj.Stages[j] = stage_data
     }
 
