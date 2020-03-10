@@ -9,10 +9,8 @@ go_library(
     importpath = "github.com/google/gapid/gapis/trace/android/adreno",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/perfetto:go_default_library",
-        "//gapis/perfetto/service:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/trace/android/validate:go_default_library",
     ],
