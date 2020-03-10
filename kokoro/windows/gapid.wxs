@@ -72,9 +72,12 @@
 
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\gapid.exe\SupportedTypes" Name=".gfxtrace" Value="" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\Applications\gapid.exe\shell\open\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\gapid.exe\SupportedTypes" Name=".perfetto" Value="" Type="string" />
 
         <RegistryValue Root="HKLM" Key="Software\Classes\.gfxtrace" Value="GAPID.Trace" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\.perfetto" Value="GAPID.Trace" Type="string" />
         <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.gfxtrace\shell\edit\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\SystemFileAssociations\.perfetto\shell\edit\command" Value="&quot;[!gapid.exe]&quot; &quot;%1&quot;" Type="string" />
       </Component>
     </DirectoryRef>
 
