@@ -50,10 +50,7 @@ cc_library(
         exclude = [
             "*_test.cpp",
         ],
-    ) + select({
-        "//tools/build:darwin": [":osx_opengl_framework"],
-        "//conditions:default": [],
-    }) + [
+    ) + [
         ":apis_compiled",
         ":vulkan_templated",
     ],
