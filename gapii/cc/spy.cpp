@@ -22,7 +22,6 @@
 
 #include "gapil/runtime/cc/runtime.h"
 
-#include "gapii/cc/gles_exports.h"
 #include "gapii/cc/spy.h"
 
 #include "core/cc/gl/formats.h"
@@ -34,7 +33,6 @@
 #include "core/cc/timer.h"
 #include "core/os/device/deviceinfo/cc/query.h"
 
-#include "gapis/api/gles/gles_pb/extras.pb.h"
 #include "gapis/capture/capture.pb.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
 
@@ -44,18 +42,10 @@
 #include <thread>
 #include <vector>
 
-#if TARGET_OS == GAPID_OS_WINDOWS
-#include "windows/wgl.h"
-#endif  //  TARGET_OS == GAPID_OS_WINDOWS
-
 #if TARGET_OS == GAPID_OS_ANDROID
-#include "gapii/cc/android/gvr_install.h"
-#include "gapii/cc/android/installer.h"
 
 #include <jni.h>
 #include <sys/prctl.h>
-
-static std::unique_ptr<gapii::Installer> gInstaller;
 
 extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   GAPID_INFO("JNI_OnLoad() was called. vm = %p", vm);
@@ -64,31 +54,7 @@ extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 }
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
-using namespace gapii::GLenum;
-
 namespace {
-
-typedef uint32_t EGLint;
-
-const EGLint EGL_TRUE = 0x0001;
-const EGLint EGL_ALPHA_SIZE = 0x3021;
-const EGLint EGL_BLUE_SIZE = 0x3022;
-const EGLint EGL_GREEN_SIZE = 0x3023;
-const EGLint EGL_RED_SIZE = 0x3024;
-const EGLint EGL_DEPTH_SIZE = 0x3025;
-const EGLint EGL_STENCIL_SIZE = 0x3026;
-const EGLint EGL_CONFIG_ID = 0x3028;
-const EGLint EGL_NONE = 0x3038;
-const EGLint EGL_HEIGHT = 0x3056;
-const EGLint EGL_WIDTH = 0x3057;
-const EGLint EGL_SWAP_BEHAVIOR = 0x3093;
-const EGLint EGL_BUFFER_PRESERVED = 0x3094;
-
-const EGLint EGL_CONTEXT_MAJOR_VERSION_KHR = 0x3098;
-const EGLint EGL_CONTEXT_MINOR_VERSION_KHR = 0x30FB;
-const EGLint EGL_CONTEXT_FLAGS_KHR = 0x30FC;
-const EGLint EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR = 0x0001;
-const EGLint EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR = 0x30FD;
 
 const uint32_t kMaxFramebufferObservationWidth = 3840;
 const uint32_t kMaxFramebufferObservationHeight = 2560;
@@ -106,10 +72,6 @@ struct spy_creator {
     GAPID_LOGGER_INIT(LOG_LEVEL_INFO, "gapii", nullptr);
     GAPID_INFO("Constructing spy...");
     m_spy.reset(new Spy());
-    GAPID_INFO("Registering spy symbols...");
-    for (int i = 0; kGLESExports[i].mName != NULL; ++i) {
-      m_spy->RegisterSymbol(kGLESExports[i].mName, kGLESExports[i].mFunc);
-    }
   }
   std::unique_ptr<gapii::Spy> m_spy;
 };
@@ -128,7 +90,6 @@ Spy::Spy()
       mObserveFrameFrequency(0),
       mObserveDrawFrequency(0),
       mDisablePrecompiledShaders(false),
-      mRecordGLErrorState(false),
       mNestedFrameStart(0),
       mNestedFrameEnd(0),
       mFrameNumber(0) {
@@ -173,8 +134,6 @@ Spy::Spy()
   mObserveDrawFrequency = header.mObserveDrawFrequency;
   mDisablePrecompiledShaders =
       (header.mFlags & ConnectionHeader::FLAG_DISABLE_PRECOMPILED_SHADERS) != 0;
-  mRecordGLErrorState =
-      (header.mFlags & ConnectionHeader::FLAG_RECORD_ERROR_STATE) != 0;
   SpyBase::mHideUnknownExtensions =
       (header.mFlags & ConnectionHeader::FLAG_HIDE_UNKNOWN_EXTENSIONS) != 0;
   SpyBase::mDisableCoherentMemoryTracker =
@@ -216,19 +175,7 @@ Spy::Spy()
     GAPID_ERROR("Failed at writing trace header.");
   }
 
-#if TARGET_OS == GAPID_OS_ANDROID
-  if (strlen(header.mLibInterceptorPath) > 0) {
-    gInstaller =
-        std::unique_ptr<Installer>(new Installer(header.mLibInterceptorPath));
-  }
-  if (header.mGvrHandle != 0) {
-    auto gvr_lib = reinterpret_cast<void*>(header.mGvrHandle);
-    install_gvr(gInstaller.get(), gvr_lib, &this->GvrSpy::mImports);
-  }
-#endif  // TARGET_OS == GAPID_OS_ANDROID
-
   auto context = enter("init", 0);
-  GlesSpy::init();
   VulkanSpy::init();
   SpyBase::init(context);
   exit();
@@ -278,7 +225,7 @@ Spy::~Spy() {
   endTraceIfRequested();
 }
 
-void Spy::resolveImports() { GlesSpy::mImports.resolve(); }
+void Spy::resolveImports() {}
 
 CallObserver* Spy::enter(const char* name, uint32_t api) {
   lock();
@@ -293,200 +240,6 @@ void Spy::exit() {
   gContext = context->getParent();
   delete context;
   unlock();
-}
-
-EGLBoolean Spy::eglInitialize(CallObserver* observer, EGLDisplay dpy,
-                              EGLint* major, EGLint* minor) {
-  EGLBoolean res = GlesSpy::eglInitialize(observer, dpy, major, minor);
-  if (res != 0) {
-    resolveImports();  // Imports may have changed. Re-resolve.
-  }
-  return res;
-}
-
-EGLContext Spy::eglCreateContext(CallObserver* observer, EGLDisplay display,
-                                 EGLConfig config, EGLContext share_context,
-                                 EGLint* attrib_list) {
-  // Read attrib list
-  std::map<EGLint, EGLint> attribs;
-  while (attrib_list != nullptr && *attrib_list != EGL_NONE) {
-    EGLint key = *(attrib_list++);
-    EGLint val = *(attrib_list++);
-    attribs[key] = val;
-  }
-
-  // Modify attrib list
-  if (mRecordGLErrorState) {
-    attribs[EGL_CONTEXT_FLAGS_KHR] |= EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR;
-  }
-
-  // Write attrib list
-  std::vector<EGLint> attrib_vector;
-  for (auto it : attribs) {
-    attrib_vector.push_back(it.first);
-    attrib_vector.push_back(it.second);
-  }
-  attrib_vector.push_back(EGL_NONE);
-  attrib_vector.push_back(EGL_NONE);
-
-  auto res = GlesSpy::eglCreateContext(observer, display, config, share_context,
-                                       attrib_vector.data());
-
-  // NB: The getters modify the std::map, so this log must be last.
-  GAPID_INFO(
-      "eglCreateContext requested: GL %i.%i, profile 0x%x, flags 0x%x -> %p",
-      attribs[EGL_CONTEXT_MAJOR_VERSION_KHR],
-      attribs[EGL_CONTEXT_MINOR_VERSION_KHR],
-      attribs[EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR],
-      attribs[EGL_CONTEXT_FLAGS_KHR], res);
-  return res;
-}
-
-static void STDCALL DebugCallback(uint32_t source, uint32_t type, uint32_t id,
-                                  uint32_t severity, uint32_t length,
-                                  const char* message, void* user_param) {
-  if (type == GL_DEBUG_TYPE_PUSH_GROUP || type == GL_DEBUG_TYPE_POP_GROUP) {
-    return;  // Ignore
-  } else if (type == GL_DEBUG_TYPE_ERROR ||
-             severity == GL_DEBUG_SEVERITY_HIGH) {
-    GAPID_ERROR("KHR_debug: %s", message);
-  } else {
-    GAPID_INFO("KHR_debug: %s", message);
-  }
-  // TODO: We should store the message in the trace.
-}
-
-EGLBoolean Spy::eglMakeCurrent(CallObserver* observer, EGLDisplay display,
-                               EGLSurface draw, EGLSurface read,
-                               EGLContext context) {
-  EGLBoolean res =
-      GlesSpy::eglMakeCurrent(observer, display, draw, read, context);
-  auto& ext = GlesSpy::mState.Extension;
-  if (mRecordGLErrorState && ext != nullptr && ext->mGL_KHR_debug) {
-    void* old_callback = nullptr;
-    void* new_callback = reinterpret_cast<void*>(&DebugCallback);
-    GlesSpy::mImports.glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &old_callback);
-    if (old_callback != new_callback) {
-      GlesSpy::mImports.glDebugMessageCallback(new_callback, this);
-      GlesSpy::mImports.glEnable(GL_DEBUG_OUTPUT);
-      GlesSpy::mImports.glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-      GAPID_INFO("KHR_debug extension enabled");
-    }
-  }
-  return res;
-}
-
-gapil::Ref<StaticContextState> GlesSpy::GetEGLStaticContextState(
-    CallObserver* observer, EGLDisplay display, EGLContext context) {
-  Constants constants(arena());
-  getContextConstants(constants);
-
-  gapil::String threadName;
-#if TARGET_OS == GAPID_OS_ANDROID
-  char buffer[256] = {0};
-  prctl(PR_GET_NAME, (unsigned long)buffer, 0, 0, 0);
-  threadName = gapil::String(arena(), buffer);
-#endif
-
-  auto out =
-      gapil::Ref<StaticContextState>::create(arena(), constants, threadName);
-
-  observer->encode(*out.get());
-
-  return out;
-}
-
-#define EGL_QUERY_SURFACE(name, draw, var)                                   \
-  if (GlesSpy::mImports.eglQuerySurface(display, draw, name, var) !=         \
-      EGL_TRUE) {                                                            \
-    GAPID_WARNING("eglQuerySurface(0x%p, 0x%p, " #name ", " #var ") failed", \
-                  display, draw);                                            \
-  }
-#define EGL_GET_CONFIG_ATTRIB(name, var)                                  \
-  if (GlesSpy::mImports.eglGetConfigAttrib(display, config, name, var) != \
-      EGL_TRUE) {                                                         \
-    GAPID_WARNING("eglGetConfigAttrib(0x%p, 0x%p, " #name ", " #var       \
-                  ") failed",                                             \
-                  display, config);                                       \
-  }
-
-gapil::Ref<DynamicContextState> GlesSpy::GetEGLDynamicContextState(
-    CallObserver* observer, EGLDisplay display, EGLSurface draw,
-    EGLContext context) {
-  EGLint width = 0;
-  EGLint height = 0;
-  EGLint swapBehavior = 0;
-  if (draw != nullptr) {
-    EGL_QUERY_SURFACE(EGL_WIDTH, draw, &width);
-    EGL_QUERY_SURFACE(EGL_HEIGHT, draw, &height);
-    EGL_QUERY_SURFACE(EGL_SWAP_BEHAVIOR, draw, &swapBehavior);
-  }
-
-  // Get the backbuffer formats.
-  uint32_t backbufferColorFmt = GL_RGBA8;
-  uint32_t backbufferDepthFmt = GL_DEPTH24_STENCIL8;
-  uint32_t backbufferStencilFmt = GL_DEPTH24_STENCIL8;
-
-  EGLint configId = 0;
-  EGLint r = 0, g = 0, b = 0, a = 0, d = 0, s = 0;
-  if (GlesSpy::mImports.eglQueryContext(display, context, EGL_CONFIG_ID,
-                                        &configId) == EGL_TRUE) {
-    if (configId != 0) {  // EGL_NO_CONFIG_KHR. See EGL_KHR_no_config_context
-      EGLint attribs[] = {EGL_CONFIG_ID, configId, EGL_NONE};
-      EGLConfig config;
-      EGLint count = 0;
-      if (GlesSpy::mImports.eglChooseConfig(display, attribs, &config, 1,
-                                            &count) == EGL_TRUE) {
-        EGL_GET_CONFIG_ATTRIB(EGL_RED_SIZE, &r);
-        EGL_GET_CONFIG_ATTRIB(EGL_GREEN_SIZE, &g);
-        EGL_GET_CONFIG_ATTRIB(EGL_BLUE_SIZE, &b);
-        EGL_GET_CONFIG_ATTRIB(EGL_ALPHA_SIZE, &a);
-        EGL_GET_CONFIG_ATTRIB(EGL_DEPTH_SIZE, &d);
-        EGL_GET_CONFIG_ATTRIB(EGL_STENCIL_SIZE, &s);
-        GAPID_INFO("Framebuffer config: R%d G%d B%d A%d D%d S%d", r, g, b, a, d,
-                   s);
-
-        // Get the formats from the bit depths.
-        if (!core::gl::getColorFormat(r, g, b, a, backbufferColorFmt)) {
-          GAPID_WARNING("getColorFormat(%d, %d, %d, %d) failed", r, g, b, a);
-        }
-        if (!core::gl::getDepthStencilFormat(d, s, backbufferDepthFmt,
-                                             backbufferStencilFmt)) {
-          GAPID_WARNING("getDepthStencilFormat(%d, %d) failed", d, s);
-        }
-      } else {
-        GAPID_WARNING(
-            "eglChooseConfig() failed for config ID %d. Assuming defaults.",
-            configId);
-      }
-    }  // TODO: Try getting dynamic context state for EGL_NO_CONFIG_KHR?
-  } else {
-    GAPID_WARNING(
-        "eglQueryContext(0x%p, 0x%p, EGL_CONFIG_ID, &configId) failed. "
-        "Assuming defaults.",
-        display, context);
-  }
-
-  bool preserveBuffersOnSwap = swapBehavior == EGL_BUFFER_PRESERVED;
-
-  auto out = gapil::Ref<DynamicContextState>::create(
-      arena(), width, height, backbufferColorFmt, backbufferDepthFmt,
-      backbufferStencilFmt, preserveBuffersOnSwap, r, g, b, a, d, s);
-
-  // Store the DynamicContextState as an extra.
-  observer->encode(*out.get());
-
-  return out;
-}
-
-#undef EGL_QUERY_SURFACE
-#undef EGL_GET_CONFIG_ATTRIB
-
-void Spy::gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
-                           const gvr_buffer_viewport_list* list,
-                           gvr_mat4_abi head_space_from_start_space) {
-  GvrSpy::mLastSubmittedFrame = (frame != nullptr) ? (*frame) : nullptr;
-  GvrSpy::gvr_frame_submit(observer, frame, list, head_space_from_start_space);
 }
 
 void Spy::endTraceIfRequested() {
@@ -547,7 +300,6 @@ void Spy::saveInitialState() {
     mEncoder->object(&timestamp);
   }
 
-  saveInitialStateForApi<GlesSpy>("gles-initial-state");
   saveInitialStateForApi<VulkanSpy>("vulkan-initial-state");
   if (should_record_timestamps()) {
     capture::TraceMessage timestamp;
@@ -695,18 +447,8 @@ void Spy::observeFramebuffer(CallObserver* observer, uint8_t api) {
   uint32_t h = 0;
   std::vector<uint8_t> data;
   switch (api) {
-    case GlesSpy::kApiIndex:
-      if (!GlesSpy::observeFramebuffer(observer, &w, &h, &data)) {
-        return;
-      }
-      break;
     case VulkanSpy::kApiIndex:
       if (!VulkanSpy::observeFramebuffer(observer, &w, &h, &data)) {
-        return;
-      }
-      break;
-    case GvrSpy::kApiIndex:
-      if (!GvrSpy::observeFramebuffer(observer, &w, &h, &data)) {
         return;
       }
       break;
@@ -728,112 +470,7 @@ void Spy::observeFramebuffer(CallObserver* observer, uint8_t api) {
 }
 
 void Spy::onPostFence(CallObserver* observer) {
-  if (mRecordGLErrorState) {
-    auto traceErr = GlesSpy::mImports.glGetError();
-
-    // glGetError() cleared the error in the driver.
-    // Fake it the next time the user calls glGetError().
-    if (traceErr != 0) {
-      setFakeGlError(observer, traceErr);
-    }
-
-    gles_pb::ErrorState es;
-    es.set_trace_drivers_gl_error(traceErr);
-    es.set_interceptors_gl_error(observer->getError());
-    observer->encode_message(&es);
-  }
+  // TODO: consider removing, this only did GLES error faking
 }
-
-void Spy::setFakeGlError(CallObserver* observer, GLenum_Error error) {
-  auto ctx = this->GlesSpy::mState.Contexts[observer->getCurrentThread()];
-  if (ctx) {
-    GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
-    if (fakeGlError == 0) {
-      fakeGlError = error;
-    }
-  }
-}
-
-uint32_t Spy::glGetError(CallObserver* observer) {
-  auto ctx = this->GlesSpy::mState.Contexts[observer->getCurrentThread()];
-  if (ctx) {
-    GLenum_Error& fakeGlError = this->mFakeGlError[ctx->mIdentifier];
-    if (fakeGlError != 0) {
-      observer->encode(cmd::glGetError{observer->getCurrentThread()});
-      GLenum_Error err = fakeGlError;
-      fakeGlError = 0;
-      return err;
-    }
-  }
-  return GlesSpy::glGetError(observer);
-}
-
-EGLint Spy::eglGetError(CallObserver* observer) {
-  // Ignore any (probably nested) eglGetError calls when recording state.
-  if (is_recording_state()) {
-    return GlesSpy::mImports.eglGetError();
-  }
-  return GlesSpy::eglGetError(observer);
-}
-
-#if 0  // NON-EGL CONTEXTS ARE CURRENTLY NOT SUPPORTED
-gapil::Ref<ContextState> Spy::getWGLContextState(CallObserver*, HDC hdc, HGLRC hglrc) {
-    if (hglrc == nullptr) {
-        return nullptr;
-    }
-
-#if TARGET_OS == GAPID_OS_WINDOWS
-    wgl::FramebufferInfo info;
-    wgl::getFramebufferInfo(hdc, info);
-    return getContextState(info.width, info.height,
-            info.colorFormat, info.depthFormat, info.stencilFormat,
-            /* resetViewportScissor */ true,
-            /* preserveBuffersOnSwap */ false);
-#else   // TARGET_OS
-    return nullptr;
-#endif  // TARGET_OS
-}
-
-gapil::Ref<ContextState> Spy::getCGLContextState(CallObserver* observer, CGLContextObj ctx) {
-    if (ctx == nullptr) {
-        return nullptr;
-    }
-
-    CGSConnectionID cid;
-    CGSWindowID wid;
-    CGSSurfaceID sid;
-    double bounds[4] = {0, 0, 0, 0};
-
-    if (GlesSpy::mImports.CGLGetSurface(ctx, &cid, &wid, &sid) == 0) {
-        GlesSpy::mImports.CGSGetSurfaceBounds(cid, wid, sid, bounds);
-    } else {
-        GAPID_WARNING("Could not get CGL surface");
-    }
-    int width = bounds[2] - bounds[0];  // size.x - origin.x
-    int height = bounds[3] - bounds[1]; // size.y - origin.y
-
-    // TODO: Probe formats
-    return getContextState(width, height,
-            GL_RGBA8, GL_DEPTH_COMPONENT16, GL_STENCIL_INDEX8,
-            /* resetViewportScissor */ true,
-            /* preserveBuffersOnSwap */ false);
-}
-
-gapil::Ref<ContextState> Spy::getGLXContextState(CallObserver* observer, void* display, GLXDrawable draw, GLXDrawable read, GLXContext ctx) {
-    if (display == nullptr) {
-        return nullptr;
-    }
-    int width = 0;
-    int height = 0;
-    GlesSpy::mImports.glXQueryDrawable(display, draw, GLX_WIDTH, &width);
-    GlesSpy::mImports.glXQueryDrawable(display, draw, GLX_HEIGHT, &height);
-
-    // TODO: Probe formats
-    return getContextState(width, height,
-            GL_RGBA8, GL_DEPTH_COMPONENT16, GL_STENCIL_INDEX8,
-            /* resetViewportScissor */ true,
-            /* preserveBuffersOnSwap */ false);
-}
-#endif  // #if 0
 
 }  // namespace gapii

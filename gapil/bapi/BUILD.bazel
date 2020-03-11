@@ -51,8 +51,6 @@ go_test(
     name = "go_default_test",
     srcs = ["bapi_test.go"],
     data = [
-        "//gapis/api/gles:api_files",
-        "//gapis/api/gvr:api_files",
         "//gapis/api/vulkan:api_files",
         "//gapis/messages:messages_api",
     ],

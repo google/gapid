@@ -70,13 +70,6 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
   set BUILD_SHA=%DEV_PREFIX%%KOKORO_GITHUB_COMMIT%
 )
 
-REM Build each API package separately first, as the go-compiler needs ~8GB of RAM for each package.
-%BUILD_ROOT%\bazel build -c opt --config symbols ^
-    --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
-    --define AGI_BUILD_SHA="%BUILD_SHA%" ^
-    //gapis/api/gles:go_default_library
-if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
-
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
     --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define AGI_BUILD_SHA="%BUILD_SHA%" ^

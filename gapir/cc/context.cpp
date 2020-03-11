@@ -15,9 +15,7 @@
  */
 
 #include "context.h"
-#include "gapir/cc/gles_gfx_api.h"
 #include "gapir/cc/vulkan_gfx_api.h"
-#include "gles_renderer.h"
 #include "interpreter.h"
 #include "memory_manager.h"
 #include "post_buffer.h"
@@ -70,19 +68,10 @@ Context::Context(ReplayService* srv, core::CrashHandler& crash_handler,
           })),
       mNumSentDebugMessages(0) {}
 
-Context::~Context() {
-  for (auto it = mGlesRenderers.begin(); it != mGlesRenderers.end(); it++) {
-    delete it->second;
-  }
-  delete mVulkanRenderer;
-}
+Context::~Context() { delete mVulkanRenderer; }
 
 bool Context::cleanup() {
-  for (auto it = mGlesRenderers.begin(); it != mGlesRenderers.end(); it++) {
-    delete it->second;
-  }
   delete mVulkanRenderer;
-  mGlesRenderers.clear();
   mVulkanRenderer = nullptr;
   return true;
 }
@@ -213,194 +202,6 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                                });
 
   // Registering custom synthetic functions
-  interpreter->registerBuiltin(Gles::INDEX, Builtins::StartTimer,
-                               [this](uint32_t label, Stack* stack, bool) {
-                                 return this->startTimer(stack);
-                               });
-  interpreter->registerBuiltin(
-      Gles::INDEX, Builtins::StopTimer,
-      [this](uint32_t label, Stack* stack, bool pushReturn) {
-        return this->stopTimer(stack, pushReturn);
-      });
-  interpreter->registerBuiltin(Gles::INDEX, Builtins::FlushPostBuffer,
-                               [this](uint32_t label, Stack* stack, bool) {
-                                 return this->flushPostBuffer(stack);
-                               });
-
-  interpreter->registerBuiltin(
-      Gles::INDEX, Builtins::ReplayFrameDelimiter,
-      [this](uint32_t label, Stack* stack, bool) {
-        uint32_t id = stack->pop<uint32_t>();
-        if (stack->isValid()) {
-          GAPID_INFO("[%u]replayFrameDelimiter(%u)", label, id);
-          auto found = mGlesRenderers.find(id);
-          if (found == mGlesRenderers.end()) {
-            GAPID_ERROR("replayFrameDelimiter has no renderer at ID: %u", id);
-            return false;
-          }
-          found->second->frameDelimiter();
-          return true;
-        } else {
-          GAPID_WARNING(
-              "[%u]Error during calling function replayFrameDelimiter", label);
-          return false;
-        }
-      });
-
-  interpreter->registerBuiltin(
-      Gles::INDEX, Builtins::ReplayCreateRenderer,
-      [this](uint32_t label, Stack* stack, bool) {
-        uint32_t id = stack->pop<uint32_t>();
-        if (stack->isValid()) {
-          GAPID_INFO("[%u]replayCreateRenderer(%u)", label, id);
-          auto existing = mGlesRenderers.find(id);
-          if (existing != mGlesRenderers.end()) {
-            delete existing->second;
-          }
-          // Share objects with the root GLES context.
-          // This will essentially make all objects shared between all contexts.
-          // It is ok since correct replay will only reference what it is
-          // supposed to.
-          if (!mRootGlesRenderer) {
-            mRootGlesRenderer.reset(GlesRenderer::create(nullptr));
-            if (!mRootGlesRenderer) {
-              GAPID_ERROR("Could not create GLES renderer on this device");
-              return false;
-            }
-            mRootGlesRenderer->setBackbuffer(GlesRenderer::Backbuffer(
-                8, 8, core::gl::GL_RGBA8, core::gl::GL_DEPTH24_STENCIL8,
-                core::gl::GL_DEPTH24_STENCIL8));
-          }
-          auto renderer = GlesRenderer::create(mRootGlesRenderer.get());
-          if (!renderer) {
-            GAPID_ERROR("Could not create GLES renderer on this device");
-            return false;
-          }
-          renderer->setListener(this);
-          mGlesRenderers[id] = renderer;
-          return true;
-        } else {
-          GAPID_WARNING(
-              "[%u]Error during calling function replayCreateRenderer", label);
-          return false;
-        }
-      });
-
-  interpreter->registerBuiltin(
-      Gles::INDEX, Builtins::ReplayBindRenderer,
-      [this, interpreter](uint32_t label, Stack* stack, bool) {
-        bool resetViewportScissor = stack->pop<bool>();
-        uint32_t id = stack->pop<uint32_t>();
-        if (stack->isValid()) {
-          GAPID_INFO("[%u]replayBindRenderer(%u, %s)", label, id,
-                     resetViewportScissor ? "true" : "false");
-          auto renderer = mGlesRenderers[id];
-          renderer->bind(resetViewportScissor);
-          Api* api = renderer->api();
-          interpreter->setRendererFunctions(api->index(), &api->mFunctions);
-          GAPID_DEBUG("[%u]Bound renderer %u: %s - %s", label, id,
-                      renderer->name(), renderer->version());
-          return true;
-        } else {
-          GAPID_WARNING("[%u]Error during calling function replayBindRenderer",
-                        label);
-          return false;
-        }
-      });
-
-  interpreter->registerBuiltin(
-      Gles::INDEX, Builtins::ReplayUnbindRenderer,
-      [this](uint32_t label, Stack* stack, bool) {
-        uint32_t id = stack->pop<uint32_t>();
-        if (stack->isValid()) {
-          GAPID_DEBUG("[%u]replayUnbindRenderer(%" PRIu32 ")", label, id);
-          auto renderer = mGlesRenderers[id];
-          renderer->unbind();
-          // TODO: Unbind renderer functions with the interpreter?
-          // Api* api = renderer->api();
-          // interpreter->setRendererFunctions(api->index(), nullptr);
-          GAPID_DEBUG("[%u]Unbound renderer %" PRIu32, label, id);
-          return true;
-        } else {
-          GAPID_WARNING(
-              "[%u]Error during calling function replayUnbindRenderer", label);
-          return false;
-        }
-      });
-
-  interpreter->registerBuiltin(
-      Gles::INDEX, Builtins::ReplayChangeBackbuffer,
-      [this](uint32_t label, Stack* stack, bool) {
-        GlesRenderer::Backbuffer backbuffer;
-
-        backbuffer.format.stencil = stack->pop<uint32_t>();
-        backbuffer.format.depth = stack->pop<uint32_t>();
-        backbuffer.format.color = stack->pop<uint32_t>();
-        backbuffer.height = stack->pop<int32_t>();
-        backbuffer.width = stack->pop<int32_t>();
-        uint32_t id = stack->pop<uint32_t>();
-
-        if (!stack->isValid()) {
-          GAPID_WARNING(
-              "[%u]Error during calling function replayChangeBackbuffer",
-              label);
-          return false;
-        }
-
-        if (stack->isValid()) {
-          GAPID_INFO("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
-                     label, backbuffer.width, backbuffer.height,
-                     backbuffer.format.color, backbuffer.format.depth,
-                     backbuffer.format.stencil);
-          auto renderer = mGlesRenderers[id];
-          if (renderer == nullptr) {
-            GAPID_WARNING(
-                "[%u]replayChangeBackbuffer called with unknown renderer "
-                "%" PRIu32,
-                label, id);
-            return false;
-          }
-          renderer->setBackbuffer(backbuffer);
-          return true;
-        } else {
-          GAPID_WARNING(
-              "[%u]Error during calling function replayChangeBackbuffer",
-              label);
-          return false;
-        }
-      });
-
-  interpreter->registerBuiltin(
-      Gles::INDEX, Builtins::ReplayCreateExternalImage,
-      [this](uint32_t label, Stack* stack, bool pushReturn) {
-        uint32_t texId = stack->pop<uint32_t>();
-        uint32_t ctxId = stack->pop<uint32_t>();
-
-        if (!stack->isValid()) {
-          GAPID_WARNING(
-              "[%u]Error during calling function replayCreateExternalImage",
-              label);
-          return false;
-        }
-
-        auto renderer = mGlesRenderers[ctxId];
-        if (renderer == nullptr) {
-          GAPID_WARNING(
-              "[%u]replayCreateExternalImage called with unknown renderer "
-              "%" PRIu32,
-              label, ctxId);
-          return false;
-        }
-
-        GAPID_INFO("[%u]replayCreateExternalImage(%d, %d)", label, ctxId,
-                   texId);
-        auto result = renderer->createExternalImage(texId);
-        if (pushReturn) {
-          stack->push(result);
-        }
-        return true;
-      });
-
   interpreter->registerBuiltin(
       Vulkan::INDEX, Builtins::ReplayCreateVkInstance,
       [this, interpreter](uint32_t label, Stack* stack, bool pushReturn) {

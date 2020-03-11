@@ -36,8 +36,6 @@ import (
 const toRoot = "../../"
 
 var testAPIs = []string{
-	toRoot + "gapis/api/gles/gles.api",
-	toRoot + "gapis/api/gvr/gvr.api",
 	toRoot + "gapis/api/vulkan/vulkan.api",
 }
 

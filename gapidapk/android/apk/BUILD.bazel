@@ -21,7 +21,6 @@ _NATIVE_LIBRARIES = {
     "VkLayer_DebugMarker": "//core/vulkan/vk_debug_marker_layer/apk",
     "VkLayer_MemoryTracker": "//core/vulkan/vk_memory_tracker_layer/apk",
     "gapii": "//gapii/apk",
-    "interceptor": "//gapii/apk",
     "VkLayer_GraphicsSpy": "//gapii/apk",
     "gapir": "//cmd/gapir/apk",
     "vulkan_sample": "//cmd/vulkan_sample/apk",

@@ -45,9 +45,6 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
 	"github.com/google/gapid/gapis/trace"
-
-	// Extensions
-	_ "github.com/google/gapid/gapis/extensions/unity"
 )
 
 var (

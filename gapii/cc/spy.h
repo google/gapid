@@ -18,8 +18,6 @@
 #define GAPII_SPY_H
 
 #include "core/cc/thread.h"
-#include "gapii/cc/gles_spy.h"
-#include "gapii/cc/gvr_spy.h"
 #include "gapii/cc/vulkan_spy.h"
 
 #include <atomic>
@@ -29,7 +27,7 @@
 namespace gapii {
 struct spy_creator;
 class ConnectionStream;
-class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
+class Spy : public VulkanSpy {
  public:
   // get lazily constructs and returns the singleton instance to the spy.
   static Spy* get();
@@ -41,36 +39,6 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
 
   CallObserver* enter(const char* name, uint32_t api);
   void exit();
-
-  EGLBoolean eglInitialize(CallObserver* observer, EGLDisplay dpy,
-                           EGLint* major, EGLint* minor);
-  EGLContext eglCreateContext(CallObserver* observer, EGLDisplay display,
-                              EGLConfig config, EGLContext share_context,
-                              EGLint* attrib_list);
-  EGLBoolean eglMakeCurrent(CallObserver* observer, EGLDisplay display,
-                            EGLSurface draw, EGLSurface read,
-                            EGLContext context);
-
-  // Intercepted GLES methods to optionally fake no support for precompiled
-  // shaders.
-  void glProgramBinary(CallObserver* observer, uint32_t program,
-                       uint32_t binary_format, const void* binary,
-                       int32_t binary_size);
-  void glProgramBinaryOES(CallObserver* observer, uint32_t program,
-                          uint32_t binary_format, const void* binary,
-                          int32_t binary_size);
-  void glShaderBinary(CallObserver* observer, int32_t count,
-                      const uint32_t* shaders, uint32_t binary_format,
-                      const void* binary, int32_t binary_size);
-  void glGetInteger64v(CallObserver* observer, uint32_t param, int64_t* values);
-  void glGetIntegerv(CallObserver* observer, uint32_t param, int32_t* values);
-  const GLubyte* glGetString(CallObserver* observer, uint32_t name);
-  const GLubyte* glGetStringi(CallObserver* observer, uint32_t name,
-                              GLuint index);
-
-  void gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
-                        const gvr_buffer_viewport_list* list,
-                        gvr_mat4_abi head_space_from_start_space);
 
   void endTraceIfRequested() override;
 
@@ -89,10 +57,6 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
     const auto symbol = mSymbols.find(name);
     return (symbol == mSymbols.end()) ? nullptr : symbol->second;
   }
-
-  void setFakeGlError(CallObserver* observer, GLenum_Error error);
-  uint32_t glGetError(CallObserver* observer);
-  EGLint eglGetError(CallObserver* observer);
 
  private:
   Spy();
@@ -133,13 +97,11 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   int mObserveFrameFrequency;
   int mObserveDrawFrequency;
   bool mDisablePrecompiledShaders;
-  bool mRecordGLErrorState;
   // These keep track of nested frame start/end callbacks.
   int mNestedFrameStart;
   int mNestedFrameEnd;
   uint64_t mFrameNumber;
 
-  std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
   std::unique_ptr<core::AsyncJob> mMessageReceiverJob;
 
   friend struct spy_creator;

@@ -15,20 +15,6 @@
 load("//tools/build:rules.bzl", "android_dynamic_library", "apic_compile", "apic_template", "cc_copts", "cc_dynamic_library")
 
 apic_template(
-    name = "gles_templated",
-    api = "//gapis/api/gles:api",
-    templates = [
-        "//gapis/api/templates:api_imports.h",
-        "//gapis/api/templates:api_spy.h",
-        "//gapis/api/templates:api_spy.cpp",
-        "//gapis/api/templates:api_types.h",
-        "//gapis/api/templates:api_types.cpp",
-        "//gapis/api/gles/templates:api_exports.cpp",
-        "//gapis/api/gles/templates:api_imports.cpp",
-    ],
-)
-
-apic_template(
     name = "vulkan_templated",
     api = "//gapis/api/vulkan:api",
     templates = [
@@ -43,57 +29,14 @@ apic_template(
     ],
 )
 
-apic_template(
-    name = "gvr_templated",
-    api = "//gapis/api/gvr:api",
-    templates = [
-        "//gapis/api/templates:api_imports.h",
-        "//gapis/api/templates:api_spy.h",
-        "//gapis/api/templates:api_spy.cpp",
-        "//gapis/api/templates:api_types.h",
-        "//gapis/api/templates:api_types.cpp",
-        "//gapis/api/gvr/templates:api_exports.cpp",
-        "//gapis/api/gvr/templates:api_exports.h",
-        "//gapis/api/gvr/templates:api_imports.cpp",
-    ],
-)
-
 apic_compile(
     name = "apis_compiled",
     apis = [
-        "//gapis/api/gles:api",
         "//gapis/api/vulkan:api",
-        "//gapis/api/gvr:api",
     ],
     emit = ["encode"],
     namespace = "gapii",
     optimize = True,
-)
-
-apic_template(
-    name = "gvr_install",
-    api = "//gapis/api/gvr:api",
-    templates = [
-        "//gapis/api/gvr/templates:api_install.cpp",
-    ],
-)
-
-apic_template(
-    name = "osx_opengl_framework",
-    api = "//gapis/api/gles:api",
-    templates = [
-        "//gapis/api/templates:opengl_framework_exports.cpp",
-    ],
-)
-
-apic_template(
-    name = "windows_opengl32",
-    api = "//gapis/api/gles:api",
-    templates = [
-        "//gapis/api/templates:opengl32_resolve.cpp",
-        #TODO "//gapis/api/templates:opengl32_exports.def"
-        #TODO "//gapis/api/templates:opengl32_x64.asm",
-    ],
 )
 
 cc_library(
@@ -108,21 +51,10 @@ cc_library(
             "*_test.cpp",
         ],
     ) + select({
-        "//tools/build:linux": [],
         "//tools/build:darwin": [":osx_opengl_framework"],
-        "//tools/build:windows": [":windows_opengl32"] + glob([
-            "windows/*.cpp",
-            "windows/*.h",
-        ]),
-        # Android
-        "//conditions:default": glob([
-            "android/*.cpp",
-            "android/*.h",
-        ]) + [":gvr_install"],
+        "//conditions:default": [],
     }) + [
         ":apis_compiled",
-        ":gles_templated",
-        ":gvr_templated",
         ":vulkan_templated",
     ],
     copts = cc_copts() + select({
@@ -152,7 +84,6 @@ cc_library(
         "//core/os/device/deviceinfo/cc",
         "//gapil/runtime/cc",
         "//gapis/api:api_cc_proto",
-        "//gapis/api/gles/gles_pb:extras_cc_proto",
         "//gapis/capture:capture_cc_proto",
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
         "@com_google_protobuf//:protobuf",

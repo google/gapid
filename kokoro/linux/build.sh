@@ -54,11 +54,9 @@ function build {
   echo $(date): Build completed.
 }
 
-# Build each API package separately first, as the go-compiler needs ~8GB of
-# RAM for each of the big API packages.
-for api in gles vulkan gvr; do
-  build //gapis/api/$api:go_default_library
-done
+# Build the Vulkan API package separately first, as the go-compiler needs ~8GB
+# of RAM for this
+build //gapis/api/vulkan:go_default_library
 
 # Build the package and symbol file.
 build //:pkg //:symbols

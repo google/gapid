@@ -22,8 +22,6 @@ go_library(
     deps = [
         "//core/app:go_default_library",
         "//core/log:go_default_library",
-        "//gapis/api/gles:go_default_library",
-        "//gapis/api/gvr:go_default_library",
         "//gapis/api/vulkan:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",

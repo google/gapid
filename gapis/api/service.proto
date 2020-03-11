@@ -18,7 +18,6 @@ import "core/image/image.proto";
 import "core/data/pod/pod.proto";
 import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
-import "gapis/service/types/types.proto";
 import "gapis/vertex/vertex.proto";
 
 package api;

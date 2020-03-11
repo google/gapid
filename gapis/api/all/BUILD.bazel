@@ -20,8 +20,6 @@ go_library(
     importpath = "github.com/google/gapid/gapis/api/all",
     visibility = ["//visibility:public"],
     deps = [
-        "//gapis/api/gles:go_default_library",
-        "//gapis/api/gvr:go_default_library",
         "//gapis/api/vulkan:go_default_library",
     ],
 )

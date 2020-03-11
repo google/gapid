@@ -30,7 +30,6 @@
 
 namespace gapir {
 
-class GlesRenderer;
 class Interpreter;
 class MemoryManager;
 class PostBuffer;
@@ -134,12 +133,6 @@ class Context : private Renderer::Listener {
 
   // An array of timers.
   core::Timer mTimers[MAX_TIMERS];
-
-  // GLES renderer used as reference for all context sharing.
-  std::unique_ptr<GlesRenderer> mRootGlesRenderer;
-
-  // The constructed GLES renderers.
-  std::unordered_map<uint32_t, GlesRenderer*> mGlesRenderers;
 
   // The lazily-built Vulkan renderer.
   VulkanRenderer* mVulkanRenderer;

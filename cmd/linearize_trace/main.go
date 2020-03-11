@@ -25,8 +25,6 @@ import (
 
 	"github.com/google/gapid/core/app"
 	log "github.com/google/gapid/core/log"
-	_ "github.com/google/gapid/gapis/api/gles"
-	_ "github.com/google/gapid/gapis/api/gvr"
 	_ "github.com/google/gapid/gapis/api/vulkan"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"

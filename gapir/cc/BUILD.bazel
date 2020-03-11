@@ -15,22 +15,6 @@
 load("//tools/build:rules.bzl", "apic_template", "cc_copts", "mm_library")
 
 apic_template(
-    name = "gles_cc",
-    api = "//gapis/api/gles:api",
-    templates = [
-        "//gapis/api/templates:specific_gfx_api.cpp",
-    ],
-)
-
-apic_template(
-    name = "gles_h",
-    api = "//gapis/api/gles:api",
-    templates = [
-        "//gapis/api/templates:specific_gfx_api.h",
-    ],
-)
-
-apic_template(
     name = "vulkan_cc",
     api = "//gapis/api/vulkan:api",
     templates = [
@@ -54,7 +38,6 @@ mm_library(
         "*.h",
         "*.inc",
     ]) + [
-        ":gles_h",
         ":vulkan_h",
     ],
     copts = cc_copts() + [
@@ -87,8 +70,6 @@ cc_library(
             "android/*.h",
         ]),
     }) + [
-        ":gles_cc",
-        ":gles_h",
         ":vulkan_cc",
         ":vulkan_h",
     ],
@@ -108,8 +89,6 @@ cc_library(
         "//conditions:default": [
             "-lm",
             "-llog",
-            "-lEGL",
-            "-lGLESv2",
             "-landroid",
         ],
     }),

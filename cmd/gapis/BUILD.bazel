@@ -35,7 +35,6 @@ go_library(
         "//core/text:go_default_library",
         "//gapir/client:go_default_library",
         "//gapis/database:go_default_library",
-        "//gapis/extensions/unity:go_default_library",
         "//gapis/replay:go_default_library",
         "//gapis/server:go_default_library",
         "//gapis/service:go_default_library",

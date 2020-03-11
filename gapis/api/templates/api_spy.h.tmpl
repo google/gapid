@@ -38,11 +38,7 @@
   #include "{{Global "API"}}_imports.h"
   #include "{{Global "API"}}_types.h"
 ¶
-{{if (eq (Global "API") "gles")}}
   #include "gapii/cc/spy_base.h"
-{{else}}
-  #include "gapii/cc/gles_spy.h"
-{{end}}
   #include "gapii/cc/call_observer.h"
   #include "gapii/cc/state_serializer.h"
 ¶

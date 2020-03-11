@@ -16,22 +16,6 @@ load("//tools/build:rules.bzl", "apic_template", "go_stripped_binary")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 apic_template(
-    name = "gles_lookup",
-    api = "//gapis/api/gles:api",
-    templates = [
-        "//gapis/api/templates:enum_lookup.go",
-    ],
-)
-
-apic_template(
-    name = "gvr_lookup",
-    api = "//gapis/api/gvr:api",
-    templates = [
-        "//gapis/api/templates:enum_lookup.go",
-    ],
-)
-
-apic_template(
     name = "vulkan_lookup",
     api = "//gapis/api/vulkan:api",
     templates = [
@@ -46,8 +30,6 @@ go_library(
         "main.go",
     ],
     embed = [
-        ":gles_lookup",  # keep
-        ":gvr_lookup",  # keep
         ":vulkan_lookup",  # keep
     ],
     importpath = "github.com/google/gapid/cmd/enum_lookup",

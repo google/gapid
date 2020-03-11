@@ -312,15 +312,6 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
             actual = "@androidndk//:toolchain-libcpp",
         )
 
-        maybe_repository(
-            http_archive,
-            name = "libinterceptor",
-            locals = locals,
-            url = "https://github.com/google/gapid/releases/download/libinterceptor-v1.0/libinterceptor.zip",
-            build_file = "@gapid//tools/build/third_party:libinterceptor.BUILD",
-            sha256 = "307e0e3ec7451a244811b4edf21453d55d1e90a5f868a73dc42d4975ef74aec9",
-        )
-
     if mingw:
         cc_configure()
 

@@ -21,15 +21,6 @@ android_native(
 )
 
 android_native(
-    name = "interceptor",
-    visibility = ["//visibility:public"],
-    deps = select({
-        "//tools/build:libinterceptor-from-source": ["//gapii/interceptor-lib/cc:libinterceptor"],
-        "//conditions:default": ["@libinterceptor//:libinterceptor"],
-    }),
-)
-
-android_native(
     name = "VkLayer_GraphicsSpy",
     visibility = ["//visibility:public"],
     deps = ["//gapii/vulkan/vk_graphics_spy/cc:libVkLayer_GraphicsSpy"],
