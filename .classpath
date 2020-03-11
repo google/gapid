@@ -2,7 +2,7 @@
 <classpath>
 	<classpathentry excluding="BUILD.bazel" kind="src" path="gapic/src/main"/>
 	<classpathentry excluding="BUILD.bazel" kind="src" path="platform_src"/>
-	<classpathentry excluding="BUILD.bazel" kind="src" path="gapic/res"/>
+	<classpathentry excluding="BUILD.bazel" kind="src" path="bazel-bin/gapic/res/java"/>
 	<classpathentry including="com/google/gapid/**" kind="src" path="bazel-bin/gapic/src/main"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="lib" path="bazel-bin/core/data/pod/libpod_proto-speed.jar" sourcepath="bazel-bin/core/data/pod/pod_proto-speed-src.jar"/>

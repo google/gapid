@@ -19,7 +19,10 @@ load("//tools/build:rules.bzl", "copy_to", "copy_tree")
 # into that struture first
 copy_tree(
     name = "copy_resources",
-    srcs = glob(["**/*"]),
+    srcs = glob(
+        ["**/*"],
+        exclude = ["BUILD.bazel"],
+    ),
     strip = package_name() + "/",
     to = "java",
 )
