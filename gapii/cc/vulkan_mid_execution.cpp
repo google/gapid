@@ -193,6 +193,16 @@ class StagingBuffer {
       device_functions_.vkDestroyBuffer(device_, staging_buffer_, nullptr);
     }
     if (staging_memory_) {
+      // TODO(b/151157266): Remove this workaround once b/151157266 is fixed.
+      // Driver bug workaround: explicitely unmap memory before vkFreeMemory().
+      // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkFreeMemory.html
+      // The vkFreeMemory spec says "If a memory object is mapped at the time
+      // it is freed, it is implicitly unmapped". Yet some drivers seem to
+      // leak the memory, unless it is explicitely unmapped. Hence our call
+      // to vkUnmapMemory() here.
+      if (bound_memory_) {
+        device_functions_.vkUnmapMemory(device_, staging_memory_);
+      }
       device_functions_.vkFreeMemory(device_, staging_memory_, nullptr);
     }
   }
