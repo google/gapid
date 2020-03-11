@@ -48,7 +48,7 @@ namespace cube {
 }
 
 namespace icon {
-#include "icon.h"
+#include "tools/logo/logo_256.h"
 }
 const uint32_t vertex_shader[] =
 #include "vert.h"

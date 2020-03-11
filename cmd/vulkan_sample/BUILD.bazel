@@ -19,10 +19,9 @@ cc_library(
     srcs = [
         "cube.h",
         "frag.h",
-        "icon.h",
         "main.cpp",
         "vert.h",
-    ],
+    ] + ["//tools/logo:logo_256_h"],
     copts = cc_copts(),
     linkopts = select({
         "//tools/build:linux": [

@@ -12,4 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools/build:rules.bzl", "img2h")
+
 exports_files(glob(["*.png"]))
+
+img2h(
+    name = "logo_256_h",
+    srcs = ["logo_256.png"],
+    visibility = ["//visibility:public"],
+)
