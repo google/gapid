@@ -122,7 +122,6 @@ proto_library(
         "//core/image:image_proto",
         "//gapis/service/box:box_proto",
         "//gapis/service/path:path_proto",
-        "//gapis/service/types:types_proto",
         "//gapis/vertex:vertex_proto",
     ],
 )
@@ -143,7 +142,6 @@ go_proto_library(
         "//core/image:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",
-        "//gapis/service/types:go_default_library",
         "//gapis/vertex:go_default_library",
     ],
 )

@@ -312,7 +312,6 @@ test_suite(
     name = "tests-gapis-api",
     tests = [
         "//gapis/api:go_default_test",
-        "//gapis/api/gles:go_default_test",
         "//gapis/api/test:go_default_test",
         "//gapis/api/transform:go_default_test",
         "//gapis/api/vulkan:go_default_test",
@@ -357,7 +356,6 @@ test_suite(
 test_suite(
     name = "tests-general",
     tests = [
-        "//test/integration/gles/replay:go_default_test",
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
         "//test/robot/stash/grpc:go_default_test",
@@ -438,7 +436,6 @@ test_suite(
         "//gapil/validate:go_default_test",
         "//gapir/cc:tests",
         "//gapis/api:go_default_test",
-        "//gapis/api/gles:go_default_test",
         "//gapis/api/test:go_default_test",
         "//gapis/api/transform:go_default_test",
         "//gapis/api/vulkan:go_default_test",
@@ -458,7 +455,6 @@ test_suite(
         "//gapis/stringtable/minidown/scanner:go_default_test",
         "//gapis/stringtable/parser:go_default_test",
         "//gapis/vertex:go_default_test",
-        "//test/integration/gles/replay:go_default_test",
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
         "//test/robot/stash/grpc:go_default_test",

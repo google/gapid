@@ -32,13 +32,10 @@ go_test(
     deps = [
         "//core/app/auth:go_default_library",
         "//core/assert:go_default_library",
-        "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/net/grpcutil:go_default_library",
         "//core/os/device/bind:go_default_library",
-        "//core/os/device/host:go_default_library",
         "//gapis/api:go_default_library",
-        "//gapis/capture:go_default_library",
         "//gapis/client:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/replay:go_default_library",
@@ -46,7 +43,6 @@ go_test(
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/stringtable:go_default_library",
-        "//test/integration/gles/snippets:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
     ],
 )

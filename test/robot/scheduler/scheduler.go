@@ -149,8 +149,6 @@ func (s schedule) canReplay(t *monitor.Trace) bool {
 	// Gles trace must be replayed on host while Vulkan trace must be replayed
 	// on the same device where the trace was captured.
 	switch t.Input.Hints.API {
-	case "gles":
-		return s.worker.GetTarget() == t.GetHost()
 	case "vulkan":
 		return s.worker.GetTarget() == t.GetTarget()
 	}

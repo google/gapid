@@ -23,13 +23,12 @@ import (
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/event/task"
+	//"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/device/host"
+	//"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/capture"
 	gapis "github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay"
@@ -37,7 +36,6 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
-	"github.com/google/gapid/test/integration/gles/snippets"
 	"google.golang.org/grpc"
 )
 
@@ -111,30 +109,6 @@ var (
 	drawCmdIndex    uint64
 	swapCmdIndex    uint64
 )
-
-func init() {
-	check := func(err error) {
-		if err != nil {
-			panic(err)
-		}
-	}
-	ctx := context.Background()
-
-	deviceScanDone, onDeviceScanDone := task.NewSignal()
-	onDeviceScanDone(ctx)
-	cfg.DeviceScanDone = deviceScanDone
-
-	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	dev := host.Instance(ctx)
-
-	b := snippets.NewBuilder(ctx, dev)
-	b.CreateContext(128, 128, false, false)
-	draw, swap := b.DrawTexturedSquare(ctx)
-
-	buf := bytes.Buffer{}
-	check(capture.Export(ctx, b.Capture(ctx, "test-capture"), &buf))
-	testCaptureData, drawCmdIndex, swapCmdIndex = buf.Bytes(), uint64(draw), uint64(swap)
-}
 
 func TestGetServerInfo(t *testing.T) {
 	ctx, server, shutdown := setup(t)
