@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "img2h")
+load("//tools/build:rules.bzl", "img2h", "img2ico")
 
 exports_files(glob([
     "*.png",
@@ -23,4 +23,19 @@ img2h(
     name = "logo_256_h",
     srcs = ["logo_256.png"],
     visibility = ["//visibility:public"],
+)
+
+img2ico(
+    name = "agi_ico",
+    # buildifier: leave-alone
+    srcs = [
+        "logo_16.png",
+        "logo_24.png",
+        "logo_32.png",
+        "logo_40.png",
+        "logo_48.png",
+        "logo_64.png",
+        "logo_128.png",
+        "logo_256.png",
+    ],
 )

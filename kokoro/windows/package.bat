@@ -52,7 +52,7 @@ set /p VERSION=<version.txt
 
 REM Combine package contents.
 xcopy /e %BIN_DIR%\pkg\* agi\
-copy "%~dp0\gapid.ico" agi\agi.ico
+copy "%BIN_DIR%\tools\logo\agi_ico.ico" agi\agi.ico
 copy "c:\tools\msys64\mingw64\bin\libgcc_s_seh-1.dll" agi
 copy "c:\tools\msys64\mingw64\bin\libstdc++-6.dll" agi
 copy "c:\tools\msys64\mingw64\bin\libwinpthread-1.dll" agi
