@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "core/cc/make_unique.h"
+
 #include "gapii/cc/state_serializer.h"
 #include "gapii/cc/vulkan_exports.h"
 #include "gapii/cc/vulkan_spy.h"
@@ -344,6 +346,18 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
     }
   }
 
+  // Retrieve buffers, one by one, chunk by chunk, to prevent OOM.
+  // Prepare one staging buffer of size kChunkSizeLimit per device.
+  std::unordered_map<VkDevice, std::unique_ptr<StagingBuffer>> staging_buffers;
+  for (auto it = mState.Devices.begin(); it != mState.Devices.end(); it++) {
+    VkDevice device = it->first;
+    staging_buffers[device] = make_unique<StagingBuffer>(
+        arena(), mImports.mVkDeviceFunctions[device], device,
+        mState.PhysicalDevices[mState.Devices[device]->mPhysicalDevice]
+            ->mMemoryProperties,
+        kChunkSizeLimit);
+  }
+
   for (auto& buffer : mState.Buffers) {
     VkBuffer buf_handle = buffer.first;
     auto buf = buffer.second;
@@ -400,17 +414,13 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
       }
       auto& deviceMemory = mState.DeviceMemories[bind.mmemory];
 
-      StagingBuffer stage(
-          arena(), device_functions, buf->mDevice,
-          mState.PhysicalDevices[mState.Devices[buf->mDevice]->mPhysicalDevice]
-              ->mMemoryProperties,
-          kChunkSizeLimit);
-
       for (uint64_t offset = 0; offset < bind.msize;
            offset += kChunkSizeLimit) {
         uint64_t chunkSize = bind.msize - offset < kChunkSizeLimit
                                  ? bind.msize - offset
                                  : kChunkSizeLimit;
+
+        auto stage = staging_buffers[buf->mDevice].get();
 
         StagingCommandBuffer commandBuffer(
             device_functions, buf->mDevice,
@@ -419,7 +429,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
         VkBufferCopy region{bind.mresourceOffset + offset, 0, chunkSize};
 
         device_functions.vkCmdCopyBuffer(commandBuffer.GetBuffer(), buf_handle,
-                                         stage.GetBuffer(), 1, &region);
+                                         stage->GetBuffer(), 1, &region);
 
         VkBufferMemoryBarrier barrier{
             VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -428,7 +438,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
             VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
             0xFFFFFFFF,
             0xFFFFFFFF,
-            stage.GetBuffer(),
+            stage->GetBuffer(),
             0,
             chunkSize};
 
@@ -446,7 +456,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
         memory::Observation observation;
         observation.set_pool(deviceMemory->mData.pool_id());
         observation.set_base(bind.mmemoryOffset + offset);
-        serializer->sendData(&observation, true, stage.GetMappedMemory(),
+        serializer->sendData(&observation, true, stage->GetMappedMemory(),
                              chunkSize);
       }
     }

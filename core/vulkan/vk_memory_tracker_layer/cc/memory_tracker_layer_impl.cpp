@@ -24,6 +24,7 @@
 #include <malloc.h>
 #endif
 
+#include "core/cc/make_unique.h"
 #include "core/vulkan/vk_memory_tracker_layer/cc/tracing_helpers.h"
 #include "perfetto/base/time.h"
 
@@ -39,11 +40,6 @@ using scoped_write_lock = layer_helpers::threading::scoped_write_lock;
 MemoryTracker memory_tracker_instance;
 rwlock rwl_global_unique_handles;
 std::unordered_map<uint64_t, uint64_t> global_unique_handles;
-
-template <typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
 
 // --------------------------- UniqueHandleGenerator ---------------------------
 
