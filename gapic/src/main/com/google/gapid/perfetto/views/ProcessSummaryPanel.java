@@ -33,6 +33,7 @@ import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
 
 import org.eclipse.swt.SWT;
@@ -45,7 +46,7 @@ import java.util.List;
 /**
  * Displays the CPU usage summary of a process, aggregating all threads.
  */
-public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
+public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> implements Selectable {
   private static final double HEIGHT = 50;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -330,6 +331,14 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
         return true;
       }
     };
+  }
+
+  @Override
+  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+    builder.add(Selection.Kind.Cpu, transform(track.getSlices(ts), r -> {
+      r.forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
+      return new CpuTrack.SlicesBuilder(r);
+    }));
   }
 
   private static class HoverCard {

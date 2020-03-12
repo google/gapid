@@ -27,6 +27,7 @@ import static java.util.stream.Collectors.joining;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.models.CpuTrack.Slice;
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +42,10 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
       "select quantum_ts, group_concat(id) ids, sum(dur)/cast(%d * %d as float) util " +
       "from %s group by quantum_ts";
   private static final String SLICES_SQL = "select ts, dur, cpu, utid, id from %s";
+  private static final String SLICE_RANGE_SQL =
+      "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
+      "from sched left join thread using(utid) " +
+      "where utid != 0 and upid = %d and ts < %d and ts_end >= %d";
   private static final String SLICE_RANGE_FOR_IDS_SQL =
       "select sched.id, ts, dur, cpu, utid, upid, end_state, priority " +
       "from sched left join thread using(utid) " +
@@ -118,6 +123,18 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
 
   private String slicesSql() {
     return format(SLICES_SQL, tableName("span"));
+  }
+
+  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts) {
+    return transform(qe.query(sliceRangeSql(ts)), result -> {
+      List<Slice> slices = Lists.newArrayList();
+      result.forEachRow((i, r) -> slices.add(new Slice(r)));
+      return slices;
+    });
+  }
+
+  private String sliceRangeSql(TimeSpan ts) {
+    return format(SLICE_RANGE_SQL, process.upid, ts.end, ts.start);
   }
 
   public ListenableFuture<List<Slice>> getSlices(String ids) {

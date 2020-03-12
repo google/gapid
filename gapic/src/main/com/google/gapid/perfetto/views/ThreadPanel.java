@@ -394,8 +394,10 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
     if (startDepth == 0) {
       builder.add(Selection.Kind.ThreadState,
           transform(track.getStates(ts), ThreadTrack.StateSlicesBuilder::new));
-      builder.add(Selection.Kind.Cpu, transform(
-          track.getCpuSlices(ts), r -> new CpuTrack.SlicesBuilder(r)));
+      builder.add(Selection.Kind.Cpu, transform(track.getCpuSlices(ts), r -> {
+        r.forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
+        return new CpuTrack.SlicesBuilder(r);
+      }));
     }
 
     startDepth = Math.max(0, startDepth - 1);
