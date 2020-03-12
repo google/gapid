@@ -224,7 +224,7 @@ func (verb *videoVerb) sxsVideoSource(
 		//    ┃                ┃   Histogram   ┃
 		//    ┃                ┣━━━━━━━━━━━━━━━┫ p7
 		//    ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━┛
-		//                     p6
+		//                     p6                p8
 		var histogramHeight int
 		if histogram != nil {
 			histogramHeight = histogram.Bounds().Dy()
@@ -234,8 +234,10 @@ func (verb *videoVerb) sxsVideoSource(
 		p5 := image.Pt(w+2, h+200)
 		p6 := image.Pt(w, h*2)
 		p7 := image.Pt(w*2, p5.Y+histogramHeight)
+		p8 := image.Pt(w*2, h*2)
 
 		white := &image.Uniform{C: color.White}
+		black := &image.Uniform{C: color.Black}
 		rect := func(min, max image.Point) image.Rectangle {
 			return image.Rectangle{Min: min, Max: max}
 		}
@@ -262,6 +264,7 @@ func (verb *videoVerb) sxsVideoSource(
 				draw.Draw(sxs, rect(p2, p6), d, image.ZP, draw.Src)
 			}
 
+			draw.Draw(sxs, rect(p3, p8), black, image.ZP, draw.Src)
 			// Histogram
 			if h := histogram; h != nil {
 				draw.Draw(sxs, rect(p5, p7), histogram, image.ZP, draw.Src)
@@ -347,6 +350,11 @@ func getHistogram(videoFrames []*videoFrame) *image.NRGBA {
 
 	pixels := make([]byte, w*h*4)
 	out := &image.NRGBA{Pix: pixels, Stride: w * 4, Rect: image.Rect(0, 0, w, h)}
+	for i := range pixels {
+		if i%4 == 3 {
+			pixels[i] = 255
+		}
+	}
 
 	// Layout into RGBA32 bitmap.
 	f32s := make([]float32, bins*w)

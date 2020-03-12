@@ -26,6 +26,7 @@ const (
 	SxsVideo
 	RegularVideo
 	IndividualFrames
+	SxsFrames
 )
 
 const (
@@ -62,6 +63,7 @@ var videoTypeNames = map[VideoType]string{
 	SxsVideo:         "sxs",
 	RegularVideo:     "regular",
 	IndividualFrames: "frames",
+	SxsFrames:        "sxs-frames",
 }
 
 func (v *VideoType) Choose(c interface{}) {
