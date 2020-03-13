@@ -225,28 +225,6 @@ void* VoidPointerAdd(void* addr, ssize_t offset) {
 
 using SpinLockTest = TestFixture;
 
-// Thread A sleeps first, then increases the counter, while Thread B will
-// increase the counter before Thread A wakes up.
-TEST_F(SpinLockTest, WithoutSpinLockGuard) {
-  Init();
-  uint32_t counter = 0u;
-  RunInTwoThreads(
-      // Thread A is initiated first and runs first.
-      [this, &counter]() {
-        m_.unlock();
-        usleep(5000);
-        counter++;
-        EXPECT_EQ(2u, counter);
-      },
-      // Thread B is initiated secondly and runs after thread A runs.
-      [this, &counter]() {
-        m_.lock();
-        counter++;
-        EXPECT_EQ(1u, counter);
-      });
-  EXPECT_EQ(2u, counter);
-}
-
 // Thread A sleeps first, then increases the counter, but Thread B waits for
 // the spin lock. So Thread A increases the counter before Thread B.
 TEST_F(SpinLockTest, WithSpinLockGuard) {
