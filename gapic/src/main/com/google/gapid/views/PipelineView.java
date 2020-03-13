@@ -87,6 +87,7 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * View the displays the information for each stage of the pipeline.
@@ -154,6 +155,15 @@ public class PipelineView extends Composite
   }
 
   @Override
+  public void onCommandsLoaded() {
+    if (!models.commands.isLoaded()) {
+      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+    } else if (models.commands.getSelectedCommands() == null) {
+      loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
+    }
+  }
+
+  @Override
   public void onCommandsSelected(CommandIndex path) {
     updatePipelines();
   }
@@ -195,7 +205,7 @@ public class PipelineView extends Composite
         }
       });
     } else {
-      loading.showMessage(Info, Messages.SELECT_COMMAND);
+      loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
     }
   }
 

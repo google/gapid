@@ -25,7 +25,9 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -180,6 +182,19 @@ func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, erro
 // Pipelines resolves the data of the currently bound pipelines at the specified
 // point in the capture.
 func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (interface{}, error) {
+	cmd, err := Cmd(ctx, p.After, r)
+	if err != nil {
+		return nil, err
+	}
+	state, err := GlobalState(ctx, &path.GlobalState{After: p.After}, r)
+	if err != nil {
+		return nil, err
+	}
+
+	if !cmd.CmdFlags(ctx, api.CmdID(p.After.Indices[0]), state).IsExecutedDraw() || len(p.After.Indices) == 1 {
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNotADrawCall()}
+	}
+
 	obj, err := database.Build(ctx, &PipelinesResolvable{Path: p, Config: r})
 	if err != nil {
 		return nil, err
@@ -197,6 +212,7 @@ func (r *PipelinesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	res, ok := resources.(*ResolvedResources)
 	if !ok {
 		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.Path.After)
