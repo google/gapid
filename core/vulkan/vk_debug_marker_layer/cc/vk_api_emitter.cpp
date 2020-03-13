@@ -15,5 +15,5 @@
  *
  */
 
-#include "core/vulkan/vk_api_timing_layer/cc/vk_api_emitter.h"
-PERFETTO_DEFINE_DATA_SOURCE_STATIC_MEMBERS(api_timing::VkApiProducer);
+#include "core/vulkan/vk_debug_marker_layer/cc/vk_api_emitter.h"
+PERFETTO_DEFINE_DATA_SOURCE_STATIC_MEMBERS(vk_api::VkApiProducer);

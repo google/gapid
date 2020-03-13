@@ -18,6 +18,7 @@ _NATIVE_LIBRARIES = {
     "deviceinfo": "//core/os/device/deviceinfo/apk",
     "VkLayer_VirtualSwapchain": "//core/vulkan/vk_virtual_swapchain/apk",
     "VkLayer_CPUTiming": "//core/vulkan/vk_api_timing_layer/apk",
+    "VkLayer_DebugMarker": "//core/vulkan/vk_debug_marker_layer/apk",
     "VkLayer_MemoryTracker": "//core/vulkan/vk_memory_tracker_layer/apk",
     "gapii": "//gapii/apk",
     "interceptor": "//gapii/apk",

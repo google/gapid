@@ -1,0 +1,7 @@
+DebugMarkerGetDeviceProcAddr
+DebugMarkerGetInstanceProcAddr
+vkEnumerateInstanceLayerProperties
+vkEnumerateInstanceExtensionProperties
+vkEnumerateDeviceLayerProperties
+vkEnumerateDeviceExtensionProperties
+_layer_dummy_func__

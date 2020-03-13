@@ -19,7 +19,7 @@
 #include "perfetto/tracing/core/data_source_config.h"
 #include "perfetto/base/time.h"
 
-namespace api_timing {
+namespace vk_api {
 
 template <typename T>
 VkApiEmitter<T>::VkApiEmitter() {

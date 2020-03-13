@@ -22,7 +22,7 @@
 #include "core/vulkan/perfetto_producer/perfetto_data_source.h"
 #include "core/vulkan/perfetto_producer/perfetto_threadlocal_emitter.h"
 
-namespace api_timing {
+namespace vk_api {
 
 template <typename T>
 class VkApiEmitter : ThreadlocalEmitterBase {
@@ -81,12 +81,12 @@ struct VkApiTypeTraits {
 };
 
 using VkApiProducer = VkApiEmitter<VkApiTypeTraits>;
-auto const VkApiEmit = &api_timing::tracing::Emit<VkApiTypeTraits>;
-}  // namespace api_timing
+auto const VkApiEmit = &vk_api::tracing::Emit<VkApiTypeTraits>;
+}  // namespace vk_api
 
 #define __INCLUDING_VK_API_EMITTER_INC__
-#include "core/vulkan/vk_api_timing_layer/cc/vk_api_emitter.inc"
+#include "core/vulkan/vk_debug_marker_layer/cc/vk_api_emitter.inc"
 #undef __INCLUDING_VK_API_EMITTER_INC__
 
-PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(api_timing::VkApiProducer);
+PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(vk_api::VkApiProducer);
 #endif

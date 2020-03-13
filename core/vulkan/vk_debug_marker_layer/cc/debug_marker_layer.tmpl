@@ -1,0 +1,305 @@
+{{/*
+ * Copyright (C) 2020 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{Global "Vulkan.LayerNamespace" "vk_api"}}
+{{Global "Vulkan.LayerName" "DebugMarker"}}
+{{Global "Vulkan.LayerDescription" "Record Vulkan debug marker"}}
+
+{{define "DEBUG_UTILS_FUNCTIONS"}}
+vkSetDebugUtilsObjectNameEXT
+vkSetDebugUtilsObjectTagEXT
+vkQueueBeginDebugUtilsLabelEXT
+vkQueueEndDebugUtilsLabelEXT
+vkQueueInsertDebugUtilsLabelEXT
+vkCmdBeginDebugUtilsLabelEXT
+vkCmdEndDebugUtilsLabelEXT
+vkCmdInsertDebugUtilsLabelEXT
+vkCreateDebugUtilsMessengerEXT
+vkDestroyDebugUtilsMessengerEXT
+vkSubmitDebugUtilsMessageEXT
+{{end}}
+
+{{define "IS_DEBUG_UTILS_FUNCTIONS"}}
+  {{$filters := Strings (Macro "DEBUG_UTILS_FUNCTIONS") | SplitEOL}}
+  {{range $f := $filters}}
+    {{if eq $.Name $f}}true{{end}}
+  {{end}}
+{{end}}
+
+{{define "DEBUG_MARKER_FUNCTIONS"}}
+vkDebugMarkerSetObjectTagEXT
+vkDebugMarkerSetObjectNameEXT
+vkCmdDebugMarkerBeginEXT
+vkCmdDebugMarkerEndEXT
+vkCmdDebugMarkerInsertEXT
+{{end}}
+
+{{define "OTHER_OVERRIDES"}}
+vkEnumerateInstanceExtensionProperties
+vkEnumerateDeviceExtensionProperties
+{{end}}
+
+
+{{define "ALL_DEBUG_FUNCTIONS"}}
+ {{Macro "DEBUG_MARKER_FUNCTIONS"}}
+ {{Macro "DEBUG_UTILS_FUNCTIONS"}}
+ {{Macro "OTHER_OVERRIDES"}}
+{{end}}
+
+{{define "IS_DEBUG_MARKER_FUNCTIONS"}}
+  {{$filters := Strings (Macro "DEBUG_MARKER_FUNCTIONS") | SplitEOL}}
+  {{range $f := $filters}}
+    {{if eq $.Name $f}}true{{end}}
+  {{end}}
+{{end}}
+
+{{Global "Vulkan.OverrideFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL)}}
+{{Global "Vulkan.ImplementedFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL)}}
+
+{{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
+
+{{$ | Macro "layer_impl.cpp" | Reflow 4 | Write "layer_impl.cpp"}}
+
+{{define "layer_impl.cpp"}}
+
+{{Template "C++.Copyright"}}
+#include "core/vulkan/vk_debug_marker_layer/cc/layer.h"
+#include "core/vulkan/vk_debug_marker_layer/cc/vk_api_emitter.h"
+#include <cinttypes>
+
+namespace {{(Global "Vulkan.LayerNamespace")}} {
+
+static bool debug_utils_ext_supported = false;
+static bool debug_marker_ext_supported = false;
+
+// Since this layer is declaring the debug extensions are implemented, we need to also implement
+// all functions in the extension, but we need to be careful not to forward the function call if
+// the extension was not implemented.
+{{range $c := AllCommands $}}
+
+{{if and (Macro "IS_DEBUG_UTILS_FUNCTIONS" $c)  (not (eq $c.Name "vkSetDebugUtilsObjectNameEXT"))}}
+{{Template "BeginPlatformIfDef" $c}}
+{{Template "C++.BaseType" $c.Return.Type}} {{$c.Name}}(PFN_{{$c.Name}} next, {{Macro "C++.BaseCallParameters" $c | JoinWith ", "}}) {
+
+{{if not (IsVoid $c.Return.Type)}}
+    return (debug_utils_ext_supported && next != nullptr) ? next({{Template "C++.CallArguments" $c}}) : VK_SUCCESS;
+{{else}}
+    if (next != nullptr) {
+        next({{Template "C++.CallArguments" $c}});
+    }
+{{end}}
+}
+{{Template "EndPlatformIfDef" $c}}
+{{end}}
+
+{{if and (Macro "IS_DEBUG_MARKER_FUNCTIONS" $c) (not (eq $c.Name "vkDebugMarkerSetObjectNameEXT"))}}
+{{Template "BeginPlatformIfDef" $c}}
+{{Template "C++.BaseType" $c.Return.Type}} {{$c.Name}}(PFN_{{$c.Name}} next, {{Macro "C++.BaseCallParameters" $c | JoinWith ", "}}) {
+
+{{if not (IsVoid $c.Return.Type)}}
+    return (debug_marker_ext_supported && next != nullptr) ? next({{Template "C++.CallArguments" $c}}) : VK_SUCCESS;
+{{else}}
+    if (next != nullptr) {
+        next({{Template "C++.CallArguments" $c}});
+    }
+{{end}}
+}
+{{Template "EndPlatformIfDef" $c}}
+{{end}}
+
+{{end}}
+
+
+// Maps VkDebugReportObjectTypeEXT to VkObjectType.
+VkObjectType getVkObjectType(VkDebugReportObjectTypeEXT vk_debug_report_object_type) {
+#define CASE(OBJ)                               \
+  case VK_DEBUG_REPORT_OBJECT_TYPE_##OBJ##_EXT: \
+    return VK_OBJECT_TYPE_##OBJ
+
+  switch (vk_debug_report_object_type) {
+    CASE(UNKNOWN);
+    CASE(INSTANCE);
+    CASE(PHYSICAL_DEVICE);
+    CASE(DEVICE);
+    CASE(QUEUE);
+    CASE(SEMAPHORE);
+    CASE(COMMAND_BUFFER);
+    CASE(FENCE);
+    CASE(DEVICE_MEMORY);
+    CASE(BUFFER);
+    CASE(IMAGE);
+    CASE(EVENT);
+    CASE(QUERY_POOL);
+    CASE(BUFFER_VIEW);
+    CASE(IMAGE_VIEW);
+    CASE(SHADER_MODULE);
+    CASE(PIPELINE_CACHE);
+    CASE(PIPELINE_LAYOUT);
+    CASE(RENDER_PASS);
+    CASE(PIPELINE);
+    CASE(DESCRIPTOR_SET_LAYOUT);
+    CASE(SAMPLER);
+    CASE(DESCRIPTOR_POOL);
+    CASE(DESCRIPTOR_SET);
+    CASE(FRAMEBUFFER);
+    CASE(COMMAND_POOL);
+    CASE(SURFACE_KHR);
+    CASE(SWAPCHAIN_KHR);
+    CASE(DEBUG_REPORT_CALLBACK_EXT);
+    CASE(DISPLAY_KHR);
+    CASE(DISPLAY_MODE_KHR);
+    CASE(OBJECT_TABLE_NVX);
+    CASE(INDIRECT_COMMANDS_LAYOUT_NVX);
+    CASE(VALIDATION_CACHE_EXT);
+    CASE(SAMPLER_YCBCR_CONVERSION);
+    CASE(DESCRIPTOR_UPDATE_TEMPLATE);
+    CASE(ACCELERATION_STRUCTURE_NV);
+    default:
+      return VK_OBJECT_TYPE_UNKNOWN;
+  }
+#undef CASE
+}
+
+VkResult vkSetDebugUtilsObjectNameEXT(
+        PFN_vkSetDebugUtilsObjectNameEXT     next,
+        VkDevice                             device,
+        const VkDebugUtilsObjectNameInfoEXT* pNameInfo) {
+    vk_api::VkApiEmit().EmitDebugUtilsObjectName(
+            reinterpret_cast<uint64_t>(device), pNameInfo->objectType, pNameInfo->objectHandle, pNameInfo->pObjectName);
+
+    // Must not forward function call if the extension was not supported.
+    return debug_utils_ext_supported ? next(device, pNameInfo) : VK_SUCCESS;
+}
+
+VkResult vkDebugMarkerSetObjectNameEXT(
+        PFN_vkDebugMarkerSetObjectNameEXT     next,
+        VkDevice                              device,
+        VkDebugMarkerObjectNameInfoEXT const* pNameInfo) {
+    // Convert object type to VkObjectType and emit the trace.
+    vk_api::VkApiEmit().EmitDebugUtilsObjectName(
+            reinterpret_cast<uint64_t>(device), getVkObjectType(pNameInfo->objectType), pNameInfo->object, pNameInfo->pObjectName);
+
+    // Must not forward function call if the extension was not supported.
+    return debug_marker_ext_supported ? next(device, pNameInfo) : VK_SUCCESS;
+}
+
+namespace {
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
+const char* LAYER_NAME = "{{Global "Vulkan.LayerName"}}";
+const VkExtensionProperties INSTANCE_EXTENSIONS[] = {
+    {VK_EXT_DEBUG_UTILS_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_SPEC_VERSION},
+};
+const uint32_t NUM_INSTANCE_EXTENSIONS = ARRAY_SIZE(INSTANCE_EXTENSIONS);
+const VkExtensionProperties DEVICE_EXTENSIONS[] = {
+    {VK_EXT_DEBUG_MARKER_EXTENSION_NAME, VK_EXT_DEBUG_MARKER_SPEC_VERSION},
+};
+const uint32_t NUM_DEVICE_EXTENSIONS = ARRAY_SIZE(DEVICE_EXTENSIONS);
+
+#undef ARRAY_SIZE
+
+/**
+ * Enumerate extension properties for a specific layer.
+ *
+ * This should expose only the new extensions added by the layer.
+ */
+VkResult enumerateExtensionPropertiesForLayer(
+        uint32_t* pPropertyCount,
+        VkExtensionProperties* pProperties,
+        uint32_t numExtensions,
+        const VkExtensionProperties extensions[]) {
+    if (pProperties == nullptr) {
+        *pPropertyCount = numExtensions;
+        return VK_SUCCESS;
+    }
+    uint32_t capacity = std::min(*pPropertyCount, numExtensions);
+    memcpy(pProperties, extensions, capacity * sizeof(VkExtensionProperties));
+    if (*pPropertyCount < numExtensions) {
+        return VK_INCOMPLETE;
+    } else {
+        *pPropertyCount = numExtensions;
+        return VK_SUCCESS;
+    }
+}
+} // end of anonymous namespace
+
+// This layer needs to add VK_EXT_debug_utils and VK_EXT_debug_marker as a supported extension.
+
+VkResult vkEnumerateInstanceExtensionProperties(
+        PFN_vkEnumerateInstanceExtensionProperties next,
+        char const* pLayerName,
+        uint32_t* pPropertyCount,
+        VkExtensionProperties* pProperties) {
+    if (pLayerName != nullptr && strcmp(pLayerName, LAYER_NAME) == 0) {
+        return enumerateExtensionPropertiesForLayer(
+                pPropertyCount,
+                pProperties,
+                NUM_INSTANCE_EXTENSIONS,
+                INSTANCE_EXTENSIONS);
+    }
+    return next(pLayerName, pPropertyCount, pProperties);
+}
+
+VkResult vkEnumerateDeviceExtensionProperties(
+        PFN_vkEnumerateDeviceExtensionProperties next,
+        VkPhysicalDevice physicalDevice,
+        char const* pLayerName,
+        uint32_t* pPropertyCount,
+        VkExtensionProperties* pProperties) {
+    if (pLayerName != nullptr && strcmp(pLayerName, LAYER_NAME) == 0) {
+        return enumerateExtensionPropertiesForLayer(
+                pPropertyCount,
+                pProperties,
+                NUM_DEVICE_EXTENSIONS,
+                DEVICE_EXTENSIONS);
+    }
+    // Manually append device extension.  This should not be necessary, but the Android vulkan
+    // loader does not expose extensions from implicit layer (b/143293104).
+    if (pProperties == nullptr) {
+        VkResult res = next(physicalDevice, pLayerName, pPropertyCount, pProperties);
+        if (res == VK_SUCCESS) {
+            (*pPropertyCount) += NUM_DEVICE_EXTENSIONS;
+        }
+        return res;
+    }
+    if (*pPropertyCount > 0) {
+        uint32_t requestedCount = *pPropertyCount;
+        VkResult res = next(physicalDevice, pLayerName, pPropertyCount, pProperties);
+        if (res == VK_SUCCESS) {
+            for (uint32_t i = 0; i < *pPropertyCount; ++i) {
+                if (!strcmp(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, pProperties[i].extensionName)) {
+                    debug_utils_ext_supported = true;
+                }
+                if (!strcmp(VK_EXT_DEBUG_MARKER_EXTENSION_NAME, pProperties[i].extensionName)) {
+                    debug_marker_ext_supported = true;
+                }
+            }
+            // *pPropertyCount is expected to be requestedCount - NUM_DEVICE_EXTENSIONS.
+            *pPropertyCount = std::min(*pPropertyCount + NUM_DEVICE_EXTENSIONS, requestedCount);
+            uint32_t count = std::min(NUM_DEVICE_EXTENSIONS, *pPropertyCount);
+            memcpy(
+                    &pProperties[*pPropertyCount - count],
+                    DEVICE_EXTENSIONS,
+                    count * sizeof(VkExtensionProperties));
+        }
+        return res;
+    }
+    return VK_SUCCESS;
+}
+
+} // end of {{(Global "Vulkan.LayerNamespace")}}
+{{end}}

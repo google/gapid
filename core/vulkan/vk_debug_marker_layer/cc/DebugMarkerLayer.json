@@ -1,0 +1,15 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "DebugMarker",
+    "type": "GLOBAL",
+    "library_path": "<library>",
+    "api_version": "1.0.5",
+    "implementation_version": "1",
+    "description": "Vulkan Debug Marker Producer",
+    "functions": {
+      "vkGetDeviceProcAddr": "VkApiGetDeviceProcAddr",
+      "vkGetInstanceProcAddr": "VkApiGetInstanceProcAddr"
+    }
+  }
+}

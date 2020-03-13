@@ -1,0 +1,122 @@
+# Copyright (C) 2020 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//tools/build:rules.bzl", "android_dynamic_library", "api_template", "apic_template", "cc_copts", "cc_dynamic_library")
+
+api_template(
+    name = "debug_marker",
+    includes = [
+        "//gapis/api/vulkan/templates:vulkan_layer",
+    ],
+    outputs = [
+        "layer.h",
+        "layer.cpp",
+        "layer_impl.cpp",
+    ],
+    template = "debug_marker_layer.tmpl",
+)
+
+apic_template(
+    name = "debug_marker_templated",
+    api = "//gapis/api/vulkan:api",
+    templates = [
+        ":debug_marker",
+    ],
+)
+
+cc_library(
+    name = "cc",
+    srcs = glob([
+        "*.cpp",
+        "*.inc",
+        "*.h",
+    ]) + [
+        ":debug_marker_templated",
+    ],
+    copts = cc_copts() + select({
+        "//tools/build:linux": [
+            "-DVK_USE_PLATFORM_XCB_KHR",
+            "-DVK_USE_PLATFORM_GGP",
+        ],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": ["-DVK_USE_PLATFORM_WIN32_KHR"],
+        # Android
+        "//conditions:default": ["-DVK_USE_PLATFORM_ANDROID_KHR"],
+    }) + [
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-DNDEBUG",  # always ndebug for perfetto
+    ],
+    linkopts = select({
+        "//tools/build:linux": ["-lpthread"],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": ["-lpthread"],
+        # Android
+        "//conditions:default": [
+            "-ldl",
+            "-lm",
+            "-llog",
+        ],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/cc",
+        "//core/vulkan/cc/include/ggp_c:vulkan_ggp_dummy",
+        "//core/vulkan/layer_helpers",
+        "//core/vulkan/perfetto_producer",
+        "@vulkan-headers//:vulkan",
+    ],
+)
+
+cc_library(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+    ]),
+    copts = cc_copts() + select({
+        "//tools/build:linux": [
+            "-DVK_USE_PLATFORM_XCB_KHR",
+        ],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": ["-DVK_USE_PLATFORM_WIN32_KHR"],
+        # Android
+        "//conditions:default": ["-DVK_USE_PLATFORM_ANDROID_KHR"],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@vulkan-headers//:vulkan",
+    ],
+)
+
+cc_dynamic_library(
+    name = "libVkLayer_DebugMarker",
+    visibility = ["//visibility:public"],
+    exports = "debug_marker_desktop.exports",
+    deps = [":cc"],
+)
+
+android_dynamic_library(
+    name = "libVkLayer_DebugMarker_android",
+    visibility = ["//visibility:public"],
+    exports = "debug_marker_android.exports",
+    deps = [":cc"],
+)
+
+filegroup(
+    name = "json",
+    srcs = [
+        "DebugMarkerLayer.json",
+    ],
+    visibility = ["//visibility:public"],
+)
