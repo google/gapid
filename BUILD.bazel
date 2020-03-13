@@ -256,8 +256,6 @@ test_suite(
         "//core/fault/stacktrace/crunch:go_default_test",
         "//core/git:go_default_test",
         "//core/image:go_default_test",
-        # "//core/java/jdbg:go_default_test", # disabled: flaky on Kokoro
-        "//core/java/jdwp:go_default_test",
         "//core/langsvr:go_default_test",
         "//core/log:go_default_test",
         "//core/math/f16:go_default_test",
@@ -391,8 +389,6 @@ test_suite(
         "//core/fault/stacktrace/crunch:go_default_test",
         "//core/git:go_default_test",
         "//core/image:go_default_test",
-        "//core/java/jdbg:go_default_test",
-        "//core/java/jdwp:go_default_test",
         "//core/langsvr:go_default_test",
         "//core/log:go_default_test",
         "//core/math/f16:go_default_test",

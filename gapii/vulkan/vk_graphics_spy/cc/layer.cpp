@@ -25,7 +25,6 @@
 extern "C" {
 
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))
-typedef void* (*eglGetProcAddress)(const char* procname);
 
 #define LOG_DEBUG(fmt, ...) \
   __android_log_print(ANDROID_LOG_DEBUG, "GAPID", fmt, ##__VA_ARGS__)
@@ -36,21 +35,9 @@ typedef void* (*eglGetProcAddress)(const char* procname);
 
 static void* getLibGapii();
 
-// Up to and including Android P, libgapii, which contains the actual layer
-// functions, is loaded via JDWP. Thus, use libEGL's eglGetProcAddress to find
-// the functions. Starting with Q, libgapii will not be loaded via JDWP
-// anymore, so we load it here if eglGetProcAddress can't find the symbol.
 static void* getProcAddress(const char* name) {
-  static void* libegl = dlopen("libEGL.so", RTLD_NOW);
-  static eglGetProcAddress pa =
-      (eglGetProcAddress)dlsym(libegl, "eglGetProcAddress");
-
   LOG_DEBUG("Looking for function %s", name);
-  void* result = pa(name);
-  if (result == nullptr) {
-    result = dlsym(getLibGapii(), name);
-  }
-  return result;
+  return dlsym(getLibGapii(), name);
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL

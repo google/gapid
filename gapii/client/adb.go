@@ -108,7 +108,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	}
 
 	log.I(ctx, "Checking gapid.apk is installed")
-	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
+	_, err = gapidapk.EnsureInstalled(ctx, d, abi)
 	if err != nil {
 		return nil, nil, log.Err(ctx, err, "Installing gapid.apk")
 	}
@@ -127,30 +127,16 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		d.RemoveForward(ctx, port)
 	})
 
-	isVulkan := o.APIs&VulkanAPI != uint32(0)
-	var useLayers bool
-	if isVulkan {
-		useLayers = android.SupportsVulkanLayersViaSystemSettings(d)
-	} else {
-		useLayers = android.SupportsGLESLayersViaSystemSettings(d)
+	if !android.SupportsVulkanLayersViaSystemSettings(d) {
+		return nil, cleanup.Invoke(ctx), log.Err(ctx, nil, "Cannot trace without layers support")
 	}
 
-	if useLayers {
-		log.I(ctx, "Setting up Layer")
-		cu, err := android.SetupLayers(ctx, d, p.Name, []string{gapidapk.PackageName(abi)}, []string{gapidapk.LayerName(isVulkan)}, isVulkan)
-		if err != nil {
-			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up the layer")
-		}
-		cleanup = cleanup.Then(cu)
-	} else if isVulkan {
-		m, err := reserveVulkanDevice(ctx, d)
-		if err != nil {
-			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up for tracing Vulkan")
-		}
-		cleanup = cleanup.Then(func(ctx context.Context) {
-			releaseVulkanDevice(ctx, d, m)
-		})
+	log.I(ctx, "Setting up Layer")
+	cu, err := android.SetupLayers(ctx, d, p.Name, []string{gapidapk.PackageName(abi)}, []string{gapidapk.LayerName(true)}, true)
+	if err != nil {
+		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up the layer")
 	}
+	cleanup = cleanup.Then(cu)
 
 	var additionalArgs []android.ActionExtra
 	if o.AdditionalFlags != "" {
@@ -158,16 +144,9 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	}
 
 	if a != nil {
-		if useLayers {
-			log.I(ctx, "Starting activity")
-			if err := d.StartActivity(ctx, *a, additionalArgs...); err != nil {
-				return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting activity")
-			}
-		} else {
-			log.I(ctx, "Starting activity in debug mode")
-			if err := d.StartActivityForDebug(ctx, *a, additionalArgs...); err != nil {
-				return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting activity in debug mode")
-			}
+		log.I(ctx, "Starting activity")
+		if err := d.StartActivity(ctx, *a, additionalArgs...); err != nil {
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting activity")
 		}
 	} else {
 		log.I(ctx, "No start activity selected - trying to attach...")
@@ -188,11 +167,6 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		Port:    int(port),
 		Device:  d,
 		Options: o,
-	}
-	if !useLayers {
-		if err := process.loadAndConnectViaJDWP(ctx, apk, pid, d); err != nil {
-			return nil, cleanup.Invoke(ctx), err
-		}
 	}
 
 	return process, cleanup, nil

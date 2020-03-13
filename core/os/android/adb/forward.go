@@ -73,14 +73,6 @@ func (p NamedFileSystemSocket) adbForwardString() string {
 	return fmt.Sprintf("localfilesystem:%s", p)
 }
 
-// Jdwp represents a Jdwp process on an Android device. The value is the same as
-// the PID of the process. Jdwp implements the Port interface.
-type Jdwp int
-
-func (p Jdwp) adbForwardString() string {
-	return fmt.Sprintf("jdwp:%d", p)
-}
-
 // Forward will forward the specified device Port to the specified local Port.
 func (b *binding) Forward(ctx context.Context, local, device Port) error {
 	return b.Command("forward", local.adbForwardString(), device.adbForwardString()).Run(ctx)
