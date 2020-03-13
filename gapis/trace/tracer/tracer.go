@@ -105,11 +105,6 @@ func LayersFromOptions(ctx context.Context, o *service.TraceOptions) []string {
 func GapiiOptions(o *service.TraceOptions) gapii.Options {
 	apis := uint32(0)
 	for _, api := range o.Apis {
-		if api == "OpenGLES" ||
-			api == "GVR" {
-			apis |= gapii.GlesAPI
-			apis |= gapii.GvrAPI
-		}
 		if api == "Vulkan" {
 			apis |= gapii.VulkanAPI
 		}

@@ -225,8 +225,6 @@ Spy::~Spy() {
   endTraceIfRequested();
 }
 
-void Spy::resolveImports() {}
-
 CallObserver* Spy::enter(const char* name, uint32_t api) {
   lock();
   auto ctx = new CallObserver(this, gContext, api);

@@ -54,15 +54,9 @@ const (
 	// DisableCoherentMemoryTracker disables the coherent memory tracker from running.
 	DisableCoherentMemoryTracker Flags = 0x000000100
 
-	// GlesAPI is hard-coded bit mask for GLES API, it needs to be kept in sync
-	// with the api_index in the gles.api file.
-	GlesAPI = uint32(1 << 1)
 	// VulkanAPI is hard-coded bit mask for Vulkan API, it needs to be kept in sync
 	// with the api_index in the vulkan.api file.
 	VulkanAPI = uint32(1 << 2)
-	// GvrAPI is hard-coded bit mask for GVR API, it needs to be kept in sync
-	// with the api_index in the gvr.api file.
-	GvrAPI = uint32(1 << 3)
 )
 
 // Options to use when creating a capture.

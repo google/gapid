@@ -33,10 +33,6 @@ class Spy : public VulkanSpy {
   static Spy* get();
   ~Spy();
 
-  // resolve the imported functions. Call if the functions change due to
-  // external factors.
-  void resolveImports();
-
   CallObserver* enter(const char* name, uint32_t api);
   void exit();
 

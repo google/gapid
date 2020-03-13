@@ -193,7 +193,7 @@ func run(ctx context.Context) error {
 
 		// Gather incremental build stats
 		if *incBuild {
-			if err := withTouchedGLES(ctx, rnd, func() error {
+			if err := withTouchedVulkan(ctx, rnd, func() error {
 				log.I(ctx, "HEAD~%.2d: Building incremental change at %v: %v", i, sha, cl.Subject)
 				if duration, err := build(ctx); err == nil {
 					r.IncrementalBuildTime = duration.Seconds()
@@ -257,19 +257,19 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func withTouchedGLES(ctx context.Context, r *rand.Rand, f func() error) error {
-	glesAPIPath := filepath.Join(*root, "gapis", "api", "gles", "gles.api")
-	fi, err := os.Stat(glesAPIPath)
+func withTouchedVulkan(ctx context.Context, r *rand.Rand, f func() error) error {
+	vulkanAPIPath := filepath.Join(*root, "gapis", "api", "vulkan", "vulkan.api")
+	fi, err := os.Stat(vulkanAPIPath)
 	if err != nil {
 		return err
 	}
-	glesAPI, err := ioutil.ReadFile(glesAPIPath)
+	vulkanAPI, err := ioutil.ReadFile(vulkanAPIPath)
 	if err != nil {
 		return err
 	}
-	modGlesAPI := []byte(fmt.Sprintf("%v\ncmd void fake_cmd_%d() {}\n", string(glesAPI), r.Int()))
-	ioutil.WriteFile(glesAPIPath, modGlesAPI, fi.Mode().Perm())
-	defer ioutil.WriteFile(glesAPIPath, glesAPI, fi.Mode().Perm())
+	modVulkanAPI := []byte(fmt.Sprintf("%v\ncmd void fake_cmd_%d() {}\n", string(vulkanAPI), r.Int()))
+	ioutil.WriteFile(vulkanAPIPath, modVulkanAPI, fi.Mode().Perm())
+	defer ioutil.WriteFile(vulkanAPIPath, vulkanAPI, fi.Mode().Perm())
 	return f()
 }
 

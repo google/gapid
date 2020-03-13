@@ -168,26 +168,6 @@
         {{else}}
           {{Template "Call" $}};
         {{end}}
-
-        {{if and 0 (eq (Global "API") "gles")}} {{/* Enable for debugging */}}
-          const Gles::GLenum err = mFunctionStubs.glGetError();
-          if (err != Gles::GLenum::GL_NO_ERROR) {
-            GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
-            GAPID_ERROR("{{$name}} returned error: 0x%x", err);
-            return false;
-          }
-          {{if eq $name "glShaderSource"}}
-            GAPID_DEBUG("Shader source: %s", source[0]);
-          {{else if eq $name "glCompileShader"}}
-            int success = 0;
-            mFunctionStubs.glGetShaderiv(shader, Gles::GLenum::GL_COMPILE_STATUS, &success);
-            if (success == 0) {
-              char buf[2048];
-              mFunctionStubs.glGetShaderInfoLog(shader, 2048, nullptr, buf);
-              GAPID_ERROR("Shader failed to compile: %s", buf);
-            }
-          {{end}}
-        {{end}}
       } else {
         GAPID_ERROR("Attempted to call unsupported function {{$name}}");
       }
