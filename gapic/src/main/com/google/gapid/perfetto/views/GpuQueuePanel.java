@@ -93,16 +93,18 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       }
 
       TimeSpan visible = state.getVisibleTime();
-      Selection<Slice.Key> selected = state.getSelection(Selection.Kind.Gpu);
+      Selection selected = state.getSelection(Selection.Kind.Gpu);
       List<Highlight> visibleSelected = Lists.newArrayList();
 
       Set<Long> selectedSIds = getSelectedSubmissionIdsInVulkanEventTrack(state);
       long[] sIds = data.getExtraLongs("submissionIds");
+      String[] concatedIds = data.getExtraStrings("concatedIds");
 
       for (int i = 0; i < data.starts.length; i++) {
         long tStart = data.starts[i];
         long tEnd = data.ends[i];
         int depth = data.depths[i];
+        long id = data.ids[i];
         String title = buildSliceTitle(data.titles[i], data.args[i]);
 
         if (tEnd <= visible.start || tStart >= visible.end) {
@@ -123,9 +125,16 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
         // Highlight GPU queue slice if it's selected or linked by a vulkan api event.
-        if (selected.contains(new Slice.Key(tStart, tEnd - tStart, depth)) ||
-            (i < sIds.length && selectedSIds.contains(sIds[i]))) {
+        if (selected.contains(id) || (i < sIds.length && selectedSIds.contains(sIds[i]))) { // Unquantized track.
           visibleSelected.add(new Highlight(color.border, rectStart, y, rectWidth));
+        }
+        if (i < concatedIds.length) {                                                       // Quantized track.
+          for (String cId : concatedIds[i].split(",")) {
+            if (selected.contains(Long.parseLong(cId))) {
+              visibleSelected.add(new Highlight(color.border, rectStart, y, rectWidth));
+              break;
+            }
+          }
         }
 
         // Don't render text when we have less than 7px to play with.
@@ -201,6 +210,8 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
             (1 + queue.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
         long id = data.ids[i];
+        String concatedId = i < data.getExtraStrings("concatedIds").length ?
+            data.getExtraStrings("concatedIds")[i] : "";
 
         return new Hover() {
           @Override
@@ -216,20 +227,29 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
 
           @Override
           public Cursor getCursor(Display display) {
-            return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
+            return (id < 0 && concatedId.isEmpty()) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
           }
 
           @Override
           public boolean click() {
-            if (id < 0) {
-              return false;
+            if (id > 0) { // Track data with no quantization.
+              if ((mods & SWT.MOD1) == SWT.MOD1) {
+                state.addSelection(Selection.Kind.Gpu, track.getSlice(id));
+              } else {
+                state.setSelection(Selection.Kind.Gpu, track.getSlice(id));
+              }
+              return true;
+            } else if (!concatedId.isEmpty()) { // Track data with quantization.
+              if ((mods & SWT.MOD1) == SWT.MOD1) {
+                state.addSelection(Selection.Kind.Gpu, transform(track.getSlices(concatedId),
+                    s -> new SliceTrack.SlicesBuilder(s).build()));
+              } else {
+                state.setSelection(Selection.Kind.Gpu, transform(track.getSlices(concatedId),
+                    s -> new SliceTrack.SlicesBuilder(s).build()));
+              }
+              return true;
             }
-            if ((mods & SWT.MOD1) == SWT.MOD1) {
-              state.addSelection(Selection.Kind.Gpu, track.getSlice(id));
-            } else {
-              state.setSelection(Selection.Kind.Gpu, track.getSlice(id));
-            }
-            return true;
+            return false;
           }
         };
       }
@@ -266,7 +286,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
   }
 
   private static Set<Long> getSelectedSubmissionIdsInVulkanEventTrack(State state) {
-    Selection<Long> selection = state.getSelection(Selection.Kind.VulkanEvent);
+    Selection selection = state.getSelection(Selection.Kind.VulkanEvent);
     Set<Long> res = Sets.newHashSet();    // On Vulkan Event Track.
     if (selection instanceof VulkanEventTrack.Slice) {
       res = Sets.newHashSet(((VulkanEventTrack.Slice)selection).submissionId);

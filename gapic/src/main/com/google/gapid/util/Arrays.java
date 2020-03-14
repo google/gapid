@@ -25,4 +25,8 @@ public class Arrays {
   public static <T> T last(T[] array) {
     return (array == null || array.length == 0) ? null : array[array.length - 1];
   }
+
+  public static <T> T getOrDefault(T[] array, int idx, T dflt) {
+    return array == null || idx >= array.length ? dflt : array[idx];
+  }
 }

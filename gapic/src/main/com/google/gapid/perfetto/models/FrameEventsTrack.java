@@ -37,6 +37,7 @@ import com.google.gapid.perfetto.views.FrameEventsMultiSelectionView;
 import com.google.gapid.perfetto.views.FrameEventsSelectionView;
 import com.google.gapid.perfetto.views.State;
 
+import java.util.Arrays;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.List;
@@ -59,12 +60,16 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
        "select " + BASE_COLUMNS + " from %s " +
        "where ts >= %d - dur and ts <= %d order by ts";
   private static final String SUMMARY_SQL =
-      "select quantum_ts, count(*) from %s " +
+      "select group_concat(id) ids, quantum_ts, count(*) from %s " +
       "where name = 'PresentFenceSignaled' or name GLOB '*[0-9]*'" +
       "group by quantum_ts";
   private static final String RANGE_SQL =
       "select " + BASE_COLUMNS + " from %s " +
       "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
+  private static final String RANGE_FOR_IDS_SQL =
+      "select " + BASE_COLUMNS + " from %s where id in (%s)";
+
+  private static final long SIGNAL_MARGIN_NS = 10000;
 
   private final long trackId;
 
@@ -124,8 +129,14 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
 
   private ListenableFuture<Data> computeSummary(DataRequest req, Window w) {
     return transform(qe.query(summarySql()), result -> {
-      Data data = new Data(req, w.bucketSize, new long[w.getNumberOfBuckets()]);
-      result.forEachRow(($, r) -> data.numEvents[r.getInt(0)] = r.getLong(1));
+      int len = w.getNumberOfBuckets();
+      String[] concatedIds = new String[len];
+      Arrays.fill(concatedIds, "");
+      Data data = new Data(req, w.bucketSize, concatedIds, new long[len]);
+      result.forEachRow(($, r) -> {
+        data.concatedIds[r.getInt(1)] = r.getString(0);
+        data.numEvents[r.getInt(1)] = r.getLong(2);
+      });
       return data;
     });
   }
@@ -156,10 +167,20 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     return format(RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
   }
 
+  public ListenableFuture<List<Slice>> getSlices(String ids) {
+    return transform(qe.query(sliceRangeForIdsSql(ids)),
+        res -> res.list(($, row) -> buildSlice(row, ArgSet.EMPTY)));
+  }
+
+  private String sliceRangeForIdsSql(String ids) {
+    return format(RANGE_FOR_IDS_SQL, tableName("slices"), ids);
+  }
+
   public static class Data extends Track.Data {
     public final Kind kind;
     // Summary.
     public final long bucketSize;
+    public final String[] concatedIds;
     public final long[] numEvents;
     // slices
     public final long[] ids;
@@ -175,10 +196,11 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
       summary,
     }
 
-    public Data(DataRequest request, long bucketSize, long[] numEvents) {
+    public Data(DataRequest request, long bucketSize, String[] concatedIds, long[] numEvents) {
       super(request);
       this.kind = Kind.summary;
       this.bucketSize = bucketSize;
+      this.concatedIds = concatedIds;
       this.numEvents = numEvents;
       this.ids = null;
       this.starts = null;
@@ -194,6 +216,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
       super(request);
       this.kind = Kind.slices;
       this.bucketSize = 0;
+      this.concatedIds = null;
       this.numEvents = null;
       this.ids = ids;
       this.starts = starts;
@@ -205,7 +228,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
   }
 
-  public static class Slice implements Selection<Slice.Key> {
+  public static class Slice implements Selection {
     public final long id;
     public final long time;
     public final long dur;
@@ -245,8 +268,8 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public boolean contains(Slice.Key key) {
-      return key.matches(this);
+    public boolean contains(Long key) {
+      return id == key;
     }
 
     @Override
@@ -263,52 +286,21 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
         span.accept(new TimeSpan(time, time + dur));
+      } else { // Expand the zoom/highlight time range for signal selections whose dur is 0.
+        span.accept(new TimeSpan(time, time + dur).expand(SIGNAL_MARGIN_NS));
       }
     }
 
-    public static class Key {
-      public final long time;
-      public final long dur;
-
-      public Key(long time, long dur) {
-        this.time = time;
-        this.dur = dur;
-      }
-
-      public Key(Slice slice) {
-        this(slice.time, slice.dur);
-      }
-
-      public boolean matches(Slice slice) {
-        return slice.time == time && slice.dur == dur;
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-        if (obj == this) {
-          return true;
-        } else if (!(obj instanceof Key)) {
-          return false;
-        }
-        Key o = (Key)obj;
-        return time == o.time && dur == o.dur;
-      }
-
-      @Override
-      public int hashCode() {
-        return Long.hashCode(time ^ dur);
-      }
-    }
   }
 
-  public static class Slices implements Selection<Slice.Key> {
+  public static class Slices implements Selection {
     private final List<Slice> slices;
     private final String title;
     public final ImmutableList<Node> nodes;
-    public final ImmutableSet<Slice.Key> sliceKeys;
+    public final ImmutableSet<Long> sliceKeys;
 
     public Slices(List<Slice> slices, String title, ImmutableList<Node> nodes,
-        ImmutableSet<Slice.Key> sliceKeys) {
+        ImmutableSet<Long> sliceKeys) {
       this.slices = slices;
       this.title = title;
       this.nodes = nodes;
@@ -321,7 +313,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public boolean contains(Slice.Key key) {
+    public boolean contains(Long key) {
       return sliceKeys.contains(key);
     }
 
@@ -347,7 +339,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     private final List<Slice> slices;
     private final String title;
     private final TreeMap<Long, Node> roots = Maps.newTreeMap();
-    private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
+    private final Set<Long> sliceKeys = Sets.newHashSet();
 
     public SlicesBuilder(List<Slice> slices) {
       this.slices = slices;
@@ -355,7 +347,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
       for (Slice slice : slices) {
         ti = slice.getTitle();
         roots.put(slice.id, new Node(slice.name, slice.dur, slice.dur, slice.trackId));
-        sliceKeys.add(new Slice.Key(slice));
+        sliceKeys.add(slice.id);
       }
       this.title = ti;
     }
@@ -369,7 +361,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
 
     @Override
-    public Selection<Slice.Key> build() {
+    public Selection build() {
       return new Slices(slices, title, ImmutableList.copyOf(roots.values()),
           ImmutableSet.copyOf(sliceKeys));
     }

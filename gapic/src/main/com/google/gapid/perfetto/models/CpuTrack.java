@@ -225,7 +225,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
   }
 
-  public static class Slice implements Selection<Long> {
+  public static class Slice implements Selection {
     public final long id;
     public final long time;
     public final long dur;
@@ -286,7 +286,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
   }
 
-  public static class Slices implements Selection<Long> {
+  public static class Slices implements Selection {
     private final List<Slice> slices;
     public final ImmutableList<ByProcess> processes;
     public final ImmutableSet<Long> sliceKeys;
@@ -350,7 +350,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
 
     @Override
-    public Selection<Long> build() {
+    public Selection build() {
       return new Slices(slices, processes.values().stream()
           .map(ByProcess.Builder::build)
           .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))

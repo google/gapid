@@ -34,6 +34,8 @@ import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.Selection.Kind;
 import java.util.List;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.widgets.Display;
 
 /**
  * Displays information about the system memory usage.
@@ -80,7 +82,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implement
         return;
       }
 
-      Selection<Long> selected = state.getSelection(Selection.Kind.Memory);
+      Selection selected = state.getSelection(Selection.Kind.Memory);
       List<Integer> visibleSelected = Lists.newArrayList();
 
       memoryBuffersGradient().applyBase(ctx);
@@ -203,6 +205,11 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implement
       @Override
       public void stop() {
         hovered = null;
+      }
+
+      @Override
+      public Cursor getCursor(Display display) {
+        return display.getSystemCursor(SWT.CURSOR_HAND);
       }
 
       @Override

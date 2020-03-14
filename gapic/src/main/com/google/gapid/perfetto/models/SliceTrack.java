@@ -70,13 +70,13 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       private final String GPU_COLUMNS = "render_target, render_target_name, render_pass, render_pass_name, command_buffer, command_buffer_name, submission_id";
       private final String GPU_SLICES_QUANT_SQL =
           "select min(start_ts), max(end_ts), depth, label, max(cnt), " +
-          "    first_value(submission_id) over (partition by depth, label, i)  from (" +
+          "    group_concat(id) id, first_value(submission_id) over (partition by depth, label, i) from (" +
           "  select quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
           "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i, " +
-          "      submission_id from (" +
+          "      group_concat(id) id, submission_id from (" +
           "    select quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
           "        substr(group_concat(name) over win1, 0, 101) label, " +
-          "        first_value(submission_id) over win1 submission_id" +
+          "        id, first_value(submission_id) over win1 submission_id " +
           "    from %s" +
           "    window win1 as (partition by quantum_ts, depth order by dur desc" +
           "    range between unbounded preceding and unbounded following))" +
@@ -95,7 +95,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
       @Override
       protected void appendForQuant(Data data, QueryEngine.Result res) {
-        data.putExtraLongs("submissionIds", res.stream().mapToLong(r -> r.getLong(5)).toArray());
+        super.appendForQuant(data, res);
+        data.putExtraLongs("submissionIds", res.stream().mapToLong(r -> r.getLong(6)).toArray());
       }
 
       @Override
@@ -143,6 +144,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
   }
 
   public abstract ListenableFuture<Slice> getSlice(long id);
+  public abstract ListenableFuture<List<Slice>> getSlices(String concatedId);
   public abstract ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth);
 
   public static class Data extends Track.Data {
@@ -154,6 +156,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     public final String[] categories;
     public final ArgSet[] args;
     public Map<String, long[]> extraLongs = Maps.newHashMap();
+    public Map<String, String[]> extraStrings = Maps.newHashMap();
 
     public Data(DataRequest request) {
       super(request);
@@ -178,16 +181,25 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       this.args = args;
     }
 
-    public void putExtraLongs(String s, long[] longs) {
-      extraLongs.put(s, longs);
+    public void putExtraLongs(String name, long[] longs) {
+      extraLongs.put(name, longs);
     }
 
-    public long[] getExtraLongs(String s) {
-      return extraLongs.getOrDefault(s, new long[0]);
+    public long[] getExtraLongs(String name) {
+      return extraLongs.getOrDefault(name, new long[0]);
+    }
+
+    public void putExtraStrings(String name, String[] strings) {
+      extraStrings.put(name, strings);
+    }
+
+    public String[] getExtraStrings(String name) {
+      return extraStrings.getOrDefault(name, new String[0]);
     }
   }
 
-  public static abstract class Slice implements Selection<Slice.Key> {
+  public static abstract class Slice implements Selection {
+    public final long id;
     public final long time;
     public final long dur;
     public final String category;
@@ -197,8 +209,9 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     public final long parentId;
     public final ArgSet args;
 
-    public Slice(long time, long dur, String category, String name, int depth, long stackId,
+    public Slice(long id, long time, long dur, String category, String name, int depth, long stackId,
         long parentId, ArgSet args) {
+      this.id = id;
       this.time = time;
       this.dur = dur;
       this.category = category;
@@ -210,7 +223,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     public Slice(QueryEngine.Row row, ArgSet args) {
-      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getInt(5),
+      this(row.getLong(0), row.getLong(1), row.getLong(2),
+          row.getString(3), row.getString(4), row.getInt(5),
           row.getLong(6), row.getLong(7), args);
     }
 
@@ -223,8 +237,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public boolean contains(Slice.Key key) {
-      return key.matches(this);
+    public boolean contains(Long key) {
+      return key == id;
     }
 
     @Override
@@ -241,42 +255,6 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     public void getRange(Consumer<TimeSpan> span) {
       if (dur > 0) {
         span.accept(new TimeSpan(time, time + dur));
-      }
-    }
-
-    public static class Key {
-      public final long time;
-      public final long dur;
-      public final int depth;
-
-      public Key(long time, long dur, int depth) {
-        this.time = time;
-        this.dur = dur;
-        this.depth = depth;
-      }
-
-      public Key(Slice slice) {
-        this(slice.time, slice.dur, slice.depth);
-      }
-
-      public boolean matches(Slice slice) {
-        return slice.time == time && slice.dur == dur && slice.depth == depth;
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-        if (obj == this) {
-          return true;
-        } else if (!(obj instanceof Key)) {
-          return false;
-        }
-        Key o = (Key)obj;
-        return time == o.time && dur == o.dur && depth == o.depth;
-      }
-
-      @Override
-      public int hashCode() {
-        return Long.hashCode(time ^ dur) ^ Integer.hashCode(depth);
       }
     }
 
@@ -341,14 +319,14 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
   }
 
-  public static class Slices implements Selection<Slice.Key> {
+  public static class Slices implements Selection {
     private final List<Slice> slices;
     private final String title;
     public final ImmutableList<Node> nodes;
-    public final ImmutableSet<Slice.Key> sliceKeys;
+    public final ImmutableSet<Long> sliceKeys;
 
     public Slices(List<Slice> slices, String title, ImmutableList<Node> nodes,
-        ImmutableSet<Slice.Key> sliceKeys) {
+        ImmutableSet<Long> sliceKeys) {
       this.slices = slices;
       this.title = title;
       this.nodes = nodes;
@@ -361,7 +339,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public boolean contains(Slice.Key key) {
+    public boolean contains(Long key) {
       return sliceKeys.contains(key);
     }
 
@@ -389,7 +367,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     private final Map<Long, Node.Builder> byStack = Maps.newHashMap();
     private final Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
     private final Set<Long> roots = Sets.newHashSet();
-    private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
+    private final Set<Long> sliceKeys = Sets.newHashSet();
 
     public SlicesBuilder(List<Slice> slices) {
       this.slices = slices;
@@ -404,7 +382,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         }
         roots.remove(slice.stackId);
         child.add(slice.dur);
-        sliceKeys.add(new Slice.Key(slice));
+        sliceKeys.add(slice.id);
       }
       this.title = ti;
     }
@@ -427,7 +405,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public Selection<Slice.Key> build() {
+    public Selection build() {
       return new Slices(slices, title, roots.stream()
           .filter(not(byStack::containsKey))
           .flatMap(root -> byParent.get(root).stream())
@@ -500,7 +478,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
   }
 
-  private abstract static class WithQueryEngine extends SliceTrack {
+  public abstract static class WithQueryEngine extends SliceTrack {
     protected static final String BASE_COLUMNS =
         "id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
     protected final String table;
@@ -512,11 +490,12 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         "select " + baseColumns() + " from %s " +
         "where ts >= %d - dur and ts <= %d order by ts";
     private static final String SLICES_QUANT_SQL =
-        "select min(start_ts), max(end_ts), depth, label, max(cnt) from (" +
+        "select min(start_ts), max(end_ts), depth, label, max(cnt), group_concat(id) id from (" +
         "  select quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
-        "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i from (" +
+        "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i, " +
+        "      group_concat(id) id from (" +
         "    select quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
-        "        substr(group_concat(name) over win1, 0, 101) label" +
+        "        substr(group_concat(name) over win1, 0, 101) label, id" +
         "    from %s" +
         "    window win1 as (partition by quantum_ts, depth order by dur desc" +
         "        range between unbounded preceding and unbounded following))" +
@@ -528,13 +507,17 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     private final String SLICE_RANGE_SQL =
         "select " + baseColumns() + " from %s " +
         "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
+    private final String SLICES_BY_ID_SQL =
+        "select " + baseColumns() + " from %s where id in (%s)";
     private final QueryEngine qe;
 
     protected String baseColumns() {
       return BASE_COLUMNS;
     }
 
-    protected void appendForQuant(Data data, QueryEngine.Result res) { /* Do nothing by default. */}
+    protected void appendForQuant(Data data, QueryEngine.Result res) {
+      data.putExtraStrings("concatedIds", res.stream().map(r -> r.getString(5)).toArray(String[]::new));
+    }
 
     protected WithQueryEngine(QueryEngine qe, String table, long trackId) {
       super(trackId);
@@ -628,6 +611,16 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
     private String sliceSql(long id) {
       return format(SLICE_SQL, tableName("slices"), id);
+    }
+
+    @Override
+    public ListenableFuture<List<Slice>> getSlices(String concatedId) {
+      return transform(qe.query(slicesByIdSql(concatedId)),
+          res -> res.list(($, row) -> buildSlice(row)));
+    }
+
+    private String slicesByIdSql(String concatedId) {
+      return format(SLICES_BY_ID_SQL, tableName("slices"), concatedId);
     }
 
     @Override

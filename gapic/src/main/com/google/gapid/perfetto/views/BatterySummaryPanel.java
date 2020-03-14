@@ -35,6 +35,8 @@ import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.Selection.Kind;
 import java.util.List;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.widgets.Display;
 
 public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> implements Selectable {
   private static final double HEIGHT = 50;
@@ -78,7 +80,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
       }
 
       double maxAbs = track.getMaxAbsCurrent();
-      Selection<Long> selected = state.getSelection(Selection.Kind.Battery);
+      Selection selected = state.getSelection(Selection.Kind.Battery);
       List<Integer> visibleSelected = Lists.newArrayList();
 
       // Draw outgoing battery current above the x axis.
@@ -190,6 +192,11 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
       @Override
       public void stop() {
         hovered = null;
+      }
+
+      @Override
+      public Cursor getCursor(Display display) {
+        return display.getSystemCursor(SWT.CURSOR_HAND);
       }
 
       @Override

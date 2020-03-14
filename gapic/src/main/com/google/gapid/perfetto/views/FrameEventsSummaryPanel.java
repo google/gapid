@@ -19,6 +19,7 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
@@ -35,6 +36,7 @@ import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
+import com.google.gapid.util.Arrays;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.RGBA;
@@ -75,6 +77,11 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
   }
 
   @Override
+  public String getTooltip() {
+    return "\\b" + buffer.getDisplay();
+  }
+
+  @Override
   public double getHeight() {
     return buffer.maxDepth * SLICE_HEIGHT;
   }
@@ -101,6 +108,8 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       RenderContext ctx, FrameEventsTrack.Data data, double w, double h) {
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
+    Selection selected = state.getSelection(Selection.Kind.FrameEvents);
+    List<Integer> visibleSelected = Lists.newArrayList();
 
     mainGradient().applyBaseAndBorder(ctx);
     ctx.path(path -> {
@@ -112,12 +121,26 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         path.lineTo(x, y);
         path.lineTo(x, nextY);
         y = nextY;
+        for (String id : Arrays.getOrDefault(data.concatedIds, i, "").split(",")) {
+          if (!id.isEmpty() && !selected.isEmpty() && selected.contains(Long.parseLong(id))) {
+            visibleSelected.add(i);
+            break;
+          }
+        }
       }
       path.lineTo(x, h);
       path.close();
       ctx.fillPath(path);
       ctx.drawPath(path);
     });
+
+    // Draw Highlight line after the whole graph is rendered, so that the highlight is on the top.
+    ctx.setBackgroundColor(mainGradient().highlight);
+    for (int index : visibleSelected) {
+      ctx.fillRect(state.timeToPx(tStart + index * data.bucketSize),
+          Math.round(Math.max(0,h - (h * (data.numEvents[index])))) - 1,
+          state.durationToDeltaPx(data.bucketSize), 3);
+    }
 
     if (hovered != null && hovered.bucket >= start) {
       double x = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
@@ -138,7 +161,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
 
   public void renderSlices(RenderContext ctx, FrameEventsTrack.Data data) {
     TimeSpan visible = state.getVisibleTime();
-    Selection<Slice.Key> selected = state.getSelection(Selection.Kind.FrameEvents);
+    Selection selected = state.getSelection(Selection.Kind.FrameEvents);
     List<Highlight> visibleSelected = Lists.newArrayList();
 
     for (int i = 0; i < data.starts.length; i++) {
@@ -159,7 +182,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         double y = depth * SLICE_HEIGHT;
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
-        if (selected.contains(new Slice.Key(tStart, tEnd - tStart))) {
+        if (selected.contains(data.ids[i])) {
           visibleSelected.add(Highlight.slice(color.border, rectStart, y, rectWidth));
         }
 
@@ -178,7 +201,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         double[] diamondY = { y + (SLICE_HEIGHT / 2), y, y + (SLICE_HEIGHT / 2), SLICE_HEIGHT };
         ctx.fillPolygon(diamondX, diamondY, 4);
 
-        if (selected.contains(new Slice.Key(tStart, tEnd - tStart))) {
+        if (selected.contains(data.ids[i])) {
           visibleSelected.add(Highlight.diamond(color.border, diamondX, diamondY));
         }
 
@@ -223,12 +246,12 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
 
     switch (data.kind) {
       case slices: return sliceHover(data, m, x, y, mods);
-      case summary: return summaryHover(data, m, x);
+      case summary: return summaryHover(data, m, x, mods);
       default: return Hover.NONE;
     }
   }
 
-  private Hover summaryHover(FrameEventsTrack.Data data, Fonts.TextMeasurer m, double x) {
+  private Hover summaryHover(FrameEventsTrack.Data data, Fonts.TextMeasurer m, double x, int mods) {
     long time = state.pxToTime(x);
     int bucket = (int)((time - data.request.range.start) / data.bucketSize);
     if (bucket < 0 || bucket >= data.numEvents.length) {
@@ -250,6 +273,8 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);
     double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
     double dy = height;
+    String ids = Arrays.getOrDefault(data.concatedIds, bucket, "");
+
     return new Hover() {
       @Override
       public Area getRedraw() {
@@ -259,6 +284,26 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       @Override
       public void stop() {
         hovered = null;
+      }
+      
+      @Override
+      public Cursor getCursor(Display display) {
+        return p == 0 ? null : display.getSystemCursor(SWT.CURSOR_HAND);
+      }
+
+      @Override
+      public boolean click() {
+        if (ids.isEmpty()) {
+          return false;
+        }
+        if ((mods & SWT.MOD1) == SWT.MOD1) {
+          state.addSelection(Selection.Kind.FrameEvents,
+              transform(track.getSlices(ids), r -> new FrameEventsTrack.SlicesBuilder(r).build()));
+        } else {
+          state.setSelection(Selection.Kind.FrameEvents,
+              transform(track.getSlices(ids), r -> new FrameEventsTrack.SlicesBuilder(r).build()));
+        }
+        return true;
       }
     };
   }

@@ -1305,12 +1305,13 @@ message ProfilingData {
 
       uint64 ts = 1;
       uint64 dur = 2;
-      string label = 3;
-      int32 depth = 4;
-      repeated Extra extras = 5;
+      uint64 id = 3;
+      string label = 4;
+      int32 depth = 5;
+      repeated Extra extras = 6;
 
-      int32 trackId = 6;  // references Track.id
-      int32 groupId = 7;  // references Group.id
+      int32 trackId = 7;  // references Track.id
+      int32 groupId = 8;  // references Group.id
     }
 
     message Track {

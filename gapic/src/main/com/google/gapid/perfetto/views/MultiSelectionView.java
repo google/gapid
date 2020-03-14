@@ -32,12 +32,12 @@ import java.util.Map;
  */
 public class MultiSelectionView extends Composite {
   public MultiSelectionView(
-      Composite parent, Map<Selection.Kind<?>, Selection<?>> selections, State state) {
+      Composite parent, Map<Selection.Kind, Selection> selections, State state) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
     TabFolder folder = createStandardTabFolder(this);
-    for (Selection<?> s : selections.values()) {
+    for (Selection s : selections.values()) {
       createStandardTabItem(folder, s.getTitle(), s.buildUi(folder, state));
     }
   }

@@ -35,6 +35,8 @@ import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import org.eclipse.swt.SWT;
 
 import java.util.List;
+import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.widgets.Display;
 
 public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable {
   private static final double HOVER_MARGIN = 10;
@@ -93,7 +95,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       CounterInfo counter = track.getCounter();
       double min = counter.range.min, range = counter.range.range();
 
-      Selection<Long> selected = state.getSelection(Selection.Kind.Counter);
+      Selection selected = state.getSelection(Selection.Kind.Counter);
       List<Integer> visibleSelected = Lists.newArrayList();
       mainGradient().applyBaseAndBorder(ctx);
       ctx.path(path -> {
@@ -196,6 +198,11 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       @Override
       public void stop() {
         hovered = null;
+      }
+
+      @Override
+      public Cursor getCursor(Display display) {
+        return display.getSystemCursor(SWT.CURSOR_HAND);
       }
 
       @Override

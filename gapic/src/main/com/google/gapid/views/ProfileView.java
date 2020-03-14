@@ -24,6 +24,7 @@ import static com.google.gapid.util.Loadable.MessageType.Loading;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Capture;
@@ -54,6 +55,8 @@ import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
+import java.util.Arrays;
+import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -279,7 +282,22 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
 
       @Override
       public ListenableFuture<Slice> getSlice(long id) {
-        return Futures.immediateFuture(toSlice(slices.get((int)id)));
+        for (Service.ProfilingData.GpuSlices.Slice s : slices) {
+          if (s.getId() == id) {
+            return Futures.immediateFuture(toSlice(s));
+          }
+        }
+        return Futures.immediateFuture(null);
+      }
+
+      @Override
+      public ListenableFuture<List<Slice>> getSlices(String concatedId) {
+        Set<Long> ids = Sets.newHashSet();
+        Arrays.stream(concatedId.split(",")).mapToLong(Long::parseLong).forEach(ids::add);
+        return Scheduler.EXECUTOR.submit(() -> slices.stream()
+            .filter(s -> ids.contains(s.getId()))
+            .map(this::toSlice)
+            .collect(toList()));
       }
 
       @Override
@@ -299,11 +317,11 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       @Override
       protected ListenableFuture<Data> computeData(DataRequest req) {
         return Scheduler.EXECUTOR.submit(() -> {
-          List<SliceAndId> matched = Lists.newArrayList();
+          List<Service.ProfilingData.GpuSlices.Slice> matched = Lists.newArrayList();
           for (int i = 0; i < slices.size(); i++) {
             Service.ProfilingData.GpuSlices.Slice slice = slices.get(i);
             if (req.range.overlaps(slice.getTs(), slice.getTs() + slice.getDur())) {
-              matched.add(new SliceAndId(slice, i));
+              matched.add(slice);
             }
           }
 
@@ -311,12 +329,12 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
           Data data = new Data(req, new long[n], new long[n], new long[n], new int[n], new String[n],
               new String[n], new ArgSet[n]);
           for (int i = 0; i < n; i++) {
-            SliceAndId s = matched.get(i);
-            data.ids[i] = s.id;
-            data.starts[i] = s.slice.getTs();
-            data.ends[i] = s.slice.getTs() + s.slice.getDur();
-            data.depths[i] = s.slice.getDepth();
-            data.titles[i] = s.slice.getLabel();
+            Service.ProfilingData.GpuSlices.Slice s = matched.get(i);
+            data.ids[i] = s.getId();
+            data.starts[i] = s.getTs();
+            data.ends[i] = s.getTs() + s.getDur();
+            data.depths[i] = s.getDepth();
+            data.titles[i] = s.getLabel();
             data.categories[i] = "";
             data.args[i] = ArgSet.EMPTY;
           }
@@ -325,22 +343,12 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       }
 
       private Slice toSlice(Service.ProfilingData.GpuSlices.Slice s) {
-        return new Slice(s.getTs(), s.getDur(), "", s.getLabel(), s.getDepth(), -1, -1, ArgSet.EMPTY) {
+        return new Slice(s.getId(), s.getTs(), s.getDur(), "", s.getLabel(), s.getDepth(), -1, -1, ArgSet.EMPTY) {
           @Override
           public String getTitle() {
             return "GPU Render Stages";
           }
         };
-      }
-
-      private static class SliceAndId {
-        public final Service.ProfilingData.GpuSlices.Slice slice;
-        public final int id;
-
-        public SliceAndId(Service.ProfilingData.GpuSlices.Slice slice, int id) {
-          this.slice = slice;
-          this.id = id;
-        }
       }
     }
   }

@@ -22,9 +22,6 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.models.CounterTrack.Values;
-import com.google.gapid.perfetto.models.SliceTrack.Slice;
-import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
 import com.google.gapid.perfetto.views.MultiSelectionView;
 import com.google.gapid.perfetto.views.State;
 
@@ -40,9 +37,9 @@ import java.util.function.Consumer;
 /**
  * Data about the current selection in the UI.
  */
-public interface Selection<Key> {
+public interface Selection {
   public String getTitle();
-  public boolean contains(Key key);
+  public boolean contains(Long key);
   public Composite buildUi(Composite parent, State state);
   public Selection.Builder<?> getBuilder();
 
@@ -54,21 +51,20 @@ public interface Selection<Key> {
     return false;
   }
 
-  public static final Selection<?> EMPTY_SELECTION = new EmptySelection<Object>();
+  public static final Selection EMPTY_SELECTION = new EmptySelection();
 
-  @SuppressWarnings("unchecked")
-  public static <K> Selection<K> emptySelection() {
-      return (Selection<K>)EMPTY_SELECTION;
+  public static Selection emptySelection() {
+      return EMPTY_SELECTION;
   }
 
-  public static class EmptySelection<K> implements Selection<K>, Builder<EmptySelection<K>> {
+  public static class EmptySelection implements Selection, Builder<EmptySelection> {
     @Override
     public String getTitle() {
       return "";
     }
 
     @Override
-    public boolean contains(K key) {
+    public boolean contains(Long key) {
       return false;
     }
 
@@ -88,12 +84,12 @@ public interface Selection<Key> {
     }
 
     @Override
-    public EmptySelection<K> combine(EmptySelection<K> other) {
+    public EmptySelection combine(EmptySelection other) {
       return this;
     }
 
     @Override
-    public Selection<?> build() {
+    public Selection build() {
       return this;
     }
   }
@@ -102,14 +98,14 @@ public interface Selection<Key> {
    * MultiSelection stores selections across different {@link Kind}s.
    * */
   public static class MultiSelection {
-    private final NavigableMap<Kind<?>, Selection<?>> selections;
+    private final NavigableMap<Kind, Selection> selections;
 
-    public <Key> MultiSelection(Kind<Key> type, Selection<Key> selection) {
+    public MultiSelection(Kind type, Selection selection) {
       this.selections = Maps.newTreeMap();
       this.selections.put(type, selection);
     }
 
-    public MultiSelection(NavigableMap<Kind<?>, Selection<?>> selections) {
+    public MultiSelection(NavigableMap<Kind, Selection> selections) {
       this.selections = selections;
     }
 
@@ -121,13 +117,11 @@ public interface Selection<Key> {
       }
     }
 
-    @SuppressWarnings("unchecked")
-    public <Key> Selection<Key> getSelection(Kind<Key> type) {
-      return selections.containsKey(type) ?
-          (Selection<Key>) selections.get(type) : Selection.emptySelection();
+    public  Selection getSelection(Kind type) {
+      return selections.containsKey(type) ? selections.get(type) : Selection.emptySelection();
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"rawtypes" })
     public void addSelection(MultiSelection other) {
       for (Selection.Kind k : other.selections.keySet()) {
         this.addSelection(k, other.selections.get(k));
@@ -135,8 +129,8 @@ public interface Selection<Key> {
     }
 
     @SuppressWarnings("unchecked")
-    public <Key, T extends Builder<T>> void addSelection(Kind<Key> kind, Selection<Key> selection) {
-      Selection<Key>  old = getSelection(kind);
+    public <T extends Builder<T>> void addSelection(Kind kind, Selection selection) {
+      Selection old = getSelection(kind);
       if (old == null || old == Selection.EMPTY_SELECTION) {
         selections.put(kind, selection);
       } else {
@@ -154,13 +148,13 @@ public interface Selection<Key> {
 
     private TimeSpan getRange() {
       TimeSpan[] range = new TimeSpan[] { TimeSpan.ZERO };
-      for (Selection<?> sel : selections.values()) {
+      for (Selection sel : selections.values()) {
         sel.getRange(r -> range[0] = range[0].expand(r));
       }
       return range[0];
     }
 
-    private Selection<?> firstSelection() {
+    private Selection firstSelection() {
       return selections.firstEntry().getValue();
     }
   }
@@ -169,21 +163,21 @@ public interface Selection<Key> {
    * Selection builder for combining selections across different {@link Kind}s.
    * */
   public static class CombiningBuilder {
-    private final Map<Kind<?>, ListenableFuture<Selection.Builder<?>>> selections =
+    private final Map<Kind, ListenableFuture<Selection.Builder<?>>> selections =
         Maps.newTreeMap();
 
     @SuppressWarnings("unchecked")
     public <T extends Selection.Builder<T>> void add(
-        Kind<?> type, ListenableFuture<Selection.Builder<?>> selection) {
+        Kind type, ListenableFuture<Selection.Builder<?>> selection) {
       selections.merge(type, selection, (f1, f2) -> transformAsync(f1, r1 ->
         transform(f2, r2 -> (((T)r1).combine((T)r2)))));
     }
 
     public ListenableFuture<MultiSelection> build() {
       return transform(Futures.allAsList(selections.values()), sels -> {
-        Iterator<Kind<?>> keys = selections.keySet().iterator();
+        Iterator<Kind> keys = selections.keySet().iterator();
         Iterator<Selection.Builder<?>> vals = sels.iterator();
-        TreeMap<Kind<?>, Selection<?>> res = Maps.newTreeMap();
+        TreeMap<Kind, Selection> res = Maps.newTreeMap();
         while (keys.hasNext()) {
           res.put(keys.next(), vals.next().build());
         }
@@ -197,20 +191,20 @@ public interface Selection<Key> {
   * */
   public static interface Builder<T extends Builder<T>> {
     public T combine(T other);
-    public Selection<?> build();
+    public Selection build();
   }
 
   @SuppressWarnings("unused")
-  public static class Kind<Key> implements Comparable<Kind<?>>{
-    public static final Kind<Slice.Key> Thread = new Kind<Slice.Key>(0);
-    public static final Kind<StateSlice.Key> ThreadState = new Kind<StateSlice.Key>(1);
-    public static final Kind<Long> Cpu = new Kind<Long>(2);
-    public static final Kind<Slice.Key> Gpu = new Kind<Slice.Key>(3);
-    public static final Kind<Long> VulkanEvent = new Kind<Long>(4);
-    public static final Kind<Long> Counter = new Kind<Long>(5);
-    public static final Kind<FrameEventsTrack.Slice.Key> FrameEvents = new Kind<FrameEventsTrack.Slice.Key>(6);
-    public static final Kind<Long> Memory = new Kind<Long>(7);
-    public static final Kind<Long> Battery = new Kind<Long>(8);
+  public static class Kind implements Comparable<Kind>{
+    public static final Kind Thread = new Kind(0);
+    public static final Kind ThreadState = new Kind(1);
+    public static final Kind Cpu = new Kind(2);
+    public static final Kind Gpu = new Kind(3);
+    public static final Kind VulkanEvent = new Kind(4);
+    public static final Kind Counter = new Kind(5);
+    public static final Kind FrameEvents = new Kind(6);
+    public static final Kind Memory = new Kind(7);
+    public static final Kind Battery = new Kind(8);
 
     public int priority;
 
@@ -219,7 +213,7 @@ public interface Selection<Key> {
     }
 
     @Override
-    public int compareTo(Kind<?> other) {
+    public int compareTo(Kind other) {
       return this.priority - other.priority;
     }
   }

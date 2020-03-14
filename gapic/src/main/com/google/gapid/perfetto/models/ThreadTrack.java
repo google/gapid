@@ -64,17 +64,20 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
       "select ts, lead(ts, 1, (select end_ts from trace_bounds)) over (order by ts) - ts dur " +
       "from wakeup";
   private static final String STATE_SPAN_VIEW =
-      "select ts, dur, case " +
+      "select ts, dur, case when end_state is null then false else true end is_sched, case " +
       "  when end_state is not null then 'r'" +
       "  when lag(end_state) over ts_win is not null then lag(end_state) over ts_win" +
       "  else 'R'" +
-      "end as state, id " +
+      "end as state, case " +
+      "  when id is not null then id " +                       // Sched id, for slices of 'Running'.
+      "  else rank() over ts_win + (select max(id) from %s)" + // Assigned unique id, for other state slices like 'Waking', 'Runnable', etc.
+      "end as id " +
       "from %s window ts_win as (order by ts)";
 
   private static final String SCHED_SQL =
-      "select ts, dur, state, id from %s where state != 'S' and state != 'x'";
+      "select ts, dur, is_sched, state, id from %s where state != 'S' and state != 'x'";
   private static final String SCHED_RANGE_SQL =
-      "select ts, dur, state from %s where ts < %d and ts + dur >= %d";
+      "select ts, dur, is_sched, state, id from %s where ts < %d and ts + dur >= %d";
 
 
   private final ThreadInfo thread;
@@ -109,7 +112,7 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
         createView(sched, format(SCHED_VIEW, thread.utid)),
         createView(wakeup, format(INSTANT_VIEW, thread.utid, sched)),
         createSpanLeftJoin(spanJoin, wakeup + ", " + sched),
-        createView(spanView, format(STATE_SPAN_VIEW, spanJoin)),
+        createView(spanView, format(STATE_SPAN_VIEW, spanJoin, spanJoin)),
         createSpan(span, window + ", " + spanView)));
   }
 
@@ -124,14 +127,15 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
   private ListenableFuture<Data> computeSched(DataRequest req, SliceTrack.Data slices) {
     return transform(qe.query(schedSql()), res -> {
       int rows = res.getNumRows();
-      Data data = new Data(req, new long[rows], new long[rows], new long[rows],
+      Data data = new Data(req, new boolean[rows], new long[rows], new long[rows], new long[rows],
           new ThreadState[rows], slices);
       res.forEachRow((i, row) -> {
         long start = row.getLong(0);
         data.schedStarts[i] = start;
         data.schedEnds[i] = start + row.getLong(1);
-        data.schedStates[i] = ThreadState.of(row.getString(2));
-        data.schedIds[i] = row.getLong(3);
+        data.isSched[i] = row.getInt(2) != 0;
+        data.schedStates[i] = ThreadState.of(row.getString(3));
+        data.ids[i] = row.getLong(4);
       });
       return data;
     });
@@ -147,6 +151,10 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
 
   public ListenableFuture<CpuTrack.Slice> getCpuSlice(long id) {
     return CpuTrack.getSlice(qe, id);
+  }
+
+  public ListenableFuture<List<Slice>> getSlices(String concatedId) {
+    return sliceTrack.getSlices(concatedId);
   }
 
   public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
@@ -171,17 +179,19 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
 
   public static class Data extends Track.Data {
     // sched
-    public final long[] schedIds;
+    public final boolean[] isSched;
+    public final long[] ids; // Sched id for sched slice, generated unique id for other state slice.
     public final long[] schedStarts;
     public final long[] schedEnds;
     public final ThreadState[] schedStates;
     // slices
     public final SliceTrack.Data slices;
 
-    public Data(DataRequest request, long[] schedIds, long[] schedStarts, long[] schedEnds,
+    public Data(DataRequest request, boolean[] isSched, long[] ids, long[] schedStarts, long[] schedEnds,
         ThreadState[] schedStates, SliceTrack.Data slices) {
       super(request);
-      this.schedIds = schedIds;
+      this.isSched = isSched;
+      this.ids = ids;
       this.schedStarts = schedStarts;
       this.schedEnds = schedEnds;
       this.schedStates = schedStates;
@@ -189,24 +199,30 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
   }
 
-  public static class StateSlice implements Selection<StateSlice.Key> {
+  public static class StateSlice implements Selection {
     public final long time;
     public final long dur;
     public final long utid;
+    public final boolean isSched;
     public final ThreadState state;
+    public final long id;
 
-    public StateSlice(long time, long dur, long utid, ThreadState state) {
+    public StateSlice(long time, long dur, long utid, boolean isSched, ThreadState state, long id) {
       this.time = time;
       this.dur = dur;
       this.utid = utid;
+      this.isSched = isSched;
       this.state = state;
+      this.id = id;
     }
 
     public StateSlice(QueryEngine.Row row, long utid) {
       this.time = row.getLong(0);
       this.dur = row.getLong(1);
       this.utid = utid;
-      this.state = ThreadState.of(row.getString(2));
+      this.isSched = row.getInt(2) != 0;
+      this.state = ThreadState.of(row.getString(3));
+      this.id = row.getLong(4);
     }
 
     @Override
@@ -215,8 +231,8 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public boolean contains(StateSlice.Key key) {
-      return key.matches(this);
+    public boolean contains(Long key) {
+      return key == id;
     }
 
     @Override
@@ -235,51 +251,15 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
         span.accept(new TimeSpan(time, time + dur));
       }
     }
-
-    public static class Key {
-      public final long time;
-      public final long dur;
-      public final long utid;
-
-      public Key(long time, long dur, long utid) {
-        this.time = time;
-        this.dur = dur;
-        this.utid = utid;
-      }
-
-      public Key(StateSlice slice) {
-        this(slice.time, slice.dur, slice.utid);
-      }
-
-      public boolean matches(StateSlice slice) {
-        return slice.time == time && slice.dur == dur && slice.utid == utid;
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-        if (obj == this) {
-          return true;
-        } else if (!(obj instanceof Key)) {
-          return false;
-        }
-        Key o = (Key)obj;
-        return time == o.time && dur == o.dur && utid == o.utid;
-      }
-
-      @Override
-      public int hashCode() {
-        return Long.hashCode(time ^ dur ^ utid);
-      }
-    }
   }
 
-  public static class StateSlices implements Selection<StateSlice.Key> {
+  public static class StateSlices implements Selection {
     private final List<StateSlice> slices;
     public final ImmutableList<Entry> entries;
-    public final ImmutableSet<StateSlice.Key> sliceKeys;
+    public final ImmutableSet<Long> sliceKeys;
 
     public StateSlices(List<StateSlice> slices, ImmutableList<Entry> entries,
-        ImmutableSet<StateSlice.Key> sliceKeys) {
+        ImmutableSet<Long> sliceKeys) {
       this.slices = slices;
       this.entries = entries;
       this.sliceKeys = sliceKeys;
@@ -291,7 +271,7 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public boolean contains(StateSlice.Key key) {
+    public boolean contains(Long key) {
       return sliceKeys.contains(key);
     }
 
@@ -326,13 +306,13 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
   public static class StateSlicesBuilder implements Selection.Builder<StateSlicesBuilder> {
     private final List<StateSlice> slices;
     private final Map<ThreadState, Long> byState = Maps.newHashMap();
-    private final Set<StateSlice.Key> sliceKeys = Sets.newHashSet();
+    private final Set<Long> sliceKeys = Sets.newHashSet();
 
     public StateSlicesBuilder(List<StateSlice> slices) {
       this.slices = slices;
       for (StateSlice slice : slices) {
         byState.compute(slice.state, (state, old) -> (old == null) ? slice.dur : old + slice.dur);
-        sliceKeys.add(new StateSlice.Key(slice));
+        sliceKeys.add(slice.id);
       }
     }
 
@@ -347,7 +327,7 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     }
 
     @Override
-    public Selection<StateSlice.Key> build() {
+    public Selection build() {
       return new StateSlices(slices, byState.entrySet().stream()
           .map(e -> new StateSlices.Entry(e.getKey(), e.getValue()))
           .sorted((e1, e2) -> Long.compare(e2.totalDur, e1.totalDur))
@@ -371,6 +351,10 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     @SuppressWarnings("unused")
     public default ListenableFuture<Slice> getSlice(long id) {
       throw new UnsupportedOperationException();
+    }
+
+    public default ListenableFuture<List<Slice>> getSlices(String concatedId) {
+      return Futures.immediateFuture(Collections.emptyList());
     }
 
     @SuppressWarnings("unused")
@@ -399,6 +383,11 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
         @Override
         public ListenableFuture<Slice> getSlice(long id) {
           return track.getSlice(id);
+        }
+
+        @Override
+        public ListenableFuture<List<Slice>> getSlices(String concatedId) {
+          return track.getSlices(concatedId);
         }
 
         @Override

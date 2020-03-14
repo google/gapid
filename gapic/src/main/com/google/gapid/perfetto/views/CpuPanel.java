@@ -34,6 +34,7 @@ import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
 
+import com.google.gapid.util.Arrays;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.RGBA;
@@ -97,7 +98,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   private void renderSummary(RenderContext ctx, CpuTrack.Data data, double w, double h) {
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
-    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    Selection selected = state.getSelection(Selection.Kind.Cpu);
     List<Integer> visibleSelected = Lists.newArrayList();
 
     gradient(track.getCpu().id).applyBase(ctx);
@@ -110,8 +111,8 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
         path.lineTo(x, y);
         path.lineTo(x, nextY);
         y = nextY;
-        for (String id : data.concatedIds[i].split(",")) {
-          if (!id.isEmpty() && selected.contains(Long.parseLong(id))) {
+        for (String id : Arrays.getOrDefault(data.concatedIds, i, "").split(",")) {
+          if (!id.isEmpty() && !selected.isEmpty() && selected.contains(Long.parseLong(id))) {
             visibleSelected.add(i);
             break;
           }
@@ -148,7 +149,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
 
   private void renderSlices(RenderContext ctx, CpuTrack.Data data, double h) {
     TimeSpan visible = state.getVisibleTime();
-    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    Selection selected = state.getSelection(Selection.Kind.Cpu);
     List<Highlight> visibleSelected = Lists.newArrayList();
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
@@ -284,7 +285,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
         data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);
     double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
     double dy = height;
-    String ids = data.concatedIds[bucket];
+    String ids = Arrays.getOrDefault(data.concatedIds, bucket, "");
 
     return new Hover() {
       @Override
@@ -295,6 +296,11 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
       @Override
       public void stop() {
         hovered = null;
+      }
+
+      @Override
+      public Cursor getCursor(Display display) {
+        return ids.isEmpty() ? null : display.getSystemCursor(SWT.CURSOR_HAND);
       }
 
       @Override

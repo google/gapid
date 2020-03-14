@@ -162,7 +162,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     }
   }
 
-  public static class Slice implements Selection<Long> {
+  public static class Slice implements Selection {
     public final long id;
     public final long time;
     public final long dur;
@@ -217,7 +217,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     }
   }
 
-  public static class Slices implements Selection<Long> {
+  public static class Slices implements Selection {
     public final List<Slice> slices;
     public final ImmutableSet<Long> sliceKeys;
     private final Set<Long> submissionIds;
@@ -279,7 +279,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     }
 
     @Override
-    public Selection<Long> build() {
+    public Selection build() {
       return new Slices(slices, ImmutableSet.copyOf(sliceKeys));
     }
   }

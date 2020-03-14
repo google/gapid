@@ -224,7 +224,7 @@ public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTra
     }
   }
 
-  public static class Values implements Selection<Long>, Selection.Builder<Values> {
+  public static class Values implements Selection, Selection.Builder<Values> {
     public final long[] ts;
     public final long[] dur;
     public final long[] capacity;
@@ -338,7 +338,7 @@ public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTra
     }
 
     @Override
-    public Selection<Long> build() {
+    public Selection build() {
       return this;
     }
   }

@@ -88,7 +88,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
       }
 
       TimeSpan visible = state.getVisibleTime();
-      Selection<Long> selected = state.getSelection(Selection.Kind.VulkanEvent);
+      Selection selected = state.getSelection(Selection.Kind.VulkanEvent);
       List<Integer> visibleSelected = Lists.newArrayList();
 
       for (int i = 0; i < data.starts.length; i++) {

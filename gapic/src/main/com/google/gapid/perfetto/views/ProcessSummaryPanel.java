@@ -36,6 +36,7 @@ import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
 
+import com.google.gapid.util.Arrays;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.RGBA;
@@ -113,7 +114,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
     // TODO: dedupe with CpuRenderer
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
-    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    Selection selected = state.getSelection(Selection.Kind.Cpu);
     List<Integer> visibleSelected = Lists.newArrayList();
 
     mainGradient().applyBaseAndBorder(ctx);
@@ -126,8 +127,8 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
         path.lineTo(x, y);
         path.lineTo(x, nextY);
         y = nextY;
-        for (String id : data.concatedIds[i].split(",")) {
-          if (!id.isEmpty() && selected.contains(Long.parseLong(id))) {
+        for (String id : Arrays.getOrDefault(data.concatedIds, i, "").split(",")) {
+          if (!id.isEmpty() && !selected.isEmpty() && selected.contains(Long.parseLong(id))) {
             visibleSelected.add(i);
             break;
           }
@@ -166,7 +167,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
   private void renderSlices(RenderContext ctx, ProcessSummaryTrack.Data data, double h) {
     // TODO: dedupe with CpuRenderer
     TimeSpan visible = state.getVisibleTime();
-    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    Selection selected = state.getSelection(Selection.Kind.Cpu);
     List<Highlight> visibleSelected = Lists.newArrayList();
     int cpuCount = state.getCpuInfo().count();
     double cpuH = (h - cpuCount + 1) / cpuCount;
@@ -298,7 +299,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
         data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);
     double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
     double dy = height;
-    String ids = data.concatedIds[bucket];
+    String ids = Arrays.getOrDefault(data.concatedIds, bucket, "");
 
     return new Hover() {
       @Override
@@ -309,6 +310,11 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
       @Override
       public void stop() {
         hovered = null;
+      }
+
+      @Override
+      public Cursor getCursor(Display display) {
+        return ids.isEmpty() ? null : display.getSystemCursor(SWT.CURSOR_HAND);
       }
 
       @Override

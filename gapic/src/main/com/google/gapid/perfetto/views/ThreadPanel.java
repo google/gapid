@@ -109,9 +109,9 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       }
 
       TimeSpan visible = state.getVisibleTime();
-      Selection<Long> selectedCpu = state.getSelection(Selection.Kind.Cpu);
-      Selection<StateSlice.Key> selectedThreadState = state.getSelection(Selection.Kind.ThreadState);
-      Selection<Slice.Key> selectedThread = state.getSelection(Selection.Kind.Thread);
+      Selection selectedCpu = state.getSelection(Selection.Kind.Cpu);
+      Selection selectedThreadState = state.getSelection(Selection.Kind.ThreadState);
+      Selection selectedThread = state.getSelection(Selection.Kind.Thread);
       List<Highlight> visibleSelected = Lists.newArrayList();
 
       boolean merging = false;
@@ -178,9 +178,8 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           }
         }
 
-        if (selectedCpu.contains(data.schedIds[i])
-            || selectedThreadState.contains(new StateSlice.Key(data.schedStarts[i],
-                data.schedEnds[i] - data.schedStarts[i], track.getThread().utid))) {
+        if (data.isSched[i] && selectedCpu.contains(data.ids[i])
+            || !data.isSched[i] && selectedThreadState.contains(data.ids[i])) {
           visibleSelected.add(
               new Highlight(data.schedStates[i].color.get().border, rectStart, 0, rectWidth));
         }
@@ -192,10 +191,12 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
       if (expanded) {
         SliceTrack.Data slices = data.slices;
+        String[] concatedIds = slices.getExtraStrings("concatedIds");
         for (int i = 0; i < slices.starts.length; i++) {
           long tStart = slices.starts[i];
           long tEnd = slices.ends[i];
           int depth = slices.depths[i];
+          long id = slices.ids[i];
           //String cat = data.categories[i];
           String title = slices.titles[i];
           if (tEnd <= visible.start || tStart >= visible.end) {
@@ -209,8 +210,16 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           color.applyBase(ctx);
           ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
-          if (selectedThread.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
+          if (selectedThread.contains(id)) { // Unquantized track.
             visibleSelected.add(new Highlight(color.border, rectStart, y, rectWidth));
+          }
+          if (i < concatedIds.length) {      // Quantized track.
+            for (String cId : concatedIds[i].split(",")) {
+              if (selectedThread.contains(Long.parseLong(cId))) {
+                visibleSelected.add(new Highlight(color.border, rectStart, y, rectWidth));
+                break;
+              }
+            }
           }
 
           // Don't render text when we have less than 7px to play with.
@@ -290,12 +299,12 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
             @Override
             public boolean click() {
-              if (data.schedIds[index] != 0) {
+              if (data.isSched[index]) {
                 if ((mods & SWT.MOD1) == SWT.MOD1) {
-                  state.addSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
+                  state.addSelection(Selection.Kind.Cpu, track.getCpuSlice(data.ids[index]));
                   state.addSelectedThread(state.getThreadInfo(track.getThread().utid));
                 } else {
-                  state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
+                  state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.ids[index]));
                   state.setSelectedThread(state.getThreadInfo(track.getThread().utid));
                 }
               } else {
@@ -303,12 +312,12 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
                   state.addSelection(Selection.Kind.ThreadState,
                       new ThreadTrack.StateSlice(data.schedStarts[index],
                           data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                          data.schedStates[index]));
+                          data.isSched[index], data.schedStates[index], data.ids[index]));
                 } else {
                   state.setSelection(Selection.Kind.ThreadState,
                       new ThreadTrack.StateSlice(data.schedStarts[index],
                           data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                          data.schedStates[index]));
+                          data.isSched[index], data.schedStates[index], data.ids[index]));
                 }
               }
               return true;
@@ -337,6 +346,8 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
               (1 + track.getThread().maxDepth) * SLICE_HEIGHT - hoveredSize.h));
           long id = slices.ids[i];
+          String concatedId = i < slices.getExtraStrings("concatedIds").length ?
+              slices.getExtraStrings("concatedIds")[i] : "";
 
           return new Hover() {
             @Override
@@ -352,20 +363,29 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
             @Override
             public Cursor getCursor(Display display) {
-              return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
+              return (id < 0 && concatedId.isEmpty()) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
             }
 
             @Override
             public boolean click() {
-              if (id < 0) {
-                return false;
+              if (id > 0) { // Track data with no quantization.
+                if ((mods & SWT.MOD1) == SWT.MOD1) {
+                  state.addSelection(Selection.Kind.Thread, track.getSlice(id));
+                } else {
+                  state.setSelection(Selection.Kind.Thread, track.getSlice(id));
+                }
+                return true;
+              } else if (!concatedId.isEmpty()) { // Track data with quantization.
+                if ((mods & SWT.MOD1) == SWT.MOD1) {
+                  state.addSelection(Selection.Kind.Thread, transform(track.getSlices(concatedId),
+                      s -> new SliceTrack.SlicesBuilder(s).build()));
+                } else {
+                  state.setSelection(Selection.Kind.Thread, transform(track.getSlices(concatedId),
+                      s -> new SliceTrack.SlicesBuilder(s).build()));
+                }
+                return true;
               }
-              if ((mods & SWT.MOD1) == SWT.MOD1) {
-                state.addSelection(Selection.Kind.Thread, track.getSlice(id));
-              } else {
-                state.setSelection(Selection.Kind.Thread, track.getSlice(id));
-              }
-              return true;
+              return false;
             }
           };
         }
