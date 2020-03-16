@@ -853,7 +853,7 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 	if err != nil {
 		return err
 	}
-	resourceID := resourceIDs[shader]
+	resourceID := resourceIDs[shader.ResourceHandle()]
 
 	resource, err := resources.Find(shader.ResourceType(ctx), resourceID)
 	if err != nil {

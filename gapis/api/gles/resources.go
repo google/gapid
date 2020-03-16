@@ -329,7 +329,7 @@ func (s Shaderʳ) SetResourceData(
 	if err != nil {
 		return err
 	}
-	resourceID := resourceIDs[s]
+	resourceID := resourceIDs[s.ResourceHandle()]
 
 	resource, err := resources.Find(s.ResourceType(ctx), resourceID)
 	if err != nil {

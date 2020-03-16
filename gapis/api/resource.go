@@ -24,8 +24,10 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// ResourceMap is a map from Resource to its id in a database.
-type ResourceMap map[Resource]id.ID
+// ResourceMap is a map from Resource handles to Resource IDs in the database.
+// Note this map is not time-globally valid. It is only valid at a specific
+// point in a trace, since handles may be re-used.
+type ResourceMap map[string]id.ID
 
 // Resource represents an asset in a capture.
 type Resource interface {

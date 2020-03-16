@@ -88,7 +88,7 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 	state.OnResourceCreated = func(r api.Resource) {
 		currentCmdResourceCount++
 		i := genResourceID(currentCmdIndex, currentCmdResourceCount)
-		idMap[r] = i
+		idMap[r.ResourceHandle()] = i
 		resources[i] = r
 	}
 
