@@ -16,7 +16,6 @@
 package com.google.gapid.models;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.Report;
 import com.google.gapid.proto.service.path.Path;
@@ -36,30 +35,28 @@ public class Reports extends DeviceDependentModel.ForPath<Reports.Data, Void, Re
 
   private final Devices devices;
   private final Capture capture;
-  private final ApiContext contexts;
 
-  public Reports(Shell shell, Analytics analytics, Client client, Capture capture,
-      Devices devices, ApiContext contexts) {
+  public Reports(
+      Shell shell, Analytics analytics, Client client, Capture capture, Devices devices) {
     super(LOG, shell, analytics, client, Listener.class, devices);
     this.devices = devices;
     this.capture = capture;
-    this.contexts = contexts;
   }
 
-  protected Path.Any getPath(Path.Capture capturePath, FilteringContext context) {
+  protected Path.Any getPath(Path.Capture capturePath) {
     // TODO: the device is now duplicated.
     if (!devices.hasReplayDevice()) {
       return null;
     }
     return Path.Any.newBuilder()
-        .setReport(context.report(Path.Report.newBuilder())
+        .setReport(Path.Report.newBuilder()
             .setCapture(capturePath)
             .setDevice(devices.getReplayDevicePath()))
         .build();
   }
 
   public void reload() {
-    load(getPath(capture.getData().path, contexts.getSelectedContext()), false);
+    load(getPath(capture.getData().path), false);
   }
 
   @Override

@@ -27,8 +27,6 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.ApiContext;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
@@ -80,7 +78,7 @@ import java.util.logging.Logger;
  * API command view displaying the commands with their hierarchy grouping in a tree.
  */
 public class CommandTree extends Composite
-    implements Tab, Capture.Listener, CommandStream.Listener, ApiContext.Listener {
+    implements Tab, Capture.Listener, CommandStream.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandTree.class.getName());
 
   private final Models models;
@@ -104,11 +102,9 @@ public class CommandTree extends Composite
 
     models.capture.addListener(this);
     models.commands.addListener(this);
-    models.contexts.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
-      models.contexts.removeListener(this);
     });
 
     search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
@@ -227,16 +223,6 @@ public class CommandTree extends Composite
   @Override
   public void onCommandsSelected(CommandIndex index) {
     selectionHandler.updateSelectionFromModel(() -> getTreePath(index).get(), tree::setSelection);
-  }
-
-  @Override
-  public void onContextsLoaded() {
-    updateTree(false);
-  }
-
-  @Override
-  public void onContextSelected(FilteringContext context) {
-    updateTree(false);
   }
 
   private void updateTree(boolean assumeLoading) {

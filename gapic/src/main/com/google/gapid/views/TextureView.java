@@ -127,7 +127,6 @@ public class TextureView extends Composite
     Composite options =
         createComposite(tableAndOption, filling(new RowLayout(SWT.HORIZONTAL), true, false));
     Button showDeleted = createCheckbox(options, "Show deleted textures", true);
-    Button allContexts = createCheckbox(options, "Include all contexts", true);
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
@@ -168,20 +167,6 @@ public class TextureView extends Composite
         textureTable.removeFilter(filterDeleted);
       } else {
         textureTable.addFilter(filterDeleted);
-      }
-    });
-
-    ViewerFilter filterContexts = new ViewerFilter() {
-      @Override
-      public boolean select(Viewer viewer, Object parentElement, Object element) {
-        return models.contexts.getSelectedContext().matches(((Data)element).info.getContext());
-      }
-    };
-    allContexts.addListener(SWT.Selection, e -> {
-      if (allContexts.getSelection()) {
-        textureTable.removeFilter(filterContexts);
-      } else {
-        textureTable.addFilter(filterContexts);
       }
     });
   }

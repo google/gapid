@@ -28,7 +28,7 @@ import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.views.CommandTree;
-import com.google.gapid.views.ContextSelector;
+import com.google.gapid.views.ReplayDeviceSelector;
 import com.google.gapid.views.FramebufferView;
 import com.google.gapid.views.GeometryView;
 import com.google.gapid.views.LogView;
@@ -81,7 +81,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
 
     setLayout(new GridLayout(1, false));
 
-    new ContextSelector(this, models)
+    new ReplayDeviceSelector(this, models)
         .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 
     tabs = new TabArea(this, models.analytics, widgets.theme, new Persistance() {

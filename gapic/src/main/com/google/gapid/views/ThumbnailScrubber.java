@@ -17,13 +17,10 @@ package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
-import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.collect.Lists;
-import com.google.gapid.models.ApiContext;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
@@ -56,8 +53,8 @@ import java.util.List;
 /**
  * Scrubber view displaying thumbnails of the frames in the current capture.
  */
-public class ThumbnailScrubber extends Composite implements Tab, Capture.Listener,
-    CommandStream.Listener, ApiContext.Listener, Timeline.Listener {
+public class ThumbnailScrubber extends Composite
+    implements Tab, Capture.Listener, CommandStream.Listener, Timeline.Listener {
   private final Models models;
   private final LoadablePanel<Carousel> loading;
   private final Carousel carousel;
@@ -81,12 +78,10 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
     carousel.setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
 
     models.capture.addListener(this);
-    models.contexts.addListener(this);
     models.timeline.addListener(this);
     models.commands.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.contexts.removeListener(this);
       models.timeline.removeListener(this);
       models.commands.removeListener(this);
       carousel.reset();
@@ -120,20 +115,6 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
     } else {
       updateScrubber();
     }
-  }
-
-  @Override
-  public void onContextsLoaded() {
-    if (!models.contexts.isLoaded()) {
-      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
-    } else {
-      updateScrubber();
-    }
-  }
-
-  @Override
-  public void onContextSelected(FilteringContext context) {
-    updateScrubber();
   }
 
   @Override

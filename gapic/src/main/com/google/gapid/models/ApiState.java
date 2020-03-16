@@ -58,14 +58,14 @@ public class ApiState
   private final ObjectStore<Path.Any> selection = ObjectStore.create();
 
   public ApiState(Shell shell, Analytics analytics, Client client, Devices devices,
-      Follower follower, CommandStream commands, ApiContext contexts, ConstantSets constants) {
+      Follower follower, CommandStream commands, ConstantSets constants) {
     super(LOG, shell, analytics, client, Listener.class, devices);
     this.constants = constants;
 
     commands.addListener(new CommandStream.Listener() {
       @Override
       public void onCommandsSelected(CommandIndex index) {
-        load(stateTree(index, contexts.getSelectedContext()), false);
+        load(stateTree(index), false);
       }
     });
     follower.addListener(new Follower.Listener() {

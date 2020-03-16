@@ -88,7 +88,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TreeItem;
 
@@ -309,7 +308,6 @@ public class ShaderView extends Composite
     private final TreeViewer shaderViewer;
     private final Composite sourceComposite;
     private final Button pushButton;
-    private final ViewerFilter currentContextFilter;
     private ViewerFilter keywordSearchFilter;
     private SourceViewer shaderSourceViewer;
     private boolean lastUpdateContainedAllShaders = false;
@@ -337,19 +335,12 @@ public class ShaderView extends Composite
             Settings.SplitterWeights.Programs, splitter.getWeights()));
       }
 
-      SearchBox searchBox = new SearchBox(treeViewerContainer, true, theme);
+      SearchBox searchBox = new SearchBox(treeViewerContainer, true);
       searchBox.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
       searchBox.addListener(Events.Search, e -> updateSearchFilter(e.text, (e.detail & Events.REGEX) != 0));
 
-      currentContextFilter = createCurrentContextFilter(models);
-      MenuItem contextFilterSelector = new MenuItem(searchBox.getNestedMenu(), SWT.CHECK);
-      contextFilterSelector.setText("Include all contexts");
-      contextFilterSelector.addListener(SWT.Selection, e -> updateContextFilter(contextFilterSelector.getSelection()));
-      contextFilterSelector.setSelection(true);
-
       shaderViewer = createShaderSelector(treeViewerContainer);
       shaderViewer.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-      updateContextFilter(contextFilterSelector.getSelection());
 
       sourceComposite = createComposite(sourcesContainer, new FillLayout(SWT.VERTICAL));
       sourceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -420,15 +411,6 @@ public class ShaderView extends Composite
         @Override
         public boolean select(Viewer viewer, Object parentElement, Object element) {
           return !(element instanceof Data) || ((Data)element).matches(pattern);
-        }
-      };
-    }
-
-    private static ViewerFilter createCurrentContextFilter(Models models) {
-      return new ViewerFilter() {
-        @Override
-        public boolean select(Viewer viewer, Object parentElement, Object element) {
-          return models.contexts.getSelectedContext().matches(((Data)element).info.getContext());
         }
       };
     }
@@ -552,15 +534,6 @@ public class ShaderView extends Composite
         Pattern pattern = SearchBox.getPattern(text, isRegex);
         keywordSearchFilter = createSearchFilter(pattern);
         shaderViewer.addFilter(keywordSearchFilter);
-      }
-    }
-
-    private void updateContextFilter(boolean hasAllContext) {
-      if (currentContextFilter != null) {
-        shaderViewer.removeFilter(currentContextFilter);
-      }
-      if (!hasAllContext) {
-        shaderViewer.addFilter(currentContextFilter);
       }
     }
 

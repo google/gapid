@@ -25,8 +25,6 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
-import com.google.gapid.models.ApiContext;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
@@ -67,8 +65,7 @@ import java.util.concurrent.ExecutionException;
 /**
  * View that shows the capture report items in a tree.
  */
-public class ReportView extends Composite
-    implements Tab, Capture.Listener, Reports.Listener, ApiContext.Listener {
+public class ReportView extends Composite implements Tab, Capture.Listener, Reports.Listener {
   private final Models models;
   private final MessageProvider messages = new MessageProvider();
   private final LoadablePanel<SashForm> loading;
@@ -111,11 +108,9 @@ public class ReportView extends Composite
 
     models.capture.addListener(this);
     models.reports.addListener(this);
-    models.contexts.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.reports.removeListener(this);
-      models.contexts.removeListener(this);
     });
 
     viewer.getTree().addListener(SWT.MouseMove, e -> {
@@ -169,16 +164,6 @@ public class ReportView extends Composite
   }
 
   @Override
-  public void onContextsLoaded() {
-    clear();
-  }
-
-  @Override
-  public void onContextSelected(FilteringContext context) {
-    clear();
-  }
-
-  @Override
   public void onCaptureLoadingStart(boolean maintainState) {
     loading.showMessage(Info, Messages.LOADING_CAPTURE);
   }
@@ -187,6 +172,8 @@ public class ReportView extends Composite
   public void onCaptureLoaded(Loadable.Message error) {
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+    } else {
+      clear();
     }
   }
 
@@ -205,6 +192,8 @@ public class ReportView extends Composite
       } else {
         loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
       }
+    } else {
+      clear();
     }
   }
 

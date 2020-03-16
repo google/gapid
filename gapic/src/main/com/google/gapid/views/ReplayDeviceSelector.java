@@ -19,7 +19,6 @@ import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
 
 import com.google.gapid.models.Analytics.View;
-import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.device.Device;
@@ -36,24 +35,17 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
 /**
- * Shows dropdowns for the replay device and API context selection.
+ * Shows a dropdown for the replay device selection.
  */
-public class ContextSelector extends Composite implements ApiContext.Listener, Devices.Listener {
+public class ReplayDeviceSelector extends Composite implements Devices.Listener {
   private final Models models;
-  private final ComboViewer contextCombo;
   private final ComboViewer deviceCombo;
 
-  public ContextSelector(Composite parent, Models models) {
+  public ReplayDeviceSelector(Composite parent, Models models) {
     super(parent, SWT.NONE);
     this.models = models;
 
-    setLayout(new GridLayout(4, false));
-
-    createLabel(this, "Context:");
-    contextCombo = createDropDownViewer(this);
-    contextCombo.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-    contextCombo.setContentProvider(ArrayContentProvider.getInstance());
-    contextCombo.setLabelProvider(new LabelProvider());
+    setLayout(new GridLayout(2, false));
 
     createLabel(this, "Replay Device:");
     deviceCombo = createDropDownViewer(this);
@@ -66,20 +58,11 @@ public class ContextSelector extends Composite implements ApiContext.Listener, D
       }
     });
 
-    models.contexts.addListener(this);
     models.devices.addListener(this);
     addListener(SWT.Dispose, e -> {
-      models.contexts.removeListener(this);
       models.devices.removeListener(this);
     });
 
-    contextCombo.getCombo().addListener(SWT.Selection, e -> {
-      models.analytics.postInteraction(View.ContextSelector, ClientAction.Select);
-      IStructuredSelection selection = contextCombo.getStructuredSelection();
-      if (!selection.isEmpty()) {
-        models.contexts.selectContext((ApiContext.FilteringContext)selection.getFirstElement());
-      }
-    });
     deviceCombo.getCombo().addListener(SWT.Selection, e -> {
       models.analytics.postInteraction(View.ReplayDeviceSelector, ClientAction.Select);
       IStructuredSelection selection = deviceCombo.getStructuredSelection();
@@ -87,23 +70,6 @@ public class ContextSelector extends Composite implements ApiContext.Listener, D
         models.devices.selectReplayDevice((Device.Instance)selection.getFirstElement());
       }
     });
-  }
-
-  @Override
-  public void onContextsLoaded() {
-    if (!models.contexts.isLoaded()) {
-      return;
-    }
-
-    contextCombo.setInput(models.contexts.getData().contexts);
-    contextCombo.refresh();
-
-    onContextSelected(models.contexts.getSelectedContext());
-  }
-
-  @Override
-  public void onContextSelected(ApiContext.FilteringContext context) {
-    contextCombo.setSelection(new StructuredSelection(context));
   }
 
   @Override

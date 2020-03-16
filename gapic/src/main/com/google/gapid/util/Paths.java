@@ -18,7 +18,6 @@ package com.google.gapid.util;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.image.Images;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.image.Image;
@@ -89,18 +88,24 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any commandTree(Path.Capture capture, FilteringContext context) {
-    return Path.Any.newBuilder().setCommandTree(
-        context.commandTree(Path.CommandTree.newBuilder())
+  public static Path.Any commandTree(Path.Capture capture) {
+    return Path.Any.newBuilder()
+        .setCommandTree(Path.CommandTree.newBuilder()
             .setCapture(capture)
+            .setGroupByFrame(true)
+            .setGroupByDrawCall(true)
+            .setGroupByTransformFeedback(true)
+            .setGroupByUserMarkers(true)
+            .setGroupBySubmission(true)
+            .setAllowIncompleteFrame(true)
             .setMaxChildren(2000)
             .setMaxNeighbours(20))
         .build();
   }
 
-  public static Path.Any events(Path.Capture capture, FilteringContext context) {
+  public static Path.Any events(Path.Capture capture) {
     return Path.Any.newBuilder()
-        .setEvents(context.events(Path.Events.newBuilder())
+        .setEvents(Path.Events.newBuilder()
             .setCapture(capture)
             .setLastInFrame(true))
         .build();
@@ -135,14 +140,14 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any stateTree(CommandIndex command, FilteringContext context) {
+  public static Path.Any stateTree(CommandIndex command) {
     if (command == null) {
       return null;
     }
     return Path.Any.newBuilder()
-        .setStateTree(context.stateTree(Path.StateTree.newBuilder()
+        .setStateTree(Path.StateTree.newBuilder()
             .setState(stateAfter(command.getCommand()))
-            .setArrayGroupSize(2000)))
+            .setArrayGroupSize(2000))
         .build();
   }
 

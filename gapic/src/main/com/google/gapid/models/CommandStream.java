@@ -28,7 +28,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
@@ -54,24 +53,21 @@ import java.util.logging.Logger;
  */
 public class CommandStream
     extends DeviceDependentModel.ForPath<CommandStream.Node, Void, CommandStream.Listener>
-    implements ApiContext.Listener, Capture.Listener, Devices.Listener {
+    implements Capture.Listener, Devices.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandStream.class.getName());
 
   private final Capture capture;
-  private final ApiContext context;
   private final ConstantSets constants;
   private CommandIndex selection;
 
   public CommandStream(Shell shell, Analytics analytics, Client client, Capture capture,
-      Devices devices, ApiContext context, ConstantSets constants) {
+      Devices devices, ConstantSets constants) {
     super(LOG, shell, analytics, client, Listener.class, devices);
     this.capture = capture;
-    this.context = context;
     this.constants = constants;
 
     capture.addListener(this);
     devices.addListener(this);
-    context.addListener(this);
   }
 
   @Override
@@ -84,11 +80,11 @@ public class CommandStream
 
   @Override
   public void onCaptureLoaded(Loadable.Message error) {
-    if (error == null && selection != null) {
-      selection = selection.withCapture(capture.getData().path);
-      if (isLoaded()) {
-        resolve(selection.getCommand(), node -> selectCommands(selection.withNode(node), true));
+    if (error == null) {
+      if (selection != null) {
+        selection = selection.withCapture(capture.getData().path);
       }
+      load(Paths.commandTree(capture.getData().path), false);
     }
   }
 
@@ -98,20 +94,6 @@ public class CommandStream
       // Clear the node, so the selection will be re-resolved once the context has updated.
       selection = selection.withNode(null);
     }
-  }
-
-  @Override
-  public void onContextsLoaded() {
-    onContextSelected(context.getSelectedContext());
-  }
-
-  @Override
-  public void onContextSelected(FilteringContext ctx) {
-    if (selection != null && selection.getNode() != null) {
-      // Clear the node, so the selection will be re-resolved once the context has updated.
-      selection = selection.withNode(null);
-    }
-    load(commandTree(capture.getData().path, ctx), false);
   }
 
   @Override

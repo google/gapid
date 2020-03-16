@@ -15,15 +15,13 @@
  */
 package com.google.gapid.models;
 
-import static com.google.gapid.util.Paths.events;
-
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.MoreFutures;
+import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -31,36 +29,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class Timeline extends CaptureDependentModel.ForPath<Timeline.Data, Timeline.Listener>
-    implements ApiContext.Listener {
+public class Timeline extends CaptureDependentModel.ForPath<Timeline.Data, Timeline.Listener> {
   private static final Logger LOG = Logger.getLogger(Timeline.class.getName());
 
-  private final Capture capture;
-  private final ApiContext context;
-
-  public Timeline(Shell shell, Analytics analytics, Client client, Capture capture,
-      Devices devices, ApiContext context) {
+  public Timeline(
+      Shell shell, Analytics analytics, Client client, Capture capture, Devices devices) {
     super(LOG, shell, analytics, client, Listener.class, capture, devices);
-    this.capture = capture;
-    this.context = context;
-
-    context.addListener(this);
-  }
-
-  @Override
-  public void onContextsLoaded() {
-    onContextSelected(context.getSelectedContext());
-  }
-
-  @Override
-  public void onContextSelected(FilteringContext ctx) {
-    load(getSource(capture.getData()), false);
   }
 
   @Override
   protected Path.Any getSource(Capture.Data data) {
-    FilteringContext ctx = context.isLoaded() ? context.getSelectedContext() : null;
-    return (ctx == null) ? null : events(data.path, ctx);
+    return Paths.events(data.path);
   }
 
   @Override
