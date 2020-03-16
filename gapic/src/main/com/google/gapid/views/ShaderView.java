@@ -419,8 +419,7 @@ public class ShaderView extends Composite
       return new ViewerFilter() {
         @Override
         public boolean select(Viewer viewer, Object parentElement, Object element) {
-          return !(element instanceof Data) ||
-              pattern.matcher(((Data)element).toString()).find();
+          return !(element instanceof Data) || ((Data)element).matches(pattern);
         }
       };
     }
@@ -547,6 +546,7 @@ public class ShaderView extends Composite
       // Remove the previous one each time to avoid filter accumulation.
       if (keywordSearchFilter != null) {
         shaderViewer.removeFilter(keywordSearchFilter);
+        keywordSearchFilter = null;
       }
       if (!text.isEmpty()) {
         Pattern pattern = SearchBox.getPattern(text, isRegex);
@@ -754,6 +754,10 @@ public class ShaderView extends Composite
 
     public String getLabel() {
       return info.getLabel();
+    }
+
+    public boolean matches(Pattern pattern) {
+      return pattern.matcher(getId()).find() || pattern.matcher(getLabel()).find();
     }
   }
 }
