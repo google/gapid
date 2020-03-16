@@ -341,11 +341,15 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
 
     @Override
     public SlicesBuilder combine(SlicesBuilder other) {
-      this.slices.addAll(other.slices);
+      for (Slice s : other.slices) {
+        if (!this.sliceKeys.contains(s.id)) {
+          this.slices.add(s);
+          this.sliceKeys.add(s.id);
+        }
+      }
       for (Map.Entry<Long, ByProcess.Builder> e : other.processes.entrySet()) {
         processes.merge(e.getKey(), e.getValue(), ByProcess.Builder::combine);
       }
-      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
@@ -363,15 +367,14 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     public final long dur;
     public final ImmutableList<ByThread> threads;
 
-    public ByProcess(long pid, long dur, ImmutableList<ByThread> threads) {
+    public ByProcess(long pid, ImmutableList<ByThread> threads) {
       this.pid = pid;
-      this.dur = dur;
+      this.dur = threads.stream().mapToLong(t -> t.dur).sum();
       this.threads = threads;
     }
 
     public static class Builder {
       public final long pid;
-      public long dur = 0;
       public final Map<Long, ByThread.Builder> threads = Maps.newHashMap();
 
       public Builder(long pid) {
@@ -379,12 +382,10 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
       }
 
       public void add(Slice slice) {
-        dur += slice.dur;
         threads.computeIfAbsent(slice.utid, ByThread.Builder::new).add(slice);
       }
 
       public Builder combine(Builder other) {
-        dur += other.dur;
         for (Map.Entry<Long, ByThread.Builder> e : other.threads.entrySet()) {
           threads.merge(e.getKey(), e.getValue(), ByThread.Builder::combine);
         }
@@ -392,7 +393,7 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
       }
 
       public ByProcess build() {
-        return new ByProcess(pid, dur, threads.values().stream()
+        return new ByProcess(pid, threads.values().stream()
             .map(ByThread.Builder::build)
             .sorted((t1, t2) -> Long.compare(t2.dur, t1.dur))
             .collect(toImmutableList()));
@@ -415,19 +416,28 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
       private final long tid;
       private long dur = 0;
       private final List<Slice> slices = Lists.newArrayList();
+      private final Set<Long> ids = Sets.newHashSet();
 
       public Builder(long tid) {
         this.tid = tid;
       }
 
       public void add(Slice slice) {
-        dur += slice.dur;
-        slices.add(slice);
+        if (!ids.contains(slice.id)) {
+          dur += slice.dur;
+          slices.add(slice);
+          ids.add(slice.id);
+        }
       }
 
       public Builder combine(Builder other) {
-        dur += other.dur;
-        slices.addAll(other.slices);
+        for (Slice s : other.slices) {
+          if (!ids.contains(s.id)) {
+            dur += s.dur;
+            slices.add(s);
+            ids.add(s.id);
+          }
+        }
         return this;
       }
 

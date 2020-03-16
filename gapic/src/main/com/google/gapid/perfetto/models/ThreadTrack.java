@@ -305,31 +305,35 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
 
   public static class StateSlicesBuilder implements Selection.Builder<StateSlicesBuilder> {
     private final List<StateSlice> slices;
-    private final Map<ThreadState, Long> byState = Maps.newHashMap();
+    private final Map<ThreadState, Map<Long, Long>> byState = Maps.newHashMap(); // state -> (slice_id -> dur)
     private final Set<Long> sliceKeys = Sets.newHashSet();
 
     public StateSlicesBuilder(List<StateSlice> slices) {
       this.slices = slices;
       for (StateSlice slice : slices) {
-        byState.compute(slice.state, (state, old) -> (old == null) ? slice.dur : old + slice.dur);
+        byState.putIfAbsent(slice.state, Maps.newHashMap());
+        byState.get(slice.state).put(slice.id, slice.dur);
         sliceKeys.add(slice.id);
       }
     }
 
     @Override
     public StateSlicesBuilder combine(StateSlicesBuilder other) {
-      this.slices.addAll(other.slices);
-      for (Map.Entry<ThreadState, Long> e : other.byState.entrySet()) {
-        byState.merge(e.getKey(), e.getValue(), Long::sum);
+      for (StateSlice s : other.slices) {
+        if (!this.sliceKeys.contains(s.id)) {
+          this.slices.add(s);
+          this.sliceKeys.add(s.id);
+          byState.putIfAbsent(s.state, Maps.newHashMap());
+          byState.get(s.state).put(s.id, s.dur);
+        }
       }
-      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
     @Override
     public Selection build() {
       return new StateSlices(slices, byState.entrySet().stream()
-          .map(e -> new StateSlices.Entry(e.getKey(), e.getValue()))
+          .map(e -> new StateSlices.Entry(e.getKey(), e.getValue().values().stream().mapToLong(v -> v).sum()))
           .sorted((e1, e2) -> Long.compare(e2.totalDur, e1.totalDur))
           .collect(ImmutableList.toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }

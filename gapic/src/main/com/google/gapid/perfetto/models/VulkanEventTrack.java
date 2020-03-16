@@ -273,8 +273,12 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
 
     @Override
     public SlicesBuilder combine(SlicesBuilder other) {
-      this.slices.addAll(other.slices);
-      sliceKeys.addAll(other.sliceKeys);
+      for (Slice s : other.slices) {
+        if (!this.sliceKeys.contains(s.id)) {
+          this.slices.add(s);
+          this.sliceKeys.add(s.id);
+        }
+      }
       return this;
     }
 

@@ -354,9 +354,13 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
 
     @Override
     public SlicesBuilder combine(SlicesBuilder other) {
-      this.slices.addAll(other.slices);
-      roots.putAll(other.roots);
-      sliceKeys.addAll(other.sliceKeys);
+      for (Slice s : other.slices) {
+        if (!this.sliceKeys.contains(s.id)) {
+          this.slices.add(s);
+          this.roots.put(s.id, other.roots.get(s.id));
+          this.sliceKeys.add(s.id);
+        }
+      }
       return this;
     }
 

@@ -381,7 +381,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
           roots.add(slice.parentId);
         }
         roots.remove(slice.stackId);
-        child.add(slice.dur);
+        child.add(slice.id, slice.dur);
         sliceKeys.add(slice.id);
       }
       this.title = ti;
@@ -389,18 +389,22 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
     @Override
     public SlicesBuilder combine(SlicesBuilder other) {
-      this.slices.addAll(other.slices);
       for (Map.Entry<Long, Node.Builder> e : other.byStack.entrySet()) {
         Node.Builder mine = byStack.get(e.getKey());
         if (mine == null) {
           byStack.put(e.getKey(), mine = new Node.Builder(e.getValue()));
-          byParent.computeIfAbsent(mine.parent, $ -> Lists.newArrayList()).add(mine);
+          byParent.computeIfAbsent(mine.parentId, $ -> Lists.newArrayList()).add(mine);
         } else {
           mine.add(e.getValue());
         }
       }
       roots.addAll(other.roots);
-      sliceKeys.addAll(other.sliceKeys);
+      for (Slice s : other.slices) {
+        if (!this.sliceKeys.contains(s.id)) {
+          this.slices.add(s);
+          this.sliceKeys.add(s.id);
+        }
+      }
       return this;
     }
 
@@ -432,41 +436,39 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
     public static class Builder {
       public final String name;
-      public final long id;
-      public final long parent;
-      private long dur = 0;
-      private int count = 0;
+      public final long stackId;
+      public final long parentId;
+      private final Map<Long, Long> durs = Maps.newHashMap(); // slice_id -> slice_dur.
 
-      public Builder(String name, long id, long parent) {
+      public Builder(String name, long stackId, long parentId) {
         this.name = name;
-        this.id = id;
-        this.parent = parent;
+        this.stackId = stackId;
+        this.parentId = parentId;
       }
 
       public Builder(Builder other) {
         this.name = other.name;
-        this.id = other.id;
-        this.parent = other.parent;
-        this.dur = other.dur;
-        this.count = other.count;
+        this.stackId = other.stackId;
+        this.parentId = other.parentId;
+        this.durs.putAll(other.durs);
       }
 
       public long getParent() {
-        return parent;
+        return parentId;
       }
 
-      public void add(long duration) {
-        dur += duration;
-        count++;
+      public void add(long sliceId, long duration) {
+        durs.put(sliceId, duration);
       }
 
       public void add(Builder other) {
-        dur += other.dur;
-        count += other.count;
+        durs.putAll(other.durs);
       }
 
       public Node build(Map<Long, List<Builder>> byParent) {
-        ImmutableList<Node> cs = byParent.getOrDefault(id, emptyList()).stream()
+        long dur = durs.values().stream().mapToLong(d -> d).sum();
+        int count = durs.size();
+        ImmutableList<Node> cs = byParent.getOrDefault(stackId, emptyList()).stream()
             .map(b -> b.build(byParent))
             .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
             .collect(toImmutableList());
