@@ -29,4 +29,10 @@ public class Arrays {
   public static <T> T getOrDefault(T[] array, int idx, T dflt) {
     return array == null || idx >= array.length ? dflt : array[idx];
   }
+
+  public static long[] filled(long[] array, long val) {
+    // No generic pattern here because want a long[] array rather than Long[] array.
+    java.util.Arrays.fill(array, val);
+    return array;
+  }
 }

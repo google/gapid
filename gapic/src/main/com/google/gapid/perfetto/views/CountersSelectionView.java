@@ -40,9 +40,13 @@ public class CountersSelectionView extends Composite {
 
     createTableColumn(
         viewer, "Time", r -> timeToString(sel.ts[(Integer)r] - state.getTraceTime().start));
-    for (int i = 0; i < sel.names.length; i++) {
-      final int idx = i;
-      createTableColumn(viewer, sel.names[i], r -> String.valueOf(sel.values[idx][(Integer)r]));
+    for (String name : sel.values.keySet()) {
+      createTableColumn(viewer, name, r -> {
+        if (sel.ids.get(name)[(Integer)r] == -1) {
+          return "/";
+        }
+        return String.valueOf(sel.values.get(name)[(Integer)r]);
+      });
     }
 
     // Skip the last row (it represents the end of the selection range).

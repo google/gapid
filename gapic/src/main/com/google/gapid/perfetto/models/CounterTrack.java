@@ -21,16 +21,19 @@ import static com.google.gapid.perfetto.models.QueryEngine.createWindow;
 import static com.google.gapid.perfetto.models.QueryEngine.dropTable;
 import static com.google.gapid.perfetto.models.QueryEngine.dropView;
 import static com.google.gapid.perfetto.models.QueryEngine.expectOneRow;
+import static com.google.gapid.util.Arrays.filled;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.CountersSelectionView;
 import com.google.gapid.perfetto.views.State;
 
+import java.util.Map;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.Arrays;
@@ -182,29 +185,26 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
 
   public static class Values implements Selection, Selection.Builder<Values> {
     public final long[] ts;
-    public final String[] names;
-    public final double[][] values;
-    public final long[][] ids;
+    public final Map<String, double[]> values = Maps.newHashMap(); // counter_name -> values.
+    public final Map<String, long[]> ids = Maps.newHashMap();      // counter_name -> ids.
     private final Set<Long> valueKeys = Sets.newHashSet();
 
     public Values(String name, Data data) {
       this.ts = data.ts;
-      this.names = new String[] { name };
-      this.values = new double[][] { data.values };
-      this.ids = new long[][] { data.ids };
+      this.values.put(name, data.values);
+      this.ids.put(name, data.ids);
       initKeys();
     }
 
-    private Values(long[] ts, String[] names, double[][] values, long[][] ids) {
+    private Values(long[] ts, Map<String, double[]> values, Map<String, long[]> ids) {
       this.ts = ts;
-      this.names = names;
-      this.values = values;
-      this.ids = ids;
+      this.values.putAll(values);
+      this.ids.putAll(ids);
       initKeys();
     }
 
     private void initKeys() {
-      for (long[] keys : ids) {
+      for (long[] keys : ids.values()) {
         Arrays.stream(keys).forEach(valueKeys::add);
       }
     }
@@ -246,40 +246,37 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
 
       long[] newTs = combineTs(ts, other.ts);
 
-      double[][] newValues = new double[names.length + other.names.length][newTs.length];
-      long[][] newIds = new long[names.length + other.names.length][newTs.length];
+      Map<String, double[]> newValues = Maps.newHashMap();
+      Map<String, long[]> newIds = Maps.newHashMap();
+      for (String name : this.values.keySet()) {
+        newValues.put(name, new double[newTs.length]);
+        newIds.put(name, filled(new long[newTs.length], -1));
+      }
+      for (String name : other.values.keySet()) {
+        newValues.put(name, new double[newTs.length]);
+        newIds.put(name, filled(new long[newTs.length], -1));
+      }
+
       for (int i = 0, me = 0, them = 0; i < newTs.length; i++) {
         long rTs = newTs[i], meTs = ts[me], themTs = other.ts[them];
         if (rTs == meTs) {
-          for (int n = 0; n < names.length; n++) {
-            newValues[n][i] = values[n][me];
-            newIds[n][i] = ids[n][me];
+          for (String name : this.values.keySet()) {
+            newValues.get(name)[i] = values.get(name)[me];
+            newIds.get(name)[i] = ids.get(name)[me];
           }
           me = Math.min(me + 1, ts.length - 1);
-        } else if (i > 0) {
-          for (int n = 0; n < names.length; n++) {
-            newValues[n][i] = newValues[n][i - 1];
-            newIds[n][i] = newIds[n][i - 1];
-          }
         }
 
         if (rTs == themTs) {
-          for (int n = 0; n < other.names.length; n++) {
-            newValues[n + names.length][i] = other.values[n][them];
-            newIds[n + names.length][i] = other.ids[n][them];
+          for (String name : other.values.keySet()) {
+            newValues.get(name)[i] = other.values.get(name)[them];
+            newIds.get(name)[i] = other.ids.get(name)[them];
           }
           them = Math.min(them + 1, other.ts.length - 1);
-        } else if (i > 0) {
-          for (int n = 0; n < other.names.length; n++) {
-            newValues[names.length + n][i] = newValues[names.length + n][i - 1];
-            newIds[names.length + n][i] = newIds[names.length + n][i - 1];
-          }
         }
       }
 
-      String[] newNames = Arrays.copyOf(names, names.length + other.names.length);
-      System.arraycopy(other.names, 0, newNames, names.length, other.names.length);
-      return new Values(newTs, newNames, newValues, newIds);
+      return new Values(newTs, newValues, newIds);
     }
 
     private static long[] combineTs(long[] a, long[] b) {
