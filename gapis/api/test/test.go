@@ -40,8 +40,6 @@ func (API) GetFramebufferAttachmentInfo(
 	return api.FramebufferAttachmentInfo{}, nil
 }
 
-func (API) Context(context.Context, *api.GlobalState, uint64) api.Context { return nil }
-
 // Root returns the path to the root of the state to display. It can vary based
 // on filtering mode. Returning nil, nil indicates there is no state to show at
 // this point in the capture.

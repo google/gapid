@@ -156,7 +156,6 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 		{"commands", tracepath},
 		{"commands", "-context", "0", tracepath},
 		{"commands", "-groupbyapi", tracepath},
-		{"commands", "-groupbycontext", tracepath},
 		{"commands", "-groupbydrawcall", tracepath},
 		{"commands", "-groupbyframe", tracepath},
 		{"commands", "-groupbythread", tracepath},

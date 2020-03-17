@@ -47,37 +47,6 @@ import (
 
 func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Service, p *path.Capture) (*path.CommandFilter, error) {
 	filter := &path.CommandFilter{}
-	if f.ContextName != "" {
-		boxedContexts, err := client.Get(ctx, p.Contexts().Path(), nil)
-		if err != nil {
-			return nil, log.Err(ctx, err, "Failed to load the contexts")
-		}
-		contextList := boxedContexts.(*service.Contexts).List
-
-		for i, c := range contextList {
-			boxedContext, err := client.Get(ctx, p.Context(c.ID.ID()).Path(), nil)
-			if err != nil {
-				return nil, log.Errf(ctx, err, "Failed to load context at index %d", i)
-			}
-			context := boxedContext.(*service.Context)
-			if f.ContextName == context.Name {
-				filter.Context = c.ID
-				return filter, nil
-			}
-		}
-
-		return nil, log.Errf(ctx, err, "Could not find context named %s", f.ContextName)
-	} else if f.Context >= 0 {
-		boxedContexts, err := client.Get(ctx, p.Contexts().Path(), nil)
-		if err != nil {
-			return nil, log.Err(ctx, err, "Failed to load the contexts")
-		}
-		contexts := boxedContexts.(*service.Contexts)
-		if n := len(contexts.List); f.Context >= n {
-			return nil, log.Errf(ctx, err, "Context %d is out of range [0..%d]", f.Context, n-1)
-		}
-		filter.Context = contexts.List[f.Context].ID
-	}
 	return filter, nil
 }
 

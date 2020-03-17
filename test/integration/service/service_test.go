@@ -192,7 +192,6 @@ func TestGet(t *testing.T) {
 		ty   reflect.Type
 	}{
 		{capture, T((*service.Capture)(nil))},
-		{capture.Contexts(), T((*service.Contexts)(nil))},
 		{capture.Commands(), T((*service.Commands)(nil))},
 		{capture.Command(swapCmdIndex), T((*api.Command)(nil))},
 		// TODO: box.go doesn't currently support serializing structs this big.

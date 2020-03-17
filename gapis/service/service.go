@@ -251,10 +251,6 @@ func NewValue(v interface{}) *Value {
 		return &Value{}
 	case *Capture:
 		return &Value{Val: &Value_Capture{v}}
-	case *Context:
-		return &Value{Val: &Value_Context{v}}
-	case *Contexts:
-		return &Value{Val: &Value_Contexts{v}}
 	case *Commands:
 		return &Value{Val: &Value_Commands{v}}
 	case *CommandTree:

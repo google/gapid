@@ -215,27 +215,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			}))
 	}
 
-	if p.GroupByContext {
-		var noContextID interface{}
-		if p.IncludeNoContextGroups {
-			noContextID = api.ContextID{}
-		}
-		ctxs, err := ContextsByID(ctx, p.Capture.Contexts(), r.Config)
-		if err != nil {
-			return nil, err
-		}
-		groupers = append(groupers, cmdgrouper.Run(
-			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
-				if api := cmd.API(); api != nil {
-					if context := api.Context(ctx, s, cmd.Thread()); context != nil {
-						id := context.ID()
-						return id, ctxs[id].Name
-					}
-				}
-				return noContextID, "No context"
-			}))
-	}
-
 	if p.GroupByThread {
 		groupers = append(groupers, cmdgrouper.Run(
 			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {

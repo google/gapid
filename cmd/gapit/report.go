@@ -34,9 +34,7 @@ type reportVerb struct{ ReportFlags }
 func init() {
 	verb := &reportVerb{
 		ReportFlags: ReportFlags{
-			CommandFilterFlags: CommandFilterFlags{
-				Context: -1,
-			},
+			CommandFilterFlags: CommandFilterFlags{},
 		},
 	}
 	app.AddVerb(&app.Verb{

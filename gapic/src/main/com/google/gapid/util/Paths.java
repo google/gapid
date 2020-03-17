@@ -76,12 +76,6 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any context(Path.Context ctx) {
-    return Path.Any.newBuilder()
-        .setContext(ctx)
-        .build();
-  }
-
   public static Path.Any command(Path.Command command) {
     return Path.Any.newBuilder()
         .setCommand(command)
@@ -517,8 +511,6 @@ public class Paths {
     R visit(Path.CommandTree path, A arg);
     R visit(Path.CommandTreeNode path, A arg);
     R visit(Path.CommandTreeNodeForCommand path, A arg);
-    R visit(Path.Context path, A arg);
-    R visit(Path.Contexts path, A arg);
     R visit(Path.Device path, A arg);
     R visit(Path.DeviceTraceConfiguration path, A arg);
     R visit(Path.Events path, A arg);
@@ -571,10 +563,6 @@ public class Paths {
         return visitor.visit(path.getCommandTreeNode(), arg);
       case COMMAND_TREE_NODE_FOR_COMMAND:
         return visitor.visit(path.getCommandTreeNodeForCommand(), arg);
-      case CONTEXT:
-        return visitor.visit(path.getContext(), arg);
-      case CONTEXTS:
-        return visitor.visit(path.getContexts(), arg);
       case DEVICE:
         return visitor.visit(path.getDevice(), arg);
       case TRACECONFIG:
@@ -653,10 +641,6 @@ public class Paths {
       return visitor.visit((Path.CommandTreeNode)path, arg);
     } else if (path instanceof Path.CommandTreeNodeForCommand) {
       return visitor.visit((Path.CommandTreeNodeForCommand)path, arg);
-    } else if (path instanceof Path.Context) {
-      return visitor.visit((Path.Context)path, arg);
-    } else if (path instanceof Path.Contexts) {
-      return visitor.visit((Path.Contexts)path, arg);
     } else if (path instanceof Path.Device) {
       return visitor.visit((Path.Device)path, arg);
     } else if (path instanceof Path.DeviceTraceConfiguration) {
@@ -724,8 +708,6 @@ public class Paths {
     @Override public Object visit(Path.CommandTree path, Void ignored) { return path; }
     @Override public Object visit(Path.CommandTreeNode path, Void ignored) { return path; }
     @Override public Object visit(Path.CommandTreeNodeForCommand path, Void ignored) { return path; }
-    @Override public Object visit(Path.Context path, Void ignored) { return path; }
-    @Override public Object visit(Path.Contexts path, Void ignored) { return path; }
     @Override public Object visit(Path.Device path, Void ignored) { return path; }
     @Override public Object visit(Path.DeviceTraceConfiguration path, Void ignored) { return path; }
     @Override public Object visit(Path.Events path, Void ignored) { return path; }
@@ -813,16 +795,6 @@ public class Paths {
     @Override
     public Path.Any visit(Path.CommandTreeNodeForCommand path, Void ignored) {
       return Path.Any.newBuilder().setCommandTreeNodeForCommand(path).build();
-    }
-
-    @Override
-    public Path.Any visit(Path.Context path, Void ignored) {
-      return Path.Any.newBuilder().setContext(path).build();
-    }
-
-    @Override
-    public Path.Any visit(Path.Contexts path, Void ignored) {
-      return Path.Any.newBuilder().setContexts(path).build();
     }
 
     @Override
@@ -1027,16 +999,6 @@ public class Paths {
     @Override
     public Object visit(Path.CommandTreeNodeForCommand path, Void ignored) {
       return path.getCommand();
-    }
-
-    @Override
-    public Object visit(Path.Context path, Void ignored) {
-      return path.getCapture();
-    }
-
-    @Override
-    public Object visit(Path.Contexts path, Void ignored) {
-      return path.getCapture();
     }
 
     @Override
@@ -1322,24 +1284,6 @@ public class Paths {
         return path.toBuilder().setCommand((Path.Command) parent).build();
       } else {
         throw new RuntimeException("Path.CommandTreeNodeForCommand cannot set parent to " + parent.getClass().getName());
-      }
-    }
-
-    @Override
-    public Object visit(Path.Context path, Object parent) {
-      if (parent instanceof Path.Capture) {
-        return path.toBuilder().setCapture((Path.Capture) parent).build();
-      } else {
-        throw new RuntimeException("Path.Context cannot set parent to " + parent.getClass().getName());
-      }
-    }
-
-    @Override
-    public Object visit(Path.Contexts path, Object parent) {
-      if (parent instanceof Path.Capture) {
-        return path.toBuilder().setCapture((Path.Capture) parent).build();
-      } else {
-        throw new RuntimeException("Path.Contexts cannot set parent to " + parent.getClass().getName());
       }
     }
 
@@ -1637,8 +1581,6 @@ public class Paths {
       append(sb, path.getFilter()).append('[');
       if (path.getGroupByApi()) sb.append('A');
       if (path.getGroupByThread()) sb.append('T');
-      if (path.getGroupByContext()) sb.append('C');
-      if (path.getIncludeNoContextGroups()) sb.append('n');
       if (path.getGroupByFrame()) sb.append('F');
       if (path.getAllowIncompleteFrame()) sb.append('i');
       if (path.getGroupByDrawCall()) sb.append('D');
@@ -1669,20 +1611,6 @@ public class Paths {
       visit(path.getCommand(), sb);
       sb.append(")");
       return sb;
-    }
-
-    @Override
-    public StringBuilder visit(Path.Context path, StringBuilder sb) {
-      visit(path.getCapture(), sb);
-      sb.append(".context[");
-      visit(path.getID(), sb);
-      sb.append("]");
-      return sb;
-    }
-
-    @Override
-    public StringBuilder visit(Path.Contexts path, StringBuilder sb) {
-      return visit(path.getCapture(), sb).append(".contexts");
     }
 
     @Override
@@ -1875,12 +1803,6 @@ public class Paths {
 
     private StringBuilder append(StringBuilder sb, Path.CommandFilter filter) {
       String sep = "(", end = "";
-      if (filter.hasContext()) {
-        sb.append(sep).append("context=");
-        visit(filter.getContext(), sb);
-        sep = ",";
-        end = ")";
-      }
       if (filter.getThreadsCount() > 0) {
         sb.append(sep).append("threads=").append(filter.getThreadsList());
         sep = ",";

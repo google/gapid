@@ -31,7 +31,6 @@ go_library(
         "cmd_id_set.go",
         "cmd_observations.go",
         "cmd_service.go",
-        "context.go",
         "data_group.go",
         "doc.go",
         "graph_visualization.go",

@@ -15,30 +15,15 @@
 package resolve
 
 import (
-	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 func internalToService(v interface{}) (interface{}, error) {
 	switch v := v.(type) {
 	case api.Cmd:
 		return api.CmdToService(v)
-	case []*api.ContextInfo:
-		out := &service.Contexts{List: make([]*path.Context, len(v))}
-		for i, c := range v {
-			out.List[i] = c.Path
-		}
-		return out, nil
-	case *api.ContextInfo:
-		return &service.Context{
-			Name:     v.Name,
-			API:      path.NewAPI(id.ID(v.API)),
-			Priority: uint32(v.Priority),
-		}, nil
 	default:
 		return v, nil
 	}

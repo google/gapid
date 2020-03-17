@@ -22,11 +22,6 @@ import "gapis/api/service.proto";
 import "gapis/service/path/path.proto";
 import "gapis/service/service.proto";
 
-message ContextListResolvable {
-  path.Capture capture = 1;
-  path.ResolveConfig config = 2;
-}
-
 message CommandTreeResolvable {
   path.CommandTree path = 1;
   path.ResolveConfig config = 2;

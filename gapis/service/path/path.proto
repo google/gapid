@@ -37,8 +37,6 @@ message Any {
     CommandTreeNode command_tree_node = 9;
     CommandTreeNodeForCommand command_tree_node_for_command = 10;
     ConstantSet constant_set = 11;
-    Context context = 12;
-    Contexts contexts = 13;
     Device device = 14;
     DeviceTraceConfiguration traceConfig = 15;
     Events events = 16;
@@ -204,17 +202,6 @@ message Messages {
   Capture capture = 1;
 }
 
-// Contexts is path to a list of contexts in a capture.
-message Contexts {
-  Capture capture = 1;
-}
-
-// Context is a path to a single context in a capture.
-message Context {
-  Capture capture = 1;
-  ID ID = 2;
-}
-
 // Device is a path to a device used for replay.
 message Device {
   ID ID = 1;
@@ -247,8 +234,6 @@ message Field {
 
 // CommandFilter are the optional filters applied to CommandTrees and Events.
 message CommandFilter {
-  // context filters the commands to the specified context.
-  ID context = 1;
   // thread filters the commands to those with the specified threads.
   repeated uint64 threads = 2;
 }
@@ -262,8 +247,6 @@ message CommandTree {
   CommandFilter filter = 2;
   // If true then commands will be grouped by API.
   bool group_by_api = 3;
-  // If true then commands will be grouped by context.
-  bool group_by_context = 4;
   // If true then commands will be grouped by thread.
   bool group_by_thread = 5;
   // If true then commands will be grouped by draw calls.
@@ -276,8 +259,6 @@ message CommandTree {
   bool group_by_user_markers = 9;
   // If true then commands will be grouped by submission.
   bool group_by_submission = 10;
-  // If true and grouping by context, 'no context' groups will be created.
-  bool include_no_context_groups = 11;
   // If true and grouping by frames, commands after the last frame will be
   // grouped into an 'incomplete frame' group. Only if there is at least one
   // complete frame.
@@ -454,8 +435,6 @@ message Slice {
 // State is a path to a subset of the GlobalState at a point in a capture.
 message State {
   Command after = 1;
-  // If non-nil, then the state is filtered to the specified context.
-  ID context = 2;
 }
 
 // GlobalState is an path node to the absolute global state after a specfied

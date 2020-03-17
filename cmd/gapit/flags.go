@@ -141,8 +141,6 @@ type (
 		CaptureID bool `help:"if true then interpret the capture file argument as a capture ID that is already loaded in gapis"`
 	}
 	CommandFilterFlags struct {
-		Context     int    `help:"Filter to the i'th context. Does nothing with -contextname."`
-		ContextName string `help:"Filter by context name."`
 	}
 	ObservationFlags struct {
 		Ranges            bool `help:"if true then display the read and write ranges made by each command."`
@@ -245,21 +243,19 @@ type (
 		CaptureFileFlags
 	}
 	CommandsFlags struct {
-		Gapis                  GapisFlags
-		Gapir                  GapirFlags
-		Raw                    bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
-		Name                   string `help:"Filter to commands and groups with the specified name."`
-		MaxChildren            int    `help:"_Maximum children per tree node."`
-		GroupByAPI             bool   `help:"Group commands by api"`
-		GroupByContext         bool   `help:"Group commands by context"`
-		GroupByThread          bool   `help:"Group commands by thread"`
-		GroupByDrawCall        bool   `help:"Group commands by draw call"`
-		GroupByFrame           bool   `help:"Group commands by frame"`
-		GroupByUserMarkers     bool   `help:"Group commands by user markers"`
-		GroupBySubmission      bool   `help:"Group commands by submissions"`
-		IncludeNoContextGroups bool   `help:"_Include no context groups"`
-		AllowIncompleteFrame   bool   `help:"_Make a group for incomplete frames"`
-		Observations           ObservationFlags
+		Gapis                GapisFlags
+		Gapir                GapirFlags
+		Raw                  bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
+		Name                 string `help:"Filter to commands and groups with the specified name."`
+		MaxChildren          int    `help:"_Maximum children per tree node."`
+		GroupByAPI           bool   `help:"Group commands by api"`
+		GroupByThread        bool   `help:"Group commands by thread"`
+		GroupByDrawCall      bool   `help:"Group commands by draw call"`
+		GroupByFrame         bool   `help:"Group commands by frame"`
+		GroupByUserMarkers   bool   `help:"Group commands by user markers"`
+		GroupBySubmission    bool   `help:"Group commands by submissions"`
+		AllowIncompleteFrame bool   `help:"_Make a group for incomplete frames"`
+		Observations         ObservationFlags
 		CommandFilterFlags
 		CaptureFileFlags
 	}

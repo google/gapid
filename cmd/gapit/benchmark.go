@@ -185,7 +185,6 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	device := devices[0]
 
 	wg := sync.WaitGroup{}
-	gotContext := sync.WaitGroup{}
 
 	var resources *service.Resources
 	wg.Add(1)
@@ -201,34 +200,11 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		wg.Done()
 	}()
 
-	var context *service.Context
-	var ctxId *path.ID
-
-	wg.Add(1)
-	gotContext.Add(1)
-	go func() {
-		ctx := status.Start(oldCtx, "Resolving Contexts")
-		defer status.Finish(ctx)
-		contextsInterface, err := client.Get(ctx, c.Contexts().Path(), resolveConfig)
-		if err != nil {
-			panic(err)
-		}
-		contexts := contextsInterface.(*service.Contexts)
-		ctxId = contexts.GetList()[0].ID
-		contextInterface, err := client.Get(ctx, contexts.GetList()[0].Path(), resolveConfig)
-		context = contextInterface.(*service.Context)
-
-		gotContext.Done()
-		wg.Done()
-	}()
-
 	wg.Add(1)
 	go func() {
 		ctx := status.Start(oldCtx, "Getting Report")
 		defer status.Finish(ctx)
-		gotContext.Wait()
 		filter := &path.CommandFilter{}
-		filter.Context = ctxId
 
 		_, err := client.Get(ctx, c.Commands().Path(), resolveConfig)
 		if err != nil {
@@ -302,18 +278,14 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	go func() {
 		ctx := status.Start(oldCtx, "Resolving Command Tree")
 
-		gotContext.Wait()
 		filter := &path.CommandFilter{}
-		filter.Context = ctxId
 
 		treePath := c.CommandTree(filter)
 		treePath.GroupByApi = true
-		treePath.GroupByContext = true
 		treePath.GroupByDrawCall = true
 		treePath.GroupByFrame = true
 		treePath.GroupByUserMarkers = true
 		treePath.GroupBySubmission = true
-		treePath.IncludeNoContextGroups = true
 		treePath.AllowIncompleteFrame = true
 		treePath.MaxChildren = int32(2000)
 

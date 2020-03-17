@@ -33,12 +33,9 @@ type commandsVerb struct{ CommandsFlags }
 func init() {
 	verb := &commandsVerb{
 		CommandsFlags: CommandsFlags{
-			CommandFilterFlags: CommandFilterFlags{
-				Context: -1,
-			},
+			CommandFilterFlags: CommandFilterFlags{},
 		},
 	}
-	verb.Context = -1
 	app.AddVerb(&app.Verb{
 		Name:      "commands",
 		ShortHelp: "Prints the command tree for a .gfxtrace file",
@@ -65,13 +62,11 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	treePath := capture.CommandTree(filter)
 	treePath.GroupByApi = verb.GroupByAPI
-	treePath.GroupByContext = verb.GroupByContext
 	treePath.GroupByThread = verb.GroupByThread
 	treePath.GroupByDrawCall = verb.GroupByDrawCall
 	treePath.GroupByFrame = verb.GroupByFrame
 	treePath.GroupByUserMarkers = verb.GroupByUserMarkers
 	treePath.GroupBySubmission = verb.GroupBySubmission
-	treePath.IncludeNoContextGroups = verb.IncludeNoContextGroups
 	treePath.AllowIncompleteFrame = verb.AllowIncompleteFrame
 
 	treePath.MaxChildren = int32(verb.MaxChildren)

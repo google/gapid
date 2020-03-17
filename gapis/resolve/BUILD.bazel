@@ -22,7 +22,6 @@ go_library(
         "command_tree.go",
         "commands.go",
         "constant_set.go",
-        "contexts.go",
         "delete.go",
         "doc.go",
         "errors.go",

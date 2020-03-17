@@ -63,9 +63,6 @@ message ServerInfo {
 message Commands {
   repeated path.Command list = 1;
 }
-message Contexts {
-  repeated path.Context list = 1;
-}
 message Devices {
   repeated path.Device list = 1;
 }
@@ -85,8 +82,6 @@ message Value {
     CommandTree command_tree = 2;
     CommandTreeNode command_tree_node = 3;
     Commands commands = 4;
-    Context context = 5;
-    Contexts contexts = 6;
     ConstantSet constant_set = 7;
     Event event = 8;
     Events events = 9;
@@ -1001,8 +996,6 @@ message ResourcesByType {
 message Resource {
   // The resource's unique identifier.
   path.ID ID = 1;
-  // The context that created this resource.
-  path.Context context = 8;
   // The resource identifier used for display.
   string handle = 2;
   // The resource label.
@@ -1015,16 +1008,6 @@ message Resource {
   path.Command deleted = 6;
   // The command at which this resource was created.
   path.Command created = 7;
-}
-
-// Context represents a single rendering context in the capture.
-message Context {
-  // The context name.
-  string name = 1;
-  // The API that this context belongs to.
-  path.API API = 2;
-  // The estimated importance for the context. 0 = lowest priority.
-  uint32 priority = 3;
 }
 
 // CommandTree represents a command tree hierarchy.

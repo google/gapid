@@ -19,7 +19,6 @@ import "github.com/google/gapid/gapis/database"
 // Interface compliance tests
 var _ = []database.Resolvable{
 	(*CommandTreeResolvable)(nil),
-	(*ContextListResolvable)(nil),
 	(*FollowResolvable)(nil),
 	(*FramebufferAttachmentBytesResolvable)(nil),
 	(*FramebufferAttachmentResolvable)(nil),

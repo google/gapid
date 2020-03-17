@@ -62,11 +62,9 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	state := capture.NewUninitializedState(ctx).ReserveMemory(ranges)
 	state.OnResourceCreated = func(res api.Resource) {
 		currentCmdResourceCount++
-		context := currentAPI.Context(ctx, state, currentThread)
 		tr := trackedResource{
 			resource: res,
 			id:       genResourceID(currentCmdIndex, currentCmdResourceCount),
-			context:  r.Capture.Context(id.ID(context.ID())),
 			accesses: []uint64{currentCmdIndex},
 			created:  currentCmdIndex,
 		}
@@ -148,7 +146,6 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 type trackedResource struct {
 	resource api.Resource
 	id       id.ID
-	context  *path.Context
 	name     string
 	accesses []uint64
 	deleted  uint64
@@ -158,7 +155,6 @@ type trackedResource struct {
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	out := &service.Resource{
 		ID:       path.NewID(r.id),
-		Context:  r.context,
 		Handle:   r.resource.ResourceHandle(),
 		Label:    r.resource.ResourceLabel(),
 		Order:    r.resource.Order(),

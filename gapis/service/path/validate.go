@@ -160,19 +160,6 @@ func (n *ConstantSet) Validate() error {
 }
 
 // Validate checks the path is valid.
-func (n *Context) Validate() error {
-	return anyErr(
-		checkNotNilAndValidate(n, n.Capture, "capture"),
-		checkIsValid(n, n.ID, "id"),
-	)
-}
-
-// Validate checks the path is valid.
-func (n *Contexts) Validate() error {
-	return checkNotNilAndValidate(n, n.Capture, "capture")
-}
-
-// Validate checks the path is valid.
 func (n *Device) Validate() error {
 	return checkIsValid(n, n.ID, "id")
 }

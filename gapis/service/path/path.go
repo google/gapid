@@ -68,8 +68,6 @@ func (n *Commands) Path() *Any                  { return &Any{Path: &Any_Command
 func (n *CommandTree) Path() *Any               { return &Any{Path: &Any_CommandTree{n}} }
 func (n *CommandTreeNode) Path() *Any           { return &Any{Path: &Any_CommandTreeNode{n}} }
 func (n *CommandTreeNodeForCommand) Path() *Any { return &Any{Path: &Any_CommandTreeNodeForCommand{n}} }
-func (n *Context) Path() *Any                   { return &Any{Path: &Any_Context{n}} }
-func (n *Contexts) Path() *Any                  { return &Any{Path: &Any_Contexts{n}} }
 func (n *Device) Path() *Any                    { return &Any{Path: &Any_Device{n}} }
 func (n *DeviceTraceConfiguration) Path() *Any  { return &Any{Path: &Any_TraceConfig{n}} }
 func (n *Events) Path() *Any                    { return &Any{Path: &Any_Events{n}} }
@@ -110,8 +108,6 @@ func (n Commands) Parent() Node                  { return n.Capture }
 func (n CommandTree) Parent() Node               { return n.Capture }
 func (n CommandTreeNode) Parent() Node           { return nil }
 func (n CommandTreeNodeForCommand) Parent() Node { return n.Command }
-func (n Context) Parent() Node                   { return n.Capture }
-func (n Contexts) Parent() Node                  { return n.Capture }
 func (n Device) Parent() Node                    { return nil }
 func (n DeviceTraceConfiguration) Parent() Node  { return n.Device }
 func (n Events) Parent() Node                    { return n.Capture }
@@ -150,8 +146,6 @@ func (n *Commands) SetParent(p Node)                  { n.Capture, _ = p.(*Captu
 func (n *CommandTree) SetParent(p Node)               { n.Capture, _ = p.(*Capture) }
 func (n *CommandTreeNode) SetParent(p Node)           {}
 func (n *CommandTreeNodeForCommand) SetParent(p Node) { n.Command, _ = p.(*Command) }
-func (n *Context) SetParent(p Node)                   { n.Capture, _ = p.(*Capture) }
-func (n *Contexts) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
 func (n *Device) SetParent(p Node)                    {}
 func (n *DeviceTraceConfiguration) SetParent(p Node)  { n.Device, _ = p.(*Device) }
 func (n *Events) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
@@ -224,12 +218,6 @@ func (n CommandTreeNodeForCommand) Format(f fmt.State, c rune) {
 }
 
 // Format implements fmt.Formatter to print the path.
-func (n Context) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.[%x]", n.Parent(), n.ID) }
-
-// Format implements fmt.Formatter to print the path.
-func (n Contexts) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.contexts", n.Parent()) }
-
-// Format implements fmt.Formatter to print the path.
 func (n Device) Format(f fmt.State, c rune) { fmt.Fprintf(f, "device<%x>", n.ID) }
 
 // Format implements fmt.Formatter to print the path.
@@ -293,7 +281,7 @@ func (n Slice) Format(f fmt.State, c rune) {
 
 // Format implements fmt.Formatter to print the path.
 func (n State) Format(f fmt.State, c rune) {
-	fmt.Fprintf(f, "%v.state<context: %v>", n.Parent(), n.Context)
+	fmt.Fprintf(f, "%v.state", n.Parent())
 }
 
 // Format implements fmt.Formatter to print the path.
@@ -562,11 +550,6 @@ func (n *Capture) Report(d *Device, f *CommandFilter, display bool) *Report {
 	return &Report{Capture: n, Device: d, Filter: f, DisplayToSurface: display}
 }
 
-// Contexts returns the path node to the capture's contexts.
-func (n *Capture) Contexts() *Contexts {
-	return &Contexts{Capture: n}
-}
-
 // Messages returns the path node to the capture's messages.
 func (n *Capture) Messages() *Messages {
 	return &Messages{Capture: n}
@@ -617,11 +600,6 @@ func (n *CommandTreeNode) Child(i uint64) *CommandTreeNode {
 func (n *Capture) Command(i uint64, subidx ...uint64) *Command {
 	indices := append([]uint64{i}, subidx...)
 	return &Command{Capture: n, Indices: indices}
-}
-
-// Context returns the path node to the a context with the given ID.
-func (n *Capture) Context(id id.ID) *Context {
-	return &Context{Capture: n, ID: NewID(id)}
 }
 
 // Thread returns the path node to the thread with the given ID.

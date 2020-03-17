@@ -57,28 +57,6 @@ func getStateObject(s *api.GlobalState) *State {
 	return GetState(s)
 }
 
-type VulkanContext struct{}
-
-// Name returns the display-name of the context.
-func (VulkanContext) Name() string {
-	return "Vulkan Context"
-}
-
-// ID returns the context's unique identifier.
-func (VulkanContext) ID() api.ContextID {
-	// ID returns the context's unique identifier
-	return api.ContextID{1}
-}
-
-// API returns the vulkan API.
-func (VulkanContext) API() api.API {
-	return API{}
-}
-
-func (API) Context(ctx context.Context, s *api.GlobalState, thread uint64) api.Context {
-	return VulkanContext{}
-}
-
 // Root returns the path to the root of the state to display. It can vary based
 // on filtering mode. Returning nil, nil indicates there is no state to show at
 // this point in the capture.

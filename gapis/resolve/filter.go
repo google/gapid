@@ -52,20 +52,6 @@ func buildFilter(
 			return !sd.Hidden.Contains(id)
 		},
 	}
-	if f := f.GetContext(); f.IsValid() {
-		c, err := Context(ctx, p.Context(f.ID()), r)
-		if err != nil {
-			return nil, err
-		}
-		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
-			if api := cmd.API(); api != nil {
-				if ctx := api.Context(ctx, s, cmd.Thread()); ctx != nil {
-					return ctx.ID() == c.ID
-				}
-			}
-			return false
-		})
-	}
 	if len(f.GetThreads()) > 0 {
 		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			thread := cmd.Thread()

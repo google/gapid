@@ -47,9 +47,6 @@ type EventFilter func(api.CmdID, api.Cmd, *api.GlobalState) bool
 type Extension struct {
 	// Name of the extension.
 	Name string
-	// AdjustContexts lets the extension rename or reprioritize the list of
-	// contexts.
-	AdjustContexts func(context.Context, []*api.ContextInfo)
 	// Custom command groupers.
 	CmdGroupers func(ctx context.Context, p *path.CommandTree, r *path.ResolveConfig) []cmdgrouper.Grouper
 	// Custom events provider.

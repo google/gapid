@@ -311,10 +311,6 @@ func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (i
 		return CommandTreeNodeForCommand(ctx, p, r)
 	case *path.ConstantSet:
 		return ConstantSet(ctx, p, r)
-	case *path.Context:
-		return Context(ctx, p, r)
-	case *path.Contexts:
-		return Contexts(ctx, p, r)
 	case *path.Device:
 		return Device(ctx, p, r)
 	case *path.DeviceTraceConfiguration:
