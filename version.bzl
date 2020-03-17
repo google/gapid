@@ -15,7 +15,7 @@
 # True source of AGI versions.
 # Increment these numbers immediately after releasing a new version.
 AGI_VERSION_MAJOR="0"
-AGI_VERSION_MINOR="9"
+AGI_VERSION_MINOR="10"
 AGI_VERSION_POINT="0"
 
 # See bazel.rc. Can be overriden on the command line with:
