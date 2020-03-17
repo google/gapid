@@ -25,6 +25,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -109,6 +110,8 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 	lastCmd := cmds[len(cmds)-1]
 	if api.CmdID(len(cmds)) > id {
 		lastCmd = cmds[id]
+	} else {
+		return nil, log.Errf(ctx, nil, "Requested CmdID %v exceeds range of commands", id)
 	}
 
 	if sync, ok := lastCmd.API().(SynchronizedAPI); ok {

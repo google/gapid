@@ -75,19 +75,30 @@ func (t *commandTree) index(indices []uint64) (api.SpanItem, api.SubCmdIdx) {
 	return group, subCmdRootID
 }
 
-func (t *commandTree) indices(id api.CmdID) []uint64 {
+func (t *commandTree) indices(idx []uint64) []uint64 {
 	out := []uint64{}
 	group := t.root
-	for {
-		i := group.IndexOf(id)
-		out = append(out, i)
-		switch item := group.Index(i).(type) {
-		case api.CmdIDGroup:
-			group = item
-		default:
-			return out
+
+	for _, id := range idx {
+		brk := false
+		for {
+			if brk {
+				break
+			}
+			i := group.IndexOf(api.CmdID(id))
+			out = append(out, i)
+			switch item := group.Index(i).(type) {
+			case api.CmdIDGroup:
+				group = item
+			case api.SubCmdRoot:
+				group = item.SubGroup
+				brk = true
+			default:
+				return out
+			}
 		}
 	}
+	return out
 }
 
 // CommandTreeNode resolves the specified command tree node path.
@@ -165,14 +176,9 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 
 	cmdTree := boxed.(*commandTree)
 
-	cmdIdx := p.Command.Indices[0]
-	if len(p.Command.Indices) > 1 {
-		return nil, fmt.Errorf("Subcommands currently not supported for Command Tree") // TODO: Subcommands
-	}
-
 	return &path.CommandTreeNode{
 		Tree:    p.Tree,
-		Indices: cmdTree.indices(api.CmdID(cmdIdx)),
+		Indices: cmdTree.indices(p.Command.Indices),
 	}, nil
 }
 

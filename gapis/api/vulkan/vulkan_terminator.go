@@ -399,7 +399,7 @@ func (t *VulkanTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.
 	// then do that instead of cutting at the derived cutIndex.
 	// It is guaranteed to be safe as long as the requestedSubIndex is
 	// less than the calculated one (i.e. we are cutting more)
-	if len(t.requestSubIndex) > 1 && t.requestSubIndex[0] == uint64(id) {
+	if len(t.requestSubIndex) > 1 && t.requestSubIndex[0] == uint64(id) && t.syncData.SubcommandLookup.Value(t.requestSubIndex) != nil {
 		if len(cutIndex) == 0 || !cutIndex.LessThan(t.requestSubIndex[1:]) {
 			cutIndex = t.requestSubIndex[1:]
 			doCut = true
