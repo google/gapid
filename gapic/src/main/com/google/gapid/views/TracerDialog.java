@@ -1123,6 +1123,13 @@ public class TracerDialog {
           ErrorDialog.showErrorDialog(getShell(), analytics, getErrorMessage(), error));
       errorButton.setVisible(false);
 
+      // Make sure the stop signal is issued when the dialog is closed.
+      getShell().addListener(SWT.Close, e -> {
+          if (!successful()) {
+              trace.stop();
+          }
+      });
+
       update();
 
       Widgets.scheduleUntilDisposed(getShell(), STATUS_INTERVAL_MS, trace::getStatus);

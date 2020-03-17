@@ -24,6 +24,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app:go_default_library",
+        "//core/app/crash:go_default_library",
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/os/android:go_default_library",
@@ -32,7 +33,9 @@ go_library(
         "//core/os/file:go_default_library",
         "//core/text:go_default_library",
         "//gapidapk:go_default_library",
+        "//gapis/perfetto:go_default_library",
         "//gapis/service:go_default_library",
         "//tools/build/third_party/perfetto:config_go_proto",
+        "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )
