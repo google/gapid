@@ -60,16 +60,6 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	defer analytics.SendTiming("resolve", "report")(analytics.Size(len(c.Commands)))
 
-	sd, err := SyncData(ctx, r.Path.Capture)
-	if err != nil {
-		return nil, err
-	}
-
-	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter, sd, r.Config)
-	if err != nil {
-		return nil, err
-	}
-
 	builder := service.NewReportBuilder()
 
 	var currentCmd uint64
@@ -134,19 +124,17 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 			}
 		}
 
-		if filter(id, cmd, state) {
-			for _, item := range items {
-				item.Tags = append(item.Tags, getCommandNameTag(cmd))
-				builder.Add(ctx, item)
+		for _, item := range items {
+			item.Tags = append(item.Tags, getCommandNameTag(cmd))
+			builder.Add(ctx, item)
+		}
+		for _, issue := range issues[id] {
+			item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command),
+				messages.ErrReplayDriver(issue.Error.Error()))
+			if int(issue.Command) < len(c.Commands) {
+				item.Tags = append(item.Tags, getCommandNameTag(c.Commands[issue.Command]))
 			}
-			for _, issue := range issues[id] {
-				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command),
-					messages.ErrReplayDriver(issue.Error.Error()))
-				if int(issue.Command) < len(c.Commands) {
-					item.Tags = append(item.Tags, getCommandNameTag(c.Commands[issue.Command]))
-				}
-				builder.Add(ctx, item)
-			}
+			builder.Add(ctx, item)
 		}
 		return nil
 	})

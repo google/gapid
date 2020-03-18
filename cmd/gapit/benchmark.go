@@ -204,14 +204,13 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	go func() {
 		ctx := status.Start(oldCtx, "Getting Report")
 		defer status.Finish(ctx)
-		filter := &path.CommandFilter{}
 
 		_, err := client.Get(ctx, c.Commands().Path(), resolveConfig)
 		if err != nil {
 			panic(err)
 		}
 
-		_, err = client.Get(ctx, c.Report(device, filter, false).Path(), resolveConfig)
+		_, err = client.Get(ctx, c.Report(device, false).Path(), resolveConfig)
 		wg.Done()
 	}()
 

@@ -32,11 +32,7 @@ import (
 type reportVerb struct{ ReportFlags }
 
 func init() {
-	verb := &reportVerb{
-		ReportFlags: ReportFlags{
-			CommandFilterFlags: CommandFilterFlags{},
-		},
-	}
+	verb := &reportVerb{}
 	app.AddVerb(&app.Verb{
 		Name:      "report",
 		ShortHelp: "Check a capture replays without issues",
@@ -85,18 +81,13 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	filter, err := verb.commandFilter(ctx, client, capturePath)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to build the CommandFilter")
-	}
-
 	boxedCommands, err := client.Get(ctx, capturePath.Commands().Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to acquire the capture's commands")
 	}
 	commands := boxedCommands.(*service.Commands).List
 
-	boxedReport, err := client.Get(ctx, capturePath.Report(device, filter, verb.DisplayToSurface).Path(), nil)
+	boxedReport, err := client.Get(ctx, capturePath.Report(device, verb.DisplayToSurface).Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to acquire the capture's report")
 	}

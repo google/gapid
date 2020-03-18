@@ -1716,7 +1716,7 @@ public class Paths {
         visit(path.getDevice(), sb);
         sb.append(']');
       }
-      return append(sb, path.getFilter());
+      return sb;
     }
 
     @Override

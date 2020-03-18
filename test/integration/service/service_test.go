@@ -201,7 +201,7 @@ func TestGet(t *testing.T) {
 		{capture.Command(swapCmdIndex).MemoryAfter(0, 0x1000, 0x1000), T((*service.Memory)(nil))},
 		{capture.Command(drawCmdIndex).Mesh(nil), T((*api.Mesh)(nil))},
 		{capture.CommandTree(nil), T((*service.CommandTree)(nil))},
-		{capture.Report(nil, nil, false), T((*service.Report)(nil))},
+		{capture.Report(nil, false), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
 	} {
 		ctx = log.V{"path": test.path}.Bind(ctx)

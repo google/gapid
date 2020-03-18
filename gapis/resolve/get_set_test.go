@@ -267,7 +267,7 @@ func TestSet(t *testing.T) {
 
 		// Test invalid sets
 		{sB.Field("Map").MapIndex("bird"), 10.0, fmt.Errorf(
-			"Map at capture<%v>.commands[2].state<context: <nil>>.Map has value of type test.Complexʳ, got type float64", p.ID.ID())},
+			"Map at capture<%v>.commands[2].state.Map has value of type test.Complexʳ, got type float64", p.ID.ID())},
 	} {
 		ctx := log.V{"path": test.path, "value": test.val}.Bind(ctx)
 

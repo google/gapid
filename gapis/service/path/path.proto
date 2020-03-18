@@ -394,8 +394,6 @@ message Report {
   Capture capture = 1;
   // The optional path to the device used to generate replay information.
   Device device = 2;
-  // The optional filter to apply to the report items.
-  CommandFilter filter = 3;
   // Whether to display the replay to the original surface while in progress.
   bool display_to_surface = 4;
 }

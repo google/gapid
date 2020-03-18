@@ -546,8 +546,8 @@ func (n *Capture) Resources() *Resources {
 }
 
 // Report returns the path node to the capture's report.
-func (n *Capture) Report(d *Device, f *CommandFilter, display bool) *Report {
-	return &Report{Capture: n, Device: d, Filter: f, DisplayToSurface: display}
+func (n *Capture) Report(d *Device, display bool) *Report {
+	return &Report{Capture: n, Device: d, DisplayToSurface: display}
 }
 
 // Messages returns the path node to the capture's messages.

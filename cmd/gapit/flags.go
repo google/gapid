@@ -184,7 +184,6 @@ type (
 		Gapir            GapirFlags
 		Out              string `help:"output report path"`
 		DisplayToSurface bool   `help:"display the frames rendered in the replay back to the surface"`
-		CommandFilterFlags
 		CaptureFileFlags
 	}
 	ExportReplayFlags struct {
