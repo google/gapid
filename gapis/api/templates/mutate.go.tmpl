@@ -162,11 +162,7 @@
       ϟs, ϟt := GetState(ϟg), ϟc.Thread()
       ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
       ϟo := ϟc.Extras().Observations()
-      _, _ = ϟl, ϟt
-
-      if err := ϟs.preMutate(ϟctx, ϟg, ϟc); err != nil {
-        return err
-      }
+      _, _, _ = ϟs, ϟl, ϟt
 
       {{Global "CurrentFunction" $}}
 
