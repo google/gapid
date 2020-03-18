@@ -784,7 +784,7 @@
             return {{Template "Go.Read" $c.Expression}}
       {{end}}
     default:
-      {{if $.Default}}
+      {{if not (IsNil $.Default)}}
         return {{Template "Go.Read" $.Default}}
       {{else}}
         // TODO: better unmatched handling
