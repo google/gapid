@@ -285,6 +285,7 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 		ts.Stop(ctx)
 		return 0, log.Err(ctx, nil, "Cancelled")
 	}
+	ready(ctx)
 	ts.Start(ctx)
 	wait := make(chan error, 1)
 	crash.Go(func() {
