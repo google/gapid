@@ -138,7 +138,7 @@ result execute_query(processor processor, const char* query) {
   }
 
   result res;
-  res.size = raw.ByteSize();
+  res.size = raw.ByteSizeLong();
   res.data = new uint8_t[res.size];
   raw.SerializeWithCachedSizesToArray(res.data);
   return res;

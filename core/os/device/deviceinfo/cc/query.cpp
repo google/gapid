@@ -52,7 +52,7 @@ void deviceInstanceID(device::Instance* instance) {
   auto id = instance->mutable_id();
 
   // Serialize the instance so we can hash it.
-  auto proto_size = instance->ByteSize();
+  auto proto_size = instance->ByteSizeLong();
   auto proto_data = new uint8_t[proto_size];
   instance->SerializeToArray(proto_data, proto_size);
 

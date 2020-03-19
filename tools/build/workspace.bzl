@@ -58,8 +58,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "google",
         project = "protobuf",
-        commit = "815ff7e1fb2d417d5aebcbf5fc46e626b18dc834", # Head of 3.8.x branch
-        sha256 = "083646275522dc57e145f769c2daf39d469757bafcc5b7d09b119dfaf1b873b8",
+        commit = "d0bfd5221182da1a7cc280f3337b5e41a89539cf",  # 3.11.4
+        sha256 = "c5fd8f99f0d30c6f9f050bf008e021ccc70d7645ac1f64679c6038e07583b2f3",
         repo_mapping = {"@zlib": "@net_zlib"},
     )
 
@@ -74,6 +74,16 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         sha256 = "9ed7d944d8d07deac365c9edcda10ce8159c1436119e1b0792a1e830cb20606c",
     )
     _grpc_deps(locals)
+
+    maybe_repository(
+        github_repository,
+        name = "rules_python",
+        locals = locals,
+        organization = "bazelbuild",
+        project = "rules_python",
+        commit = "9150caa9d857e3768a4cf5ef6c3e88668b7ec84f",  # 0.0.1
+        sha256 = "8eece92b8e286ac60b2847f0f00d0a949b3b0192669ffcc9e8d3c8365f889d1e",
+    )
 
     ###########################################
     # Now get all our other non-go dependencies

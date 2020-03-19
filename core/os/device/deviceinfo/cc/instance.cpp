@@ -31,7 +31,7 @@ device_instance get_device_instance() {
   }
 
   // Reserialize the instance with the ID field.
-  out.size = instance->ByteSize();
+  out.size = instance->ByteSizeLong();
   out.data = new uint8_t[out.size];
   instance->SerializeToArray(out.data, out.size);
 
