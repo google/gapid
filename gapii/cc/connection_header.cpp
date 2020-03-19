@@ -28,8 +28,7 @@ ConnectionHeader::ConnectionHeader()
       mStartFrame(0),
       mNumFrames(0),
       mAPIs(0xFFFFFFFF),
-      mFlags(0),
-      mGvrHandle(0) {}
+      mFlags(0) {}
 
 bool ConnectionHeader::read(core::StreamReader* reader) {
   if (!reader->read(mMagic)) {
@@ -48,8 +47,8 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
     return false;
   }
 
-  const int kMinSupportedVersion = 2;
-  const int kMaxSupportedVersion = 2;
+  const int kMinSupportedVersion = 3;
+  const int kMaxSupportedVersion = 3;
 
   if (mVersion < kMinSupportedVersion || mVersion > kMaxSupportedVersion) {
     GAPID_WARNING(
@@ -60,8 +59,7 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
   if (!reader->read(mObserveFrameFrequency) ||
       !reader->read(mObserveDrawFrequency) || !reader->read(mStartFrame) ||
       !reader->read(mNumFrames) || !reader->read(mAPIs) ||
-      !reader->read(mFlags) || !reader->read(mGvrHandle) ||
-      !reader->read(mLibInterceptorPath)) {
+      !reader->read(mFlags)) {
     return false;
   }
 

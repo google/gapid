@@ -179,19 +179,9 @@ func (a APK) LibGAPIIPath(abi *device.ABI) string {
 	return a.LibsPath(abi) + "/" + LibGAPIIName
 }
 
-// LibInterceptorPath returns the path on the Android device to the
-// interceptor dynamic library file.
-// gapid.apk must be installed for this path to be valid.
-func (a APK) LibInterceptorPath(abi *device.ABI) string {
-	return a.LibsPath(abi) + "/" + LibInterceptorName
-}
-
 const (
 	// LibGAPIIName is the name of the GAPII dynamic library file.
 	LibGAPIIName = "libgapii.so"
-
-	// LibInterceptorName is the name of the interceptor dynamic library file.
-	LibInterceptorName = "libinterceptor.so"
 
 	// GraphicsSpyLayerName is the name of the graphics spy layer.
 	GraphicsSpyLayerName = "GraphicsSpy"

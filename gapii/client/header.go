@@ -23,30 +23,26 @@ import (
 
 var magic = [4]byte{'s', 'p', 'y', '0'}
 
-const version = 2
+const version = 3
 
 // The GAPII header is defined as:
 //
-// const size_t MAX_PATH = 512;
-//
 // struct ConnectionHeader {
 //     uint8_t  mMagic[4];                     // 's', 'p', 'y', '0'
-//     uint32_t mVersion;                      // 2
+//     uint32_t mVersion;                      // 3
 //     uint32_t mObserveFrameFrequency;        // non-zero == enabled.
 //     uint32_t mObserveDrawFrequency;         // non-zero == enabled.
 //     uint32_t mStartFrame;                   // non-zero == Frame to start at.
 //     uint32_t mNumFrames;                    // non-zero == Number of frames to capture.
 //     uint32_t mAPIs;                         // Bitset of APIS to enable.
 //     uint32_t mFlags;                        // Combination of FLAG_XX bits.
-//     char     mLibInterceptorPath[MAX_PATH]; // Path to libinterceptor.so
 // };
 //
 // All fields are encoded little-endian with no compression, regardless of
 // architecture. All changes must be kept in sync with:
 //   platform/tools/gpu/gapii/cc/connection_header.h
 
-func sendHeader(out io.Writer, options Options, gvrHandle uint64, libInterceptorPath string) error {
-	const maxPath = 512
+func sendHeader(out io.Writer, options Options) error {
 	w := endian.Writer(out, device.LittleEndian)
 	for _, m := range magic {
 		w.Uint8(m)
@@ -58,9 +54,5 @@ func sendHeader(out io.Writer, options Options, gvrHandle uint64, libInterceptor
 	w.Uint32(options.FramesToCapture)
 	w.Uint32(options.APIs)
 	w.Uint32(uint32(options.Flags))
-	w.Uint64(gvrHandle)
-	var path [maxPath]byte
-	copy(path[:], libInterceptorPath)
-	w.Data(path[:])
 	return w.Error()
 }

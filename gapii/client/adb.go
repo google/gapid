@@ -184,7 +184,7 @@ func Connect(ctx context.Context, d adb.Device, abi *device.ABI, pipe string, o 
 	ctx = log.V{"port": port}.Bind(ctx)
 
 	log.I(ctx, "Checking gapid.apk is installed")
-	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
+	_, err = gapidapk.EnsureInstalled(ctx, d, abi)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Installing gapid.apk")
 	}
@@ -199,8 +199,7 @@ func Connect(ctx context.Context, d adb.Device, abi *device.ABI, pipe string, o 
 		Device:  d,
 		Options: o,
 	}
-	interceptorPath := apk.LibInterceptorPath(abi)
-	if err := process.connect(ctx, 0, interceptorPath); err != nil {
+	if err := process.connect(ctx); err != nil {
 		return nil, err
 	}
 	return process, nil

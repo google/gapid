@@ -69,8 +69,6 @@ class ConnectionHeader {
     mNumFrames = 0;
     mAPIs = 0;
     mFlags = 0;
-    mGvrHandle = 0;
-    mLibInterceptorPath[0] = '\0';
   }
 
   uint8_t mMagic[4];                // 's', 'p', 'y', '0'
@@ -81,8 +79,6 @@ class ConnectionHeader {
   uint32_t mNumFrames;              // non-zero == Number of frames to capture.
   uint32_t mAPIs;                   // Bitset of APIS to enable.
   uint32_t mFlags;                  // Combination of FLAG_XX bits.
-  uint64_t mGvrHandle;              // Handle of GVR library.
-  char mLibInterceptorPath[MAX_PATH];  // Path of libinterceptor.so.
 };
 
 }  // namespace gapii

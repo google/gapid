@@ -105,7 +105,7 @@ func (s siSize) String() string {
 	return fmt.Sprintf(f, v)
 }
 
-func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath string) error {
+func (p *Process) connect(ctx context.Context) error {
 	log.I(ctx, "Waiting for connection to localhost:%d...", p.Port)
 
 	// ADB has an annoying tendancy to insta-close forwarded sockets when
@@ -127,7 +127,7 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 			conn.Close()
 			return true, log.Errf(ctx, nil, "Got unexpected magic: %v", magic)
 		}
-		if err := sendHeader(conn, p.Options, gvrHandle, interceptorPath); err != nil {
+		if err := sendHeader(conn, p.Options); err != nil {
 			conn.Close()
 			return true, log.Err(ctx, err, "Failed to send header")
 		}
@@ -185,7 +185,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	}()
 
 	if p.conn == nil {
-		if err := p.connect(ctx, 0, ""); err != nil {
+		if err := p.connect(ctx); err != nil {
 			return 0, err
 		}
 	}
