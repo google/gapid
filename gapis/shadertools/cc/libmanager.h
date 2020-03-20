@@ -38,14 +38,6 @@ typedef struct debug_instructions_t {
   uint32_t insts_num;
 } debug_instructions_t;
 
-typedef struct code_with_debug_info_t {
-  bool ok;
-  char* message;
-  char* source_code;
-  char* disassembly_string;
-  debug_instructions_t* info;
-} code_with_debug_info_t;
-
 typedef enum shader_type_t {
   VERTEX,
   TESS_CONTROL,
@@ -60,24 +52,6 @@ typedef enum client_type_t {
   OPENGLES,
   VULKAN,
 } client_type;
-
-/**
- * Debug options
- **/
-typedef struct convert_options_t {
-  shader_type shader_type;
-  const char* preamble; /* optional */
-  bool prefix_names;
-  const char* names_prefix; /* optional */
-  bool add_outputs_for_inputs;
-  const char* output_prefix; /* optional */
-  bool make_debuggable;
-  bool check_after_changes;
-  bool disassemble;
-  bool relaxed;
-  bool strip_optimizations;
-  int target_glsl_version;
-} convert_options_t;
 
 typedef struct compile_options_t {
   shader_type shader_type;
@@ -96,11 +70,6 @@ typedef struct glsl_compile_result_t {
   spirv_binary_t binary;
 } glsl_compile_result_t;
 
-code_with_debug_info_t* convertGlsl(const char*, size_t,
-                                    const convert_options_t*);
-
-void deleteGlslCodeWithDebug(code_with_debug_info_t*);
-
 const char* getDisassembleText(uint32_t*, size_t);
 
 void deleteDisassembleText(const char*);
@@ -108,8 +77,6 @@ void deleteDisassembleText(const char*);
 spirv_binary_t* assembleToBinary(const char*);
 
 void deleteBinary(spirv_binary_t*);
-
-const char* opcodeToString(uint32_t);
 
 glsl_compile_result_t* compileGlsl(const char* code, const compile_options_t*);
 

@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 
+#include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
 #include "third_party/glslang/SPIRV/GlslangToSpv.h"
-#include "third_party/glslang/SPIRV/disassemble.h"
-#include "third_party/glslang/glslang/Public/ShaderLang.h"
 
 #include "libmanager.h"
-#include "spirv2glsl.h"
-#include "spv_manager.h"
 
 #include <cstring>
 #include <iostream>
@@ -124,12 +121,6 @@ const TBuiltInResource DefaultTBuiltInResource = {
         /* .generalVariableIndexing = */ 1,
         /* .generalConstantMatrixVectorIndexing = */ 1,
     }};
-
-void set_error_msg(code_with_debug_info_t* x, std::string msg) {
-  x->ok = false;
-  x->message = new char[msg.length() + 1];
-  strcpy(x->message, msg.c_str());
-}
 
 std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
                                        std::string* err_msg,
@@ -260,122 +251,6 @@ std::vector<unsigned int> parseGlslang(const char* code, const char* preamble,
 }
 
 /**
- * Only Vertex and Fragment shaders are supported.
- * 1. Compiles source code to spirv using glslang,
- * 2. Changes spirv code to insert debug information using SpvManager,
- * 3. Decompiles changed spirv to source code using spirv-cross,
- * 4. Check, if changed source code correctly compiles.
- **/
-code_with_debug_info_t* convertGlsl(const char* input, size_t length,
-                                    const convert_options_t* options) {
-  code_with_debug_info_t* result = new code_with_debug_info_t{};
-  std::string err_msg;
-
-  std::vector<unsigned int> spirv =
-      parseGlslang(input, options->preamble, &err_msg, options->shader_type,
-                   OPENGLES, options->relaxed);
-
-  if (!err_msg.empty()) {
-    set_error_msg(result, "Failed to parse original source code:\n" + err_msg);
-    return result;
-  }
-
-  // makes changes
-  spvmanager::SpvManager my_manager(spirv);
-  if (options->prefix_names) {
-    if (options->names_prefix) {
-      my_manager.mapDeclarationNames(options->names_prefix);
-    } else {
-      my_manager.mapDeclarationNames();
-    }
-  }
-  if (options->add_outputs_for_inputs) {
-    if (options->output_prefix) {
-      my_manager.addOutputForInputs(options->output_prefix);
-    } else {
-      my_manager.addOutputForInputs();
-    }
-  }
-  if (options->make_debuggable) {
-    my_manager.makeSpvDebuggable();
-  }
-  my_manager.renameViewIndex();
-  my_manager.removeLayoutLocations();
-  my_manager.initLocals();
-
-  std::vector<unsigned int> spirv_new = my_manager.getSpvBinary();
-
-  if (spirv_new.empty()) {
-    set_error_msg(result, "SpvManager did not produce any code.");
-    return result;
-  }
-
-  if (options->disassemble) {
-    std::stringstream disassembly_stream;
-    spv::Disassemble(disassembly_stream, spirv_new);
-    const std::string& tmp = disassembly_stream.str();
-    result->disassembly_string = new char[tmp.length() + 1];
-    strcpy(result->disassembly_string, tmp.c_str());
-  }
-  // Sometimes SPIR-V cross throws exceptions. \o/
-  // This is a big hammer, but should handle all of the cases
-  try {
-    std::string source =
-        spirv2glsl(std::move(spirv_new), options->target_glsl_version,
-                   options->strip_optimizations);
-
-    result->source_code = new char[source.length() + 1];
-    strcpy(result->source_code, source.c_str());
-    result->source_code[source.length()] = '\0';
-
-    // check if changed source code compiles again
-    if (options->check_after_changes) {
-      parseGlslang(result->source_code, nullptr, &err_msg, options->shader_type,
-                   OPENGL, false);
-    }
-
-    if (!err_msg.empty()) {
-      set_error_msg(result,
-                    "Failed to parse modified source code:\n" + err_msg);
-      return result;
-    }
-  } catch (const std::runtime_error& e) {
-    set_error_msg(result, std::string("Exception thrown from spirv-cross: \n") +
-                              e.what());
-    return result;
-  } catch (...) {
-    set_error_msg(result, "Unknown thrown from spirv-cross\n");
-    return result;
-  }
-
-  result->info = my_manager.getDebugInstructions();
-  result->ok = true;
-
-  return result;
-}
-
-/**
- * Releses memory allocated by SpvManager.
- * May needs update after changes.
- **/
-void deleteGlslCodeWithDebug(code_with_debug_info_t* debug) {
-  delete debug->message;
-  delete[] debug->source_code;
-  delete[] debug->disassembly_string;
-
-  if (debug->info) {
-    for (uint32_t i = 0; i < debug->info->insts_num; i++) {
-      delete[] debug->info->insts[i].words;
-      delete[] debug->info->insts[i].name;
-    }
-    delete[] debug->info->insts;
-    delete debug->info;
-  }
-
-  delete debug;
-}
-
-/**
  * Returns pointer to disassemble text.
  **/
 const char* getDisassembleText(uint32_t* spirv_binary, size_t length) {
@@ -429,10 +304,6 @@ void deleteBinary(spirv_binary_t* binary) {
     delete[] binary->words;
   }
   delete binary;
-}
-
-const char* opcodeToString(uint32_t opcode) {
-  return spvOpcodeString(static_cast<SpvOp>(opcode));
 }
 
 glsl_compile_result_t* compileGlsl(const char* code,
