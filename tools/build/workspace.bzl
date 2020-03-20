@@ -69,9 +69,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "grpc",
         project = "grpc",
-        # v1.20.1
-        commit = "7741e806a213cba63c96234f16d712a8aa101a49",
-        sha256 = "9ed7d944d8d07deac365c9edcda10ce8159c1436119e1b0792a1e830cb20606c",
+        commit = "c599e6a922a80e40e24a2d3c994a6dd51046796b",  # 1.22.1
+        sha256 = "d17ead923510b3c8a03eec623fffe4cba64d43e10b3695f027a1c8f10c03756a",
     )
     _grpc_deps(locals)
 
@@ -360,7 +359,7 @@ def _grpc_deps(locals):
     )
 
     native.bind(
-        name = "zlib",
+        name = "madler_zlib",
         actual = "@net_zlib//:z",
     )
 
