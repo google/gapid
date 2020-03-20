@@ -103,9 +103,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "ARM-software",
         project = "astc-encoder",
-        commit = "b6bf6e7a523ddafdb8cfdc84b068d8fe70ffb45e",
+        commit = "de61b3511fa2c3e2e0ae87f5a7874a928e3a3111",  # 1.x (March 2020)
         build_file = "@gapid//tools/build/third_party:astc-encoder.BUILD",
-        sha256 = "7877eb08c61d8b258c5d4690e924090cb7f303e8be6d74e9a9a611d3177bb5ae",
+        sha256 = "ac3318f1120e66d195fe4c5d3c413e20f9eeddc4c378349eeb906ca1d405d4f2",
     )
 
     maybe_repository(

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdio.h>
+
 #include "astc.h"
 
 #include "third_party/astc-encoder/Source/astc_codec_internals.h"
@@ -25,7 +27,10 @@ int print_diagnostics = 0;
 // Functions that are used in compilation units we depend on, but don't actually
 // use.
 int astc_codec_unlink(const char *filename) { return 0; }
-void astc_codec_internal_error(const char *filename, int linenum) {}
+void astc_codec_internal_error(const char *filename, int linenum) {
+    printf("ASTC error: %s:%d\n", filename, linenum);
+    exit(1);
+}
 astc_codec_image *load_ktx_uncompressed_image(const char *filename, int padding, int *result) { return 0; }
 astc_codec_image *load_dds_uncompressed_image(const char *filename, int padding, int *result) { return 0; }
 astc_codec_image *load_tga_image(const char *tga_filename, int padding, int *result) { return 0; }
