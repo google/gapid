@@ -31,9 +31,16 @@ import (
 // be very careful re-ordering the top of this file, the stack trace captures line numbers
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+//go:noinline
 func nested3() stacktrace.Callstack { return nested2() }
+
+//go:noinline
 func nested2() stacktrace.Callstack { return nested1() }
+
+//go:noinline
 func nested1() stacktrace.Callstack { return stacktrace.Capture() }
+
+//go:noinline
 func init() {
 	for i := range traces {
 		traces[i].stack = traces[i].fun()
@@ -60,30 +67,22 @@ var (
 	traces = []traceEntry{{
 		fun: stacktrace.Capture,
 		expect: [][]string{{
-			"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
+			"⇒ core/fault/stacktrace/stacktrace_test.go@46:init.0",
 		}},
 	}, {
 		fun: nested1,
 		expect: [][]string{{
-			"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
-			"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
+			"⇒ core/fault/stacktrace/stacktrace_test.go@41:nested1",
+			"⇒ core/fault/stacktrace/stacktrace_test.go@46:init.0",
 		}},
 	}, {
 		fun: nested3,
 		expect: [][]string{
 			{
-				"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
-				"⇒ core/fault/stacktrace/stacktrace_test.go@35:nested2",
-				"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
-				"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
-			},
-			// Compiling with optimisations can lead to the following
-			// stack trace:
-			{
-				"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
-				"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
-				"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
-				"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@41:nested1",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@38:nested2",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@35:nested3",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@46:init.0",
 			},
 		},
 	}}
