@@ -19,6 +19,7 @@ package(default_visibility = ["//visibility:public"])
 java_library(
     name = "grpc",
     exports = [
+        "{{io_grpc_api}}",
         "{{io_grpc_context}}",
         "{{io_grpc_core}}",
         "{{io_grpc_okhttp}}",
@@ -27,6 +28,7 @@ java_library(
         "{{io_grpc_stub}}",
         "{{io_opencensus_api}}",
         "{{io_opencensus_contrib_grpc_metrics}}",
+        "{{io_perfmark_api}}",
         "{{javax_annotation_api}}",
     ],
 )

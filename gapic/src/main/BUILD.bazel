@@ -45,6 +45,7 @@ java_grpc_library(
     srcs = ["//gapis/service:service_proto"],
     deps = [
         ":protos",
+        "@com_google_protobuf//:protobuf_java",
         "@gapic_third_party//:grpc",
         "@gapic_third_party//:guava",
     ],

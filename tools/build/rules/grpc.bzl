@@ -16,29 +16,23 @@ def _gen_java_source_impl(ctx):
   # Use .jar since .srcjar makes protoc think output will be a directory
   srcdotjar = ctx.actions.declare_file(ctx.label.name + "-src.jar")
   protos = [f for dep in ctx.attr.srcs for f in dep[ProtoInfo].direct_sources]
-  includes = [f for dep in ctx.attr.srcs for f in dep[ProtoInfo].transitive_imports.to_list()]
+  dsi = [f for dep in ctx.attr.srcs for f in dep[ProtoInfo].transitive_descriptor_sets.to_list()]
 
-  arguments = [
-    "--plugin=protoc-gen-grpc-java=" + ctx.executable._plugin.path,
-    "--grpc-java_out=" + srcdotjar.path,
-  ]
-
-  for include in includes:
-    directory = include.path
-    if directory.startswith("external"):
-      external_sep = directory.find("/")
-      repository_sep = directory.find("/", external_sep + 1)
-      arguments += ["--proto_path=" + directory[:repository_sep]]
-    else:
-      arguments += ["--proto_path=."]
-  arguments += [proto.path for proto in protos]
+  args = ctx.actions.args()
+  args.add(ctx.executable._plugin, format = "--plugin=protoc-gen-rpc-plugin=%s")
+  args.add(srcdotjar, format = "--rpc-plugin_out=%s")
+  args.add_joined("--descriptor_set_in", dsi,
+      join_with = ctx.host_configuration.host_path_separator,
+      uniquify = True,
+  )
+  args.add_all(protos)
 
   ctx.actions.run(
-    inputs = protos + includes,
+    inputs = protos + dsi,
     outputs = [srcdotjar],
     tools = [ctx.executable._protoc, ctx.executable._plugin],
     executable = ctx.executable._protoc,
-    arguments = arguments,
+    arguments = [args],
     use_default_shell_env = True,
   )
 
@@ -61,7 +55,7 @@ _gen_java_source = rule(
       cfg = "host",
     ),
     "_plugin": attr.label(
-      default = Label("@com_github_grpc_java//:protoc-gen-java"),
+      default = Label("@com_github_grpc_java//compiler:grpc_java_plugin"),
       executable = True,
       cfg = "host",
     ),

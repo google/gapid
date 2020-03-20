@@ -29,6 +29,7 @@
 	<classpathentry kind="lib" path="bazel-external/com_google_guava/guava.jar" sourcepath="bazel-external/com_google_guava/guava-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/com_squareup_okhttp/okhttp.jar" sourcepath="bazel-external/com_squareup_okhttp/okhttp-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/com_squareup_okio/okio.jar" sourcepath="bazel-external/com_squareup_okio/okio-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_api/grpc-api.jar" sourcepath="bazel-external/io_grpc_api/grpc-api-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/io_grpc_context/grpc-context.jar" sourcepath="bazel-external/io_grpc_context/grpc-context-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/io_grpc_core/grpc-core.jar" sourcepath="bazel-external/io_grpc_core/grpc-core-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/io_grpc_okhttp/grpc-okhttp.jar" sourcepath="bazel-external/io_grpc_okhttp/grpc-okhttp-sources.jar"/>
@@ -37,6 +38,7 @@
 	<classpathentry kind="lib" path="bazel-external/io_grpc_stub/grpc-stub.jar" sourcepath="bazel-external/io_grpc_stub/grpc-stub-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/io_opencensus_api/opencensus-api.jar" sourcepath="bazel-external/io_opencensus_api/opencensus-api-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/io_opencensus_contrib_grpc_metrics/opencensus-contrib-grpc-metrics.jar" sourcepath="bazel-external/io_opencensus_contrib_grpc_metrics/opencensus-contrib-grpc-metrics-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_perfmark_api/perfmark-api.jar" sourcepath="bazel-external/io_perfmark_api/perfmark-api-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.core.commands.jar" sourcepath="bazel-external/jface/org.eclipse.core.commands-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.core.runtime.jar" sourcepath="bazel-external/jface/org.eclipse.core.runtime-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.equinox.common.jar" sourcepath="bazel-external/jface/org.eclipse.equinox.common-sources.jar"/>
