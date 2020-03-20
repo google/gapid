@@ -153,9 +153,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         name = "stb",
         locals = locals,
         remote = "https://github.com/nothings/stb",
-        commit = "f67165c2bb2af3060ecae7d20d6f731173485ad0",
+        commit = "f54acd4e13430c5122cab4ca657705c84aa61b08",
         build_file = "@gapid//tools/build/third_party:stb.BUILD",
-        shallow_since = "1572280202 -0700",
+        shallow_since = "1580905940 -0800",
     )
 
     maybe_repository(
