@@ -46,6 +46,7 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiErrorCallback;
+import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
@@ -184,6 +185,8 @@ public class PipelineView extends Composite
               }
             }
             return success(pipelines);
+          } catch (DataUnavailableException e) {
+            return error(Loadable.Message.error(e));
           } catch (RpcException e) {
             models.analytics.reportException(e);
             return error(Loadable.Message.error(e));
