@@ -163,9 +163,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         name = "lss",
         locals = locals,
         remote = "https://chromium.googlesource.com/linux-syscall-support",
-        commit = "e6527b0cd469e3ff5764785dadcb39bf7d787154",
+        commit = "fd00dbbd0c06a309c657d89e9430143b179ff6db",
         build_file = "@gapid//tools/build/third_party:lss.BUILD",
-        shallow_since = "1508355462 +0000",
+       shallow_since = "1583885669 +0000",
     )
 
     maybe_repository(
