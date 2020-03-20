@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
-#include "third_party/glslang/SPIRV/GlslangToSpv.h"
+#include "GlslangToSpv.h"
+#include "spirv-tools/libspirv.hpp"
 
 #include "libmanager.h"
 
@@ -109,6 +109,15 @@ const TBuiltInResource DefaultTBuiltInResource = {
     /* .MaxCullDistances = */ 8,
     /* .MaxCombinedClipAndCullDistances = */ 8,
     /* .MaxSamples = */ 4,
+    /* .maxMeshOutputVerticesNV = */ 256,
+    /* .maxMeshOutputPrimitivesNV = */ 512,
+    /* .maxMeshWorkGroupSizeX_NV = */ 32,
+    /* .maxMeshWorkGroupSizeY_NV = */ 1,
+    /* .maxMeshWorkGroupSizeZ_NV = */ 1,
+    /* .maxTaskWorkGroupSizeX_NV = */ 32,
+    /* .maxTaskWorkGroupSizeY_NV = */ 1,
+    /* .maxTaskWorkGroupSizeZ_NV = */ 1,
+    /* .maxMeshViewCountNV = */ 4,
     /* .limits = */
     {
         /* .nonInductiveForLoops = */ 1,

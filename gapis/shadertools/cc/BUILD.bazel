@@ -25,6 +25,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@glslang",
+        "@glslang//:SPIRV",
         "@spirv_cross//:spirv-cross",
         "@spirv_tools//:spirv-tools",
     ],
@@ -39,6 +40,7 @@ cc_test(
     args = ["$(location spirv_example.spv)"],
     copts = cc_copts(),
     data = ["spirv_example.spv"],
+    linkstatic = 1,
     deps = [
         ":cc",
     ],
