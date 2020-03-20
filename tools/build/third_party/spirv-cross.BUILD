@@ -25,7 +25,7 @@ cc_library(
     include_prefix = "third_party/SPIRV-Cross",
     visibility = ["//visibility:public"],
     deps = [
-        "@spirv_headers//:spirv-headers",
-        "@spirv_tools//:spirv-tools",
+        "@spirv_headers//:spirv_c_headers",
+        "@spirv_tools",
     ],
 )

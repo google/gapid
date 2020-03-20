@@ -211,9 +211,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Headers",
-        commit = "9f6846f973a1ef53790e75b9190820ab1557434f",
-        build_file = "@gapid//tools/build/third_party:spirv-headers.BUILD",
-        sha256 = "1980cefd605c440241f5c948eb4446412166b6df1ad133bf74c47180939477d5",
+        commit = "f8bf11a0253a32375c32cad92c841237b96696c0",
+        sha256 = "2ca7c37db06ab526c8c5c31767a0bbdbd30de74909dc1a4900302d7a8f537de7",
     )
 
     maybe_repository(
@@ -222,9 +221,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Cross",
-        commit = "ed55e0ac6d797a338e7c19dad785237f0efc4d86",
+        commit = "871c85d7f0edc6b613e3959bc51d13bfbc2fe2df",
         build_file = "@gapid//tools/build/third_party:spirv-cross.BUILD",
-        sha256 = "a6decf21a137e63f5e9dc01b716c7a905c54eef23fe6a7910058fd253460cec0",
+        sha256 = "6aba055d6a9a7c33ec2761c4883b21c9d67c7fef2550797cea677a77fd65055a",
     )
 
     maybe_repository(
@@ -233,9 +232,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Tools",
-        commit = "8d8a71278bf9e83dd0fb30d5474386d30870b74d",
-        build_file = "@gapid//tools/build/third_party:spirv-tools.BUILD",
-        sha256 = "8b1dfe726ea9047ef679baf2d40dfbf090e70406512358d236e54a8234e71eae",
+        commit = "60104cd97446877dad8ed1010a635218937a2f18",
+        sha256 = "6050c012fec919087ebc3b083b24f874648fc1593b55ac8e3742df760aec19fc",
     )
 
     maybe_repository(
@@ -244,9 +242,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "chaoticbob",
         project = "SPIRV-Reflect",
-        commit = "a861e587bdc924c49272873bbc1744928bc51aac",
+        commit = "3c77a11472a1da7830d055306b4299c5e2398e7c",
         build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
-        sha256 = "da636883f8d31fa5d1a8722374b92e76bc1f19ec7c125882c843079623f1c13a",
+        sha256 = "1af7c64657db1af191d7b8f12928d63159e1c1eafdbedac0b4add905d0430e8c",
     )
 
     maybe_repository(

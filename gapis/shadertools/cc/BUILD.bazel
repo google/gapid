@@ -27,7 +27,7 @@ cc_library(
         "@glslang",
         "@glslang//:SPIRV",
         "@spirv_cross//:spirv-cross",
-        "@spirv_tools//:spirv-tools",
+        "@spirv_tools",
     ],
 )
 
