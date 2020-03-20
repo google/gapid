@@ -93,8 +93,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "google",
         project = "googletest",
-        commit = "62dbaa2947f7d058ea7e16703faea69b1134b024",
-        sha256 = "c86258bf52616f5fa52a622ba58ce700eb2dd9f6ec15ff13ad2b2a579afb9c67",
+        commit = "703bd9caab50b139428cea1aaff9974ebee5742e",  # 1.10.0
+        sha256 = "2db427be8b258ad401177c411c2a7c2f6bc78548a04f1a23576cc62616d9cd38",
     )
 
     maybe_repository(
