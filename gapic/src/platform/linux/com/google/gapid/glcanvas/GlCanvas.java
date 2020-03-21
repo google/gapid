@@ -48,7 +48,7 @@ public abstract class GlCanvas extends Canvas {
   static {
     boolean loaded = false;
     try {
-      Library.loadSystem("linux_glcanvas");
+      Library.loadSystem("", "linux_glcanvas");
       loaded = true;
     } catch (UnsatisfiedLinkError e) {
       LOG.log(SEVERE, "Failed to load GlCanvas JNI library", e);

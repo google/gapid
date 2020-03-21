@@ -204,7 +204,7 @@ public abstract class GlCanvas extends Canvas {
       set(buf, WGLARBMultisample.WGL_SAMPLES_ARB, 4);
       set(buf, 0, 0);
       long result = MemoryStack.nstackMalloc(4, 4 * 2);
-      if (JNI.callPPPPPI(chooseFormat, dc, bufAddr, 0L, 1, result + 4, result) != 1 ||
+      if (JNI.callPPPPPI(dc, bufAddr, 0L, 1, result + 4, result, chooseFormat) != 1 ||
           MemoryUtil.memGetInt(result) == 0) {
         return false;
       }

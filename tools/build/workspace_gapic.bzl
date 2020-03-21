@@ -166,24 +166,24 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             maven_jar,
             name = "org_lwjgl_core",
             locals = locals,
-            artifact = "org.lwjgl:lwjgl:3.2.0",
-            sha256 = "97af9a688081bbdf0cf208b93f02b58fe2db0504ee7333e54780c4b6f70694f8",
-            sha256_src = "1919899fbea2dcf392d0bba6161da058f7f8c4da0877a7e6258ee57305c398e7",
-            sha256_linux = "08ca6d394ef7ac97002bc939642dc285c7f61c94a69070fa9a916921fee637ab",
-            sha256_windows = "ee93b31388356835fe8fbc6155dc83c73ceec7422b777aa2e7e3187e9689b2cc",
-            sha256_macos = "6db0910dea5323a3b61c8b16a28e5f84ee780f2affc2cd06da34b9fe09295051",
+            artifact = "org.lwjgl:lwjgl:3.2.3",
+            sha256 = "f9928c3b4b540643a1bbd59286d3c7175e470849261a0c29a81389f52265ad8b",
+            sha256_src = "97b9c693337f76a596b86b07db26a0a8022e3a4e0a0360edb9bb87bc9b172cda",
+            sha256_linux = "002810129fc6ac4cdfcdf190e18a643a5021b6300f489c1026bbc5d00140ca2e",
+            sha256_windows = "bdf519b9aa90f799954113a15dfa84b273ee4781876b3ecdebf192ce4f88a26c",
+            sha256_macos = "5c520c465a84034b8bc23e1d7ecd621bb99c437cd254ea46b53197448d1b8128",
         )
 
         maybe_repository(
             maven_jar,
             name = "org_lwjgl_opengl",
             locals = locals,
-            artifact = "org.lwjgl:lwjgl-opengl:3.2.0",
-            sha256 = "4cc168087708653bdbc1d700daf3fb4b8c1fc89d23d4cf6ee834c3b1208c85a6",
-            sha256_src = "3693081b41f4259be2df7e37c36a5a2b9ce3f8a451b7acc9d609749a1c6e7974",
-            sha256_linux = "1f04e87ab78cb9616447f2abbf3d8b0c3cf25c73aea7f40b2580caba2a1269f6",
-            sha256_windows = "4e515b2c596a7a0794f0fe855637aafe1427a1f4e331d6b5be83c03add04e0eb",
-            sha256_macos = "a9cc1b2de4be574261c9923027076d5ef5c9565dc2c98c074857d4455ed14848",
+            artifact = "org.lwjgl:lwjgl-opengl:3.2.3",
+            sha256 = "10bcc37506e01d1477d65f1fcf0aa672c95eb785265b28b7f321c8381093eda2",
+            sha256_src = "6082a81f350dfc0e390a9ceb4347fa2a28cd07dfd54dc757fb05fa6f3350314e",
+            sha256_linux = "466e8bae1818c4c584771ee093c8a735e26f56fb25a81dde5675160aaa2fa045",
+            sha256_windows = "c08e3de31632163ac5f746fa945f1924142e08520bd9c81b7dd1b5dbd1b0b8bb",
+            sha256_macos = "e4b4d0cd9138d52271c1d5c18e43c9ac5d36d1a727c47e5ee4031cb45ce730ca",
         )
 
         # Other dependencies.
