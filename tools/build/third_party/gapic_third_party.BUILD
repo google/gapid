@@ -63,9 +63,12 @@ java_library(
     }),
 )
 
-alias(
+java_library(
     name = "guava",
-    actual = "{{com_google_guava}}",
+    exports = [
+        "{{com_google_guava-failureaccess}}",
+        "{{com_google_guava}}",
+    ],
 )
 
 alias(

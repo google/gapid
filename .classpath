@@ -27,6 +27,7 @@
 	<classpathentry kind="lib" path="bazel-bin/gapic/src/main/libservice_grpc.jar" sourcepath="bazel-bin/gapic/src/main/service_grpc-src-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapic/src/main/libsettings_proto-speed.jar" sourcepath="bazel-bin/gapic/src/main/settings_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-external/com_google_guava/guava.jar" sourcepath="bazel-external/com_google_guava/guava-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/com_google_guava-failureaccess/failureaccess.jar" sourcepath="bazel-external/com_google_guava-failureaccess/failureaccess-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/com_squareup_okhttp/okhttp.jar" sourcepath="bazel-external/com_squareup_okhttp/okhttp-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/com_squareup_okio/okio.jar" sourcepath="bazel-external/com_squareup_okio/okio-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/io_grpc_api/grpc-api.jar" sourcepath="bazel-external/io_grpc_api/grpc-api-sources.jar"/>

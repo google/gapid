@@ -192,9 +192,18 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             maven_jar,
             name = "com_google_guava",
             locals = locals,
-            artifact = "com.google.guava:guava:27.0-jre",
-            sha256 = "63b09db6861011e7fb2481be7790c7fd4b03f0bb884b3de2ecba8823ad19bf3f",
-            sha256_src = "170dbf09858d1cffdaaa53d4d6ab15e6253c845318b0cc3bf21f8dffa9d433ab",
+            artifact = "com.google.guava:guava:28.2-jre",
+            sha256 = "fc3aa363ad87223d1fbea584eee015a862150f6d34c71f24dc74088a635f08ef",
+            sha256_src = "e4a71a9d1f5f5f886a1802c257d3fcb78c6c234e2e183257f3ed1474802d077b",
+        )
+
+        maybe_repository(
+            maven_jar,
+            name = "com_google_guava-failureaccess",
+            locals = locals,
+            artifact = "com.google.guava:failureaccess:1.0.1",
+            sha256 = "a171ee4c734dd2da837e4b16be9df4661afab72a41adaf31eb84dfdaf936ca26",
+            sha256_src = "092346eebbb1657b51aa7485a246bf602bb464cc0b0e2e1c7e7201fadce1e98f",
         )
 
     if not no_swt:
@@ -237,6 +246,7 @@ DEFAULT_MAPPINGS = {
     "org_lwjgl_opengl_natives_macos": "@org_lwjgl_opengl//:jar-natives-macos",
     # Others
     "com_google_guava": "@com_google_guava//:jar",
+    "com_google_guava-failureaccess": "@com_google_guava-failureaccess//:jar",
     "jface": "@jface",
     "swt": "@swt",
 }
