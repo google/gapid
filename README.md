@@ -15,46 +15,12 @@
 
 <!-- *Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases). -->
 
-## Documentation
+## About
 
-**[User documentation can be found at gpuinspector.dev](https://gpuinspector.dev)**
+Visit [gpuinspector.dev](https://gpuinspector.dev) for information about Android GPU Inspector.
 
 The [developer documentation](DEVDOC.md) contains some hints for AGI
 developers. See also the README files under some source directories.
-
-## About
-
-Android GPU Inspector is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.
-
-Android GPU Inspector can trace any Android [debuggable application](https://developer.android.com/guide/topics/manifest/application-element.html#debug), or if you have root access to the device any application can be traced.
-AGI can also trace any desktop Vulkan application.
-
-<table>
-  <tr>
-    <td>
-      <a href="https://gpuinspector.dev/images/screenshots/framebuffer.png">
-        <img src="https://gpuinspector.dev/images/screenshots/framebuffer_thumb.jpg" alt="Screenshot 1">
-      </a>
-    </td>
-    <td>
-      <a href="https://gpuinspector.dev/images/screenshots/geometry.png">
-        <img src="https://gpuinspector.dev/images/screenshots/geometry_thumb.jpg" alt="Screenshot 2">
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <a href="https://gpuinspector.dev/images/screenshots/textures.png">
-        <img src="https://gpuinspector.dev/images/screenshots/textures_thumb.jpg" alt="Screenshot 3">
-      </a>
-    </td>
-    <td>
-      <a href="https://gpuinspector.dev/images/screenshots/shaders.png">
-        <img src="https://gpuinspector.dev/images/screenshots/shaders_thumb.jpg" alt="Screenshot 4">
-      </a>
-    </td>
-  </tr>
-</table>
 
 ## Building
 
@@ -62,27 +28,8 @@ AGI can also trace any desktop Vulkan application.
 
 ## Running the client
 
-After building AGI, you can run the client from `<agi-root>/bazel-bin/pkg/gapid`.
+After building AGI, you can run the client from `<agi-root>/bazel-bin/pkg/agi`.
 
 ## Command-Line Interface
 
 AGI exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gpuinspector.dev/cli/).
-
-## Project Structure
-
-Android GPU Inspector consists of the following sub-components:
-
-### [`gapii`](gapii): Graphics API Interceptor
-A layer that sits between the application / game and the GPU driver, recording all the calls and memory accesses.
-
-### [`gapis`](gapis): Graphics API Server
-A process that analyses capture streams reporting incorrect API usage, processes the data for replay on various target devices, and provides an RPC interface to the client.
-
-### [`gapir`](gapir): Graphics API Replay daemon
-A stack-based VM used to playback capture files, imitating the original application’s / game's calls to the GPU driver. Supports read-back of any buffer / framebuffer, and provides profiling functionality.
-
-### [`gapic`](gapic): Graphics API Client
-The frontend user interface application. Provides visual inspection of the capture data, memory, resources, and frame-buffer content.
-
-### [`gapil`](gapil): Graphics API Language
-A new domain specific language to describe a graphics API in its entirety. Combined with our template system to generate huge parts of the interceptor, server and replay systems.
