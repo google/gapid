@@ -150,7 +150,7 @@ func (c *GraphicsCapture) NewState(ctx context.Context) *api.GlobalState {
 		// Clone serialized state, and initialize it for use.
 		for k, v := range c.InitialState.APIs {
 			s := v.Clone(out.Arena)
-			s.SetupInitialState(ctx)
+			s.SetupInitialState(ctx, out)
 			out.APIs[k.ID()] = s
 		}
 	}

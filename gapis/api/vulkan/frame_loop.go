@@ -533,7 +533,7 @@ func (f *frameLoop) cloneState(ctx context.Context, startState *api.GlobalState)
 	for apiState, graphicsApi := range startState.APIs {
 
 		clonedState := graphicsApi.Clone(clone.Arena)
-		clonedState.SetupInitialState(ctx)
+		clonedState.SetupInitialState(ctx, clone)
 
 		clone.APIs[apiState] = clonedState
 	}

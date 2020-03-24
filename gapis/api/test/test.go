@@ -50,7 +50,7 @@ func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) 
 // SetupInitialState sanitizes deserialized state to make it valid.
 // It can fill in any derived data which we choose not to serialize,
 // or it can apply backward-compatibility fixes for older traces.
-func (*State) SetupInitialState(ctx context.Context) {}
+func (*State) SetupInitialState(ctx context.Context, state *api.GlobalState) {}
 
 func (i Remapped) remap(cmd api.Cmd, s *api.GlobalState) (interface{}, bool) {
 	return i, true

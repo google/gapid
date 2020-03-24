@@ -35,7 +35,7 @@ func (l Transforms) TransformAll(ctx context.Context, cmds []api.Cmd, numberOfIn
 			newState.Memory = s.Memory.Clone()
 			for k, v := range s.APIs {
 				clonedState := v.Clone(newState.Arena)
-				clonedState.SetupInitialState(ctx)
+				clonedState.SetupInitialState(ctx, newState)
 				newState.APIs[k] = clonedState
 			}
 			s = newState

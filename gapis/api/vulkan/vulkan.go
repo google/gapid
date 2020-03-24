@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
@@ -66,8 +67,16 @@ func (*State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (p
 
 // SetupInitialState recreates the command lamdas from the state block.
 // These are not encoded so we have to set them up here.
-func (s *State) SetupInitialState(ctx context.Context) {
+func (s *State) SetupInitialState(ctx context.Context, state *api.GlobalState) {
 	s.customState.init(s)
+
+	// Reserve memory for mapped ranges
+	for _, dm := range s.DeviceMemories().All() {
+		if uint64(dm.MappedLocation()) != uint64(0) {
+			state.ReserveMemory([]interval.U64Range{
+				interval.U64Range{First: uint64(dm.MappedLocation()), Count: uint64(dm.MappedSize())}})
+		}
+	}
 }
 
 func (API) GetFramebufferAttachmentInfo(
