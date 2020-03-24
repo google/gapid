@@ -38,22 +38,9 @@ go_test(
     size = "small",
     srcs = ["stub_example_test.go"],
     embed = [":go_default_library"],
-    deps = select({
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "//core/event/task:go_default_library",
-            "//core/log:go_default_library",
-            "//core/os/shell:go_default_library",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "//core/event/task:go_default_library",
-            "//core/log:go_default_library",
-            "//core/os/shell:go_default_library",
-        ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "//core/event/task:go_default_library",
-            "//core/log:go_default_library",
-            "//core/os/shell:go_default_library",
-        ],
-        "//conditions:default": [],
-    }),
+    deps = [
+        "//core/event/task:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/shell:go_default_library",
+    ],
 )
