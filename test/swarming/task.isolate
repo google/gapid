@@ -1,0 +1,11 @@
+{
+  'variables': {
+    'files': [
+      './task-files/',
+    ],
+    'command': [
+      './task-files/task.sh',
+      '${ISOLATED_OUTDIR}',
+    ],
+  },
+}

@@ -85,6 +85,52 @@ set -e
 mkdir $BUILD_ROOT/out
 $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
 
+###############################################################################
+## Build is done, run some tests
+
+##
+## Test on a real device using swarming. APKs are stoed on x20, under:
+## teams/android-graphics-tools/agi/kokoro/swarming/apk/*.apk
+##
+
+# Install LUCI
+curl -fsSL -o luci-py.tar.gz https://chromium.googlesource.com/infra/luci/luci-py.git/+archive/0b027452e658080df1f174c403946914443d2aa6.tar.gz
+mkdir luci-py
+tar xzvf luci-py.tar.gz --directory luci-py
+LUCI_CLIENT_ROOT="$PWD/luci-py/client"
+
+# Credentials come from Keystore
+SWARMING_AUTH_TOKEN_FILE=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key
+
+# Prepare task files
+TASK_FILES_DIR=${SRC}/test/swarming/task-files
+cp -r bazel-bin/pkg ${TASK_FILES_DIR}/agi
+cp -r ${KOKORO_GFILE_DIR}/apk ${TASK_FILES_DIR}/
+
+# Trigger task
+AUTH_FLAG="--auth-service-account-json=$SWARMING_AUTH_TOKEN_FILE"
+TASK_NAME="Kokoro_PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
+ISOLATE_SERVER='https://chrome-isolated.appspot.com'
+SWARMING_SERVER='https://chrome-swarming.appspot.com'
+SWARMING_POOL='SkiaInternal'
+DEVICE_TYPE="flame" # pixel4
+
+$LUCI_CLIENT_ROOT/isolate.py archive $AUTH_FLAG --isolate-server $ISOLATE_SERVER --isolate ${SRC}/test/swarming/task.isolate --isolated task.isolated
+ISOLATED_SHA=`sha1sum task.isolated | awk '{ print $1 }' `
+
+# Priority: lower is more priority, defaults to 200: PR short test tasks should be of higher priority than the default
+PRIORITY=100
+# Hard timeout: maximum number of seconds for the task to terminate
+HARD_TIMEOUT=300
+# Expiration: number of seconds to wait for a bot to be available
+EXPIRATION=600
+
+$LUCI_CLIENT_ROOT/swarming.py trigger $AUTH_FLAG --swarming $SWARMING_SERVER --isolate-server $ISOLATE_SERVER --isolated $ISOLATED_SHA --task-name ${TASK_NAME} --dump-json task.json --dimension pool $SWARMING_POOL --dimension device_type "$DEVICE_TYPE" --priority=$PRIORITY --expiration=$EXPIRATION --hard-timeout=$HARD_TIMEOUT
+
+# Collect task results: if the task failed, then the 'swarming.py collect'
+# command returns non-zero, making the build fail.
+$LUCI_CLIENT_ROOT/swarming.py collect $AUTH_FLAG --swarming $SWARMING_SERVER --json task.json --task-summary-json summary.json
+
 ##
 ## Test capture and replay of the Vulkan Sample App.
 ##
