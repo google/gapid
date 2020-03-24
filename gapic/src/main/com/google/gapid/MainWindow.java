@@ -126,11 +126,15 @@ public class MainWindow extends ApplicationWindow {
         if (error != null) {
           mainUi.showMessage(error);
         } else {
-          MainView view = mainUi.getContents().updateAndGet(
-              models.capture.getData().capture.getType());
-          view.updateViewMenu(findMenu(MenuItems.VIEW_ID));
-          getMenuBarManager().updateAll(true);
-          mainUi.stopLoading();
+          // Let all other handlers of this event get a chance to process before we start disposing
+          // UI components underneath everybody.
+          scheduleIfNotDisposed(mainUi, () -> {
+            MainView view = mainUi.getContents().updateAndGet(
+                models.capture.getData().capture.getType());
+            view.updateViewMenu(findMenu(MenuItems.VIEW_ID));
+            getMenuBarManager().updateAll(true);
+            mainUi.stopLoading();
+          });
         }
       }
     });
