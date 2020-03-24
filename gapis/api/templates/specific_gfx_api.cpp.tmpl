@@ -145,7 +145,13 @@
         {{$args := (GetAnnotation $ "indirect").Arguments}}
         {{$elem := (index $.CallParameters 0).Name}}
         {{$func := Macro "CmdName" $}}
-        if ({{Template "GetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}) {
+        if (
+        #ifndef NDEBUG
+        {{Template "GetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}
+        #else
+        {{Template "FastGetIndirectedFunction" "Annotations" $args "Element" $elem "Function" $func}}
+        #endif
+        ) {
       {{else}}
         if (mFunctionStubs.{{$name}} != nullptr) {
       {{end}}
@@ -242,6 +248,28 @@
     mIndirectMaps.{{$from_class}}sTo{{$to_class}}s.find({{$.Element}}) != mIndirectMaps.{{$from_class}}sTo{{$to_class}}s.end() &&
     {{$next_elements := Macro "ComposeIndirectMap" "FromClass" (print $from_class) "ToClass" (print $to_class) "Element" $.Element}}
     {{Template "GetIndirectedFunction" "Annotations" (Tail 1 $.Annotations) "Element" (print $next_elements) "Function" $.Function}}
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a *reduced* validity check for an indirected function pointer.
+  Only check if element is not "null" handle. 
+-------------------------------------------------------------------------------
+*/}}
+{{define "FastGetIndirectedFunction"}}
+  {{AssertType $.Element  "string"}}
+  {{$annotation := index $.Annotations 0}}
+  {{if eq (len $.Annotations) 1}}
+    {{$.Element}} != 0
+  {{else}}
+    {{$next_annotation := index $.Annotations 1}}
+    {{$from_class := Title $annotation}}
+    {{$to_class := Title $next_annotation}}
+    {{$.Element}} != 0 &&
+    {{$next_elements := Macro "ComposeIndirectMap" "FromClass" (print $from_class) "ToClass" (print $to_class) "Element" $.Element}}
+    {{Template "FastGetIndirectedFunction" "Annotations" (Tail 1 $.Annotations) "Element" (print $next_elements) "Function" $.Function}}
   {{end}}
 {{end}}
 
