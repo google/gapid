@@ -292,7 +292,7 @@ func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveCon
 	}
 	vals := []*memory_box.Value{}
 	for i := 0; i < nElems; i++ {
-		v, err := memory_box.Box(ctx, dec, ty)
+		v, err := memory_box.Box(ctx, dec, ty, p, rc)
 		if err != nil {
 			return nil, err
 		}

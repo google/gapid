@@ -81,11 +81,15 @@ import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.ITreeViewerListener;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.StyledCellLabelProvider;
 import org.eclipse.jface.viewers.TreeExpansionEvent;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
@@ -807,11 +811,6 @@ public class MemoryView extends Composite
             }
           }
           for (TreeItem item : treeViewer.getTree().getItems()) {
-            // Give visual hint to the clickable large array.
-            if (item.getData() instanceof StructNode &&
-                ((StructNode)item.getData()).isLargeArray()) {
-              item.setForeground(0, widgets.theme.memoryLinkColor());
-            }
             // Give visual hint to the elements of level 1.
             item.setBackground(widgets.theme.memoryFirstLevelBackground());
           }
@@ -868,17 +867,23 @@ public class MemoryView extends Composite
       });
       tree.addDoubleClickListener(e -> Display.getDefault().asyncExec(() -> packColumns(tree.getTree())));
 
-      // Add link action for the nodes with hidden large array.
+      // Add link action
       tree.getTree().addListener(SWT.MouseUp, e -> {
-        if (isOnLargeArray(tree, new Point(e.x, e.y))) {
+        if (isOnLink(tree, new Point(e.x, e.y))) {
           StructNode node = ((StructNode)tree.getTree().getItem(new Point(e.x, e.y)).getData());
-          long address = node.getRootAddress();
-          blockPanel.goToObservation(address);
-          folder.setSelection(0);
+          if (node.isLargeArray()) {
+            // Large array links are synthetic on the client side
+            long address = node.getRootAddress();
+            blockPanel.goToObservation(address);
+            folder.setSelection(0);
+          } else if (node.getValue().hasLink()) {
+            // Other links come from the server, and are paths to arbitrary places
+            models.follower.onFollow(node.getValue().getLink());
+          }
         }
       });
       tree.getTree().addListener(SWT.MouseMove, e -> {
-        if (isOnLargeArray(tree, new Point(e.x, e.y))) {
+        if (isOnLink(tree, new Point(e.x, e.y))) {
           setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
         } else {
           setCursor(null);
@@ -887,16 +892,32 @@ public class MemoryView extends Composite
 
       createTreeColumn(tree, "Type", e -> ((StructNode)e).getTypeFormatted());
       createTreeColumn(tree, "Name", e -> ((StructNode)e).getStructName());
-      createTreeColumn(tree, "Value", e -> ((StructNode) e).getValueFormatted());
+      TreeViewerColumn valueColumn = createTreeColumn(tree, "Value");
+      valueColumn.setLabelProvider(new StyledCellLabelProvider(){
+        @Override
+        public void update(ViewerCell cell) {
+          StructNode e = (StructNode)cell.getElement();
+          cell.setText(e.getValueFormatted());
+          if (e.getValue().hasLink() || e.isLargeArray()) {
+            StyleRange style = new StyleRange();
+            widgets.theme.linkStyler().applyStyles(style);
+            style.length = cell.getText().length();
+            cell.setStyleRanges(new StyleRange[] { style });
+          }
+
+          super.update(cell);
+        }
+      });
+
       return tree;
     }
 
-    // Return true if the cursor is on the first column of a large array.
-    private boolean isOnLargeArray(TreeViewer tree, Point point) {
+    // Return true if the cursor is on the value column of a link (either link from the server, or a large array)
+    private boolean isOnLink(TreeViewer tree, Point point) {
       TreeItem item = tree.getTree().getItem(point);
       return item != null && item.getData() instanceof StructNode
-          && ((StructNode)item.getData()).isLargeArray()
-          && item.getBounds(0).contains(point);
+          && (((StructNode)item.getData()).isLargeArray() || ((StructNode)item.getData()).getValue().hasLink())
+          && item.getBounds(2).contains(point);
     }
   }
 

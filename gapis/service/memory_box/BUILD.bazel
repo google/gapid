@@ -28,6 +28,7 @@ go_library(
         "//core/data/pod:go_default_library",
         "//core/log:go_default_library",
         "//gapis/memory:go_default_library",
+        "//gapis/service/path:go_default_library",
         "//gapis/service/types:go_default_library",
     ],
 )
@@ -36,7 +37,10 @@ proto_library(
     name = "memory_box_proto",
     srcs = ["box.proto"],
     visibility = ["//visibility:public"],
-    deps = ["//core/data/pod:pod_proto"],
+    deps = [
+        "//core/data/pod:pod_proto",
+        "//gapis/service/path:path_proto",
+    ],
 )
 
 go_proto_library(
@@ -44,7 +48,10 @@ go_proto_library(
     importpath = "github.com/google/gapid/gapis/service/memory_box",
     proto = ":memory_box_proto",
     visibility = ["//visibility:public"],
-    deps = ["//core/data/pod:go_default_library"],
+    deps = [
+        "//core/data/pod:go_default_library",
+        "//gapis/service/path:go_default_library",
+    ],
 )
 
 java_proto_library(

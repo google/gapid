@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "core/data/pod/pod.proto";
+import "gapis/service/path/path.proto";
 
 package memory_box;
 option java_package = "com.google.gapid.proto.service.memory_box";
@@ -30,6 +31,7 @@ message Value {
     Array array = 6;
     Null null = 7;
   }
+  path.Any link = 8;
 }
 
 message Pointer {

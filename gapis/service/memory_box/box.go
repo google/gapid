@@ -16,19 +16,26 @@ package memory_box
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/service/types"
 )
 
-func Box(ctx context.Context, d *memory.Decoder, t *types.Type) (*Value, error) {
+var (
+	tyLinkable = reflect.TypeOf((*path.Linker)(nil)).Elem()
+)
+
+func Box(ctx context.Context, d *memory.Decoder, t *types.Type, p path.Node, rc *path.ResolveConfig) (*Value, error) {
 	a, err := t.Alignment(ctx, d.MemoryLayout())
 	if err != nil {
 		return nil, err
 	}
 	d.Align(uint64(a))
+	typeId := t.TypeId
 	switch t := t.Ty.(type) {
 	case *types.Type_Pod:
 		switch t.Pod {
@@ -192,7 +199,7 @@ func Box(ctx context.Context, d *memory.Decoder, t *types.Type) (*Value, error) 
 				return nil, log.Err(ctx, nil, "Incomplete type in struct box")
 			}
 
-			v, err := Box(ctx, d, elem)
+			v, err := Box(ctx, d, elem, p, rc)
 			if err != nil {
 				return nil, err
 			}
@@ -248,7 +255,33 @@ func Box(ctx context.Context, d *memory.Decoder, t *types.Type) (*Value, error) 
 		}
 	case *types.Type_Pseudonym:
 		if elem, ok := types.TryGetType(t.Pseudonym.Underlying); ok {
-			return Box(ctx, d, elem)
+			b, err := Box(ctx, d, elem, p, rc)
+			if err != nil {
+				return nil, err
+			}
+
+			reflType, err := types.GetReflectedType(typeId)
+			if err != nil {
+				return nil, err
+			}
+
+			if reflType.Implements(tyLinkable) {
+				// reflectively convert the underlying value back to what its
+				// api type should have been, then attempt to link through it.
+				v := reflect.New(reflType)
+				switch vv := b.Val.(*Value_Pod).Pod.Val.(type) {
+				case (*pod.Value_Uint64):
+					v.Elem().SetUint(vv.Uint64)
+				case (*pod.Value_Uint32):
+					v.Elem().SetUint(uint64(vv.Uint32))
+				}
+
+				if res, err := v.Interface().(path.Linker).Link(ctx, p, rc); err == nil {
+					b.Link = res.Path()
+				}
+			}
+
+			return b, nil
 		}
 	case *types.Type_Array:
 		if elem, ok := types.TryGetType(t.Array.ElementType); ok {
@@ -256,7 +289,7 @@ func Box(ctx context.Context, d *memory.Decoder, t *types.Type) (*Value, error) 
 				Entries: []*Value{},
 			}
 			for i := uint64(0); i < t.Array.Size; i++ {
-				v, err := Box(ctx, d, elem)
+				v, err := Box(ctx, d, elem, p, rc)
 				if err != nil {
 					return nil, err
 				}
@@ -270,7 +303,7 @@ func Box(ctx context.Context, d *memory.Decoder, t *types.Type) (*Value, error) 
 		}
 	case *types.Type_Enum:
 		if elem, ok := types.TryGetType(t.Enum.Underlying); ok {
-			return Box(ctx, d, elem)
+			return Box(ctx, d, elem, p, rc)
 		}
 	case *types.Type_Map:
 		return nil, log.Err(ctx, nil, "Cannot decode map from memory")
