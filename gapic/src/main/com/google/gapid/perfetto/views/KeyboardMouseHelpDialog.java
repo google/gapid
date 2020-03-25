@@ -26,18 +26,14 @@ import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
+import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.SWTError;
-import org.eclipse.swt.browser.Browser;
-import org.eclipse.swt.browser.LocationAdapter;
-import org.eclipse.swt.browser.LocationEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -60,29 +56,9 @@ public class KeyboardMouseHelpDialog {
       @Override
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
-
-        Browser browser;
-        try {
-          browser = new Browser(area, SWT.NONE);
-        } catch (SWTError e) {
-          // Failed to initialize the browser. Show it as a plain text widget.
-          Text text = new Text(
-              area, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-          text.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-          text.setText(readKeyboardMouseHelp());
-          return text;
-        }
-
-        browser.setLayoutData(withSizeHints(new GridData(SWT.FILL, SWT.FILL, true, true), 1024, 768));
-        browser.setText(readKeyboardMouseHelp());
-        browser.addLocationListener(new LocationAdapter() {
-          @Override
-          public void changing(LocationEvent event) {
-            if ("about:blank".equals(event.location)) {
-              browser.setText(readKeyboardMouseHelp());
-            }
-          }
-        });
+        Control browser = Widgets.createBrowser(area, readKeyboardMouseHelp());
+        browser.setLayoutData(
+            withSizeHints(new GridData(SWT.FILL, SWT.FILL, true, true), 1024, 768));
         return area;
       }
 

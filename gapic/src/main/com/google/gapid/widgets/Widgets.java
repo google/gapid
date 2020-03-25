@@ -17,6 +17,7 @@ package com.google.gapid.widgets;
 
 import static com.google.gapid.util.GeoUtils.right;
 import static com.google.gapid.util.GeoUtils.top;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -44,6 +45,10 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerColumn;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.SWTError;
+import org.eclipse.swt.browser.Browser;
+import org.eclipse.swt.browser.LocationAdapter;
+import org.eclipse.swt.browser.LocationEvent;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -817,6 +822,30 @@ public class Widgets {
     ScrolledComposite composite = new ScrolledComposite(parent, style);
     composite.setLayout(layout);
     return composite;
+  }
+
+  public static Control createBrowser(Composite parent, String html) {
+    try {
+      Browser browser = new Browser(parent, SWT.NONE);
+      browser.setText(html);
+      browser.addLocationListener(new LocationAdapter() {
+        @Override
+        public void changing(LocationEvent event) {
+          if ("about:blank".equals(event.location)) {
+            browser.setText(html);
+          }
+        }
+      });
+      return browser;
+    } catch (SWTError e) {
+      LOG.log(WARNING, "Failed to create browser widget", e);
+    }
+
+    // Failed to create browser, show as de-HTMLed text.
+    Text text = new Text(
+        parent, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+    text.setText(html.replaceAll("<[^>]+>", ""));
+    return text;
   }
 
   /**
