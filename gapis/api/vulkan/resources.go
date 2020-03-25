@@ -1400,7 +1400,7 @@ func (p GraphicsPipelineObjectʳ) tessellationControlShader(ctx context.Context,
 
 			originState := tessState.TessellationDomainOriginState()
 			if !originState.IsNil() {
-				tessStateList = tessStateList.AppendKeyValuePair("Domain Origin", api.CreateEnumDataValue("VkTessellationDomianOrigin", originState.DomainOrigin()), false)
+				tessStateList = tessStateList.AppendKeyValuePair("Domain Origin", api.CreateEnumDataValue("VkTessellationDomainOrigin", originState.DomainOrigin()), false)
 			}
 
 			dataGroups = append(dataGroups, &api.DataGroup{
