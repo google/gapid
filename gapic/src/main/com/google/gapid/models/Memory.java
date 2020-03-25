@@ -683,12 +683,11 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
       // Remove the outer layer for SLICE type. E.g. {[()]} -> [()].
       if ((tyCase == TyCase.SLICE) && root.hasChildren() && root.children.size() == 1
           && root.children.get(0).hasChildren()) {
-        root = root.children.get(0);
+        root = removeExtraLayers(root.children.get(0));
       }
-      // Remove the inner layer for PSEUDONYM type. E.g. {[()]} -> {()}.
-      if (tyCase == TyCase.PSEUDONYM && root.hasChildren() && root.children.size() == 1
-          && root.children.get(0).hasChildren()) {
-        root.children = root.children.get(0).children;
+      // Treat PSEUDONYM types as leaves, and remove any children they may have had.
+      if (tyCase == TyCase.PSEUDONYM) {
+        root.children.clear();
       }
       for (int i = 0; i < root.children.size(); i++) {
         root.children.set(i, removeExtraLayers(root.children.get(i)));
