@@ -127,9 +127,8 @@ EXPIRATION=600
 
 $LUCI_CLIENT_ROOT/swarming.py trigger $AUTH_FLAG --swarming $SWARMING_SERVER --isolate-server $ISOLATE_SERVER --isolated $ISOLATED_SHA --task-name ${TASK_NAME} --dump-json task.json --dimension pool $SWARMING_POOL --dimension device_type "$DEVICE_TYPE" --priority=$PRIORITY --expiration=$EXPIRATION --hard-timeout=$HARD_TIMEOUT
 
-# Collect task results: if the task failed, then the 'swarming.py collect'
-# command returns non-zero, making the build fail.
-$LUCI_CLIENT_ROOT/swarming.py collect $AUTH_FLAG --swarming $SWARMING_SERVER --json task.json --task-summary-json summary.json
+# Collect the Swarming test results after the swiftshader tests, as swarming
+# will take a few minutes to schedule+run the task anyway.
 
 ##
 ## Test capture and replay of the Vulkan Sample App.
@@ -172,3 +171,27 @@ test "${APP_EXIT_STATUS}" -eq 130
 xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit trace -device host -disable-coherentmemorytracker -disable-pcs -disable-unknown-extensions -record-errors -no-buffer -api vulkan -start-at-frame 5 -capture-frames 10 -observe-frames 1 -out $KOKORO_ARTIFACTS_DIR/vulkan_sample.gfxtrace bazel-bin/cmd/vulkan_sample/vulkan_sample
 
 xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit video -gapir-nofallback -type sxs -frames-minimum 10 -out vulkan_sample.mp4  $KOKORO_ARTIFACTS_DIR/vulkan_sample.gfxtrace
+
+##
+## Collect swarming test result
+##
+
+# The "swarming.py collect" call returns the task's exit code, which is non-zero
+# if the task has expired (it was never scheduled). Allow for non-zero return
+# code, and manually check the task status afterward
+set +e
+$LUCI_CLIENT_ROOT/swarming.py collect $AUTH_FLAG --swarming $SWARMING_SERVER --json task.json --task-summary-json summary.json
+SWARMING_COLLECT_EXIT_CODE=$?
+set -e
+
+# Ignore failures that are not due to the test itself
+if [ "$SWARMING_COLLECT_EXIT_CODE" -ne "0" ] ; then
+  if grep '"state": "EXPIRED"' summary.json > /dev/null ; then
+    echo "Swarming test was never scheduled, ignoring it"
+  elif grep '"internal_failure": true' summary.json > /dev/null ; then
+    echo "Swarming internal failure, ignore the swarming test"
+  else
+    echo "Swarming test failed"
+    exit 1
+  fi
+fi
