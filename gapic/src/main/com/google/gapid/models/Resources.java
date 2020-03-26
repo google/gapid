@@ -98,6 +98,13 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     return getData().getResources(commands.getSelectedCommands().getCommand(), type);
   }
 
+  public Resource getResource(Path.ResourceData path) {
+    if (!isLoaded() || commands.getSelectedCommands() == null) {
+      return null;
+    }
+    return getData().getResource(path);
+  }
+
   public Path.ResourceData getResourcePath(Service.Resource resource) {
     CommandIndex after = commands.getSelectedCommands();
     return (after == null) ? null : Path.ResourceData.newBuilder()
@@ -182,6 +189,19 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
         }
       }
       return new ResourceList(type, list, complete);
+    }
+
+    public Resource getResource(Path.ResourceData path) {
+      for (Service.ResourcesByType rs : resources.getTypesList()) {
+        for (Service.Resource r : rs.getResourcesList()) {
+          if (path.getID().equals(r.getID())) {
+            Path.Command deleted = r.getDeleted();
+            return new Resource(r, !isNull(deleted) && compare(deleted, path.getAfter()) <= 0);
+          }
+        }
+      }
+
+      return null;
     }
 
     private static Path.Command firstAccess(Service.Resource info) {

@@ -41,6 +41,7 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.models.Settings;
@@ -101,7 +102,7 @@ import java.util.logging.Logger;
  * View that displays the texture resources of the current capture.
  */
 public class TextureView extends Composite
-    implements Tab, Capture.Listener, Resources.Listener, CommandStream.Listener {
+    implements Tab, Capture.Listener, Resources.Listener, CommandStream.Listener, Follower.Listener {
   protected static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
   private final Models models;
@@ -146,10 +147,12 @@ public class TextureView extends Composite
     models.capture.addListener(this);
     models.commands.addListener(this);
     models.resources.addListener(this);
+    models.follower.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
       models.resources.removeListener(this);
+      models.follower.removeListener(this);
       gotoAction.dispose();
       imageProvider.reset();
     });
@@ -233,6 +236,20 @@ public class TextureView extends Composite
   @Override
   public void onCommandsSelected(CommandIndex path) {
     updateTextures(false);
+  }
+
+  @Override
+  public void onTextureFollowed(Service.Resource resource) {
+    TableItem[] items = textureTable.getTable().getItems();
+    for (int i = 0; i < items.length; i++) {
+      Data d = (Data)(items[i].getData());
+
+      if (d.info.getID().equals(resource.getID())) {
+        textureTable.getTable().setSelection(items[i]);
+        updateSelection();
+        break;
+      }
+    }
   }
 
   private void updateTextures(boolean resourcesChanged) {

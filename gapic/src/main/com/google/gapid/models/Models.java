@@ -68,7 +68,6 @@ public class Models {
   public static Models create(
       Shell shell, Settings settings, ExceptionHandler handler, Client client, StatusBar status) {
     Analytics analytics = new Analytics(client, settings, handler);
-    Follower follower = new Follower(shell, client);
     Capture capture = new Capture(shell, analytics, client, settings);
     Devices devices = new Devices(shell, analytics, client, capture, settings);
     ConstantSets constants = new ConstantSets(client, devices);
@@ -76,6 +75,7 @@ public class Models {
     CommandStream commands = new CommandStream(
         shell, analytics, client, capture, devices, constants);
     Resources resources = new Resources(shell, analytics, client, capture, devices, commands);
+    Follower follower = new Follower(shell, client, resources);
     ApiState state = new ApiState(
         shell, analytics, client, devices, follower, commands, constants);
     Reports reports = new Reports(shell, analytics, client, capture, devices);

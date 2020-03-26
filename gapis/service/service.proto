@@ -1008,6 +1008,8 @@ message Resource {
   path.Command deleted = 6;
   // The command at which this resource was created.
   path.Command created = 7;
+  // The type of the resource
+  api.ResourceType type = 9;
 }
 
 // CommandTree represents a command tree hierarchy.

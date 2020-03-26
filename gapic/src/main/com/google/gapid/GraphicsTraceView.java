@@ -25,6 +25,7 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.views.CommandTree;
@@ -107,6 +108,11 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
       @Override
       public void onStateFollowed(Path.Any path) {
         tabs.showTab(MainTab.Type.ApiState);
+      }
+
+      @Override
+      public void onTextureFollowed(Service.Resource resource) {
+        tabs.showTab(MainTab.Type.Textures);
       }
     });
   }

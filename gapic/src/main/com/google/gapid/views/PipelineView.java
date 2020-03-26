@@ -397,7 +397,10 @@ public class PipelineView extends Composite
 
             DataValue dv = convertDataValue(kvp.getValue());
             if (dv.link != null) {
-              withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> models.follower.onFollow(dv.link)),
+              withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> {
+                  for (Path.Any p : dv.link) {
+                    models.follower.onFollow(p);
+                  }}),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
             } else {
               Label valueLabel = withLayoutData( createLabel(valueComposite, dv.displayValue),
@@ -513,7 +516,9 @@ public class PipelineView extends Composite
               DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(cell.getColumnIndex()));
 
               if (dv.link != null) {
-                models.follower.onFollow(dv.link);
+                for (Path.Any p : dv.link) {
+                  models.follower.onFollow(p);
+                }
                 return;
               }
             }
@@ -701,7 +706,7 @@ public class PipelineView extends Composite
 
       case LINK:
         DataValue dv = convertDataValue(val.getLink().getDisplayVal());
-        dv.link = val.getLink().getLink();
+        dv.link = val.getLink().getLinkList();
         return dv;
 
 
@@ -713,7 +718,7 @@ public class PipelineView extends Composite
   private static class DataValue {
     public String displayValue;
     public String tooltipValue;
-    public Path.Any link;
+    public List<Path.Any> link;
 
     public DataValue(String displayValue) {
       this.link = null;

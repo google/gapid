@@ -63,10 +63,11 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	state.OnResourceCreated = func(res api.Resource) {
 		currentCmdResourceCount++
 		tr := trackedResource{
-			resource: res,
-			id:       genResourceID(currentCmdIndex, currentCmdResourceCount),
-			accesses: []uint64{currentCmdIndex},
-			created:  currentCmdIndex,
+			resource:     res,
+			id:           genResourceID(currentCmdIndex, currentCmdResourceCount),
+			accesses:     []uint64{currentCmdIndex},
+			created:      currentCmdIndex,
+			resourceType: res.ResourceType(ctx),
 		}
 		resources = append(resources, tr)
 		seen[res] = len(resources) - 1
@@ -144,12 +145,13 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 }
 
 type trackedResource struct {
-	resource api.Resource
-	id       id.ID
-	name     string
-	accesses []uint64
-	deleted  uint64
-	created  uint64
+	resource     api.Resource
+	id           id.ID
+	name         string
+	accesses     []uint64
+	deleted      uint64
+	created      uint64
+	resourceType api.ResourceType
 }
 
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
@@ -159,6 +161,7 @@ func (r trackedResource) asService(p *path.Capture) *service.Resource {
 		Label:    r.resource.ResourceLabel(),
 		Order:    r.resource.Order(),
 		Accesses: make([]*path.Command, len(r.accesses)),
+		Type:     r.resourceType,
 	}
 	for i, a := range r.accesses {
 		out.Accesses[i] = p.Command(a)

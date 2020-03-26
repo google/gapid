@@ -156,12 +156,12 @@ func CreateBitfieldDataValue(typeName string, val interface{}, index int32, a AP
 	}
 }
 
-func CreateLinkedDataValue(typeName string, p path.Node, val *DataValue) *DataValue {
+func CreateLinkedDataValue(typeName string, p []*path.Any, val *DataValue) *DataValue {
 	return &DataValue{
 		TypeName: typeName,
 		Val: &DataValue_Link{
 			&LinkedValue{
-				Link:       p.Path(),
+				Link:       p,
 				DisplayVal: val,
 			},
 		},

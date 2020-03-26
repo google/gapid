@@ -44,7 +44,7 @@ type ResolvedResources struct {
 func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, r.After.Capture, r.Config)
 
-	resources, err := buildResources(ctx, r.After, r.Type)
+	resources, err := buildResources(ctx, r.After, r.Type, r.Config)
 
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 	return resources, nil
 }
 
-func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*ResolvedResources, error) {
+func buildResources(ctx context.Context, p *path.Command, t api.ResourceType, r *path.ResolveConfig) (*ResolvedResources, error) {
 	cmdIdx := p.Indices[0]
 
 	capture, err := capture.ResolveGraphics(ctx)
@@ -124,7 +124,7 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 			}
 			i++
 
-			res, err := v.ResourceData(ctx, state, p)
+			res, err := v.ResourceData(ctx, state, p, r)
 			if err != nil {
 				resourceData[k] = err
 			} else {

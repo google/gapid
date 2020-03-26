@@ -294,7 +294,7 @@ message BitfieldValue {
 }
 
 message LinkedValue {
-  path.Any link = 1;
+  repeated path.Any link = 1;
   DataValue display_val = 2;
 }
 
