@@ -25,6 +25,7 @@ import static com.google.gapid.util.Ranges.relative;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -43,6 +44,8 @@ import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
 import com.google.gapid.util.TypeInfos;
 
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.eclipse.swt.widgets.Shell;
 
 import java.lang.ref.SoftReference;
@@ -641,38 +644,21 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
     /**
      * Utility method. Simplify trees, especially for vulkan structs.
      * 1. Remove redundant layers for all the trees.
-     * 2. Identify some trees to be the main trees. (Assume the main trees to be those with type
-     *    TypeInfo.StructType, they usually contain key info like VkPresentInfoKHR, VkSubmitInfo...)
-     * 3. Combine trees together by appending some smaller trees to the main trees, if they are
+     * 2. Combine trees together by appending some smaller trees to the main trees, if they are
      *    related through a pointer field.
      */
     public static List<StructNode> simplifyTrees(List<StructNode> trees) {
-      List<StructNode> simplified = new ArrayList<StructNode>();
-
+      // Remove redundant layers.
       Map<Long, StructNode> nodes = new HashMap<Long, StructNode>();
       for (StructNode tree : trees) {
         nodes.put(tree.getRootAddress(), removeExtraLayers(tree));
       }
-
-      // Find the main trees.
-      for (Iterator<Map.Entry<Long, StructNode>> it = nodes.entrySet().iterator(); it.hasNext(); ) {
-        Map.Entry<Long, StructNode> entry = it.next();
-        if (containsStructType(entry.getValue())) {
-          simplified.add(entry.getValue());
-          it.remove();
-        }
-      }
-
-      // Append other trees to the main trees if possible.
-      for (StructNode mainTree : simplified) {
-        appendPointedNodes(mainTree, nodes);
-      }
-
-      // Add the remaining unappended nodes to the returning result.
+      // Append pointed nodes to corresponding pointer field if possible.
+      Set<StructNode> appended = Sets.newHashSet();
       for (StructNode node : nodes.values()) {
-        simplified.add(node);
+        appendPointedNodes(node, nodes, appended);
       }
-      return simplified;
+      return nodes.values().stream().filter(n -> !appended.contains(n)).collect(Collectors.toList());
     }
 
     /**
@@ -717,7 +703,8 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
      * Find all the nodes with type TypeInfo.PointerType in this tree, append the pointed tree to
      * these nodes if possible.
      */
-    private static void appendPointedNodes(StructNode root, Map<Long, StructNode> nodes) {
+    private static void appendPointedNodes(StructNode root, Map<Long, StructNode> nodes,
+        Set<StructNode> appended) {
       if (root == null) {
         return;
       }
@@ -725,11 +712,11 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
         long pointedAddress = root.getValue().getPointer().getAddress();
         if (nodes.containsKey(pointedAddress)) {
           root.getChildren().add(nodes.get(pointedAddress));
-          nodes.remove(pointedAddress);
+          appended.add(nodes.get(pointedAddress));
         }
       }
       for (StructNode child : root.getChildren()) {
-        appendPointedNodes(child, nodes);
+        appendPointedNodes(child, nodes, appended);
       }
     }
   }
