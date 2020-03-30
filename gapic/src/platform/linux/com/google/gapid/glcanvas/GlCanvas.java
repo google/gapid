@@ -172,8 +172,7 @@ public abstract class GlCanvas extends Canvas {
       GDK.gdk_window_set_user_data(gdkWindow, handle);
     }
 
-    xWindow = (GTK.GTK3) ?
-        GDK.gdk_x11_window_get_xid(gdkWindow) : GDK.gdk_x11_drawable_get_xid(gdkWindow);
+    xWindow = GDK.gdk_x11_window_get_xid(gdkWindow);
     GDK.gdk_window_show(gdkWindow);
     return true;
   }

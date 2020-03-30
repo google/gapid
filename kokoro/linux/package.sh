@@ -58,7 +58,7 @@ Version: $VERSION
 Section: development
 Priority: optional
 Architecture: amd64
-Depends: openjdk-8-jre, libwebkitgtk-1.0-0
+Depends: openjdk-8-jre, libgtk-3-0, libwebkit2gtk-4.0-37
 Maintainer: Google, Inc <gapid-team@google.com>
 Description: Android Graphics Inspector is a collection of tools that allows you
  to inspect, tweak and replay calls from an application to a graphics driver.

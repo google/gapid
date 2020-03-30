@@ -47,8 +47,6 @@ import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.SWTError;
 import org.eclipse.swt.browser.Browser;
-import org.eclipse.swt.browser.LocationAdapter;
-import org.eclipse.swt.browser.LocationEvent;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -847,14 +845,6 @@ public class Widgets {
     try {
       Browser browser = new Browser(parent, SWT.NONE);
       browser.setText(html);
-      browser.addLocationListener(new LocationAdapter() {
-        @Override
-        public void changing(LocationEvent event) {
-          if ("about:blank".equals(event.location)) {
-            browser.setText(html);
-          }
-        }
-      });
       return browser;
     } catch (SWTError e) {
       LOG.log(WARNING, "Failed to create browser widget", e);

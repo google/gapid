@@ -55,7 +55,7 @@ public class SearchBox extends Composite {
     Button regex = Widgets.createCheckbox(this, "Regex", true);
 
     text.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-    regex.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
+    regex.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 
     text.addListener(SWT.DefaultSelection, e -> notifySearch(text, regex.getSelection()));
     /* TODO: This was added, because it appeared as though the above wasn't triggered.

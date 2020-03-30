@@ -102,7 +102,8 @@ func run() int {
 	cmd.Env = append(os.Environ(), "GAPID="+c.cwd)
 
 	if runtime.GOOS == "linux" {
-		cmd.Env = append(cmd.Env, "SWT_GTK3=0", "LIBOVERLAY_SCROLLBAR=0")
+		cmd.Env = append(cmd.Env, "LIBOVERLAY_SCROLLBAR=0")
+		cmd.Env = append(cmd.Env, "GTK_OVERLAY_SCROLLING=0")
 	}
 
 	// If run via 'bazel run', use the shell's CWD, not bazel's.
