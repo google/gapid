@@ -29,7 +29,7 @@ import android.os.Build;
  * Instead, services should run in the foreground and show a notification that they are running.
  */
 public abstract class GapidService extends IntentService {
-  private static final String CHANNEL_ID = "GAPID_notification_channel";
+  private static final String CHANNEL_ID = "AGI_notification_channel";
   private final Type type;
 
   public GapidService(String name, Type type) {
@@ -43,8 +43,8 @@ public abstract class GapidService extends IntentService {
     // Show a notification, so Android doesn't take us down.
     Notification.Builder notification = new Notification.Builder(this)
         .setOngoing(true)
-        .setContentTitle("Graphics API Debugger")
-        .setContentText("GAPID is examining your device...")
+        .setContentTitle("Android GPU Inspector")
+        .setContentText("AGI is examining your device...")
         // the package name for resources "R" is derived from the "custom_package" field in
         // gapidapk/android/app/src/main/BUILD.bazel
         .setSmallIcon(com.google.android.gapid.R.drawable.logo)
@@ -54,7 +54,7 @@ public abstract class GapidService extends IntentService {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       NotificationChannel channel = new NotificationChannel(
           CHANNEL_ID, "Service Noticiations", NotificationManager.IMPORTANCE_LOW);
-      channel.setDescription("Notifications from the GAPID background services");
+      channel.setDescription("Notifications from the AGI background services");
       getSystemService(NotificationManager.class).createNotificationChannel(channel);
       notification.setChannelId(CHANNEL_ID);
     } else {
