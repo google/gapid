@@ -177,7 +177,7 @@ func rebuildVkCmdBeginRenderPass(
 		for i := range rects {
 			rects[i] = dgbi.RenderAreas().Get(uint32(i))
 		}
-		rectMem := s.AllocDataOrPanic(ctx, clearValues)
+		rectMem := s.AllocDataOrPanic(ctx, rects)
 		mem = append(mem, rectMem)
 
 		pNextData := s.AllocDataOrPanic(ctx,
