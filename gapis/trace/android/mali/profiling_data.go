@@ -30,7 +30,7 @@ import (
 
 var (
 	slicesQuery = "" +
-		"SELECT s.context_id, s.render_target, s.frame_id, s.submission_id, s.hw_queue_id, s.command_buffer, s.render_pass, s.ts, s.dur, s.name, depth, arg_set_id, track_id, t.name " +
+		"SELECT s.context_id, s.render_target, s.frame_id, s.submission_id, s.hw_queue_id, s.command_buffer, s.render_pass, s.ts, s.dur, s.id, s.name, depth, arg_set_id, track_id, t.name " +
 		"FROM gpu_track t LEFT JOIN gpu_slice s " +
 		"ON s.track_id = t.id WHERE t.scope = 'gpu_render_stage' ORDER BY s.ts"
 	argsQueryFmt = "" +
@@ -131,11 +131,12 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 	hwQueueIds := slicesColumns[4].GetLongValues()
 	timestamps := slicesColumns[7].GetLongValues()
 	durations := slicesColumns[8].GetLongValues()
-	names := slicesColumns[9].GetStringValues()
-	depths := slicesColumns[10].GetLongValues()
-	argSetIds := slicesColumns[11].GetLongValues()
-	trackIds := slicesColumns[12].GetLongValues()
-	trackNames := slicesColumns[13].GetStringValues()
+	ids := slicesColumns[9].GetLongValues()
+	names := slicesColumns[10].GetStringValues()
+	depths := slicesColumns[11].GetLongValues()
+	argSetIds := slicesColumns[12].GetLongValues()
+	trackIds := slicesColumns[13].GetLongValues()
+	trackNames := slicesColumns[14].GetStringValues()
 
 	for i, v := range submissionIds {
 		subOrder, ok := submissionOrdering[v]
@@ -216,6 +217,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 		slices[i] = &service.ProfilingData_GpuSlices_Slice{
 			Ts:      uint64(timestamps[i]),
 			Dur:     uint64(durations[i]),
+			Id:      uint64(ids[i]),
 			Label:   names[i],
 			Depth:   int32(depths[i]),
 			Extras:  extras,
