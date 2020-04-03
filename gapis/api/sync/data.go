@@ -87,10 +87,15 @@ type Data struct {
 	SubCommandMarkerGroups *subCommandMarkerGroupTrie
 	// SyncDependencies contains the commands that must complete
 	// (according to their fences or semaphores) before they can be executed.
-	SyncDependencies  map[SyncNodeIdx][]SyncNodeIdx
-	SyncNodes         []SyncNode
-	CmdSyncNodes      map[api.CmdID]SyncNodeIdx
-	SubcommandLookup  *api.SubCmdIdxTrie
+	SyncDependencies map[SyncNodeIdx][]SyncNodeIdx
+	SyncNodes        []SyncNode
+	CmdSyncNodes     map[api.CmdID]SyncNodeIdx
+	// SubcommandLookup maps a SubCmdIdx to its corresponding SubcommandReference.
+	SubcommandLookup *api.SubCmdIdxTrie
+	// SubcommandNames maps a SubCmdIdx to its corresponding string typed name.
+	// The names are especially useful for the virtual SubCmdRoot nodes, which are
+	// created to organize psubmits, command buffers, etc.
+	SubcommandNames   *api.SubCmdIdxTrie
 	SubmissionIndices map[api.CmdSubmissionKey][]api.SubCmdIdx
 }
 
@@ -125,6 +130,7 @@ func NewData() *Data {
 		SyncNodes:              []SyncNode{},
 		CmdSyncNodes:           map[api.CmdID]SyncNodeIdx{},
 		SubcommandLookup:       new(api.SubCmdIdxTrie),
+		SubcommandNames:        new(api.SubCmdIdxTrie),
 		SubmissionIndices:      map[api.CmdSubmissionKey][]api.SubCmdIdx{},
 	}
 }

@@ -203,6 +203,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 
 			switch args := GetCommandArgs(ctx, cb.CommandReferences().Get(uint32(i)), st).(type) {
 			case VkCmdExecuteCommandsArgsʳ:
+				d.SubcommandNames.SetValue(nv, "") // Clear the group name so that the original commnd is shown.
 				for j := uint64(0); j < uint64(args.CommandBuffers().Len()); j++ {
 					cbo := st.CommandBuffers().Get(args.CommandBuffers().Get(uint32(j)))
 					subIdx := append(api.SubCmdIdx{}, idx...)
@@ -212,6 +213,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					subgroups = append(subgroups, newSubgroups...)
 					if cbo.CommandReferences().Len() > 0 {
 						subgroups = append(subgroups, append(idx, uint64(i), uint64(j), uint64(cbo.CommandReferences().Len()-1)))
+						d.SubcommandNames.SetValue(append(idx, uint64(i), j), fmt.Sprintf("Command Buffer: %v", cbo.VulkanHandle()))
 					}
 				}
 			case VkCmdBeginRenderPassArgsʳ:
@@ -317,7 +319,9 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			for submitIdx, submit := range submits {
 				bufferCount := submit.CommandBufferCount()
 				buffers := submit.PCommandBuffers().Slice(uint64(0), uint64(bufferCount), l).MustRead(ctx, cmd, s, nil)
+				d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx)}, fmt.Sprintf("pSubmits[%v]: ", submitIdx))
 				for j, buff := range buffers {
+					d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx), uint64(j)}, fmt.Sprintf("Command Buffer: %v", buff))
 					cmdBuff := st.CommandBuffers().Get(buff)
 					// If a submitted command-buffer is empty, we shouldn't show it
 					if cmdBuff.CommandReferences().Len() > 0 {

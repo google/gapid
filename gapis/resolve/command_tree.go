@@ -150,7 +150,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode, r *path.Resol
 		count := uint64(1)
 		g := ""
 		if len(item.Id) > 1 {
-			g = fmt.Sprintf("%v", item.Id)
+			g = fmt.Sprintf("%v", item.SubGroup.Name)
 			count = uint64(item.SubGroup.Count())
 		}
 		return &service.CommandTreeNode{
@@ -310,7 +310,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 
 		if v, ok := snc.SubcommandGroups[id]; ok {
-			r := out.root.AddRoot([]uint64{uint64(id)})
+			r := out.root.AddRoot([]uint64{uint64(id)}, snc.SubcommandNames)
 			// subcommands are added before nesting SubCmdRoots.
 			cv := append([]api.SubCmdIdx{}, v...)
 			sort.SliceStable(cv, func(i, j int) bool { return len(cv[i]) < len(cv[j]) })
@@ -321,9 +321,9 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 				parentIdx := append([]uint64{uint64(id)}, x[0:len(x)-1]...)
 				if snc.SubCommandMarkerGroups.Value(parentIdx) != nil {
 					markers := snc.SubCommandMarkerGroups.Value(parentIdx).([]*api.CmdIDGroup)
-					r.AddSubCmdMarkerGroups(x[0:len(x)-1], markers)
+					r.AddSubCmdMarkerGroups(x[0:len(x)-1], markers, snc.SubcommandNames)
 				}
-				r.Insert(append([]uint64{}, x...))
+				r.Insert(append([]uint64{}, x...), snc.SubcommandNames)
 			}
 			return nil
 		}

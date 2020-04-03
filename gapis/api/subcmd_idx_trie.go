@@ -133,3 +133,7 @@ func (t *SubCmdIdxTrie) PostOrderSortedKeys() []SubCmdIdx {
 	}
 	return keys
 }
+
+func (t *SubCmdIdxTrie) GetChildren(index uint64) *SubCmdIdxTrie {
+	return t.children[index]
+}

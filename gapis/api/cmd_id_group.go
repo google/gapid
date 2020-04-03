@@ -55,9 +55,15 @@ type CmdGroupOrRoot interface {
 }
 
 // NewRoot sets up a new root object.
-func NewRoot(idx []uint64) *SubCmdRoot {
+func NewRoot(idx []uint64, nameLookUp *SubCmdIdxTrie) *SubCmdRoot {
+	var name = "Subgroup"
+	if nameVal := nameLookUp.Value(idx); nameVal != nil {
+		if n, ok := nameVal.(string); ok {
+			name = n
+		}
+	}
 	return &SubCmdRoot{Id: append(slice.Clone(idx).([]uint64)),
-		SubGroup: CmdIDGroup{Name: "Subgroup"}}
+		SubGroup: CmdIDGroup{Name: name}}
 }
 
 // Spans is a list of Span elements. Functions in this package expect the
@@ -356,7 +362,7 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 
 // AddRoot adds a new Subcommand Root for the given index.
 // It returns the span for this SubcommandGroup
-func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
+func (g *CmdIDGroup) AddRoot(rootidx []uint64, nameLookUp *SubCmdIdxTrie) *SubCmdRoot {
 	r := CmdIDRange{Start: CmdID(rootidx[len(rootidx)-1]), End: CmdID(rootidx[len(rootidx)-1] + 1)}
 	s, c := interval.Intersect(&g.Spans, r.Span())
 	if c == 0 {
@@ -364,7 +370,7 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 		i := sort.Search(len(g.Spans), func(i int) bool {
 			return g.Spans[i].Bounds().Start > CmdID(rootidx[0])
 		})
-		slice.InsertBefore(&g.Spans, i, NewRoot(rootidx))
+		slice.InsertBefore(&g.Spans, i, NewRoot(rootidx, nameLookUp))
 		return g.Spans[i].(*SubCmdRoot)
 	}
 	if c != 1 {
@@ -374,14 +380,14 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 	// At least one overlap
 	switch first := g.Spans[s].(type) {
 	case *CmdIDGroup:
-		return first.AddRoot(rootidx)
+		return first.AddRoot(rootidx, nameLookUp)
 	case *CmdIDRange:
 		firstHalf := &CmdIDRange{first.Start, CmdID(rootidx[len(rootidx)-1])}
 		if firstHalf.End > firstHalf.Start {
 			slice.InsertBefore(&g.Spans, s, firstHalf)
 			s++
 		}
-		slice.Replace(&g.Spans, s, 1, NewRoot(rootidx))
+		slice.Replace(&g.Spans, s, 1, NewRoot(rootidx, nameLookUp))
 		secondHalf := &CmdIDRange{CmdID(rootidx[len(rootidx)-1] + 1), first.End}
 		slice.InsertBefore(&g.Spans, s+1, secondHalf)
 		return g.Spans[s].(*SubCmdRoot)
@@ -393,7 +399,7 @@ func (g *CmdIDGroup) AddRoot(rootidx []uint64) *SubCmdRoot {
 
 // newChildSubCmdRoots adds child SubCmdRoots to the SubCmdRoot's subgroup. If
 // subcomamnds are skipped, create SubCmdRoots for them.
-func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64) *SubCmdRoot {
+func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64, nameLookUp *SubCmdIdxTrie) *SubCmdRoot {
 	if len(r) == 0 {
 		return c
 	}
@@ -404,14 +410,14 @@ func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64) *SubCmdRoot {
 	}
 	if c.SubGroup.Range.End > oldEnd {
 		for i := uint64(oldEnd); i < uint64(c.SubGroup.Range.End); i++ {
-			c.SubGroup.AddRoot(append(c.Id, i))
+			c.SubGroup.AddRoot(append(c.Id, i), nameLookUp)
 		}
 	}
 	sg := c.SubGroup.FindSubCommandRoot(CmdID(nextRootRelativeIndex))
 	if sg == nil {
-		sg = c.SubGroup.AddRoot(append(c.Id, nextRootRelativeIndex))
+		sg = c.SubGroup.AddRoot(append(c.Id, nextRootRelativeIndex), nameLookUp)
 	}
-	return sg.newChildSubCmdRoots(r[1:])
+	return sg.newChildSubCmdRoots(r[1:], nameLookUp)
 }
 
 // Insert adds a new subcommand into the SubCmdRoot. The subcommand is specified
@@ -419,8 +425,8 @@ func (c *SubCmdRoot) newChildSubCmdRoots(r []uint64) *SubCmdRoot {
 // not an immediate child of the target SubCmdRoot (i.e. len(r) > 1) , new
 // child SubCmdRoots will be created under the target SubCmdRoot, until the
 // immediate parent of the subcommand is created.
-func (c *SubCmdRoot) Insert(r []uint64) {
-	childRoot := c.newChildSubCmdRoots(r[0 : len(r)-1])
+func (c *SubCmdRoot) Insert(r []uint64, nameLookUp *SubCmdIdxTrie) {
+	childRoot := c.newChildSubCmdRoots(r[0:len(r)-1], nameLookUp)
 	// Add subcommands one-by-one to the SubCmdRoot and its subgroups/child
 	// SubCmdRoots
 	id := r[len(r)-1]
@@ -437,8 +443,8 @@ func (c *SubCmdRoot) Insert(r []uint64) {
 // immediate children of the target SubCmdRoot (r is not empty), child
 // SubCmdRoots will be created under the target SubCmdRoot recursively until
 // the immediate parent SubCmdRoot is created.
-func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup) error {
-	childRoot := c.newChildSubCmdRoots(r)
+func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup, nameLookUp *SubCmdIdxTrie) error {
+	childRoot := c.newChildSubCmdRoots(r, nameLookUp)
 	for _, g := range groups {
 		if g.Range.Start < childRoot.SubGroup.Range.Start {
 			childRoot.SubGroup.Range.Start = g.Range.Start
