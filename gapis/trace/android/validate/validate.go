@@ -79,62 +79,62 @@ func IsNumber(column *perfetto_service.QueryResult_ColumnValues, columnType perf
 	return true
 }
 
-// CheckLargerThanZero is a checker that checks that the values are all greater than zero.
-func CheckLargerThanZero(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
-	longValues := column.GetLongValues()
-	doubleValues := column.GetDoubleValues()
-	for i := 0; i < sampleCounter; i++ {
-		if columnType == perfetto_service.QueryResult_ColumnDesc_LONG {
-			if longValues[i] <= 0 {
-				return false
-			}
-		} else if columnType == perfetto_service.QueryResult_ColumnDesc_DOUBLE {
-			if doubleValues[i] <= 0.0 {
-				return false
+func ForeachValue(check func(float64) bool) Checker {
+	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
+		longValues := column.GetLongValues()
+		doubleValues := column.GetDoubleValues()
+		for i := 0; i < sampleCounter; i++ {
+			if columnType == perfetto_service.QueryResult_ColumnDesc_LONG {
+				if !check(float64(longValues[i])) {
+					return false
+				}
+			} else if columnType == perfetto_service.QueryResult_ColumnDesc_DOUBLE {
+				if !check(doubleValues[i]) {
+					return false
+				}
 			}
 		}
+		return true
 	}
-	return true
+}
+
+// Average returns a checker that checks whether the average values meets the condition
+func Average(check func(float64) bool) Checker {
+	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
+		longValues := column.GetLongValues()
+		doubleValues := column.GetDoubleValues()
+		total := float64(0.0)
+		for i := 0; i < sampleCounter; i++ {
+			if columnType == perfetto_service.QueryResult_ColumnDesc_LONG {
+				total += float64(longValues[i])
+			} else if columnType == perfetto_service.QueryResult_ColumnDesc_DOUBLE {
+				total += doubleValues[i]
+			}
+		}
+		return check(total / sampleCounter)
+	}
+}
+
+// CheckLargerThanZero is a checker that checks that the values are all greater than zero.
+func CheckLargerThanZero() Checker {
+	return ForeachValue(func(v float64) bool {
+		return v > 0.0
+	})
 }
 
 // CheckEqualTo returns a checker that checks that all returned value equal the given value.
 func CheckEqualTo(num float64) Checker {
-	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
-		longValues := column.GetLongValues()
-		doubleValues := column.GetDoubleValues()
-		for i := 0; i < sampleCounter; i++ {
-			if columnType == perfetto_service.QueryResult_ColumnDesc_LONG {
-				if longValues[i] != int64(num) {
-					return false
-				}
-			} else if columnType == perfetto_service.QueryResult_ColumnDesc_DOUBLE {
-				if doubleValues[i] != num {
-					return false
-				}
-			}
-		}
-		return true
-	}
+	return ForeachValue(func(v float64) bool {
+		return v == num
+	})
 }
 
-// CheckApproximateTo returns a checker that checks that values are within a margin of the given value.
-func CheckApproximateTo(num, err float64) Checker {
-	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
-		longValues := column.GetLongValues()
-		doubleValues := column.GetDoubleValues()
-		for i := 0; i < sampleCounter; i++ {
-			if columnType == perfetto_service.QueryResult_ColumnDesc_LONG {
-				if math.Abs(num-float64(longValues[i])) > err {
-					return false
-				}
-			} else if columnType == perfetto_service.QueryResult_ColumnDesc_DOUBLE {
-				if math.Abs(num-doubleValues[i]) > err {
-					return false
-				}
-			}
-		}
-		return true
-	}
+// CheckAverageApproximateTo checks whether the average of the values is within
+// a margin of the given value.
+func CheckAverageApproximateTo(num, margin float64) Checker {
+	return Average(func(v float64) bool {
+		return math.Abs(num-v) <= margin
+	})
 }
 
 // ValidateGpuCounters validates the GPU counters.

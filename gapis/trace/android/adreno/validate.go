@@ -24,14 +24,14 @@ import (
 var (
 	// All counters must be inside this array.
 	counters = []validate.GpuCounter{
-		{1, "Clocks / Second", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
-		{3, "GPU % Utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
-		{21, "% Shaders Busy", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
-		{26, "Fragment ALU Instructions / Sec (Full)", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
+		{1, "Clocks / Second", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
+		{3, "GPU % Utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
+		{21, "% Shaders Busy", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
+		{26, "Fragment ALU Instructions / Sec (Full)", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
 		{30, "Textures / Vertex", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
-		{31, "Textures / Fragment", validate.And(validate.IsNumber, validate.CheckApproximateTo(1.0, 0.1))},
-		{37, "% Time Shading Fragments", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
-		{38, "% Time Shading Vertices", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
+		{31, "Textures / Fragment", validate.And(validate.IsNumber, validate.CheckAverageApproximateTo(1.0, 0.1))},
+		{37, "% Time Shading Fragments", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
+		{38, "% Time Shading Vertices", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
 		{39, "% Time Compute", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
 	}
 )
