@@ -1235,7 +1235,11 @@ public class TracerDialog {
             button.setText("Stop");
             break;
           case Done:
-            button.setText("Open Trace");
+            if (request.options.getType() == Service.TraceType.Perfetto) {
+              okPressed();
+            } else {
+              button.setText("Open Trace");
+            }
             break;
           default:
             button.setText("Cancel");
