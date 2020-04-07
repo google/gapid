@@ -320,7 +320,7 @@ type (
 		No struct {
 			Buffer bool `help:"Do not buffer the output, this helps if the application crashes"`
 		}
-		API   string `help:"only capture the given API valid options are gles, vulkan, and perfetto"`
+		API   string `help:"only capture the given API valid options are vulkan and perfetto"`
 		Local struct {
 			Port int `help:"connect to an application already running on the server using this port"`
 		}
@@ -335,7 +335,6 @@ type (
 		AdditionalArgs string `help:"additional arguments to pass to the application"`
 		WorkingDir     string `help:"working directory for the application"`
 		URI            string `help:"uri of the application to trace"`
-		API            string `help:"only capture the given API valid options are gles and vulkan"`
 		DumpTrace      string `help:"dump a systrace of gapis"`
 		StartFrame     int    `help:"perform a MEC trace starting at this frame"`
 		NoOpt          bool   `help:"disables optimization of the replay stream"`

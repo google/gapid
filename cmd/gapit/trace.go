@@ -336,12 +336,6 @@ func (verb *traceVerb) apiAndType() (apiAndType, error) {
 			[]string{"Vulkan"},
 			".gfxtrace",
 		}, nil
-	case "gles":
-		return apiAndType{
-			service.TraceType_Graphics,
-			[]string{"OpenGLES"},
-			".gfxtrace",
-		}, nil
 	case "perfetto":
 		return apiAndType{
 			service.TraceType_Perfetto,

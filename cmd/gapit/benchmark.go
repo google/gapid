@@ -865,7 +865,7 @@ func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, tr
 
 	options := &service.TraceOptions{
 		Device:                    traceDevice,
-		Apis:                      []string{},
+		Apis:                      []string{"Vulkan"},
 		AdditionalCommandLineArgs: verb.AdditionalArgs,
 		Cwd:                       verb.WorkingDir,
 		Environment:               verb.Env,
@@ -885,16 +885,6 @@ func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, tr
 	}
 	options.App = &service.TraceOptions_Uri{
 		uri,
-	}
-	switch verb.API {
-	case "vulkan":
-		options.Apis = []string{"Vulkan"}
-	case "gles":
-		options.Apis = []string{"OpenGLES"}
-	case "":
-		return fmt.Errorf("Please specify one of vulkan or gles for an api")
-	default:
-		return fmt.Errorf("Unknown API %s", verb.API)
 	}
 	verb.beforeStartTraceTime = time.Now()
 	handler, err := client.Trace(ctx)
