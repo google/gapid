@@ -89,46 +89,39 @@ $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
 ## Build is done, run some tests
 
 ##
-## Test on a real device using swarming. APKs are stoed on x20, under:
-## teams/android-graphics-tools/agi/kokoro/swarming/apk/*.apk
+## Swarming tests, see test/swarming/README.md
 ##
 
 # Install LUCI
 curl -fsSL -o luci-py.tar.gz https://chromium.googlesource.com/infra/luci/luci-py.git/+archive/0b027452e658080df1f174c403946914443d2aa6.tar.gz
 mkdir luci-py
 tar xzvf luci-py.tar.gz --directory luci-py
-LUCI_CLIENT_ROOT="$PWD/luci-py/client"
+export LUCI_CLIENT_ROOT="$PWD/luci-py/client"
 
-# Credentials come from Keystore
-SWARMING_AUTH_TOKEN_FILE=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key
+# Prepare Swarming files
+# SWARMING_X20_TEST_DIR enables different Kokoro jobs to use different sets of tests
+if [ -z "${SWARMING_X20_TEST_DIR}" ] ; then
+  SWARMING_X20_TEST_DIR="tests"
+fi
+SWARMING_DIR=${SRC}/test/swarming
+cp -r bazel-bin/pkg ${SWARMING_DIR}/agi
+cp -r ${KOKORO_GFILE_DIR}/${SWARMING_X20_TEST_DIR} ${SWARMING_DIR}/tests
 
-# Prepare task files
-TASK_FILES_DIR=${SRC}/test/swarming/task-files
-cp -r bazel-bin/pkg ${TASK_FILES_DIR}/agi
-cp -r ${KOKORO_GFILE_DIR}/apk ${TASK_FILES_DIR}/
+# Swarming environment
+export SWARMING_AUTH_FLAG="--auth-service-account-json=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key"
+export SWARMING_BUILD_INFO="Kokoro-PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
+export SWARMING_TRIGGERED_DIR="triggered"
 
-# Trigger task
-AUTH_FLAG="--auth-service-account-json=$SWARMING_AUTH_TOKEN_FILE"
-TASK_NAME="Kokoro_PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
-ISOLATE_SERVER='https://chrome-isolated.appspot.com'
-SWARMING_SERVER='https://chrome-swarming.appspot.com'
-SWARMING_POOL='SkiaInternal'
-DEVICE_TYPE="flame" # pixel4
+# Trigger the tests
+pushd ${SWARMING_DIR}
+mkdir -p ${SWARMING_TRIGGERED_DIR}
+for t in tests/* ; do
+  ./trigger.sh ${t}
+done
+popd
 
-$LUCI_CLIENT_ROOT/isolate.py archive $AUTH_FLAG --isolate-server $ISOLATE_SERVER --isolate ${SRC}/test/swarming/task.isolate --isolated task.isolated
-ISOLATED_SHA=`sha1sum task.isolated | awk '{ print $1 }' `
-
-# Priority: lower is more priority, defaults to 200: PR short test tasks should be of higher priority than the default
-PRIORITY=100
-# Hard timeout: maximum number of seconds for the task to terminate
-HARD_TIMEOUT=300
-# Expiration: number of seconds to wait for a bot to be available
-EXPIRATION=600
-
-$LUCI_CLIENT_ROOT/swarming.py trigger $AUTH_FLAG --swarming $SWARMING_SERVER --isolate-server $ISOLATE_SERVER --isolated $ISOLATED_SHA --task-name ${TASK_NAME} --dump-json task.json --dimension pool $SWARMING_POOL --dimension device_type "$DEVICE_TYPE" --priority=$PRIORITY --expiration=$EXPIRATION --hard-timeout=$HARD_TIMEOUT
-
-# Collect the Swarming test results after the swiftshader tests, as swarming
-# will take a few minutes to schedule+run the task anyway.
+# Run the swiftshader test while Swarming tests are being scheduled+run, and
+# collect Swarming test results after the Swiftshader test.
 
 ##
 ## Test capture and replay of the Vulkan Sample App.
@@ -173,25 +166,28 @@ xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit trace -device host -disable-coherent
 xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit video -gapir-nofallback -type sxs -frames-minimum 10 -out vulkan_sample.mp4  vulkan_sample.gfxtrace
 
 ##
-## Collect swarming test result
+## Collect swarming test results
 ##
 
-# The "swarming.py collect" call returns the task's exit code, which is non-zero
-# if the task has expired (it was never scheduled). Allow for non-zero return
-# code, and manually check the task status afterward
-set +e
-$LUCI_CLIENT_ROOT/swarming.py collect $AUTH_FLAG --swarming $SWARMING_SERVER --json task.json --task-summary-json summary.json
-SWARMING_COLLECT_EXIT_CODE=$?
-set -e
+pushd ${SWARMING_DIR}
 
-# Ignore failures that are not due to the test itself
-if [ "$SWARMING_COLLECT_EXIT_CODE" -ne "0" ] ; then
-  if grep '"state": "EXPIRED"' summary.json > /dev/null ; then
-    echo "Swarming test was never scheduled, ignoring it"
-  elif grep '"internal_failure": true' summary.json > /dev/null ; then
-    echo "Swarming internal failure, ignore the swarming test"
+SWARMING_FAILURE=0
+for TEST_NAME in ${SWARMING_TRIGGERED_DIR}/*.json ; do
+  set +e
+  ./collect.sh ${TEST_NAME} > `basename ${TEST_NAME} .json`.collect.log
+  EXIT_CODE=$?
+  set -e
+  if [ ${EXIT_CODE} -eq 0 ] ; then
+    echo "PASS ${TEST_NAME}"
   else
-    echo "Swarming test failed"
-    exit 1
+    echo "FAIL ${TEST_NAME}"
+    SWARMING_FAILURE=1
   fi
+done
+
+popd
+
+if [ ${SWARMING_FAILURE} -eq 1 ] ; then
+  echo "Error: some Swarming test failed"
+  exit 1
 fi
