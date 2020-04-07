@@ -58,5 +58,5 @@ if [ ! -z "${SWARMING_FORCE_INSTALL}" ] ; then
 fi
 
 # Run AGI test
-$SWARMING_AGI/gapit benchmark -api vulkan -startframe "${SWARMING_STARTFRAME}" -numframes "${SWARMING_NUMFRAME}" "${SWARMING_PACKAGE}/${SWARMING_ACTIVITY}"
+$SWARMING_AGI/gapit benchmark -startframe "${SWARMING_STARTFRAME}" -numframes "${SWARMING_NUMFRAME}" "${SWARMING_PACKAGE}/${SWARMING_ACTIVITY}"
 mv benchmark.gfxtrace ${SWARMING_OUT_DIR}/
