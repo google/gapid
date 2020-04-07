@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -269,6 +270,27 @@ func (m *manager) execute(
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
+	// We may or may not actually need the initial payload, but kick it off now
+	// so we have the maximum chance of it being ready when we need it.
+	ipl := InitialPayloadResolvable{
+		CaptureID: NewID(captureID),
+		ApiID:     NewID(id.ID(generator.(api.API).ID())),
+		DeviceID:  NewID(d.Instance().ID.ID()),
+	}
+
+	newCtx := keys.Clone(context.Background(), ctx)
+	go func() {
+		// kick the initial payload build. we don't know if we actually
+		// need it yet, but want to kick it off as early as possible,
+		// even before we're connected.
+
+		// errors here are OK -- we'll pick them up later when we force completion
+		cctx := status.PutTask(newCtx, nil)
+		cctx = status.StartBackground(cctx, "Precaching initial payload")
+		defer status.Finish(cctx)
+		_, _ = database.Build(cctx, &ipl)
+	}()
+
 	conn, err := m.connect(ctx, d, replayABI)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to device")
@@ -278,31 +300,24 @@ func (m *manager) execute(
 	var depBuilder *builder.Builder
 	var depState *api.GlobalState
 	if !forceNonSplitReplay {
-		if g, ok := generator.(SplitGenerator); ok {
-			a, ok := g.(api.API)
-			if ok {
-				ipl := InitialPayloadResolvable{
-					CaptureID: NewID(captureID),
-					ApiID:     NewID(id.ID(a.ID())),
-					DeviceID:  NewID(d.Instance().ID.ID()),
-				}
-				ipr, err := database.Build(ctx, &ipl)
-				if err != nil {
-					return err
-				}
-				i, ok := ipr.(InitialPayloadResult)
-				if !ok {
-					return log.Err(ctx, nil, "Invalid Initial Payload")
-				}
+		if _, ok := generator.(SplitGenerator); ok {
+			// Force initial payload to be finished building
+			ipr, err := database.Build(ctx, &ipl)
+			if err != nil {
+				return err
+			}
+			i, ok := ipr.(InitialPayloadResult)
+			if !ok {
+				return log.Err(ctx, nil, "Invalid Initial Payload")
+			}
 
-				depID = i.prerunID
-				depBuilder = i.oldBuilder
-				depState = i.oldState
+			depID = i.prerunID
+			depBuilder = i.oldBuilder
+			depState = i.oldState
 
-				err = m.PrewarmReplay(ctx, conn, i.prerunID, i.cleanupID)
-				if err != nil {
-					return log.Err(ctx, err, "Replay returned error")
-				}
+			err = m.PrewarmReplay(ctx, conn, i.prerunID, i.cleanupID)
+			if err != nil {
+				return log.Err(ctx, err, "Replay returned error")
 			}
 		}
 	}
