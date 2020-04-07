@@ -136,7 +136,6 @@ struct Context {
   EGLContext mContext;
   int mNumCores;
   std::string mHost;
-  std::string mSerial;
   std::string mHardware;
   std::string mOSName;
   std::string mOSBuild;
@@ -501,7 +500,7 @@ const char* gpuName() { return ""; }
 
 const char* gpuVendor() { return ""; }
 
-const char* instanceName() { return gContext.mSerial.c_str(); }
+const char* instanceName() { return gContext.mHardware.c_str(); }
 
 const char* hardwareName() { return gContext.mHardware.c_str(); }
 
