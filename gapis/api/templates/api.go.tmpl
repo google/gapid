@@ -1806,7 +1806,7 @@ import (
     {{end}}
   }
 
-  func (ϟc *{{$name}}) CmdFlags(ϟctx context.Context, ϟi ϟapi.CmdID, ϟg *ϟapi.GlobalState) ϟapi.CmdFlags {
+  func (ϟc *{{$name}}) CmdFlags() ϟapi.CmdFlags {
     {{$names := Strings "draw_call" "transform_feedback" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker" "executed_draw" "submission"}}
     {{$flags := Strings "DrawCall"  "TransformFeedback"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker" "ExecutedDraw" "Submission"}}
 
@@ -2183,34 +2183,9 @@ import (
 
   {{if len $.Annotation.Arguments}}
     {{$expr := index $.Annotation.Arguments 0}}
-    {{if $call := Macro "FlagCall" "Expr" $expr "Flag" $.Flag}}
-      if {{$call}}; v {
-        out = out | ϟapi.{{$.Flag}}
-      }
-    {{else}}
-      if {{Template "Go.Read" $expr}} {
-        out = out | ϟapi.{{$.Flag}}
-      }
-    {{end}}
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
-  Emits a local assigned to the result of an expression call if $.Expr is a
-  call. Used by CmdFlags().
--------------------------------------------------------------------------------
-*/}}
-{{define "FlagCall"}}
-  {{AssertType $.Expr "Expression"}}
-
-  {{if IsCall $.Expr}}
-    {{$call := Unpack $.Expr}}
-    {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
-    v, _ := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟc.Extras().Observations(), ϟg, GetState(ϟg), ϟc.Thread(), nil, nil, {{$args}})
-  {{else}}
-    {{Error "%T" $.Expr}}
+    if {{Template "Go.Read" $expr}} {
+    out = out | ϟapi.{{$.Flag}}
+    }
   {{end}}
 {{end}}
 

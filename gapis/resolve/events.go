@@ -16,11 +16,9 @@ package resolve
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/extensions"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -32,40 +30,8 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		return nil, err
 	}
 
-	sd, err := SyncData(ctx, p.Capture)
-	if err != nil {
-		return nil, err
-	}
-
-	filter, err := buildFilter(ctx, p.Capture, p.Filter, sd, r)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add any extension event filters
-	filters := CommandFilters{filter}
-	for _, e := range extensions.Get() {
-		if f := e.EventFilter; f != nil {
-			if filter := CommandFilter(f(ctx, p, r)); filter != nil {
-				filters = append(filters, filter)
-			}
-		}
-	}
-	filter = filters.All
-
-	// Add any extension events
-	eps := []extensions.EventProvider{}
-	for _, e := range extensions.Get() {
-		if e.Events != nil {
-			if ep := e.Events(ctx, p, r); ep != nil {
-				eps = append(eps, ep)
-			}
-		}
-	}
-
 	events := []*service.Event{}
 
-	s := c.NewState(ctx)
 	lastCmd := api.CmdID(0)
 	var pending []service.EventKind
 
@@ -81,39 +47,12 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		return 0
 	}
 	err = api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
-			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
-		}
-
-		// TODO: Add event generation to the API files.
-		if !filter(id, cmd, s) {
-			return nil
-		}
-
 		// For a given command, if the command has a FirstInFrame
 		// event, we want that to come before all other events for that
 		// command, and likewise for a LastInFrame event, it should be
 		// after all other events for that command (except
 		// FramebufferObservation as described below).
-		// Since extension.EventProvider's can provide any type of
-		// event, we split them up into FirstInFrame, LastInFrame, and
-		// rest, and then insert them into the event list in the right
-		// spot to ensure the ordering is maintained.
-		var epFirstInFrame, epNormal, epLastInFrame []*service.Event
-		for _, ep := range eps {
-			for _, event := range ep(ctx, id, cmd, s) {
-				switch event.Kind {
-				case service.EventKind_FirstInFrame:
-					epFirstInFrame = append(epFirstInFrame, event)
-				case service.EventKind_LastInFrame:
-					epLastInFrame = append(epFirstInFrame, event)
-				default:
-					epNormal = append(epNormal, event)
-				}
-			}
-		}
-
-		f := cmd.CmdFlags(ctx, id, s)
+		f := cmd.CmdFlags()
 
 		// Add LastInFrame event of a previous command first.
 		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
@@ -142,9 +81,6 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 				Timestamp: getTime(cmd),
 			})
 		}
-		if p.FirstInFrame {
-			events = append(events, epFirstInFrame...)
-		}
 		if p.FirstInFrame && f.IsEndOfFrame() {
 			pending = append(pending, service.EventKind_FirstInFrame)
 		}
@@ -156,7 +92,6 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 			})
 		}
 		// Add all non-special event types
-		events = append(events, epNormal...)
 		if p.DrawCalls && f.IsDrawCall() {
 			events = append(events, &service.Event{
 				Kind:      service.EventKind_DrawCall,
@@ -213,9 +148,6 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 				Command:   p.Capture.Command(uint64(id)),
 				Timestamp: getTime(cmd),
 			})
-		}
-		if p.LastInFrame {
-			events = append(events, epLastInFrame...)
 		}
 		if p.FramebufferObservations {
 			// NOTE: gapit SxS video depends on FBO events coming after

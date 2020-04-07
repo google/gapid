@@ -31,14 +31,14 @@ import (
 
 type TestCmd struct{}
 
-func (TestCmd) API() api.API                                                       { return nil }
-func (TestCmd) Caller() api.CmdID                                                  { return 0 }
-func (TestCmd) SetCaller(api.CmdID)                                                {}
-func (TestCmd) Thread() uint64                                                     { return 0 }
-func (TestCmd) SetThread(uint64)                                                   {}
-func (TestCmd) CmdName() string                                                    { return "TestCmd" }
-func (TestCmd) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
-func (TestCmd) Extras() *api.CmdExtras                                             { return &api.CmdExtras{} }
+func (TestCmd) API() api.API           { return nil }
+func (TestCmd) Caller() api.CmdID      { return 0 }
+func (TestCmd) SetCaller(api.CmdID)    {}
+func (TestCmd) Thread() uint64         { return 0 }
+func (TestCmd) SetThread(uint64)       {}
+func (TestCmd) CmdName() string        { return "TestCmd" }
+func (TestCmd) CmdFlags() api.CmdFlags { return 0 }
+func (TestCmd) Extras() *api.CmdExtras { return &api.CmdExtras{} }
 func (TestCmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder, api.StateWatcher) error {
 	return nil
 }

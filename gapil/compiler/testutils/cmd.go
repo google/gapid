@@ -63,7 +63,7 @@ func (c *Cmd) CmdParams() api.Properties { return nil }
 func (c *Cmd) CmdResult() *api.Property { return nil }
 
 // CmdFlags stubs the api.Cmd interface.
-func (c *Cmd) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
+func (c *Cmd) CmdFlags() api.CmdFlags { return 0 }
 
 // Extras stubs the api.Cmd interface.
 func (c *Cmd) Extras() *api.CmdExtras {

@@ -242,7 +242,7 @@ func (b *graphBuilder) GetOrCreateCmdNodeID(ctx context.Context, cmdID api.CmdID
 		return nodeID
 	}
 	fullIdx := append(api.SubCmdIdx{(uint64)(cmdID)}, idx...)
-	node := CmdNode{fullIdx, cmd.CmdFlags(ctx, cmdID, b.state)}
+	node := CmdNode{fullIdx, cmd.CmdFlags()}
 	return b.addNode(node)
 }
 

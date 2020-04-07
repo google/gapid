@@ -330,7 +330,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 		out.root.AddCommand(id)
 
-		if flags := cmd.CmdFlags(ctx, id, s); flags.IsDrawCall() || flags.IsClear() {
+		if flags := cmd.CmdFlags(); flags.IsDrawCall() || flags.IsClear() {
 			drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{
 				Start: id, End: id + 1,
 			})

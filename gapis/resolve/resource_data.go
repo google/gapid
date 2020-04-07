@@ -186,12 +186,8 @@ func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (i
 	if err != nil {
 		return nil, err
 	}
-	state, err := GlobalState(ctx, &path.GlobalState{After: p.After}, r)
-	if err != nil {
-		return nil, err
-	}
 
-	if !cmd.CmdFlags(ctx, api.CmdID(p.After.Indices[0]), state).IsExecutedDraw() || len(p.After.Indices) == 1 {
+	if !cmd.CmdFlags().IsExecutedDraw() || len(p.After.Indices) == 1 {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNotADrawCall()}
 	}
 

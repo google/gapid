@@ -73,7 +73,7 @@ func (s *InsertionCommand) CmdResult() *api.Property {
 	return nil
 }
 
-func (s *InsertionCommand) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags {
+func (s *InsertionCommand) CmdFlags() api.CmdFlags {
 	return 0
 }
 
@@ -774,7 +774,7 @@ func (t *commandSplitter) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}
 
 	if len(cuts) == 0 {
-		if cmd.CmdFlags(ctx, id, out.State()).IsEndOfFrame() {
+		if cmd.CmdFlags().IsEndOfFrame() {
 			if err := out.MutateAndWrite(ctx, id, &InsertionCommand{
 				VkCommandBuffer(0),
 				append([]VkCommandBuffer{}, t.pendingCommandBuffers...),

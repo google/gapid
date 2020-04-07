@@ -96,13 +96,7 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 				if len(idx) == 1 {
 					cmdflags = flags[idx[0]]
 				} else {
-					// NOTE: For subcommands its not clear
-					// what the "correct" state to present
-					// to CmdFlags is.  Since Vulkan
-					// currently does not use the state,
-					// pass nil here instead of a
-					// potentially "incorrect" state.
-					cmdflags = cmd.CmdFlags(ctx, api.CmdID(idx[0]), nil)
+					cmdflags = cmd.CmdFlags()
 				}
 				if (len(idx) == 1 && cmdflags.IsDrawCall()) ||
 					(len(idx) > 1 && cmdflags.IsExecutedDraw()) {
@@ -130,7 +124,7 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 		if err := cmd.Mutate(ctx, api.CmdID(idx), st, nil, nil); err != nil {
 			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
-		flags[idx] = cmd.CmdFlags(ctx, api.CmdID(idx), st)
+		flags[idx] = cmd.CmdFlags()
 
 		// If the command wasn't included in the dependency graph,
 		// assume its a synchronous command (e.g. glDraw)

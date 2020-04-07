@@ -71,14 +71,12 @@ func newReadFramebuffer(ctx context.Context) *readFramebuffer {
 // If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
 func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
-	s := out.State()
-
 	if cmd, ok := cmd.(*InsertionCommand); ok {
 		idx_string := keyFromIndex(cmd.idx)
 		if r, ok := t.injections[idx_string]; ok {
 			// If this command is FOR an EOF command, we want to mutate it, so that
 			// we have the presentation info available.
-			if cmd.callee != nil && cmd.callee.CmdFlags(ctx, id, s).IsEndOfFrame() {
+			if cmd.callee != nil && cmd.callee.CmdFlags().IsEndOfFrame() {
 				cmd.callee.Mutate(ctx, id, out.State(), nil, nil)
 			}
 			for _, injection := range r {
@@ -166,7 +164,7 @@ func (t *readFramebuffer) Color(ctx context.Context, id api.SubCmdIdx, width, he
 
 			cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 
-			isPresent := cmd.callee != nil && cmd.callee.CmdFlags(ctx, api.CmdID(id[0]), s).IsEndOfFrame()
+			isPresent := cmd.callee != nil && cmd.callee.CmdFlags().IsEndOfFrame()
 
 			// TODO: Figure out a better way to select the framebuffer here.
 

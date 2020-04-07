@@ -51,7 +51,7 @@ type Cmd interface {
 	CmdResult() *Property
 
 	// CmdFlags returns the flags of the command.
-	CmdFlags(context.Context, CmdID, *GlobalState) CmdFlags
+	CmdFlags() CmdFlags
 
 	// Extras returns all the Extras associated with the command.
 	Extras() *CmdExtras

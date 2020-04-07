@@ -89,7 +89,7 @@ type marker struct {
 }
 
 func (g *marker) Process(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState) {
-	flags := cmd.CmdFlags(ctx, id, s)
+	flags := cmd.CmdFlags()
 	if flags.IsPushUserMarker() {
 		g.push(ctx, id, cmd, s)
 	}
