@@ -230,7 +230,7 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
 
     @Override
     public String getTitle() {
-      return "Vulkan API Event Slices";
+      return "Vulkan API Events";
     }
 
     @Override

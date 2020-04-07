@@ -35,14 +35,13 @@ import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.MemorySelectionView;
 import com.google.gapid.perfetto.views.MemorySummaryPanel;
 import com.google.gapid.perfetto.views.State;
+
+import org.eclipse.swt.widgets.Composite;
+
 import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.LongStream;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.widgets.Composite;
 
 /**
  * {@link Track} containing the total system memory usage data.
@@ -258,7 +257,7 @@ public class MemorySummaryTrack extends Track.WithQueryEngine<MemorySummaryTrack
 
     @Override
     public String getTitle() {
-      return "Memories";
+      return "Memory Usage";
     }
 
     @Override

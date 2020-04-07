@@ -55,14 +55,14 @@ import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
-import java.util.Arrays;
-import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public class ProfileView extends Composite implements Tab, Capture.Listener, Profile.Listener {
   private final Models models;
@@ -346,7 +346,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
         return new Slice(s.getId(), s.getTs(), s.getDur(), "", s.getLabel(), s.getDepth(), -1, -1, ArgSet.EMPTY) {
           @Override
           public String getTitle() {
-            return "GPU Render Stages";
+            return "GPU Queue Events";
           }
         };
       }

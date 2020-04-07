@@ -35,11 +35,13 @@ import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.BatterySelectionView;
 import com.google.gapid.perfetto.views.BatterySummaryPanel;
 import com.google.gapid.perfetto.views.State;
+
+import org.eclipse.swt.widgets.Composite;
+
 import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
-import org.eclipse.swt.widgets.Composite;
 
 public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTrack.Data>{
   private static final String VIEW_SQL =
@@ -244,7 +246,7 @@ public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTra
 
     @Override
     public String getTitle() {
-      return "Batteries";
+      return "Battery Usage";
     }
 
     @Override
