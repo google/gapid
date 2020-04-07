@@ -176,6 +176,15 @@ public class CounterInfo {
     });
   }
 
+  public static boolean needQuantize(CounterInfo... infos) {
+    for (CounterInfo info : infos) {
+      if (info != null && info.count > Track.QUANTIZE_CUT_OFF) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public static enum Type {
     Global, Cpu, Gpu, Process, Thread;
 
