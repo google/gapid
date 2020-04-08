@@ -268,6 +268,26 @@ public class StyleConstants {
     return isDark ? Gradients.DARK[14] : Gradients.LIGHT[14];
   }
 
+  public static Gradient memoryRssFileGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[13] : Gradients.LIGHT[16];
+  }
+
+  public static Gradient memoryRssAnonGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[14] : Gradients.LIGHT[13];
+  }
+
+  public static Gradient memoryRssSharedGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[16] : Gradients.LIGHT[14];
+  }
+
+  public static Gradient memorySwapGradient() {
+    // See Gradients.Colors for explanation of magic constants.
+    return isDark ? Gradients.DARK[2] : Gradients.LIGHT[2];
+  }
+
   public static boolean isLight() {
     return !isDark;
   }
@@ -383,6 +403,11 @@ public class StyleConstants {
       ctx.setForegroundColor(border);
       ctx.setBackgroundColor(base);
     }
+
+    /** Sets stroke to border. **/
+    public void applyBorder(RenderContext ctx) {
+      ctx.setForegroundColor(border);
+    }
   }
 
   private static class Gradients {
@@ -390,7 +415,7 @@ public class StyleConstants {
     private static final float[][] COLORS = {
         {  15.38f, 0.2633f, 0.6000f }, // Brown
         {  20.15f, 0.8954f, 0.7000f }, // Orange         // blocked OK, battery out
-        {  21.92f, 0.7626f, 0.4294f }, // Dark Orange    // blocked warn
+        {  21.92f, 0.7626f, 0.4294f }, // Dark Orange    // blocked warn, swap
         {  36.22f, 0.7312f, 0.5000f }, // Light Brown
         {  42.19f, 0.4412f, 0.7490f }, // Tan
         {  50.00f, 0.5822f, 0.5844f }, // Gold
@@ -401,10 +426,10 @@ public class StyleConstants {
         { 130.91f, 0.6548f, 0.6706f }, // Green          // running, battery in
         { 171.02f, 0.5787f, 0.5598f }, // Turquoise
         { 172.36f, 0.7432f, 0.2902f }, // Teal
-        { 198.40f, 1.0000f, 0.4157f }, // Pacific Blue   // runnable, mem used
-        { 200.22f, 0.9787f, 0.8157f }, // Light Blue     // main, mem buf/cache
+        { 198.40f, 1.0000f, 0.4157f }, // Pacific Blue   // runnable, mem used, rss anon
+        { 200.22f, 0.9787f, 0.8157f }, // Light Blue     // main, mem buf/cache, rss shared
         { 201.95f, 0.2455f, 0.6725f }, // Grey           // sleeping
-        { 214.85f, 1.0000f, 0.5510f }, // Vivid Blue
+        { 214.85f, 1.0000f, 0.5510f }, // Vivid Blue     // rss file
         { 217.06f, 0.5000f, 0.4000f }, // Indigo
         { 261.54f, 0.5065f, 0.6980f }, // Light Purple
         { 262.30f, 0.6981f, 0.5843f }, // Purple

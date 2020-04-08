@@ -154,6 +154,10 @@ public class Unit {
     }
   }
 
+  public static String bytesToString(long val) {
+    return Unit.BYTE.format(val);
+  }
+
   private static interface Formatter {
     public String format(long value);
     public String format(double value);

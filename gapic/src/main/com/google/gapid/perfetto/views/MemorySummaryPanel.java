@@ -15,6 +15,7 @@
  */
 package com.google.gapid.perfetto.views;
 
+import static com.google.gapid.perfetto.Unit.bytesToString;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
@@ -32,10 +33,12 @@ import com.google.gapid.perfetto.models.MemorySummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.Selection.Kind;
-import java.util.List;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Displays information about the system memory usage.
@@ -47,7 +50,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implement
   private static final double CURSOR_SIZE = 5;
   private static final double LEGEND_SIZE = 8;
 
-  private final MemorySummaryTrack track;
+  protected final MemorySummaryTrack track;
 
   protected HoverCard hovered = null;
   protected double mouseXpos, mouseYpos;
@@ -222,26 +225,6 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implement
         return true;
       }
     };
-  }
-
-  protected static String bytesToString(long val) {
-    if (val < 1024 + 512) {
-      return val + "b";
-    }
-    double v = val / 1024.0;
-    if (v < 1024 + 512) {
-      return String.format("%.1fKb", v);
-    }
-    v /= 1024;
-    if (v < 1024 + 512) {
-      return String.format("%.1fMb", v);
-    }
-    v /= 1024;
-    if (v < 1024 + 512) {
-      return String.format("%.1fGb", v);
-    }
-    v /= 1024;
-    return String.format("%.1fTb", v);
   }
 
   @Override

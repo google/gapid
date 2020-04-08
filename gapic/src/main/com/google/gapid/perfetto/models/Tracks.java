@@ -219,6 +219,9 @@ public class Tracks {
         }
       }
 
+      // For each process, add the memory usage panel if it exists.
+      ProcessMemoryTrack.enumerate(data, summary.getId(), process.upid);
+
       // For each process, add any other process counters if any exist.
       counters = data.getCounters().values().stream()
           .filter(c -> c.type == CounterInfo.Type.Process && c.ref == process.upid &&

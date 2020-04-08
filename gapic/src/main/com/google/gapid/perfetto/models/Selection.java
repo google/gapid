@@ -121,7 +121,6 @@ public interface Selection {
       return selections.containsKey(type) ? selections.get(type) : Selection.emptySelection();
     }
 
-    @SuppressWarnings({"rawtypes" })
     public void addSelection(MultiSelection other) {
       for (Selection.Kind k : other.selections.keySet()) {
         this.addSelection(k, other.selections.get(k));
@@ -194,7 +193,6 @@ public interface Selection {
     public Selection build();
   }
 
-  @SuppressWarnings("unused")
   public static class Kind implements Comparable<Kind>{
     public static final Kind Thread = new Kind(0);
     public static final Kind ThreadState = new Kind(1);
@@ -205,6 +203,7 @@ public interface Selection {
     public static final Kind FrameEvents = new Kind(6);
     public static final Kind Memory = new Kind(7);
     public static final Kind Battery = new Kind(8);
+    public static final Kind ProcessMemory = new Kind(9);
 
     public int priority;
 
