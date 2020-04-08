@@ -95,7 +95,7 @@ $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
 # Install LUCI
 curl -fsSL -o luci-py.tar.gz https://chromium.googlesource.com/infra/luci/luci-py.git/+archive/0b027452e658080df1f174c403946914443d2aa6.tar.gz
 mkdir luci-py
-tar xzvf luci-py.tar.gz --directory luci-py
+tar xzf luci-py.tar.gz --directory luci-py
 export LUCI_CLIENT_ROOT="$PWD/luci-py/client"
 
 # Prepare Swarming files
@@ -138,7 +138,8 @@ unzip -d swiftshader swiftshader.zip
 
 # Use SwiftShader.
 export VK_ICD_FILENAMES="$(pwd)/swiftshader/lib/vk_swiftshader_icd.json"
-export VK_LOADER_DEBUG=all
+# For extensive Vulkan loader logs, set to VK_LOADER_DEBUG=all
+export VK_LOADER_DEBUG=warn
 
 # Just try running the app first.
 
