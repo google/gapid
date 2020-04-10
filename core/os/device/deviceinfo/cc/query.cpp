@@ -72,12 +72,16 @@ void deviceInstanceID(device::Instance* instance) {
   delete[] proto_data;
 }
 
-void buildDeviceInstance(const query::Option& opt, device::Instance** out) {
+}  // anonymous namespace
+
+namespace query {
+
+device::Instance* getDeviceInstance(const Option& opt) {
   using namespace device;
   using namespace google::protobuf::io;
 
   if (!query::createContext()) {
-    return;
+    return nullptr;
   }
 
   // OS
@@ -183,20 +187,6 @@ void buildDeviceInstance(const query::Option& opt, device::Instance** out) {
     query::destroyContext();
   }
 
-  *out = instance;
-}
-
-}  // anonymous namespace
-
-namespace query {
-
-device::Instance* getDeviceInstance(const Option& opt) {
-  device::Instance* instance = nullptr;
-
-  // buildDeviceInstance on a separate thread to avoid EGL screwing with the
-  // currently bound context.
-  std::thread thread(buildDeviceInstance, opt, &instance);
-  thread.join();
   return instance;
 }
 
