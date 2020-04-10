@@ -63,8 +63,10 @@ struct Option {
 };
 
 // getDeviceInstance returns the device::Instance proto message for the
-// current device. It must be freed with delete.
-device::Instance* getDeviceInstance(const Option& opt);
+// current device. It must be freed with delete. If there is an error
+// getting the device info, null is returned and the error string is filled
+// with a message.
+device::Instance* getDeviceInstance(const Option& opt, std::string* error);
 
 // updateVulkanPhysicalDevices modifies the given device::Instance by adding
 // device::VulkanPhysicalDevice to the device::Instance. If a
@@ -116,8 +118,7 @@ bool hasGLorGLES();
 // The functions below are used by getDeviceInstance(), and are implemented
 // in the target-dependent sub-directories.
 
-bool createContext();
-const char* contextError();
+bool createContext(std::string* error);
 void destroyContext();
 
 // The functions below require a context to be created.

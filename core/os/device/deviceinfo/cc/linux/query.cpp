@@ -39,7 +39,6 @@
 namespace query {
 
 struct Context {
-  char mError[512];
   Display* mDisplay;
   GLXFBConfig* mFBConfigs;
   GLXContext mGlCtx;
@@ -225,7 +224,7 @@ void createGlContext() {
                            gContext.mPbuffer, gContext.mGlCtx);
 }
 
-bool createContext() {
+bool createContext(std::string* errorMsg) {
   if (gContextRefCount++ > 0) {
     return true;
   }
@@ -233,8 +232,7 @@ bool createContext() {
   memset(&gContext, 0, sizeof(gContext));
 
   if (uname(&gContext.mUbuf) != 0) {
-    snprintf(gContext.mError, sizeof(gContext.mError),
-             "uname returned error: %d", errno);
+    errorMsg->append("uname returned error: " + std::to_string(errno));
     destroyContext();
     return false;
   }
@@ -242,8 +240,7 @@ bool createContext() {
   gContext.mNumCores = sysconf(_SC_NPROCESSORS_CONF);
 
   if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
-    snprintf(gContext.mError, sizeof(gContext.mError),
-             "gethostname returned error: %d", errno);
+    errorMsg->append("gethostname returned error: " + std::to_string(errno));
     destroyContext();
     return false;
   }
@@ -252,8 +249,6 @@ bool createContext() {
 
   return true;
 }
-
-const char* contextError() { return gContext.mError; }
 
 bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 

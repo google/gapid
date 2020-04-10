@@ -169,7 +169,12 @@ Spy::Spy()
   // deviceinfo queries want to call into EGL / GL commands which will be
   // patched.
   query::Option query_opt;
-  SpyBase::set_device_instance(query::getDeviceInstance(query_opt));
+  std::string error;
+  SpyBase::set_device_instance(query::getDeviceInstance(query_opt, &error));
+  if (!error.empty()) {
+    GAPID_ERROR("Failed to get device info: %s", error.c_str());
+  }
+
   SpyBase::set_current_abi(query::currentABI());
   if (!SpyBase::writeHeader()) {
     GAPID_ERROR("Failed at writing trace header.");

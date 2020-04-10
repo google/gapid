@@ -76,11 +76,11 @@ void deviceInstanceID(device::Instance* instance) {
 
 namespace query {
 
-device::Instance* getDeviceInstance(const Option& opt) {
+device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
   using namespace device;
   using namespace google::protobuf::io;
 
-  if (!query::createContext()) {
+  if (!query::createContext(error)) {
     return nullptr;
   }
 

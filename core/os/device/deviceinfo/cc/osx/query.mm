@@ -31,7 +31,6 @@
 namespace query {
 
 struct Context {
-  char mError[512];
   NSOpenGLPixelFormat* mGlFmt;
   NSOpenGLContext* mGlCtx;
   NSOperatingSystemVersion mOsVersion;
@@ -86,7 +85,7 @@ void createGlContext() {
   }
 }
 
-bool createContext() {
+bool createContext(std::string* errorMsg) {
   if (gContextRefCount++ > 0) {
     return true;
   }
@@ -98,22 +97,20 @@ bool createContext() {
   sysctl(mib, 2, nullptr, &len, nullptr, 0);
   gContext.mHwModel = new char[len];
   if (sysctl(mib, 2, gContext.mHwModel, &len, nullptr, 0) != 0) {
-    snprintf(gContext.mError, sizeof(gContext.mError),
-             "sysctl {CTL_HW, HW_MODEL} returned error: %d", errno);
+    errorMsg->append("sysctl {CTL_HW, HW_MODEL} returned error: " + std::to_string(errno));
     destroyContext();
     return false;
   }
 
   len = sizeof(gContext.mNumCores);
   if (sysctlbyname("hw.logicalcpu_max", &gContext.mNumCores, &len, nullptr, 0) != 0) {
-    snprintf(gContext.mError, sizeof(gContext.mError),
-             "sysctlbyname 'hw.logicalcpu_max' returned error: %d", errno);
+    errorMsg->append("sysctlbyname 'hw.logicalcpu_max' returned error: " + std::to_string(errno));
     destroyContext();
     return false;
   }
 
   if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
-    snprintf(gContext.mError, sizeof(gContext.mError), "gethostname returned error: %d", errno);
+    errorMsg->append("gethostname returned error: " + std::to_string(errno));
     destroyContext();
     return false;
   }
@@ -124,8 +121,6 @@ bool createContext() {
 
   return true;
 }
-
-const char* contextError() { return gContext.mError; }
 
 bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 

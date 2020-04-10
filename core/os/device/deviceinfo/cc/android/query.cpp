@@ -130,7 +130,6 @@ void abiByName(const std::string name, device::ABI* abi) {
 namespace query {
 
 struct Context {
-  char mError[512];
   EGLDisplay mDisplay;
   EGLSurface mSurface;
   EGLContext mContext;
@@ -183,7 +182,7 @@ void destroyContext() {
   }
 }
 
-bool createContext() {
+bool createContext(std::string* errorMsg) {
   if (gContextRefCount++ > 0) {
     return true;
   }
@@ -209,16 +208,15 @@ bool createContext() {
 
 #undef RESOLVE
 
-#define CHECK(x)                                                  \
-  x;                                                              \
-  {                                                               \
-    EGLint error = eglGetError();                                 \
-    if (error != EGL_SUCCESS) {                                   \
-      snprintf(gContext.mError, sizeof(gContext.mError),          \
-               "EGL error: 0x%x when executing:\n   " #x, error); \
-      destroyContext();                                           \
-      return false;                                               \
-    }                                                             \
+#define CHECK(x)                     \
+  x;                                 \
+  {                                  \
+    EGLint error = eglGetError();    \
+    if (error != EGL_SUCCESS) {      \
+      errorMsg->append("EGL error"); \
+      destroyContext();              \
+      return false;                  \
+    }                                \
   }
 
   CHECK(auto display = eglGetDisplay(EGL_DEFAULT_DISPLAY));
@@ -283,16 +281,16 @@ bool createContext() {
 
 #undef CHECK
 
-#define GET_PROP(name, trans)                            \
-  do {                                                   \
-    char _v[PROP_VALUE_MAX] = {0};                       \
-    if (__system_property_get(name, _v) == 0) {          \
-      snprintf(gContext.mError, sizeof(gContext.mError), \
-               "Failed reading property %s", name);      \
-      destroyContext();                                  \
-      return false;                                      \
-    }                                                    \
-    trans;                                               \
+#define GET_PROP(name, trans)                       \
+  do {                                              \
+    char _v[PROP_VALUE_MAX] = {0};                  \
+    if (__system_property_get(name, _v) == 0) {     \
+      errorMsg->append("Failed reading property "); \
+      errorMsg->append(name);                       \
+      destroyContext();                             \
+      return false;                                 \
+    }                                               \
+    trans;                                          \
   } while (0)
 
 #define GET_STRING_PROP(n, t) GET_PROP(n, t = _v)
@@ -461,8 +459,6 @@ bool createContext() {
 
   return true;
 }
-
-const char* contextError() { return gContext.mError; }
 
 bool hasGLorGLES() { return true; }
 

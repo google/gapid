@@ -17,6 +17,12 @@
 #include "instance.h"
 #include "query.h"
 
+namespace {
+
+std::string error;
+
+}  // anonymous namespace
+
 extern "C" {
 
 device_instance get_device_instance() {
@@ -25,7 +31,8 @@ device_instance get_device_instance() {
   query::Option query_opt;
   query_opt.vulkan.set_query_layers_and_extensions(true)
       .set_query_physical_devices(true);
-  auto instance = query::getDeviceInstance(query_opt);
+  error.clear();
+  auto instance = query::getDeviceInstance(query_opt, &error);
   if (!instance) {
     return out;
   }
@@ -40,7 +47,7 @@ device_instance get_device_instance() {
   return out;
 }
 
-const char* get_device_instance_error() { return query::contextError(); }
+const char* get_device_instance_error() { return error.c_str(); }
 
 void free_device_instance(device_instance di) { delete[] di.data; }
 

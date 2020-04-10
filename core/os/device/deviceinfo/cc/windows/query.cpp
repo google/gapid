@@ -51,7 +51,6 @@ typedef BOOL(CALLBACK* pfn_wglMakeCurrent)(HDC, HGLRC);
 typedef BOOL(CALLBACK* pfn_wglDeleteContext)(HGLRC);
 
 struct Context {
-  char mError[512];
   HWND mWnd;
   HDC mHDC;
   HGLRC mGlCtx;
@@ -127,7 +126,7 @@ void createGlContext() {
   return;
 }
 
-bool createContext() {
+bool createContext(std::string* errorMsg) {
   if (gContextRefCount++ > 0) {
     return true;
   }
@@ -177,8 +176,8 @@ bool createContext() {
   DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
   WCHAR host_wide[MAX_COMPUTERNAME_LENGTH + 1];
   if (!GetComputerNameW(host_wide, &size)) {
-    snprintf(gContext.mError, sizeof(gContext.mError),
-             "Couldn't get host name: %d", GetLastError());
+    errorMsg->append("Couldn't get host name: " +
+                     std::to_string(GetLastError()));
     return false;
   }
   WideCharToMultiByte(CP_UTF8,                     // CodePage
@@ -193,8 +192,6 @@ bool createContext() {
 
   return true;
 }
-
-const char* contextError() { return gContext.mError; }
 
 bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 
