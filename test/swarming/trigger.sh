@@ -49,16 +49,26 @@ SWARMING_TASK_NAME="${SWARMING_BUILD_INFO}_${SWARMING_TEST_NAME}"
 SWARMING_ISOLATE_SERVER=https://chrome-isolated.appspot.com
 SWARMING_SERVER=https://chrome-swarming.appspot.com
 SWARMING_POOL=SkiaInternal
-SWARMING_DEVICES=flame # pixel4
-# Priority: lower value is higher priority, defaults to 200: PR short test tasks should be of higher priority than the default
+# String with space-separated device names
+SWARMING_DEVICES="flame"
+# Priority: lower value is higher priority, defaults to 200: PR short test tasks
+# should be of higher priority than the default
 SWARMING_PRIORITY=100
 # Timeout: maximum number of seconds for the task to terminate
 SWARMING_TIMEOUT=300
 # Expiration: number of seconds to wait for a bot to be available
 SWARMING_EXPIRATION=600
 
-# The test may override some of the environment variables
-source ${SWARMING_TEST_DIR}/env.sh
+# The test may override some of the environment variables. For security reasons,
+# we don't want to 'source' the test 'env.sh' as this could lead to code
+# injection. Instead, we grep all relevant environment variables that may be
+# overriden.
+for envvar in SWARMING_DEVICES SWARMING_PRIORITY SWARMING_TIMEOUT SWARMING_EXPIRATION ; do
+  value=`grep ${envvar} ${SWARMING_TEST_DIR}/env.sh | sed -e 's/^.*=//'`
+  if [ ! -z "${value}" ] ; then
+    declare ${envvar}=${value}
+  fi
+done
 
 # Generate config for isolate
 cat << EOF > ${SWARMING_TEST_NAME}.isolate
