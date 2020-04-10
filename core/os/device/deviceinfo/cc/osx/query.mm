@@ -17,22 +17,17 @@
 #include "../query.h"
 
 #import <AppKit/AppKit.h>
-#import <OpenGL/gl.h>
-
-#include <cstring>
-
-#include <unistd.h>
 
 #include <sys/sysctl.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <cstring>
 
 #define STR_OR_EMPTY(x) ((x != nullptr) ? x : "")
 
 namespace query {
 
 struct Context {
-  NSOpenGLPixelFormat* mGlFmt;
-  NSOpenGLContext* mGlCtx;
   NSOperatingSystemVersion mOsVersion;
   int mNumCores;
   char* mHwModel;
@@ -49,39 +44,6 @@ void destroyContext() {
 
   if (gContext.mHwModel) {
     delete[] gContext.mHwModel;
-  }
-  if (gContext.mGlFmt) {
-    [gContext.mGlFmt release];
-    gContext.mGlFmt = nullptr;
-  }
-  if (gContext.mGlCtx) {
-    [gContext.mGlCtx release];
-    gContext.mGlCtx = nullptr;
-  }
-}
-
-void createGlContext() {
-  NSOpenGLPixelFormatAttribute attributes[] = {
-      // clang-format off
-      NSOpenGLPFANoRecovery,
-      NSOpenGLPFAColorSize, (NSOpenGLPixelFormatAttribute)32,
-      NSOpenGLPFADepthSize, (NSOpenGLPixelFormatAttribute)24,
-      NSOpenGLPFAStencilSize, (NSOpenGLPixelFormatAttribute)8,
-      NSOpenGLPFAAccelerated,
-      NSOpenGLPFABackingStore,
-      NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-      (NSOpenGLPixelFormatAttribute)0
-      // clang-format on
-  };
-
-  gContext.mGlFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
-  if (gContext.mGlFmt != nullptr) {
-    gContext.mGlCtx = [[NSOpenGLContext alloc] initWithFormat:gContext.mGlFmt shareContext:nil];
-    if (gContext.mGlCtx == nullptr) {
-      return;
-    }
-
-    [gContext.mGlCtx makeCurrentContext];
   }
 }
 
@@ -115,14 +77,10 @@ bool createContext(std::string* errorMsg) {
     return false;
   }
 
-  createGlContext();
-
   gContext.mOsVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
 
   return true;
 }
-
-bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
 
 int numABIs() { return 1; }
 
@@ -160,8 +118,6 @@ int osMajor() { return gContext.mOsVersion.majorVersion; }
 int osMinor() { return gContext.mOsVersion.minorVersion; }
 
 int osPoint() { return gContext.mOsVersion.patchVersion; }
-
-void glDriverPlatform(device::OpenGLDriver*) {}
 
 device::VulkanProfilingLayers* get_vulkan_profiling_layers() { return nullptr; }
 

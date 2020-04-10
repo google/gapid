@@ -18,10 +18,7 @@ load("//tools/build:rules.bzl", "cc_copts")
 cc_library(
     name = "cc",
     srcs = glob(
-        [
-            "*.cpp",
-            "gl/*.cpp",
-        ],
+        ["*.cpp"],
         exclude = [
             "*_test.cpp",
         ],
@@ -41,10 +38,7 @@ cc_library(
             "posix/*.cpp",
         ]),
     }),
-    hdrs = glob([
-        "*.h",
-        "gl/*.h",
-    ]),
+    hdrs = glob(["*.h"]),
     copts = cc_copts(),
     linkopts = select({
         "//tools/build:linux": ["-ldl"],

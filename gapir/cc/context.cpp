@@ -26,7 +26,6 @@
 #include "stack.h"
 #include "vulkan_renderer.h"
 
-#include "core/cc/gl/formats.h"
 #include "core/cc/log.h"
 #include "core/cc/target.h"
 

@@ -16,52 +16,15 @@
 
 #include "../query.h"
 
-#include "core/cc/get_gles_proc_address.h"
-
-#include <GL/gl.h>
 #include <windows.h>
-#include <wingdi.h>
-
-namespace {
-
-static const char* wndClassName = TEXT("opengl-dummy-window");
-
-WNDCLASSEX registerWindowClass() {
-  WNDCLASSEX wc;
-  memset(&wc, 0, sizeof(wc));
-  wc.cbSize = sizeof(wc);
-  // We must use CS_OWNDC here if we are to use this window with GL.
-  // https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#The_Window_Itself
-  wc.style = CS_OWNDC;
-  wc.lpfnWndProc = DefWindowProc;
-  wc.hInstance = GetModuleHandle(0);
-  wc.hCursor = LoadCursor(0, IDC_ARROW);
-  wc.lpszMenuName = TEXT("");
-  wc.lpszClassName = wndClassName;
-  RegisterClassEx(&wc);
-  return wc;
-}
-
-}  // anonymous namespace
 
 namespace query {
 
-typedef HGLRC(CALLBACK* pfn_wglCreateContext)(HDC);
-typedef BOOL(CALLBACK* pfn_wglMakeCurrent)(HDC, HGLRC);
-typedef BOOL(CALLBACK* pfn_wglDeleteContext)(HGLRC);
-
 struct Context {
-  HWND mWnd;
-  HDC mHDC;
-  HGLRC mGlCtx;
   int mNumCores;
   char mHostName[MAX_COMPUTERNAME_LENGTH * 4 + 1];  // Stored as UTF-8
   OSVERSIONINFOEX mOsVersion;
   const char* mOsName;
-
-  pfn_wglCreateContext wglCreateContext;
-  pfn_wglMakeCurrent wglMakeCurrent;
-  pfn_wglDeleteContext wglDeleteContext;
 };
 
 static Context gContext;
@@ -71,67 +34,12 @@ void destroyContext() {
   if (--gContextRefCount > 0) {
     return;
   }
-
-  if (gContext.mWnd != nullptr) {
-    DestroyWindow(gContext.mWnd);
-  }
-  if (gContext.mGlCtx != nullptr) {
-    gContext.wglMakeCurrent(gContext.mHDC, 0);
-    gContext.wglDeleteContext(gContext.mGlCtx);
-  }
-}
-
-void createGlContext() {
-  gContext.wglCreateContext =
-      (pfn_wglCreateContext)core::GetGlesProcAddress("wglCreateContext");
-  gContext.wglMakeCurrent =
-      (pfn_wglMakeCurrent)core::GetGlesProcAddress("wglMakeCurrent");
-  gContext.wglDeleteContext =
-      (pfn_wglDeleteContext)core::GetGlesProcAddress("wglDeleteContext");
-
-  if (gContext.wglCreateContext == nullptr ||
-      gContext.wglMakeCurrent == nullptr ||
-      gContext.wglDeleteContext == nullptr) {
-    return;
-  }
-
-  WNDCLASSEX wc = registerWindowClass();
-  gContext.mWnd = CreateWindow(wndClassName, TEXT(""), WS_POPUP, 0, 0, 8, 8, 0,
-                               0, GetModuleHandle(0), 0);
-  if (gContext.mWnd == nullptr) {
-    return;
-  }
-
-  PIXELFORMATDESCRIPTOR pfd;
-  memset(&pfd, 0, sizeof(pfd));
-  pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-  pfd.nVersion = 1;
-  pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
-  pfd.iPixelType = PFD_TYPE_RGBA;
-  pfd.cRedBits = 8;
-  pfd.cGreenBits = 8;
-  pfd.cBlueBits = 8;
-  pfd.cAlphaBits = 8;
-  pfd.cDepthBits = 24;
-  pfd.cStencilBits = 8;
-  pfd.cColorBits = 32;
-  pfd.iLayerType = PFD_MAIN_PLANE;
-  gContext.mHDC = GetDC(gContext.mWnd);
-  SetPixelFormat(gContext.mHDC, ChoosePixelFormat(gContext.mHDC, &pfd), &pfd);
-  gContext.mGlCtx = gContext.wglCreateContext(gContext.mHDC);
-  if (gContext.mGlCtx != nullptr) {
-    gContext.wglMakeCurrent(gContext.mHDC, gContext.mGlCtx);
-  }
-
-  return;
 }
 
 bool createContext(std::string* errorMsg) {
   if (gContextRefCount++ > 0) {
     return true;
   }
-
-  createGlContext();
 
   gContext.mOsVersion.dwOSVersionInfoSize = sizeof(gContext.mOsVersion);
   GetVersionEx((OSVERSIONINFO*)(&gContext.mOsVersion));
@@ -193,8 +101,6 @@ bool createContext(std::string* errorMsg) {
   return true;
 }
 
-bool hasGLorGLES() { return gContext.mGlCtx != nullptr; }
-
 int numABIs() { return 1; }
 
 void abi(int idx, device::ABI* abi) {
@@ -231,8 +137,6 @@ int osMajor() { return gContext.mOsVersion.dwMajorVersion; }
 int osMinor() { return gContext.mOsVersion.dwMinorVersion; }
 
 int osPoint() { return gContext.mOsVersion.dwBuildNumber; }
-
-void glDriverPlatform(device::OpenGLDriver*) {}
 
 device::VulkanProfilingLayers* get_vulkan_profiling_layers() { return nullptr; }
 

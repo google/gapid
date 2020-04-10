@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-#include "egl_lite.h"
-
 #include "../query.h"
 
 #include "core/cc/assert.h"
-#include "core/cc/get_gles_proc_address.h"
 #include "core/cc/log.h"
 
 #include <cstring>
@@ -33,10 +30,6 @@
 
 #define LOG_WARN(...) \
   __android_log_print(ANDROID_LOG_WARN, "GAPID", __VA_ARGS__);
-
-typedef int GLint;
-typedef unsigned int GLuint;
-typedef uint8_t GLubyte;
 
 namespace {
 
@@ -130,9 +123,6 @@ void abiByName(const std::string name, device::ABI* abi) {
 namespace query {
 
 struct Context {
-  EGLDisplay mDisplay;
-  EGLSurface mSurface;
-  EGLContext mContext;
   int mNumCores;
   std::string mHost;
   std::string mHardware;
@@ -143,7 +133,6 @@ struct Context {
   int mOSVersionMinor;
   std::vector<std::string> mSupportedABIs;
   device::Architecture mCpuArchitecture;
-  std::string eglExtensions;
 };
 
 static Context gContext;
@@ -153,33 +142,6 @@ void destroyContext() {
   if (--gContextRefCount > 0) {
     return;
   }
-
-  auto eglMakeCurrent = reinterpret_cast<PFNEGLMAKECURRENT>(
-      core::GetGlesProcAddress("eglMakeCurrent"));
-  auto eglDestroyContext = reinterpret_cast<PFNEGLDESTROYCONTEXT>(
-      core::GetGlesProcAddress("eglDestroyContext"));
-  auto eglDestroySurface = reinterpret_cast<PFNEGLDESTROYSURFACE>(
-      core::GetGlesProcAddress("eglDestroySurface"));
-  auto eglTerminate = reinterpret_cast<PFNEGLTERMINATE>(
-      core::GetGlesProcAddress("eglTerminate"));
-  auto eglReleaseThread = reinterpret_cast<PFNEGLRELEASETHREAD>(
-      core::GetGlesProcAddress("eglReleaseThread"));
-
-  if (gContext.mContext) {
-    eglMakeCurrent(gContext.mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                   EGL_NO_CONTEXT);
-    eglDestroyContext(gContext.mDisplay, gContext.mContext);
-    gContext.mContext = 0;
-  }
-  if (gContext.mSurface) {
-    eglDestroySurface(gContext.mDisplay, gContext.mSurface);
-    gContext.mSurface = 0;
-  }
-  if (gContext.mDisplay) {
-    eglReleaseThread();
-    eglTerminate(gContext.mDisplay);
-    gContext.mDisplay = nullptr;
-  }
 }
 
 bool createContext(std::string* errorMsg) {
@@ -187,99 +149,7 @@ bool createContext(std::string* errorMsg) {
     return true;
   }
 
-  gContext.mDisplay = nullptr;
-  gContext.mSurface = nullptr;
-  gContext.mContext = nullptr;
   gContext.mNumCores = 0;
-
-#define RESOLVE(name, pfun)                                            \
-  auto name = reinterpret_cast<pfun>(core::GetGlesProcAddress(#name)); \
-  GAPID_ASSERT(name != nullptr)
-
-  RESOLVE(eglGetError, PFNEGLGETERROR);
-  RESOLVE(eglInitialize, PFNEGLINITIALIZE);
-  RESOLVE(eglBindAPI, PFNEGLBINDAPI);
-  RESOLVE(eglChooseConfig, PFNEGLCHOOSECONFIG);
-  RESOLVE(eglCreateContext, PFNEGLCREATECONTEXT);
-  RESOLVE(eglCreatePbufferSurface, PFNEGLCREATEPBUFFERSURFACE);
-  RESOLVE(eglMakeCurrent, PFNEGLMAKECURRENT);
-  RESOLVE(eglGetDisplay, PFNEGLGETDISPLAY);
-  RESOLVE(eglQueryString, PFNEGLQUERYSTRING);
-
-#undef RESOLVE
-
-#define CHECK(x)                     \
-  x;                                 \
-  {                                  \
-    EGLint error = eglGetError();    \
-    if (error != EGL_SUCCESS) {      \
-      errorMsg->append("EGL error"); \
-      destroyContext();              \
-      return false;                  \
-    }                                \
-  }
-
-  CHECK(auto display = eglGetDisplay(EGL_DEFAULT_DISPLAY));
-
-  EGLint major, minor;
-  CHECK(eglInitialize(display, &major, &minor));
-
-  gContext.mDisplay = display;
-
-  if (major > 1 || minor >= 5) {
-    // Client extensions (null display) were added in EGL 1.5.
-    CHECK(auto exts = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS));
-    gContext.eglExtensions.append(exts);
-    gContext.eglExtensions.append(" ");
-  }
-  CHECK(auto exts = eglQueryString(display, EGL_EXTENSIONS));
-  gContext.eglExtensions.append(exts);
-
-  CHECK(eglBindAPI(EGL_OPENGL_ES_API));
-
-  // Find a supported EGL context config.
-  int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
-  const int configAttribList[] = {
-      // clang-format off
-      EGL_RED_SIZE, r,
-      EGL_GREEN_SIZE, g,
-      EGL_BLUE_SIZE, b,
-      EGL_ALPHA_SIZE, a,
-      EGL_BUFFER_SIZE, r+g+b+a,
-      EGL_DEPTH_SIZE, d,
-      EGL_STENCIL_SIZE, s,
-      EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-      EGL_NONE
-      // clang-format on
-  };
-
-  int one = 1;
-  EGLConfig eglConfig;
-
-  CHECK(eglChooseConfig(display, configAttribList, &eglConfig, 1, &one));
-
-  // Create an EGL context.
-  const int contextAttribList[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
-
-  CHECK(gContext.mContext = eglCreateContext(display, eglConfig, EGL_NO_CONTEXT,
-                                             contextAttribList));
-
-  const int surfaceAttribList[] = {
-      // clang-format off
-      EGL_WIDTH, 16,
-      EGL_HEIGHT, 16,
-      EGL_NONE
-      // clang-format on
-  };
-
-  CHECK(gContext.mSurface =
-            eglCreatePbufferSurface(display, eglConfig, surfaceAttribList));
-
-  CHECK(eglMakeCurrent(display, gContext.mSurface, gContext.mSurface,
-                       gContext.mContext));
-
-#undef CHECK
 
 #define GET_PROP(name, trans)                       \
   do {                                              \
@@ -460,8 +330,6 @@ bool createContext(std::string* errorMsg) {
   return true;
 }
 
-bool hasGLorGLES() { return true; }
-
 int numABIs() { return gContext.mSupportedABIs.size(); }
 
 device::ABI* currentABI() {
@@ -511,16 +379,6 @@ int osMajor() { return gContext.mOSVersionMajor; }
 int osMinor() { return gContext.mOSVersionMinor; }
 
 int osPoint() { return 0; }
-
-void glDriverPlatform(device::OpenGLDriver* driver) {
-  std::istringstream iss(gContext.eglExtensions);
-  std::string extension;
-  while (std::getline(iss, extension, ' ')) {
-    if (extension != "") {
-      driver->add_extensions(extension);
-    }
-  }
-}
 
 device::VulkanProfilingLayers* get_vulkan_profiling_layers() {
   auto layers = new device::VulkanProfilingLayers();

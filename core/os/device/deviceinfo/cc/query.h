@@ -111,10 +111,6 @@ device::VulkanProfilingLayers* get_vulkan_profiling_layers();
 // false.
 bool hasVulkanLoader();
 
-// hasGLorGLES returns true if there is a OpenGL or OpenGL ES display driver
-// that can be used.
-bool hasGLorGLES();
-
 // The functions below are used by getDeviceInstance(), and are implemented
 // in the target-dependent sub-directories.
 
@@ -139,11 +135,6 @@ const char* gpuName();
 const char* gpuVendor();
 
 const char* instanceName();
-
-// This queries the platform independent GL things.
-void glDriver(device::OpenGLDriver*);
-// This queries the platform depended GL things.
-void glDriverPlatform(device::OpenGLDriver*);
 
 device::OSKind osKind();
 const char* osName();

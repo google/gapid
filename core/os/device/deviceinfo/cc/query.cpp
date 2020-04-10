@@ -96,16 +96,8 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
   // Instance.Configuration.Drivers
   auto drivers = new Drivers();
 
-  const char* backupVendor = "";
+  const char* backupVendor = "";  // TODO: we no longer have a backup for this
   const char* backupName = "";
-  if (query::hasGLorGLES()) {
-    // Instance.Configuration.Drivers.OpenGLDriver
-    auto opengl_driver = new OpenGLDriver();
-    query::glDriver(opengl_driver);
-    drivers->set_allocated_opengl(opengl_driver);
-    backupVendor = opengl_driver->vendor().c_str();
-    backupName = opengl_driver->renderer().c_str();
-  }
 
   // Checks if the device supports Vulkan (have Vulkan loader) first, then
   // populates the VulkanDriver message.
@@ -116,8 +108,7 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
     }
     if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
-      if (strlen(backupName) == 0 &&
-          vulkan_driver->physical_devices_size() > 0) {
+      if (vulkan_driver->physical_devices_size() > 0) {
         backupName = vulkan_driver->physical_devices(0).device_name().c_str();
       }
     }

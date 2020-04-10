@@ -17,10 +17,7 @@ load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "mm_libra
 mm_library(
     name = "darwin_query",
     srcs = glob(["osx/*.mm"]),
-    copts = cc_copts() + [
-        # Avoid OpenGL deprecation error.
-        "-DGL_SILENCE_DEPRECATION",
-    ],
+    copts = cc_copts(),
     copy_hdrs = ["query.h"],
     deps = ["//core/os/device:device_cc_proto"],
 )
@@ -41,17 +38,11 @@ cc_library(
     copts = cc_copts(),
     linkopts = select({
         "//tools/build:linux": [],
-        "//tools/build:darwin": [
-            "-framework Cocoa",
-            "-framework OpenGL",
-        ],
-        "//tools/build:windows": ["-lgdi32"],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": [],
         # Android
         "//conditions:default": [
-            "-lEGL",
-            "-lGLESv2",
             "-llog",
-            "-landroid",
             "-lm",
         ],
     }),
