@@ -18,6 +18,8 @@
 #include "../dl_loader.h"
 #include "../log.h"
 
+#include <dlfcn.h>
+
 namespace {
 
 using namespace core;
@@ -28,8 +30,28 @@ typedef void* PFN_vkVoidFunction;
 typedef size_t VkDevice;
 typedef size_t VkInstance;
 
+// The mesa driver does bad things with LLVM. Since we also use llvm,
+// we can't have the mesa driver do bad things to our code.
+// Therefore we should preload any versions of llvm that may be required
+// into the start of our address space.
+// See: https://github.com/google/gapid/issues/1707 for more information
+struct MesaLLVMOpener {
+  MesaLLVMOpener() {
+    char name[512];
+    for (int i = 3; i <= 9; i++) {
+      snprintf(name, sizeof(name), "libLLVM-%d.0.so.1", i);
+      dlopen(name, RTLD_LAZY | RTLD_DEEPBIND);
+      snprintf(name, sizeof(name), "libLLVM-%d.so.1", i);
+      dlopen(name, RTLD_LAZY | RTLD_DEEPBIND);
+    }
+  }
+};
+
 void* getVulkanInstanceProcAddress(size_t instance, const char* name) {
   typedef PFN_vkVoidFunction (*VPAPROC)(VkInstance instance, const char* name);
+
+  static MesaLLVMOpener _dummy;
+  (void)_dummy;
 
   static DlLoader dylib("libvulkan.so", "libvulkan.so.1");
 
