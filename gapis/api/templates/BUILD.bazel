@@ -220,46 +220,6 @@ api_template(
 )
 
 api_template(
-    name = "opengl32_exports.def",
-    includes = [
-        "opengl32_exports.tmpl",
-        ":cpp_common_deps",
-    ],
-    outputs = ["opengl32_exports.def"],
-    template = "opengl32_exports.def.tmpl",
-)
-
-api_template(
-    name = "opengl32_resolve.cpp",
-    includes = [
-        "opengl32_exports.tmpl",
-        ":cpp_common_deps",
-    ],
-    outputs = ["opengl32_resolve.cpp"],
-    template = "opengl32_resolve.cpp.tmpl",
-)
-
-api_template(
-    name = "opengl32_x64.asm",
-    includes = [
-        "opengl32_exports.tmpl",
-        ":cpp_common_deps",
-    ],
-    outputs = ["opengl32_x64.asm"],
-    template = "opengl32_x64.asm.tmpl",
-)
-
-api_template(
-    name = "opengl_framework_exports.cpp",
-    includes = [
-        "opengl_framework_exports.tmpl",
-        ":cpp_common_deps",
-    ],
-    outputs = ["opengl_framework_exports.cpp"],
-    template = "opengl_framework_exports.cpp.tmpl",
-)
-
-api_template(
     name = "enum_lookup.go",
     includes = [":go_common_deps"],
     outputs = ["{api}_enum_lookup.go"],
