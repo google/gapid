@@ -33,83 +33,47 @@
 
 #define STR_OR_EMPTY(x) ((x != nullptr) ? x : "")
 
-namespace query {
+namespace {
 
-struct Context {
-  int mNumCores;
-  utsname mUbuf;
-  char mHostName[512];
-};
-
-static Context gContext;
-static int gContextRefCount = 0;
-
-void destroyContext() {
-  if (--gContextRefCount > 0) {
-    return;
-  }
+device::ABI* abi(device::ABI* abi) {
+  abi->set_name("x86_64");
+  abi->set_os(device::Linux);
+  abi->set_architecture(device::X86_64);
+  abi->set_allocated_memory_layout(query::currentMemoryLayout());
+  return abi;
 }
 
-bool createContext(std::string* errorMsg) {
-  if (gContextRefCount++ > 0) {
-    return true;
-  }
+}  // namespace
 
-  memset(&gContext, 0, sizeof(gContext));
+namespace query {
 
-  if (uname(&gContext.mUbuf) != 0) {
-    errorMsg->append("uname returned error: " + std::to_string(errno));
-    destroyContext();
-    return false;
-  }
-
-  gContext.mNumCores = sysconf(_SC_NPROCESSORS_CONF);
-
-  if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
+bool queryPlatform(PlatformInfo* info, std::string* errorMsg) {
+  char hostname[HOST_NAME_MAX + 1];
+  if (gethostname(hostname, sizeof(hostname)) != 0) {
     errorMsg->append("gethostname returned error: " + std::to_string(errno));
-    destroyContext();
     return false;
   }
+  info->name = hostname;
+  info->abis.resize(1);
+  abi(&info->abis[0]);
+
+  utsname ubuf;
+  if (uname(&ubuf) != 0) {
+    errorMsg->append("uname returned error: " + std::to_string(errno));
+    return false;
+  }
+  info->hardwareName = STR_OR_EMPTY(ubuf.machine);
+
+  info->numCpuCores = sysconf(_SC_NPROCESSORS_CONF);
+
+  info->osKind = device::Linux;
+  info->osName = STR_OR_EMPTY(ubuf.release);
+  info->osBuild = STR_OR_EMPTY(ubuf.version);
 
   return true;
 }
 
-int numABIs() { return 1; }
-
-void abi(int idx, device::ABI* abi) {
-  abi->set_name("x86_64");
-  abi->set_os(device::Linux);
-  abi->set_architecture(device::X86_64);
-  abi->set_allocated_memory_layout(currentMemoryLayout());
-}
-
-device::ABI* currentABI() {
-  auto out = new device::ABI();
-  abi(0, out);
-  return out;
-}
-
-int cpuNumCores() { return gContext.mNumCores; }
-
-const char* gpuName() { return ""; }
-
-const char* gpuVendor() { return ""; }
-
-const char* instanceName() { return gContext.mHostName; }
-
-const char* hardwareName() { return STR_OR_EMPTY(gContext.mUbuf.machine); }
-
-device::OSKind osKind() { return device::Linux; }
-
-const char* osName() { return STR_OR_EMPTY(gContext.mUbuf.release); }
-
-const char* osBuild() { return STR_OR_EMPTY(gContext.mUbuf.version); }
-
-int osMajor() { return 0; }
-
-int osMinor() { return 0; }
-
-int osPoint() { return 0; }
+device::ABI* currentABI() { return abi(new device::ABI()); }
 
 device::VulkanProfilingLayers* get_vulkan_profiling_layers() {
   auto layers = new device::VulkanProfilingLayers();

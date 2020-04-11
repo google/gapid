@@ -118,38 +118,26 @@ void abiByName(const std::string name, device::ABI* abi) {
   }
 }
 
+typedef struct {
+  int major, minor;
+} AndroidVersion;
+
+const AndroidVersion kVersionBySdk[] = {
+    {0, 0}, {1, 0}, {1, 1}, {1, 5}, {1, 6},  /*  0- 4 */
+    {2, 0}, {2, 0}, {2, 1}, {2, 2}, {2, 3},  /*  5- 9 */
+    {2, 3}, {3, 0}, {3, 1}, {3, 2}, {4, 0},  /* 10-14 */
+    {4, 0}, {4, 1}, {4, 2}, {4, 3}, {4, 4},  /* 15-19 */
+    {4, 4}, {5, 0}, {5, 1}, {6, 0}, {7, 0},  /* 20-24 */
+    {7, 1}, {8, 0}, {8, 1}, {9, 0}, {10, 0}, /* 25-29*/
+    {11, 0}};
+constexpr int kMaxKnownSdk = (sizeof(kVersionBySdk) / sizeof(AndroidVersion));
+
 }  // anonymous namespace
 
 namespace query {
 
-struct Context {
-  int mNumCores;
-  std::string mHost;
-  std::string mHardware;
-  std::string mOSName;
-  std::string mOSBuild;
-  int mOSVersion;
-  int mOSVersionMajor;
-  int mOSVersionMinor;
-  std::vector<std::string> mSupportedABIs;
-  device::Architecture mCpuArchitecture;
-};
-
-static Context gContext;
-static int gContextRefCount = 0;
-
-void destroyContext() {
-  if (--gContextRefCount > 0) {
-    return;
-  }
-}
-
-bool createContext(std::string* errorMsg) {
-  if (gContextRefCount++ > 0) {
-    return true;
-  }
-
-  gContext.mNumCores = 0;
+bool queryPlatform(PlatformInfo* info, std::string* errorMsg) {
+  info->numCpuCores = 0;
 
 #define GET_PROP(name, trans)                       \
   do {                                              \
@@ -157,7 +145,6 @@ bool createContext(std::string* errorMsg) {
     if (__system_property_get(name, _v) == 0) {     \
       errorMsg->append("Failed reading property "); \
       errorMsg->append(name);                       \
-      destroyContext();                             \
       return false;                                 \
     }                                               \
     trans;                                          \
@@ -177,160 +164,46 @@ bool createContext(std::string* errorMsg) {
 
   std::string manufacturer;
   std::string model;
-
-  GET_STRING_LIST_PROP("ro.product.cpu.abilist", gContext.mSupportedABIs);
-  GET_STRING_PROP("ro.build.host", gContext.mHost);
   GET_STRING_PROP("ro.product.manufacturer", manufacturer);
   GET_STRING_PROP("ro.product.model", model);
-  GET_STRING_PROP("ro.hardware", gContext.mHardware);
-  GET_STRING_PROP("ro.build.display.id", gContext.mOSBuild);
-
+  GET_STRING_PROP("ro.hardware", info->hardwareName);
   if (model != "") {
     if (manufacturer != "") {
-      gContext.mHardware = manufacturer + " " + model;
+      info->name = manufacturer + " " + model;
     } else {
-      gContext.mHardware = model;
+      info->name = model;
     }
+  } else {
+    info->name = info->hardwareName;
   }
 
-  GET_STRING_PROP("ro.build.version.release", gContext.mOSName);
-  GET_INT_PROP("ro.build.version.sdk", gContext.mOSVersion);
+  std::vector<std::string> supportedABIs;
+  GET_STRING_LIST_PROP("ro.product.cpu.abilist", supportedABIs);
+  info->abis.resize(supportedABIs.size());
+  for (size_t i = 0; i < supportedABIs.size(); i++) {
+    abiByName(supportedABIs[i], &info->abis[i]);
+  }
+
+  info->numCpuCores = 0;
+
+  info->osKind = device::Android;
+  GET_STRING_PROP("ro.build.version.release", info->osName);
+  GET_STRING_PROP("ro.build.display.id", info->osBuild);
+  int sdkVersion = 0;
+  GET_INT_PROP("ro.build.version.sdk", sdkVersion);
   // preview_sdk is used to determine the version for the next OS release
   // Until the official release, the new OS releases will use the same sdk
   // version as the previous OS while setting the preview_sdk
   int previewSdk = 0;
   GET_INT_PROP("ro.build.version.preview_sdk", previewSdk);
-  gContext.mOSVersion += previewSdk;
-
-  if (gContext.mSupportedABIs.size() > 0) {
-    auto primaryABI = gContext.mSupportedABIs[0];
-    if (primaryABI == "armeabi-v7a") {
-      gContext.mCpuArchitecture = device::ARMv7a;
-    } else if (primaryABI == "arm64-v8a") {
-      gContext.mCpuArchitecture = device::ARMv8a;
-    } else if (primaryABI == "x86") {
-      gContext.mCpuArchitecture = device::X86;
-    } else if (primaryABI == "x86_64") {
-      gContext.mCpuArchitecture = device::X86_64;
-    } else {
-      LOG_WARN("Unrecognised ABI: %s", primaryABI.c_str());
-    }
-  }
-
-  switch (gContext.mOSVersion) {
-    case 30:  // Android 11
-      gContext.mOSVersionMajor = 11;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 29:  // Android 10
-      gContext.mOSVersionMajor = 10;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 28:  // Pie
-      gContext.mOSVersionMajor = 9;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 27:  // Oreo
-      gContext.mOSVersionMajor = 8;
-      gContext.mOSVersionMinor = 1;
-      break;
-    case 26:  // Oreo
-      gContext.mOSVersionMajor = 8;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 25:  // Nougat
-      gContext.mOSVersionMajor = 7;
-      gContext.mOSVersionMinor = 1;
-      break;
-    case 24:  // Nougat
-      gContext.mOSVersionMajor = 7;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 23:  // Marshmallow
-      gContext.mOSVersionMajor = 6;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 22:  // Lollipop
-      gContext.mOSVersionMajor = 5;
-      gContext.mOSVersionMinor = 1;
-      break;
-    case 21:  // Lollipop
-      gContext.mOSVersionMajor = 5;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 19:  // KitKat
-      gContext.mOSVersionMajor = 4;
-      gContext.mOSVersionMinor = 4;
-      break;
-    case 18:  // Jelly Bean
-      gContext.mOSVersionMajor = 4;
-      gContext.mOSVersionMinor = 3;
-      break;
-    case 17:  // Jelly Bean
-      gContext.mOSVersionMajor = 4;
-      gContext.mOSVersionMinor = 2;
-      break;
-    case 16:  // Jelly Bean
-      gContext.mOSVersionMajor = 4;
-      gContext.mOSVersionMinor = 1;
-      break;
-    case 15:  // Ice Cream Sandwich
-    case 14:  // Ice Cream Sandwich
-      gContext.mOSVersionMajor = 4;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 13:  // Honeycomb
-      gContext.mOSVersionMajor = 3;
-      gContext.mOSVersionMinor = 2;
-      break;
-    case 12:  // Honeycomb
-      gContext.mOSVersionMajor = 3;
-      gContext.mOSVersionMinor = 1;
-      break;
-    case 11:  // Honeycomb
-      gContext.mOSVersionMajor = 3;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 10:  // Gingerbread
-    case 9:   // Gingerbread
-      gContext.mOSVersionMajor = 2;
-      gContext.mOSVersionMinor = 3;
-      break;
-    case 8:  // Froyo
-      gContext.mOSVersionMajor = 2;
-      gContext.mOSVersionMinor = 2;
-      break;
-    case 7:  // Eclair
-      gContext.mOSVersionMajor = 2;
-      gContext.mOSVersionMinor = 1;
-      break;
-    case 6:  // Eclair
-    case 5:  // Eclair
-      gContext.mOSVersionMajor = 2;
-      gContext.mOSVersionMinor = 0;
-      break;
-    case 4:  // Donut
-      gContext.mOSVersionMajor = 1;
-      gContext.mOSVersionMinor = 6;
-      break;
-    case 3:  // Cupcake
-      gContext.mOSVersionMajor = 1;
-      gContext.mOSVersionMinor = 5;
-      break;
-    case 2:  // (no code name)
-      gContext.mOSVersionMajor = 1;
-      gContext.mOSVersionMinor = 1;
-      break;
-    case 1:  // (no code name)
-      gContext.mOSVersionMajor = 1;
-      gContext.mOSVersionMinor = 0;
-      break;
+  sdkVersion += previewSdk;
+  if (sdkVersion >= 0 && sdkVersion < kMaxKnownSdk) {
+    info->osMajor = kVersionBySdk[sdkVersion].major;
+    info->osMinor = kVersionBySdk[sdkVersion].minor;
   }
 
   return true;
 }
-
-int numABIs() { return gContext.mSupportedABIs.size(); }
 
 device::ABI* currentABI() {
   device::ABI* out = new device::ABI();
@@ -347,38 +220,6 @@ device::ABI* currentABI() {
 #endif
   return out;
 }
-
-void abi(int idx, device::ABI* abi) {
-  return abiByName(gContext.mSupportedABIs[idx], abi);
-}
-
-int cpuNumCores() { return gContext.mNumCores; }
-
-const char* cpuName() { return ""; }
-
-const char* cpuVendor() { return ""; }
-
-device::Architecture cpuArchitecture() { return gContext.mCpuArchitecture; }
-
-const char* gpuName() { return ""; }
-
-const char* gpuVendor() { return ""; }
-
-const char* instanceName() { return gContext.mHardware.c_str(); }
-
-const char* hardwareName() { return gContext.mHardware.c_str(); }
-
-device::OSKind osKind() { return device::Android; }
-
-const char* osName() { return gContext.mOSName.c_str(); }
-
-const char* osBuild() { return gContext.mOSBuild.c_str(); }
-
-int osMajor() { return gContext.mOSVersionMajor; }
-
-int osMinor() { return gContext.mOSVersionMinor; }
-
-int osPoint() { return 0; }
 
 device::VulkanProfilingLayers* get_vulkan_profiling_layers() {
   auto layers = new device::VulkanProfilingLayers();

@@ -19,8 +19,6 @@
 #include <city.h>
 #include <iostream>
 
-#include <thread>
-
 namespace {
 
 inline bool isLittleEndian() {
@@ -80,24 +78,27 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
   using namespace device;
   using namespace google::protobuf::io;
 
-  if (!query::createContext(error)) {
+  PlatformInfo osInfo;
+  CpuInfo cpuInfo;
+  if (!query::queryPlatform(&osInfo, error) ||
+      !query::queryCpu(&cpuInfo, error)) {
     return nullptr;
   }
 
   // OS
   auto os = new OS();
-  os->set_kind(query::osKind());
-  os->set_name(query::osName());
-  os->set_build(query::osBuild());
-  os->set_major_version(query::osMajor());
-  os->set_minor_version(query::osMinor());
-  os->set_point_version(query::osPoint());
+  os->set_kind(osInfo.osKind);
+  os->set_name(osInfo.osName);
+  os->set_build(osInfo.osBuild);
+  os->set_major_version(osInfo.osMajor);
+  os->set_minor_version(osInfo.osMinor);
+  os->set_point_version(osInfo.osPoint);
 
   // Instance.Configuration.Drivers
   auto drivers = new Drivers();
 
-  const char* backupVendor = "";  // TODO: we no longer have a backup for this
-  const char* backupName = "";
+  std::string gpuVendor = "";
+  std::string gpuName = "";
 
   // Checks if the device supports Vulkan (have Vulkan loader) first, then
   // populates the VulkanDriver message.
@@ -109,7 +110,7 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
     if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
       if (vulkan_driver->physical_devices_size() > 0) {
-        backupName = vulkan_driver->physical_devices(0).device_name().c_str();
+        gpuName = vulkan_driver->physical_devices(0).device_name();
       }
     }
     drivers->set_allocated_vulkan(vulkan_driver);
@@ -117,27 +118,19 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
 
   // Instance.Configuration.Hardware.CPU
   auto cpu = new CPU();
-  cpu->set_name(query::cpuName());
-  cpu->set_vendor(query::cpuVendor());
-  cpu->set_architecture(query::cpuArchitecture());
-  cpu->set_cores(query::cpuNumCores());
+  cpu->set_name(cpuInfo.name);
+  cpu->set_vendor(cpuInfo.vendor);
+  cpu->set_architecture(cpuInfo.architecture);
+  cpu->set_cores(osInfo.numCpuCores);
 
   // Instance.Configuration.Hardware.GPU
   auto gpu = new GPU();
-  const char* gpuName = query::gpuName();
-  const char* gpuVendor = query::gpuVendor();
-  if (strlen(gpuName) == 0) {
-    gpuName = backupName;
-  }
-  if (strlen(gpuVendor) == 0) {
-    gpuVendor = backupVendor;
-  }
   gpu->set_name(gpuName);
   gpu->set_vendor(gpuVendor);
 
   // Instance.Configuration.Hardware
   auto hardware = new Hardware();
-  hardware->set_name(query::hardwareName());
+  hardware->set_name(osInfo.hardwareName);
   hardware->set_allocated_cpu(cpu);
   hardware->set_allocated_gpu(gpu);
 
@@ -146,9 +139,7 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
   configuration->set_allocated_os(os);
   configuration->set_allocated_hardware(hardware);
   configuration->set_allocated_drivers(drivers);
-  for (int i = 0, c = query::numABIs(); i < c; i++) {
-    query::abi(i, configuration->add_abis());
-  }
+  *configuration->mutable_abis() = {osInfo.abis.begin(), osInfo.abis.end()};
 
   auto perfetto_config = new PerfettoCapability();
   auto vulkan_performance_layers = query::get_vulkan_profiling_layers();
@@ -161,22 +152,9 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
 
   // Instance
   auto instance = new Instance();
-  instance->set_name(query::instanceName());
+  instance->set_name(osInfo.name);
   instance->set_allocated_configuration(configuration);
   deviceInstanceID(instance);
-
-  // Blacklist of OS/Hardware version that means we cannot safely
-  // destroy the context.
-  // https://github.com/google/gapid/issues/1867
-  bool blacklist = false;
-  if (std::string(gpuName).find("Vega") != std::string::npos &&
-      std::string(query::osName()).find("Windows 10") != std::string::npos) {
-    blacklist = true;
-  }
-
-  if (!blacklist) {
-    query::destroyContext();
-  }
 
   return instance;
 }

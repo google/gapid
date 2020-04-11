@@ -25,99 +25,62 @@
 
 #define STR_OR_EMPTY(x) ((x != nullptr) ? x : "")
 
-namespace query {
+namespace {
 
-struct Context {
-  NSOperatingSystemVersion mOsVersion;
-  int mNumCores;
-  char* mHwModel;
-  char mHostName[512];
-};
-
-static Context gContext;
-static int gContextRefCount = 0;
-
-void destroyContext() {
-  if (--gContextRefCount > 0) {
-    return;
-  }
-
-  if (gContext.mHwModel) {
-    delete[] gContext.mHwModel;
-  }
+device::ABI* abi(device::ABI* abi) {
+  abi->set_name("x86_64");
+  abi->set_os(device::OSX);
+  abi->set_architecture(device::X86_64);
+  abi->set_allocated_memory_layout(query::currentMemoryLayout());
+  return abi;
 }
 
-bool createContext(std::string* errorMsg) {
-  if (gContextRefCount++ > 0) {
-    return true;
-  }
+}  // namespace
 
-  memset(&gContext, 0, sizeof(gContext));
+namespace query {
+
+bool queryPlatform(PlatformInfo* info, std::string* errorMsg) {
+  char hostname[256];
+  if (gethostname(hostname, sizeof(hostname)) != 0) {
+    errorMsg->append("gethostname returned error: " + std::to_string(errno));
+    return false;
+  }
+  info->name = hostname;
+  info->abis.resize(1);
+  abi(&info->abis[0]);
 
   size_t len = 0;
   int mib[2] = {CTL_HW, HW_MODEL};
-  sysctl(mib, 2, nullptr, &len, nullptr, 0);
-  gContext.mHwModel = new char[len];
-  if (sysctl(mib, 2, gContext.mHwModel, &len, nullptr, 0) != 0) {
+  if (sysctl(mib, 2, nullptr, &len, nullptr, 0) != 0) {
     errorMsg->append("sysctl {CTL_HW, HW_MODEL} returned error: " + std::to_string(errno));
-    destroyContext();
     return false;
   }
+  char* hwModel = new char[len];
+  if (sysctl(mib, 2, hwModel, &len, nullptr, 0) != 0) {
+    errorMsg->append("sysctl {CTL_HW, HW_MODEL} returned error: " + std::to_string(errno));
+    delete[] hwModel;
+    return false;
+  }
+  info->hardwareName = hwModel;
+  delete[] hwModel;
 
-  len = sizeof(gContext.mNumCores);
-  if (sysctlbyname("hw.logicalcpu_max", &gContext.mNumCores, &len, nullptr, 0) != 0) {
+  len = sizeof(info->numCpuCores);
+  if (sysctlbyname("hw.logicalcpu_max", &info->numCpuCores, &len, nullptr, 0) != 0) {
     errorMsg->append("sysctlbyname 'hw.logicalcpu_max' returned error: " + std::to_string(errno));
-    destroyContext();
     return false;
   }
 
-  if (gethostname(gContext.mHostName, sizeof(gContext.mHostName)) != 0) {
-    errorMsg->append("gethostname returned error: " + std::to_string(errno));
-    destroyContext();
-    return false;
-  }
-
-  gContext.mOsVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
+  NSOperatingSystemVersion version = [[NSProcessInfo processInfo] operatingSystemVersion];
+  info->osKind = device::OSX;
+  info->osName = "OSX";
+  info->osMajor = version.majorVersion;
+  info->osMinor = version.minorVersion;
+  info->osPoint = version.patchVersion;
 
   return true;
 }
 
-int numABIs() { return 1; }
-
-void abi(int idx, device::ABI* abi) {
-  abi->set_name("x86_64");
-  abi->set_os(device::OSX);
-  abi->set_architecture(device::X86_64);
-  abi->set_allocated_memory_layout(currentMemoryLayout());
-}
-
-device::ABI* currentABI() {
-  auto out = new device::ABI();
-  abi(0, out);
-  return out;
-}
-
-int cpuNumCores() { return gContext.mNumCores; }
-
-const char* gpuName() { return ""; }
-
-const char* gpuVendor() { return ""; }
-
-const char* instanceName() { return gContext.mHostName; }
-
-const char* hardwareName() { return STR_OR_EMPTY(gContext.mHwModel); }
-
-device::OSKind osKind() { return device::OSX; }
-
-const char* osName() { return "OSX"; }
-
-const char* osBuild() { return ""; }
-
-int osMajor() { return gContext.mOsVersion.majorVersion; }
-
-int osMinor() { return gContext.mOsVersion.minorVersion; }
-
-int osPoint() { return gContext.mOsVersion.patchVersion; }
+device::ABI* currentABI() { return abi(new device::ABI()); }
 
 device::VulkanProfilingLayers* get_vulkan_profiling_layers() { return nullptr; }
 

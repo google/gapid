@@ -18,13 +18,10 @@
 
 #include "core/cc/target.h"
 
-#if (defined(__x86_64) || defined(__i386)) && (TARGET_OS != GAPID_OS_ANDROID)
-#if !defined(_MSC_VER) || defined(__GNUC__)
+#if (defined(__x86_64) || defined(__i386))
 #include <cpuid.h>
 
-namespace query {
-
-const char* cpuName() {
+bool query::queryCpu(CpuInfo* info, std::string* error) {
   static union {
     uint32_t reg[12];
     char str[49];
@@ -32,41 +29,70 @@ const char* cpuName() {
   if (__get_cpuid(0x80000002, &reg[0], &reg[1], &reg[2], &reg[3]) &&
       __get_cpuid(0x80000003, &reg[4], &reg[5], &reg[6], &reg[7]) &&
       __get_cpuid(0x80000004, &reg[8], &reg[9], &reg[10], &reg[11])) {
-    return str;
+    info->name = str;
+  } else {
+    error->append("Failed to query CPUID");
+    return false;
   }
-  return "";
-}
 
-const char* cpuVendor() {
-  static union {
-    uint32_t reg[3];
-    char str[13];
-  };
+  str[12] = 0;  // In case the below 12 byte vendor name uses exactly 12 chars.
   uint32_t eax = 0;
   if (__get_cpuid(0, &eax, &reg[0], &reg[2], &reg[1])) {
-    return str;
+    info->vendor = str;
+  } else {
+    error->append("Failed to query CPUID");
+    return false;
   }
-  return "";
+
+  info->architecture = device::X86_64;
+  return true;
 }
 
-device::Architecture cpuArchitecture() { return device::X86_64; }
+#elif ((defined(__arm__) || defined(__aarch64__)) && \
+       TARGET_OS == GAPID_OS_ANDROID)
+#include <sys/system_properties.h>
+#include <fstream>
 
-}  // namespace query
-#else  // !defined(_MSC_VER) || defined(__GNUC__)
-// If we are using MSVC (rather than MSYS) we cannot use __get_cpuid
-namespace query {
+bool query::queryCpu(CpuInfo* info, std::string* error) {
+  std::fstream proc("/proc/cpuinfo", std::ios_base::in);
+  if (proc.is_open()) {
+    std::string line, processor, hardware;
+    while (std::getline(proc, line)) {
+      size_t colon = line.rfind(": ");
+      if (colon == std::string::npos) {
+      } else if (line.rfind("Hardware") == 0) {
+        hardware = line.substr(colon + 2);
+      } else if (line.rfind("Processor") == 0) {
+        processor = line.substr(colon + 2);
+      }
+    }
+    proc.close();
 
-const char* cpuName() { return ""; }
+    if (hardware != "") {
+      info->name = hardware;
+    } else if (processor != "") {
+      info->name = processor;
+    }
+  }
 
-const char* cpuVendor() { return ""; }
+  if (info->name == "") {
+    char str[PROP_VALUE_MAX];
+    if (__system_property_get("ro.boot.hardware.platform", str) == 0) {
+      error->append("Failed reading ro.boot.hardware.platform property");
+      return false;
+    }
+    info->name = str;
+  }
 
-device::Architecture cpuArchitecture() {
-#ifdef _WIN64
-  return device::X86_64;
-#elif defined _WIN32
-  return device::X86;
+  info->vendor = "ARM";  // TODO: get the implementer?
+#ifdef __arm__
+  info->architecture = device::ARMv7a;
+#else
+  info->architecture = device::ARMv8a;
 #endif
+  return true;
 }
-}  // namespace query
-#endif
+
+#else
+#error Unsupported target architecture.
 #endif

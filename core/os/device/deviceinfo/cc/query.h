@@ -114,36 +114,32 @@ bool hasVulkanLoader();
 // The functions below are used by getDeviceInstance(), and are implemented
 // in the target-dependent sub-directories.
 
-bool createContext(std::string* error);
-void destroyContext();
+typedef struct {
+  std::string name;
+  std::vector<device::ABI> abis;
+  std::string hardwareName;
+  int numCpuCores;  // Fetching this is OS specific, not CPU specific.
+  device::OSKind osKind;
+  std::string osName;
+  std::string osBuild;
+  int osMajor;
+  int osMinor;
+  int osPoint;
+} PlatformInfo;
 
-// The functions below require a context to be created.
+bool queryPlatform(PlatformInfo* info, std::string* error);
 
-int numABIs();
-void abi(int idx, device::ABI* abi);
 device::ABI* currentABI();
 device::MemoryLayout* currentMemoryLayout();
-
-const char* hardwareName();
-
-const char* cpuName();
-const char* cpuVendor();
-device::Architecture cpuArchitecture();
-int cpuNumCores();
-
-const char* gpuName();
-const char* gpuVendor();
-
-const char* instanceName();
-
-device::OSKind osKind();
-const char* osName();
-const char* osBuild();
-int osMajor();
-int osMinor();
-int osPoint();
-
 bool hasAtrace();
+
+// in cpu.cpp
+typedef struct {
+  std::string name;
+  std::string vendor;
+  device::Architecture architecture;
+} CpuInfo;
+bool queryCpu(CpuInfo* info, std::string* error);
 
 }  // namespace query
 
