@@ -29,13 +29,13 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.views.CommandTree;
-import com.google.gapid.views.ReplayDeviceSelector;
 import com.google.gapid.views.FramebufferView;
 import com.google.gapid.views.GeometryView;
 import com.google.gapid.views.LogView;
 import com.google.gapid.views.MemoryView;
 import com.google.gapid.views.PipelineView;
 import com.google.gapid.views.ProfileView;
+import com.google.gapid.views.ReplayDeviceSelector;
 import com.google.gapid.views.ReportView;
 import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
@@ -67,12 +67,12 @@ import java.util.function.Function;
 /**
  * Main view shown when a graphics trace is loaded.
  */
-public class GraphicsTraceView extends Composite implements MainWindow.MainView {
+public class GraphicsTraceView extends Composite implements MainWindow.MainView, Follower.Listener {
   private final Models models;
   private final Widgets widgets;
   protected final Set<MainTab.Type> hiddenTabs;
 
-  protected TabArea tabs;
+  protected final TabArea tabs;
 
   public GraphicsTraceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -99,21 +99,9 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
 
     tabs.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    models.follower.addListener(new Follower.Listener() {
-      @Override
-      public void onMemoryFollowed(Path.Memory path) {
-        tabs.showTab(MainTab.Type.Memory);
-      }
-
-      @Override
-      public void onStateFollowed(Path.Any path) {
-        tabs.showTab(MainTab.Type.ApiState);
-      }
-
-      @Override
-      public void onTextureFollowed(Service.Resource resource) {
-        tabs.showTab(MainTab.Type.Textures);
-      }
+    models.follower.addListener(this);
+    addListener(SWT.Dispose, e -> {
+      models.follower.removeListener(this);
     });
   }
 
@@ -133,6 +121,21 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
   public void updateViewMenu(MenuManager manager) {
     manager.removeAll();
     manager.add(createViewTabsMenu());
+  }
+
+  @Override
+  public void onMemoryFollowed(Path.Memory path) {
+    tabs.showTab(MainTab.Type.Memory);
+  }
+
+  @Override
+  public void onStateFollowed(Path.Any path) {
+    tabs.showTab(MainTab.Type.ApiState);
+  }
+
+  @Override
+  public void onTextureFollowed(Service.Resource resource) {
+    tabs.showTab(MainTab.Type.Textures);
   }
 
   private MenuManager createViewTabsMenu() {
