@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
@@ -123,6 +124,7 @@ type MarkerType int
 const (
 	DebugMarker = iota
 	RenderPassMarker
+	DrawGroupMarker
 )
 
 type markerInfo struct {
@@ -168,18 +170,31 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			markerStack = markerStack[0 : len(markerStack)-1]
 		}
 	}
+
+	popMarkerWithNewGroupName := func(ty MarkerType, id uint64, name string) {
+		if len(markerStack) > 0 {
+			marker := markerStack[len(markerStack)-1]
+			d.SubCommandMarkerGroups.NewMarkerGroup(marker.parent, name, marker.start, id+1)
+			markerStack = markerStack[0 : len(markerStack)-1]
+		}
+	}
+
 	var walkCommandBuffer func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order uint64) ([]sync.SubcommandReference, []api.SubCmdIdx)
 	walkCommandBuffer = func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order uint64) ([]sync.SubcommandReference, []api.SubCmdIdx) {
 		refs := make([]sync.SubcommandReference, 0)
 		subgroups := make([]api.SubCmdIdx, 0)
 		lastSubpass := 0
 		nCommands := uint64(cb.CommandReferences().Len())
+		canStartDrawGrouping := true
+
 		for i := 0; i < cb.CommandReferences().Len(); i++ {
 			initialCommands, ok := st.initialCommands[cb.VulkanHandle()]
 			var ref sync.SubcommandReference
 			if !ok {
 				continue
 			}
+
+			// Update values in sync data.
 			nv := append(api.SubCmdIdx{}, idx...)
 			nv = append(nv, uint64(i))
 			generatingId := initialCommands[i]
@@ -201,6 +216,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			d.SubcommandLookup.SetValue(nv, ref)
 			refs = append(refs, ref)
 
+			// Handle extra command buffer reference, render pass grouping and debug marker grouping.
 			switch args := GetCommandArgs(ctx, cb.CommandReferences().Get(uint32(i)), st).(type) {
 			case VkCmdExecuteCommandsArgsʳ:
 				d.SubcommandNames.SetValue(nv, "") // Clear the group name so that the original commnd is shown.
@@ -291,7 +307,38 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			case VkCmdDebugMarkerEndEXTArgsʳ:
 				popMarker(DebugMarker, uint64(i), nCommands)
 			}
+
+			// Handle draw commands grouping.
+			cmdName := cb.CommandReferences().Get(uint32(i)).Type().String()
+			isDrawCmd := strings.HasPrefix(cmdName, "cmd_vkCmdDraw") || strings.HasPrefix(cmdName, "cmd_vkCmdDispatch")
+			isStateSettingCmd := (strings.HasPrefix(cmdName, "cmd_vkCmdSet") || strings.HasPrefix(cmdName, "cmd_vkCmdBind")) &&
+				!strings.HasPrefix(cmdName, "cmd_vkCmdSetEvent")
+			if isStateSettingCmd && canStartDrawGrouping {
+				markerStack = append(markerStack,
+					&markerInfo{
+						name:   "State Setting Group",
+						ty:     DrawGroupMarker,
+						start:  uint64(i),
+						end:    uint64(i),
+						parent: append(api.SubCmdIdx{}, idx...),
+					})
+				canStartDrawGrouping = false
+			} else if isDrawCmd {
+				// When a group is complete with state setting cmds following a draw command, override the group name.
+				groupName := cmdName
+				if strings.HasPrefix(groupName, "cmd_vkCmd") { // Remove "cmd_vkCmd".
+					groupName = groupName[9:len(groupName)]
+				}
+				popMarkerWithNewGroupName(DrawGroupMarker, uint64(i), groupName)
+				canStartDrawGrouping = true
+			} else if !isStateSettingCmd && !isDrawCmd && !canStartDrawGrouping {
+				// Handle an edge case where a group of state setting commands are
+				// followed by something other than a drawing command.
+				popMarker(DrawGroupMarker, uint64(i), nCommands)
+				canStartDrawGrouping = true
+			}
 		}
+
 		for i := len(markerStack) - 1; i >= 0; i-- {
 			if len(markerStack[i].parent) < len(idx) {
 				break
