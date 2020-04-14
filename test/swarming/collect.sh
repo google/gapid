@@ -37,18 +37,48 @@ SWARMING_SERVER=https://chrome-swarming.appspot.com
 # if the task has expired (it was never scheduled). Allow for non-zero return
 # code, and manually check the task status afterward
 set +e
-${LUCI_CLIENT_ROOT}/swarming.py collect ${SWARMING_AUTH_FLAG} --swarming ${SWARMING_SERVER} --json ${SWARMING_TEST_JSON} --task-summary-json ${SWARMING_SUMMARY}
+${LUCI_CLIENT_ROOT}/swarming.py collect ${SWARMING_AUTH_FLAG} --swarming ${SWARMING_SERVER} --task-summary-json=${SWARMING_SUMMARY} --task-output-stdout=none --json ${SWARMING_TEST_JSON}
 SWARMING_COLLECT_EXIT_CODE=$?
 set -e
 
-# Ignore failures that are not due to the test itself
-if [ "${SWARMING_COLLECT_EXIT_CODE}" != "0" ] ; then
-  if grep '"state": "EXPIRED"' ${SUMMARY} > /dev/null ; then
-    echo "Swarming test was never scheduled, ignoring it"
-  elif grep '"internal_failure": true' ${SUMMARY} > /dev/null ; then
-    echo "Swarming internal failure, ignore the swarming test"
+# Scan summary to set test status.
+SWARMING_TEST_STATUS="fail"
+if [ "${SWARMING_COLLECT_EXIT_CODE}" == "0" ] ; then
+  SWARMING_TEST_STATUS="pass"
+else
+  if grep '"state": "EXPIRED"' ${SWARMING_SUMMARY} > /dev/null ; then
+    SWARMING_TEST_STATUS="expired"
+  elif grep '"internal_failure": true' ${SWARMING_SUMMARY} > /dev/null ; then
+    SWARMING_TEST_STATUS="internal_failure"
+  elif grep '"state": "TIMED_OUT"' ${SWARMING_SUMMARY} > /dev/null ; then
+    SWARMING_TEST_STATUS="timeout"
   else
-    echo "Swarming test failed"
-    exit 1
+    SWARMING_TEST_STATUS="fail"
   fi
 fi
+
+# Append result to result file. Best would be to use JSON, but as we add one
+# result at a time, we do not know here if we are the first or last result, so
+# we would need some convoluted way to add the JSON list begin/end markers. As a
+# workaround, we stick to CSV.
+#
+# Each line is exactly: device,test_name,task_id,test_status
+if [ ! -z "${SWARMING_RESULT_FILE}" ] ; then
+  device=`grep '"device_type:' ${SWARMING_SUMMARY} | sed -e 's/^.*"device_type://' -e 's/",.*$//'`
+  test_name=`basename ${SWARMING_TEST_JSON} .json`
+  task_id=`grep '"run_id":' ${SWARMING_SUMMARY} | sed -e 's/^.*"run_id": "//' -e 's/",.$//'`  
+  echo "${device},${test_name},${task_id},${SWARMING_TEST_STATUS}" >> ${SWARMING_RESULT_FILE}
+fi
+
+# Collect.sh returns an error upon failure except for expired and internal
+# failures which are silenced at this level, such that a PR build with
+# e.g. expired Swarming tests will not be reported as failing.
+echo "Test status: ${SWARMING_TEST_STATUS}"
+case "${SWARMING_TEST_STATUS}" in
+  "pass" | "expired" | "internal_failure" )
+    exit 0
+    ;;
+  * )
+    exit 1
+    ;;
+esac

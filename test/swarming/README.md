@@ -75,8 +75,8 @@ Moreover, some `SWARMING_*` environment variables can be overriden on a
 test-specific level. Some interesting ones:
 
 ```
-# Space-separated list of devices to run on
-SWARMING_DEVICES=flame
+# Array of devices to run on (bash-array format, e.g.: '(dev1 dev2 dev3)' )
+SWARMING_DEVICES=(flame)
 # Priority: lower value is higher priority
 SWARMING_PRIORITY=100
 # Timeout: maximum number of seconds for the task to terminate

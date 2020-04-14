@@ -170,10 +170,18 @@ xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit video -gapir-nofallback -type sxs -f
 ## Collect swarming test results
 ##
 
+# This directory name must match the artifact regex in nightly.cfg
+SWARMING_RESULT_DIR=${KOKORO_ARTIFACTS_DIR}/swarming_results
+mkdir -p ${SWARMING_RESULT_DIR}
+export SWARMING_RESULT_FILE=${SWARMING_RESULT_DIR}/results.txt
+
+# Store some build info
+echo "commit ${KOKORO_GIT_COMMIT}" > ${SWARMING_RESULT_DIR}/build_info.txt
+
 pushd ${SWARMING_DIR}
 
 SWARMING_FAILURE=0
-for TEST_NAME in ${SWARMING_TRIGGERED_DIR}/*.json ; do
+for TEST_NAME in ${SWARMING_TRIGGERED_DIR}/*/*.json ; do
   set +e
   ./collect.sh ${TEST_NAME} > `basename ${TEST_NAME} .json`.collect.log
   EXIT_CODE=$?

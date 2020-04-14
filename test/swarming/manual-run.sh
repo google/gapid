@@ -30,9 +30,12 @@ fi
 export SWARMING_AUTH_FLAG=""
 export SWARMING_BUILD_INFO="Manual"
 export SWARMING_TRIGGERED_DIR="triggered-manual"
+export SWARMING_RESULT_FILE="${SWARMING_TRIGGERED_DIR}/results.txt"
 
 rm -rf ${SWARMING_TRIGGERED_DIR}
 mkdir -p ${SWARMING_TRIGGERED_DIR}
 
 ./trigger.sh ${SWARMING_TEST_DIR}
-./collect.sh ${SWARMING_TRIGGERED_DIR}/*.json
+for t in ${SWARMING_TRIGGERED_DIR}/*/*.json; do
+  ./collect.sh ${t}
+done

@@ -49,8 +49,8 @@ SWARMING_TASK_NAME="${SWARMING_BUILD_INFO}_${SWARMING_TEST_NAME}"
 SWARMING_ISOLATE_SERVER=https://chrome-isolated.appspot.com
 SWARMING_SERVER=https://chrome-swarming.appspot.com
 SWARMING_POOL=SkiaInternal
-# String with space-separated device names
-SWARMING_DEVICES="flame"
+# Bash-array of device names: (dev1 dev2 dev3)
+SWARMING_DEVICES=(flame)
 # Priority: lower value is higher priority, defaults to 200: PR short test tasks
 # should be of higher priority than the default
 SWARMING_PRIORITY=100
@@ -63,14 +63,22 @@ SWARMING_EXPIRATION=600
 # we don't want to 'source' the test 'env.sh' as this could lead to code
 # injection. Instead, we grep all relevant environment variables that may be
 # overriden.
-for envvar in SWARMING_DEVICES SWARMING_PRIORITY SWARMING_TIMEOUT SWARMING_EXPIRATION ; do
+for envvar in SWARMING_PRIORITY SWARMING_TIMEOUT SWARMING_EXPIRATION ; do
   value=`grep ${envvar} ${SWARMING_TEST_DIR}/env.sh | sed -e 's/^.*=//'`
   if [ ! -z "${value}" ] ; then
     declare ${envvar}=${value}
   fi
 done
 
-# Generate config for isolate
+# Special case for SWARMING_DEVICES, which is a bash array, we must handle the
+# parenthesis accordingly
+# This sed line transforms "SWARMING_DEVICES={dev1 dev2)" into "dev1 dev2"
+devices=`grep  SWARMING_DEVICES ${SWARMING_TEST_DIR}/env.sh |sed -e 's/^.*=[(]//' -e 's/)$//'`
+if [ ! -z "${devices}" ] ; then
+  declare SWARMING_DEVICES=(${devices})
+fi
+
+# generate config for isolate
 cat << EOF > ${SWARMING_TEST_NAME}.isolate
 {
   'variables': {
@@ -95,7 +103,8 @@ ${LUCI_CLIENT_ROOT}/isolate.py archive ${SWARMING_AUTH_FLAG} --isolate-server ${
 SWARMING_ISOLATED_SHA=`sha1sum ${SWARMING_TEST_NAME}.isolated | awk '{ print $1 }'`
 
 # Trigger Swarming task
-for DEV in ${SWARMING_DEVICES} ; do
-  SWARMING_TASK_JSON=${SWARMING_TRIGGERED_DIR}/${SWARMING_TEST_NAME}.${DEV}.json
-  ${LUCI_CLIENT_ROOT}/swarming.py trigger ${SWARMING_AUTH_FLAG} --swarming ${SWARMING_SERVER} --isolate-server ${SWARMING_ISOLATE_SERVER} --isolated ${SWARMING_ISOLATED_SHA} --task-name ${SWARMING_TASK_NAME} --dump-json ${SWARMING_TASK_JSON} --dimension pool ${SWARMING_POOL} --dimension device_type ${SWARMING_DEVICES} --priority=${SWARMING_PRIORITY} --expiration=${SWARMING_EXPIRATION} --hard-timeout=${SWARMING_TIMEOUT}
+for DEV in ${SWARMING_DEVICES[@]} ; do
+  mkdir -p ${SWARMING_TRIGGERED_DIR}/${DEV}
+  SWARMING_TASK_JSON=${SWARMING_TRIGGERED_DIR}/${DEV}/${SWARMING_TEST_NAME}.json
+  ${LUCI_CLIENT_ROOT}/swarming.py trigger ${SWARMING_AUTH_FLAG} --swarming ${SWARMING_SERVER} --isolate-server ${SWARMING_ISOLATE_SERVER} --isolated ${SWARMING_ISOLATED_SHA} --task-name ${SWARMING_TASK_NAME} --dump-json ${SWARMING_TASK_JSON} --dimension pool ${SWARMING_POOL} --dimension device_type ${DEV} --priority=${SWARMING_PRIORITY} --expiration=${SWARMING_EXPIRATION} --hard-timeout=${SWARMING_TIMEOUT}
 done
