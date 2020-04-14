@@ -311,8 +311,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			// Handle draw commands grouping.
 			cmdName := cb.CommandReferences().Get(uint32(i)).Type().String()
 			isDrawCmd := strings.HasPrefix(cmdName, "cmd_vkCmdDraw") || strings.HasPrefix(cmdName, "cmd_vkCmdDispatch")
-			isStateSettingCmd := (strings.HasPrefix(cmdName, "cmd_vkCmdSet") || strings.HasPrefix(cmdName, "cmd_vkCmdBind")) &&
-				!strings.HasPrefix(cmdName, "cmd_vkCmdSetEvent")
+			isStateSettingCmd := (strings.HasPrefix(cmdName, "cmd_vkCmdSet") || strings.HasPrefix(cmdName, "cmd_vkCmdPush") ||
+				strings.HasPrefix(cmdName, "cmd_vkCmdBind")) && !strings.HasPrefix(cmdName, "cmd_vkCmdSetEvent")
 			if isStateSettingCmd && canStartDrawGrouping {
 				markerStack = append(markerStack,
 					&markerInfo{
