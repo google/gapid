@@ -69,9 +69,9 @@ var (
 	// F16 represents a 16-bit signed, floating-point number.
 	F16 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 5, MantissaBits: 10}}}
 	// F32 represents a 32-bit signed, floating-point number.
-	F32 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 7, MantissaBits: 24}}}
+	F32 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 8, MantissaBits: 23}}}
 	// F64 represents a 64-bit signed, floating-point number.
-	F64 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 10, MantissaBits: 53}}}
+	F64 = DataType{Signed: true, Kind: &DataType_Float{&Float{ExponentBits: 11, MantissaBits: 52}}}
 	// S16_16 represents a 16.16 bit signed, fixed-point number.
 	S16_16 = DataType{Signed: true, Kind: &DataType_Fixed{&Fixed{IntegerBits: 15, FractionalBits: 16}}}
 )
