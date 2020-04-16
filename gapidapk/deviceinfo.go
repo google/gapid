@@ -127,7 +127,7 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	}
 
 	// Set driver package
-	nextCleanup, err = android.SetupLayers(ctx, d, apk.Name, []string{driver.Package}, []string{}, true)
+	nextCleanup, err = android.SetupLayers(ctx, d, apk.Name, []string{driver.Package}, []string{})
 	cleanup = cleanup.Then(nextCleanup)
 	if err != nil {
 		cleanup.Invoke(ctx)

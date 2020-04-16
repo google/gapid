@@ -22,20 +22,6 @@ import (
 	"github.com/google/gapid/core/log"
 )
 
-const eglLayersExt = "EGL_ANDROID_GLES_layers"
-
-// SupportsGLESLayersViaSystemSettings returns whether the given device supports
-// loading GLES layers via the system settings.
-func SupportsGLESLayersViaSystemSettings(d Device) bool {
-	exts := d.Instance().GetConfiguration().GetDrivers().GetOpengl().GetExtensions()
-	for _, ext := range exts {
-		if ext == eglLayersExt {
-			return true
-		}
-	}
-	return false
-}
-
 // SupportsVulkanLayersViaSystemSettings returns whether the given device supports
 // loading Vulkan layers via the system settings.
 func SupportsVulkanLayersViaSystemSettings(d Device) bool {
@@ -44,10 +30,10 @@ func SupportsVulkanLayersViaSystemSettings(d Device) bool {
 	return apiVersion >= 28
 }
 
-// SetupLayer initializes d to use either a Vulkan or GLES layer from layerPkgs
+// SetupLayer initializes d to use Vulkan layers from layerPkgs
 // limited to the app with package appPkg using the system settings and returns
 // a cleanup to remove the layer settings.
-func SetupLayers(ctx context.Context, d Device, appPkg string, layerPkgs []string, layers []string, vulkan bool) (app.Cleanup, error) {
+func SetupLayers(ctx context.Context, d Device, appPkg string, layerPkgs []string, layers []string) (app.Cleanup, error) {
 	var cleanup app.Cleanup
 	// pushSetting changes a device property for the duration of the trace.
 	pushSetting := func(ns, key, val string) error {
@@ -68,21 +54,11 @@ func SetupLayers(ctx context.Context, d Device, appPkg string, layerPkgs []strin
 		return cleanup.Invoke(ctx), err
 	}
 	if len(layers) > 0 {
-		if vulkan {
-			if err := pushSetting("global", "gpu_debug_layers", "\""+strings.Join(layers, ":")+"\""); err != nil {
-				return cleanup.Invoke(ctx), err
-			}
-		} else {
-			if err := pushSetting("global", "gpu_debug_layers_gles", "\""+strings.Join(layers, ":")+"\""); err != nil {
-				return cleanup.Invoke(ctx), err
-			}
+		if err := pushSetting("global", "gpu_debug_layers", "\""+strings.Join(layers, ":")+"\""); err != nil {
+			return cleanup.Invoke(ctx), err
 		}
 	} else {
-		if vulkan {
-			d.DeleteSystemSetting(ctx, "global", "gpu_debug_layers")
-		} else {
-			d.DeleteSystemSetting(ctx, "global", "gpu_debug_layers_gles")
-		}
+		d.DeleteSystemSetting(ctx, "global", "gpu_debug_layers")
 	}
 
 	return cleanup, nil

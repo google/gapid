@@ -82,7 +82,7 @@ func SetupProfileLayersSource(ctx context.Context, d adb.Device, apk *android.In
 		packages = append(packages, gapidapk.PackageName(abi))
 	}
 
-	nextCleanup, err := android.SetupLayers(ctx, d, apk.Name, packages, []string{}, true)
+	nextCleanup, err := android.SetupLayers(ctx, d, apk.Name, packages, []string{})
 	cleanup = cleanup.Then(nextCleanup)
 	if err != nil {
 		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages layer packages.")
@@ -106,7 +106,7 @@ func setupProfileLayers(ctx context.Context, d adb.Device, driver adb.Driver, pa
 		enabledLayers = append(enabledLayers, renderStageVulkanLayerName)
 	}
 
-	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, enabledLayers, true)
+	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, enabledLayers)
 	if err != nil {
 		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
 	}
