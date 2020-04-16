@@ -1313,12 +1313,11 @@ int main(int argc, const char** argv) {
     }
 
     {
-      VkCommandBuffer cbs[2];
       VkCommandBufferAllocateInfo allocate_info{
           VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, nullptr,
-          command_pools[i], VK_COMMAND_BUFFER_LEVEL_PRIMARY, 2};
-      REQUIRE_SUCCESS(vkAllocateCommandBuffers(device, &allocate_info, cbs));
-      render_command_buffers[i] = cbs[1];
+          command_pools[i], VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
+      REQUIRE_SUCCESS(vkAllocateCommandBuffers(device, &allocate_info,
+                                               &render_command_buffers[i]));
     }
 
     {
