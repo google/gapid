@@ -70,6 +70,31 @@ void deviceInstanceID(device::Instance* instance) {
   delete[] proto_data;
 }
 
+std::string getVendorName(uint32_t vendorId) {
+  // A tiny little PCI-ID database.
+  // (https://pcisig.com/membership/member-companies)
+  switch (vendorId) {
+    case 0x1022:
+      return "AMD";
+    case 0x10DE:
+      return "NVIDIA";
+    case 0x13B5:
+      return "ARM";
+    case 0x1AE0:
+      return "Google";
+    case 0x144D:
+      return "Samsung";
+    case 0x14E4:
+      return "Broadcom";
+    case 0x1F96:
+      return "Intel";
+    case 0x5143:
+      return "Qualcomm";
+    default:
+      return "";
+  }
+}
+
 }  // anonymous namespace
 
 namespace query {
@@ -110,6 +135,8 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
     if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
       if (vulkan_driver->physical_devices_size() > 0) {
+        gpuVendor =
+            getVendorName(vulkan_driver->physical_devices(0).vendor_id());
         gpuName = vulkan_driver->physical_devices(0).device_name();
       }
     }
