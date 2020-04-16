@@ -1322,7 +1322,7 @@ int main(int argc, const char** argv) {
 
     {
       VkFenceCreateInfo create_info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                                    nullptr, 0};
+                                    nullptr, VK_FENCE_CREATE_SIGNALED_BIT};
       REQUIRE_SUCCESS(
           vkCreateFence(device, &create_info, nullptr, &ready_fences[i]));
     }
@@ -1537,18 +1537,17 @@ int main(int argc, const char** argv) {
     swapchain_views.push_back(swapchain_view);
   }
 
-  std::unordered_set<uint32_t> seen_swapchain_images;
-  uint64_t frame_count = 0;
+  // Actually Start Rendering.
   float total_time = 0;
   auto last_frame_time = std::chrono::high_resolution_clock::now();
-  // Actually Start Rendering?
+  uint64_t frame_parity = kBufferingCount - 1;
   while (true) {
     auto current_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> elapsed_time = current_time - last_frame_time;
     last_frame_time = current_time;
     total_time += elapsed_time.count();
     ProcessNativeWindowEvents();
-    uint64_t frame_parity = frame_count % kBufferingCount;
+    frame_parity = (frame_parity + 1) % kBufferingCount;
 
     uint32_t next_image = 0;
 
@@ -1557,11 +1556,9 @@ int main(int argc, const char** argv) {
                               swapchain_image_ready_semaphores[frame_parity],
                               VK_NULL_HANDLE, &next_image));
 
-    if (frame_count >= kBufferingCount) {
-      REQUIRE_SUCCESS(vkWaitForFences(device, 1, &ready_fences[frame_parity],
-                                      false, static_cast<uint64_t>(-1)));
-      REQUIRE_SUCCESS(vkResetFences(device, 1, &ready_fences[frame_parity]));
-    }
+    REQUIRE_SUCCESS(vkWaitForFences(device, 1, &ready_fences[frame_parity],
+                                    false, static_cast<uint64_t>(-1)));
+    REQUIRE_SUCCESS(vkResetFences(device, 1, &ready_fences[frame_parity]));
 
     VkCommandBufferBeginInfo begin_info{
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, nullptr,
@@ -1722,7 +1719,6 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkQueuePresentKHR(queue, &present_info));
     REQUIRE_SUCCESS(result);
-    ++frame_count;
   }
 
   return 0;
