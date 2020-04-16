@@ -714,7 +714,6 @@ int main(int argc, const char** argv) {
   LOAD_DEVICE_FUNCTION(vkCreateCommandPool);
   LOAD_DEVICE_FUNCTION(vkAllocateCommandBuffers);
   LOAD_DEVICE_FUNCTION(vkCreateFramebuffer);
-  LOAD_DEVICE_FUNCTION(vkDestroyFramebuffer);
   LOAD_DEVICE_FUNCTION(vkAcquireNextImageKHR);
   LOAD_DEVICE_FUNCTION(vkQueuePresentKHR);
 #undef LOAD_DEVICE_FUNCTION
@@ -751,11 +750,9 @@ int main(int argc, const char** argv) {
   VkSemaphore swapchain_image_ready_semaphores[kBufferingCount];
   VkSemaphore render_done_semaphores[kBufferingCount];
 
-  // Transient things: Framebuffer for now.
-  VkFramebuffer framebuffers[kBufferingCount] = {};
-
   // Per swapchain image mutableData;
   std::vector<VkImageView> swapchain_views;
+  std::vector<VkFramebuffer> framebuffers;  // per (swap image, buffer)
 
   // Create the vertex buffer && back it with memory
   {
@@ -1535,6 +1532,24 @@ int main(int argc, const char** argv) {
     REQUIRE_SUCCESS(
         vkCreateImageView(device, &create_info, nullptr, &swapchain_view));
     swapchain_views.push_back(swapchain_view);
+
+    for (size_t j = 0; j < kBufferingCount; j++) {
+      VkImageView views[2] = {swapchain_views[i], depth_buffer_views[j]};
+      VkFramebufferCreateInfo create_info = {
+          VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+          nullptr,
+          0,
+          render_pass,
+          2,
+          views,
+          surface_capabilities.currentExtent.width,
+          surface_capabilities.currentExtent.height,
+          1};
+      VkFramebuffer framebuffer;
+      REQUIRE_SUCCESS(
+          vkCreateFramebuffer(device, &create_info, nullptr, &framebuffer));
+      framebuffers.push_back(framebuffer);
+    }
   }
 
   // Actually Start Rendering.
@@ -1567,28 +1582,6 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkBeginCommandBuffer(render_command_buffers[frame_parity],
                                          &begin_info));
-
-    if (framebuffers[frame_parity] != VK_NULL_HANDLE) {
-      vkDestroyFramebuffer(device, framebuffers[frame_parity], nullptr);
-      // Fill the framebuffers
-    }
-
-    {
-      VkImageView views[2] = {swapchain_views[next_image],
-                              depth_buffer_views[frame_parity]};
-      VkFramebufferCreateInfo create_info = {
-          VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-          nullptr,
-          0,
-          render_pass,
-          2,
-          views,
-          surface_capabilities.currentExtent.width,
-          surface_capabilities.currentExtent.height,
-          1};
-      REQUIRE_SUCCESS(vkCreateFramebuffer(device, &create_info, nullptr,
-                                          &framebuffers[frame_parity]));
-    }
 
     float angle = 3.14f * total_time;
     float ca = cosf(angle);
@@ -1666,7 +1659,7 @@ int main(int argc, const char** argv) {
           VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
           nullptr,
           render_pass,
-          framebuffers[frame_parity],
+          framebuffers[(next_image * kBufferingCount) + frame_parity],
           VkRect2D{{0, 0},
                    {
                        surface_capabilities.currentExtent.width,
