@@ -76,7 +76,9 @@ public class Devices {
     capture.addListener(new Capture.Listener() {
       @Override
       public void onCaptureLoadingStart(boolean maintainState) {
-        resetReplayDevice();
+        if (!maintainState) {
+          resetReplayDevice();
+        }
       }
 
       @Override
@@ -93,7 +95,7 @@ public class Devices {
     selectedReplayDevice = null;
   }
 
-  protected void loadReplayDevices(Path.Capture capturePath) {
+  public void loadReplayDevices(Path.Capture capturePath) {
     rpcController.start().listen(MoreFutures.transformAsync(client.getDevicesForReplay(capturePath),
         devs -> Futures.allAsList(devs.stream()
             .map(dev -> client.get(Paths.device(dev), dev))
@@ -105,7 +107,7 @@ public class Devices {
           List<Device.Instance> devs = result.get().stream()
               .map(v -> v.getDevice())
               .collect(toList());
-          return devs.isEmpty() ? error(null) : success(devs);
+          return success(devs);
         } catch (RpcException | ExecutionException e) {
           analytics.reportException(e);
           throttleLogRpcError(LOG, "LoadData error", e);
@@ -127,7 +129,6 @@ public class Devices {
 
   protected void updateReplayDevices(List<Device.Instance> devs) {
     replayDevices = devs;
-    selectedReplayDevice = (devs == null) ? null : devs.get(0);
     listeners.fire().onReplayDevicesLoaded();
   }
 
@@ -203,6 +204,10 @@ public class Devices {
 
   public boolean isLoaded() {
     return devices != null;
+  }
+
+  public boolean isReplayDevicesLoaded() {
+    return replayDevices != null;
   }
 
   public List<Device.Instance> getAllDevices() {

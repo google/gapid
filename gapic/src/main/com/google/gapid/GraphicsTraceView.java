@@ -29,13 +29,13 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.views.CommandTree;
+import com.google.gapid.views.DeviceDialog;
 import com.google.gapid.views.FramebufferView;
 import com.google.gapid.views.GeometryView;
 import com.google.gapid.views.LogView;
 import com.google.gapid.views.MemoryView;
 import com.google.gapid.views.PipelineView;
 import com.google.gapid.views.ProfileView;
-import com.google.gapid.views.ReplayDeviceSelector;
 import com.google.gapid.views.ReportView;
 import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
@@ -80,10 +80,9 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
     this.widgets = widgets;
     this.hiddenTabs = getHiddenTabs(models.settings);
 
-    setLayout(new GridLayout(1, false));
+    new DeviceDialog(this, models, widgets);
 
-    new ReplayDeviceSelector(this, models)
-        .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+    setLayout(new GridLayout(1, false));
 
     tabs = new TabArea(this, models.analytics, widgets.theme, new Persistance() {
       @Override

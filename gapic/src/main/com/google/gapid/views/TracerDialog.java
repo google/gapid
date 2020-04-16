@@ -284,7 +284,6 @@ public class TracerDialog {
       private static final String PERFETTO_LABEL = "Profile Config: ";
       private static final String EMPTY_APP_WITH_RENDER_STAGE =
           "Warning: Application needs to be specified for GPU profiling data.";
-      private static final String VALIDATION_FAILED_LANDING_PAGE = "<a>Learn about device compatibility</a>";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -657,7 +656,7 @@ public class TracerDialog {
           validationStatus = true;
         } else {
           validationStatusLoader.updateStatus(result.passed);
-          validationStatusText.setText("Validation " + (result.passed ? "Passed." : "Failed. " + VALIDATION_FAILED_LANDING_PAGE));
+          validationStatusText.setText("Validation " + (result.passed ? "Passed." : "Failed. " + Messages.VALIDATION_FAILED_LANDING_PAGE));
           validationStatusLoader.stopLoading();
           validationStatus = result.passed;
         }
