@@ -18,7 +18,9 @@ package com.google.gapid;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.base.Splitter;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Follower;
@@ -149,7 +151,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
             tab.reinitialize();
             return tab.getControl();
           });
-          if (type.top) {
+          if (type.position == MainTab.DefaultPosition.Top) {
             tabs.addTabToFirstFolder(tabInfo);
           } else {
             tabs.addTabToLargestFolder(tabInfo);
@@ -207,13 +209,18 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
       }
 
       if (!allTabs.isEmpty()) {
-        TabInfo[] tabsToAdd = new TabInfo[allTabs.size()];
-        int i = 0;
+        List<TabInfo> toAddToLargest = Lists.newArrayList();
+        List<TabInfo> toAddToTop = Lists.newArrayList();
         for (Type tab : allTabs) {
-          tabsToAdd[i++] = new MainTab(tab,
-              parent -> tab.factory.create(parent, models, widgets).getControl());
+          (tab.position == DefaultPosition.Top ? toAddToTop : toAddToLargest).add(
+              new MainTab(tab, parent -> tab.factory.create(parent, models, widgets).getControl()));
         }
-        root = root.addToLargest(tabsToAdd);
+        if (!toAddToLargest.isEmpty()) {
+          root = root.addToLargest(toAddToTop.toArray(new TabInfo[toAddToTop.size()]));
+        }
+        if (!toAddToTop.isEmpty()) {
+          root = root.addToFirst(toAddToTop.toArray(new TabInfo[toAddToTop.size()]));
+        }
       }
       return root.children;
     }
@@ -257,50 +264,30 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
 
     private static FolderInfo[] getDefaultFolderInfo(
         Models models, Widgets widgets, Set<Type> hidden) {
-      Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
-      allTabs.removeAll(hidden);
-      boolean hasFilmStrip = allTabs.remove(Type.Filmstrip);
-      List<FolderInfo> folders = Lists.newArrayList();
-      if (allTabs.contains(Type.ApiCalls)) {
-        folders.add(new FolderInfo(new TabInfo[] {
-            new MainTab(Type.ApiCalls,
-                parent -> Type.ApiCalls.factory.create(parent, models, widgets).getControl())
-        }, 1));
-        allTabs.remove(Type.ApiCalls);
-      }
-      List<TabInfo> center = Lists.newArrayList();
-      for (Iterator<Type> it = allTabs.iterator(); it.hasNext(); ) {
-        Type type = it.next();
-        if (type == Type.Memory || type == Type.ApiState) {
-          continue;
+      ListMultimap<DefaultPosition, TabInfo> toAdd =
+          MultimapBuilder.enumKeys(DefaultPosition.class).arrayListValues().build();
+      for (Type type : Type.values()) {
+        if (!hidden.contains(type)) {
+          toAdd.put(type.position, new MainTab(
+              type, parent -> type.factory.create(parent, models, widgets).getControl()));
         }
-        center.add(new MainTab(
-            type, parent -> type.factory.create(parent, models, widgets).getControl()));
-        it.remove();
-      }
-      if (!center.isEmpty()) {
-        folders.add(new FolderInfo(center.toArray(new TabInfo[center.size()]), 3));
-      }
-      if (!allTabs.isEmpty()) {
-        TabInfo[] right = new TabInfo[allTabs.size()];
-        if (allTabs.contains(Type.ApiState)) {
-          right[0] = new MainTab(Type.ApiState,
-              parent -> Type.ApiState.factory.create(parent, models, widgets).getControl());
-        }
-        if (allTabs.contains(Type.Memory)) {
-          right[right.length - 1] = new MainTab(Type.Memory,
-              parent -> Type.Memory.factory.create(parent, models, widgets).getControl());
-        }
-        folders.add(new FolderInfo(right, 1));
       }
 
-      FolderInfo[] result = folders.toArray(new FolderInfo[folders.size()]);
-      if (hasFilmStrip) {
+      List<FolderInfo> bottom = Lists.newArrayList();
+      if (toAdd.containsKey(DefaultPosition.Left)) {
+        bottom.add(new FolderInfo(toAdd.get(DefaultPosition.Left), 1));
+      }
+      if (toAdd.containsKey(DefaultPosition.Center)) {
+        bottom.add(new FolderInfo(toAdd.get(DefaultPosition.Center), 3));
+      }
+      if (toAdd.containsKey(DefaultPosition.Right)) {
+        bottom.add(new FolderInfo(toAdd.get(DefaultPosition.Right), 1));
+      }
+      FolderInfo[] result = bottom.toArray(new FolderInfo[bottom.size()]);
+
+      if (toAdd.containsKey(DefaultPosition.Top)) {
         result = new FolderInfo[] {
-            new FolderInfo(new TabInfo[] {
-                new MainTab(Type.Filmstrip,
-                    parent -> Type.Filmstrip.factory.create(parent, models, widgets).getControl()),
-            }, 1),
+            new FolderInfo(toAdd.get(DefaultPosition.Top), 1),
             new FolderInfo(result, 4),
         };
       } else {
@@ -365,31 +352,31 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
      * Information about the available tabs.
      */
     public static enum Type {
-      Filmstrip(View.FilmStrip, "Filmstrip", true, ThumbnailScrubber::new),
-      Profile(View.Profile, "Profile", true, ProfileView::new),
+      Filmstrip(View.FilmStrip, "Filmstrip", DefaultPosition.Top, ThumbnailScrubber::new),
+      Profile(View.Profile, "Profile", DefaultPosition.Top, ProfileView::new),
 
-      ApiCalls(View.Commands, "Commands", false, CommandTree::new),
+      ApiCalls(View.Commands, "Commands", DefaultPosition.Left, CommandTree::new),
 
-      Framebuffer(View.Framebuffer, "Framebuffer", false, FramebufferView::new),
-      Pipeline(View.Pipeline, "Pipeline", false, PipelineView::new),
-      Textures(View.Textures, "Textures", false, TextureView::new),
-      Geometry(View.Geometry, "Geometry", false, GeometryView::new),
-      Shaders(View.Shaders, "Shaders", false, ShaderView::new),
-      Report(View.Report, "Report", false, ReportView::new),
-      Log(View.Log, "Log", false, (p, m, w) -> new LogView(p, w)),
+      Framebuffer(View.Framebuffer, "Framebuffer", DefaultPosition.Center, FramebufferView::new),
+      Pipeline(View.Pipeline, "Pipeline", DefaultPosition.Center, PipelineView::new),
+      Textures(View.Textures, "Textures", DefaultPosition.Center, TextureView::new),
+      Geometry(View.Geometry, "Geometry", DefaultPosition.Center, GeometryView::new),
+      Shaders(View.Shaders, "Shaders", DefaultPosition.Center, ShaderView::new),
+      Report(View.Report, "Report", DefaultPosition.Center, ReportView::new),
+      Log(View.Log, "Log", DefaultPosition.Center, (p, m, w) -> new LogView(p, w)),
 
-      ApiState(View.State, "State", false, StateView::new),
-      Memory(View.Memory, "Memory", false, MemoryView::new);
+      ApiState(View.State, "State", DefaultPosition.Right, StateView::new),
+      Memory(View.Memory, "Memory", DefaultPosition.Right, MemoryView::new);
 
       public final View view;
       public final String label;
-      public final boolean top;
+      public final DefaultPosition position;
       public final TabFactory factory;
 
-      private Type(View view, String label, boolean top, TabFactory factory) {
+      private Type(View view, String label,DefaultPosition position, TabFactory factory) {
         this.view = view;
         this.label = label;
-        this.top = top;
+        this.position = position;
         this.factory = factory;
       }
 
@@ -404,6 +391,10 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
         action.setText(label);
         return action;
       }
+    }
+
+    public static enum DefaultPosition {
+      Top, Left, Center, Right;
     }
 
     /**

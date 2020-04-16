@@ -109,6 +109,30 @@ public class TabArea extends TabComposite {
       this.weight = weight;
     }
 
+    public FolderInfo(List<TabInfo> tabs, int weight) {
+      this(tabs.toArray(new TabInfo[tabs.size()]), weight);
+    }
+
+    public FolderInfo addToFirst(TabInfo[] newTabs) {
+      if (tabs != null) {
+        // There's only one folder, add them here.
+        TabInfo[] t = Arrays.copyOf(tabs, tabs.length + newTabs.length);
+        System.arraycopy(newTabs, 0, t, tabs.length, newTabs.length);
+        return new FolderInfo(t, weight);
+      } else if (children[0].tabs != null) {
+        // The first child is a folder, add them there.
+        FolderInfo[] t = Arrays.copyOf(children, children.length);
+        t[0] = children[0].addToFirst(newTabs);
+        return new FolderInfo(t, weight);
+      } else {
+        // Create a new folder and make it our first child.
+        FolderInfo[] t = new FolderInfo[children.length + 1];
+        t[0] = new FolderInfo(newTabs, weight);
+        System.arraycopy(children, 0, t, 1, children.length);
+        return new FolderInfo(t, weight * 2);
+      }
+    }
+
     public FolderInfo addToLargest(TabInfo[] newTabs) {
       if (tabs != null) {
         TabInfo[] t = Arrays.copyOf(tabs, tabs.length + newTabs.length);
