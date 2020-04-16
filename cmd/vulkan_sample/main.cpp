@@ -1597,8 +1597,8 @@ int main(int argc, const char** argv) {
     float ca = cosf(angle);
     float sa = sinf(angle);
 
-    float mat[16] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, ca,   sa,    0.0f,
-                     0.0f, -sa,  ca,   0.0f, 0.0f, 0.0f, -3.0f, 1.0f};
+    float mat[16] = {ca, sa * sa,  -ca * sa, 0.0f, 0.0f, ca,   sa,    0.0f,
+                     sa, -ca * sa, ca * ca,  0.0f, 0.0f, 0.0f, -2.0f, 1.0f};
     float aspect = float(surface_capabilities.currentExtent.width) /
                    float(surface_capabilities.currentExtent.height);
 
