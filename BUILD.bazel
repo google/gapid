@@ -355,7 +355,6 @@ test_suite(
     tests = [
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
-        "//test/robot/stash/grpc:go_default_test",
     ],
 )
 
@@ -451,7 +450,6 @@ test_suite(
         "//gapis/vertex:go_default_test",
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
-        "//test/robot/stash/grpc:go_default_test",
         # __END_TESTS
     ],
 )
