@@ -210,30 +210,8 @@ message Instance {
 
 // Drivers describes the drivers available on a device.
 message Drivers {
-  // The OpenGL or OpenGL ES driver support.
-  OpenGLDriver opengl = 1;
   // The Vulkan driver support.
   VulkanDriver vulkan = 2;
-}
-
-// OpenGLDriver describes the device driver support for the OpenGL or OpenGL ES
-// APIs.
-message OpenGLDriver {
-  // Supported extensions. e.g. "GL_KHR_debug", "GL_EXT_sRGB [...]".
-  repeated string extensions = 1;
-  // Driver name. e.g. "Adreno (TM) 320".
-  string renderer = 2;
-  // Driver vendor name. e.g. "Qualcomm".
-  string vendor = 3;
-  // Renderer version. e.g. "OpenGL ES 3.0 V@53.0 AU@  (CL@)".
-  string version = 4;
-  // Value returned by glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT)
-  uint32 uniform_buffer_alignment = 5;
-  // Value returned by glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS)
-  uint32 max_transform_feedback_separate_attribs = 6;
-  // Value returned by
-  // glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS)
-  uint32 max_transform_feedback_interleaved_components = 7;
 }
 
 // VulkanDriver describes the device driver support for the Vulkan API.
