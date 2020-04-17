@@ -76,9 +76,19 @@ bool query::queryCpu(CpuInfo* info, std::string* error) {
   }
 
   if (info->name == "") {
+    static const char* cpuProps[] = {
+        "ro.boot.hardware.platform",
+        "ro.hardware.chipname",
+        "ro.boot.hardware",
+        "ro.hardware",
+        "ro.arch",
+    };
     char str[PROP_VALUE_MAX];
-    if (__system_property_get("ro.boot.hardware.platform", str) != 0) {
-      info->name = str;
+    for (const char* prop : cpuProps) {
+      if (__system_property_get(prop, str) != 0) {
+        info->name = str;
+        break;
+      }
     }
   }
 
