@@ -15,6 +15,7 @@
  */
 
 #include "instance.h"
+#include "core/cc/log.h"
 #include "query.h"
 
 namespace {
@@ -34,6 +35,7 @@ device_instance get_device_instance() {
   error.clear();
   auto instance = query::getDeviceInstance(query_opt, &error);
   if (!instance) {
+    GAPID_ERROR("Failed to query device info: %s", error.c_str());
     return out;
   }
 

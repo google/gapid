@@ -77,11 +77,9 @@ bool query::queryCpu(CpuInfo* info, std::string* error) {
 
   if (info->name == "") {
     char str[PROP_VALUE_MAX];
-    if (__system_property_get("ro.boot.hardware.platform", str) == 0) {
-      error->append("Failed reading ro.boot.hardware.platform property");
-      return false;
+    if (__system_property_get("ro.boot.hardware.platform", str) != 0) {
+      info->name = str;
     }
-    info->name = str;
   }
 
   info->vendor = "ARM";  // TODO: get the implementer?
