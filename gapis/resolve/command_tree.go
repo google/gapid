@@ -403,12 +403,11 @@ func addContainingGroups(
 	kind service.EventKind,
 	label string) {
 
-	count := 0
 	lastLeft := api.CmdID(0)
 	for _, e := range events.List {
 		i := api.CmdID(e.Command.Indices[0])
 		switch e.Kind {
-		case kind:
+		case kind, service.EventKind_LastInFrame:
 			// Find group which contains this event
 			group := &t.root
 			for true {
@@ -437,11 +436,7 @@ func addContainingGroups(
 			lastLeft = end
 			if start < end {
 				t.root.AddGroup(start, end, label)
-				count++
 			}
-
-		case service.EventKind_LastInFrame:
-			count = 0
 		}
 	}
 }
