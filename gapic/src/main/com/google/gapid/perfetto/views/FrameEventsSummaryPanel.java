@@ -19,7 +19,6 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
@@ -31,12 +30,12 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.FrameEventsTrack;
-import com.google.gapid.perfetto.models.FrameEventsTrack.Slice;
-import com.google.gapid.perfetto.models.GpuInfo;
+import com.google.gapid.perfetto.models.FrameEventsTrack.FrameSelection;
+import com.google.gapid.perfetto.models.FrameInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
-
 import com.google.gapid.util.Arrays;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.RGBA;
@@ -55,7 +54,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
   private static final double CURSOR_SIZE = 5;
   private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
-  private final GpuInfo.Buffer buffer;
+  private final FrameInfo.Buffer buffer;
   protected final FrameEventsTrack track;
 
   protected double mouseXpos, mouseYpos;
@@ -64,12 +63,11 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
   protected Size hoveredSize = Size.ZERO;
   protected HoverCard hovered;
 
-  public FrameEventsSummaryPanel(State state, GpuInfo.Buffer buffer, FrameEventsTrack track) {
+  public FrameEventsSummaryPanel(State state, FrameInfo.Buffer buffer, FrameEventsTrack track) {
     super(state);
     this.buffer = buffer;
     this.track = track;
   }
-
 
   @Override
   public String getTitle() {
@@ -164,10 +162,11 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
     Selection selected = state.getSelection(Selection.Kind.FrameEvents);
     List<Highlight> visibleSelected = Lists.newArrayList();
 
+    FrameSelection selectedFrames = getSelectedFrames(state);
+
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
-      int depth = data.depths[i];
       String title = buildSliceTitle(data.titles[i], data.args[i]);
 
       if (tEnd <= visible.start || tStart >= visible.end) {
@@ -176,10 +175,16 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       double rectStart = state.timeToPx(tStart);
       StyleConstants.Gradient color = getSliceColor(data.titles[i]);
       color.applyBase(ctx);
+      if (!selectedFrames.isEmpty()) {
+        ctx.setBackgroundColor(color.disabled);
+        if (selectedFrames.contains(data.frameNumbers[i], data.layerNames[i])) {
+          color.applyBase(ctx);
+        }
+      }
 
       if (tEnd - tStart > 3 ) {
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
-        double y = depth * SLICE_HEIGHT;
+        double y = 0;
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
         if (selected.contains(data.ids[i])) {
@@ -196,13 +201,13 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
             Fonts.Style.Normal, title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
       } else {
         double rectWidth = 20;
-        double y = depth * SLICE_HEIGHT;
+        double y = 0;
         double[] diamondX = { rectStart - (rectWidth / 2), rectStart, rectStart + (rectWidth / 2), rectStart};
         double[] diamondY = { y + (SLICE_HEIGHT / 2), y, y + (SLICE_HEIGHT / 2), SLICE_HEIGHT };
         ctx.fillPolygon(diamondX, diamondY, 4);
 
         if (selected.contains(data.ids[i])) {
-          visibleSelected.add(Highlight.diamond(color.border, diamondX, diamondY));
+          visibleSelected.add(Highlight.diamond(color.highlight, diamondX, diamondY));
         }
 
         ctx.setForegroundColor(colors().textMain);
@@ -285,7 +290,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       public void stop() {
         hovered = null;
       }
-      
+
       @Override
       public Cursor getCursor(Display display) {
         return p == 0 ? null : display.getSystemCursor(SWT.CURSOR_HAND);
@@ -323,14 +328,13 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         endts = ts + 12;
         ts -= 12;
       }
-      if (data.depths[i] == depth && x >= ts && x<= endts) {
+      if (x >= ts && x<= endts) {
         hoveredTitle = data.titles[i];
-        hoveredCategory = data.categories[i];
+        hoveredCategory = "";
         if (hoveredTitle.isEmpty()) {
           if (hoveredCategory.isEmpty()) {
             return Hover.NONE;
           }
-          hoveredTitle = hoveredCategory;
           hoveredCategory = "";
         }
         hoveredTitle = buildSliceTitle(hoveredTitle, data.args[i]);
@@ -401,6 +405,16 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       builder.add(Selection.Kind.FrameEvents,
           transform(track.getSlices(ts, startDepth, endDepth), FrameEventsTrack.SlicesBuilder::new));
     }
+  }
+
+  private static FrameSelection getSelectedFrames(State state) {
+    Selection selection = state.getSelection(Selection.Kind.FrameEvents);
+    if (selection instanceof FrameEventsTrack.Slice) {
+      return ((FrameEventsTrack.Slice) selection).getSelection();
+    } else if (selection instanceof FrameEventsTrack.Slices) {
+      return ((FrameEventsTrack.Slices) selection).getSelection();
+    }
+    return FrameSelection.EMPTY;
   }
 
   private static class HoverCard {

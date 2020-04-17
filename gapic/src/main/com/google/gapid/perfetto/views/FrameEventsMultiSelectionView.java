@@ -63,8 +63,8 @@ public class FrameEventsMultiSelectionView extends Composite {
     viewer.setLabelProvider(new LabelProvider());
 
     createTreeColumn(viewer, "Name", e -> n(e).name);
-    createTreeColumn(viewer, "TrackId", e -> Long.toString(n(e).trackId));
     createTreeColumn(viewer, "Self Time", e -> timeToString(n(e).self));
+    createTreeColumn(viewer, "Layers", e -> String.join(", ", n(e).layers));
     viewer.setInput(sel);
     packColumns(viewer.getTree());
   }

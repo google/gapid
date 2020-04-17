@@ -32,6 +32,9 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 /**
  * Displays information about a selected Frame event.
  */
@@ -41,7 +44,7 @@ public class FrameEventsSelectionView extends Composite {
 
   public FrameEventsSelectionView(Composite parent, State state, FrameEventsTrack.Slice slice) {
     super(parent, SWT.NONE);
-    setLayout(withMargin(new GridLayout(2, false), 0, 0));
+    setLayout(withMargin(new GridLayout(3, false), 0, 0));
 
     Composite main = withLayoutData(createComposite(this, new GridLayout(2, false)),
         new GridData(SWT.LEFT, SWT.TOP, false, false));
@@ -55,6 +58,37 @@ public class FrameEventsSelectionView extends Composite {
 
     createLabel(main, "Duration:");
     createLabel(main, timeToString(slice.dur));
+
+    if (slice.frameStats != null) {
+      // If the selected event is a displayed frame slice, show the frame stats
+      Composite stats = withLayoutData(createComposite(this, new GridLayout(2, false)),
+          withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), PANEL_INDENT, 0));
+      withLayoutData(createBoldLabel(stats, "Frame Stats:"),
+          withSpans(new GridData(), 2, 1));
+
+      slice.frameStats.forEach((k, v) -> {
+        withLayoutData(createBoldLabel(stats, k.toString()),
+            withSpans(new GridData(), 2, 1));
+
+        createLabel(stats, "Frame number: ");
+        createLabel(stats, Long.toString(v.frameNumber));
+
+        createLabel(stats, "Queue to Acquire: ");
+        createLabel(stats, timeToString(v.queueToAcquireTime));
+
+        createLabel(stats, "Acquire to Latch: ");
+        createLabel(stats, timeToString(v.acquireToLatchTime));
+
+        createLabel(stats, "Latch to Present: ");
+        createLabel(stats, timeToString(v.latchToPresentTime));
+      });
+    } else {
+      // Show the frame number associated with the event
+      createLabel(main, "Frame Number:");
+      createLabel(main, Arrays.stream(slice.frameNumbers)
+          .mapToObj(Long::toString)
+          .collect(Collectors.joining(", ")));
+    }
 
     if (!slice.args.isEmpty()) {
       String[] keys = Iterables.toArray(slice.args.keys(), String.class);

@@ -235,6 +235,14 @@ public abstract class Track<D extends Track.Data> {
       }
     }
 
+    public static Window compute(DataRequest request, int bucketSizePx, long cutoff) {
+      if (request.resolution >= cutoff) {
+        return quantized(request, bucketSizePx);
+      } else {
+        return compute(request);
+      }
+    }
+
     public static Window quantized(DataRequest request, int bucketSizePx) {
       long quantum = request.resolution * bucketSizePx;
       long start = (request.range.start / quantum) * quantum;
