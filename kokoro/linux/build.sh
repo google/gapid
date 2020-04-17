@@ -93,7 +93,7 @@ $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
 ##
 
 # Install LUCI
-curl -fsSL -o luci-py.tar.gz https://chromium.googlesource.com/infra/luci/luci-py.git/+archive/0b027452e658080df1f174c403946914443d2aa6.tar.gz
+curl -fsSL -o luci-py.tar.gz https://chromium.googlesource.com/infra/luci/luci-py.git/+archive/2128d8d9c36a0e2839afa200cf3da5e6f6ea845a.tar.gz
 mkdir luci-py
 tar xzf luci-py.tar.gz --directory luci-py
 export LUCI_CLIENT_ROOT="$PWD/luci-py/client"
