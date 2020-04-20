@@ -99,6 +99,7 @@ type Builder struct {
 	constantMemory      *constantEncoder
 	heap, temp          allocator
 	resourceIDToIdx     map[id.ID]uint32
+	resourceIdxToID     map[uint32]id.ID
 	threadIDToIdx       map[uint64]uint32
 	currentThreadID     uint64
 	pendingThreadID     uint64
@@ -153,6 +154,7 @@ func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
 		},
 		temp:                allocator{alignment: ptrAlignment},
 		resourceIDToIdx:     map[id.ID]uint32{},
+		resourceIdxToID:     map[uint32]id.ID{},
 		threadIDToIdx:       map[uint64]uint32{},
 		resources:           []*gapir.ResourceInfo{},
 		reservedMemory:      memory.RangeList{},
@@ -277,13 +279,53 @@ func (b *Builder) BeginCommand(cmdID, threadID uint64) {
 	}
 }
 
+type regionCalculatingVolatileMemoryLayout struct {
+	reservedMemoryAsList interval.List // Alias of reservedMemory to minimize interface conversions.
+	pointerMemoryAsList  interval.List // Alias of pointerMemory to minimize interface conversions.
+	memoryLayout         *device.MemoryLayout
+}
+
+func (l regionCalculatingVolatileMemoryLayout) ResolveObservedPointer(p value.ObservedPointer) (protocol.Type, uint64) {
+	bufferIdx := interval.IndexOf(l.reservedMemoryAsList, uint64(p))
+	if bufferIdx < 0 {
+		return protocol.Type_AbsolutePointer, unobservedPointer
+	}
+	return protocol.Type_VolatilePointer, unobservedPointer
+}
+
+func getRegionCalculatingVolatileMemoryLayout(b Builder) regionCalculatingVolatileMemoryLayout {
+	return regionCalculatingVolatileMemoryLayout{
+		reservedMemoryAsList: &b.reservedMemory,
+		pointerMemoryAsList:  &b.pointerMemory,
+		memoryLayout:         device.Little32,
+	}
+}
+
+func (l regionCalculatingVolatileMemoryLayout) ResolveTemporaryPointer(p value.TemporaryPointer) value.VolatilePointer {
+	return value.VolatilePointer(uint64(p))
+}
+
+func (l regionCalculatingVolatileMemoryLayout) ResolvePointerIndex(i value.PointerIndex) (protocol.Type, uint64) {
+	addr := uint64(i) * uint64(l.memoryLayout.GetPointer().GetSize())
+	bufferIdx := interval.IndexOf(l.pointerMemoryAsList, addr)
+	if bufferIdx < 0 {
+		// Pointer is not observed.
+		return protocol.Type_AbsolutePointer, unobservedPointer
+	}
+	return protocol.Type_VolatilePointer, unobservedPointer
+}
+
 // CommitCommand should be called after emitting the commands to replay a single
 // command.
 // CommitCommand frees all temporary allocated memory and clears the stack.
-func (b *Builder) CommitCommand() {
+func (b *Builder) CommitCommand(ctx context.Context, optimise bool) {
+
 	if !b.inCmd {
 		panic("CommitCommand called without a call to BeginCommand")
 	}
+
+	newInstructions := make([]asm.Instruction, 0)
+
 	b.lastLabel, b.pendingLabel = b.pendingLabel, 0
 	b.currentThreadID = b.pendingThreadID
 	b.inCmd = false
@@ -316,6 +358,78 @@ func (b *Builder) CommitCommand() {
 	if pop > 0 {
 		b.instructions = append(b.instructions, asm.Pop{Count: pop})
 	}
+
+	// Lets inine any small resources next...
+	if optimise {
+		inlineThreshold := 128
+		for index := b.cmdStart; index < len(b.instructions); index++ {
+
+			if resource, ok := b.instructions[index].(asm.Resource); ok {
+
+				id := b.resourceIdxToID[resource.Index]
+
+				obj, err := database.Resolve(ctx, id)
+				if err != nil {
+					panic(log.Err(ctx, ErrInvalidResource, "Couldn't resolve inline resource"))
+				}
+				data, ok := obj.([]byte)
+				if !ok {
+					panic(log.Err(ctx, ErrInvalidResource, "Inline resource didn't resolve to byte slice"))
+				}
+
+				if len(data) <= inlineThreshold {
+
+					valuePatchUps := make([]asm.InlineResourceValuePatchUp, 0)
+					pointerPatchUps := make([]asm.InlineResourcePointerPatchUp, 0)
+
+					for donePatchups := false; donePatchups == false; {
+						if index+2 < len(b.instructions) {
+							push, pushOk := b.instructions[index+1].(asm.Push)
+							load, loadOk := b.instructions[index+1].(asm.Load)
+							store, storeOk := b.instructions[index+2].(asm.Store)
+							if storeOk {
+								if pushOk {
+									resolver := getRegionCalculatingVolatileMemoryLayout(*b)
+									ty, _, onStack := push.Value.Get(resolver)
+									// Because the number of valuePatchUps is stored in the instruction bits, we need to stay before 64 of them here.
+									if !onStack && ty == protocol.Type_VolatilePointer && len(valuePatchUps) < 64 {
+										valuePatchUps = append(valuePatchUps, asm.InlineResourceValuePatchUp{Destination: store.Destination, Value: push.Value})
+										index += 2
+										continue
+									}
+								}
+
+								if loadOk {
+									resolver := getRegionCalculatingVolatileMemoryLayout(*b)
+									ty1, _, onStack := load.Source.Get(resolver)
+									if !onStack {
+										ty2, _, onStack := store.Destination.Get(resolver)
+										if !onStack && ty1 == protocol.Type_VolatilePointer && ty2 == protocol.Type_VolatilePointer {
+											pointerPatchUps = append(pointerPatchUps, asm.InlineResourcePointerPatchUp{Destination: store.Destination, Source: load.Source})
+											index += 2
+											continue
+										}
+									}
+								}
+							}
+						}
+
+						donePatchups = true
+					}
+
+					inlineResource := asm.InlineResource{Ctx: ctx, Data: data, Destination: resource.Destination, ValuePatchUps: valuePatchUps, PointerPatchUps: pointerPatchUps}
+					newInstructions = append(newInstructions, inlineResource)
+				} else {
+					newInstructions = append(newInstructions, b.instructions[index])
+				}
+			} else {
+				newInstructions = append(newInstructions, b.instructions[index])
+			}
+		}
+
+		b.instructions = append(b.instructions[:b.cmdStart], newInstructions...)
+	}
+
 	b.stack = b.stack[:0]
 }
 
@@ -669,6 +783,7 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 		if !found {
 			idx = uint32(len(b.resources))
 			b.resourceIDToIdx[resourceID] = idx
+			b.resourceIdxToID[idx] = resourceID
 			b.resources = append(b.resources, &gapir.ResourceInfo{
 				Id:   resourceID.String(),
 				Size: uint32(rng.Size),

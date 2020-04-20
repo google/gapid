@@ -15,10 +15,12 @@
 package opcode
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/gapis/replay/protocol"
+	"github.com/google/gapid/gapis/replay/value"
 )
 
 // Opcode represents a single opcode used by GAPIR.
@@ -204,6 +206,66 @@ func (c Store) Encode(w binary.Writer) error {
 	return w.Error()
 }
 
+type InlineResourceValuePatchUp struct {
+	Destination value.Pointer
+	Value       value.Value
+}
+
+type InlineResourcePointerPatchUp struct {
+	Destination value.Pointer
+	Source      value.Value
+}
+
+// Resource represents the RESOURCE virtual machine opcode.
+type InlineResource struct {
+	Data            []uint32
+	DataSize        uint32
+	ValuePatchUps   []InlineResourceValuePatchUp
+	PointerPatchUps []InlineResourcePointerPatchUp
+	Resolver        value.PointerResolver
+	Ctx             context.Context
+}
+
+func (c InlineResource) String() string { return fmt.Sprintf("InlineResourceResource") }
+
+func (c InlineResource) Encode(w binary.Writer) error {
+
+	w.Uint32(packCYZ(protocol.OpInlineResource, uint32(len(c.ValuePatchUps)), c.DataSize))
+
+	for _, val := range c.Data {
+		w.Uint32(val)
+	}
+
+	for _, valuePatchUp := range c.ValuePatchUps {
+
+		_, destination, onStack1 := valuePatchUp.Destination.Get(c.Resolver)
+		_, value, onStack2 := valuePatchUp.Value.Get(c.Resolver)
+
+		if onStack1 || onStack2 {
+			panic("InlineResource does not support patchups with stack pointers")
+		}
+
+		w.Uint32(uint32(destination))
+		w.Uint32(uint32(value))
+	}
+
+	w.Uint32(uint32(len(c.PointerPatchUps)))
+	for _, pointerPatchUp := range c.PointerPatchUps {
+
+		_, destination, onStack1 := pointerPatchUp.Destination.Get(c.Resolver)
+		_, source, onStack2 := pointerPatchUp.Source.Get(c.Resolver)
+
+		if onStack1 || onStack2 {
+			panic("InlineResource does not support patchups with stack pointers")
+		}
+
+		w.Uint32(uint32(destination))
+		w.Uint32(uint32(source))
+	}
+
+	return w.Error()
+}
+
 // Resource represents the RESOURCE virtual machine opcode.
 type Resource struct {
 	ID uint32 // The index of the resource identifier.
@@ -368,6 +430,125 @@ func (c Wait) Encode(w binary.Writer) error {
 	return w.Error()
 }
 
+type TrivialValue struct {
+	Value uint32
+}
+
+func (t TrivialValue) Get(value.PointerResolver) (ty protocol.Type, val uint64, onStack bool) {
+	return protocol.Type_VolatilePointer, uint64(t.Value), false
+}
+
+type TrivialPointer struct {
+	Value uint32
+}
+
+func (t TrivialPointer) Get(value.PointerResolver) (ty protocol.Type, val uint64, onStack bool) {
+	return protocol.Type_VolatilePointer, uint64(t.Value), false
+}
+
+func (t TrivialPointer) Offset(v uint64) value.Pointer {
+	return TrivialPointer{Value: uint32(uint64(t.Value) + v)}
+}
+
+func (t TrivialPointer) IsValid() bool {
+	return true
+}
+
+type TrivialPointerResolver struct{}
+
+func (r TrivialPointerResolver) ResolveTemporaryPointer(value.TemporaryPointer) value.VolatilePointer {
+	panic("unimplemented")
+}
+
+func (r TrivialPointerResolver) ResolveObservedPointer(value.ObservedPointer) (protocol.Type, uint64) {
+	panic("unimplemented")
+}
+
+func (r TrivialPointerResolver) ResolvePointerIndex(value.PointerIndex) (protocol.Type, uint64) {
+	panic("unimplemented")
+}
+
+// type InlineResourceValuePatchUp struct {
+// 	Destination value.Pointer
+// 	Value       value.Value
+// }
+
+// type InlineResourcePointerPatchUp struct {
+// 	Destination value.Pointer
+// 	Source      value.Value
+// }
+
+// func (c InlineResource) Encode(w binary.Writer) error {
+
+// 	w.Uint32(packCYZ(protocol.OpInlineResource, uint32(len(c.ValuePatchUps)), c.DataSize))
+
+// 	for _, val := range c.Data {
+// 		w.Uint32(val)
+// 	}
+
+// 	for _, valuePatchUp := range c.ValuePatchUps {
+
+// 		_, destination, onStack1 := valuePatchUp.Destination.Get(c.Resolver)
+// 		_, value, onStack2 := valuePatchUp.Value.Get(c.Resolver)
+
+// 		if onStack1 || onStack2 {
+// 			panic("InlineResource does not support patchups with stack pointers")
+// 		}
+
+// 		w.Uint32(uint32(destination))
+// 		w.Uint32(uint32(value))
+// 	}
+
+// 	w.Uint32(uint32(len(c.PointerPatchUps)))
+// 	for _, pointerPatchUp := range c.PointerPatchUps {
+
+// 		_, destination, onStack1 := pointerPatchUp.Destination.Get(c.Resolver)
+// 		_, source, onStack2 := pointerPatchUp.Source.Get(c.Resolver)
+
+// 		if onStack1 || onStack2 {
+// 			panic("InlineResource does not support patchups with stack pointers")
+// 		}
+
+// 		w.Uint32(uint32(destination))
+// 		w.Uint32(uint32(source))
+// 	}
+
+// 	return w.Error()
+// }
+
+func DecodeInlineResource(opcode uint32, reader binary.Reader) InlineResource {
+
+	numValuePatchUps := unpackY(opcode)
+	dataSize := unpackZ(opcode)
+
+	data := make([]uint32, dataSize)
+	valuePatchUps := make([]InlineResourceValuePatchUp, numValuePatchUps)
+
+	for i := 0; i < int(dataSize); i++ {
+		data[i] = reader.Uint32()
+	}
+
+	for i := 0; i < int(numValuePatchUps); i++ {
+		valuePatchUps[i] = InlineResourceValuePatchUp{Destination: TrivialPointer{Value: reader.Uint32()}, Value: TrivialValue{Value: reader.Uint32()}}
+	}
+
+	numPointerPatchUps := reader.Uint32()
+	pointerPatchUps := make([]InlineResourcePointerPatchUp, numPointerPatchUps)
+
+	for i := 0; i < int(numPointerPatchUps); i++ {
+		pointerPatchUps[i] = InlineResourcePointerPatchUp{Destination: TrivialPointer{Value: reader.Uint32()}, Source: TrivialPointer{Value: reader.Uint32()}}
+	}
+
+	return InlineResource{
+		Data:            data,
+		DataSize:        dataSize,
+		ValuePatchUps:   valuePatchUps,
+		PointerPatchUps: pointerPatchUps,
+		Resolver:        TrivialPointerResolver{},
+		Ctx:             nil,
+	}
+}
+
 // Decode returns the opcode decoded from decoder d.
 func Decode(r binary.Reader) (Opcode, error) {
 	i := r.Uint32()
@@ -420,27 +601,30 @@ func Decode(r binary.Reader) (Opcode, error) {
 		return Notification{}, nil
 	case protocol.OpWait:
 		return Wait{ID: unpackX(i)}, nil
+	case protocol.OpInlineResource:
+		return DecodeInlineResource(i, r), nil
 	default:
 		return nil, fmt.Errorf("Unknown opcode with code %v", int(code))
 	}
 }
 
-func (Call) isOpcode()         {}
-func (PushI) isOpcode()        {}
-func (LoadC) isOpcode()        {}
-func (LoadV) isOpcode()        {}
-func (Load) isOpcode()         {}
-func (Pop) isOpcode()          {}
-func (StoreV) isOpcode()       {}
-func (Store) isOpcode()        {}
-func (Resource) isOpcode()     {}
-func (Post) isOpcode()         {}
-func (Copy) isOpcode()         {}
-func (Clone) isOpcode()        {}
-func (Strcpy) isOpcode()       {}
-func (Extend) isOpcode()       {}
-func (Add) isOpcode()          {}
-func (Label) isOpcode()        {}
-func (SwitchThread) isOpcode() {}
-func (Notification) isOpcode() {}
-func (Wait) isOpcode()         {}
+func (Call) isOpcode()           {}
+func (PushI) isOpcode()          {}
+func (LoadC) isOpcode()          {}
+func (LoadV) isOpcode()          {}
+func (Load) isOpcode()           {}
+func (Pop) isOpcode()            {}
+func (StoreV) isOpcode()         {}
+func (Store) isOpcode()          {}
+func (Resource) isOpcode()       {}
+func (Post) isOpcode()           {}
+func (Copy) isOpcode()           {}
+func (Clone) isOpcode()          {}
+func (Strcpy) isOpcode()         {}
+func (Extend) isOpcode()         {}
+func (Add) isOpcode()            {}
+func (Label) isOpcode()          {}
+func (SwitchThread) isOpcode()   {}
+func (Notification) isOpcode()   {}
+func (Wait) isOpcode()           {}
+func (InlineResource) isOpcode() {}

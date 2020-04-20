@@ -20,28 +20,29 @@ import "fmt"
 type Opcode int
 
 const (
-	OpCall         = Opcode(0)
-	OpPushI        = Opcode(1)
-	OpLoadC        = Opcode(2)
-	OpLoadV        = Opcode(3)
-	OpLoad         = Opcode(4)
-	OpPop          = Opcode(5)
-	OpStoreV       = Opcode(6)
-	OpStore        = Opcode(7)
-	OpResource     = Opcode(8)
-	OpPost         = Opcode(9)
-	OpCopy         = Opcode(10)
-	OpClone        = Opcode(11)
-	OpStrcpy       = Opcode(12)
-	OpExtend       = Opcode(13)
-	OpAdd          = Opcode(14)
-	OpLabel        = Opcode(15)
-	OpSwitchThread = Opcode(16)
-	OpJumpLabel    = Opcode(17)
-	OpJumpNZ       = Opcode(18)
-	OpJumpZ        = Opcode(19)
-	OpNotification = Opcode(20)
-	OpWait         = Opcode(21)
+	OpCall           = Opcode(0)
+	OpPushI          = Opcode(1)
+	OpLoadC          = Opcode(2)
+	OpLoadV          = Opcode(3)
+	OpLoad           = Opcode(4)
+	OpPop            = Opcode(5)
+	OpStoreV         = Opcode(6)
+	OpStore          = Opcode(7)
+	OpResource       = Opcode(8)
+	OpPost           = Opcode(9)
+	OpCopy           = Opcode(10)
+	OpClone          = Opcode(11)
+	OpStrcpy         = Opcode(12)
+	OpExtend         = Opcode(13)
+	OpAdd            = Opcode(14)
+	OpLabel          = Opcode(15)
+	OpSwitchThread   = Opcode(16)
+	OpJumpLabel      = Opcode(17)
+	OpJumpNZ         = Opcode(18)
+	OpJumpZ          = Opcode(19)
+	OpNotification   = Opcode(20)
+	OpWait           = Opcode(21)
+	OpInlineResource = Opcode(22)
 )
 
 // String returns the human-readable name of the opcode.
@@ -91,6 +92,8 @@ func (t Opcode) String() string {
 		return "Notification"
 	case OpWait:
 		return "Wait"
+	case OpInlineResource:
+		return "InlineResource"
 	default:
 		panic(fmt.Errorf("Unknown Opcode %d", uint32(t)))
 	}

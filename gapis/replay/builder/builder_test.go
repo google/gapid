@@ -42,7 +42,7 @@ func TestCommitCommand(t *testing.T) {
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 1})
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -57,7 +57,7 @@ func TestCommitCommand(t *testing.T) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -70,7 +70,7 @@ func TestCommitCommand(t *testing.T) {
 			func(b *Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U32(12))
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -83,7 +83,7 @@ func TestCommitCommand(t *testing.T) {
 				b.Push(value.U32(12))
 				b.Push(value.U32(34))
 				b.Push(value.U32(56))
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -95,7 +95,7 @@ func TestCommitCommand(t *testing.T) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -110,7 +110,7 @@ func TestCommitCommand(t *testing.T) {
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -125,7 +125,7 @@ func TestCommitCommand(t *testing.T) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -143,7 +143,7 @@ func TestCommitCommand(t *testing.T) {
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(1)
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -186,7 +186,7 @@ func TestRevertCommand(t *testing.T) {
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
 				b.Store(value.AbsolutePointer(0x10000))
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 				b.BeginCommand(20, 0)
 				b.Push(value.U8(2))
 				b.Call(FunctionInfo{1, 234, protocol.Type_Uint8, 1})
@@ -253,7 +253,7 @@ func TestMapMemory(t *testing.T) {
 				b.BeginCommand(10, 0)
 				b.Push(value.ObservedPointer(0x100004))
 				b.Call(FunctionInfo{0, 123, protocol.Type_VolatilePointer, 1})
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -267,12 +267,12 @@ func TestMapMemory(t *testing.T) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 100, protocol.Type_AbsolutePointer, 0})
 				b.MapMemory(memory.Range{Base: 0x100000, Size: 0x10})
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 
 				b.BeginCommand(20, 0)
 				b.Push(value.ObservedPointer(0x100004))
 				b.Call(FunctionInfo{0, 123, protocol.Type_Void, 1})
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},
@@ -292,16 +292,16 @@ func TestMapMemory(t *testing.T) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 100, protocol.Type_AbsolutePointer, 0})
 				b.MapMemory(memory.Range{Base: 0x100000, Size: 0x10})
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 
 				b.BeginCommand(20, 0)
 				b.UnmapMemory(memory.Range{Base: 0x100000, Size: 0x10})
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 
 				b.BeginCommand(30, 0)
 				b.Push(value.ObservedPointer(0x100004))
 				b.Call(FunctionInfo{0, 123, protocol.Type_Void, 1})
-				b.CommitCommand()
+				b.CommitCommand(ctx, false)
 			},
 			[]asm.Instruction{
 				asm.Label{Value: 10},

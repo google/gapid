@@ -125,15 +125,18 @@ class Interpreter {
     CHANGE_THREAD,
   };
 
-  // Get type information out from an opcode. The type is always stored in the
-  // 7th to 13th MSB (both inclusive) of the opcode
-  BaseType extractType(uint32_t opcode) const;
+  // Get 6 bits from the opcode:     ******XXXXXX********************
+  uint32_t extract6bitData(uint32_t opcode) const;
 
-  // Get 20 bit data out from an opcode located in the 20 LSB of the opcode.
+  // Get 20 bits out from an opcode: ************XXXXXXXXXXXXXXXXXXXX
   uint32_t extract20bitData(uint32_t opcode) const;
 
-  // Get 26 bit data out from an opcode located in the 26 LSB of the opcode.
+  // Get 26 bits out from an opcode: ******XXXXXXXXXXXXXXXXXXXXXXXXXX
   uint32_t extract26bitData(uint32_t opcode) const;
+
+  // Get type information out from an opcode. The type is always stored in the
+  // 7th to 13th MSB (both inclusive) of the opcode (see extract6bitData())
+  BaseType extractType(uint32_t opcode) const;
 
   // Implementation of the opcodes supported by the interpreter.
   Result call(uint32_t opcode);
@@ -145,6 +148,7 @@ class Interpreter {
   Result storeV(uint32_t opcode);
   Result store();
   Result resource(uint32_t);
+  Result inlineResource(uint32_t opcode);
   Result post();
   Result copy(uint32_t opcode);
   Result clone(uint32_t opcode);
