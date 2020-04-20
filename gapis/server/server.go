@@ -42,7 +42,6 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/messages"
@@ -389,30 +388,6 @@ func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 	ctx = log.Enter(ctx, "GetDevicesForReplay")
 	s.deviceScanDone.Wait(ctx)
 	return devices.ForReplay(ctx, p)
-}
-
-func (s *server) GetFramebufferAttachment(
-	ctx context.Context,
-	replaySettings *service.ReplaySettings,
-	after *path.Command,
-	attachment api.FramebufferAttachment,
-	settings *service.RenderSettings,
-	hints *service.UsageHints,
-) (*path.ImageInfo, error) {
-
-	ctx = status.Start(ctx, "RPC GetFramebufferAttachment")
-	defer status.Finish(ctx)
-	ctx = log.Enter(ctx, "GetFramebufferAttachment")
-	if err := replaySettings.Device.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", replaySettings.Device)
-	}
-	if err := after.Validate(); err != nil {
-		return nil, log.Errf(ctx, err, "Invalid path: %v", after)
-	}
-	r := &path.ResolveConfig{
-		ReplayDevice: replaySettings.Device,
-	}
-	return resolve.FramebufferAttachment(ctx, replaySettings, after, attachment, settings, hints, r)
 }
 
 func (s *server) Get(ctx context.Context, p *path.Any, c *path.ResolveConfig) (interface{}, error) {

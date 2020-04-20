@@ -33,14 +33,12 @@ import com.google.gapid.proto.service.Service.FollowRequest;
 import com.google.gapid.proto.service.Service.GetAvailableStringTablesRequest;
 import com.google.gapid.proto.service.Service.GetDevicesForReplayRequest;
 import com.google.gapid.proto.service.Service.GetDevicesRequest;
-import com.google.gapid.proto.service.Service.GetFramebufferAttachmentRequest;
 import com.google.gapid.proto.service.Service.GetRequest;
 import com.google.gapid.proto.service.Service.GetServerInfoRequest;
 import com.google.gapid.proto.service.Service.GetStringTableRequest;
 import com.google.gapid.proto.service.Service.ImportCaptureRequest;
 import com.google.gapid.proto.service.Service.LoadCaptureRequest;
 import com.google.gapid.proto.service.Service.Release;
-import com.google.gapid.proto.service.Service.ReplaySettings;
 import com.google.gapid.proto.service.Service.SaveCaptureRequest;
 import com.google.gapid.proto.service.Service.ServerInfo;
 import com.google.gapid.proto.service.Service.SetRequest;
@@ -187,27 +185,6 @@ public class Client {
               .build()),
             in -> immediateFuture(throwIfError(in.getDevices(), in.getError(), stack)
                 .getListList())));
-  }
-
-  public ListenableFuture<Path.ImageInfo> getFramebufferAttachment(Path.Device device,
-      Path.Command after, API.FramebufferAttachment attachment,
-      Service.RenderSettings settings, Service.UsageHints hints, boolean disableReplayOptimization) {
-    return call(
-        () -> String.format("RPC->getFramebufferAttachment(%s, %s, %s, %s, %s)",
-            shortDebugString(device), shortDebugString(after), attachment,
-            shortDebugString(settings), shortDebugString(hints)),
-        stack -> MoreFutures.transformAsync(
-            client.getFramebufferAttachment(GetFramebufferAttachmentRequest.newBuilder()
-                .setReplaySettings(
-                  ReplaySettings.newBuilder()
-                    .setDevice(device)
-                    .setDisableReplayOptimization(disableReplayOptimization))
-                .setAfter(after)
-                .setAttachment(attachment)
-                .setSettings(settings)
-                .setHints(hints)
-                .build()),
-            in -> immediateFuture(throwIfError(in.getImage(), in.getError(), stack))));
   }
 
   public ListenableFuture<Void> postEvent(Service.ClientInteraction interaction) {

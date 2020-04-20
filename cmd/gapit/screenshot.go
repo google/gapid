@@ -21,13 +21,13 @@ import (
 	"image"
 	"image/png"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
@@ -133,26 +133,31 @@ func (verb *screenshotVerb) writeSingleFrame(frame image.Image, fn string) error
 
 func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
-	settings := &service.RenderSettings{MaxWidth: uint32(0xFFFFFFFF), MaxHeight: uint32(0xFFFFFFFF)}
+	settings := &path.RenderSettings{
+		MaxWidth:                  uint32(0xFFFFFFFF),
+		MaxHeight:                 uint32(0xFFFFFFFF),
+		DisableReplayOptimization: verb.NoOpt,
+		DisplayToSurface:          verb.DisplayToSurface,
+	}
 	if verb.Overdraw {
-		settings.DrawMode = service.DrawMode_OVERDRAW
+		settings.DrawMode = path.DrawMode_OVERDRAW
 	}
 
 	attachment, err := verb.getAttachment(ctx)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get color attachment failed")
 	}
-	iip, err := client.GetFramebufferAttachment(ctx,
-		&service.ReplaySettings{
-			Device:                    device,
-			DisableReplayOptimization: verb.NoOpt,
-			DisplayToSurface:          verb.DisplayToSurface,
-		},
-		cmd, attachment, settings, nil)
+	fbPath := &path.FramebufferAttachment{
+		After:          cmd,
+		Index:          attachment,
+		RenderSettings: settings,
+		Hints:          nil,
+	}
+	iip, err := client.Get(ctx, fbPath.Path(), &path.ResolveConfig{ReplayDevice: device})
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed")
 	}
-	iio, err := client.Get(ctx, iip.Path(), nil)
+	iio, err := client.Get(ctx, iip.(*service.FramebufferAttachment).GetImageInfo().Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get frame image.Info failed")
 	}
@@ -267,21 +272,11 @@ func rescaleBytes(ctx context.Context, data []byte, max int) {
 	}
 }
 
-func (verb *screenshotVerb) getAttachment(ctx context.Context) (api.FramebufferAttachment, error) {
-	switch strings.ToLower(verb.Attachment) {
-	case "", "color", "color0", "c0", "c", "0":
-		return api.FramebufferAttachment_Color0, nil
-	case "color1", "c1", "1":
-		return api.FramebufferAttachment_Color1, nil
-	case "color2", "c2", "2":
-		return api.FramebufferAttachment_Color2, nil
-	case "color3", "c3", "3":
-		return api.FramebufferAttachment_Color3, nil
-	case "depth", "d":
-		return api.FramebufferAttachment_Depth, nil
-	case "stencil", "s":
-		return api.FramebufferAttachment_Stencil, nil
-	default:
-		return 0, log.Errf(ctx, nil, "Invalid color attachment %v", verb.Attachment)
+func (verb *screenshotVerb) getAttachment(ctx context.Context) (uint32, error) {
+	// TODO: Add-back ability to type "depth" to get the depth attachment
+	i, err := strconv.ParseUint(verb.Attachment, 10, 32)
+	if err != nil {
+		return 0, log.Errf(ctx, nil, "Invalid attachment %v", verb.Attachment)
 	}
+	return uint32(i), nil
 }

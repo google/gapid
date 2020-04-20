@@ -98,7 +98,7 @@ func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Dev
 		}
 
 		mgr := GetManager(ctx)
-		hints := &service.UsageHints{Background: true}
+		hints := &path.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if pf, ok := a.(Profiler); ok {
 				data, err := pf.Profile(ctx, intent, mgr, hints, opts)

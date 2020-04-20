@@ -38,7 +38,6 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/core/video"
-	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
@@ -338,15 +337,18 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 
 func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, device *path.Device, client service.Service, noOpt bool) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
-	settings := &service.RenderSettings{MaxWidth: uint32(maxWidth), MaxHeight: uint32(maxHeight)}
-	iip, err := client.GetFramebufferAttachment(ctx, &service.ReplaySettings{
-		Device:                    device,
-		DisableReplayOptimization: noOpt,
-	}, cmd, api.FramebufferAttachment_Color0, settings, nil)
+	settings := &path.RenderSettings{MaxWidth: uint32(maxWidth), MaxHeight: uint32(maxHeight), DisableReplayOptimization: noOpt}
+	fbPath := &path.FramebufferAttachment{
+		After:          cmd,
+		Index:          0,
+		RenderSettings: settings,
+		Hints:          nil,
+	}
+	iip, err := client.Get(ctx, fbPath.Path(), &path.ResolveConfig{ReplayDevice: device})
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed at %v", cmd)
 	}
-	iio, err := client.Get(ctx, iip.Path(), nil)
+	iio, err := client.Get(ctx, iip.(*service.FramebufferAttachment).GetImageInfo().Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get frame image.Info failed at %v", cmd)
 	}

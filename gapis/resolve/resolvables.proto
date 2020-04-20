@@ -37,12 +37,16 @@ message FollowResolvable {
 }
 
 message FramebufferAttachmentResolvable {
-  service.ReplaySettings replay_settings = 1;
-  path.Command after = 2;
-  api.FramebufferAttachment attachment = 3;
-  service.RenderSettings settings = 4;
-  service.UsageHints hints = 5;
-  path.ResolveConfig config = 6;
+  path.Command after = 1;
+  uint32 attachment = 2;
+  path.RenderSettings settings = 3;
+  path.UsageHints hints = 4;
+  path.ResolveConfig config = 5;
+}
+
+message FramebufferAttachmentsResolvable {
+  path.FramebufferAttachments path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message FramebufferChangesResolvable {
@@ -51,16 +55,15 @@ message FramebufferChangesResolvable {
 }
 
 message FramebufferAttachmentBytesResolvable {
-  service.ReplaySettings replaySettings = 1;
-  path.Command after = 2;
-  uint32 width = 3;
-  uint32 height = 4;
-  api.FramebufferAttachment attachment = 5;
-  service.DrawMode draw_mode = 6;
-  service.UsageHints hints = 7;
-  image.Format image_format = 8;
-  uint32 framebuffer_index = 9;
-  path.ResolveConfig config = 10;
+  path.Command after = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  api.FramebufferAttachmentType attachment = 4;
+  path.RenderSettings settings = 5;
+  path.UsageHints hints = 6;
+  image.Format image_format = 7;
+  uint32 framebuffer_index = 8;
+  path.ResolveConfig config = 9;
 }
 
 // Get resolves the object, value or memory at Path.

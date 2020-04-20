@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
-	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -132,7 +131,7 @@ func (m *exportManager) Replay(
 	cfg Config,
 	req Request,
 	generator Generator,
-	hints *service.UsageHints,
+	hints *path.UsageHints,
 	forceNonSplitReplay bool) (val interface{}, err error) {
 
 	key := &batchKey{

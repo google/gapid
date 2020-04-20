@@ -49,8 +49,6 @@ public interface GapidClient {
   public ListenableFuture<Service.GetDevicesResponse> getDevices(Service.GetDevicesRequest request);
   public ListenableFuture<Service.GetDevicesForReplayResponse> getDevicesForReplay(
       Service.GetDevicesForReplayRequest request);
-  public ListenableFuture<Service.GetFramebufferAttachmentResponse> getFramebufferAttachment(
-      Service.GetFramebufferAttachmentRequest request);
   public ListenableFuture<Service.ClientEventResponse> postClientEvent(
       Service.ClientEventRequest request);
   public ListenableFuture<Service.TraceTargetTreeNodeResponse> getTraceTargetTreeNode(

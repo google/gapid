@@ -30,7 +30,7 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 	ctx = SetupContext(ctx, c, r.Config)
 
 	intent := replay.Intent{
-		Device:  r.ReplaySettings.Device,
+		Device:  r.Config.ReplayDevice,
 		Capture: c,
 	}
 
@@ -62,9 +62,9 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		r.Height,
 		r.Attachment,
 		r.FramebufferIndex,
-		r.DrawMode,
-		r.ReplaySettings.DisableReplayOptimization,
-		r.ReplaySettings.DisplayToSurface,
+		r.Settings.DrawMode,
+		r.Settings.DisableReplayOptimization,
+		r.Settings.DisplayToSurface,
 		r.Hints,
 	)
 	if err != nil {

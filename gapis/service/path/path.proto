@@ -41,30 +41,32 @@ message Any {
     DeviceTraceConfiguration traceConfig = 15;
     Events events = 16;
     FramebufferObservation FBO = 17;
-    Field field = 18;
-    GlobalState global_state = 19;
-    ImageInfo image_info = 20;
-    MapIndex map_index = 21;
-    Memory memory = 22;
-    MemoryAsType memoryAsType = 23;
-    Mesh mesh = 24;
-    Metrics metrics = 25;
-    Messages messages = 26;
-    MultiResourceData multi_resource_data = 27;
-    Parameter parameter = 28;
-    Pipelines pipelines = 29;
-    Report report = 30;
-    ResourceData resource_data = 31;
-    Resources resources = 32;
-    Result result = 33;
-    Slice slice = 34;
-    State state = 35;
-    StateTree state_tree = 36;
-    StateTreeNode state_tree_node = 37;
-    StateTreeNodeForPath state_tree_node_for_path = 38;
-    Stats stats = 39;
-    Thumbnail thumbnail = 40;
-    Type type = 41;
+    FramebufferAttachments framebuffer_attachments = 18;
+    FramebufferAttachment framebuffer_attachment = 19;
+    Field field = 20;
+    GlobalState global_state = 21;
+    ImageInfo image_info = 22;
+    MapIndex map_index = 23;
+    Memory memory = 24;
+    MemoryAsType memoryAsType = 25;
+    Mesh mesh = 26;
+    Metrics metrics = 27;
+    Messages messages = 28;
+    MultiResourceData multi_resource_data = 29;
+    Parameter parameter = 30;
+    Pipelines pipelines = 31;
+    Report report = 32;
+    ResourceData resource_data = 33;
+    Resources resources = 34;
+    Result result = 35;
+    Slice slice = 36;
+    State state = 37;
+    StateTree state_tree = 38;
+    StateTreeNode state_tree_node = 39;
+    StateTreeNodeForPath state_tree_node_for_path = 40;
+    Stats stats = 41;
+    Thumbnail thumbnail = 42;
+    Type type = 43;
   }
 }
 
@@ -216,6 +218,68 @@ message DeviceTraceConfiguration {
 // specified command. It resolves to an image.Info.
 message FramebufferObservation {
   Command command = 1;
+}
+
+// UsageHints hints to the server the intended usage of the result of a request.
+// This can be used to improve performance and responsiveness of the RPCs.
+message UsageHints {
+  // Preview indicates that the request has been made for a thumbnail or
+  // low-quality representation of the underlying data. Previews are considered
+  // non-critical and non-urgent; the server may consider scheduling other work
+  // ahead of previews, and possibly delay the processing of the request to
+  // batch together requests.
+  bool preview = 1;
+
+  // Primary indicates that the request has been made for the primary view.
+  // Primary requests are prioritized and are low-latency.
+  bool primary = 2;
+
+  // Background indicates that this request is non-critical, non-urgent and
+  // should process in the background. All other non-background processes should
+  // be considered more urgent. Background requests may be interrupted for
+  // non-background requests.
+  bool background = 3;
+}
+
+// DrawMode is an enumerator of draw modes that can be used by RenderSettings.
+enum DrawMode {
+  // NORMAL indicates that the draw calls should be rendered as usual
+  NORMAL = 0;
+  // WIREFRAME_OVERLAY indicates that the single draw call should be overlayed
+  // with the wireframe of the mesh.
+  WIREFRAME_OVERLAY = 1;
+  // WIREFRAME_ALL indicates that all draw calls should be displayed in
+  // wireframe.
+  WIREFRAME_ALL = 2;
+  // OVERDRAW indicates that the draw calls should render their overdraw counts
+  // instead of colours.
+  OVERDRAW = 3;
+}
+
+// RenderSettings contains settings and flags to be used in replaying and
+// returning a bound render target's color buffer.
+message RenderSettings {
+  // The desired maximum width of the image. The returned image may be larger
+  // than this.
+  uint32 max_width = 1;
+  // The desired minimum height of the image. The returned image may be larger
+  // than this.
+  uint32 max_height = 2;
+  // The draw mode to use when rendering.
+  DrawMode draw_mode = 3;
+  bool disable_replay_optimization = 4;
+  bool display_to_surface = 5;
+}
+
+message FramebufferAttachment {
+  Command after = 1;
+  uint32 index = 2;
+  RenderSettings render_settings = 3;
+  UsageHints hints = 4;
+}
+
+message FramebufferAttachments {
+  Command after = 1;
 }
 
 // Field is a path to a field in a struct.

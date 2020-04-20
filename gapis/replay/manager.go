@@ -26,7 +26,7 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/replay/scheduler"
-	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 const (
@@ -48,7 +48,7 @@ type Manager interface {
 		cfg Config,
 		req Request,
 		generator Generator,
-		hints *service.UsageHints,
+		hints *path.UsageHints,
 		forceNonSplitReplay bool) (val interface{}, err error)
 }
 
@@ -95,7 +95,7 @@ func (m *manager) Replay(
 	cfg Config,
 	req Request,
 	generator Generator,
-	hints *service.UsageHints,
+	hints *path.UsageHints,
 	forceNonSplitReplay bool) (val interface{}, err error) {
 
 	ctx = status.Start(ctx, "Replay Request")

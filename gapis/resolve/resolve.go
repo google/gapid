@@ -319,6 +319,10 @@ func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (i
 		return Events(ctx, p, r)
 	case *path.FramebufferObservation:
 		return FramebufferObservation(ctx, p, r)
+	case *path.FramebufferAttachments:
+		return FramebufferAttachments(ctx, p, r)
+	case *path.FramebufferAttachment:
+		return FramebufferAttachment(ctx, p, r)
 	case *path.Field:
 		return Field(ctx, p, r)
 	case *path.GlobalState:

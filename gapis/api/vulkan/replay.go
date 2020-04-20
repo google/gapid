@@ -111,7 +111,7 @@ type drawConfig struct {
 	startScope                api.CmdID
 	endScope                  api.CmdID
 	subindices                string // drawConfig needs to be comparable, so we cannot use a slice
-	drawMode                  service.DrawMode
+	drawMode                  path.DrawMode
 	disableReplayOptimization bool
 }
 
@@ -124,7 +124,7 @@ type imgRes struct {
 type framebufferRequest struct {
 	after            []uint64
 	width, height    uint32
-	attachment       api.FramebufferAttachment
+	attachment       api.FramebufferAttachmentType
 	framebufferIndex uint32
 	out              chan imgRes
 	wireframeOverlay bool
@@ -1004,7 +1004,7 @@ func (a API) Replay(
 				}
 			}
 
-			if cfg.drawMode == service.DrawMode_OVERDRAW {
+			if cfg.drawMode == path.DrawMode_OVERDRAW {
 				// TODO(subcommands): Add subcommand support here
 				if err := earlyTerminator.Add(ctx, api.CmdID(cmdID), req.after[1:]); err != nil {
 					return err
@@ -1022,21 +1022,21 @@ func (a API) Replay(
 			subIdx := append(api.SubCmdIdx{}, req.after...)
 			splitter.Split(ctx, subIdx)
 			switch cfg.drawMode {
-			case service.DrawMode_WIREFRAME_ALL:
+			case path.DrawMode_WIREFRAME_ALL:
 				wire = true
-			case service.DrawMode_WIREFRAME_OVERLAY:
+			case path.DrawMode_WIREFRAME_OVERLAY:
 				return fmt.Errorf("Overlay wireframe view is not currently supported")
 			// Overdraw is handled above, since it breaks out of the normal read flow.
 			default:
 			}
 
 			switch req.attachment {
-			case api.FramebufferAttachment_Depth:
+			case api.FramebufferAttachmentType_OutputDepth:
 				readFramebuffer.Depth(ctx, subIdx, req.framebufferIndex, rr.Result)
-			case api.FramebufferAttachment_Stencil:
-				return fmt.Errorf("Stencil attachments are not currently supported")
-			default:
+			case api.FramebufferAttachmentType_OutputColor:
 				readFramebuffer.Color(ctx, subIdx, req.width, req.height, req.framebufferIndex, rr.Result)
+			default:
+				return fmt.Errorf("Stencil attachments are not currently supported")
 			}
 
 			if req.displayToSurface {
@@ -1149,19 +1149,19 @@ func (a API) QueryFramebufferAttachment(
 	mgr replay.Manager,
 	after []uint64,
 	width, height uint32,
-	attachment api.FramebufferAttachment,
+	attachment api.FramebufferAttachmentType,
 	framebufferIndex uint32,
-	drawMode service.DrawMode,
+	drawMode path.DrawMode,
 	disableReplayOptimization bool,
 	displayToSurface bool,
-	hints *service.UsageHints) (*image.Data, error) {
+	hints *path.UsageHints) (*image.Data, error) {
 
 	beginIndex := api.CmdID(0)
 	endIndex := api.CmdID(0)
 	subcommand := ""
 	// We cant break up overdraw right now, but we can break up
 	// everything else.
-	if drawMode == service.DrawMode_OVERDRAW {
+	if drawMode == path.DrawMode_OVERDRAW {
 		if len(after) > 1 { // If we are replaying subcommands, then we can't batch at all
 			beginIndex = api.CmdID(after[0])
 			endIndex = api.CmdID(after[0])
@@ -1193,7 +1193,7 @@ func (a API) QueryIssues(
 	mgr replay.Manager,
 	loopCount int32,
 	displayToSurface bool,
-	hints *service.UsageHints) ([]replay.Issue, error) {
+	hints *path.UsageHints) ([]replay.Issue, error) {
 
 	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface, loopCount: loopCount}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
@@ -1213,7 +1213,7 @@ func (a API) QueryTimestamps(
 	mgr replay.Manager,
 	loopCount int32,
 	handler service.TimeStampsHandler,
-	hints *service.UsageHints) error {
+	hints *path.UsageHints) error {
 
 	c, r := timestampsConfig{}, timestampsRequest{
 		handler:   handler,
@@ -1232,7 +1232,7 @@ func (a API) Profile(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
-	hints *service.UsageHints,
+	hints *path.UsageHints,
 	traceOptions *service.TraceOptions) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()

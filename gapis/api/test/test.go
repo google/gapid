@@ -36,7 +36,7 @@ func (API) GetFramebufferAttachmentInfo(
 	after []uint64,
 	state *api.GlobalState,
 	thread uint64,
-	attachment api.FramebufferAttachment) (api.FramebufferAttachmentInfo, error) {
+	attachment uint32) (api.FramebufferAttachmentInfo, error) {
 	return api.FramebufferAttachmentInfo{}, nil
 }
 

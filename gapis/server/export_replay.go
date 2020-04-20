@@ -60,18 +60,18 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 
 	var queries []func(mgr replay.Manager) error
 	switch {
-	case opts.Report != nil && len(opts.GetFramebufferAttachmentRequests) > 0 && opts.GetTimestampsRequest != nil:
+	case opts.Report != nil && len(opts.FramebufferAttachments) > 0 && opts.GetTimestampsRequest != nil:
 		return log.Errf(ctx, nil, "at most one of the request should be specified")
-	case opts.GetFramebufferAttachmentRequests != nil:
+	case opts.FramebufferAttachments != nil:
 		r := &path.ResolveConfig{ReplayDevice: d}
 		changes, err := resolve.FramebufferChanges(ctx, c, r)
 		if err != nil {
 			return err
 		}
 
-		for _, req := range opts.GetFramebufferAttachmentRequests {
+		for _, req := range opts.FramebufferAttachments {
 			req := req
-			fbInfo, err := changes.Get(ctx, req.After, req.Attachment)
+			fbInfo, err := changes.Get(ctx, req.After, req.Index)
 			if err != nil {
 				return err
 			}
@@ -83,18 +83,18 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 				}
 				queries = append(queries, func(mgr replay.Manager) error {
 					_, err := a.QueryFramebufferAttachment(
-						ctx,                   // context.Context
-						intent,                // Intent
-						mgr,                   // Manager
-						req.After.Indices,     // after []uint64
-						fbInfo.Width,          // width uint32
-						fbInfo.Height,         // height uint32
-						req.Attachment,        // api.FramebufferAttachment
-						fbInfo.Index,          // uint32
-						req.Settings.DrawMode, // service.DrawMode
-						true,                  // disableReplayOptimization bool
-						false,                 // displayToSurface bool
-						nil,                   // hints *service.UsageHints
+						ctx,                         // context.Context
+						intent,                      // Intent
+						mgr,                         // Manager
+						req.After.Indices,           // after []uint64
+						fbInfo.Width,                // width uint32
+						fbInfo.Height,               // height uint32
+						fbInfo.Type,                 // Index uint32
+						req.Index,                   // uint32
+						req.RenderSettings.DrawMode, // service.DrawMode
+						true,                        // disableReplayOptimization bool
+						false,                       // displayToSurface bool
+						nil,                         // hints *service.UsageHints
 					)
 					return err
 				})

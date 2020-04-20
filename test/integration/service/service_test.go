@@ -23,10 +23,12 @@ import (
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/assert"
+
 	//"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device/bind"
+
 	//"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/gapis/api"
 	gapis "github.com/google/gapid/gapis/client"
@@ -161,24 +163,6 @@ func TestGetDevicesForReplay(t *testing.T) {
 	assert.For(ctx, "got").ThatSlice(got).IsNotEmpty()
 }
 
-func TestGetFramebufferAttachment(t *testing.T) {
-	ctx, server, shutdown := setup(t)
-	defer shutdown()
-	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	assert.For(ctx, "capture").That(capture).IsNotNil()
-	devices, err := server.GetDevices(ctx)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	assert.For(ctx, "devices").ThatSlice(devices).IsNotEmpty()
-	after := capture.Command(swapCmdIndex)
-	attachment := api.FramebufferAttachment_Color0
-	settings := &service.RenderSettings{}
-	renderSettings := &service.ReplaySettings{Device: devices[0]}
-	got, err := server.GetFramebufferAttachment(ctx, renderSettings, after, attachment, settings, nil)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	assert.For(ctx, "got").That(got).IsNotNil()
-}
-
 func TestGet(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
@@ -203,6 +187,7 @@ func TestGet(t *testing.T) {
 		{capture.CommandTree(nil), T((*service.CommandTree)(nil))},
 		{capture.Report(nil, false), T((*service.Report)(nil))},
 		{capture.Resources(), T((*service.Resources)(nil))},
+		{capture.Command(drawCmdIndex).FramebufferAttachmentsAfter(), T((*service.FramebufferAttachments)(nil))},
 	} {
 		ctx = log.V{"path": test.path}.Bind(ctx)
 		got, err := server.Get(ctx, test.path.Path(), nil)

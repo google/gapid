@@ -140,12 +140,6 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
-  public ListenableFuture<Service.GetFramebufferAttachmentResponse> getFramebufferAttachment(
-      Service.GetFramebufferAttachmentRequest request) {
-    return client.getFramebufferAttachment(request);
-  }
-
-  @Override
   public ListenableFuture<ClientEventResponse> postClientEvent(ClientEventRequest request) {
     return client.clientEvent(request);
   }

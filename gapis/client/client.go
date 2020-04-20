@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/log/log_pb"
 	"github.com/google/gapid/core/net/grpcutil"
-	"github.com/google/gapid/gapis/api"
 	perfetto "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -376,31 +375,6 @@ func (c *client) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*p
 		return nil, err.Get()
 	}
 	return res.GetDevices().List, nil
-}
-
-func (c *client) GetFramebufferAttachment(
-	ctx context.Context,
-	repS *service.ReplaySettings,
-	cmd *path.Command,
-	att api.FramebufferAttachment,
-	rs *service.RenderSettings,
-	hints *service.UsageHints,
-) (*path.ImageInfo, error) {
-
-	res, err := c.client.GetFramebufferAttachment(ctx, &service.GetFramebufferAttachmentRequest{
-		ReplaySettings: repS,
-		After:          cmd,
-		Attachment:     att,
-		Settings:       rs,
-		Hints:          hints,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := res.GetError(); err != nil {
-		return nil, err.Get()
-	}
-	return res.GetImage(), nil
 }
 
 func (c *client) GetLogStream(ctx context.Context, handler log.Handler) error {

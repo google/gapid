@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 // Support is the optional interface implemented by APIs that can describe
@@ -46,7 +47,7 @@ type QueryIssues interface {
 		mgr Manager,
 		loopCount int32,
 		displayToSurface bool,
-		hints *service.UsageHints) ([]Issue, error)
+		hints *path.UsageHints) ([]Issue, error)
 }
 
 // QueryTimestamps is the interface implemented by types that can
@@ -58,7 +59,7 @@ type QueryTimestamps interface {
 		mgr Manager,
 		loopCount int32,
 		handler service.TimeStampsHandler,
-		hints *service.UsageHints) error
+		hints *path.UsageHints) error
 }
 
 // QueryFramebufferAttachment is the interface implemented by types that can
@@ -71,12 +72,12 @@ type QueryFramebufferAttachment interface {
 		mgr Manager,
 		after []uint64,
 		width, height uint32,
-		attachment api.FramebufferAttachment,
+		attachment api.FramebufferAttachmentType,
 		framebufferIndex uint32,
-		drawMode service.DrawMode,
+		drawMode path.DrawMode,
 		disableReplayOptimization bool,
 		displayToSurface bool,
-		hints *service.UsageHints) (*image.Data, error)
+		hints *path.UsageHints) (*image.Data, error)
 }
 
 // Profiler is the interface implemented by replays that can be performed
@@ -87,7 +88,7 @@ type Profiler interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
-		hints *service.UsageHints,
+		hints *path.UsageHints,
 		traceOptions *service.TraceOptions) (*service.ProfilingData, error)
 }
 

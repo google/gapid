@@ -87,7 +87,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		// Capture can use multiple APIs.
 		// Iterate the APIs in use looking for those that support the
 		// QueryIssues interface. Call QueryIssues for each of these APIs.
-		hints := &service.UsageHints{Background: true}
+		hints := &path.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if qi, ok := a.(replay.QueryIssues); ok {
 				apiIssues, err := qi.QueryIssues(ctx, intent, mgr, 1, r.Path.DisplayToSurface, hints)

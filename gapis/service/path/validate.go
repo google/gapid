@@ -180,6 +180,16 @@ func (n *FramebufferObservation) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *FramebufferAttachments) Validate() error {
+	return checkNotNilAndValidate(n, protoutil.OneOf(n.After), "command")
+}
+
+// Validate checks the path is valid.
+func (n *FramebufferAttachment) Validate() error {
+	return checkNotNilAndValidate(n, protoutil.OneOf(n.After), "command")
+}
+
+// Validate checks the path is valid.
 func (n *Field) Validate() error {
 	return anyErr(
 		checkNotNilAndValidate(n, protoutil.OneOf(n.Struct), "struct"),

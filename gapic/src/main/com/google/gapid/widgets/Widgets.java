@@ -309,6 +309,25 @@ public class Widgets {
     };
   }
 
+  public static IntConsumer exclusiveSelection(List<ToolItem> items) {
+    Listener listener = e -> {
+      for (ToolItem item : items) {
+        item.setSelection(e.widget == item);
+      }
+    };
+    for (ToolItem item : items) {
+      item.addListener(SWT.Selection, listener);
+      item.setSelection(false);
+    }
+    items.get(0).setSelection(true);
+
+    return index -> {
+      for (int i = 0; i < items.size(); i++) {
+        items.get(i).setSelection(i == index);
+      }
+    };
+  }
+
   public static Label createLabel(Composite parent, String label) {
     Label result = new Label(parent, SWT.NONE);
     result.setText(label);

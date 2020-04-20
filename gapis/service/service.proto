@@ -32,21 +32,6 @@ option java_package = "com.google.gapid.proto.service";
 option java_outer_classname = "Service";
 option go_package = "github.com/google/gapid/gapis/service";
 
-// DrawMode is an enumerator of draw modes that can be used by RenderSettings.
-enum DrawMode {
-  // NORMAL indicates that the draw calls should be rendered as usual
-  NORMAL = 0;
-  // WIREFRAME_OVERLAY indicates that the single draw call should be overlayed
-  // with the wireframe of the mesh.
-  WIREFRAME_OVERLAY = 1;
-  // WIREFRAME_ALL indicates that all draw calls should be displayed in
-  // wireframe.
-  WIREFRAME_ALL = 2;
-  // OVERDRAW indicates that the draw calls should render their overdraw counts
-  // instead of colours.
-  OVERDRAW = 3;
-}
-
 message ServerInfo {
   string name = 1;
   uint32 version_major = 2;
@@ -104,6 +89,8 @@ message Value {
     api.Mesh mesh = 32;
     api.Metrics metrics = 33;
     api.MultiResourceData multi_resource_data = 34;
+    FramebufferAttachments framebuffer_attachments = 35;
+    FramebufferAttachment framebuffer_attachment = 36;
 
     image.Info image_info = 40;
 
@@ -359,8 +346,7 @@ message SaveCaptureResponse {
 
 message ExportReplayOptions {
   path.Report report = 1;
-  repeated GetFramebufferAttachmentRequest get_framebuffer_attachment_requests =
-      2;
+  repeated path.FramebufferAttachment framebuffer_attachments = 2;
   GetTimestampsRequest get_timestamps_request = 3;
   bool display_to_surface = 4;
   int32 LoopCount = 5;
@@ -423,25 +409,15 @@ message GetDevicesForReplayResponse {
   }
 }
 
-message ReplaySettings {
-  path.Device device = 1;
-  bool disable_replay_optimization = 2;
-  bool display_to_surface = 3;
+message FramebufferAttachments {
+  repeated FramebufferAttachment attachments = 1;
 }
 
-message GetFramebufferAttachmentRequest {
-  ReplaySettings replay_settings = 1;
-  path.Command after = 2;
-  api.FramebufferAttachment attachment = 3;
-  RenderSettings settings = 4;
-  UsageHints hints = 5;
-}
-
-message GetFramebufferAttachmentResponse {
-  oneof res {
-    path.ImageInfo image = 1;
-    Error error = 2;
-  }
+message FramebufferAttachment {
+  uint32 index = 1;
+  api.FramebufferAttachmentType type = 2;
+  path.ImageInfo image_info = 3;
+  string label = 4;
 }
 
 message GetLogStreamRequest {
@@ -677,15 +653,6 @@ service Gapid {
   // the local Android devices will be returned first.
   rpc GetDevicesForReplay(GetDevicesForReplayRequest)
       returns (GetDevicesForReplayResponse) {
-  }
-
-  // GetFramebufferAttachment returns the ImageInfo identifier describing the
-  // given framebuffer attachment and device, immediately following the command
-  // after.
-  // The provided RenderSettings structure can be used to adjust maximum desired
-  // dimensions of the image, as well as applying debug visualizations.
-  rpc GetFramebufferAttachment(GetFramebufferAttachmentRequest)
-      returns (GetFramebufferAttachmentResponse) {
   }
 
   // GetLogStream calls the handler with each log record raised until the
@@ -944,40 +911,6 @@ message TypedMemoryRange {
   MemoryRange range = 2;
   // The root of the memory observation
   uint64 root = 3;
-}
-
-// UsageHints hints to the server the intended usage of the result of a request.
-// This can be used to improve performance and responsiveness of the RPCs.
-message UsageHints {
-  // Preview indicates that the request has been made for a thumbnail or
-  // low-quality representation of the underlying data. Previews are considered
-  // non-critical and non-urgent; the server may consider scheduling other work
-  // ahead of previews, and possibly delay the processing of the request to
-  // batch together requests.
-  bool preview = 1;
-
-  // Primary indicates that the request has been made for the primary view.
-  // Primary requests are prioritized and are low-latency.
-  bool primary = 2;
-
-  // Background indicates that this request is non-critical, non-urgent and
-  // should process in the background. All other non-background processes should
-  // be considered more urgent. Background requests may be interrupted for
-  // non-background requests.
-  bool background = 3;
-}
-
-// RenderSettings contains settings and flags to be used in replaying and
-// returning a bound render target's color buffer.
-message RenderSettings {
-  // The desired maximum width of the image. The returned image may be larger
-  // than this.
-  uint32 max_width = 1;
-  // The desired minimum height of the image. The returned image may be larger
-  // than this.
-  uint32 max_height = 2;
-  // The draw mode to use when rendering.
-  DrawMode draw_mode = 3;
 }
 
 // Resources contains the full list of resources used by a capture.

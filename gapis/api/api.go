@@ -45,12 +45,9 @@ type API interface {
 	// specified framebuffer attachment.
 	// It also returns an API specific index that maps the given attachment into
 	// an API specific representation.
-	GetFramebufferAttachmentInfo(
+	GetFramebufferAttachmentInfos(
 		ctx context.Context,
-		after []uint64,
-		state *GlobalState,
-		thread uint64,
-		attachment FramebufferAttachment) (info FramebufferAttachmentInfo, err error)
+		state *GlobalState) (info []FramebufferAttachmentInfo, err error)
 
 	// CreateCmd constructs and returns a new command with the specified name.
 	CreateCmd(a arena.Arena, name string) Cmd
@@ -74,6 +71,10 @@ type FramebufferAttachmentInfo struct {
 	Format *image.Format
 	// CanResize is true if this can be efficiently resized during replay.
 	CanResize bool
+	// Attachment type (Color, Depth, Input, Resolve)
+	Type FramebufferAttachmentType
+	// Error message when calling state.getFramebufferAttachmentInfo
+	Err error
 }
 
 // ID is an API identifier

@@ -241,6 +241,29 @@ public class Paths {
         .build();
   }
 
+  public static Path.Any framebufferAttachmentsAfter(CommandIndex command) {
+    if (command == null) {
+      return null;
+    }
+    return Path.Any.newBuilder()
+        .setFramebufferAttachments(Path.FramebufferAttachments.newBuilder()
+            .setAfter(command.getCommand()))
+        .build();
+  }
+
+  public static Path.Any framebufferAttachmentAfter(CommandIndex command, int index, Path.RenderSettings settings, Path.UsageHints hints) {
+    if (command == null) {
+      return null;
+    }
+    return Path.Any.newBuilder()
+      .setFramebufferAttachment(Path.FramebufferAttachment.newBuilder()
+          .setAfter(command.getCommand())
+          .setIndex(index)
+          .setRenderSettings(settings)
+          .setHints(hints))
+        .build();
+  }
+
   public static final Path.MeshOptions NODATA_MESH_OPTIONS = Path.MeshOptions.newBuilder()
       .setExcludeData(true)
       .build();
@@ -316,6 +339,15 @@ public class Paths {
         .setAs(Path.As.newBuilder()
             .setResourceData(resource)
             .setImageFormat(format))
+        .build();
+  }
+
+  public static Path.RenderSettings renderSettings(int maxWidth, int maxHeight, Path.DrawMode drawMode, boolean disableReplayOptiimization) {
+    return Path.RenderSettings.newBuilder()
+        .setMaxWidth(maxWidth)
+        .setMaxHeight(maxHeight)
+        .setDrawMode(drawMode)
+        .setDisableReplayOptimization(disableReplayOptiimization)
         .build();
   }
 

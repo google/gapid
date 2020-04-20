@@ -20,26 +20,18 @@ import (
 )
 
 // IsColor returns true if a is a color attachment.
-func (a FramebufferAttachment) IsColor() bool {
-	switch a {
-	case FramebufferAttachment_Color0,
-		FramebufferAttachment_Color1,
-		FramebufferAttachment_Color2,
-		FramebufferAttachment_Color3:
-		return true
-	default:
-		return false
-	}
+func (a FramebufferAttachmentType) IsColor() bool {
+	return a == FramebufferAttachmentType_OutputColor
 }
 
 // IsDepth returns true if a is a depth attachment.
-func (a FramebufferAttachment) IsDepth() bool {
-	return a == FramebufferAttachment_Depth
+func (a FramebufferAttachmentType) IsDepth() bool {
+	return a == FramebufferAttachmentType_OutputDepth
 }
 
 // IsStencil returns true if a is a stencil attachment.
-func (a FramebufferAttachment) IsStencil() bool {
-	return a == FramebufferAttachment_Stencil
+func (a FramebufferAttachmentType) IsStencil() bool {
+	return false
 }
 
 func (a AspectType) Format(f fmt.State, c rune) {

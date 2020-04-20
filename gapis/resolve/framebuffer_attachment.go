@@ -30,48 +30,86 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+func FramebufferAttachments(ctx context.Context, p *path.FramebufferAttachments, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := database.Build(ctx, &FramebufferAttachmentsResolvable{Path: p, Config: r})
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (r *FramebufferAttachmentsResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	changes, err := FramebufferChanges(ctx, r.Path.After.Capture, r.Config)
+	if err != nil {
+		return []*service.FramebufferAttachment{}, err
+	}
+
+	out := []*service.FramebufferAttachment{}
+	for _, att := range changes.attachments {
+		info, err := att.after(ctx, api.SubCmdIdx(r.Path.After.Indices))
+		if err != nil {
+			return []*service.FramebufferAttachment{}, err
+		}
+
+		if info.Err == nil {
+			out = append(out, &service.FramebufferAttachment{
+				Index: info.Index,
+				Type:  info.Type,
+				Label: fmt.Sprintf("%s_%d", typeToString(info.Type), info.Index),
+			})
+		}
+	}
+	return &service.FramebufferAttachments{Attachments: out}, nil
+}
+
+func typeToString(t api.FramebufferAttachmentType) string {
+	switch t {
+	case api.FramebufferAttachmentType_OutputColor:
+		return "Color"
+	case api.FramebufferAttachmentType_OutputDepth:
+		return "Depth"
+	default:
+		return "Unknown"
+	}
+}
+
 // FramebufferAttachment resolves the specified framebuffer attachment at the
 // specified point in a capture.
-func FramebufferAttachment(
-	ctx context.Context,
-	replaySettings *service.ReplaySettings,
-	after *path.Command,
-	attachment api.FramebufferAttachment,
-	settings *service.RenderSettings,
-	hints *service.UsageHints,
-	config *path.ResolveConfig,
-) (*path.ImageInfo, error) {
-
-	if replaySettings.Device == nil {
-		devices, err := devices.ForReplay(ctx, after.Capture)
+func FramebufferAttachment(ctx context.Context, p *path.FramebufferAttachment, r *path.ResolveConfig) (interface{}, error) {
+	if r.ReplayDevice == nil {
+		devices, err := devices.ForReplay(ctx, p.After.Capture)
 		if err != nil {
 			return nil, err
 		}
 		if len(devices) == 0 {
-			return nil, fmt.Errorf("No compatible replay devices found")
+			return nil, fmt.Errorf("No compatible devices found")
 		}
-		replaySettings.Device = devices[0]
+		r.ReplayDevice = devices[0]
 	}
 
 	// Check the command is valid. If we don't do it here, we'll likely get an
 	// error deep in the bowels of the framebuffer data resolve.
-	if _, err := Cmd(ctx, after, config); err != nil {
+	if _, err := Cmd(ctx, p.After, r); err != nil {
 		return nil, err
 	}
 
 	id, err := database.Store(ctx, &FramebufferAttachmentResolvable{
-		ReplaySettings: replaySettings,
-		After:          after,
-		Attachment:     attachment,
-		Settings:       settings,
-		Hints:          hints,
-		Config:         config,
+		After:      p.After,
+		Attachment: p.Index,
+		Settings:   p.RenderSettings,
+		Hints:      p.Hints,
+		Config:     r,
 	})
 
 	if err != nil {
 		return nil, err
 	}
-	return path.NewImageInfo(id), nil
+	return &service.FramebufferAttachment{
+		Index:     p.Index,
+		Type:      api.FramebufferAttachmentType_OutputColor,
+		ImageInfo: path.NewImageInfo(id),
+		Label:     fmt.Sprintf("Attachment %d", p.Index),
+	}, nil
 }
 
 // Resolve implements the database.Resolver interface.
@@ -92,20 +130,20 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 	}
 
 	format := fbInfo.Format
-	if r.Settings.DrawMode == service.DrawMode_OVERDRAW {
+	if r.Settings.DrawMode == path.DrawMode_OVERDRAW {
 		format = image.NewUncompressed("Count_U8", fmts.Count_U8)
 	}
 
 	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{
-		ReplaySettings:   r.ReplaySettings,
 		After:            r.After,
 		Width:            width,
 		Height:           height,
-		Attachment:       r.Attachment,
+		Attachment:       fbInfo.Type,
 		FramebufferIndex: fbInfo.Index,
-		DrawMode:         r.Settings.DrawMode,
+		Settings:         r.Settings,
 		Hints:            r.Hints,
 		ImageFormat:      format,
+		Config:           r.Config,
 	})
 	if err != nil {
 		return nil, err
@@ -160,6 +198,9 @@ type FramebufferAttachmentInfo struct {
 	// Format of the attachment.
 	Format *image.Format
 
+	// Type of the attachment.
+	Type api.FramebufferAttachmentType
+
 	// The error returned by the API. If this is non-null then all other fields
 	// may contain undefined values.
 	Err error
@@ -171,7 +212,7 @@ func (f FramebufferAttachmentInfo) equal(o FramebufferAttachmentInfo) bool {
 		return false
 	}
 	if f.Err == nil {
-		return fe && f.Width == o.Width && f.Height == o.Height && f.Index == o.Index && f.CanResize == o.CanResize
+		return fe && f.Width == o.Width && f.Height == o.Height && f.Index == o.Index && f.CanResize == o.CanResize && f.Type == o.Type
 	}
 	return f.Err.Error() == o.Err.Error()
 }
@@ -192,13 +233,4 @@ func (c framebufferAttachmentChanges) last() FramebufferAttachmentInfo {
 		return c.changes[count-1]
 	}
 	return FramebufferAttachmentInfo{}
-}
-
-var allFramebufferAttachments = []api.FramebufferAttachment{
-	api.FramebufferAttachment_Depth,
-	api.FramebufferAttachment_Stencil,
-	api.FramebufferAttachment_Color0,
-	api.FramebufferAttachment_Color1,
-	api.FramebufferAttachment_Color2,
-	api.FramebufferAttachment_Color3,
 }

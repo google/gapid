@@ -37,7 +37,7 @@ func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.
 		}
 
 		mgr := GetManager(ctx)
-		hints := &service.UsageHints{Background: true}
+		hints := &path.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if qi, ok := a.(QueryTimestamps); ok {
 				err = qi.QueryTimestamps(ctx, intent, mgr, loopCount, handler, hints)

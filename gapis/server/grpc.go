@@ -531,22 +531,6 @@ func (s *grpcServer) GetDevicesForReplay(ctx xctx.Context, req *service.GetDevic
 	}, nil
 }
 
-func (s *grpcServer) GetFramebufferAttachment(ctx xctx.Context, req *service.GetFramebufferAttachmentRequest) (*service.GetFramebufferAttachmentResponse, error) {
-	defer s.inRPC()()
-	image, err := s.handler.GetFramebufferAttachment(
-		s.bindCtx(ctx),
-		req.ReplaySettings,
-		req.After,
-		req.Attachment,
-		req.Settings,
-		req.Hints,
-	)
-	if err := service.NewError(err); err != nil {
-		return &service.GetFramebufferAttachmentResponse{Res: &service.GetFramebufferAttachmentResponse_Error{Error: err}}, nil
-	}
-	return &service.GetFramebufferAttachmentResponse{Res: &service.GetFramebufferAttachmentResponse_Image{Image: image}}, nil
-}
-
 func (s *grpcServer) GetLogStream(req *service.GetLogStreamRequest, server service.Gapid_GetLogStreamServer) error {
 	// defer s.inRPC()() -- don't consider the log stream an inflight RPC.
 	ctx, cancel := task.WithCancel(server.Context())
