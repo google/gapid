@@ -34,9 +34,9 @@ public class Streams {
   // F16 represents a 16-bit signed, floating-point number.
   public static final Stream.DataType F16 = newFloat(true, 5, 10);
   // F32 represents a 32-bit signed, floating-point number.
-  public static final Stream.DataType F32 = newFloat(true, 7, 24);
+  public static final Stream.DataType F32 = newFloat(true, 8, 23);
   // F64 represents a 64-bit signed, floating-point number.
-  public static final Stream.DataType F64 = newFloat(true, 10, 53);
+  public static final Stream.DataType F64 = newFloat(true, 11, 52);
 
   // LINEAR is a Sampling state using a linear curve.
   public static final Stream.Sampling LINEAR = Stream.Sampling.newBuilder()
