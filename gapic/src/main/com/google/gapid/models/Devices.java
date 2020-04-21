@@ -17,12 +17,15 @@ package com.google.gapid.models;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
+import static com.google.gapid.util.MoreFutures.transformAsync;
+import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.proto.SettingsProto.DeviceValidation;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
@@ -44,6 +47,7 @@ import com.google.gapid.util.Paths;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -58,10 +62,10 @@ public class Devices {
   private final Shell shell;
   protected final Analytics analytics;
   private final Client client;
+  private final DeviceValidationCache validationCache;
   private List<Device.Instance> replayDevices;
   private Device.Instance selectedReplayDevice;
   private List<DeviceCaptureInfo> devices;
-  private DeviceValidationInfo deviceValidationInfo;
 
   public static final Flag<Boolean> skipDeviceValidation = Flags.value("skip-device-validation", false,
       "Skips the device validation process. " +
@@ -71,7 +75,7 @@ public class Devices {
     this.shell = shell;
     this.analytics = analytics;
     this.client = client;
-    deviceValidationInfo = new DeviceValidationInfo(client, settings);
+    this.validationCache = new DeviceValidationCache(settings);
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -154,11 +158,24 @@ public class Devices {
   }
 
   public ListenableFuture<DeviceValidationResult> validateDevice(Device.Instance device) {
-    return deviceValidationInfo.doValidation(device);
+    DeviceValidationResult fromCache = getValidationStatus(device);
+    if (fromCache.passed) {
+      return immediateFuture(fromCache);
+    }
+
+    return transformAsync(client.validateDevice(Paths.device(device.getID())), r ->
+      submitIfNotDisposed(shell, () -> validationCache.add(device, new DeviceValidationResult(r))));
   }
 
   public DeviceValidationResult getValidationStatus(Device.Instance device) {
-    return deviceValidationInfo.getValidationStatus(device);
+    DeviceValidationResult fromCache = validationCache.getFromCache(device);
+    if (fromCache != null) {
+      return fromCache;
+    } else if (skipDeviceValidation.get()) {
+      return DeviceValidationResult.SKIPPED;
+    } else {
+      return DeviceValidationResult.FAILED;
+    }
   }
 
   public void loadDevices() {
@@ -319,67 +336,6 @@ public class Devices {
     }
   }
 
-  /*
-   *  Class that handles the gapis communication for device validation and the load/store
-   *  of the validation cache.
-   */
-  private static class DeviceValidationInfo {
-    private final Client client;
-    private DeviceValidation.Builder deviceValidation;
-
-    public DeviceValidationInfo(Client client, Settings settings) {
-      this.client = client;
-      deviceValidation = settings.writeDeviceValidation();
-    }
-
-    private static DeviceValidation.ValidationEntry buildValidationEntry(Device.Instance device) {
-      return DeviceValidation.ValidationEntry.newBuilder()
-          .setDevice(DeviceValidation.Device.newBuilder()
-              .setSerial(device.getSerial())
-              .setOs(device.getConfiguration().getOS())
-              .setVersion(device.getConfiguration().getDrivers().getVulkan().getVersion()))
-          .setResult(DeviceValidation.Result.newBuilder()
-              .setPassed(true))
-          .build();
-    }
-
-    // TODO(b/149406313): Move to UI thread to avoid synchronization
-    public synchronized DeviceValidationResult getValidationStatus(Device.Instance device) {
-      if (skipDeviceValidation.get()) {
-        return DeviceValidationResult.SKIPPED;
-      }
-      DeviceValidation.ValidationEntry entry  = buildValidationEntry(device);
-      if (deviceValidation.getValidationEntriesList().contains(entry)) {
-        return DeviceValidationResult.PASSED;
-      }
-      return DeviceValidationResult.FAILED;
-    }
-
-    // TODO(b/149406313): Move to UI thread to avoid synchronization
-    public synchronized ListenableFuture<DeviceValidationResult> doValidation(Device.Instance device) {
-      if (device == null) {
-        return immediateFuture(DeviceValidationResult.FAILED);
-      }
-      DeviceValidation.ValidationEntry currentEntry = buildValidationEntry(device);
-      if (deviceValidation.getValidationEntriesList().contains(currentEntry)) {
-        return immediateFuture(DeviceValidationResult.PASSED);
-      }
-
-      return MoreFutures.transform(client.validateDevice(Paths.device(device.getID())), e -> {
-        updateValidationStatus(currentEntry, e);
-        return new DeviceValidationResult(e.getError(), !e.hasError(), false);
-      });
-    }
-
-    // TODO(b/149406313): Move to UI thread to avoid synchronization
-    protected synchronized void updateValidationStatus(DeviceValidation.ValidationEntry entry, Service.ValidateDeviceResponse response) {
-      if (response == null || response.hasError()) {
-        return;
-      }
-      deviceValidation.addValidationEntries(entry);
-    }
-  }
-
   public static class DeviceValidationResult {
     public static final DeviceValidationResult PASSED = new DeviceValidationResult(null, true, false);
     public static final DeviceValidationResult FAILED = new DeviceValidationResult(null, false, false);
@@ -393,6 +349,72 @@ public class Devices {
       this.error = error;
       this.passed = passed;
       this.skipped = skipped;
+    }
+
+    public DeviceValidationResult(Service.ValidateDeviceResponse r) {
+      this(r.getError(), !r.hasError(), false);
+    }
+  }
+
+  private static class DeviceValidationCache {
+    private final Set<Key> cache = Sets.newHashSet(); // We only remember passed validations.
+    private final SettingsProto.DeviceValidation.Builder stored;
+
+    public DeviceValidationCache(Settings settings) {
+      this.stored = settings.writeDeviceValidation();
+      for (SettingsProto.DeviceValidation.ValidationEntry entry :
+          settings.writeDeviceValidation().getValidationEntriesList()) {
+        if (entry.getResult().getPassed()) {
+          cache.add(new Key(entry.getDevice()));
+        }
+      }
+    }
+
+    public DeviceValidationResult getFromCache(Device.Instance device) {
+      return cache.contains(new Key(device)) ? DeviceValidationResult.PASSED : null;
+    }
+
+    public DeviceValidationResult add(Device.Instance device, DeviceValidationResult result) {
+      if (result.passed) {
+        Key key = new Key(device);
+        cache.add(key);
+        stored.addValidationEntries(SettingsProto.DeviceValidation.ValidationEntry.newBuilder()
+            .setDevice(key.device)
+            .setResult(SettingsProto.DeviceValidation.Result.newBuilder()
+                .setPassed(true)));
+      }
+      return result;
+    }
+
+    private static class Key {
+      public final SettingsProto.DeviceValidation.Device device;
+
+      public Key(Device.Instance device) {
+        this.device = SettingsProto.DeviceValidation.Device.newBuilder()
+            .setSerial(device.getSerial())
+            .setOs(device.getConfiguration().getOS())
+            .setVersion(device.getConfiguration().getDrivers().getVulkan().getVersion())
+            .build();
+      }
+
+      public Key(SettingsProto.DeviceValidation.Device device) {
+        this.device = device;
+      }
+
+      @Override
+      public int hashCode() {
+        return device.hashCode();
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (obj == this) {
+          return true;
+        } else if (!(obj instanceof Key)) {
+          return false;
+        }
+        return device.equals(((Key)obj).device);
+      }
     }
   }
 }
