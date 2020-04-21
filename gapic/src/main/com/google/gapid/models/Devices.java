@@ -346,23 +346,23 @@ public class Devices {
     // TODO(b/149406313): Move to UI thread to avoid synchronization
     public synchronized DeviceValidationResult getValidationStatus(Device.Instance device) {
       if (skipDeviceValidation.get()) {
-        return DeviceValidationResult.getSkippedResult();
+        return DeviceValidationResult.SKIPPED;
       }
       DeviceValidation.ValidationEntry entry  = buildValidationEntry(device);
       if (deviceValidation.getValidationEntriesList().contains(entry)) {
-        return DeviceValidationResult.getPassedResult();
+        return DeviceValidationResult.PASSED;
       }
-      return DeviceValidationResult.getFailedResult();
+      return DeviceValidationResult.FAILED;
     }
 
     // TODO(b/149406313): Move to UI thread to avoid synchronization
     public synchronized ListenableFuture<DeviceValidationResult> doValidation(Device.Instance device) {
       if (device == null) {
-        return immediateFuture(DeviceValidationResult.getFailedResult());
+        return immediateFuture(DeviceValidationResult.FAILED);
       }
       DeviceValidation.ValidationEntry currentEntry = buildValidationEntry(device);
       if (deviceValidation.getValidationEntriesList().contains(currentEntry)) {
-        return immediateFuture(DeviceValidationResult.getPassedResult());
+        return immediateFuture(DeviceValidationResult.PASSED);
       }
 
       return MoreFutures.transform(client.validateDevice(Paths.device(device.getID())), e -> {
@@ -381,29 +381,18 @@ public class Devices {
   }
 
   public static class DeviceValidationResult {
-    private static DeviceValidationResult passedResult = new DeviceValidationResult(null, true, false);
-    private static DeviceValidationResult failedResult = new DeviceValidationResult(null, false, false);
-    private static DeviceValidationResult skippedResult = new DeviceValidationResult(null, true, true);
-    public Service.Error error;
-    public boolean passed;
-    public boolean skipped;
+    public static final DeviceValidationResult PASSED = new DeviceValidationResult(null, true, false);
+    public static final DeviceValidationResult FAILED = new DeviceValidationResult(null, false, false);
+    public static final DeviceValidationResult SKIPPED = new DeviceValidationResult(null, true, true);
+
+    public final Service.Error error;
+    public final boolean passed;
+    public final boolean skipped;
 
     public DeviceValidationResult(Service.Error error, boolean passed, boolean skipped) {
       this.error = error;
       this.passed = passed;
       this.skipped = skipped;
-    }
-
-    public static DeviceValidationResult getPassedResult() {
-      return passedResult;
-    }
-
-    public static DeviceValidationResult getSkippedResult() {
-      return skippedResult;
-    }
-
-    public static DeviceValidationResult getFailedResult() {
-      return failedResult;
     }
   }
 }
