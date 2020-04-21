@@ -31,13 +31,10 @@ func (API) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, int
 	return nil, nil
 }
 
-func (API) GetFramebufferAttachmentInfo(
+func (API) GetFramebufferAttachmentInfos(
 	ctx context.Context,
-	after []uint64,
-	state *api.GlobalState,
-	thread uint64,
-	attachment uint32) (api.FramebufferAttachmentInfo, error) {
-	return api.FramebufferAttachmentInfo{}, nil
+	state *api.GlobalState) ([]api.FramebufferAttachmentInfo, error) {
+	return []api.FramebufferAttachmentInfo{}, nil
 }
 
 // Root returns the path to the root of the state to display. It can vary based
