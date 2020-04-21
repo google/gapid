@@ -118,13 +118,13 @@ typedef struct {
   std::string name;
   std::vector<device::ABI> abis;
   std::string hardwareName;
-  int numCpuCores;  // Fetching this is OS specific, not CPU specific.
+  int numCpuCores = 0;  // Fetching this is OS specific, not CPU specific.
   device::OSKind osKind;
   std::string osName;
   std::string osBuild;
-  int osMajor;
-  int osMinor;
-  int osPoint;
+  int osMajor = 0;
+  int osMinor = 0;
+  int osPoint = 0;
 } PlatformInfo;
 
 bool queryPlatform(PlatformInfo* info, std::string* error);
