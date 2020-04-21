@@ -190,6 +190,7 @@ message DeviceValidation {
   message ValidationEntry {
     Device device = 1;
     Result result = 2;
+    int64 last_seen = 3;
   }
   repeated ValidationEntry validation_entries = 1;
 }

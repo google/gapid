@@ -19,10 +19,11 @@ import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
+import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.SettingsProto;
@@ -47,7 +48,7 @@ import com.google.gapid.util.Paths;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -357,29 +358,42 @@ public class Devices {
   }
 
   private static class DeviceValidationCache {
-    private final Set<Key> cache = Sets.newHashSet(); // We only remember passed validations.
+    private static final long MAX_VALIDATION_AGE = DAYS.toMillis(30);
+
+    private final Map<Key, SettingsProto.DeviceValidation.ValidationEntry.Builder> cache =
+        Maps.newHashMap(); // We only remember passed validations.
     private final SettingsProto.DeviceValidation.Builder stored;
 
     public DeviceValidationCache(Settings settings) {
       this.stored = settings.writeDeviceValidation();
-      for (SettingsProto.DeviceValidation.ValidationEntry entry :
-          settings.writeDeviceValidation().getValidationEntriesList()) {
-        if (entry.getResult().getPassed()) {
-          cache.add(new Key(entry.getDevice()));
+      for (int i = 0; i < stored.getValidationEntriesCount(); i++) {
+        SettingsProto.DeviceValidation.ValidationEntry.Builder entry =
+            stored.getValidationEntriesBuilder(i);
+        if ((System.currentTimeMillis() - entry.getLastSeen()) > MAX_VALIDATION_AGE) {
+          stored.removeValidationEntries(i);
+          i--;
+        } else if (entry.getResult().getPassed()) {
+          cache.put(new Key(entry.getDevice()), entry);
         }
       }
     }
 
     public DeviceValidationResult getFromCache(Device.Instance device) {
-      return cache.contains(new Key(device)) ? DeviceValidationResult.PASSED : null;
+      SettingsProto.DeviceValidation.ValidationEntry.Builder entry = cache.get(new Key(device));
+      if (entry == null) {
+        return null;
+      } else {
+        entry.setLastSeen(System.currentTimeMillis());
+        return DeviceValidationResult.PASSED;
+      }
     }
 
     public DeviceValidationResult add(Device.Instance device, DeviceValidationResult result) {
       if (result.passed) {
         Key key = new Key(device);
-        cache.add(key);
-        stored.addValidationEntries(SettingsProto.DeviceValidation.ValidationEntry.newBuilder()
+        cache.put(key, stored.addValidationEntriesBuilder()
             .setDevice(key.device)
+            .setLastSeen(System.currentTimeMillis())
             .setResult(SettingsProto.DeviceValidation.Result.newBuilder()
                 .setPassed(true)));
       }

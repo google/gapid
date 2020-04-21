@@ -59,7 +59,7 @@ public class Settings {
 
   private static final String SETTINGS_FILE = ".agic";
   private static final int MAX_RECENT_FILES = 16;
-  private static final int CURRENT_VERSION = 1;
+  private static final int CURRENT_VERSION = 2;
 
   // Only set values for fields where the proto zero/false/empty default doesn't make sense.
   private static SettingsProto.Settings DEFAULT_SETTINGS = SettingsProto.Settings.newBuilder()
@@ -132,6 +132,13 @@ public class Settings {
             .setProfileDuration(SettingsProto.Trace.Duration.newBuilder()
                 .setType(SettingsProto.Trace.Duration.Type.MANUAL)
                 .setDuration(5));
+        //$FALL-THROUGH$
+      case 1:
+        // Version 2 added the DeviceValidation.ValidationEntry.last_seen field.
+        for (SettingsProto.DeviceValidation.ValidationEntry.Builder entry :
+            proto.getDeviceValidationBuilder().getValidationEntriesBuilderList()) {
+          entry.setLastSeen(System.currentTimeMillis());
+        }
     }
     return proto.setVersion(CURRENT_VERSION);
   }
@@ -158,7 +165,7 @@ public class Settings {
   public void save() {
     File file = new File(OS.userHomeDir, SETTINGS_FILE);
     try (Writer writer = new FileWriter(file)) {
-      TextFormat.print(proto, writer);
+      TextFormat.printer().print(proto, writer);
     } catch (IOException e) {
       LOG.log(FINE, "IO error writing properties to " + file, e);
     }
