@@ -15,11 +15,51 @@
  */
 
 #include "swapchain.h"
+
 #include <cassert>
+#include <sstream>
 #include <vector>
+
 #include "virtual_swapchain.h"
 
 namespace swapchain {
+
+// Used to set the value of VkSurfaceCapabilitiesKHR->currentExtent
+// returned from vkGetPhysicalDeviceSurfaceCapabilitiesKHR.
+// E.g. VIRTUAL_SWAPCHAIN_SURFACE_EXTENT="1960 1080"
+// If unset then the current extent will be the "special value"
+// {0xFFFFFFFF, 0xFFFFFFFF}, which some apps don't handle well.
+// I.e. they will try to create a swapchain with this maximum extent size and we
+// will then fail to create a buffer of this size.
+const char* kOverrideSurfaceExtentEnv = "VIRTUAL_SWAPCHAIN_SURFACE_EXTENT";
+// Android property names must be under 32 characters in Android N and below.
+const char* kOverrideSurfaceExtentAndroidProp = "debug.vsc.surface_extent";
+
+namespace {
+
+void OverrideCurrentExtentIfNecessary(VkExtent2D* current_extent) {
+  std::string overridden_extent;
+  if (GetParameter(kOverrideSurfaceExtentEnv, kOverrideSurfaceExtentAndroidProp,
+                   &overridden_extent)) {
+    std::istringstream ss(overridden_extent);
+    VkExtent2D extent;
+    ss >> extent.width;
+    if (ss.fail()) {
+      write_warning("Failed to parse surface extent parameter: " +
+                    overridden_extent);
+      return;
+    }
+    ss >> extent.height;
+    if (ss.fail()) {
+      write_warning("Failed to parse surface extent parameter: " +
+                    overridden_extent);
+      return;
+    }
+    *current_extent = extent;
+  }
+}
+
+}  // namespace
 
 void RegisterInstance(VkInstance instance, const InstanceData& data) {
   uint32_t num_devices = 0;
@@ -45,6 +85,7 @@ void RegisterInstance(VkInstance instance, const InstanceData& data) {
 // vkCreateXXXSurface calls.
 struct VirtualSurface {
   bool always_return_given_surface_formats_and_present_modes;
+  VkExtent2D current_extent;
 };
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
@@ -52,6 +93,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
     const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
   auto* surf = new VirtualSurface();
   surf->always_return_given_surface_formats_and_present_modes = false;
+  surf->current_extent = {0xFFFFFFFF, 0xFFFFFFFF};
+
   if (pCreateInfo != nullptr) {
     for (const CreateNext* pNext =
              static_cast<const CreateNext*>(pCreateInfo->pNext);
@@ -62,6 +105,9 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateVirtualSurface(
       }
     }
   }
+
+  OverrideCurrentExtentIfNecessary(&surf->current_extent);
+
   *pSurface = reinterpret_cast<VkSurfaceKHR>(surf);
   return VK_SUCCESS;
 }
@@ -108,9 +154,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
           .GetPhysicalDeviceData(physicalDevice)
           ->physical_device_properties_;
 
+  VirtualSurface* suf = reinterpret_cast<VirtualSurface*>(surface);
+
   pSurfaceCapabilities->minImageCount = 1;
   pSurfaceCapabilities->maxImageCount = 0;
-  pSurfaceCapabilities->currentExtent = {0xFFFFFFFF, 0xFFFFFFFF};
+  pSurfaceCapabilities->currentExtent = suf->current_extent;
   pSurfaceCapabilities->minImageExtent = {1, 1};
   pSurfaceCapabilities->maxImageExtent = {
       properties.limits.maxImageDimension2D,
@@ -335,11 +383,16 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
   // We submit to the queue the commands set up by the virtual swapchain.
   // This will start a copy operation from the image to the swapchain
   // buffers.
-  uint32_t res = VK_SUCCESS;
+
+  VkResult res = VK_SUCCESS;
+
   std::vector<VkPipelineStageFlags> pipeline_stages(
       pPresentInfo->waitSemaphoreCount, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-  for (size_t i = 0; i < pPresentInfo->swapchainCount; ++i) {
+
+  size_t i = 0;
+  for (; i < pPresentInfo->swapchainCount; ++i) {
     uint32_t image_index = pPresentInfo->pImageIndices[i];
+
     VirtualSwapchain* swp =
         reinterpret_cast<VirtualSwapchain*>(pPresentInfo->pSwapchains[i]);
 
@@ -355,13 +408,33 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
         nullptr                                            // pSemaphores
     };
 
-    res |= GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(
-        queue, 1, &submitInfo, swp->GetFence(image_index));
-    res |= swp->PresentToSurface(queue, image_index);
+    res = EXPECT_SUCCESS(GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(
+        queue, 1, &submitInfo, swp->GetFence(image_index)));
+
+    if (res != VK_SUCCESS) {
+      break;
+    }
+
+    res = swp->PresentToSurface(queue, image_index);
+    if (res != VK_SUCCESS) {
+      break;
+    }
+
     swp->NotifySubmitted(image_index);
+
+    if (pPresentInfo->pResults) {
+      pPresentInfo->pResults[i] = VK_SUCCESS;
+    }
   }
 
-  return VkResult(res);
+  // If we left the above loop early, then set the remaining results as errors.
+  if (pPresentInfo->pResults) {
+    for (; i < pPresentInfo->swapchainCount; ++i) {
+      pPresentInfo->pResults[i] = res;
+    }
+  }
+
+  return res;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkQueueSubmit(VkQueue queue,

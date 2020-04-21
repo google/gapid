@@ -15,14 +15,13 @@
  */
 
 #include "virtual_swapchain.h"
+
 #include <cassert>
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <functional>
 #include <iomanip>
-#include <iostream>
-#include <sstream>
 #include <string>
 #include <thread>
 
@@ -41,12 +40,15 @@ int32_t FindMemoryType(
          properties))
       return i;
   }
+  swapchain::write_warning("FindMemoryType returned -1");
   return -1;
 }
 
 void null_callback(void*, uint8_t*, size_t) {}
 
+// Android property names must be under 32 characters in Android N and below.
 const char* kImageDumpPathEnv = "IMAGE_DUMP_PATH";
+const char* kImageDumpPathAndroidProp = "debug.vsc.image_dump_path";
 
 void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
                   std::string file_name, uint32_t width, uint32_t height,
@@ -144,8 +146,8 @@ VirtualSwapchain::VirtualSwapchain(
         queue_                                            // queueFamilyIndex
     };
 
-    functions_->vkCreateCommandPool(device_, &command_pool_info, pAllocator,
-                                    &command_pool_);
+    EXPECT_SUCCESS(functions_->vkCreateCommandPool(device_, &command_pool_info,
+                                                   pAllocator, &command_pool_));
 
     VkCommandBufferAllocateInfo command_buffer_info{
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,  // sType
@@ -156,21 +158,24 @@ VirtualSwapchain::VirtualSwapchain(
     };
 
     // Create the command buffer
-    functions_->vkAllocateCommandBuffers(device_, &command_buffer_info,
-                                         &image_data.command_buffer_);
+    EXPECT_SUCCESS(functions_->vkAllocateCommandBuffers(
+        device_, &command_buffer_info, &image_data.command_buffer_));
+
     set_dispatch_from_parent(image_data.command_buffer_, device_);
 
     // Create the fence
     {
-      functions_->vkCreateFence(device_, &fence_info, pAllocator,
-                                &image_data.fence_);
-      functions_->vkResetFences(device_, 1, &image_data.fence_);
+      EXPECT_SUCCESS(functions_->vkCreateFence(device_, &fence_info, pAllocator,
+                                               &image_data.fence_));
+
+      EXPECT_SUCCESS(functions_->vkResetFences(device_, 1, &image_data.fence_));
     }
 
     // Create the buffer
     {
-      functions_->vkCreateBuffer(device_, &buffer_create_info, pAllocator,
-                                 &image_data.buffer_);
+      EXPECT_SUCCESS(functions_->vkCreateBuffer(
+          device_, &buffer_create_info, pAllocator, &image_data.buffer_));
+
       // Create device-memory for the buffer
       {
         VkMemoryRequirements reqs;
@@ -180,6 +185,7 @@ VirtualSwapchain::VirtualSwapchain(
         uint32_t memory_type =
             FindMemoryType(&properties, reqs.memoryTypeBits,
                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
         VkMemoryAllocateInfo buffer_memory_info{
             VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,  // sType
             nullptr,                                 // pNext
@@ -187,17 +193,20 @@ VirtualSwapchain::VirtualSwapchain(
             memory_type                              // memoryTypeIndex
         };
 
-        functions_->vkAllocateMemory(device_, &buffer_memory_info, pAllocator,
-                                     &image_data.buffer_memory_);
-        functions_->vkBindBufferMemory(device_, image_data.buffer_,
-                                       image_data.buffer_memory_, 0);
+        EXPECT_SUCCESS(functions_->vkAllocateMemory(
+            device_, &buffer_memory_info, pAllocator,
+            &image_data.buffer_memory_));
+
+        EXPECT_SUCCESS(functions_->vkBindBufferMemory(
+            device_, image_data.buffer_, image_data.buffer_memory_, 0));
       }
     }
 
     // Create the image
     {
-      functions_->vkCreateImage(device_, &image_create_info, pAllocator,
-                                &image_data.image_);
+      EXPECT_SUCCESS(functions_->vkCreateImage(device_, &image_create_info,
+                                               pAllocator, &image_data.image_));
+
       // Create device-memory for the image
       {
         VkMemoryRequirements reqs;
@@ -213,10 +222,17 @@ VirtualSwapchain::VirtualSwapchain(
             memory_type                              // memoryTypeIndex
         };
 
-        functions_->vkAllocateMemory(device_, &image_memory_info, pAllocator,
-                                     &image_data.image_memory_);
-        functions_->vkBindImageMemory(device_, image_data.image_,
-                                      image_data.image_memory_, 0);
+        VkResult res = EXPECT_SUCCESS(functions_->vkAllocateMemory(
+            device_, &image_memory_info, pAllocator,
+            &image_data.image_memory_));
+        if (res != VK_SUCCESS) {
+          swapchain::write_warning(
+              "HINT: try setting the default surface extent parameter of the "
+              "Virtual Swapchain layer.");
+        }
+
+        EXPECT_SUCCESS(functions_->vkBindImageMemory(
+            device_, image_data.image_, image_data.image_memory_, 0));
       }
     }
 
@@ -252,14 +268,18 @@ VirtualSwapchain::VirtualSwapchain(
         nullptr                                       // pInheritanceInfo
     };
 
-    functions_->vkBeginCommandBuffer(image_data.command_buffer_, &cbegin);
+    EXPECT_SUCCESS(
+        functions_->vkBeginCommandBuffer(image_data.command_buffer_, &cbegin));
+
     functions_->vkCmdCopyImageToBuffer(
         image_data.command_buffer_, image_data.image_,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image_data.buffer_, 1, &region);
+
     functions_->vkCmdPipelineBarrier(
         image_data.command_buffer_, VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &dest_barrier, 0, 0);
-    functions_->vkEndCommandBuffer(image_data.command_buffer_);
+
+    EXPECT_SUCCESS(functions_->vkEndCommandBuffer(image_data.command_buffer_));
 
     return image_data;
   };
@@ -285,10 +305,7 @@ VirtualSwapchain::VirtualSwapchain(
                  },
                  this);
 #endif
-  const char* const image_dump_dir = std::getenv(kImageDumpPathEnv);
-  if (image_dump_dir != nullptr) {
-    image_dump_dir_ = std::string(image_dump_dir);
-  }
+  GetParameter(kImageDumpPathEnv, kImageDumpPathAndroidProp, &image_dump_dir_);
 }
 
 void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
@@ -353,14 +370,17 @@ void VirtualSwapchain::CopyThreadFunc() {
       }
     }
 
-    VkResult ret = functions_->vkWaitForFences(
-        device_, 1, &image_data_[pending_image].fence_, false, UINT64_MAX);
-    (void)ret;  // TODO: Check this?
-    functions_->vkResetFences(device_, 1, &image_data_[pending_image].fence_);
+    EXPECT_SUCCESS(functions_->vkWaitForFences(
+        device_, 1, &image_data_[pending_image].fence_, false, UINT64_MAX));
+
+    EXPECT_SUCCESS(functions_->vkResetFences(
+        device_, 1, &image_data_[pending_image].fence_));
 
     void* mapped_value;
-    functions_->vkMapMemory(device_, image_data_[pending_image].buffer_memory_,
-                            0, VK_WHOLE_SIZE, 0, &mapped_value);
+    EXPECT_SUCCESS(functions_->vkMapMemory(
+        device_, image_data_[pending_image].buffer_memory_, 0, VK_WHOLE_SIZE, 0,
+        &mapped_value));
+
     VkMappedMemoryRange range{
         VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,      // sType
         nullptr,                                    // pNext
@@ -368,12 +388,14 @@ void VirtualSwapchain::CopyThreadFunc() {
         0,                                          // offset
         VK_WHOLE_SIZE,                              // size
     };
-    functions_->vkInvalidateMappedMemoryRanges(device_, 1, &range);
+
+    EXPECT_SUCCESS(
+        functions_->vkInvalidateMappedMemoryRanges(device_, 1, &range));
 
     uint32_t length = ImageByteSize();
     {
       callback_(callback_user_data_, (uint8_t*)mapped_value, length);
-      if (image_dump_dir_ != "") {
+      if (!image_dump_dir_.empty()) {
         DumpImageToFile((uint8_t*)mapped_value, length);
       }
     }

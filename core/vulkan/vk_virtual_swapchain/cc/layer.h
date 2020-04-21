@@ -19,11 +19,26 @@
 
 #include <unordered_map>
 #include <vector>
+
 #include "vulkan/vulkan.h"
 
 #include "threading.h"
 
+#define EXPECT_SUCCESS(fn)                                                  \
+  [&]() {                                                                   \
+    auto r = fn;                                                            \
+    if (VK_SUCCESS != r) {                                                  \
+      swapchain::write_warning(__FILE__ ":" + std::to_string(__LINE__) +    \
+                               ": " #fn " RETURNED: " + std::to_string(r)); \
+    }                                                                       \
+    return r;                                                               \
+  }()
+
 namespace swapchain {
+
+void write_warning(const char* message);
+
+void write_warning(const std::string& message);
 
 // Sets the key of the dispatch tables used in lower layers of the parent
 // dispatchable handle to the new child dispatchable handle. This is necessary
@@ -277,6 +292,9 @@ struct Context {
 };
 
 Context& GetGlobalContext();
+
+bool GetParameter(const char* env_var_name, const char* android_prop_name,
+                  std::string* param_value);
 
 }  // namespace swapchain
 

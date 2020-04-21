@@ -14,22 +14,74 @@
  * limitations under the License.
  */
 
-#include <cstdio>
+#include "layer.h"
+
 #include <cstring>
-#include <mutex>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 #include <vulkan/vk_layer.h>
 #include <vulkan/vulkan.h>
+
 #include "swapchain.h"
+
+#if defined(__ANDROID__)
+#include <android/log.h>
+#include <sys/system_properties.h>
+#else
+#include <iostream>
+#endif
 
 #define LAYER_NAME "VirtualSwapchain"
 
 #define LAYER_NAME_FUNCTION(fn) VirtualSwapchain##fn
 
 namespace swapchain {
+
+namespace {
+
+#if defined(__ANDROID__)
+bool GetAndroidProperty(const char* const property, std::string* value) {
+  char buff[PROP_VALUE_MAX];
+  if (__system_property_get(property, buff) <= 0) {
+    return false;
+  }
+  *value = buff;
+  return true;
+}
+#endif
+
+}  // namespace
+
+#if defined(__ANDROID__)
+void write_warning(const char* message) {
+  __android_log_print(ANDROID_LOG_WARN, "VirtualSwapchainLayer", "%s", message);
+}
+#else
+void write_warning(const char* message) {
+  std::cerr << "VirtualSwapchainLayer: " << message << std::endl;
+}
+#endif
+
+void write_warning(const std::string& message) {
+  write_warning(message.c_str());
+}
+
+bool GetParameter(const char* const env_var_name,
+                  const char* const android_prop_name,
+                  std::string* param_value) {
+#if defined(__ANDROID__)
+  return GetAndroidProperty(android_prop_name, param_value);
+#else
+  const char* const env_var_value = std::getenv(env_var_name);
+  if (!env_var_value) {
+    return false;
+  }
+  *param_value = env_var_value;
+  return true;
+#endif
+}
 
 Context& GetGlobalContext() {
   // We rely on C++11 static initialization rules here.
