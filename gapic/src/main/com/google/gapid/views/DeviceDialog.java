@@ -28,7 +28,6 @@ import static java.util.logging.Level.WARNING;
 
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Devices;
-import com.google.gapid.models.Devices.DeviceCaptureInfo;
 import com.google.gapid.models.Devices.DeviceValidationResult;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.device.Device;
@@ -38,7 +37,6 @@ import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.Paths;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.util.URLs;
 import com.google.gapid.widgets.DialogBase;
@@ -126,8 +124,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       if (models.devices.getReplayDevices() != null
           && models.devices.getReplayDevices().size() == 1) {
         device = models.devices.getReplayDevices().get(0);
-        DeviceValidationResult result = models.devices.getValidationStatus(
-            new DeviceCaptureInfo(Paths.device(device.getID()), device, null, null));
+        DeviceValidationResult result = models.devices.getValidationStatus(device);
         skipDialog = result.passed || result.skipped;
       }
 
@@ -264,8 +261,8 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       return sel.isEmpty() ? null : (Device.Instance) sel.getFirstElement();
     }
 
-    private void runValidationCheck(Device.Instance deviceInstance) {
-      if (deviceInstance == null) {
+    private void runValidationCheck(Device.Instance dev) {
+      if (dev == null) {
         validationStatusLoader.setVisible(false);
         validationStatusText.setVisible(false);
         return;
@@ -273,8 +270,6 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       validationStatusLoader.setVisible(true);
       validationStatusText.setVisible(true);
       // We need a DeviceCaptureInfo to do validation.
-      DeviceCaptureInfo dev =
-          new DeviceCaptureInfo(Paths.device(deviceInstance.getID()), deviceInstance, null, null);
       setValidationStatus(models.devices.getValidationStatus(dev));
       if (!models.devices.getValidationStatus(dev).passed) {
         validationStatusLoader.startLoading();

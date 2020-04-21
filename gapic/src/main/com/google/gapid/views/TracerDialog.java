@@ -609,16 +609,19 @@ public class TracerDialog {
         updatePerfettoConfigLabel(settings);
       }
 
-      private void runValidationCheck(DeviceCaptureInfo dev) {
-        if (dev == null) {
+      private void runValidationCheck(DeviceCaptureInfo deviceInfo) {
+        if (deviceInfo == null) {
           validationStatusLoader.setVisible(false);
           validationStatusText.setVisible(false);
           return;
         }
+
+        Device.Instance dev = deviceInfo.device;
         validationStatusLoader.setVisible(true);
         validationStatusText.setVisible(true);
-        setValidationStatus(models.devices.getValidationStatus(dev));
-        if (!models.devices.getValidationStatus(dev).passed) {
+        DeviceValidationResult validation = models.devices.getValidationStatus(dev);
+        setValidationStatus(validation);
+        if (!validation.passed) {
           validationStatusLoader.startLoading();
           validationStatusText.setText("Device is being validated");
           rpcController.start().listen(models.devices.validateDevice(dev),

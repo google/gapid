@@ -153,11 +153,11 @@ public class Devices {
     listeners.fire().onReplayDeviceChanged(dev);
   }
 
-  public ListenableFuture<DeviceValidationResult> validateDevice(DeviceCaptureInfo device) {
+  public ListenableFuture<DeviceValidationResult> validateDevice(Device.Instance device) {
     return deviceValidationInfo.doValidation(device);
   }
 
-  public DeviceValidationResult getValidationStatus(DeviceCaptureInfo device) {
+  public DeviceValidationResult getValidationStatus(Device.Instance device) {
     return deviceValidationInfo.getValidationStatus(device);
   }
 
@@ -332,19 +332,19 @@ public class Devices {
       deviceValidation = settings.writeDeviceValidation();
     }
 
-    private static DeviceValidation.ValidationEntry buildValidationEntry(DeviceCaptureInfo device) {
+    private static DeviceValidation.ValidationEntry buildValidationEntry(Device.Instance device) {
       return DeviceValidation.ValidationEntry.newBuilder()
           .setDevice(DeviceValidation.Device.newBuilder()
-              .setSerial(device.device.getSerial())
-              .setOs(device.device.getConfiguration().getOS())
-              .setVersion(device.device.getConfiguration().getDrivers().getVulkan().getVersion()))
+              .setSerial(device.getSerial())
+              .setOs(device.getConfiguration().getOS())
+              .setVersion(device.getConfiguration().getDrivers().getVulkan().getVersion()))
           .setResult(DeviceValidation.Result.newBuilder()
               .setPassed(true))
           .build();
     }
 
     // TODO(b/149406313): Move to UI thread to avoid synchronization
-    public synchronized DeviceValidationResult getValidationStatus(DeviceCaptureInfo device) {
+    public synchronized DeviceValidationResult getValidationStatus(Device.Instance device) {
       if (skipDeviceValidation.get()) {
         return DeviceValidationResult.getSkippedResult();
       }
@@ -356,7 +356,7 @@ public class Devices {
     }
 
     // TODO(b/149406313): Move to UI thread to avoid synchronization
-    public synchronized ListenableFuture<DeviceValidationResult> doValidation(DeviceCaptureInfo device) {
+    public synchronized ListenableFuture<DeviceValidationResult> doValidation(Device.Instance device) {
       if (device == null) {
         return immediateFuture(DeviceValidationResult.getFailedResult());
       }
@@ -365,7 +365,7 @@ public class Devices {
         return immediateFuture(DeviceValidationResult.getPassedResult());
       }
 
-      return MoreFutures.transform(client.validateDevice(device.path), e -> {
+      return MoreFutures.transform(client.validateDevice(Paths.device(device.getID())), e -> {
         updateValidationStatus(currentEntry, e);
         return new DeviceValidationResult(e.getError(), !e.hasError(), false);
       });
