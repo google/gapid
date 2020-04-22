@@ -29,7 +29,7 @@ bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 sudo rm /etc/apt/sources.list.d/cuda.list*
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 sudo apt-get -q update
-sudo apt-get -qy install gcc-8 g++-8
+sudo aptitude -y install gcc-8 g++-8
 export CC=/usr/bin/gcc-8
 
 cd $SRC
