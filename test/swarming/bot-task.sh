@@ -59,4 +59,6 @@ fi
 
 # Run AGI test
 $SWARMING_AGI/gapit benchmark -startframe "${SWARMING_STARTFRAME}" -numframes "${SWARMING_NUMFRAME}" "${SWARMING_PACKAGE}/${SWARMING_ACTIVITY}"
+
+# Save gfxtrace
 mv benchmark.gfxtrace ${SWARMING_OUT_DIR}/

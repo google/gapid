@@ -76,6 +76,12 @@ adb logcat -d > ${SWARMING_OUT_DIR}/logcat.txt
 
 echo "Exit code: ${EXIT_CODE}"
 
+# Tests may fail halfway through, try to salvage any gfxtrace
+mkdir -p ${SWARMING_OUT_DIR}/harness-salvage/
+for gfxtrace in ${SWARMING_TEST_DIR}/*.gfxtrace ; do
+  mv ${gfxtrace} ${SWARMING_OUT_DIR}/harness-salvage/
+done
+
 ## Turn off the device screen
 # Key "power" (26) toggle between screen off and on, so first make sure to have
 # the screen on with key "wake up" (224), then press "power" (26)
