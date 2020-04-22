@@ -1,6 +1,6 @@
 # Swarming: capture-replay tests on real Android devices
 
-This is a collection of shell scripts to run AGI tests on real Android devices.
+This is a collection of scripts to run AGI tests on real Android devices.
 
 We can access devices through Swarming, which is part of
 [LUCI](https://chromium.googlesource.com/infra/infra/+/master/doc/users/services/about_luci.md),
@@ -24,7 +24,7 @@ running order is:
    always turn the screen off to make sure devices can cool-down, otherwise the
    Swarming bot may become unusable.
 
-3. The Kokoro build script uses `test/swarming/collect.sh` to retrieve the
+3. The Kokoro build script uses `test/swarming/collect.py` to retrieve the
    Swarming tests results.
 
 ## How to run a Swarming test manually, outside of Kokoro
@@ -82,3 +82,12 @@ SWARMING_PRIORITY=100
 # Timeout: maximum number of seconds for the task to terminate
 SWARMING_TIMEOUT=300
 ```
+
+## Nightly results
+
+Nightly results are accumulated over nightly runs. To achieve this, the results
+file is receieved as a build input from the latest build on x20, new results are
+added to it, and the new results are produced as a nightly build artifact.
+
+The results are stored in the `results.json` file. The precise format of this
+JSON is defined in `test/swarming/collect.py`.

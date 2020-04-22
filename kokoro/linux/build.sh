@@ -98,19 +98,30 @@ mkdir luci-py
 tar xzf luci-py.tar.gz --directory luci-py
 export LUCI_CLIENT_ROOT="$PWD/luci-py/client"
 
-# Prepare Swarming files
-# SWARMING_X20_TEST_DIR enables different Kokoro jobs to use different sets of tests
-if [ -z "${SWARMING_X20_TEST_DIR}" ] ; then
-  SWARMING_X20_TEST_DIR="tests"
+
+# Initialize some environment variables, unless they have already been set
+# (e.g. by build-nightly.sh)
+if [ -z "${SWARMING_TIMESTAMP}" ] ; then
+  export SWARMING_TIMESTAMP=`date '+%Y%m%d-%H%M%S'`
 fi
+
+if [ -z "${SWARMING_X20_TEST_DIR}" ] ; then
+  export SWARMING_X20_TEST_DIR="tests"
+fi
+
+if [ -z "${SWARMING_TASK_PREFIX}" ] ; then
+  export SWARMING_TASK_PREFIX="Kokoro_PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
+fi
+
+export SWARMING_AUTH_FLAG="--auth-service-account-json=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key"
+export SWARMING_TRIGGERED_DIR="triggered"
+
+# Prepare Swarming files
 SWARMING_DIR=${SRC}/test/swarming
 cp -r bazel-bin/pkg ${SWARMING_DIR}/agi
 cp -r ${KOKORO_GFILE_DIR}/${SWARMING_X20_TEST_DIR} ${SWARMING_DIR}/tests
 
 # Swarming environment
-export SWARMING_AUTH_FLAG="--auth-service-account-json=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key"
-export SWARMING_BUILD_INFO="Kokoro-PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
-export SWARMING_TRIGGERED_DIR="triggered"
 
 # Trigger the tests
 pushd ${SWARMING_DIR}
@@ -170,20 +181,14 @@ xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit video -gapir-nofallback -type sxs -f
 ## Collect swarming test results
 ##
 
-# This directory name must match the artifact regex in nightly.cfg
-SWARMING_RESULT_DIR=${KOKORO_ARTIFACTS_DIR}/swarming_results
-mkdir -p ${SWARMING_RESULT_DIR}
-export SWARMING_RESULT_FILE=${SWARMING_RESULT_DIR}/results.txt
-
-# Store some build info
-echo "commit ${KOKORO_GIT_COMMIT}" > ${SWARMING_RESULT_DIR}/build_info.txt
+# By convention, results are stored in ${KOKORO_ARTIFACTS_DIR}/swarming/results.json
 
 pushd ${SWARMING_DIR}
 
 SWARMING_FAILURE=0
 for TEST_NAME in ${SWARMING_TRIGGERED_DIR}/*/*.json ; do
   set +e
-  ./collect.sh ${TEST_NAME} > `basename ${TEST_NAME} .json`.collect.log
+  ./collect.py ${SWARMING_TIMESTAMP} ${KOKORO_GIT_COMMIT} `basename ${TEST_NAME} .json` ${TEST_NAME} ${KOKORO_ARTIFACTS_DIR}/swarming/results.json
   EXIT_CODE=$?
   set -e
   if [ ${EXIT_CODE} -eq 0 ] ; then

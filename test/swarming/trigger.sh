@@ -24,8 +24,8 @@ if [ -z "${LUCI_CLIENT_ROOT}" ] ; then
   exit 1
 fi
 
-if [ -z "${SWARMING_BUILD_INFO}" ] ; then
-  echo "Error: empty environment variable: SWARMING_BUILD_INFO"
+if [ -z "${SWARMING_TASK_PREFIX}" ] ; then
+  echo "Error: empty environment variable: SWARMING_TASK_PREFIX"
   exit 1
 fi
 
@@ -45,7 +45,7 @@ SWARMING_TEST_DIR="`dirname ${SWARMING_TEST_DIR}`/`basename ${SWARMING_TEST_DIR}
 SWARMING_TEST_NAME=`basename ${SWARMING_TEST_DIR}`
 
 # Set up environment
-SWARMING_TASK_NAME="${SWARMING_BUILD_INFO}_${SWARMING_TEST_NAME}"
+SWARMING_TASK_NAME="${SWARMING_TASK_PREFIX}_${SWARMING_TEST_NAME}"
 SWARMING_ISOLATE_SERVER=https://chrome-isolated.appspot.com
 SWARMING_SERVER=https://chrome-swarming.appspot.com
 SWARMING_POOL=SkiaInternal
