@@ -377,18 +377,12 @@ sub void BindImageMemory(
             elementSize := elementAndTexelBlockSize.ElementSize
             tightlyPackedSize := widthInBlocks * heightInBlocks * level.Depth * elementSize
 
-            // If the image has LINEAR tiling and the image level has layout
-            // PREINITIALIZED and size larger than our calculated tightly packed
-            // size, link the data back to the bound device memory. Otherwise
-            // creates its own shadow memory pool.
+            // If the image has LINEAR tiling link the data back to the bound device memory.
             // TODO: If the image as a whole requires more memory than we
             // calculated, we should link the data back to the bound device memory
             // no matter whether the tiling is LINEAR or OPTIMAL. But we need to
             // come up with a 'linear layout' in GAPID.
-            if (imageObject.Info.Tiling == VK_IMAGE_TILING_LINEAR) &&
-                (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
-                (level.LinearLayout != null) &&
-                (as!u64(level.LinearLayout.size) > as!u64(tightlyPackedSize)) {
+            if level.LinearLayout != null {
               loffset := as!u64(memoryOffset + level.LinearLayout.offset)
               lsize := as!u64(level.LinearLayout.size)
               level.Data = getImagePlaneMemoryInfo(imageObject, plane).BoundMemory.Data[loffset:loffset + lsize]
