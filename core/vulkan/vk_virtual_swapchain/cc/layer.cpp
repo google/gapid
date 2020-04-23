@@ -17,6 +17,7 @@
 #include "layer.h"
 
 #include <cstring>
+#include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
