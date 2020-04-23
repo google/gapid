@@ -74,9 +74,10 @@ def main():
             device = tag[len('device_type:'):]
     assert device != ''
     # Set status: default to fail, and lower the risk of false-positive by being
-    # pedantic to setup the 'pass' status
+    # pedantic to setup the 'pass' status. Warning: an expired task have less
+    # fields, e.g. it doesn't have the 'exit_code' field.
     status = 'fail'
-    if (task_result['exit_code'] == '0') and (task_result['state'] == 'COMPLETED') and (task_result['failure'] == False) and (task_result['internal_failure'] == False):
+    if ('exit_code' in task_result.keys()) and (task_result['exit_code'] == '0') and (task_result['state'] == 'COMPLETED') and (task_result['failure'] == False) and (task_result['internal_failure'] == False):
         status = 'pass'
     elif task_result['state'] == 'TIMEOUT':
         status = 'timeout'
