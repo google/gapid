@@ -376,6 +376,10 @@ func (p *Printer) statement(n interface{}) bool {
 		p.WriteString(", ")
 		p.WriteExpression(n.Src)
 		p.WriteRune(')')
+	case *semantic.Print:
+		p.WriteString("print(")
+		p.list(n.Arguments, p.WriteExpression)
+		p.WriteRune(')')
 	case *semantic.Switch:
 		p.WriteString("switch ")
 		p.WriteExpression(n.Value)

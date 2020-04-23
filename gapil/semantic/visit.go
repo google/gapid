@@ -330,6 +330,10 @@ func Replace(node Node, visitor func(Node) Node) {
 		n.Type = visitor(n.Type).(*Slice)
 		n.Size = visitor(n.Size).(Expression)
 	case Null:
+	case *Print:
+		for i, a := range n.Arguments {
+			n.Arguments[i] = visitor(a).(Expression)
+		}
 	case *PointerRange:
 		n.Pointer = visitor(n.Pointer).(Expression)
 		n.Range = visitor(n.Range).(*BinaryOp)

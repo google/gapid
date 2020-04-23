@@ -33,6 +33,7 @@ func init() {
 	internals["write"] = func(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Node { return write(rv, in, g) }
 	internals["copy"] = func(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Node { return copy_(rv, in, g) }
 	internals["len"] = func(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Node { return length(rv, in, g) }
+	internals["print"] = func(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Node { return print(rv, in, g) }
 }
 
 func internalCall(rv *resolver, in *ast.Call) semantic.Node {
@@ -227,5 +228,19 @@ func length(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Expression {
 	}
 	out := &semantic.Length{AST: in, Object: obj, Type: t}
 	rv.mappings.Add(in, out)
+	return out
+}
+
+func print(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Statement {
+	out := &semantic.Print{AST: in}
+
+	for i, a := range in.Arguments {
+		arg := expression(rv, a)
+		if isVoid(arg.ExpressionType()) {
+			rv.errorf(a, "argument %d to print is void", i)
+			return semantic.Invalid{}
+		}
+		out.Arguments = append(out.Arguments, arg)
+	}
 	return out
 }

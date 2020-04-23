@@ -27,6 +27,7 @@
     "strings"
 
     "github.com/google/gapid/core/event/task"
+    "github.com/google/gapid/core/log"
     "github.com/google/gapid/core/math/u64"
     "github.com/google/gapid/gapis/api"
     "github.com/google/gapid/gapis/messages"
@@ -47,6 +48,7 @@
     _ = stringtable.Msg{}
     _ = ϟmem.Decoder{}
     _ = u64.Min
+    _ = log.Verbose
   )
 
   type callable interface {
@@ -356,6 +358,7 @@
   {{else if IsFence        $}}{{Template "Fence" $}}
   {{else if IsBranch       $}}{{Template "Branch" $}}
   {{else if IsSwitch       $}}{{Template "Switch" $}}
+  {{else if IsPrint        $}}{{Template "Print" $}}
   {{else}}{{Error "unsupported statement %T: %v" $ $}}
   {{end}}
 {{end}}
@@ -714,4 +717,16 @@
   {{else}}
     _ = {{Template "Go.Read" $.Value}}
   {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a print statement
+-------------------------------------------------------------------------------
+*/}}
+{{define "Print"}}
+  {{AssertType $ "Print"}}
+
+  {{$args := ForEach $.Arguments "Go.Read" | JoinWith ", "}}
+  log.I(ϟctx, {{$args}})
 {{end}}

@@ -89,6 +89,7 @@ type encoderInstances struct {
 	Parameter       map[*semantic.Parameter]uint64
 	Pointer         map[*semantic.Pointer]uint64
 	PointerRange    map[*semantic.PointerRange]uint64
+	Print           map[*semantic.Print]uint64
 	Pseudonym       map[*semantic.Pseudonym]uint64
 	Read            map[*semantic.Read]uint64
 	Reference       map[*semantic.Reference]uint64
@@ -339,6 +340,8 @@ func (e *encoder) node(n semantic.Node) *Node {
 		return &Node{Ty: &Node_PointerRange{PointerRange: e.pointerRange(n)}}
 	case *semantic.Pseudonym:
 		return &Node{Ty: &Node_Pseudonym{Pseudonym: e.pseudonym(n)}}
+	case *semantic.Print:
+		return &Node{Ty: &Node_Print{Print: e.print(n)}}
 	case *semantic.Read:
 		return &Node{Ty: &Node_Read{Read: e.read(n)}}
 	case *semantic.Reference:
@@ -1236,6 +1239,17 @@ func (e *encoder) pointerRange(n *semantic.PointerRange) (outID uint64) {
 	return
 }
 
+func (e *encoder) print(n *semantic.Print) (outID uint64) {
+	e.build(&e.instances.Print, e.maps.Print, n, &outID, func() *Print {
+		p := &Print{
+			Ast: e.astCall(n.AST),
+		}
+		foreach(n.Arguments, e.expr, &p.Arguments)
+		return p
+	})
+	return
+}
+
 func (e *encoder) pseudonym(n *semantic.Pseudonym) (outID uint64) {
 	e.build(&e.instances.Pseudonym, e.maps.Pseudonym, n, &outID, func() *Pseudonym {
 		n.SortMembers()
@@ -1391,6 +1405,8 @@ func (e *encoder) stat(n semantic.Statement) (outID uint64) {
 			p.Ty = &Statement_MapRemove{e.mapRemove(n)}
 		case *semantic.MapClear:
 			p.Ty = &Statement_MapClear{e.mapClear(n)}
+		case *semantic.Print:
+			p.Ty = &Statement_Print{e.print(n)}
 		case *semantic.Read:
 			p.Ty = &Statement_Read{e.read(n)}
 		case *semantic.Return:

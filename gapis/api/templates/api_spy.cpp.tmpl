@@ -341,6 +341,7 @@
   {{else if IsAssign      $}}{{Template "Assign" $}}
   {{else if IsSliceAssign $}}{{Template "SliceAssign" $}}
   {{else if IsCall        $}}{{Template "CallSub" $}}
+  {{else if IsPrint       $}}{{Template "Print" $}}
   {{else                   }}{{Template "C++.Statement.Default" $}}
   {{end}}
 {{end}}
@@ -468,4 +469,16 @@
   {{else}}
     {{Template "C++.Statement.Default" $}}
   {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a print statement
+-------------------------------------------------------------------------------
+*/}}
+{{define "Print"}}
+  {{AssertType $ "Print"}}
+
+  GAPID_DEBUG({{Macro "C++.ReadListAsCallArgument" $.Arguments}});
 {{end}}

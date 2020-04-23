@@ -84,6 +84,7 @@ message Instances {
   repeated Parameter parameter = 57;
   repeated Pointer pointer = 58;
   repeated PointerRange pointer_range = 59;
+  repeated Print print = 128;
   repeated Pseudonym pseudonym = 60;
   repeated Read read = 61;
   repeated Reference reference = 62;
@@ -686,6 +687,7 @@ message Node {
     uint64 parameter = 57;      // Parameter ID
     uint64 pointer = 58;        // Pointer ID
     uint64 pointer_range = 59;  // PointerRange ID
+    uint64 print = 81;          // Print ID
     uint64 pseudonym = 60;      // Pseudonym ID
     uint64 read = 61;           // Read ID
     uint64 reference = 62;      // Reference ID
@@ -726,6 +728,11 @@ message Parameter {
   uint64 name = 4;      // String ID
   Documentation docs = 5;
   Type type = 6;
+}
+
+message Print {
+  uint64 ast = 1;                 // ASTParameter ID
+  repeated uint64 arguments = 2;  // Argument IDs
 }
 
 message Pointer {
@@ -843,6 +850,7 @@ message Statement {
     uint64 map_clear = 14;      // MapClear ID
     uint64 map_iteration = 15;  // MapIteration ID
     uint64 map_remove = 16;     // MapRemove ID
+    uint64 print = 22;          // Print ID
     uint64 read = 17;           // Read ID
     uint64 return = 18;         // Return ID
     uint64 slice_assign = 19;   // SliceAssign ID

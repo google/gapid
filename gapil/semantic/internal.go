@@ -133,3 +133,12 @@ type Copy struct {
 
 func (*Copy) isNode()      {}
 func (*Copy) isStatement() {}
+
+// Print represents a call to print.
+type Print struct {
+	AST       *ast.Call    // the underlying syntax node this was built from
+	Arguments []Expression // The parameters to print
+}
+
+func (*Print) isNode()      {}
+func (*Print) isStatement() {}

@@ -226,6 +226,11 @@ simple, and may fail with a compilation error if a single insertion point cannot
 be found. In these cases you should explicitly add a `fence` statement to the
 command.
 
+##### print(fmt, ...)
+
+`print` can be used for debugging and will issue printf like logging calls to
+print messages and values to the log.
+
 ## Annotations
 
 An annotation is a custom attribute that can be placed on named types and

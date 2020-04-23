@@ -83,6 +83,7 @@ type decoderInstances struct {
 	Parameter    []*semantic.Parameter
 	Pointer      []*semantic.Pointer
 	PointerRange []*semantic.PointerRange
+	Print        []*semantic.Print
 	Pseudonym    []*semantic.Pseudonym
 	Read         []*semantic.Read
 	Reference    []*semantic.Reference
@@ -1002,6 +1003,15 @@ func (d *decoder) pointerRange(ptrRangeID uint64) (out *semantic.PointerRange) {
 	return
 }
 
+func (d *decoder) print(printID uint64) (out *semantic.Print) {
+	d.build(d.content.Instances.Print, &d.inst.Print, printID, &out,
+		func(p *Print, s *semantic.Print) {
+			s.AST = d.astCall(p.Ast)
+			foreach(p.Arguments, d.expr, &s.Arguments)
+		})
+	return
+}
+
 func (d *decoder) pseudonym(pseudID uint64) (out *semantic.Pseudonym) {
 	d.build(d.content.Instances.Pseudonym, &d.inst.Pseudonym, pseudID, &out,
 		func(p *Pseudonym, s *semantic.Pseudonym) {
@@ -1155,6 +1165,8 @@ func (d *decoder) stat(statID uint64) semantic.Statement {
 		return d.mapRemove(p.MapRemove)
 	case *Statement_MapClear:
 		return d.mapClear(p.MapClear)
+	case *Statement_Print:
+		return d.print(p.Print)
 	case *Statement_Read:
 		return d.read(p.Read)
 	case *Statement_Return:
@@ -1294,6 +1306,8 @@ func (d *decoder) node(p *Node) semantic.Node {
 		return d.pointer(p.Pointer)
 	case *Node_Pseudonym:
 		return d.pseudonym(p.Pseudonym)
+	case *Node_Print:
+		return d.print(p.Print)
 	case *Node_Read:
 		return d.read(p.Read)
 	case *Node_Reference:

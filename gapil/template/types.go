@@ -96,6 +96,7 @@ var (
 		semantic.Parameter{},
 		semantic.PointerRange{},
 		semantic.Pointer{},
+		semantic.Print{},
 		semantic.Pseudonym{},
 		semantic.Read{},
 		semantic.Reference{},

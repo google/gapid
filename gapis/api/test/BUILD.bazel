@@ -54,6 +54,7 @@ go_library(
         "//core/data/compare:go_default_library",
         "//core/data/protoconv:go_default_library",  # keep
         "//core/event/task:go_default_library",  # keep
+        "//core/log:go_default_library",  # keep
         "//core/math/interval:go_default_library",
         "//core/memory/arena:go_default_library",  # keep
         "//gapil/constset:go_default_library",  # keep
