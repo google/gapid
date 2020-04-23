@@ -553,9 +553,10 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 				Bytes:  image.NewID(l.Data().ResourceID(ctx, s)),
 			}
 		}
+
 		elementAndTexelBlockSize, err := subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, nil, vkFmt)
 		if err != nil {
-			log.Errf(ctx, err, "[Trim linear image data for image: %v]", t.VulkanHandle())
+			log.E(ctx, "[Trim linear image data for image: %v]: %v", t.VulkanHandle(), err)
 			return nil
 		}
 		texelHeight := elementAndTexelBlockSize.TexelBlockSize().Height()
@@ -566,15 +567,16 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 		resolveColorData := func() ([]byte, error) {
 			levelDataRaw, err := database.Resolve(ctx, levelDataResID)
 			if err != nil {
-				return []byte{}, log.Errf(ctx, err, "[Resolve color image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+				return []byte{}, log.Errf(ctx, err, "Resolve color image level data failed")
 			}
 			levelData, ok := levelDataRaw.([]byte)
 			if !ok {
-				return []byte{}, log.Errf(ctx, err, "[Resolve color image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+				return []byte{}, log.Errf(ctx, err, "Resolved returned invalid data")
 			}
 			levelDataMinimumLen := uint64(l.Depth()-uint32(1))*uint64(ll.DepthPitch()) + uint64(heightInBlocks-uint32(1))*uint64(ll.RowPitch()) + colorRawSize
 			if uint64(len(levelData)) < levelDataMinimumLen {
-				return []byte{}, log.Errf(ctx, nil, "[Not enough image level data to get color data, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+				return []byte{}, log.Errf(ctx, nil, "Not enough image data: %v*%v + %v*%v + %v = %d > %d",
+					l.Depth()-1, ll.DepthPitch(), heightInBlocks-1, ll.RowPitch(), colorRawSize, levelDataMinimumLen, len(levelData))
 			}
 			colorData := make([]uint8, 0, expectedSize)
 			for z := uint64(0); z < uint64(l.Depth()); z++ {
@@ -587,7 +589,7 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 		}
 		colorDataID, err := database.Store(ctx, resolveColorData)
 		if err != nil {
-			log.Errf(ctx, err, "[Trim linear image data for image: %v]", t.VulkanHandle())
+			log.E(ctx, "[Trim linear image data for image: %v, layer: %v, level: %v]: %v", t.VulkanHandle(), layer, level, err)
 			return nil
 		}
 
