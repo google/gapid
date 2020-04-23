@@ -637,16 +637,23 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
           as!u64(1)
     }
 
+    // Note on computations below: we're not using roundUpTo when computing positions in terms of blocks,
+    // because the spec requires the coordinates to be block aligned. However, sizes need rounding-up as,
+    // even though they also need to be block-aligned, the size of the image does not need to be a
+    // multiple of the block size, thus the last block needs special treatment as it could be incomplete.
+    // Rather than trying to detect if the last block is inclomplete and requested, we simply round up
+    // the sizes.
+    // See https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/chap19.html#copies-buffers-images-addressing
     rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
-    rowLength := (as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width))
-    imageHeight := (as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height))
+    rowLength := as!u64(roundUpTo(rowLengthAndImageHeight.RowLength, elementAndTexelBlockSize.TexelBlockSize.Width))
+    imageHeight := as!u64(roundUpTo(rowLengthAndImageHeight.ImageHeight, elementAndTexelBlockSize.TexelBlockSize.Height))
     layerSize := rowLength * imageHeight * elementSize
     zStart := as!u64(region.imageOffset.z)
     zEnd := zStart + as!u64(region.imageExtent.depth)
     yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
-    yEnd := yStart + as!u64(region.imageExtent.height / elementAndTexelBlockSize.TexelBlockSize.Height)
+    yEnd := yStart + as!u64(roundUpTo(region.imageExtent.height, elementAndTexelBlockSize.TexelBlockSize.Height))
     xStart := as!u64(as!u32(region.imageOffset.x) / elementAndTexelBlockSize.TexelBlockSize.Width)
-    xEnd := xStart + as!u64(region.imageExtent.width / elementAndTexelBlockSize.TexelBlockSize.Width)
+    xEnd := xStart + as!u64(roundUpTo(region.imageExtent.width, elementAndTexelBlockSize.TexelBlockSize.Width))
     // When multiple layers are specified in the buffer image copy region,
     // Vulkan assumes the data of all the layers are placed continuously in
     // the source buffer memory.
