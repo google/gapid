@@ -702,6 +702,11 @@ service Gapid {
   rpc GpuProfile(GpuProfileRequest) returns (GpuProfileResponse) {
   }
 
+  // SplitCapture creates a new capture containing the requested subset of
+  // commands.
+  rpc SplitCapture(SplitCaptureRequest) returns (SplitCaptureResponse) {
+  }
+
   ///////////////////////////////////////////////////////////////
   // Below are debugging APIs which may be removed in the future.
   ///////////////////////////////////////////////////////////////
@@ -1278,6 +1283,17 @@ message GpuProfileResponse {
 message GpuProfileRequest {
   path.Capture capture = 1;
   path.Device device = 2;
+}
+
+message SplitCaptureRequest {
+  path.Commands commands = 1;
+}
+
+message SplitCaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
 }
 
 // GetTimestampsRequest is the request send to server to get the timestamps for

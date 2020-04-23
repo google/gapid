@@ -177,6 +177,9 @@ type Service interface {
 	// Run a perfetto query
 	PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error)
 
+	// Split out a new capture containing a subset of another capture's commands.
+	SplitCapture(ctx context.Context, rng *path.Commands) (*path.Capture, error)
+
 	// ValidateDevice validates the GPU profiling capabilities of the given device and returns
 	// an error if validation failed or the GPU profiling data is invalid.
 	ValidateDevice(ctx context.Context, d *path.Device) error

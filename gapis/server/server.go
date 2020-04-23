@@ -39,6 +39,7 @@ import (
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
@@ -335,6 +336,35 @@ func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*p
 		return nil, err
 	}
 	return trimmed, nil
+}
+
+func (s *server) SplitCapture(ctx context.Context, rng *path.Commands) (*path.Capture, error) {
+	ctx = log.Enter(ctx, "SplitCapture")
+	c, err := capture.ResolveGraphicsFromPath(ctx, rng.Capture)
+	if err != nil {
+		return nil, err
+	}
+
+	var from, to int
+	if len(rng.From) > 0 {
+		from = int(rng.From[0])
+	}
+	if len(rng.To) > 0 {
+		to = int(rng.To[0])
+	}
+
+	if from >= len(c.Commands) || to > len(c.Commands) || (to != 0 && to <= from) {
+		return nil, fmt.Errorf("Invalid range: [%d, %d) not in [%d, %d)", from, to, 0, len(c.Commands))
+	} else if to == 0 {
+		to = len(c.Commands)
+	}
+
+	name := fmt.Sprintf("%s [%d,%d)", c.Name(), from, to)
+	if gc, err := capture.NewGraphicsCapture(ctx, arena.New(), name, c.Header, c.InitialState, c.Commands[from:to]); err != nil {
+		return nil, err
+	} else {
+		return capture.New(ctx, gc)
+	}
 }
 
 func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture, format service.GraphFormat) ([]byte, error) {

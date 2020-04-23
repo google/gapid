@@ -41,6 +41,7 @@ go_library(
         "replace_resource.go",
         "report.go",
         "screenshot.go",
+        "split.go",
         "state.go",
         "status.go",
         "stresstest.go",

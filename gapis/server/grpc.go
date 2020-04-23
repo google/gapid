@@ -573,6 +573,15 @@ func (s *grpcServer) ClientEvent(ctx xctx.Context, req *service.ClientEventReque
 	return &service.ClientEventResponse{}, nil
 }
 
+func (s *grpcServer) SplitCapture(ctx xctx.Context, req *service.SplitCaptureRequest) (*service.SplitCaptureResponse, error) {
+	defer s.inRPC()()
+	res, err := s.handler.SplitCapture(s.bindCtx(ctx), req.Commands)
+	if err := service.NewError(err); err != nil {
+		return &service.SplitCaptureResponse{Res: &service.SplitCaptureResponse_Error{Error: err}}, nil
+	}
+	return &service.SplitCaptureResponse{Res: &service.SplitCaptureResponse_Capture{Capture: res}}, nil
+}
+
 func (s *grpcServer) TraceTargetTreeNode(ctx xctx.Context, req *service.TraceTargetTreeNodeRequest) (*service.TraceTargetTreeNodeResponse, error) {
 	defer s.inRPC()()
 	res, err := s.handler.TraceTargetTreeNode(s.bindCtx(ctx), req)

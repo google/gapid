@@ -449,4 +449,13 @@ type (
 		Out        string               `help:"Output file."`
 		Format     PerfettoOutputFormat `help:"Output file format: {text|json}."`
 	}
+
+	SplitFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		CaptureFileFlags
+		From uint64 `help:"The inclusive start index of the command range. Default: 0 (first command)"`
+		To   uint64 `help:"The exclusive end index of the command range. Default: 0 (last command)"`
+		Out  string `help:"Output file."`
+	}
 )

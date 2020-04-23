@@ -492,6 +492,19 @@ func (c *client) DCECapture(ctx context.Context, capture *path.Capture, commands
 	return res.GetCapture(), nil
 }
 
+func (c *client) SplitCapture(ctx context.Context, rng *path.Commands) (*path.Capture, error) {
+	res, err := c.client.SplitCapture(ctx, &service.SplitCaptureRequest{
+		Commands: rng,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetCapture(), nil
+}
+
 func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettingsRequest) error {
 	res, err := c.client.UpdateSettings(ctx, req)
 	if err != nil {
