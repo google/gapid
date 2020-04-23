@@ -60,6 +60,7 @@ var (
 	adbPath          = flag.String("adb", "", "Path to the adb executable; leave empty to search the environment")
 	enableLocalFiles = flag.Bool("enable-local-files", false, "Allow clients to access local .gfxtrace files by path")
 	remoteSSHConfig  = flag.String("ssh-config", "", "_Path to an ssh config file for remote devices")
+	preloadDepGraph  = flag.Bool("preload-dep-graph", true, "_Preload the dependency graph when loading captures")
 )
 
 func main() {
@@ -146,6 +147,7 @@ func run(ctx context.Context) error {
 		},
 		StringTables:     loadStrings(ctx),
 		EnableLocalFiles: *enableLocalFiles,
+		PreloadDepGraph:  *preloadDepGraph,
 		AuthToken:        auth.Token(*gapisAuthToken),
 		DeviceScanDone:   deviceScanDone,
 		LogBroadcaster:   logBroadcaster,

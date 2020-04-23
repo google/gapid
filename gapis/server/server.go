@@ -72,6 +72,7 @@ type Config struct {
 	Info             *service.ServerInfo
 	StringTables     []*stringtable.StringTable
 	EnableLocalFiles bool
+	PreloadDepGraph  bool
 	AuthToken        auth.Token
 	DeviceScanDone   task.Signal
 	LogBroadcaster   *log.Broadcaster
@@ -89,6 +90,7 @@ func New(ctx context.Context, cfg Config) Server {
 		cfg.Info,
 		cfg.StringTables,
 		cfg.EnableLocalFiles,
+		cfg.PreloadDepGraph,
 		cfg.DeviceScanDone,
 		cfg.LogBroadcaster,
 	}
@@ -98,6 +100,7 @@ type server struct {
 	info             *service.ServerInfo
 	stbs             []*stringtable.StringTable
 	enableLocalFiles bool
+	preloadDepGraph  bool
 	deviceScanDone   task.Signal
 	logBroadcaster   *log.Broadcaster
 }
@@ -281,7 +284,7 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	}
 
 	// Pre-resolve the dependency graph.
-	if !config.DisableDeadCodeElimination {
+	if !config.DisableDeadCodeElimination && s.preloadDepGraph {
 		newCtx := keys.Clone(context.Background(), ctx)
 		crash.Go(func() {
 			cctx := status.PutTask(newCtx, nil)
