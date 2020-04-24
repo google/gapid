@@ -978,12 +978,23 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
         }
         auto& img_level =
             img->mAspects[aspect_bit]->mLayers[array_layer]->mLevels[mip_level];
+
+        // TODO: the image primer currently expects tightly-packed data. For
+        // linear tiled images, we need to 1) share the pool with the bound
+        // memory for this image (to handle aliasing properly) and 2) uncomment
+        // the below code to store the data in the linear layout. However, the
+        // image primer in state reconstruction currently doesn't handle non-
+        // tightly packed data, so this currently may break certain aliasing
+        // corner-cases, in favor of not breaking linear tiled images.
+        (void)extent_pitch;
+
         // If the image has linear layout and its row pitch and depth pitch is
         // larger than the piches for tightly packed image, we need to set the
         // observation row by row. Otherwise, we can use just one observation
         // for the extent of this copy.
-        if (bp.linear_layout_depth_pitch <= bp.depth_pitch &&
-            bp.linear_layout_row_pitch <= bp.row_pitch) {
+        // clang-format off
+        /*if (bp.linear_layout_depth_pitch <= bp.depth_pitch &&
+            bp.linear_layout_row_pitch <= bp.row_pitch)*/ {
           uint32_t x =
               (copy.mimageOffset.mx / bp.texel_width) * bp.element_size;
           uint32_t y = (copy.mimageOffset.my / bp.texel_height) * bp.row_pitch;
@@ -993,8 +1004,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
           observation.set_pool(img_level->mData.pool_id());
           serializer->sendData(&observation, true, pData + new_offset,
                                e.level_size);
-
-        } else {
+        }/* else {
           // Need to set base row by row for linear layout images which have
           // larger row pitch and depth pitch
           pitch ep =
@@ -1019,7 +1029,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
                                    ep.row_pitch);
             }
           }
-        }
+        }*/
+        // clang-format on
         new_offset = next_offset;
       }
     }
