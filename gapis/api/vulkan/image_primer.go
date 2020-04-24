@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/image"
@@ -52,17 +53,41 @@ const (
 )
 
 func (p *imagePrimer) Free() {
-	for i, b := range p.renderBuilders {
-		b.Free(p.sb)
-		delete(p.renderBuilders, i)
+	{
+		keys := make([]VkDevice, 0, len(p.renderBuilders))
+		for k := range p.renderBuilders {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		for _, i := range keys {
+			b := p.renderBuilders[i]
+			b.Free(p.sb)
+			delete(p.renderBuilders, i)
+		}
 	}
-	for i, b := range p.hostCopyBuilders {
-		b.Free(p.sb)
-		delete(p.hostCopyBuilders, i)
+	{
+		keys := make([]VkDevice, 0, len(p.hostCopyBuilders))
+		for k := range p.hostCopyBuilders {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		for _, i := range keys {
+			b := p.hostCopyBuilders[i]
+			b.Free(p.sb)
+			delete(p.hostCopyBuilders, i)
+		}
 	}
-	for i, b := range p.storeBuilders {
-		b.Free(p.sb)
-		delete(p.storeBuilders, i)
+	{
+		keys := make([]VkDevice, 0, len(p.storeBuilders))
+		for k := range p.storeBuilders {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		for _, i := range keys {
+			b := p.storeBuilders[i]
+			b.Free(p.sb)
+			delete(p.storeBuilders, i)
+		}
 	}
 }
 
