@@ -51,26 +51,58 @@ func newScratchResources() *scratchResources {
 // Free frees first submit all the pending commands held by all the queue
 // command handlers, then free all the memories and command pools.
 func (res *scratchResources) Free(sb *stateBuilder) {
-	for q, h := range res.queueCommandHandlers {
-		err := h.Submit(sb)
-		if err != nil {
-			panic(err)
+	{
+		keys := make([]VkQueue, 0, len(res.queueCommandHandlers))
+		for k := range res.queueCommandHandlers {
+			keys = append(keys, k)
 		}
-		err = h.WaitUntilFinish(sb)
-		if err != nil {
-			panic(err)
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		for _, q := range keys {
+			h := res.queueCommandHandlers[q]
+			err := h.Submit(sb)
+			if err != nil {
+				panic(err)
+			}
+			err = h.WaitUntilFinish(sb)
+			if err != nil {
+				panic(err)
+			}
+			delete(res.queueCommandHandlers, q)
 		}
-		delete(res.queueCommandHandlers, q)
 	}
-	for dev, mem := range res.memories {
-		mem.Free(sb)
-		delete(res.memories, dev)
-	}
-	for dev, families := range res.commandPools {
-		for _, pool := range families {
-			sb.write(sb.cb.VkDestroyCommandPool(dev, pool, memory.Nullptr))
+	{
+		keys := make([]VkDevice, 0, len(res.memories))
+		for k := range res.memories {
+			keys = append(keys, k)
 		}
-		delete(res.commandPools, dev)
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		for _, dev := range keys {
+			mem := res.memories[dev]
+			mem.Free(sb)
+			delete(res.memories, dev)
+		}
+	}
+	{
+		keys := make([]VkDevice, 0, len(res.commandPools))
+		for k := range res.commandPools {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		// Declare uKeys slice (used in inner loop) here so it is allocated only once
+		uKeys := []uint32{}
+		for _, dev := range keys {
+			families := res.commandPools[dev]
+			uKeys = []uint32{}
+			for k := range families {
+				uKeys = append(uKeys, k)
+			}
+			sort.Slice(uKeys, func(i, j int) bool { return uKeys[i] < uKeys[j] })
+			for _, k := range uKeys {
+				pool := families[k]
+				sb.write(sb.cb.VkDestroyCommandPool(dev, pool, memory.Nullptr))
+			}
+			delete(res.commandPools, dev)
+		}
 	}
 }
 
