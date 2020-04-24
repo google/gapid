@@ -114,7 +114,6 @@ if [ -z "${SWARMING_TASK_PREFIX}" ] ; then
 fi
 
 export SWARMING_AUTH_FLAG="--auth-service-account-json=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key"
-export SWARMING_TRIGGERED_DIR="triggered"
 
 # Prepare Swarming files
 SWARMING_DIR=${SRC}/test/swarming
@@ -125,9 +124,8 @@ cp -r ${KOKORO_GFILE_DIR}/${SWARMING_X20_TEST_DIR} ${SWARMING_DIR}/tests
 
 # Trigger the tests
 pushd ${SWARMING_DIR}
-mkdir -p ${SWARMING_TRIGGERED_DIR}
 for t in tests/* ; do
-  ./trigger.sh ${t}
+  ./trigger.py ${t}
 done
 popd
 
@@ -186,7 +184,7 @@ xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit video -gapir-nofallback -type sxs -f
 pushd ${SWARMING_DIR}
 
 SWARMING_FAILURE=0
-for TEST_NAME in ${SWARMING_TRIGGERED_DIR}/*/*.json ; do
+for TEST_NAME in triggered/*/*.json ; do
   set +e
   ./collect.py ${SWARMING_TIMESTAMP} ${KOKORO_GIT_COMMIT} `basename ${TEST_NAME} .json` ${TEST_NAME} ${KOKORO_ARTIFACTS_DIR}/swarming/results.json
   EXIT_CODE=$?

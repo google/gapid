@@ -15,7 +15,7 @@ include APKs in this repo, we store them on x20.
 The scripts are primarly designed to run as part of Kokoro Linux builds. The
 running order is:
 
-1. The Kokoro build script `kokoro/linux/build.sh` uses `test/swarming/trigger.sh` to
+1. The Kokoro build script `kokoro/linux/build.sh` uses `test/swarming/trigger.py` to
    schedule Swarming tests.
 
 2. The Swarming bot runs `test/swarming/bot-harness.sh`, which wraps

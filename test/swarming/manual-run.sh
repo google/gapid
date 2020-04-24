@@ -30,12 +30,8 @@ fi
 export SWARMING_AUTH_FLAG=""
 export SWARMING_TIMESTAMP=`date '+%Y%m%d-%H%M%S'`
 export SWARMING_TASK_PREFIX="Manual"
-export SWARMING_TRIGGERED_DIR="triggered-manual"
 
-rm -rf ${SWARMING_TRIGGERED_DIR}
-mkdir -p ${SWARMING_TRIGGERED_DIR}
-
-./trigger.sh ${SWARMING_TEST_DIR}
-for t in ${SWARMING_TRIGGERED_DIR}/*/*.json; do
-  ./collect.py ${SWARMING_TIMESTAMP} "manual" `basename ${t} .json` ${t} ${SWARMING_TRIGGERED_DIR}/results.json
+./trigger.py --prefix ${SWARMING_TASK_PREFIX} ${SWARMING_TEST_DIR}
+for t in triggered/*/*.json; do
+  ./collect.py ${SWARMING_TIMESTAMP} "manual" `basename ${t} .json` ${t} triggered/results.json
 done
