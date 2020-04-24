@@ -114,6 +114,7 @@ public class FramebufferView extends Composite
   private final SingleInFlight rpcController = new SingleInFlight();
   protected final ImagePanel imagePanel;
   private RenderSetting renderSettings;
+  private int currentSelection = 0;
   private int target = 0;
   private API.FramebufferAttachmentType targetType = API.FramebufferAttachmentType.OutputColor;
   private ToolItem targetItem;
@@ -198,7 +199,7 @@ public class FramebufferView extends Composite
   public void onCaptureLoadingStart(boolean maintainState) {
     imagePanel.setImage(null);
     imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
-    target = 0;
+    currentSelection = 0;
     attachmentListener.reset(emptyList());
   }
 
@@ -208,7 +209,7 @@ public class FramebufferView extends Composite
       imagePanel.setImage(null);
       imagePanel.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
-    target = 0;
+    currentSelection = 0;
     attachmentListener.reset(emptyList());
   }
 
@@ -241,10 +242,13 @@ public class FramebufferView extends Composite
 
     return MoreFutures.transformAsync(models.resources.loadFramebufferAttachments(), fbaList -> {
       attachmentListener.reset(fbaList.getAttachmentsList());
-      if (fbaList.getAttachmentsList().size() <= target) {
-        target = 0;
+
+      if (fbaList.getAttachmentsList().size() <= currentSelection) {
+        currentSelection = 0;
       }
-      targetType = fbaList.getAttachmentsList().get(target).getType();
+
+      target = fbaList.getAttachmentsList().get(currentSelection).getIndex();
+      targetType = fbaList.getAttachmentsList().get(currentSelection).getType();
       return models.images.getFramebuffer(command, target, renderSettings.getRenderSettings(models.settings));
     });
   }
@@ -353,17 +357,19 @@ public class FramebufferView extends Composite
         ToolBar tb = new ToolBar(c, SWT.HORIZONTAL | SWT.FLAT);
         if (!fbaList.isEmpty()) {
           List<ToolItem> fbaItems = new ArrayList<ToolItem>();
-          for (Service.FramebufferAttachment fba : fbaList) {
+          for (int i = 0; i < fbaList.size(); i++) {
+            Service.FramebufferAttachment fba = fbaList.get(i);
+            int j = i;
             switch(fba.getType()) {
               case OutputColor:
                 fbaItems.add(createToggleToolItem(tb, theme.lit(),
-                  x -> updateRenderTarget(fba.getIndex(), theme.lit()),
+                  x -> { currentSelection = j; updateRenderTarget(fba.getIndex(), theme.lit()); },
                   "Show " + fba.getLabel()));
                 break;
   
               case OutputDepth:
                 fbaItems.add(createToggleToolItem(tb, theme.depthBuffer(),
-                  x -> updateRenderTarget(fba.getIndex(), theme.depthBuffer()),
+                  x -> { currentSelection = j; updateRenderTarget(fba.getIndex(), theme.depthBuffer()); },
                   "Show " + fba.getLabel()));
                 break;
             }
