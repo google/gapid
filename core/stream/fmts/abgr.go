@@ -57,6 +57,26 @@ var (
 		}},
 	}
 
+	ABGR_U4_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Alpha,
+		}, {
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Blue,
+		}, {
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
 	ABGR_U8_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U8,
@@ -113,6 +133,26 @@ var (
 		}, {
 			DataType: &stream.U8,
 			Sampling: stream.SRGBNormalized,
+			Channel:  stream.Channel_Red,
+		}},
+	}
+
+	ABGR_U1U5U5U5_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U1,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Alpha,
+		}, {
+			DataType: &stream.U5,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Blue,
+		}, {
+			DataType: &stream.U5,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.U5,
+			Sampling: stream.LinearNormalized,
 			Channel:  stream.Channel_Red,
 		}},
 	}

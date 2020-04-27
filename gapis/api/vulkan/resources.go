@@ -99,20 +99,22 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 		return image.NewUncompressed("VK_FORMAT_R8_SINT", fmts.R_S8), nil
 	case VkFormat_VK_FORMAT_R8_SRGB:
 		return image.NewUncompressed("VK_FORMAT_R8_SRGB", fmts.R_U8_NORM_sRGB), nil
+	// Packed formats are laid out backwards in Vulkan, see their definition at:
+	// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#formats-definition
 	case VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16:
-		return image.NewUncompressed("VK_FORMAT_R4G4B4A4_UNORM_PACK16", fmts.RGBA_U4_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_R4G4B4A4_UNORM_PACK16", fmts.ABGR_U4_NORM), nil
 	case VkFormat_VK_FORMAT_B4G4R4A4_UNORM_PACK16:
-		return image.NewUncompressed("VK_FORMAT_B4G4R4A4_UNORM_PACK16", fmts.BGRA_U4_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_B4G4R4A4_UNORM_PACK16", fmts.ARGB_U4_NORM), nil
 	case VkFormat_VK_FORMAT_R5G6B5_UNORM_PACK16:
-		return image.NewUncompressed("VK_FORMAT_R5G6B5_UNORM_PACK16", fmts.RGB_U5U6U5_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_R5G6B5_UNORM_PACK16", fmts.BGR_U5U6U5_NORM), nil
 	case VkFormat_VK_FORMAT_B5G6R5_UNORM_PACK16:
-		return image.NewUncompressed("VK_FORMAT_B5G6R5_UNORM_PACK16", fmts.BGR_U5U6U5_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_B5G6R5_UNORM_PACK16", fmts.RGB_U5U6U5_NORM), nil
 	case VkFormat_VK_FORMAT_R5G5B5A1_UNORM_PACK16:
-		return image.NewUncompressed("VK_FORMAT_R5G5B5A1_UNORM_PACK16", fmts.RGBA_U5U5U5U1_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_R5G5B5A1_UNORM_PACK16", fmts.ABGR_U1U5U5U5_NORM), nil
 	case VkFormat_VK_FORMAT_B5G5R5A1_UNORM_PACK16:
-		return image.NewUncompressed("VK_FORMAT_B5G5R5A1_UNORM_PACK16", fmts.BGRA_U5U5U5U1_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_B5G5R5A1_UNORM_PACK16", fmts.ARGB_U1U5U5U5_NORM), nil
 	case VkFormat_VK_FORMAT_A1R5G5B5_UNORM_PACK16:
-		return image.NewUncompressed("VK_FORMAT_A1R5G5B5_UNORM_PACK16", fmts.ARGB_U1U5U5U5_NORM), nil
+		return image.NewUncompressed("VK_FORMAT_A1R5G5B5_UNORM_PACK16", fmts.BGRA_U5U5U5U1_NORM), nil
 	case VkFormat_VK_FORMAT_R8G8_UNORM:
 		return image.NewUncompressed("VK_FORMAT_R8G8_UNORM", fmts.RG_U8_NORM), nil
 	case VkFormat_VK_FORMAT_R8G8_SNORM:

@@ -17,6 +17,26 @@ package fmts
 import "github.com/google/gapid/core/stream"
 
 var (
+	ARGB_U4_NORM = &stream.Format{
+		Components: []*stream.Component{{
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Alpha,
+		}, {
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Red,
+		}, {
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Green,
+		}, {
+			DataType: &stream.U4,
+			Sampling: stream.LinearNormalized,
+			Channel:  stream.Channel_Blue,
+		}},
+	}
+
 	ARGB_U1U5U5U5_NORM = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U1,
