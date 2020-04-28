@@ -75,20 +75,29 @@ type ipRenderKitBuilder struct {
 	descSetPool         *homoDescriptorSetPool
 	shaderModulePool    *naiveShaderModulePool
 	imageViewPool       *naiveImageViewPool
-	renderPassPool      map[ipRenderRenderPassInfo]VkRenderPass
-	pipelinePool        map[ipRenderPipelineInfo]VkPipeline
-	framebufferPool     map[ipRenderFramebufferInfo]VkFramebuffer
+	// Use a pair of map + slice to be able to easily iterate over
+	// the resources in order when we free them, such that trace
+	// linearization is deterministic.
+	renderPassPoolIndex  map[ipRenderRenderPassInfo]int
+	renderPassPool       []VkRenderPass
+	pipelinePoolIndex    map[ipRenderPipelineInfo]int
+	pipelinePool         []VkPipeline
+	framebufferPoolIndex map[ipRenderFramebufferInfo]int
+	framebufferPool      []VkFramebuffer
 }
 
 func newImagePrimerRenderKitBuilder(sb *stateBuilder, dev VkDevice) *ipRenderKitBuilder {
 	builder := &ipRenderKitBuilder{
-		nm:               debugMarkerName(fmt.Sprintf("render kit builder dev: %v", dev)),
-		dev:              dev,
-		shaderModulePool: newNaiveShaderModulePool(dev),
-		imageViewPool:    newNaiveImageViewPool(dev),
-		renderPassPool:   map[ipRenderRenderPassInfo]VkRenderPass{},
-		pipelinePool:     map[ipRenderPipelineInfo]VkPipeline{},
-		framebufferPool:  map[ipRenderFramebufferInfo]VkFramebuffer{},
+		nm:                   debugMarkerName(fmt.Sprintf("render kit builder dev: %v", dev)),
+		dev:                  dev,
+		shaderModulePool:     newNaiveShaderModulePool(dev),
+		imageViewPool:        newNaiveImageViewPool(dev),
+		renderPassPoolIndex:  map[ipRenderRenderPassInfo]int{},
+		renderPassPool:       []VkRenderPass{},
+		pipelinePoolIndex:    map[ipRenderPipelineInfo]int{},
+		pipelinePool:         []VkPipeline{},
+		framebufferPoolIndex: map[ipRenderFramebufferInfo]int{},
+		framebufferPool:      []VkFramebuffer{},
 	}
 	builder.descriptorSetLayout = ipCreateDescriptorSetLayout(sb, builder.nm, dev, descriptorSetLayoutInfoForRender)
 	builder.descSetPool = newHomoDescriptorSetPool(sb, builder.nm, dev, builder.descriptorSetLayout, ipRenderInitialDescriptorSetPoolSize, false)
@@ -107,7 +116,8 @@ func (kb *ipRenderKitBuilder) Free(sb *stateBuilder) {
 	for _, f := range kb.framebufferPool {
 		sb.write(sb.cb.VkDestroyFramebuffer(kb.dev, f, memory.Nullptr))
 	}
-	kb.framebufferPool = map[ipRenderFramebufferInfo]VkFramebuffer{}
+	kb.framebufferPoolIndex = map[ipRenderFramebufferInfo]int{}
+	kb.framebufferPool = []VkFramebuffer{}
 	if kb.imageViewPool != nil {
 		kb.imageViewPool.Free(sb)
 		kb.imageViewPool = nil
@@ -115,7 +125,8 @@ func (kb *ipRenderKitBuilder) Free(sb *stateBuilder) {
 	for _, p := range kb.pipelinePool {
 		sb.write(sb.cb.VkDestroyPipeline(kb.dev, p, memory.Nullptr))
 	}
-	kb.pipelinePool = map[ipRenderPipelineInfo]VkPipeline{}
+	kb.pipelinePoolIndex = map[ipRenderPipelineInfo]int{}
+	kb.pipelinePool = []VkPipeline{}
 	if kb.shaderModulePool != nil {
 		kb.shaderModulePool.Free(sb)
 		kb.shaderModulePool = nil
@@ -123,7 +134,8 @@ func (kb *ipRenderKitBuilder) Free(sb *stateBuilder) {
 	for _, r := range kb.renderPassPool {
 		sb.write(sb.cb.VkDestroyRenderPass(kb.dev, r, memory.Nullptr))
 	}
-	kb.renderPassPool = map[ipRenderRenderPassInfo]VkRenderPass{}
+	kb.renderPassPoolIndex = map[ipRenderRenderPassInfo]int{}
+	kb.renderPassPool = []VkRenderPass{}
 	if kb.pipelineLayout != VkPipelineLayout(0) {
 		sb.write(sb.cb.VkDestroyPipelineLayout(kb.dev, kb.pipelineLayout, memory.Nullptr))
 		kb.pipelineLayout = VkPipelineLayout(0)
@@ -374,8 +386,8 @@ type ipRenderRenderPassInfo struct {
 }
 
 func (kb *ipRenderKitBuilder) getOrCreateRenderPass(sb *stateBuilder, info ipRenderRenderPassInfo) VkRenderPass {
-	if _, ok := kb.renderPassPool[info]; ok {
-		return kb.renderPassPool[info]
+	if i, ok := kb.renderPassPoolIndex[info]; ok {
+		return kb.renderPassPool[i]
 	}
 
 	inputRef := NewVkAttachmentReference(sb.ta, ipRenderInputAttachmentIndex,
@@ -467,7 +479,8 @@ func (kb *ipRenderKitBuilder) getOrCreateRenderPass(sb *stateBuilder, info ipRen
 	if len(kb.nm) > 0 {
 		attachDebugMarkerName(sb, kb.nm, kb.dev, handle)
 	}
-	kb.renderPassPool[info] = handle
+	kb.renderPassPoolIndex[info] = len(kb.renderPassPool)
+	kb.renderPassPool = append(kb.renderPassPool, handle)
 	return handle
 }
 
@@ -479,8 +492,8 @@ type ipRenderPipelineInfo struct {
 }
 
 func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRenderPipelineInfo) VkPipeline {
-	if _, ok := kb.pipelinePool[info]; ok {
-		return kb.pipelinePool[info]
+	if i, ok := kb.pipelinePoolIndex[info]; ok {
+		return kb.pipelinePool[i]
 	}
 	rpInfo := ipRenderRenderPassInfo{
 		inputAttachmentFormat: info.inputAttachmentFormat,
@@ -691,7 +704,8 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 		memory.Nullptr, sb.MustAllocWriteData(handle).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
-	kb.pipelinePool[info] = handle
+	kb.pipelinePoolIndex[info] = len(kb.pipelinePool)
+	kb.pipelinePool = append(kb.pipelinePool, handle)
 	return handle
 }
 
@@ -707,8 +721,8 @@ type ipRenderFramebufferInfo struct {
 }
 
 func (kb *ipRenderKitBuilder) getOrCreateFramebuffer(sb *stateBuilder, info ipRenderFramebufferInfo) VkFramebuffer {
-	if _, ok := kb.framebufferPool[info]; ok {
-		return kb.framebufferPool[info]
+	if i, ok := kb.framebufferPoolIndex[info]; ok {
+		return kb.framebufferPool[i]
 	}
 	views := []VkImageView{
 		kb.imageViewPool.getOrCreateImageView(sb, kb.nm, ipImageViewInfo{
@@ -751,6 +765,8 @@ func (kb *ipRenderKitBuilder) getOrCreateFramebuffer(sb *stateBuilder, info ipRe
 		sb.MustAllocWriteData(handle).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
-	kb.framebufferPool[info] = handle
+
+	kb.framebufferPoolIndex[info] = len(kb.framebufferPool)
+	kb.framebufferPool = append(kb.framebufferPool, handle)
 	return handle
 }
