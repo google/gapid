@@ -20,7 +20,15 @@ if [ $# -ne 1 ]; then
 	exit
 fi
 
-cp -r $(/usr/libexec/java_home -v 1.8)/jre/ $1/
+# Get JRE from AdoptOpenJDK (the JRE shipped with Kokoro is built with a too old
+# macos SDK version to be notarized)
+curl -fsSL -o jre.tar.gz https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u252-b09.1/OpenJDK8U-jre_x64_mac_hotspot_8u252b09.tar.gz
+echo "f8206f0fef194c598de6b206a4773b2e517154913ea0e26c5726091562a034c8  jre.tar.gz" > jre_sha.txt
+sha256sum --check jre_sha.txt
+mkdir jre
+tar xzf jre.tar.gz --directory jre
+
+cp -r jre/jdk8u252-b09-jre/Contents/Home/ $1/
 
 # Remove unnecessary files.
 # See http://www.oracle.com/technetwork/java/javase/jre-8-readme-2095710.html
