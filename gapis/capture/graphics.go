@@ -40,7 +40,7 @@ import (
 
 const (
 	// CurrentCaptureVersion is incremented on breaking changes to the capture format.
-	// NB: Also update equally named field in spy_base.cpp
+	// NB: Also update equally named field in gapii/cc/spy_base.cpp
 	CurrentCaptureVersion int32 = 3
 )
 

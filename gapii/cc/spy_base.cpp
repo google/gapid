@@ -23,7 +23,7 @@
 #include <inttypes.h>
 
 // CurrentCaptureVersion is incremented on breaking changes to the capture
-// format. NB: Also update equally named field in capture.go
+// format. NB: Also update equally named field in gapis/capture/grahics.go
 static const int CurrentCaptureVersion = 3;
 
 using core::Interval;
