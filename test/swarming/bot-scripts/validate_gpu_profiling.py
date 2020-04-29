@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This Swarming bot test script calls the gapit benchmark command.
+# This Swarming bot test script calls the gapit validate_gpu_profiling command.
 
 import argparse
 import botutil
@@ -35,29 +35,21 @@ def main():
     assert os.path.isdir(args.out_dir)
     out_dir = os.path.normpath(args.out_dir)
 
-    #### Check test parameters
+    #### Load test parameters
     test_params = {}
-    required_keys = ['apk', 'package', 'activity', 'startframe', 'numframes']
+    required_keys = ['apk', 'package']
     botutil.load_params(test_params, required_keys=required_keys)
 
     #### Install APK
     botutil.install_apk(test_params)
 
-    #### Call benchmark command
+    #### Call gapit command
     gapit = os.path.join(agi_dir, 'gapit')
     cmd = [
-        gapit, 'benchmark',
-        '-startframe', test_params['startframe'],
-        '-numframes', test_params['numframes'],
-        test_params['package'] + '/' + test_params['activity']
+        gapit, 'validate_gpu_profiling',
+        '-os', 'android'
     ]
     botutil.runcmd(cmd)
-
-    #### Save gfxtrace
-    gfxtrace = 'benchmark.gfxtrace'
-    if os.path.isfile(gfxtrace):
-        dest = os.path.join(out_dir, gfxtrace)
-        os.rename(gfxtrace, dest)
 
 
 if __name__ == '__main__':
