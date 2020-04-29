@@ -69,14 +69,15 @@ def main():
   'variables': {
     'files': [
       'agi/',
-      'bot-harness.sh',
-      'bot-task.sh',
+      'bot-harness.py',
+      'bot-scripts/',
       '$test_dir/',
     ],
     'command': [
-      './bot-harness.sh',
-      '$test_dir',
+      'python3',
+      './bot-harness.py',
       '$timeout',
+      '$test_dir',
       '$${ISOLATED_OUTDIR}',
     ],
   },

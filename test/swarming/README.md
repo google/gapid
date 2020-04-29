@@ -18,11 +18,11 @@ running order is:
 1. The Kokoro build script `kokoro/linux/build.sh` uses `test/swarming/trigger.py` to
    schedule Swarming tests.
 
-2. The Swarming bot runs `test/swarming/bot-harness.sh`, which wraps
-   `test/swarming/bot-task.sh` to make sure to always turn off the device screen
-   at the end of the task, even upon failure or time out. It is important to
-   always turn the screen off to make sure devices can cool-down, otherwise the
-   Swarming bot may become unusable.
+2. The Swarming bot runs `test/swarming/bot-harness.py`, which wraps one of the
+   scripts unders `test/swarming/bot-scripts/` and makes sure to **always** turn
+   off the device screen at the end of the task, even upon failure or time
+   out. It is important to always turn the screen off to make sure devices can
+   cool-down, otherwise the Swarming bot may become unusable.
 
 3. The Kokoro build script uses `test/swarming/collect.py` to retrieve the
    Swarming tests results.
@@ -53,41 +53,57 @@ You can trigger a Swarming test manually with:
 
 2. Make sure you have only one Android device plugged into your host machine.
 
-3. Use `./bot-harness.sh tests/foobar ${LOGDIR} ${TIMEOUT}` to run the foobar
+3. Use `./bot-harness.py  ${TIMEOUT} tests/foobar ${LOGDIR}` to run the foobar
    test on the device plugged in your host machine, storing logs in the
    `${LOGDIR}` directory, with a timeout limit of `${TIMEOUT}` seconds.
 
 ## Test format
 
-A test is a folder that contains at least a `env.sh` file, which sets various
-environment variables. A typical test contains an APK and a `env.sh` files with
-the information needed by `bot-task.sh`, e.g.:
+A test is a folder that contains at least a `params.json` file that defines the
+test parameters. This JSON must contain at least a "script" entry which value is
+the name of the script to use, this script being found under
+`test/swarming/bot-scripts`. Moreover, this JSON typically defines additional
+parameters used by the test script.
+
+As an example, this is a possible params.json file to use the `test/swarming/bot-scripts/benchmark.py`
+script:
 
 ```
-SWARMING_APK=com_example-app_version42.apk
-SWARMING_PACKAGE=com.example.myApp
-SWARMING_ACTIVITY=com.example.myApp.myActivity
-SWARMING_STARTFRAME=5
-SWARMING_NUMFRAME=5
+{
+  "script": "benchmark.py",
+  "apk": "com.example.myApp.apk",
+  "package": "com.example.myApp",
+  "activity": "com.example.myApp.myActivity",
+  "startframe": "5",
+  "numframe": "2"
+}
 ```
 
-Moreover, some `SWARMING_*` environment variables can be overriden on a
-test-specific level. Some interesting ones:
+This JSON can also define parameters related to how the Swarming task is
+actually triggered, see the details by reading `test/swarming/trigger.py` source
+code. Some noteworthy parameters:
 
 ```
-# Array of devices to run on (bash-array format, e.g.: '(dev1 dev2 dev3)' )
-SWARMING_DEVICES=(flame)
-# Priority: lower value is higher priority
-SWARMING_PRIORITY=100
-# Timeout: maximum number of seconds for the task to terminate
-SWARMING_TIMEOUT=300
+{
+  ...
+  # List of device on which the test must be run
+  "devices": [ "flame", "coral", ... ],
+  # Swarming priority: lower value is higher priority
+  "priority": "100",
+  # Swarming task global timeout (seconds)
+  "priority": "300",
+  # Swarming task expiration: how long to wait to be scheduled (seconds)
+  "expiration": "1200",
+  ...
+}
 ```
 
 ## Nightly results
 
 Nightly results are accumulated over nightly runs. To achieve this, the results
 file is receieved as a build input from the latest build on x20, new results are
-added to it, and the new results are produced as a nightly build artifact.
+added to it, and the new results are produced as an artifact of the nightly
+build.
 
 The results are stored in the `results.json` file. The precise format of this
 JSON is defined in `test/swarming/collect.py`.
