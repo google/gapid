@@ -68,3 +68,5 @@ rm -f $1/lib/libprism?common.dylib
 rm -f $1/lib/libprism?sw.dylib
 rm -f $1/lib/libprism?es2.dylib
 rm -f $1/lib/plugin.jar
+
+rm -rf $1/man/
