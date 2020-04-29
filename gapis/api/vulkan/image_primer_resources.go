@@ -272,26 +272,30 @@ func (p *naiveImageViewPool) Free(sb *stateBuilder) {
 
 // naiveShaderModulePool is a simple map based pool of VkShaderModule
 type naiveShaderModulePool struct {
-	dev     VkDevice
-	shaders map[ipShaderModuleInfo]VkShaderModule
+	dev VkDevice
+	// Use a pair of map + slice to free them in order
+	shadersIndex map[ipShaderModuleInfo]int
+	shaders      []VkShaderModule
 }
 
 func newNaiveShaderModulePool(dev VkDevice) *naiveShaderModulePool {
 	return &naiveShaderModulePool{
-		dev:     dev,
-		shaders: map[ipShaderModuleInfo]VkShaderModule{},
+		dev:          dev,
+		shadersIndex: map[ipShaderModuleInfo]int{},
+		shaders:      []VkShaderModule{},
 	}
 }
 
 func (p *naiveShaderModulePool) getOrCreateShaderModule(sb *stateBuilder, nm debugMarkerName, info ipShaderModuleInfo) VkShaderModule {
-	if s, ok := p.shaders[info]; ok {
-		return s
+	if i, ok := p.shadersIndex[info]; ok {
+		return p.shaders[i]
 	}
 	handle, err := ipCreateShaderModule(sb, nm, p.dev, info)
 	if err != nil {
 		panic(err)
 	}
-	p.shaders[info] = handle
+	p.shadersIndex[info] = len(p.shaders)
+	p.shaders = append(p.shaders, handle)
 	return handle
 }
 
@@ -300,6 +304,7 @@ func (p *naiveShaderModulePool) Free(sb *stateBuilder) {
 	for _, s := range p.shaders {
 		sb.write(sb.cb.VkDestroyShaderModule(p.dev, s, memory.Nullptr))
 	}
-	p.shaders = map[ipShaderModuleInfo]VkShaderModule{}
+	p.shadersIndex = map[ipShaderModuleInfo]int{}
+	p.shaders = []VkShaderModule{}
 	return
 }
