@@ -236,23 +236,27 @@ func (dss *homoDescriptorSetPool) Free(sb *stateBuilder) {
 
 // naiveImageViewPool is a simple map based pool of VkImageView.
 type naiveImageViewPool struct {
-	dev   VkDevice
-	views map[ipImageViewInfo]VkImageView
+	dev VkDevice
+	// Use a pair of map + slice to free them in order
+	viewsIndex map[ipImageViewInfo]int
+	views      []VkImageView
 }
 
 func newNaiveImageViewPool(dev VkDevice) *naiveImageViewPool {
 	return &naiveImageViewPool{
-		dev:   dev,
-		views: map[ipImageViewInfo]VkImageView{},
+		dev:        dev,
+		viewsIndex: map[ipImageViewInfo]int{},
+		views:      []VkImageView{},
 	}
 }
 
 func (p *naiveImageViewPool) getOrCreateImageView(sb *stateBuilder, nm debugMarkerName, info ipImageViewInfo) VkImageView {
-	if v, ok := p.views[info]; ok {
-		return v
+	if i, ok := p.viewsIndex[info]; ok {
+		return p.views[i]
 	}
 	handle := ipCreateImageView(sb, nm, p.dev, info)
-	p.views[info] = handle
+	p.viewsIndex[info] = len(p.views)
+	p.views = append(p.views, handle)
 	return handle
 }
 
@@ -261,7 +265,8 @@ func (p *naiveImageViewPool) Free(sb *stateBuilder) {
 	for _, v := range p.views {
 		sb.write(sb.cb.VkDestroyImageView(p.dev, v, memory.Nullptr))
 	}
-	p.views = map[ipImageViewInfo]VkImageView{}
+	p.viewsIndex = map[ipImageViewInfo]int{}
+	p.views = []VkImageView{}
 	return
 }
 
