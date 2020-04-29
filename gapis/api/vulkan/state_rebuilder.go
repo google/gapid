@@ -461,11 +461,13 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 
 func (sb *stateBuilder) createInstance(vk VkInstance, inst InstanceObjectʳ) {
 	enabledLayers := []Charᶜᵖ{}
-	for _, layer := range inst.EnabledLayers().All() {
+	for _, k := range inst.EnabledLayers().Keys() {
+		layer := inst.EnabledLayers().Get(k)
 		enabledLayers = append(enabledLayers, NewCharᶜᵖ(sb.MustAllocReadData(layer).Ptr()))
 	}
 	enabledExtensions := []Charᶜᵖ{}
-	for _, ext := range inst.EnabledExtensions().All() {
+	for _, k := range inst.EnabledExtensions().Keys() {
+		ext := inst.EnabledExtensions().Get(k)
 		enabledExtensions = append(enabledExtensions, NewCharᶜᵖ(sb.MustAllocReadData(ext).Ptr()))
 	}
 
@@ -681,18 +683,21 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 
 func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	enabledLayers := []Charᶜᵖ{}
-	for _, layer := range d.EnabledLayers().All() {
+	for _, k := range d.EnabledLayers().Keys() {
+		layer := d.EnabledLayers().Get(k)
 		enabledLayers = append(enabledLayers, NewCharᶜᵖ(sb.MustAllocReadData(layer).Ptr()))
 	}
 	enabledExtensions := []Charᶜᵖ{}
-	for _, ext := range d.EnabledExtensions().All() {
+	for _, k := range d.EnabledExtensions().Keys() {
+		ext := d.EnabledExtensions().Get(k)
 		enabledExtensions = append(enabledExtensions, NewCharᶜᵖ(sb.MustAllocReadData(ext).Ptr()))
 	}
 
 	queueCreate := map[uint32]VkDeviceQueueCreateInfo{}
 	queuePriorities := map[uint32][]float32{}
 
-	for _, q := range d.Queues().All() {
+	for _, k := range d.Queues().Keys() {
+		q := d.Queues().Get(k)
 		if _, ok := queueCreate[q.QueueFamilyIndex()]; !ok {
 			queueCreate[q.QueueFamilyIndex()] = NewVkDeviceQueueCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // sType
@@ -1035,7 +1040,8 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		VkResult_VK_SUCCESS,
 	))
 
-	for _, v := range swp.SwapchainImages().All() {
+	for _, k := range swp.SwapchainImages().Keys() {
+		v := swp.SwapchainImages().Get(k)
 		layoutBarriers := ipImageLayoutTransitionBarriers(sb, v, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(v))
 		layoutQueue := sb.getQueueFor(
 			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
@@ -1241,7 +1247,8 @@ func (sb *stateBuilder) getQueueFor(queueFlagBits VkQueueFlagBits, queueFamilyIn
 			return c
 		}
 	}
-	for _, q := range sb.s.Queues().All() {
+	for _, k := range sb.s.Queues().Keys() {
+		q := sb.s.Queues().Get(k)
 		if flagPass(q) && indicesPass(q) && q.Device() == dev {
 			return q
 		}
@@ -1334,7 +1341,8 @@ func (sb *stateBuilder) imageAspectFlagBits(img ImageObjectʳ, flag VkImageAspec
 	bits := []VkImageAspectFlagBits{}
 	b, _ := subUnpackImageAspectFlags(
 		sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, flag)
-	for _, bit := range b.All() {
+	for _, k := range b.Keys() {
+		bit := b.Get(k)
 		bits = append(bits, bit)
 	}
 	return bits
@@ -1511,7 +1519,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 		for aspect, info := range img.SparseImageMemoryBindings().All() {
 			for layer, layerInfo := range info.Layers().All() {
 				for level, levelInfo := range layerInfo.Levels().All() {
-					for _, block := range levelInfo.Blocks().All() {
+					for _, k := range levelInfo.Blocks().Keys() {
+						block := levelInfo.Blocks().Get(k)
 						if !img.Info().DedicatedAllocationNV().IsNil() {
 							// If this was a dedicated allocation set it here
 							if _, ok := memories[block.Memory()]; !ok {
@@ -1537,7 +1546,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 		}
 
 		opaqueSparseBindings := make([]VkSparseMemoryBind, 0, img.OpaqueSparseMemoryBindings().Len())
-		for _, obd := range img.OpaqueSparseMemoryBindings().All() {
+		for _, k := range img.OpaqueSparseMemoryBindings().Keys() {
+			obd := img.OpaqueSparseMemoryBindings().Get(k)
 			opaqueSparseBindings = append(opaqueSparseBindings, obd)
 		}
 
@@ -1579,7 +1589,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 
 		if sparseResidency {
 			isMetadataBound := false
-			for _, req := range img.SparseMemoryRequirements().All() {
+			for _, k := range img.SparseMemoryRequirements().Keys() {
+				req := img.SparseMemoryRequirements().Get(k)
 				prop := req.FormatProperties()
 				if uint64(prop.AspectMask())&uint64(VkImageAspectFlagBits_VK_IMAGE_ASPECT_METADATA_BIT) != 0 {
 					isMetadataBound = IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings())
@@ -1589,7 +1600,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 				// If we have no metadata then the image can have no "real"
 				// contents
 			} else {
-				for _, req := range img.SparseMemoryRequirements().All() {
+				for _, k := range img.SparseMemoryRequirements().Keys() {
+					req := img.SparseMemoryRequirements().Get(k)
 					prop := req.FormatProperties()
 					if (uint64(prop.Flags()) & uint64(VkSparseImageFormatFlagBits_VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT)) != 0 {
 						if !IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings()) {
@@ -1880,7 +1892,8 @@ func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
 	queue := sem.LastQueue()
 	if !sb.s.Queues().Contains(queue) {
 		// find a queue with the same device
-		for _, q := range sb.s.Queues().All() {
+		for _, k := range sb.s.Queues().Keys() {
+			q := sb.s.Queues().Get(k)
 			if q.Device() == sem.Device() {
 				queue = q.VulkanHandle()
 			}
@@ -2715,7 +2728,8 @@ func (sb *stateBuilder) allocateDescriptorSets(dp DescriptorPoolObjectʳ, descSe
 
 func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 	var temporaryRenderPass RenderPassObjectʳ
-	for _, v := range fb.ImageAttachments().All() {
+	for _, k := range fb.ImageAttachments().Keys() {
+		v := fb.ImageAttachments().Get(k)
 		if !GetState(sb.newState).ImageViews().Contains(v.VulkanHandle()) {
 			log.W(sb.ctx, "Image View %v is invalid, framebuffer %v will not be created", v.VulkanHandle(), fb.VulkanHandle())
 			return
@@ -2921,7 +2935,8 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 	))
 
 	anyInitialized := false
-	for _, k := range qp.Status().All() {
+	for _, k := range qp.Status().Keys() {
+		k := qp.Status().Get(k)
 		if k != QueryStatus_QUERY_STATUS_UNINITIALIZED {
 			anyInitialized = true
 			break
@@ -3149,7 +3164,8 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 			queueFamilyIndicesToU32Slice(src.Info().QueueFamilyIndices()),
 			src.Device(), src.LastBoundQueue())
 		if !src.Info().DedicatedAllocationNV().IsNil() {
-			for _, bind := range src.SparseMemoryBindings().All() {
+			for _, k := range src.SparseMemoryBindings().Keys() {
+				bind := src.SparseMemoryBindings().Get(k)
 				if _, ok := memories[bind.Memory()]; !ok {
 					memories[bind.Memory()] = true
 					sb.createDeviceMemory(os.DeviceMemories().Get(bind.Memory()), true)
@@ -3158,7 +3174,8 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 		}
 
 		bufSparseBindings := make([]VkSparseMemoryBind, 0, src.SparseMemoryBindings().Len())
-		for _, bd := range src.SparseMemoryBindings().All() {
+		for _, k := range src.SparseMemoryBindings().Keys() {
+			bd := src.SparseMemoryBindings().Get(k)
 			bufSparseBindings = append(bufSparseBindings, bd)
 		}
 
@@ -3247,7 +3264,8 @@ func (sb *stateBuilder) loadHostDatatoStagingBuffer(buffer BufferObjectʳ, tsk *
 
 	if buffer.SparseMemoryBindings().Len() > 0 {
 		if sparseResidency || IsFullyBound(0, buffer.Info().Size(), buffer.SparseMemoryBindings()) {
-			for _, bind := range buffer.SparseMemoryBindings().All() {
+			for _, k := range buffer.SparseMemoryBindings().Keys() {
+				bind := buffer.SparseMemoryBindings().Get(k)
 				size := bind.Size()
 				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
 					uint64(bind.MemoryOffset()),
@@ -3300,7 +3318,8 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 	if dstObj.SparseMemoryBindings().Len() > 0 {
 		oldFamilyIndex = dstObj.LastBoundQueue().Family()
 		if sparseResidency || IsFullyBound(0, dstObj.Info().Size(), dstObj.SparseMemoryBindings()) {
-			for _, bind := range dstObj.SparseMemoryBindings().All() {
+			for _, k := range dstObj.SparseMemoryBindings().Keys() {
+				bind := dstObj.SparseMemoryBindings().Get(k)
 				size := bind.Size()
 				copies = append(copies, NewVkBufferCopy(sb.ta,
 					offset,                // srcOffset
