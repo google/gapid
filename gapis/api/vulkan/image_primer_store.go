@@ -77,16 +77,19 @@ type ipStoreKitBuilder struct {
 	descSetPool         *homoDescriptorSetPool
 	shaderModulePool    *naiveShaderModulePool
 	imageViewPool       *naiveImageViewPool
-	pipelinePool        map[ipStorePipelineInfo]VkPipeline
+	// Use a pair of map + slice to free them in order
+	pipelinePoolIndex map[ipStorePipelineInfo]int
+	pipelinePool      []VkPipeline
 }
 
 func newImagePrimerStoreKitBuilder(sb *stateBuilder, dev VkDevice) *ipStoreKitBuilder {
 	builder := &ipStoreKitBuilder{
-		nm:               debugMarkerName(fmt.Sprintf("store kit builder dev: %v", dev)),
-		dev:              dev,
-		shaderModulePool: newNaiveShaderModulePool(dev),
-		imageViewPool:    newNaiveImageViewPool(dev),
-		pipelinePool:     map[ipStorePipelineInfo]VkPipeline{},
+		nm:                debugMarkerName(fmt.Sprintf("store kit builder dev: %v", dev)),
+		dev:               dev,
+		shaderModulePool:  newNaiveShaderModulePool(dev),
+		imageViewPool:     newNaiveImageViewPool(dev),
+		pipelinePoolIndex: map[ipStorePipelineInfo]int{},
+		pipelinePool:      []VkPipeline{},
 	}
 	builder.descriptorSetLayout = ipCreateDescriptorSetLayout(sb, builder.nm, dev, descriptorSetLayoutInfoForStore)
 	builder.descSetPool = newHomoDescriptorSetPool(sb, builder.nm, dev, builder.descriptorSetLayout, ipStoreInitialDescriptorSetPoolSize, false)
@@ -114,7 +117,8 @@ func (kb *ipStoreKitBuilder) Free(sb *stateBuilder) {
 	for _, p := range kb.pipelinePool {
 		sb.write(sb.cb.VkDestroyPipeline(kb.dev, p, memory.Nullptr))
 	}
-	kb.pipelinePool = map[ipStorePipelineInfo]VkPipeline{}
+	kb.pipelinePoolIndex = map[ipStorePipelineInfo]int{}
+	kb.pipelinePool = []VkPipeline{}
 	if kb.pipelineLayout != VkPipelineLayout(0) {
 		sb.write(sb.cb.VkDestroyPipelineLayout(kb.dev, kb.pipelineLayout, memory.Nullptr))
 		kb.pipelineLayout = VkPipelineLayout(0)
@@ -281,8 +285,8 @@ type ipStorePipelineInfo struct {
 }
 
 func (kb *ipStoreKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipStorePipelineInfo) VkPipeline {
-	if p, ok := kb.pipelinePool[info]; ok {
-		return p
+	if i, ok := kb.pipelinePoolIndex[info]; ok {
+		return kb.pipelinePool[i]
 	}
 	cs := kb.shaderModulePool.getOrCreateShaderModule(sb, kb.nm, ipShaderModuleInfo{
 		stage:        VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT,
@@ -321,6 +325,7 @@ func (kb *ipStoreKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipStoreP
 		memory.Nullptr, sb.MustAllocWriteData(handle).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
-	kb.pipelinePool[info] = handle
+	kb.pipelinePoolIndex[info] = len(kb.pipelinePool)
+	kb.pipelinePool = append(kb.pipelinePool, handle)
 	return handle
 }
