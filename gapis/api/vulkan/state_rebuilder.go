@@ -2707,7 +2707,8 @@ func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp Descrip
 
 	descSetHandles := make([]VkDescriptorSet, 0, dp.DescriptorSets().Len())
 	descSetLayoutHandles := make([]VkDescriptorSetLayout, 0, dp.DescriptorSets().Len())
-	for vkDescSet, descSetObj := range dp.DescriptorSets().All() {
+	for _, vkDescSet := range dp.DescriptorSets().Keys() {
+		descSetObj := dp.DescriptorSets().Get(vkDescSet)
 		if vkDescSet != VkDescriptorSet(0) && sb.s.DescriptorSets().Contains(vkDescSet) && sb.s.DescriptorSetLayouts().Contains(descSetObj.Layout().VulkanHandle()) {
 			descSetHandles = append(descSetHandles, vkDescSet)
 			descSetLayoutHandles = append(descSetLayoutHandles, descSetObj.Layout().VulkanHandle())
