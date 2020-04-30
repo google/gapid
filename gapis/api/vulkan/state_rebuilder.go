@@ -720,11 +720,19 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 		queuePriorities[q.QueueFamilyIndex()][q.QueueIndex()] = q.Priority()
 	}
 	reorderedQueueCreates := map[uint32]VkDeviceQueueCreateInfo{}
-	i := uint32(0)
-	for k, v := range queueCreate {
-		v.SetPQueuePriorities(NewF32ᶜᵖ(sb.MustAllocReadData(queuePriorities[k]).Ptr()))
-		reorderedQueueCreates[i] = v
-		i++
+	{
+		keys := []uint32{}
+		for k := range queueCreate {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+		i := uint32(0)
+		for _, k := range keys {
+			v := queueCreate[k]
+			v.SetPQueuePriorities(NewF32ᶜᵖ(sb.MustAllocReadData(queuePriorities[k]).Ptr()))
+			reorderedQueueCreates[i] = v
+			i++
+		}
 	}
 
 	pNext := NewVoidᵖ(memory.Nullptr)
