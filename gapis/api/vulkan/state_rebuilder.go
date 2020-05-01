@@ -1526,9 +1526,12 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 
 		nonSparseInfos := []VkSparseImageMemoryBind{}
 
-		for aspect, info := range img.SparseImageMemoryBindings().All() {
-			for layer, layerInfo := range info.Layers().All() {
-				for level, levelInfo := range layerInfo.Levels().All() {
+		for _, aspect := range img.SparseImageMemoryBindings().Keys() {
+			info := img.SparseImageMemoryBindings().Get(aspect)
+			for _, layer := range info.Layers().Keys() {
+				layerInfo := info.Layers().Get(layer)
+				for _, level := range layerInfo.Levels().Keys() {
+					levelInfo := layerInfo.Levels().Get(level)
 					for _, k := range levelInfo.Blocks().Keys() {
 						block := levelInfo.Blocks().Get(k)
 						if !img.Info().DedicatedAllocationNV().IsNil() {
