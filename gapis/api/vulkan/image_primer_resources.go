@@ -14,7 +14,11 @@
 
 package vulkan
 
-import "github.com/google/gapid/gapis/memory"
+import (
+	"sort"
+
+	"github.com/google/gapid/gapis/memory"
+)
 
 // descriptorSetPoolReservation is the result of descriptor set reservation
 // request to homoDescriptorSetPool. It contains the descriptor sets reserved
@@ -127,7 +131,14 @@ func (dss *homoDescriptorSetPool) createDescriptorPool(sb *stateBuilder, setCoun
 		countPerType[t] *= setCount
 	}
 	poolSizes := []VkDescriptorPoolSize{}
-	for t, c := range countPerType {
+	// Create pool sizes in order
+	keys := make([]VkDescriptorType, 0, len(countPerType))
+	for k := range countPerType {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	for _, t := range keys {
+		c := countPerType[t]
 		poolSizes = append(poolSizes, NewVkDescriptorPoolSize(sb.ta, t, c))
 	}
 
