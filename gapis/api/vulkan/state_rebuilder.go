@@ -668,8 +668,10 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 			VkResult_VK_SUCCESS,
 		))
 	}
-	for phyDev, familyIndices := range s.PhysicalDeviceSupports().All() {
-		for index, supported := range familyIndices.QueueFamilySupports().All() {
+	for _, phyDev := range s.PhysicalDeviceSupports().Keys() {
+		familyIndices := s.PhysicalDeviceSupports().Get(phyDev)
+		for _, index := range familyIndices.QueueFamilySupports().Keys() {
+			supported := familyIndices.QueueFamilySupports().Get(index)
 			sb.write(sb.cb.VkGetPhysicalDeviceSurfaceSupportKHR(
 				phyDev,
 				index,
