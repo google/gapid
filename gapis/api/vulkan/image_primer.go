@@ -787,10 +787,14 @@ func walkImageSubresourceRange(sb *stateBuilder, img ImageObjectʳ, rng VkImageS
 }
 
 func walkSparseImageMemoryBindings(sb *stateBuilder, img ImageObjectʳ, f func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ)) {
-	for aspect, aspectData := range img.SparseImageMemoryBindings().All() {
-		for layer, layerData := range aspectData.Layers().All() {
-			for level, levelData := range layerData.Levels().All() {
-				for _, blockData := range levelData.Blocks().All() {
+	for _, aspect := range img.SparseImageMemoryBindings().Keys() {
+		aspectData := img.SparseImageMemoryBindings().Get(aspect)
+		for _, layer := range aspectData.Layers().Keys() {
+			layerData := aspectData.Layers().Get(layer)
+			for _, level := range layerData.Levels().Keys() {
+				levelData := layerData.Levels().Get(level)
+				for _, block := range levelData.Blocks().Keys() {
+					blockData := levelData.Blocks().Get(block)
 					f(VkImageAspectFlagBits(aspect), layer, level, blockData)
 				}
 			}
