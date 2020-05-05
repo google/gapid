@@ -48,9 +48,14 @@ def main():
     cmd = [
         gapit, 'benchmark',
         '-startframe', test_params['startframe'],
-        '-numframes', test_params['numframes'],
-        test_params['package'] + '/' + test_params['activity']
+        '-numframes', test_params['numframes']
     ]
+
+    if 'additionalargs' in test_params.keys():
+        cmd += ['-additionalargs', test_params['additionalargs']]
+
+    cmd += [test_params['package'] + '/' + test_params['activity']]
+
     botutil.runcmd(cmd)
 
     #### Save gfxtrace

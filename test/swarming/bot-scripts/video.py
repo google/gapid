@@ -57,9 +57,14 @@ def main():
         '-start-at-frame', test_params['startframe'],
         '-capture-frames', test_params['numframes'],
         '-observe-frames', test_params['observe_frames'],
-        '-out', gfxtrace,
-        test_params['package'] + '/' + test_params['activity']
+        '-out', gfxtrace
     ]
+
+    if 'additionalargs' in test_params.keys():
+        cmd += ['-additionalargs', test_params['additionalargs']]
+
+    cmd += [test_params['package'] + '/' + test_params['activity']]
+
     p = botutil.runcmd(cmd)
     if p.returncode != 0:
         return 1
