@@ -18,7 +18,6 @@
 
 export SWARMING_TIMESTAMP=`date '+%Y%m%d-%H%M%S'`
 export SWARMING_TASK_PREFIX="Nightly_${SWARMING_TIMESTAMP}"
-export SWARMING_X20_TEST_DIR="tests_nightly"
 
 # We obtain the cumulated results from previous nightly runs through our x20
 # input, and we want to make sure to propagate those results event if the

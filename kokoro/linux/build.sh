@@ -105,10 +105,6 @@ if [ -z "${SWARMING_TIMESTAMP}" ] ; then
   export SWARMING_TIMESTAMP=`date '+%Y%m%d-%H%M%S'`
 fi
 
-if [ -z "${SWARMING_X20_TEST_DIR}" ] ; then
-  export SWARMING_X20_TEST_DIR="tests"
-fi
-
 if [ -z "${SWARMING_TASK_PREFIX}" ] ; then
   export SWARMING_TASK_PREFIX="Kokoro_PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
 fi
@@ -118,7 +114,7 @@ export SWARMING_AUTH_FLAG="--auth-service-account-json=${KOKORO_KEYSTORE_DIR}/74
 # Prepare Swarming files
 SWARMING_DIR=${SRC}/test/swarming
 cp -r bazel-bin/pkg ${SWARMING_DIR}/agi
-cp -r ${KOKORO_GFILE_DIR}/${SWARMING_X20_TEST_DIR} ${SWARMING_DIR}/tests
+cp -r ${KOKORO_GFILE_DIR}/tests ${SWARMING_DIR}/tests
 
 # Swarming environment
 
