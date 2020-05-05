@@ -35,6 +35,9 @@ export SWARMING_TASK_PREFIX="Manual"
 rm -rf triggered/
 
 ./trigger.py --prefix ${SWARMING_TASK_PREFIX} ${SWARMING_TEST_DIR}
+
+# Allow non-zero return values during collection
+set +e
 for t in triggered/*/*.json; do
   ./collect.py ${SWARMING_TIMESTAMP} "manual" `basename ${t} .json` ${t} triggered/results.json
 done
