@@ -31,6 +31,9 @@ export SWARMING_AUTH_FLAG=""
 export SWARMING_TIMESTAMP=`date '+%Y%m%d-%H%M%S'`
 export SWARMING_TASK_PREFIX="Manual"
 
+# Remove results of previous manual run
+rm -rf triggered/
+
 ./trigger.py --prefix ${SWARMING_TASK_PREFIX} ${SWARMING_TEST_DIR}
 for t in triggered/*/*.json; do
   ./collect.py ${SWARMING_TIMESTAMP} "manual" `basename ${t} .json` ${t} triggered/results.json
