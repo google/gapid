@@ -37,11 +37,13 @@ def main():
 
     #### Load test parameters
     test_params = {}
-    required_keys = ['apk', 'package']
-    botutil.load_params(test_params, required_keys=required_keys)
+    # Do not require 'apk' and 'package' params, as some drivers are just
+    # obtained by system update.
+    botutil.load_params(test_params)
 
     #### Install APK
-    botutil.install_apk(test_params)
+    if 'apk' in test_params.keys():
+        botutil.install_apk(test_params)
 
     #### Call gapit command
     gapit = os.path.join(agi_dir, 'gapit')
