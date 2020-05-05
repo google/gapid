@@ -121,7 +121,7 @@ cp -r ${KOKORO_GFILE_DIR}/tests ${SWARMING_DIR}/tests
 # Trigger the tests
 pushd ${SWARMING_DIR}
 for t in tests/* ; do
-  ./trigger.py ${t}
+  ./trigger.py --prefix ${SWARMING_TASK_PREFIX} ${t}
 done
 popd
 
