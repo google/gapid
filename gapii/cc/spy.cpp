@@ -88,7 +88,6 @@ Spy::Spy()
       mNumDrawsPerFrame(0),
       mObserveFrameFrequency(0),
       mObserveDrawFrequency(0),
-      mDisablePrecompiledShaders(false),
       mNestedFrameStart(0),
       mNestedFrameEnd(0),
       mFrameNumber(0) {
@@ -131,8 +130,6 @@ Spy::Spy()
 
   mObserveFrameFrequency = header.mObserveFrameFrequency;
   mObserveDrawFrequency = header.mObserveDrawFrequency;
-  mDisablePrecompiledShaders =
-      (header.mFlags & ConnectionHeader::FLAG_DISABLE_PRECOMPILED_SHADERS) != 0;
   SpyBase::mHideUnknownExtensions =
       (header.mFlags & ConnectionHeader::FLAG_HIDE_UNKNOWN_EXTENSIONS) != 0;
   SpyBase::mDisableCoherentMemoryTracker =
@@ -151,8 +148,6 @@ Spy::Spy()
   GAPID_INFO("GAPII connection established. Settings:");
   GAPID_INFO("Observe framebuffer every %d frames", mObserveFrameFrequency);
   GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
-  GAPID_INFO("Disable precompiled shaders: %s",
-             mDisablePrecompiledShaders ? "true" : "false");
   GAPID_INFO("Hide unknown extensions: %s",
              mHideUnknownExtensions ? "true" : "false");
 

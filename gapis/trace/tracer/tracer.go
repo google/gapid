@@ -111,9 +111,6 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 	}
 
 	flags := gapii.Flags(0)
-	if o.DisablePcs {
-		flags |= gapii.DisablePrecompiledShaders
-	}
 	if o.RecordErrorState {
 		flags |= gapii.RecordErrorState
 	}

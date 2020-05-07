@@ -34,9 +34,6 @@ import (
 type Flags uint32
 
 const (
-	// DisablePrecompiledShaders fakes no support for PCS, forcing the app to
-	// share shader source.
-	DisablePrecompiledShaders Flags = 0x00000001
 	// RecordErrorState queries the driver error state after each all and stores
 	// errors as extras.
 	RecordErrorState Flags = 0x10000000

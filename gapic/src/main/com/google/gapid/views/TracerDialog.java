@@ -312,14 +312,12 @@ public class TracerDialog {
       private final Button withoutBuffering;
       private final Button hideUnknownExtensions;
       private final Button clearCache;
-      private final Button disablePcs;
       private final Composite perfettoConfig;
       private final Label perfettoConfigLabel;
       private final FileTextbox.Directory directory;
       private final Label directoryLabel;
       protected final Text file;
       private final Label fileLabel;
-      private final Label pcsWarning;
       private final Label requiredFieldMessage;
       private final Label emptyAppWarning;
 
@@ -434,9 +432,6 @@ public class TracerDialog {
         withoutBuffering = createCheckbox(
             optGroup, "Disable Buffering", trace.getWithoutBuffering());
         withoutBuffering.setEnabled(true);
-        disablePcs = createCheckbox(
-            optGroup, "Disable pre-compiled shaders", trace.getDisablePcs());
-        disablePcs.setEnabled(false);
         clearCache = createCheckbox(
             optGroup, "Clear package cache", trace.getClearCache());
         clearCache.setEnabled(false);
@@ -470,12 +465,6 @@ public class TracerDialog {
         fileLabel = createLabel(outGroup, "File Name*:");
         file = withLayoutData(createTextbox(outGroup, formatTraceName(friendlyName)),
             new GridData(SWT.FILL, SWT.FILL, true, false));
-
-        pcsWarning = withLayoutData(
-            createLabel(this, "Warning: Pre-compiled shaders are not supported in the replay."),
-            new GridData(SWT.FILL, SWT.FILL, true, false));
-        pcsWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
-        pcsWarning.setVisible(!trace.getDisablePcs());
 
         requiredFieldMessage = withLayoutData(
             createLabel(this, "Please fill out required information (labeled with *)."),
@@ -525,9 +514,6 @@ public class TracerDialog {
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
         startType.addListener(SWT.Selection, mecListener);
-
-        disablePcs.addListener(
-            SWT.Selection, e -> pcsWarning.setVisible(!disablePcs.getSelection()));
 
         traceTarget.addBoxListener(SWT.Modify, e -> {
           userHasChangedTarget = true;
@@ -668,10 +654,6 @@ public class TracerDialog {
 
       private void updateOnApiChange(
           SettingsProto.TraceOrBuilder trace, TraceTypeCapabilities config) {
-        boolean pcs = config != null && config.getCanDisablePcs();
-        disablePcs.setEnabled(pcs);
-        disablePcs.setSelection(pcs && trace.getDisablePcs());
-        pcsWarning.setVisible(pcs && !trace.getDisablePcs());
 
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
         hideUnknownExtensions.setEnabled(ext);
@@ -955,10 +937,6 @@ public class TracerDialog {
         if (dev.config.getHasCache()) {
           trace.setClearCache(clearCache.getSelection());
           options.setClearCache(clearCache.getSelection());
-        }
-        if (config.getCanDisablePcs()) {
-          trace.setDisablePcs(disablePcs.getSelection());
-          options.setDisablePcs(disablePcs.getSelection());
         }
 
         if (isPerfetto(config)) {

@@ -23,21 +23,8 @@ func VulkanTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
 		Type:                           service.TraceType_Graphics,
 		Api:                            "Vulkan",
-		CanDisablePcs:                  false,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: true,
-		RequiresApplication:            true,
-	}
-}
-
-// GLESTraceOptions returns the default trace options for GLES.
-func GLESTraceOptions() *service.TraceTypeCapabilities {
-	return &service.TraceTypeCapabilities{
-		Type:                           service.TraceType_Graphics,
-		Api:                            "OpenGLES",
-		CanDisablePcs:                  true,
-		MidExecutionCaptureSupport:     service.FeatureStatus_Experimental,
-		CanEnableUnsupportedExtensions: false,
 		RequiresApplication:            true,
 	}
 }
@@ -46,7 +33,6 @@ func GLESTraceOptions() *service.TraceTypeCapabilities {
 func PerfettoTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
 		Type:                           service.TraceType_Perfetto,
-		CanDisablePcs:                  false,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: false,
 		RequiresApplication:            false,

@@ -98,7 +98,7 @@ message Trace {
   bool without_buffering = 11;
   bool hide_unknown_extensions = 12;
   bool clear_cache = 13;
-  bool disable_pcs = 14;
+  reserved 14;
   string out_dir = 15;
   string friendly_name = 16;
   Duration gfx_duration = 17;

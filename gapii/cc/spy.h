@@ -92,7 +92,6 @@ class Spy : public VulkanSpy {
   int mNumDrawsPerFrame;
   int mObserveFrameFrequency;
   int mObserveDrawFrequency;
-  bool mDisablePrecompiledShaders;
   // These keep track of nested frame start/end callbacks.
   int mNestedFrameStart;
   int mNestedFrameEnd;
