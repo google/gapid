@@ -76,7 +76,8 @@ type Data struct {
 	// SubcommandReferences contains the information about every subcommand
 	// run by a particular command.
 	SubcommandReferences map[api.CmdID][]SubcommandReference
-	// SubcommandGroups represents the last Subcommand in every command buffer.
+	// SubcommandGroups represents the next utilizable subcommand index in
+	// every command buffer.
 	SubcommandGroups map[api.CmdID][]api.SubCmdIdx
 	// Hidden contains all the commands that should be hidden from the regular
 	// command tree as they exist as a subcommand of another command.

@@ -250,7 +250,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					refs = append(refs, newRefs...)
 					subgroups = append(subgroups, newSubgroups...)
 					if cbo.CommandReferences().Len() > 0 {
-						subgroups = append(subgroups, append(idx, uint64(i), uint64(j), uint64(cbo.CommandReferences().Len()-1)))
+						subgroups = append(subgroups, append(idx, uint64(i), uint64(j), uint64(cbo.CommandReferences().Len())))
 						d.SubcommandNames.SetValue(append(idx, uint64(i), j), fmt.Sprintf("Command Buffer: %v", cbo.VulkanHandle()))
 					}
 				}
@@ -392,14 +392,12 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				for j, buff := range buffers {
 					d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx), uint64(j)}, fmt.Sprintf("Command Buffer: %v", buff))
 					cmdBuff := st.CommandBuffers().Get(buff)
-					// If a submitted command-buffer is empty, we shouldn't show it
-					if cmdBuff.CommandReferences().Len() > 0 {
+					if cmdBuff.CommandReferences().Len() >= 0 {
 						additionalRefs, additionalSubgroups := walkCommandBuffer(cmdBuff, api.SubCmdIdx{uint64(i), uint64(submitIdx), uint64(j)}, i, order)
 						for _, sg := range additionalSubgroups {
 							d.SubcommandGroups[i] = append(d.SubcommandGroups[i], sg[1:])
 						}
-						d.SubcommandGroups[i] = append(d.SubcommandGroups[i], api.SubCmdIdx{uint64(submitIdx), uint64(j), uint64(cmdBuff.CommandReferences().Len() - 1)})
-
+						d.SubcommandGroups[i] = append(d.SubcommandGroups[i], api.SubCmdIdx{uint64(submitIdx), uint64(j), uint64(cmdBuff.CommandReferences().Len())})
 						refs = append(refs, additionalRefs...)
 					}
 				}

@@ -433,7 +433,7 @@ func (c *SubCmdRoot) Insert(r []uint64, nameLookUp *SubCmdIdxTrie) {
 	if CmdID(id) > childRoot.SubGroup.Range.End {
 		childRoot.SubGroup.Range.End = CmdID(id + 1)
 	}
-	for i := CmdID(0); i <= CmdID(id); i++ {
+	for i := CmdID(0); i < CmdID(id); i++ {
 		childRoot.SubGroup.AddCommand(i)
 	}
 }
