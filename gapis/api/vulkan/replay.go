@@ -1050,9 +1050,11 @@ func (a API) Replay(
 			makeReadable.imagesOnly = true
 			optimize = false
 			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer))
+			var layerName string
 			if device.GetConfiguration().GetPerfettoCapability().GetGpuProfiling().GetHasRenderStageProducerLayer() {
-				transforms.Add(&profilingLayers{})
+				layerName = "VkRenderStagesProducer"
 			}
+			transforms.Add(&profilingLayers{layerName: layerName})
 			transforms.Add(replay.NewMappingExporter(ctx, req.handleMappings))
 		}
 	}

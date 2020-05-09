@@ -22,16 +22,15 @@ import (
 	"github.com/google/gapid/gapis/api/transform"
 )
 
-var renderStagesLayer = "VkRenderStagesProducer"
-
-type profilingLayers struct{}
+type profilingLayers struct {
+	layerName string
+}
 
 func (t *profilingLayers) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
 	ctx = log.Enter(ctx, "ProfilingLayers")
 
 	s := out.State()
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
-	l := s.MemoryLayout
 	allocated := []api.AllocResult{}
 	defer func() {
 		for _, d := range allocated {
@@ -45,18 +44,17 @@ func (t *profilingLayers) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}
 
 	switch cmd := cmd.(type) {
-	// TODO(apbodnar) Check that the layer is available before transforming
 	case *VkCreateInstance:
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
-		layerCount := info.EnabledLayerCount()
+		// Strip all instance layers that were originally present. If the device wants
+		// a layer in order to support collecting renderstages, then add that layer only.
 		layers := []Charᶜᵖ{}
-		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil) {
-			layers = append(layers, l)
-		}
 
-		renderStagesLayerData := mustAlloc(ctx, renderStagesLayer)
-		layers = append(layers, NewCharᶜᵖ(renderStagesLayerData.Ptr()))
+		renderStagesLayerData := mustAlloc(ctx, t.layerName)
+		if t.layerName != "" {
+			layers = append(layers, NewCharᶜᵖ(renderStagesLayerData.Ptr()))
+		}
 		layersData := mustAlloc(ctx, layers)
 
 		info.SetEnabledLayerCount(uint32(len(layers)))
@@ -64,9 +62,10 @@ func (t *profilingLayers) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		infoData := mustAlloc(ctx, info)
 
 		newCmd := cb.VkCreateInstance(infoData.Ptr(), cmd.PAllocator(), cmd.PInstance(), cmd.Result())
+		if t.layerName != "" {
+			newCmd.AddRead(renderStagesLayerData.Data())
+		}
 		newCmd.AddRead(
-			renderStagesLayerData.Data(),
-		).AddRead(
 			infoData.Data(),
 		).AddRead(
 			layersData.Data(),

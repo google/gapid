@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
@@ -24,22 +25,11 @@ import (
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
+	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service"
 )
-
-var validationLayerNames = [...]string{
-	// Meta layers
-	"VK_LAYER_KHRONOS_validation",
-	"VK_LAYER_LUNARG_standard_validation",
-	// Regular layers
-	"VK_LAYER_GOOGLE_threading",
-	"VK_LAYER_LUNARG_parameter_validation",
-	"VK_LAYER_LUNARG_object_tracker",
-	"VK_LAYER_LUNARG_core_validation",
-	"VK_LAYER_GOOGLE_unique_objects",
-}
 
 const (
 	// Since Android NDK r21, the VK_LAYER_KHRONOS_validation meta layer
@@ -47,17 +37,6 @@ const (
 	validationMetaLayer  = "VK_LAYER_KHRONOS_validation"
 	debugReportExtension = "VK_EXT_debug_report"
 )
-
-// isValidationLayer returns true if any of the given string matches with any
-// validation layer names. Otherwise returns false.
-func isValidationLayer(n string) bool {
-	for _, v := range validationLayerNames {
-		if n == v {
-			return true
-		}
-	}
-	return false
-}
 
 // findIssues is a command transform that detects issues when replaying the
 // stream of commands. Any issues that are found are written to all the chans in
@@ -125,13 +104,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	case *VkCreateInstance:
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
-		layerCount := info.EnabledLayerCount()
 		layers := []Charᶜᵖ{}
-		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil) {
-			if !isValidationLayer(l.String()) {
-				layers = append(layers, l)
-			}
-		}
 
 		validationMetaLayerData := mustAlloc(ctx, validationMetaLayer)
 		layers = append(layers, NewCharᶜᵖ(validationMetaLayerData.Ptr()))
@@ -142,7 +115,8 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		var debugReportExtNameData api.AllocResult
 		hasDebugReport := false
 		for _, e := range exts {
-			if e.String() == debugReportExtension {
+			// TODO(chrisforbes): provide a better way of getting the contents of the string
+			if debugReportExtension == strings.TrimRight(string(memory.CharToBytes(e.StringSlice(ctx, s).MustRead(ctx, cmd, s, nil))), "\x00") {
 				hasDebugReport = true
 			}
 		}
@@ -170,39 +144,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		).AddRead(
 			extsData.Data(),
 		)
-		// Also add back all the other read/write observations of the origianl vkCreateInstance
-		for _, r := range cmd.Extras().Observations().Reads {
-			newCmd.AddRead(r.Range, r.ID)
-		}
-		for _, w := range cmd.Extras().Observations().Writes {
-			newCmd.AddWrite(w.Range, w.ID)
-		}
-		out.MutateAndWrite(ctx, id, newCmd)
-
-	// Modify the vkCreateDevice to remove any validation layers and add
-	// the meta layer back later. Same reason as vkCreateInstance
-	case *VkCreateDevice:
-		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
-		layerCount := info.EnabledLayerCount()
-		layers := []Charᶜᵖ{}
-		for _, l := range info.PpEnabledLayerNames().Slice(0, uint64(layerCount), l).MustRead(ctx, cmd, s, nil) {
-			if !isValidationLayer(l.String()) {
-				layers = append(layers, l)
-			}
-		}
-
-		validationMetaLayerData := mustAlloc(ctx, validationMetaLayer)
-		layers = append(layers, NewCharᶜᵖ(validationMetaLayerData.Ptr()))
-		layersData := mustAlloc(ctx, layers)
-		info.SetEnabledLayerCount(uint32(len(layers)))
-		info.SetPpEnabledLayerNames(NewCharᶜᵖᶜᵖ(layersData.Ptr()))
-		infoData := mustAlloc(ctx, info)
-
-		newCmd := cb.VkCreateDevice(cmd.PhysicalDevice(), infoData.Ptr(), cmd.PAllocator(), cmd.PDevice(), cmd.Result())
-		newCmd.AddRead(validationMetaLayerData.Data())
-		newCmd.AddRead(infoData.Data()).AddRead(layersData.Data())
-		// Also add back the read/write observations of the original vkCreateDevice
+		// Also add back all the other read/write observations of the original vkCreateInstance
 		for _, r := range cmd.Extras().Observations().Reads {
 			newCmd.AddRead(r.Range, r.ID)
 		}
