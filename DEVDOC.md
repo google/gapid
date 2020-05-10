@@ -51,8 +51,13 @@ features working. Make sure to edit the files through their link found under the
 ## How to debug / breakpoint in Golang code
 
 The recommended Golang debugger is
-[delve](https://github.com/go-delve/delve). You can start a debug build of gapis
-or a client under this debugger.
+[delve](https://github.com/go-delve/delve). You can start a **debug** build of
+gapis or a client under this debugger. To build in debug mode, use the `-c dbg`
+Bazel flag, e.g.:
+
+```
+bazel build -c dbg pkg
+```
 
 ### Debugging GAPIS
 
