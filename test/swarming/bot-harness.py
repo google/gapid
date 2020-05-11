@@ -25,10 +25,10 @@ import subprocess
 import sys
 import time
 
-def adb_press_key(keycode):
-    cmd = ['adb', 'shell', 'input', 'keyevent', str(keycode)]
-    p = subprocess.run(cmd, timeout=2, check=True)
-
+def adb(args, timeout=1):
+    cmd = ['adb'] + args
+    print('ADB command: ' + ' '.join(cmd), flush=True)
+    return subprocess.run(cmd, timeout=timeout, check=True, capture_output=True, text=True)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -58,17 +58,6 @@ def main():
     test_script = os.path.abspath(os.path.join('bot-scripts', test_params['script']))
     assert os.path.isfile(test_script)
 
-    #### Check Android device access
-    cmd = ['adb', 'shell', 'true']
-    p = subprocess.run(cmd, timeout=10)
-    if p.returncode != 0:
-        print('Error: zero or more than one device connected')
-        return 1
-    # Print device fingerprint
-    cmd = ['adb', 'shell', 'getprop', 'ro.build.fingerprint']
-    p = subprocess.run(cmd, timeout=10, capture_output=True, check=True, text=True)
-    print('Device fingerprint: ' + p.stdout)
-
     #### Timeout: make room for pre-script checks and post-script cleanup.
     # All durations are in seconds.
     cleanup_timeout = 15
@@ -77,9 +66,31 @@ def main():
         return 1
     test_timeout = args.timeout - cleanup_timeout
 
-    #### Clean up logcat
-    cmd = ['adb', 'logcat', '-c']
-    p = subprocess.run(cmd, timeout=10, check=True)
+    #### Check Android device access
+    # This first adb command may take a while if the adb deamon has to launch
+    p = adb(['shell', 'true'], timeout=10)
+    if p.returncode != 0:
+        print('Error: zero or more than one device connected')
+        return 1
+    # Print device fingerprint
+    p = adb(['shell', 'getprop', 'ro.build.fingerprint'])
+    print('Device fingerprint: ' + p.stdout)
+
+    #### Prepare device
+    # Wake up (224) and unlock (82) screen, sleep to pass any kind of animation
+    adb(['shell', 'input', 'keyevent', '224'])
+    time.sleep(2)
+    adb(['shell', 'input', 'keyevent', '82'])
+    time.sleep(1)
+    # Turn brightness to a minimum, to prevent device to get too hot
+    adb(['shell', 'settings', 'put', 'system', 'screen_brightness', '0'])
+    # remove any implicit vulkan layers
+    adb(['shell', 'settings', 'delete', 'global', 'enable_gpu_debug_layers'])
+    adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_app'])
+    adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_layers'])
+    adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_layer_app'])
+    # Clean up logcat, can take a few seconds
+    adb(['logcat', '-c'], timeout=5)
 
     #### Launch test script
     print('Start test script "{}" with timeout of {} seconds'.format(test_script, test_timeout))
@@ -115,10 +126,16 @@ def main():
     #### Turn off the device screen
     # Key "power" (26) toggle between screen off and on, so first make sure to
     # have the screen on with key "wake up" (224), then press "power" (26)
-    adb_press_key(224)
+    adb(['shell', 'input', 'keyevent', '224'])
     # Wait a bit to let any kind of device wake up animation terminate
     time.sleep(2)
-    adb_press_key(26)
+    adb(['shell', 'input', 'keyevent', '26'])
+
+    #### Force-stop AGI and test app
+    for abi in ['armeabiv7a', 'arm64v8a']:
+        adb(['shell', 'am', 'force-stop', 'com.google.android.gapid.' + abi])
+    if 'package' in test_params.keys():
+        adb(['shell', 'am', 'force-stop', test_params['package']])
 
     #### Test may fail halfway through, salvage any gfxtrace
     gfxtraces = glob.glob(os.path.join(test_dir, '*.gfxtrace'))

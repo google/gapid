@@ -21,7 +21,7 @@ import os
 import tempfile
 import subprocess
 import sys
-
+import time
 
 def log(msg):
     '''Log the message, making sure to force flushing to stdout'''
@@ -92,5 +92,7 @@ def install_apk(test_params):
         # Installing big APKs can take more than a minute, but get also get
         # stuck, so give a big timeout to this command.
         subprocess.run(cmd, timeout=120, check=True, stdout=sys.stdout, stderr=sys.stderr)
+        # Sleep a bit, as the app may not be listed right after install
+        time.sleep(1)
     else:
         log('Skip install of {} because package {} is already installed.'.format(test_params['apk'], test_params['package']))
