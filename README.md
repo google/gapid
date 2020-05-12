@@ -8,6 +8,12 @@
 <img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>
 [![Windows Build Status](https://gapid-build.storage.googleapis.com/badges/build_status_windows.svg)](https://gapid-build.storage.googleapis.com/badges/build_result_windows.html)
 
+## Maintenance Mode
+
+GAPID is not currently under active development. Issues filed against this repo might not be answered.
+
+For Android GPU debugging and profiling, please use [AGI](https://github.com/google/agi) which is based on GAPID.
+
 ## Downloads
 
 **[Download the latest version of GAPID here.](https://github.com/google/gapid/releases)**
