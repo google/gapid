@@ -33,6 +33,13 @@ def runcmd(cmd):
     return subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
 
 
+def adb(args, timeout=1):
+    '''Log and run an ADB command, returning a subprocess.CompletedProcess with output captured'''
+    cmd = ['adb'] + args
+    print('ADB command: ' + ' '.join(cmd), flush=True)
+    return subprocess.run(cmd, timeout=timeout, check=True, capture_output=True, text=True)
+
+
 def load_params(test_params, params_file='params.json', required_keys=[]):
     '''Load the JSON params_file into test_params.
 

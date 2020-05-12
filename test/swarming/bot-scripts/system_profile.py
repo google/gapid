@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This Swarming bot test script uses gapit to perform a capture-replay test,
-# checking whether the replay output matches the app frames.
+# This Swarming bot test script uses gapit to perform a system_profile test.
 
 import argparse
 import botutil
@@ -38,27 +37,33 @@ def main():
     out_dir = os.path.normpath(args.out_dir)
 
     #### Test parameters
-    test_params = {
-        'startframe': '100',
-        'numframes': '5',
-        'observe_frames': '1',
-    }
-    required_keys = ['apk', 'package', 'activity']
+    test_params = {}
+    required_keys = ['apk', 'package', 'activity', 'perfetto_config']
     botutil.load_params(test_params, required_keys=required_keys)
 
     #### Install APK
     botutil.install_apk(test_params)
 
+    #### Retrieve device-specific perfetto config
+    p = botutil.adb(['shell', 'getprop', 'ro.product.device'])
+    device = p.stdout.rstrip()
+    if not device in test_params['perfetto_config'].keys():
+        botutil.log('Error: no perfetto config found for device: ' + device)
+        return 1
+    perfetto_config = test_params['perfetto_config'][device]
+    if not os.path.isfile(perfetto_config):
+        botutil.log('Error: perfetto config file not found: ' + perfetto_config)
+        return 1
+
     #### Trace the app
     gapit = os.path.join(agi_dir, 'gapit')
-    gfxtrace = os.path.join(out_dir, test_params['package'] + '.gfxtrace')
+    perfetto_trace = os.path.join(out_dir, test_params['package'] + '.perfetto')
     cmd = [
         gapit, 'trace',
-        '-api', 'vulkan',
-        '-start-at-frame', test_params['startframe'],
-        '-capture-frames', test_params['numframes'],
-        '-observe-frames', test_params['observe_frames'],
-        '-out', gfxtrace
+        '-api', 'perfetto',
+        '-for', '5s',
+        '-perfetto', perfetto_config,
+        '-out', perfetto_trace
     ]
 
     if 'additionalargs' in test_params.keys():
@@ -73,15 +78,14 @@ def main():
     #### Stop the app asap for device cool-down
     botutil.adb(['shell', 'am', 'force-stop', test_params['package']])
 
-    #### Replay
-    videofile = os.path.join(out_dir, test_params['package'] + '.mp4')
+    #### Check perfetto trace validity by formatting it to JSON
+    perfetto_json = perfetto_trace.replace('.perfetto', '.json')
     cmd = [
-        gapit, 'video',
-        '-gapir-nofallback',
-        '-type', 'sxs',
-        '-frames-minimum', test_params['numframes'],
-        '-out', videofile,
-        gfxtrace
+        gapit, 'perfetto',
+        '-mode', 'metrics',
+        '-format', 'json',
+        '-out', perfetto_json,
+        perfetto_trace
     ]
     p = botutil.runcmd(cmd)
     return p.returncode
