@@ -36,6 +36,7 @@ go_library(
     deps = [
         "//core/app:go_default_library",
         "//core/app/crash:go_default_library",
+        "//core/app/flags:go_default_library",
         "//core/context/keys:go_default_library",
         "//core/event/task:go_default_library",
         "//core/fault:go_default_library",

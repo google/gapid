@@ -26,6 +26,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
@@ -331,7 +332,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		result.GpuProfiling = gpu
 	}
 
-	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 {
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 && *flags.EnableFrameLifecycle {
 		gpu.HasFrameLifecycle = true
 	}
 

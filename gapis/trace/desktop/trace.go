@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -61,7 +62,7 @@ func (t *DesktopTracer) Validate(ctx context.Context) error {
 // TraceConfiguration returns the device's supported trace configuration.
 func (t *DesktopTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
 	apis := make([]*service.TraceTypeCapabilities, 0, 1)
-	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
+	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 && *flags.EnableVulkanTracing {
 		apis = append(apis, tracer.VulkanTraceOptions())
 	}
 

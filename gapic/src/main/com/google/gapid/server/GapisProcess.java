@@ -21,6 +21,7 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Settings;
+import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -95,6 +96,9 @@ public class GapisProcess extends ChildProcess<Integer> {
       args.add("-analytics");
       args.add(settings.preferences().getAnalyticsClientId());
     }
+
+    // Append all experimental flags if any is enabled.
+    args.addAll(Experimental.getGapisFlags(settings.preferences().getEnableAllExperimentalFeatures()));
 
     File logDir = Logging.getLogDir();
     if (logDir != null) {

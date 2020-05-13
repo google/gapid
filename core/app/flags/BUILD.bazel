@@ -19,6 +19,7 @@ go_library(
     srcs = [
         "choices.go",
         "doc.go",
+        "experimental.go",
         "flags.go",
         "repeated.go",
         "strings.go",

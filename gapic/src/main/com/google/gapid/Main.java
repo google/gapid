@@ -32,6 +32,7 @@ import com.google.gapid.server.GapiPaths;
 import com.google.gapid.server.GapisProcess;
 import com.google.gapid.util.Crash2ExceptionHandler;
 import com.google.gapid.util.ExceptionHandler;
+import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
@@ -204,6 +205,9 @@ public class Main {
     Flags.fullHelp,
     Flags.version,
     Devices.skipDeviceValidation,
+    Experimental.enableAll,
+    Experimental.enableFrameLifecycle,
+    Experimental.enableVulkanTracing,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,
     GapisProcess.disableGapisTimeout,

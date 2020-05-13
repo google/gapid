@@ -52,6 +52,7 @@ public class SettingsDialog extends DialogBase {
   protected final Models models;
   private SettingsFormBase form;
   protected Button disableReplayOptimization;
+  protected Button enableAllExperimentalFeatures;
 
   public SettingsDialog(Shell parent, Models models, Theme theme) {
     super(parent, theme);
@@ -79,6 +80,10 @@ public class SettingsDialog extends DialogBase {
             "Disable replay optimization",
             models.settings.preferences().getDisableReplayOptimization()),
             withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+        enableAllExperimentalFeatures = withLayoutData(createCheckbox(this,
+            "Enable all unsupported experimental features (requires restart)",
+            models.settings.preferences().getEnableAllExperimentalFeatures()),
+            withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       }
     };
     form.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -103,6 +108,8 @@ public class SettingsDialog extends DialogBase {
   private void update() {
     models.settings.writePreferences().setDisableReplayOptimization(
         disableReplayOptimization.getSelection());
+    models.settings.writePreferences().setEnableAllExperimentalFeatures(
+        enableAllExperimentalFeatures.getSelection());
   }
 
   public static class SettingsFormBase extends Composite {

@@ -35,6 +35,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -280,7 +281,7 @@ func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.Device
 		apis = append(apis, tracer.GLESTraceOptions())
 	}
 	*/
-	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
+	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 && *flags.EnableVulkanTracing {
 		apis = append(apis, tracer.VulkanTraceOptions())
 	}
 	if t.b.SupportsPerfetto(ctx) {

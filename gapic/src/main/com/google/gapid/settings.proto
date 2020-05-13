@@ -54,6 +54,7 @@ message Preferences {
   string analytics_client_id = 7;  // Empty (default) means do not track.
   bool disable_replay_optimization = 8;
   bool report_crashes = 9;
+  bool enable_all_experimental_features = 10;
 }
 
 message UI {
