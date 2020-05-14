@@ -139,6 +139,11 @@ def main():
 
     #### Test may fail halfway through, salvage any gfxtrace
     gfxtraces = glob.glob(os.path.join(test_dir, '*.gfxtrace'))
+    # Do not salvage a gfxtrace that is listed as a test input
+    if ('gfxtrace' in test_params.keys()):
+        g = os.path.join(test_dir, test_params['gfxtrace'])
+        if g in gfxtraces:
+            gfxtraces.remove(g)
     if len(gfxtraces) != 0:
         salvage_dir = os.path.join(out_dir, 'harness-salvage')
         os.makedirs(salvage_dir, exist_ok=True)
