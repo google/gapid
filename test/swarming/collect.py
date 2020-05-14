@@ -79,7 +79,7 @@ def main():
     status = 'fail'
     if ('exit_code' in task_result.keys()) and (task_result['exit_code'] == '0') and (task_result['state'] == 'COMPLETED') and (task_result['failure'] == False) and (task_result['internal_failure'] == False):
         status = 'pass'
-    elif task_result['state'] == 'TIMEOUT':
+    elif task_result['state'] == 'TIMED_OUT':
         status = 'timeout'
     elif task_result['state'] == 'EXPIRED':
         status = 'expired'
