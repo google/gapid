@@ -73,7 +73,9 @@ public class Settings {
           .setCheckForUpdates(true))
       .setUi(SettingsProto.UI.newBuilder()
           .setPerfetto(SettingsProto.UI.Perfetto.newBuilder()
-              .setDrawerHeight(250)))
+              .setDrawerHeight(250))
+          .setFramebufferPicker(SettingsProto.UI.FramebufferPicker.newBuilder()
+              .setEnabled(true)))
       .setTrace(SettingsProto.Trace.newBuilder()
           .setType("Graphics")
           .setGfxDuration(SettingsProto.Trace.Duration.newBuilder()
@@ -373,7 +375,8 @@ public class Settings {
     Report(new int[] { 75, 25 }),
     Shaders(new int[] { 20, 80 }),
     Programs(new int[] { 20, 80 }),
-    Uniforms(new int[] { 70, 30 });
+    Uniforms(new int[] { 70, 30 }),
+    Framebuffers(new int[] { 25, 75 });
 
     private final int[] dflt;
 

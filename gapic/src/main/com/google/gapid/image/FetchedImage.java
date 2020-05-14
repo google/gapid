@@ -61,6 +61,16 @@ public class FetchedImage implements MultiLayerAndLevelImage {
   }
 
   public static ListenableFuture<FetchedImage> load(
+    Client client, Path.Device device, Path.ImageInfo imagePath, Consumer<Info> onInfo) {
+  return MoreFutures.transformAsync(client.get(imageInfo(imagePath), device), value -> {
+    Images.Format format = getFormat(value.getImageInfo());
+    onInfo.accept(value.getImageInfo());
+    return MoreFutures.transform(client.get(imageData(imagePath, format.format), device),
+        pixelValue -> new FetchedImage(client, device, format, pixelValue.getImageInfo()));
+  });
+}
+
+  public static ListenableFuture<FetchedImage> load(
       Client client, Path.Device device, Path.ResourceData imagePath) {
     return MoreFutures.transformAsync(client.get(resourceInfo(imagePath), device), value -> {
       API.ResourceData data = value.getResourceData();

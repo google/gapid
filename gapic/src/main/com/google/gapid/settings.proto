@@ -69,6 +69,11 @@ message UI {
     bool show_vsync = 3;
   }
   Perfetto perfetto = 2;
+
+  message FramebufferPicker {
+    bool enabled = 1;
+  }
+  FramebufferPicker framebuffer_picker = 3;
 }
 
 message Trace {

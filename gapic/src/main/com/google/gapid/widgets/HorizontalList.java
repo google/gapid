@@ -41,7 +41,11 @@ public abstract class HorizontalList extends Composite {
   private int maxHeight = 0;
 
   public HorizontalList(Composite parent) {
-    super(parent, SWT.H_SCROLL | SWT.V_SCROLL);
+    this(parent, 0);
+  }
+
+  public HorizontalList(Composite parent, int style) {
+    super(parent, SWT.H_SCROLL | SWT.V_SCROLL | style);
     this.hBar = getHorizontalBar();
     this.vBar = getVerticalBar();
 

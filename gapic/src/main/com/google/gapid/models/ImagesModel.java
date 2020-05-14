@@ -48,6 +48,9 @@ public class ImagesModel {
   private static final Path.UsageHints FB_HINTS = Path.UsageHints.newBuilder()
       .setPrimary(true)
       .build();
+  private static final Path.UsageHints PREV_HINTS = Path.UsageHints.newBuilder()
+      .setPreview(true)
+      .build();
 
   private final Client client;
   private final Devices devices;
@@ -71,6 +74,15 @@ public class ImagesModel {
     
     return MoreFutures.transformAsync(client.get(fbPath, getReplayDevice()), 
         value ->  FetchedImage.load(client, getReplayDevice(), value.getFramebufferAttachment().getImageInfo()));
+  }
+  
+  public ListenableFuture<ImageData> getFramebufferImage(CommandIndex command,
+      int attachment, Path.RenderSettings renderSettings, Consumer<Image.Info> onInfo) {
+    Path.Any fbPath = Paths.framebufferAttachmentAfter(command, attachment, renderSettings, PREV_HINTS);
+
+    return MoreFutures.transform(FetchedImage.loadImage(MoreFutures.transformAsync(client.get(fbPath, getReplayDevice()), 
+        value -> FetchedImage.load(client, getReplayDevice(), value.getFramebufferAttachment().getImageInfo(), onInfo)), 0, 0),
+        image -> processImage(image, THUMB_SIZE));
   }
 
   public ListenableFuture<FetchedImage> getResource(Path.ResourceData path) {

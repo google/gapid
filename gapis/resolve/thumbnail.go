@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/image"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
@@ -52,7 +51,6 @@ func CommandThumbnail(
 
 	fbaList, err := FramebufferAttachments(ctx, &path.FramebufferAttachments{After: p}, r)
 	if err != nil {
-		log.E(ctx, "ERROR HERE 1")
 		return nil, err
 	}
 
@@ -65,7 +63,16 @@ func CommandThumbnail(
 	}
 
 	if fbaInfo == nil {
-		return nil, fmt.Errorf("No viable attachment exists for thumnails")
+		for _, fba := range fbaList.(*service.FramebufferAttachments).GetAttachments() {
+			if fba.GetType() == api.FramebufferAttachmentType_OutputDepth {
+				fbaInfo = fba
+				break
+			}
+		}
+	}
+
+	if fbaInfo == nil {
+		return nil, fmt.Errorf("No viable attachment exists for thumbnails")
 	}
 
 	fbaPath := &path.FramebufferAttachment{

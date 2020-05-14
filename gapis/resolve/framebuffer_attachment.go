@@ -55,7 +55,7 @@ func (r *FramebufferAttachmentsResolvable) Resolve(ctx context.Context) (interfa
 			out = append(out, &service.FramebufferAttachment{
 				Index: info.Index,
 				Type:  info.Type,
-				Label: fmt.Sprintf("%s_%d", typeToString(info.Type), info.Index),
+				Label: fmt.Sprintf("%d: %s", info.Index, typeToString(info.Type)),
 			})
 		}
 	}
