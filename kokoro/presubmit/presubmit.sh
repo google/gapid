@@ -52,7 +52,7 @@ function check() {
 
 function run_copyright_headers() {
   tmpfile=`mktemp`
-  for suffix in "cc" "cpp" "frag" "glsl" "go" "h" "hpp" "java" "js" "sh" "vert" "xml"; do
+  for suffix in "cc" "cpp" "frag" "glsl" "go" "h" "hpp" "java" "js" "py" "sh" "vert" "xml"; do
     # Grep flag '-L' print files that DO NOT match the copyright regex
     # Filter out third party files
     # Grep seems to match "(standard input)", filter this out in the for loop output
