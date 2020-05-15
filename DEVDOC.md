@@ -217,3 +217,46 @@ $ ./bazel-bin/pkg/gapit -fullhelp
 
 The Error level is recommended when adding debug print, to make sure it is not
 filtered away.
+
+## How to profile AGI internals
+
+### GAPIS
+
+The server has instrumentation to output profiling information:
+
+```
+$ ./agi/gapis --fullhelp
+[...]
+  -profile-pprof
+	enable pprof profiling
+  -profile-trace string
+	write a trace to file
+[...]
+```
+
+The `-profile-trace` option generates a trace that can be open in Chrome via
+`chrome://tracing`, or using [Perfetto web UI](https://ui.perfetto.dev/).
+
+The `gapit` and `agi` (UI starter) clients can pass these arguments to gapis via
+`-gapis-args`, e.g.:
+
+```
+# GAPIT
+./agi/gapit <verb> -gapis-args '-profile-trace my-profile-trace.out' <verb arguments>
+
+# GAPIC
+./agi/agi -gapis-args '-profile-trace my-profile-trace.out' foobar.gfxtrace
+```
+
+### On-device: GAPII, GAPIR
+
+To profile the interceptor GAPII and the replayer GAPIR on Android devices, you
+can resort to classic profiling solutions. Check the Android [system tracing
+overview](https://developer.android.com/topic/performance/tracing) doc. Beside
+systrace, perfetto and the Android studio profile, also note that
+[Inferno](https://android.googlesource.com/platform/system/extras/+/master/simpleperf/doc/inferno.md)
+makes it easy to get flamegraphs.
+
+To profile the replayer using AGI itself, you can export a given replay into a
+standalone APK (using `gapit export_replay -apk`), and profile that replay-APK
+using AGI.
