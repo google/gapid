@@ -49,7 +49,10 @@ public class SelectionView extends Composite implements State.Listener {
     }
 
     if (selection != null) {
-      selection.buildUi(this, state).requestLayout();
+      Composite composite = selection.buildUi(this, state);
+      if (composite != null) {
+        composite.requestLayout();
+      }
     }
   }
 }

@@ -23,13 +23,15 @@ import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuSummaryTrack;
-import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.CpuTrack.Slices;
 import com.google.gapid.perfetto.models.Selection;
 
 /**
@@ -155,9 +157,9 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
   @Override
   public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Selection.Kind.Cpu, transform(track.getSlices(ts), r -> {
-        r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-        return new CpuTrack.SlicesBuilder(r);
+      builder.add(Selection.Kind.Cpu, (ListenableFuture<Slices>)transform(track.getSlices(ts), slices -> {
+        slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
+        return slices;
       }));
     }
   }

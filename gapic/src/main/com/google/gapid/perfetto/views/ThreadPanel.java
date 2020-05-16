@@ -22,20 +22,20 @@ import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
-import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.CpuTrack.Slices;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
-import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.models.ThreadTrack;
-import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -109,9 +109,9 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       }
 
       TimeSpan visible = state.getVisibleTime();
-      Selection selectedCpu = state.getSelection(Selection.Kind.Cpu);
-      Selection selectedThreadState = state.getSelection(Selection.Kind.ThreadState);
-      Selection selectedThread = state.getSelection(Selection.Kind.Thread);
+      Selection<?> selectedCpu = state.getSelection(Selection.Kind.Cpu);
+      Selection<?> selectedThreadState = state.getSelection(Selection.Kind.ThreadState);
+      Selection<?> selectedThread = state.getSelection(Selection.Kind.Thread);
       List<Highlight> visibleSelected = Lists.newArrayList();
 
       boolean merging = false;
@@ -299,6 +299,17 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
             @Override
             public boolean click() {
+              if ((mods & SWT.MOD1) == SWT.MOD1) {
+                state.addSelection(Selection.Kind.ThreadState,
+                    new ThreadTrack.StateSlices(data.schedStarts[index],
+                        data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
+                        data.isSched[index], data.schedStates[index], data.ids[index]));
+              } else {
+                state.setSelection(Selection.Kind.ThreadState,
+                    new ThreadTrack.StateSlices(data.schedStarts[index],
+                        data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
+                        data.isSched[index], data.schedStates[index], data.ids[index]));
+              }
               if (data.isSched[index]) {
                 if ((mods & SWT.MOD1) == SWT.MOD1) {
                   state.addSelection(Selection.Kind.Cpu, track.getCpuSlice(data.ids[index]));
@@ -306,18 +317,6 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
                 } else {
                   state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.ids[index]));
                   state.setSelectedThread(state.getThreadInfo(track.getThread().utid));
-                }
-              } else {
-                if ((mods & SWT.MOD1) == SWT.MOD1) {
-                  state.addSelection(Selection.Kind.ThreadState,
-                      new ThreadTrack.StateSlice(data.schedStarts[index],
-                          data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                          data.isSched[index], data.schedStates[index], data.ids[index]));
-                } else {
-                  state.setSelection(Selection.Kind.ThreadState,
-                      new ThreadTrack.StateSlice(data.schedStarts[index],
-                          data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                          data.isSched[index], data.schedStates[index], data.ids[index]));
                 }
               }
               return true;
@@ -377,11 +376,9 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
                 return true;
               } else if (!concatedId.isEmpty()) { // Track data with quantization.
                 if ((mods & SWT.MOD1) == SWT.MOD1) {
-                  state.addSelection(Selection.Kind.Thread, transform(track.getSlices(concatedId),
-                      s -> new SliceTrack.SlicesBuilder(s).build()));
+                  state.addSelection(Selection.Kind.Thread, track.getSlices(concatedId));
                 } else {
-                  state.setSelection(Selection.Kind.Thread, transform(track.getSlices(concatedId),
-                      s -> new SliceTrack.SlicesBuilder(s).build()));
+                  state.setSelection(Selection.Kind.Thread, track.getSlices(concatedId));
                 }
                 return true;
               }
@@ -412,11 +409,10 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
     }
 
     if (startDepth == 0) {
-      builder.add(Selection.Kind.ThreadState,
-          transform(track.getStates(ts), ThreadTrack.StateSlicesBuilder::new));
-      builder.add(Selection.Kind.Cpu, transform(track.getCpuSlices(ts), r -> {
-        r.forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-        return new CpuTrack.SlicesBuilder(r);
+      builder.add(Selection.Kind.ThreadState, track.getStates(ts));
+      builder.add(Selection.Kind.Cpu, (ListenableFuture<Slices>)transform(track.getCpuSlices(ts), slices -> {
+        slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
+        return slices;
       }));
     }
 
@@ -426,8 +422,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       if (endDepth >= track.getThread().maxDepth) {
         endDepth = Integer.MAX_VALUE;
       }
-      builder.add(Selection.Kind.Thread,
-          transform(track.getSlices(ts, startDepth, endDepth), SliceTrack.SlicesBuilder::new));
+      builder.add(Selection.Kind.Thread, track.getSlices(ts, startDepth, endDepth));
     }
   }
 

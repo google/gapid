@@ -25,13 +25,11 @@ import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.State;
-import com.google.gapid.perfetto.views.VulkanEventSelectionView;
 import com.google.gapid.perfetto.views.VulkanEventsSelectionView;
 
 import org.eclipse.swt.widgets.Composite;
@@ -39,7 +37,6 @@ import org.eclipse.swt.widgets.Composite;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Data> {
   private static final String BASE_COLUMNS =
@@ -114,22 +111,17 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     return format(SLICES_WITH_DIST_SQL, tableName("slices"), req.range.start, req.range.end);
   }
 
-  public ListenableFuture<Slice> getSlice(long id) {
+  public ListenableFuture<Slices> getSlice(long id) {
     return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
-        transform(qe.getArgs(r.getLong(7)), args -> buildSlice(r, args)));
+        transform(qe.getArgs(r.getLong(7)), args -> new Slices(r, args)));
   }
 
   private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {
     return format(SLICE_RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
-    return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)),
-        res -> res.list(($, row) -> buildSlice(row, ArgSet.EMPTY)));
-  }
-
-  protected Slice buildSlice(QueryEngine.Row row, ArgSet args) {
-    return new Slice(row, args);
+  public ListenableFuture<Slices> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+    return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)), Slices::new);
   }
 
   private static String sliceSql(long id) {
@@ -162,70 +154,49 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
     }
   }
 
-  public static class Slice implements Selection {
-    public final long id;
-    public final long time;
-    public final long dur;
-    public final String name;
-    public final int depth;
-    public final long commandBuffer;
-    public final long submissionId;
-    public final ArgSet args;
+  public static class Slices implements Selection<Slices> {
+    private int count = 0;
+    public final List<Long> ids = Lists.newArrayList();
+    public final List<Long> times = Lists.newArrayList();
+    public final List<Long> durs = Lists.newArrayList();
+    public final List<String> names = Lists.newArrayList();
+    public final List<Integer> depths = Lists.newArrayList();
+    public final List<Long> commandBuffers = Lists.newArrayList();
+    public final List<Long> submissionIds = Lists.newArrayList();
+    public final List<ArgSet> argSets = Lists.newArrayList();
+    private final Set<Long> submissionIdSet = Sets.newHashSet();
+    public final Set<Long> sliceKeys = Sets.newHashSet();
 
-    public Slice(long id, long time, long dur, String name, int depth, long commandBuffer,
-        long submissionId, ArgSet args) {
-      this.id = id;
-      this.time = time;
-      this.dur = dur;
-      this.name = name;
-      this.depth = depth;
-      this.commandBuffer = commandBuffer;
-      this.submissionId = submissionId;
-      this.args = args;
+    public Slices(QueryEngine.Row row, ArgSet argset) {
+      this.add(row, argset);
     }
 
-    public Slice(QueryEngine.Row row, ArgSet args) {
-      this(row.getLong(0), row.getLong(1), row.getLong(2), row.getString(3), row.getInt(4),
-          row.getLong(5), row.getLong(6), args);
+    public Slices(QueryEngine.Result result) {
+      result.forEachRow((i, row) -> this.add(row, ArgSet.EMPTY));
     }
 
-    @Override
-    public String getTitle() {
-      return "Vulkan API Events";
+    private void add(QueryEngine.Row row, ArgSet argset) {
+      this.add(row.getLong(0), row.getLong(1), row.getLong(2), row.getString(3), row.getInt(4),
+          row.getLong(5), row.getLong(6), argset);
     }
 
-    @Override
-    public boolean contains(Long key) {
-      return id == key;
+    private void add(long id, long time, long dur, String name, int depth, long commandBuffer,
+        long submissionId, ArgSet argSet) {
+      this.count++;
+      this.ids.add(id);
+      this.times.add(time);
+      this.durs.add(dur);
+      this.names.add(name);
+      this.depths.add(depth);
+      this.commandBuffers.add(commandBuffer);
+      this.submissionIds.add(submissionId);
+      this.argSets.add(argSet);
+      this.submissionIdSet.add(submissionId);
+      this.sliceKeys.add(id);
     }
 
-    @Override
-    public Composite buildUi(Composite parent, State state) {
-      return new VulkanEventSelectionView(parent, state, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(Lists.newArrayList(this));
-    }
-
-    @Override
-    public void getRange(Consumer<TimeSpan> span) {
-      if (dur > 0) {
-        span.accept(new TimeSpan(time, time + dur));
-      }
-    }
-  }
-
-  public static class Slices implements Selection {
-    public final List<Slice> slices;
-    public final ImmutableSet<Long> sliceKeys;
-    private final Set<Long> submissionIds;
-
-    public Slices(List<Slice> slices, ImmutableSet<Long> sliceKeys) {
-      this.slices = slices;
-      this.sliceKeys = sliceKeys;
-      this.submissionIds = slices.stream().map(s -> s.submissionId).collect(Collectors.toSet());
+    public Set<Long> getSubmissionIds() {
+      return submissionIdSet;
     }
 
     @Override
@@ -240,51 +211,36 @@ public class VulkanEventTrack extends Track.WithQueryEngine<VulkanEventTrack.Dat
 
     @Override
     public Composite buildUi(Composite parent, State state) {
-      return new VulkanEventsSelectionView(parent, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(slices);
+      if (count <= 0) {
+        return null;
+      } else {
+        return new VulkanEventsSelectionView(parent, state, this);
+      }
     }
 
     @Override
     public void getRange(Consumer<TimeSpan> span) {
-      for (Slice slice : slices) {
-        slice.getRange(span);
-      }
-    }
-
-    public Set<Long> getSubmissionIds() {
-      return submissionIds;
-    }
-  }
-
-  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
-    private final List<Slice> slices;
-    private final Set<Long> sliceKeys = Sets.newHashSet();
-
-    public SlicesBuilder(List<Slice> slices) {
-      this.slices = slices;
-      for (Slice slice : slices) {
-        sliceKeys.add(slice.id);
+      for (int i = 0; i < count; i++) {
+        if (durs.get(i) > 0) {
+          span.accept(new TimeSpan(times.get(i), times.get(i) + durs.get(i)));
+        }
       }
     }
 
     @Override
-    public SlicesBuilder combine(SlicesBuilder other) {
-      for (Slice s : other.slices) {
-        if (!this.sliceKeys.contains(s.id)) {
-          this.slices.add(s);
-          this.sliceKeys.add(s.id);
+    public Slices combine(Slices other) {
+      for (int i = 0; i < other.count; i++) {
+        if (!this.sliceKeys.contains(other.ids.get(i))) {
+          add(other.ids.get(i), other.times.get(i), other.durs.get(i), other.names.get(i),
+              other.depths.get(i), other.commandBuffers.get(i), other.submissionIds.get(i),
+              other.argSets.get(i));
         }
       }
       return this;
     }
 
-    @Override
-    public Selection build() {
-      return new Slices(slices, ImmutableSet.copyOf(sliceKeys));
+    public int getCount() {
+      return count;
     }
   }
 }

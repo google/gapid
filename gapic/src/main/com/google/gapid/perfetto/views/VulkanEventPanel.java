@@ -19,7 +19,6 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
@@ -88,7 +87,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
       }
 
       TimeSpan visible = state.getVisibleTime();
-      Selection selected = state.getSelection(Selection.Kind.VulkanEvent);
+      Selection<?> selected = state.getSelection(Selection.Kind.VulkanEvent);
       List<Integer> visibleSelected = Lists.newArrayList();
 
       for (int i = 0; i < data.starts.length; i++) {
@@ -226,8 +225,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
     }
 
     if (endDepth >= 0) {
-      builder.add(Selection.Kind.VulkanEvent, transform(
-          track.getSlices(ts, startDepth, endDepth), VulkanEventTrack.SlicesBuilder::new));
+      builder.add(Selection.Kind.VulkanEvent, track.getSlices(ts, startDepth, endDepth));
     }
   }
 }

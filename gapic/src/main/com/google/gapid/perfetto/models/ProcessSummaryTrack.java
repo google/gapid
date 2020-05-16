@@ -25,12 +25,11 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.models.CpuTrack.Slice;
+import com.google.gapid.perfetto.models.CpuTrack.Slices;
+
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * {@link Track} containing CPU usage data of all threads in a process.
@@ -125,31 +124,23 @@ public class ProcessSummaryTrack extends Track.WithQueryEngine<ProcessSummaryTra
     return format(SLICES_SQL, tableName("span"));
   }
 
-  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts) {
-    return transform(qe.query(sliceRangeSql(ts)), result -> {
-      List<Slice> slices = Lists.newArrayList();
-      result.forEachRow((i, r) -> slices.add(new Slice(r)));
-      return slices;
-    });
+  public ListenableFuture<Slices> getSlices(TimeSpan ts) {
+    return transform(qe.query(sliceRangeSql(ts)), Slices::new);
   }
 
   private String sliceRangeSql(TimeSpan ts) {
     return format(SLICE_RANGE_SQL, process.upid, ts.end, ts.start);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(String ids) {
-    return transform(qe.query(sliceRangeForIdsSql(ids)), result -> {
-      List<Slice> slices = Lists.newArrayList();
-      result.forEachRow((i, r) -> slices.add(new Slice(r)));
-      return slices;
-    });
+  public ListenableFuture<Slices> getSlices(String ids) {
+    return transform(qe.query(sliceRangeForIdsSql(ids)), Slices::new);
   }
 
   private static String sliceRangeForIdsSql(String ids) {
     return format(SLICE_RANGE_FOR_IDS_SQL, ids);
   }
 
-  public ListenableFuture<Slice> getSlice(long id) {
+  public ListenableFuture<Slices> getSlice(long id) {
     return CpuTrack.getSlice(qe, id);
   }
 

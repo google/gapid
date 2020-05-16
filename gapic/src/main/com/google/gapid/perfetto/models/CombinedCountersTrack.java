@@ -318,8 +318,7 @@ public abstract class CombinedCountersTrack
     }
   }
 
-  public abstract static class Values<T extends Values<T>>
-      implements Selection, Selection.Builder<T> {
+  public abstract static class Values<T extends Values<T>> implements Selection<T> {
     protected static final int FIRST_DATA_COLUMN = 3;
 
     public final long[] ts;
@@ -352,11 +351,6 @@ public abstract class CombinedCountersTrack
     }
 
     @Override
-    public Selection.Builder<T> getBuilder() {
-      return this;
-    }
-
-    @Override
     public void getRange(Consumer<TimeSpan> span) {
       long min = stream(ts).min().getAsLong();
       long max = range(0, ts.length).mapToLong(i -> ts[i] + dur[i]).max().getAsLong();
@@ -367,11 +361,6 @@ public abstract class CombinedCountersTrack
     @SuppressWarnings("unchecked")
     public T combine(T that) {
       return combiner.apply((T)this, that);
-    }
-
-    @Override
-    public Selection build() {
-      return this;
     }
   }
 

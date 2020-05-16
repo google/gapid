@@ -19,7 +19,6 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -33,7 +32,6 @@ import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
-import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.models.VulkanEventTrack;
 
 import org.eclipse.swt.SWT;
@@ -93,7 +91,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       }
 
       TimeSpan visible = state.getVisibleTime();
-      Selection selected = state.getSelection(Selection.Kind.Gpu);
+      Selection<?> selected = state.getSelection(Selection.Kind.Gpu);
       List<Highlight> visibleSelected = Lists.newArrayList();
 
       Set<Long> selectedSIds = getSelectedSubmissionIdsInVulkanEventTrack(state);
@@ -241,11 +239,9 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
               return true;
             } else if (!concatedId.isEmpty()) { // Track data with quantization.
               if ((mods & SWT.MOD1) == SWT.MOD1) {
-                state.addSelection(Selection.Kind.Gpu, transform(track.getSlices(concatedId),
-                    s -> new SliceTrack.SlicesBuilder(s).build()));
+                state.addSelection(Selection.Kind.Gpu, track.getSlices(concatedId));
               } else {
-                state.setSelection(Selection.Kind.Gpu, transform(track.getSlices(concatedId),
-                    s -> new SliceTrack.SlicesBuilder(s).build()));
+                state.setSelection(Selection.Kind.Gpu, track.getSlices(concatedId));
               }
               return true;
             }
@@ -278,19 +274,14 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       if (endDepth >= queue.maxDepth) {
         endDepth = Integer.MAX_VALUE;
       }
-
-      builder.add(Selection.Kind.Gpu, transform(
-          track.getSlices(ts, startDepth, endDepth),
-          SliceTrack.SlicesBuilder::new));
+      builder.add(Selection.Kind.Gpu, track.getSlices(ts, startDepth, endDepth));
     }
   }
 
   private static Set<Long> getSelectedSubmissionIdsInVulkanEventTrack(State state) {
-    Selection selection = state.getSelection(Selection.Kind.VulkanEvent);
+    Selection<?> selection = state.getSelection(Selection.Kind.VulkanEvent);
     Set<Long> res = Sets.newHashSet();    // On Vulkan Event Track.
-    if (selection instanceof VulkanEventTrack.Slice) {
-      res = Sets.newHashSet(((VulkanEventTrack.Slice)selection).submissionId);
-    } else if (selection instanceof VulkanEventTrack.Slices) {
+    if (selection instanceof VulkanEventTrack.Slices) {
       res = ((VulkanEventTrack.Slices)selection).getSubmissionIds();
     }
     return res;

@@ -22,6 +22,8 @@ import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -29,14 +31,15 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
+import com.google.gapid.perfetto.models.CounterTrack.Values;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
 import org.eclipse.swt.SWT;
-
-import java.util.List;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable {
   private static final double HOVER_MARGIN = 10;
@@ -95,7 +98,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       CounterInfo counter = track.getCounter();
       double min = counter.range.min, range = counter.range.range();
 
-      Selection selected = state.getSelection(Selection.Kind.Counter);
+      Selection<?> selected = state.getSelection(Selection.Kind.Counter);
       List<Integer> visibleSelected = Lists.newArrayList();
       mainGradient().applyBaseAndBorder(ctx);
       ctx.path(path -> {
@@ -221,7 +224,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.Counter, transform(track.getValues(ts),
+    builder.add(Selection.Kind.Counter, (ListenableFuture<Values>)transform(track.getValues(ts),
         data -> new CounterTrack.Values(track.getCounter().name, data)));
   }
 

@@ -25,21 +25,18 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.views.CpuSliceSelectionView;
 import com.google.gapid.perfetto.views.CpuSlicesSelectionView;
 import com.google.gapid.perfetto.views.State;
 
-import java.util.Arrays;
 import org.eclipse.swt.widgets.Composite;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -136,40 +133,28 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     return format(SLICES_SQL, tableName("span"), cpu.id);
   }
 
-  public ListenableFuture<Slice> getSlice(long id) {
+  public ListenableFuture<Slices> getSlice(long id) {
     return getSlice(qe, id);
   }
 
-  public static ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
-    return transform(expectOneRow(qe.query(sliceSql(id))), Slice::new);
+  public static ListenableFuture<Slices> getSlice(QueryEngine qe, long id) {
+    return transform(expectOneRow(qe.query(sliceSql(id))), Slices::new);
   }
 
   private static String sliceSql(long id) {
     return format(SLICE_SQL, id);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts) {
-    return transform(qe.query(sliceRangeSql(cpu.id, ts)), result -> {
-      List<Slice> slices = Lists.newArrayList();
-      result.forEachRow((i, r) -> slices.add(new Slice(r)));
-      return slices;
-    });
+  public ListenableFuture<Slices> getSlices(TimeSpan ts) {
+    return transform(qe.query(sliceRangeSql(cpu.id, ts)), Slices::new);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(String ids) {
-    return transform(qe.query(sliceRangeForIdsSql(cpu.id, ids)), result -> {
-      List<Slice> slices = Lists.newArrayList();
-      result.forEachRow((i, r) -> slices.add(new Slice(r)));
-      return slices;
-    });
+  public ListenableFuture<Slices> getSlices(String ids) {
+    return transform(qe.query(sliceRangeForIdsSql(cpu.id, ids)), Slices::new);
   }
 
-  public static ListenableFuture<List<Slice>> getSlices(QueryEngine qe, long utid, TimeSpan ts) {
-    return transform(qe.query(sliceRangeForThreadSql(utid, ts)), result -> {
-      List<Slice> slices = Lists.newArrayList();
-      result.forEachRow((i, r) -> slices.add(new Slice(r)));
-      return slices;
-    });
+  public static ListenableFuture<Slices> getSlices(QueryEngine qe, long utid, TimeSpan ts) {
+    return transform(qe.query(sliceRangeForThreadSql(utid, ts)), Slices::new);
   }
 
   private static String sliceRangeSql(int cpu, TimeSpan ts) {
@@ -225,77 +210,37 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
     }
   }
 
-  public static class Slice implements Selection {
-    public final long id;
-    public final long time;
-    public final long dur;
-    public final int cpu;
-    public final long utid;
-    public final long upid;
-    public final ThreadState endState;
-    public final int priority;
+  public static class Slices implements Selection<Slices> {
+    private int count = 0;
+    public final List<Long> ids = Lists.newArrayList();
+    public final List<Long> times = Lists.newArrayList();
+    public final List<Long> durs = Lists.newArrayList();
+    public final List<Integer> cpus = Lists.newArrayList();
+    public final List<Long> utids = Lists.newArrayList();
+    public final List<Long> upids = Lists.newArrayList();
+    public final List<ThreadState> endStates = Lists.newArrayList();
+    public final List<Integer> priorities = Lists.newArrayList();
+    public final Set<Long> sliceKeys = Sets.newHashSet();
 
-    public Slice(
-        long id, long time, long dur, int cpu, long utid, long upid, ThreadState endState, int priority) {
-      this.id = id;
-      this.time = time;
-      this.dur = dur;
-      this.cpu = cpu;
-      this.utid = utid;
-      this.upid = upid;
-      this.endState = endState;
-      this.priority = priority;
+    public Slices(QueryEngine.Row row) {
+      this.add(row);
     }
 
-    public Slice(QueryEngine.Row row) {
-      this(row.getLong(0), row.getLong(1), row.getLong(2),
-          row.getInt(3), row.getLong(4), row.getLong(5),
-          ThreadState.of(row.getString(6)), row.getInt(7));
+    public Slices(QueryEngine.Result result) {
+      result.forEachRow((i, row) -> this.add(row));
     }
 
-    @Override
-    public String getTitle() {
-      return "CPU Slices";
-    }
-
-    @Override
-    public boolean contains(Long key) {
-      return id == key;
-    }
-
-    @Override
-    public Composite buildUi(Composite parent, State state) {
-      return new CpuSliceSelectionView(parent, state, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(Lists.newArrayList(this));
-    }
-
-    @Override
-    public void getRange(Consumer<TimeSpan> span) {
-      if (dur > 0) {
-        span.accept(new TimeSpan(time, time + dur));
-      }
-    }
-
-    @Override
-    public String toString() {
-      return "Slice{@" + time + " +" + dur + " " + utid + " " + endState + "/" + priority + "}";
-    }
-  }
-
-  public static class Slices implements Selection {
-    private final List<Slice> slices;
-    public final ImmutableList<ByProcess> processes;
-    public final ImmutableSet<Long> sliceKeys;
-
-    public Slices(List<Slice> slices, ImmutableList<ByProcess> processes,
-        ImmutableSet<Long> sliceKeys) {
-      this.slices = slices;
-      this.processes = processes;
-      this.sliceKeys = sliceKeys;
+    private void add(QueryEngine.Row row) {
+      this.count++;
+      this.ids.add(row.getLong(0));
+      this.times.add(row.getLong(1));
+      this.durs.add(row.getLong(2));
+      this.cpus.add(row.getInt(3));
+      this.utids.add(row.getLong(4));
+      this.upids.add(row.getLong(5));
+      this.endStates.add(ThreadState.of(row.getString(6)));
+      this.priorities.add(row.getInt(7));
+      this.sliceKeys.add(row.getLong(0));
     }
 
     @Override
@@ -310,56 +255,55 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
 
     @Override
     public Composite buildUi(Composite parent, State state) {
-      return new CpuSlicesSelectionView(parent, state, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(slices);
+      if (count <= 0) {
+        return null;
+      } else {
+        return new CpuSlicesSelectionView(parent, state, this);
+      }
     }
 
     @Override
     public void getRange(Consumer<TimeSpan> span) {
-      for (Slice slice : slices) {
-        slice.getRange(span);
-      }
-    }
-  }
-
-  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
-    private final List<Slice> slices;
-    private final Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
-    private final Set<Long> sliceKeys = Sets.newHashSet();
-
-    public SlicesBuilder(List<Slice> slices) {
-      this.slices = slices;
-      for (Slice slice : slices) {
-        processes.computeIfAbsent(slice.upid, ByProcess.Builder::new).add(slice);
-        sliceKeys.add(slice.id);
+      for (int i = 0; i < count; i++) {
+        if (durs.get(i) > 0) {
+          span.accept(new TimeSpan(times.get(i), times.get(i) + durs.get(i)));
+        }
       }
     }
 
     @Override
-    public SlicesBuilder combine(SlicesBuilder other) {
-      for (Slice s : other.slices) {
-        if (!this.sliceKeys.contains(s.id)) {
-          this.slices.add(s);
-          this.sliceKeys.add(s.id);
+    public Slices combine(Slices other) {
+      for (int i = 0; i < other.count; i++) {
+        if (!this.sliceKeys.contains(other.ids.get(i))) {
+          this.count++;
+          this.ids.add(other.ids.get(i));
+          this.times.add(other.times.get(i));
+          this.durs.add(other.durs.get(i));
+          this.cpus.add(other.cpus.get(i));
+          this.utids.add(other.utids.get(i));
+          this.upids.add(other.upids.get(i));
+          this.endStates.add(other.endStates.get(i));
+          this.priorities.add(other.priorities.get(i));
+          this.sliceKeys.add(other.ids.get(i));
         }
-      }
-      for (Map.Entry<Long, ByProcess.Builder> e : other.processes.entrySet()) {
-        processes.merge(e.getKey(), e.getValue(), ByProcess.Builder::combine);
       }
       return this;
     }
 
-    @Override
-    public Selection build() {
-      return new Slices(slices, processes.values().stream()
-          .map(ByProcess.Builder::build)
-          .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))
-          .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
+    public int getCount() {
+      return count;
     }
+  }
+
+  public static ByProcess[] organizeSlicesByProcess(Slices slices) {
+    Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
+    for (int i = 0; i < slices.count; i++) {
+      processes.computeIfAbsent(slices.upids.get(i), upid -> new ByProcess.Builder(upid, slices)).add(i);
+    }
+    return processes.values().stream()
+        .map(ByProcess.Builder::build)
+        .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))
+        .toArray(ByProcess[]::new);
   }
 
   public static class ByProcess {
@@ -375,21 +319,16 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
 
     public static class Builder {
       public final long pid;
+      private final Slices slices;
       public final Map<Long, ByThread.Builder> threads = Maps.newHashMap();
 
-      public Builder(long pid) {
+      public Builder(long pid, Slices slices) {
         this.pid = pid;
+        this.slices = slices;
       }
 
-      public void add(Slice slice) {
-        threads.computeIfAbsent(slice.utid, ByThread.Builder::new).add(slice);
-      }
-
-      public Builder combine(Builder other) {
-        for (Map.Entry<Long, ByThread.Builder> e : other.threads.entrySet()) {
-          threads.merge(e.getKey(), e.getValue(), ByThread.Builder::combine);
-        }
-        return this;
+      public void add(int index) {
+        threads.computeIfAbsent(slices.utids.get(index), utid -> new ByThread.Builder(utid, slices)).add(index);
       }
 
       public ByProcess build() {
@@ -404,48 +343,39 @@ public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
   public static class ByThread {
     public final long tid;
     public final long dur;
-    public final ImmutableList<Slice> slices;
+    public final Slices slices;
+    public final ImmutableList<Integer> sliceIndexes;
 
-    public ByThread(long tid, long dur, ImmutableList<Slice> slices) {
+    public ByThread(long tid, long dur, Slices slices, ImmutableList<Integer> sliceIndexes) {
       this.tid = tid;
       this.dur = dur;
       this.slices = slices;
+      this.sliceIndexes = sliceIndexes;
     }
 
     public static class Builder {
       private final long tid;
       private long dur = 0;
-      private final List<Slice> slices = Lists.newArrayList();
-      private final Set<Long> ids = Sets.newHashSet();
+      private final Slices slices;
+      private final List<Integer> sliceIndexes = Lists.newArrayList();
+      private final Set<Long> sliceKeys = Sets.newHashSet();
 
-      public Builder(long tid) {
+      public Builder(long tid, Slices slices) {
         this.tid = tid;
+        this.slices = slices;
       }
 
-      public void add(Slice slice) {
-        if (!ids.contains(slice.id)) {
-          dur += slice.dur;
-          slices.add(slice);
-          ids.add(slice.id);
+      public void add(int index) {
+        if (!sliceKeys.contains(slices.ids.get(index))) {
+          dur += slices.durs.get(index);
+          sliceIndexes.add(index);
+          sliceKeys.add(slices.ids.get(index));
         }
-      }
-
-      public Builder combine(Builder other) {
-        for (Slice s : other.slices) {
-          if (!ids.contains(s.id)) {
-            dur += s.dur;
-            slices.add(s);
-            ids.add(s.id);
-          }
-        }
-        return this;
       }
 
       public ByThread build() {
-        Collections.sort(slices, (s1, s2) -> Long.compare(s2.dur, s1.dur));
-        return new ByThread(tid, dur, slices.stream()
-            .sorted((s1, s2) -> Long.compare(s2.dur, s1.dur))
-            .collect(toImmutableList()));
+        sliceIndexes.sort((i1, i2) -> Long.compare(slices.durs.get(i2), slices.durs.get(i1)));
+        return new ByThread(tid, dur, slices, sliceIndexes.stream().collect(toImmutableList()));
       }
     }
   }

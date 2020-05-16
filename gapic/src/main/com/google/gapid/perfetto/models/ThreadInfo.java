@@ -31,6 +31,8 @@ import java.util.Map;
  * Data about a thread in the trace.
  */
 public class ThreadInfo {
+  public static final ThreadInfo EMPTY = new ThreadInfo(-1, -1, -1, -1, "", -1, -1);
+
   private static final long MIN_DUR = State.MAX_ZOOM_SPAN_NSEC / 1600;
   private static final String THREAD_QUERY =
       "with threads as (" +

@@ -29,16 +29,16 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.models.QueryEngine.Result;
 import com.google.gapid.perfetto.models.QueryEngine.Row;
-import com.google.gapid.perfetto.views.SliceSelectionView;
 import com.google.gapid.perfetto.views.SlicesSelectionView;
 import com.google.gapid.perfetto.views.State;
+import com.google.gapid.proto.service.Service;
 
 import org.eclipse.swt.widgets.Composite;
 
@@ -58,8 +58,13 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
   public static SliceTrack forThread(QueryEngine qe, ThreadInfo thread) {
     return new WithQueryEngine(qe, "slice", thread.trackId) {
       @Override
-      protected Slice buildSlice(Row row, ArgSet args) {
-        return new Slice.ThreadSlice(row, args, thread);
+      protected Slices buildSlices(Row row, ArgSet args) {
+        return new ThreadSlices(row, args, thread);
+      }
+
+      @Override
+      protected Slices buildSlices(Result result) {
+        return new ThreadSlices(result);
       }
     };
   }
@@ -137,15 +142,20 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
       }
 
       @Override
-      protected Slice buildSlice(Row row, ArgSet args) {
-        return new Slice.GpuSlice(row, args);
+      protected Slices buildSlices(Row row, ArgSet args) {
+        return new GpuSlices(row, args);
+      }
+
+      @Override
+      protected Slices buildSlices(Result result) {
+        return new GpuSlices(result);
       }
     };
   }
 
-  public abstract ListenableFuture<Slice> getSlice(long id);
-  public abstract ListenableFuture<List<Slice>> getSlices(String concatedId);
-  public abstract ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth);
+  public abstract ListenableFuture<Slices> getSlice(long id);
+  public abstract ListenableFuture<Slices> getSlices(String concatedId);
+  public abstract ListenableFuture<Slices> getSlices(TimeSpan ts, int minDepth, int maxDepth);
 
   public static class Data extends Track.Data {
     public final long[] ids;
@@ -198,107 +208,9 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
   }
 
-  public static abstract class Slice implements Selection {
-    public final long id;
-    public final long time;
-    public final long dur;
-    public final String category;
-    public final String name;
-    public final int depth;
-    public final long stackId;
-    public final long parentId;
-    public final ArgSet args;
-
-    public Slice(long id, long time, long dur, String category, String name, int depth, long stackId,
-        long parentId, ArgSet args) {
-      this.id = id;
-      this.time = time;
-      this.dur = dur;
-      this.category = category;
-      this.name = name;
-      this.depth = depth;
-      this.stackId = stackId;
-      this.parentId = parentId;
-      this.args = args;
-    }
-
-    public Slice(QueryEngine.Row row, ArgSet args) {
-      this(row.getLong(0), row.getLong(1), row.getLong(2),
-          row.getString(3), row.getString(4), row.getInt(5),
-          row.getLong(6), row.getLong(7), args);
-    }
-
-    public ThreadInfo getThread() {
-      return null;
-    }
-
-    public RenderStageInfo getRenderStageInfo() {
-      return null;
-    }
-
-    @Override
-    public boolean contains(Long key) {
-      return key == id;
-    }
-
-    @Override
-    public Composite buildUi(Composite parent, State state) {
-      return new SliceSelectionView(parent, state, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(Lists.newArrayList(this));
-    }
-
-    @Override
-    public void getRange(Consumer<TimeSpan> span) {
-      if (dur > 0) {
-        span.accept(new TimeSpan(time, time + dur));
-      }
-    }
-
-    public static class ThreadSlice extends Slice {
-      public final ThreadInfo thread;
-
-      public ThreadSlice(Row row, ArgSet args, ThreadInfo thread) {
-        super(row, args);
-        this.thread = thread;
-      }
-
-      @Override
-      public String getTitle() {
-        return "Thread Slices";
-      }
-
-      @Override
-      public ThreadInfo getThread() {
-        return thread;
-      }
-    }
-
-    public static class GpuSlice extends Slice {
-      private final RenderStageInfo renderStageInfo;
-
-      public GpuSlice(Row row, ArgSet args) {
-        super(row, args);
-        renderStageInfo = new RenderStageInfo(row.getLong(9), row.getString(10), row.getLong(11),
-            row.getString(12), row.getLong(13), row.getString(14), row.getLong(15));
-      }
-
-      @Override
-      public String getTitle() {
-        return "GPU Queue Events";
-      }
-
-      @Override
-      public RenderStageInfo getRenderStageInfo() {
-        return renderStageInfo;
-      }
-    }
-  }
-
   public static class RenderStageInfo {
+    public static final RenderStageInfo EMPTY = new RenderStageInfo(-1, "", -1, "", -1, "", -1);
+
     public final long frameBufferHandle;
     public final String frameBufferName;
     public final long renderPassHandle;
@@ -319,18 +231,55 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
   }
 
-  public static class Slices implements Selection {
-    private final List<Slice> slices;
+  public static class Slices implements Selection<Slices> {
+    private int count = 0;
+    public final List<Long> ids = Lists.newArrayList();
+    public final List<Long> times = Lists.newArrayList();
+    public final List<Long> durs = Lists.newArrayList();
+    public final List<String> categories = Lists.newArrayList();
+    public final List<String> names = Lists.newArrayList();
+    public final List<Integer> depths = Lists.newArrayList();
+    public final List<Long> stackIds = Lists.newArrayList();
+    public final List<Long> parentIds = Lists.newArrayList();
+    public final List<ArgSet> argsets = Lists.newArrayList();   // So far only store non-empty argset when there's only 1 slice.
+    public final Set<Long> sliceKeys = Sets.newHashSet();
     private final String title;
-    public final ImmutableList<Node> nodes;
-    public final ImmutableSet<Long> sliceKeys;
 
-    public Slices(List<Slice> slices, String title, ImmutableList<Node> nodes,
-        ImmutableSet<Long> sliceKeys) {
-      this.slices = slices;
+    public Slices(QueryEngine.Row row, ArgSet argset, String title) {
       this.title = title;
-      this.nodes = nodes;
-      this.sliceKeys = sliceKeys;
+      this.add(row, argset);
+    }
+
+    public Slices(QueryEngine.Result result, String title) {
+      this.title = title;
+      result.forEachRow((i, row) -> this.add(row, ArgSet.EMPTY));
+    }
+
+    public Slices(List<Service.ProfilingData.GpuSlices.Slice> serverSlices, String title) {
+      this.title = title;
+      for (Service.ProfilingData.GpuSlices.Slice s : serverSlices) {
+        this.add(s.getId(), s.getTs(), s.getDur(), "", s.getLabel(), s.getDepth(), -1, -1, ArgSet.EMPTY);
+      }
+    }
+
+    private void add(QueryEngine.Row row, ArgSet argset) {
+      this.add(row.getLong(0), row.getLong(1), row.getLong(2), row.getString(3), row.getString(4),
+          row.getInt(5), row.getLong(6), row.getLong(7), argset);
+    }
+
+    private void add(long id, long time, long dur, String category, String name, int depth,
+        long stackId, long parentId, ArgSet argset) {
+      this.count++;
+      this.ids.add(id);
+      this.times.add(time);
+      this.durs.add(dur);
+      this.categories.add(category);
+      this.names.add(name);
+      this.depths.add(depth);
+      this.stackIds.add(stackId);
+      this.parentIds.add(parentId);
+      this.argsets.add(argset);
+      this.sliceKeys.add(id);
     }
 
     @Override
@@ -345,78 +294,105 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
     @Override
     public Composite buildUi(Composite parent, State state) {
-      return new SlicesSelectionView(parent, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(slices);
+      if (count <= 0) {
+        return null;
+      } else {
+        return new SlicesSelectionView(parent, state, this);
+      }
     }
 
     @Override
     public void getRange(Consumer<TimeSpan> span) {
-      for (Slice slice : slices) {
-        slice.getRange(span);
-      }
-    }
-  }
-
-  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
-    private final List<Slice> slices;
-    private final String title;
-    private final Map<Long, Node.Builder> byStack = Maps.newHashMap();
-    private final Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
-    private final Set<Long> roots = Sets.newHashSet();
-    private final Set<Long> sliceKeys = Sets.newHashSet();
-
-    public SlicesBuilder(List<Slice> slices) {
-      this.slices = slices;
-      String ti = "";
-      for (Slice slice : slices) {
-        ti = slice.getTitle();
-        Node.Builder child = byStack.get(slice.stackId);
-        if (child == null) {
-          byStack.put(slice.stackId, child = new Node.Builder(slice.name, slice.stackId, slice.parentId));
-          byParent.computeIfAbsent(slice.parentId, $ -> Lists.newArrayList()).add(child);
-          roots.add(slice.parentId);
+      for (int i = 0; i < count; i++) {
+        if (durs.get(i) > 0) {
+          span.accept(new TimeSpan(times.get(i), times.get(i) + durs.get(i)));
         }
-        roots.remove(slice.stackId);
-        child.add(slice.id, slice.dur);
-        sliceKeys.add(slice.id);
       }
-      this.title = ti;
     }
 
     @Override
-    public SlicesBuilder combine(SlicesBuilder other) {
-      for (Map.Entry<Long, Node.Builder> e : other.byStack.entrySet()) {
-        Node.Builder mine = byStack.get(e.getKey());
-        if (mine == null) {
-          byStack.put(e.getKey(), mine = new Node.Builder(e.getValue()));
-          byParent.computeIfAbsent(mine.parentId, $ -> Lists.newArrayList()).add(mine);
-        } else {
-          mine.add(e.getValue());
-        }
-      }
-      roots.addAll(other.roots);
-      for (Slice s : other.slices) {
-        if (!this.sliceKeys.contains(s.id)) {
-          this.slices.add(s);
-          this.sliceKeys.add(s.id);
+    public Slices combine(Slices other) {
+      for (int i = 0; i < other.count; i++) {
+        if (!this.sliceKeys.contains(other.ids.get(i))) {
+          add(other.ids.get(i), other.times.get(i), other.durs.get(i), other.categories.get(i),
+              other.names.get(i), other.depths.get(i), other.stackIds.get(i), other.parentIds.get(i),
+              other.argsets.get(i));
         }
       }
       return this;
     }
 
-    @Override
-    public Selection build() {
-      return new Slices(slices, title, roots.stream()
-          .filter(not(byStack::containsKey))
-          .flatMap(root -> byParent.get(root).stream())
-          .map(b -> b.build(byParent))
-          .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
-          .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
+    public int getCount() {
+      return count;
     }
+  }
+
+  public static class ThreadSlices extends Slices {
+    public final List<ThreadInfo> threads = Lists.newArrayList();
+
+    public ThreadSlices(QueryEngine.Row row, ArgSet args, ThreadInfo thread) {
+      super(row, args, "Thread Slices");
+      this.threads.add(thread);
+    }
+
+    public ThreadSlices(QueryEngine.Result result) {
+      super(result, "Thread Slices");
+      for (int i = 0; i < result.getNumRows(); i++) {
+        threads.add(ThreadInfo.EMPTY);
+      }
+    }
+
+    public ThreadInfo getThreadAt(int index) {
+      return index < threads.size() ? threads.get(index) : ThreadInfo.EMPTY;
+    }
+  }
+
+  public static class GpuSlices extends Slices {
+    private final List<RenderStageInfo> renderStageInfos = Lists.newArrayList();
+
+    public GpuSlices(Row row, ArgSet args) {
+      super(row, args, "GPU Queue Events");
+      this.renderStageInfos.add(new RenderStageInfo(row.getLong(9), row.getString(10), row.getLong(11),
+          row.getString(12), row.getLong(13), row.getString(14), row.getLong(15)));
+    }
+
+    public GpuSlices(QueryEngine.Result result) {
+      super(result, "GPU Queue Events");
+      for (int i = 0; i < result.getNumRows(); i++) {
+        renderStageInfos.add(RenderStageInfo.EMPTY);
+      }
+    }
+
+    public RenderStageInfo getRenderStageInfoAt(int index) {
+      return index < renderStageInfos.size() ? renderStageInfos.get(index) : RenderStageInfo.EMPTY;
+    }
+  }
+
+  public static Node[] organizeSlicesToNodes(Slices slices) {
+    Map<Long, Node.Builder> byStack = Maps.newHashMap();
+    Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
+    Set<Long> roots = Sets.newHashSet();
+
+    for (int i = 0; i < slices.count; i++) {
+      String name = slices.names.get(i);
+      long stackId = slices.stackIds.get(i);
+      long parentId = slices.parentIds.get(i);
+      Node.Builder child = byStack.get(stackId);
+      if (child == null) {
+        byStack.put(stackId, child = new Node.Builder(name, stackId, parentId));
+        byParent.computeIfAbsent(parentId, $ -> Lists.newArrayList()).add(child);
+        roots.add(parentId);
+      }
+      roots.remove(stackId);
+      child.add(slices.ids.get(i), slices.durs.get(i));
+    }
+
+    return roots.stream()
+        .filter(not(byStack::containsKey))
+        .flatMap(root -> byParent.get(root).stream())
+        .map(b -> b.build(byParent))
+        .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
+        .toArray(Node[]::new);
   }
 
   public static class Node {
@@ -446,23 +422,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         this.parentId = parentId;
       }
 
-      public Builder(Builder other) {
-        this.name = other.name;
-        this.stackId = other.stackId;
-        this.parentId = other.parentId;
-        this.durs.putAll(other.durs);
-      }
-
-      public long getParent() {
-        return parentId;
-      }
-
       public void add(long sliceId, long duration) {
         durs.put(sliceId, duration);
-      }
-
-      public void add(Builder other) {
-        durs.putAll(other.durs);
       }
 
       public Node build(Map<Long, List<Builder>> byParent) {
@@ -600,25 +561,21 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public ListenableFuture<Slice> getSlice(long id) {
+    public ListenableFuture<Slices> getSlice(long id) {
       return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
-          transform(qe.getArgs(r.getLong(8)), args -> buildSlice(r, args)));
+          transform(qe.getArgs(r.getLong(8)), args -> buildSlices(r, args)));
     }
 
-    private Slice buildSlice(QueryEngine.Row row) {
-      return buildSlice(row, ArgSet.EMPTY);
-    }
-
-    protected abstract Slice buildSlice(QueryEngine.Row row, ArgSet args);
+    protected abstract Slices buildSlices(QueryEngine.Row row, ArgSet args);
+    protected abstract Slices buildSlices(QueryEngine.Result result);
 
     private String sliceSql(long id) {
       return format(SLICE_SQL, tableName("slices"), id);
     }
 
     @Override
-    public ListenableFuture<List<Slice>> getSlices(String concatedId) {
-      return transform(qe.query(slicesByIdSql(concatedId)),
-          res -> res.list(($, row) -> buildSlice(row)));
+    public ListenableFuture<Slices> getSlices(String concatedId) {
+      return transform(qe.query(slicesByIdSql(concatedId)), this::buildSlices);
     }
 
     private String slicesByIdSql(String concatedId) {
@@ -626,9 +583,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     @Override
-    public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
-      return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)),
-          res -> res.list(($, row) -> buildSlice(row)));
+    public ListenableFuture<Slices> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+      return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)), this::buildSlices);
     }
 
     private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {

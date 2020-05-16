@@ -27,15 +27,12 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.views.FrameEventsMultiSelectionView;
 import com.google.gapid.perfetto.views.FrameEventsSelectionView;
 import com.google.gapid.perfetto.views.State;
 
@@ -130,7 +127,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
         data.frameNumbers[i] = Arrays.stream(row.getString(8).split(", "))
             .mapToLong(s -> s.isEmpty() ? 0 : Long.parseLong(s))
             .toArray();
-        data.layerNames[i] = row.getString(9).split(", ");;
+        data.layerNames[i] = row.getString(9).split(", ");
       });
       return data;
     }));
@@ -158,10 +155,10 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     return format(SUMMARY_SQL, tableName("span"));
   }
 
-  public ListenableFuture<Slice> getSlice(long id) {
+  public ListenableFuture<Slices> getSlice(long id) {
     return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
         transformAsync(qe.getArgs(r.getLong(7)), args ->
-        transform(getStats(id, r.getLong(2)), stats -> buildSlice(r, args, stats))));
+        transform(getStats(id, r.getLong(2)), stats -> new Slices(r, args, stats))));
   }
 
   private ListenableFuture<Map<String, FrameStats>> getStats(long id, long dur) {
@@ -183,26 +180,20 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     return format(STAT_TABLE_SQL, sliceId);
   }
 
-  protected Slice buildSlice(QueryEngine.Row row, ArgSet args, Map<String, FrameStats> frameStats) {
-    return new Slice(row, args, frameStats);
-  }
-
   private static String sliceSql(long id) {
     return format(SLICE_SQL, id);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
-    return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)),
-        res -> res.list(($, row) -> buildSlice(row, ArgSet.EMPTY, null)));
+  public ListenableFuture<Slices> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+    return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)), Slices::new);
   }
 
   private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {
     return format(RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(String ids) {
-    return transform(qe.query(sliceRangeForIdsSql(ids)),
-        res -> res.list(($, row) -> buildSlice(row, ArgSet.EMPTY, null)));
+  public ListenableFuture<Slices> getSlices(String ids) {
+    return transform(qe.query(sliceRangeForIdsSql(ids)), Slices::new);
   }
 
   private String sliceRangeForIdsSql(String ids) {
@@ -261,57 +252,61 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
   }
 
-  public static class Slice implements Selection {
-    public final long id;
-    public final long time;
-    public final long dur;
-    public final String name;
-    public final ArgSet args;
-    public final long[] frameNumbers;
-    public final String[] layerNames;
+  public static class Slices implements Selection<Slices> {
+    private int count = 0;
+    public final List<Long> ids = Lists.newArrayList();
+    public final List<Long> times = Lists.newArrayList();
+    public final List<Long> durs = Lists.newArrayList();
+    public final List<String> names = Lists.newArrayList();
+    public final List<ArgSet> argsets = Lists.newArrayList();
+    public final List<Long[]> frameNumbers = Lists.newArrayList();
+    public final List<String[]> layerNames = Lists.newArrayList();
     // Map of each buffer(layerName) that contributed to the displayed frame, to
     // its corresponding FrameStats
-    public final Map<String, FrameStats> frameStats;
-    public final FrameSelection frameSelection;
+    public final List<Map<String, FrameStats>> frameStats = Lists.newArrayList();
+    public final FrameSelection frameSelection = new FrameSelection();
+    public final Set<Long> sliceKeys = Sets.newHashSet();
 
-    public Slice(long id, long time, long dur, String name, String frameNumbers,
-        String layerNames, Map<String, FrameStats> frameStats) {
-      this.id = id;
-      this.time = time;
-      this.dur = dur;
-      this.name = name;
-      this.args = ArgSet.EMPTY;
-      this.frameNumbers = Arrays.stream(frameNumbers.split(", "))
-          .mapToLong(Long::parseLong)
-          .toArray();
-      this.layerNames = layerNames.split(", ");
-      this.frameStats = frameStats;
-      this.frameSelection = new FrameSelection(this.frameNumbers, this.layerNames);
-    }
-
-    public Slice(long id, long time, long dur, String name, ArgSet args, String frameNumbers,
-        String layerNames, Map<String, FrameStats> frameStats) {
-      this.id = id;
-      this.time = time;
-      this.dur = dur;
-      this.name = name;
-      this.args = args;
-      this.frameNumbers = Arrays.stream(frameNumbers.split(", "))
-          .mapToLong(Long::parseLong)
-          .toArray();
-      this.layerNames = layerNames.split(", ");
-      this.frameStats = frameStats;
-      this.frameSelection = new FrameSelection(this.frameNumbers, this.layerNames);
-    }
-
-    public Slice(QueryEngine.Row row, ArgSet args, Map<String, FrameStats> frameStats) {
-      this(row.getLong(0), row.getLong(1), row.getLong(2), row.getString(3), args,
+    public Slices(QueryEngine.Row row, ArgSet args, Map<String, FrameStats> frameStats) {
+      add(row.getLong(0), row.getLong(1), row.getLong(2), row.getString(3), args,
           row.getString(8), row.getString(9), frameStats);
     }
 
-    public Slice(QueryEngine.Row row, Map<String, FrameStats> frameStats) {
-      this(row.getLong(0), row.getLong(1), row.getLong(2), row.getString(3),
+    public Slices(QueryEngine.Row row, Map<String, FrameStats> frameStats) {
+      add(row.getLong(0), row.getLong(1), row.getLong(2), row.getString(3), ArgSet.EMPTY,
           row.getString(8), row.getString(9), frameStats);
+    }
+
+    public Slices(QueryEngine.Result result) {
+      result.forEachRow((i, row) -> this.add(row.getLong(0), row.getLong(1), row.getLong(2),
+          row.getString(3), ArgSet.EMPTY, row.getString(8), row.getString(9), null));
+    }
+
+    private void add(long id, long time, long dur, String name, ArgSet args, String frameNumbers,
+        String layerNames, Map<String, FrameStats> frameStats) {
+      Long[] parsedFrameNumbers = Arrays.stream(frameNumbers.split(", "))
+          .mapToLong(Long::parseLong).boxed().toArray(Long[]::new);
+      String[] parsedLayerNames = layerNames.split(", ");
+      add(id, time, dur, name, args, parsedFrameNumbers, parsedLayerNames, frameStats);
+    }
+
+    private void add(long id, long time, long dur, String name, ArgSet args, Long[] frameNumbers,
+        String[] layerNames, Map<String, FrameStats> frameStats) {
+      count++;
+      this.ids.add(id);
+      this.times.add(time);
+      this.durs.add(dur);
+      this.names.add(name);
+      this.argsets.add(args);
+      this.frameNumbers.add(frameNumbers);
+      this.layerNames.add(layerNames);
+      this.frameStats.add(frameStats);
+      this.frameSelection.combine(new FrameSelection(frameNumbers, layerNames));
+      this.sliceKeys.add(id);
+    }
+
+    public FrameSelection getSelection() {
+      return frameSelection;
     }
 
     @Override
@@ -321,79 +316,43 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
 
     @Override
     public boolean contains(Long key) {
-      return id == key;
-    }
-
-    @Override
-    public Composite buildUi(Composite parent, State state) {
-      return new FrameEventsSelectionView(parent, state, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(Lists.newArrayList(this));
-    }
-
-    @Override
-    public void getRange(Consumer<TimeSpan> span) {
-      if (dur > 0) {
-        span.accept(new TimeSpan(time, time + dur));
-      } else { // Expand the zoom/highlight time range for signal selections whose dur is 0.
-        span.accept(new TimeSpan(time, time + dur).expand(SIGNAL_MARGIN_NS));
-      }
-    }
-
-    public FrameSelection getSelection() {
-      return frameSelection;
-    }
-  }
-
-  public static class Slices implements Selection {
-    private final List<Slice> slices;
-    private final String title;
-    public final ImmutableList<Node> nodes;
-    public final ImmutableSet<Long> sliceKeys;
-    public final FrameSelection frameSelection;
-
-    public Slices(List<Slice> slices, String title, ImmutableList<Node> nodes,
-        ImmutableSet<Long> sliceKeys) {
-      this.slices = slices;
-      this.title = title;
-      this.nodes = nodes;
-      this.sliceKeys = sliceKeys;
-      this.frameSelection = new FrameSelection();
-      slices.forEach(s -> frameSelection.combine(s.getSelection()));
-    }
-
-    @Override
-    public String getTitle() {
-      return title;
-    }
-
-    @Override
-    public boolean contains(Long key) {
       return sliceKeys.contains(key);
     }
 
     @Override
     public Composite buildUi(Composite parent, State state) {
-      return new FrameEventsMultiSelectionView(parent, this);
-    }
-
-    @Override
-    public Selection.Builder<SlicesBuilder> getBuilder() {
-      return new SlicesBuilder(slices);
+      if (count <= 0) {
+        return null;
+      } else {
+        return new FrameEventsSelectionView(parent, state, this);
+      }
     }
 
     @Override
     public void getRange(Consumer<TimeSpan> span) {
-      for (Slice slice : slices) {
-        slice.getRange(span);
+      for (int i = 0; i < count; i++) {
+        if (durs.get(i) > 0) {
+          span.accept(new TimeSpan(times.get(i), times.get(i) + durs.get(i)));
+        } else { // Expand the zoom/highlight time range for signal selections whose dur is 0.
+          span.accept(new TimeSpan(times.get(i), times.get(i) + durs.get(i)).expand(SIGNAL_MARGIN_NS));
+        }
       }
     }
 
-    public FrameSelection getSelection() {
-      return frameSelection;
+    @Override
+    public Slices combine(Slices other) {
+      for (int i = 0; i < other.count; i++) {
+        if (!this.sliceKeys.contains(other.ids.get(i))) {
+          add(other.ids.get(i), other.times.get(i), other.durs.get(i), other.names.get(i),
+              other.argsets.get(i), other.frameNumbers.get(i), other.layerNames.get(i),
+              other.frameStats.get(i));
+        }
+      }
+      return this;
+    }
+
+    public int getCount() {
+      return count;
     }
   }
 
@@ -406,7 +365,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
       keys = Sets.newHashSet();
     }
 
-    public FrameSelection(long[] f, String[] l) {
+    public FrameSelection(Long[] f, String[] l) {
       keys = Sets.newHashSet();
       for (int i = 0; i < l.length; i++) {
         keys.add(l[i] + "_" + f[i]);
@@ -446,40 +405,13 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
     }
   }
 
-  public static class SlicesBuilder implements Selection.Builder<SlicesBuilder> {
-    private final List<Slice> slices;
-    private final String title;
-    private final TreeMap<Long, Node> roots = Maps.newTreeMap();
-    private final Set<Long> sliceKeys = Sets.newHashSet();
-
-    public SlicesBuilder(List<Slice> slices) {
-      this.slices = slices;
-      String ti = "";
-      for (Slice slice : slices) {
-        ti = slice.getTitle();
-        roots.put(slice.id, new Node(slice.name, slice.dur, slice.dur, slice.layerNames));
-        sliceKeys.add(slice.id);
-      }
-      this.title = ti;
+  public static Node[] organizeSlicesToNodes(Slices slices) {
+    TreeMap<Long, Node> roots = Maps.newTreeMap();
+    for (int i = 0; i < slices.count; i++) {
+      roots.put(slices.ids.get(i), new Node(slices.names.get(i), slices.durs.get(i),
+          slices.durs.get(i), slices.layerNames.get(i)));
     }
-
-    @Override
-    public SlicesBuilder combine(SlicesBuilder other) {
-      for (Slice s : other.slices) {
-        if (!this.sliceKeys.contains(s.id)) {
-          this.slices.add(s);
-          this.roots.put(s.id, other.roots.get(s.id));
-          this.sliceKeys.add(s.id);
-        }
-      }
-      return this;
-    }
-
-    @Override
-    public Selection build() {
-      return new Slices(slices, title, ImmutableList.copyOf(roots.values()),
-          ImmutableSet.copyOf(sliceKeys));
-    }
+    return roots.values().stream().toArray(Node[]::new);
   }
 
   public static class Node {

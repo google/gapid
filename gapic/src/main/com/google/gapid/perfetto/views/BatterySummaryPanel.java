@@ -20,7 +20,6 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.batteryInGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.batteryOutGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
@@ -33,10 +32,12 @@ import com.google.gapid.perfetto.models.BatterySummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.Selection.Kind;
-import java.util.List;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> implements Selectable {
   private static final double HEIGHT = 50;
@@ -80,7 +81,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
       }
 
       double maxAbs = track.getMaxAbsCurrent();
-      Selection selected = state.getSelection(Selection.Kind.Battery);
+      Selection<?> selected = state.getSelection(Selection.Kind.Battery);
       List<Integer> visibleSelected = Lists.newArrayList();
 
       // Draw outgoing battery current above the x axis.
@@ -213,7 +214,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.Battery, transform(track.getValues(ts), v -> v));
+    builder.add(Selection.Kind.Battery, track.getValues(ts));
   }
 
   private static class HoverCard {

@@ -23,7 +23,6 @@ import static com.google.gapid.perfetto.views.StyleConstants.memoryRssAnonGradie
 import static com.google.gapid.perfetto.views.StyleConstants.memoryRssFileGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.memoryRssSharedGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.memorySwapGradient;
-import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
@@ -266,7 +265,7 @@ public class ProcessMemoryPanel extends TrackPanel<ProcessMemoryPanel> implement
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.ProcessMemory, transform(track.getValues(ts), v -> v));
+    builder.add(Selection.Kind.ProcessMemory, track.getValues(ts));
   }
 
   private static class HoverCard {

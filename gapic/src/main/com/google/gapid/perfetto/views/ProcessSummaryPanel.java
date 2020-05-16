@@ -19,24 +19,25 @@ import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.gradient;
 import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuInfo;
-import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.CpuTrack.Slices;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
-
 import com.google.gapid.util.Arrays;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.RGBA;
@@ -114,7 +115,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
     // TODO: dedupe with CpuRenderer
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
-    Selection selected = state.getSelection(Selection.Kind.Cpu);
+    Selection<?> selected = state.getSelection(Selection.Kind.Cpu);
     List<Integer> visibleSelected = Lists.newArrayList();
 
     mainGradient().applyBaseAndBorder(ctx);
@@ -167,7 +168,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
   private void renderSlices(RenderContext ctx, ProcessSummaryTrack.Data data, double h) {
     // TODO: dedupe with CpuRenderer
     TimeSpan visible = state.getVisibleTime();
-    Selection selected = state.getSelection(Selection.Kind.Cpu);
+    Selection<?> selected = state.getSelection(Selection.Kind.Cpu);
     List<Highlight> visibleSelected = Lists.newArrayList();
     int cpuCount = state.getCpuInfo().count();
     double cpuH = (h - cpuCount + 1) / cpuCount;
@@ -323,15 +324,15 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
           return false;
         }
         if ((mods & SWT.MOD1) == SWT.MOD1) {
-          state.addSelection(Selection.Kind.Cpu, transform(track.getSlices(ids), r -> {
-            r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-            return new CpuTrack.SlicesBuilder(r).build();
+          state.addSelection(Selection.Kind.Cpu, transform(track.getSlices(ids), slices -> {
+            slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
+            return slices;
           }));
         } else {
           state.clearSelectedThreads();
-          state.setSelection(Selection.Kind.Cpu, transform(track.getSlices(ids), r -> {
-            r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-            return new CpuTrack.SlicesBuilder(r).build();
+          state.setSelection(Selection.Kind.Cpu, transform(track.getSlices(ids), slices -> {
+            slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
+            return slices;
           }));
         }
         return true;
@@ -341,9 +342,9 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.Cpu, transform(track.getSlices(ts), r -> {
-      r.forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-      return new CpuTrack.SlicesBuilder(r);
+    builder.add(Selection.Kind.Cpu, (ListenableFuture<Slices>)transform(track.getSlices(ts), slices -> {
+      slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
+      return slices;
     }));
   }
 

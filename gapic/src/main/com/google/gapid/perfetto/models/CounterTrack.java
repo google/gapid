@@ -183,7 +183,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     }
   }
 
-  public static class Values implements Selection, Selection.Builder<Values> {
+  public static class Values implements Selection<Values> {
     public final long[] ts;
     public final Map<String, double[]> values = Maps.newHashMap(); // counter_name -> values.
     public final Map<String, long[]> ids = Maps.newHashMap();      // counter_name -> ids.
@@ -222,11 +222,6 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     @Override
     public Composite buildUi(Composite parent, State state) {
       return new CountersSelectionView(parent, state, this);
-    }
-
-    @Override
-    public Selection.Builder<Values> getBuilder() {
-      return this;
     }
 
     @Override
@@ -304,11 +299,6 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
       int newLength = ri + a.length - ai + b.length - bi - 1;
       r[newLength - 1] = Math.max(a[a.length - 1], b[b.length - 1]);
       return Arrays.copyOf(r, newLength); // Truncate array.
-    }
-
-    @Override
-    public Selection build() {
-      return this;
     }
   }
 }

@@ -130,7 +130,7 @@ public abstract class State {
     return selection;
   }
 
-  public Selection getSelection(Selection.Kind type) {
+  public <T extends Selection<T>> T getSelection(Selection.Kind type) {
     if (selection == null) {
       return Selection.emptySelection();
     } else {
@@ -213,7 +213,7 @@ public abstract class State {
     return hasDeselection;
   }
 
-  public <Key> void addSelection(Selection.Kind type, ListenableFuture<? extends Selection> futureSel) {
+  public void addSelection(Selection.Kind type, ListenableFuture<? extends Selection<?>> futureSel) {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {
       if (lastSelectionUpdateId.get() == myId) {
@@ -222,7 +222,7 @@ public abstract class State {
     });
   }
 
-  public <Key> void addSelection(Selection.Kind type, Selection newSel) {
+  public void addSelection(Selection.Kind type, Selection<?> newSel) {
     if (selection == null) {
       setSelection(type, newSel);
     } else {
@@ -245,7 +245,7 @@ public abstract class State {
     });
   }
 
-  public <Key> void setSelection(Selection.Kind type, ListenableFuture<? extends Selection> futureSel) {
+  public void setSelection(Selection.Kind type, ListenableFuture<? extends Selection<?>> futureSel) {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {
       if (lastSelectionUpdateId.get() == myId) {
@@ -254,7 +254,7 @@ public abstract class State {
     });
   }
 
-  public <Key> void setSelection(Selection.Kind type, Selection selection) {
+  public void setSelection(Selection.Kind type, Selection<?> selection) {
     setSelection(new Selection.MultiSelection(type, selection));
   }
 

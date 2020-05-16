@@ -31,14 +31,19 @@ import java.util.Map;
  * Displays multiple different selections.
  */
 public class MultiSelectionView extends Composite {
+  public TabFolder folder;
+
   public MultiSelectionView(
-      Composite parent, Map<Selection.Kind, Selection> selections, State state) {
+      Composite parent, Map<Selection.Kind, Selection<?>> selections, State state) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
-    TabFolder folder = createStandardTabFolder(this);
-    for (Selection s : selections.values()) {
-      createStandardTabItem(folder, s.getTitle(), s.buildUi(folder, state));
+    folder = createStandardTabFolder(this);
+    for (Selection<?> s : selections.values()) {
+      Composite composite = s.buildUi(folder, state);
+      if (composite != null) {
+        createStandardTabItem(folder, s.getTitle(), composite);
+      }
     }
   }
 }

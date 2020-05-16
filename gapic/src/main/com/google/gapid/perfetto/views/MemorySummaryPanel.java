@@ -21,7 +21,6 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.perfetto.views.StyleConstants.memoryBuffersGradient;
 import static com.google.gapid.perfetto.views.StyleConstants.memoryUsedGradient;
-import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
@@ -85,7 +84,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implement
         return;
       }
 
-      Selection selected = state.getSelection(Selection.Kind.Memory);
+      Selection<?> selected = state.getSelection(Selection.Kind.Memory);
       List<Integer> visibleSelected = Lists.newArrayList();
 
       memoryBuffersGradient().applyBase(ctx);
@@ -229,7 +228,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implement
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.Memory, transform(track.getValues(ts), v -> v));
+    builder.add(Selection.Kind.Memory, track.getValues(ts));
   }
 
   private static class HoverCard {
