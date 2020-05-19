@@ -48,7 +48,6 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
       mSeenReferences{{nullptr, 0}},
       mCurrentCommandName(nullptr),
       mObserveApplicationPool(spy->shouldObserveApplicationPool()),
-      mError(0 /*GL_NO_ERROR*/),
       mApi(api),
       mShouldTrace(false),
       mCurrentThread(core::Thread::current().id()) {

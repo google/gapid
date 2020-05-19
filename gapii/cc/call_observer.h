@@ -65,10 +65,6 @@ class CallObserver : public context_t {
 
   const char* getCurrentCommandName() { return mCurrentCommandName; }
 
-  // Get or set the GL error code for this call.
-  GLenum_Error getError() { return mError; }
-  void setError(GLenum_Error err) { mError = err; }
-
   // getCurrentThread returns the current thread identifier.
   inline uint64_t getCurrentThread() { return mCurrentThread; }
 
@@ -221,9 +217,6 @@ class CallObserver : public context_t {
 
   // The list of pending reads or writes observations that are yet to be made.
   core::IntervalList<uintptr_t> mPendingObservations;
-
-  // Record GL error which was raised during this call.
-  GLenum_Error mError;
 
   // The current API that this call-observer is observing.
   uint8_t mApi;
