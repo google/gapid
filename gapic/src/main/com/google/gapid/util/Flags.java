@@ -39,7 +39,7 @@ public class Flags {
   public static final Flag<Boolean> help = value("help", false, "Print help information.");
   public static final Flag<Boolean> fullHelp =
       value("fullhelp", false, "Print help information incuding hidden flags.", true);
-  public static final Flag<Boolean> version = value("version", false, "Print GAPID version.");
+  public static final Flag<Boolean> version = value("version", false, "Print AGI version.");
 
   private static boolean initialized = false;
 
@@ -130,7 +130,7 @@ public class Flags {
   }
 
   private static void printVersion(PrintStream out) {
-    out.println("GAPID version " + GAPID_VERSION);
+    out.println("AGI version " + GAPID_VERSION);
   }
 
   private static void printHelp(PrintStream out, Flag<?>[] flags, boolean full) {
