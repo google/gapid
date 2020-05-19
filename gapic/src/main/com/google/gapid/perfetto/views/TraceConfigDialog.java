@@ -57,6 +57,8 @@ import com.google.protobuf.TextFormat.ParseException;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
+import org.eclipse.jface.viewers.CheckStateChangedEvent;
+import org.eclipse.jface.viewers.ICheckStateListener;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.Window;
@@ -81,6 +83,7 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import perfetto.protos.PerfettoConfig;
 import perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy;
@@ -781,12 +784,16 @@ public class TraceConfigDialog extends DialogBase {
 
       private CheckboxTableViewer table;
       private List<Integer> selectedIds;
+      private Set<Object> checkedElements;
+      private boolean hasFilters;
 
       public GpuCountersDialog(
           Shell shell, Theme theme, Device.PerfettoCapability caps, List<Integer> currentIds) {
         super(shell, theme);
         this.caps = caps;
         this.currentIds = Sets.newHashSet(currentIds);
+        this.checkedElements = Sets.newHashSet();
+        this.hasFilters = false;
       }
 
       public List<Integer> getSelectedIds() {
@@ -818,10 +825,22 @@ public class TraceConfigDialog extends DialogBase {
                 .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
         table.getTable().getColumn(0).pack();
         table.getTable().getColumn(1).pack();
+        collectCheckedElements();
+
+        table.addCheckStateListener(new ICheckStateListener() {
+          public void checkStateChanged(CheckStateChangedEvent event) {
+            if (event.getChecked()) {
+              checkedElements.add(event.getElement());
+            } else {
+              checkedElements.remove(event.getElement());
+            }
+          }
+        });
 
         createLink(area, "Select <a>none</a> | <a>default</a> | <a>all</a>", e -> {
           switch (e.text) {
             case "none":
+              checkedElements.removeAll(Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet()));
               table.setAllChecked(false);
               break;
             case "default":
@@ -829,9 +848,15 @@ public class TraceConfigDialog extends DialogBase {
                   caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
                       .filter(SELECT_DEFAULT)
                       .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
+              if (hasFilters) {
+                appendCheckedElements();
+              } else {
+                collectCheckedElements();
+              }
               break;
             case "all":
               table.setAllChecked(true);
+              appendCheckedElements();
               break;
           }
         });
@@ -840,6 +865,8 @@ public class TraceConfigDialog extends DialogBase {
           String query = search.getText().trim().toLowerCase();
           if (query.isEmpty()) {
             table.resetFilters();
+            hasFilters = false;
+            resumeCheckedElements();
             return;
           }
           table.setFilters(new ViewerFilter() {
@@ -851,6 +878,8 @@ public class TraceConfigDialog extends DialogBase {
                   .contains(query);
             }
           });
+          hasFilters = true;
+          resumeCheckedElements();
         });
         return area;
       }
@@ -862,12 +891,24 @@ public class TraceConfigDialog extends DialogBase {
 
       @Override
       protected void okPressed() {
-        selectedIds = Arrays.stream(table.getCheckedElements())
+        selectedIds = Arrays.stream(checkedElements.toArray())
             .map(item -> (GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)item)
             .mapToInt(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
             .boxed()
             .collect(toList());
         super.okPressed();
+      }
+
+      private void collectCheckedElements() {
+        checkedElements = Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet());
+      }
+
+      private void appendCheckedElements() {
+        checkedElements.addAll(Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet()));
+      }
+
+      private void resumeCheckedElements() {
+        table.setCheckedElements(checkedElements.toArray());
       }
     }
   }
