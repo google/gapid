@@ -481,6 +481,14 @@ public class FramebufferView extends Composite
           case OutputDepth:
             pickerLabel.setText("Attachment: Depth (" + a.index + ")");
             break;
+
+          case InputColor:
+            pickerLabel.setText("Attachment: Input Color (" + a.index + ")");
+            break;
+
+          case InputDepth:
+            pickerLabel.setText("Attachment: InputDepth (" + a.index + ")");
+            break;
         }
         updateRenderTarget(a.index);
         repaint();

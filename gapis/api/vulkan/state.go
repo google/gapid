@@ -104,6 +104,34 @@ func (st *State) getSubmitAttachmentInfo(attachment uint32) (w, h uint32,
 	}
 
 	// Search for index in input attachments
+	for _, attIndex := range subpassDesc.InputAttachments().Keys() {
+		attRef := subpassDesc.InputAttachments().Get(attIndex)
+		if attachment == attRef.Attachment() {
+			if inputAttachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attachment); ok {
+				inputImg := inputAttachment.Image()
+
+				if (VkImageAspectFlagBits(inputImg.ImageAspect()) & VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT) != 0 {
+					if !inputImg.IsNil() {
+						return inputImg.Info().Extent().Width(),
+							inputImg.Info().Extent().Height(),
+							inputImg.Info().Fmt(),
+							attRef.Attachment(), true,
+							api.FramebufferAttachmentType_InputColor, nil
+					}
+				}
+
+				if (VkImageAspectFlagBits(inputImg.ImageAspect()) & VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT) != 0 {
+					if !inputImg.IsNil() {
+						return inputImg.Info().Extent().Width(),
+							inputImg.Info().Extent().Height(),
+							inputImg.Info().Fmt(),
+							attRef.Attachment(), true,
+							api.FramebufferAttachmentType_InputDepth, nil
+					}
+				}
+			}
+		}
+	}
 
 	// See if index corresponds to depth attachment
 	if !subpassDesc.DepthStencilAttachment().IsNil() && attachment == subpassDesc.DepthStencilAttachment().Attachment() {

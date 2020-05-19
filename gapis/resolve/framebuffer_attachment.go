@@ -68,6 +68,10 @@ func typeToString(t api.FramebufferAttachmentType) string {
 		return "Color"
 	case api.FramebufferAttachmentType_OutputDepth:
 		return "Depth"
+	case api.FramebufferAttachmentType_InputColor:
+		return "Input Color"
+	case api.FramebufferAttachmentType_InputDepth:
+		return "Input Depth"
 	default:
 		return "Unknown"
 	}

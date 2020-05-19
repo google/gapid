@@ -1031,9 +1031,9 @@ func (a API) Replay(
 			}
 
 			switch req.attachment {
-			case api.FramebufferAttachmentType_OutputDepth:
+			case api.FramebufferAttachmentType_OutputDepth, api.FramebufferAttachmentType_InputDepth:
 				readFramebuffer.Depth(ctx, subIdx, req.framebufferIndex, rr.Result)
-			case api.FramebufferAttachmentType_OutputColor:
+			case api.FramebufferAttachmentType_OutputColor, api.FramebufferAttachmentType_InputColor:
 				readFramebuffer.Color(ctx, subIdx, req.width, req.height, req.framebufferIndex, rr.Result)
 			default:
 				return fmt.Errorf("Stencil attachments are not currently supported")

@@ -83,6 +83,8 @@ enum ResourceType {
 enum FramebufferAttachmentType {
   OutputColor = 0;
   OutputDepth = 1;
+  InputColor = 2;
+  InputDepth = 3;
 }
 
 enum ShaderType {
