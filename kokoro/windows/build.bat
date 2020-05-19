@@ -30,7 +30,9 @@ REM This file might need to be updated in the future.
 copy /Y "%SRC%\kokoro\windows\android-sdk-license" "%ANDROID_HOME%\licenses\"
 
 REM Install Android SDK platform, build tools and NDK
+setlocal
 call %ANDROID_HOME%\tools\bin\sdkmanager.bat platforms;android-26 build-tools;29.0.2
+endlocal
 wget -q https://dl.google.com/android/repository/android-ndk-r21-windows-x86_64.zip
 unzip -q android-ndk-r21-windows-x86_64.zip
 set ANDROID_NDK_HOME=%CD%\android-ndk-r21
@@ -40,19 +42,25 @@ wget -q https://github.com/wixtoolset/wix3/releases/download/wix311rtm/wix311-bi
 unzip -q -d wix wix311-binaries.zip
 set WIX=%cd%\wix
 
-REM Fix up the MSYS environment.
+REM Manually install only the required MSYS packages. Do NOT do a
+REM system update (pacman -Syu) because it is a moving target. In
+REM particular, the pacman installed on default Kokoro VMs is old, and
+REM supports only ".pkg.tar.xz" package archives, it does not support
+REM the more recent ".pkg.tar.zst" packages archives.
+c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm catgets libcatgets"
+REM Use an old version of patch known to work with the msys runtime
+REM version that comes on Kokoro.
+wget -q http://repo.msys2.org/msys/x86_64/patch-2.7.5-1-x86_64.pkg.tar.xz
+c:\tools\msys64\usr\bin\bash --login -c "pacman -v -U --noconfirm  /t/src/patch-2.7.5-1-x86_64.pkg.tar.xz"
 wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-binutils-2.33.1-1-any.pkg.tar.xz
+c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-binutils-2.33.1-1-any.pkg.tar.xz"
 wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-9.2.0-2-any.pkg.tar.xz
 wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-libs-9.2.0-2-any.pkg.tar.xz
+c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-gcc-9.2.0-2-any.pkg.tar.xz /t/src/mingw-w64-x86_64-gcc-libs-9.2.0-2-any.pkg.tar.xz"
 wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-crt-git-8.0.0.5647.1fe2e62e-1-any.pkg.tar.xz
-c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm catgets libcatgets"
-c:\tools\msys64\usr\bin\bash --login -c "pacman -Syu --noconfirm"
-c:\tools\msys64\usr\bin\bash --login -c "pacman -Sy --noconfirm patch"
-c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm mingw-w64-x86_64-binutils-2.33.1-1-any.pkg.tar.xz"
-c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm mingw-w64-x86_64-gcc*-9.2.0-2-any.pkg.tar.xz"
-c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm mingw-w64-x86_64-crt-git-8.0.0.5647.1fe2e62e-1-any.pkg.tar.xz"
+c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-crt-git-8.0.0.5647.1fe2e62e-1-any.pkg.tar.xz"
 set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
-set BAZEL_SH=C:\tools\msys64\usr\bin\bash.exe
+set BAZEL_SH=c:\tools\msys64\usr\bin\bash
 
 REM Install Bazel.
 set BAZEL_VERSION=2.0.0
