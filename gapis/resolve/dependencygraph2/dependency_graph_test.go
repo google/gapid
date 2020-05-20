@@ -32,8 +32,6 @@ import (
 type TestCmd struct{}
 
 func (TestCmd) API() api.API           { return nil }
-func (TestCmd) Caller() api.CmdID      { return 0 }
-func (TestCmd) SetCaller(api.CmdID)    {}
 func (TestCmd) Thread() uint64         { return 0 }
 func (TestCmd) SetThread(uint64)       {}
 func (TestCmd) CmdName() string        { return "TestCmd" }

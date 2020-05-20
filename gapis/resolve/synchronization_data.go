@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -46,10 +45,6 @@ func (r *SynchronizationResolvable) Resolve(ctx context.Context) (interface{}, e
 	}
 	s := sync.NewData()
 
-	if err := addCallerGroups(ctx, s, r.Capture); err != nil {
-		return nil, err
-	}
-
 	for _, api := range capture.APIs {
 		if sync, ok := api.(sync.SynchronizedAPI); ok {
 			if err = sync.ResolveSynchronization(ctx, s, r.Capture); err != nil {
@@ -59,34 +54,4 @@ func (r *SynchronizationResolvable) Resolve(ctx context.Context) (interface{}, e
 	}
 
 	return s, nil
-}
-
-func addCallerGroups(ctx context.Context, d *sync.Data, c *path.Capture) error {
-	cmds, err := Cmds(ctx, c)
-	if err != nil {
-		return err
-	}
-	for i, c := range cmds {
-		if caller := c.Caller(); caller != api.CmdNoID {
-			id := api.CmdID(i)
-			d.Hidden.Add(id)
-			if d.Hidden.Contains(caller) {
-				continue // Most likely a sub-sub-command, which we don't currently support.
-			}
-			l := d.SubcommandReferences[caller]
-			fullIdx := api.SubCmdIdx{uint64(id), uint64(len(l))}
-			idx := api.SubCmdIdx{uint64(len(l))}
-			ref := sync.SubcommandReference{
-				Index:                   idx,
-				GeneratingCmd:           id,
-				MidExecutionCommandData: nil,
-				IsCallerGroup:           true,
-			}
-			l = append(l, ref)
-			d.SubcommandReferences[caller] = l
-			d.SubcommandLookup.SetValue(fullIdx, ref)
-			d.SubcommandGroups[caller] = []api.SubCmdIdx{idx}
-		}
-	}
-	return nil
 }

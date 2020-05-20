@@ -1740,7 +1740,6 @@ import (
 
   type {{$name}} struct {
     extras ϟapi.CmdExtras
-    caller ϟapi.CmdID
     thread uint64
     {{range $p := $.FullParameters}}
       {{$p | GoPrivateName}} {{Template "Go.Type" $p}} {{Template "CommandParameterTags" $p}}
@@ -1757,10 +1756,6 @@ import (
   func (ϟc *{{$name}}) Thread() uint64 { return ϟc.thread }
 
   func (ϟc *{{$name}}) SetThread(v uint64) { ϟc.thread = v }
-
-  func (ϟc *{{$name}}) Caller() ϟapi.CmdID { return ϟc.caller }
-
-  func (ϟc *{{$name}}) SetCaller(id ϟapi.CmdID) { ϟc.caller = id }
 
   func (ϟc *{{$name}}) Terminated() bool { return !ϟc.notTerminated }
 
@@ -1852,7 +1847,6 @@ import (
   func (ϟc *{{$name}}) clone(ϟa arena.Arena) *{{$name}} {
     out := &{{$name}}{
       extras: ϟc.extras,
-      caller: ϟc.caller,
       thread: ϟc.thread,
       arena: ϟa,
     }
@@ -1916,7 +1910,6 @@ import (
           {{end}}
         ) *{{$name}} {
         out := &{{$name}} {§
-          caller: ϟapi.CmdNoID,
           thread: cb.Thread,
           arena:  cb.Arena,
         }

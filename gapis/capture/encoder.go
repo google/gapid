@@ -123,21 +123,9 @@ func (e *encoder) startCmd(ctx context.Context, cmd api.Cmd) (uint64, error) {
 		return 0, err
 	}
 
-	var cmdID uint64
-	if id := cmd.Caller(); id != api.CmdNoID {
-		parentID, err := e.startCmd(ctx, e.c.Commands[id])
-		if err != nil {
-			return 0, err
-		}
-		cmdID, err = e.w.BeginChildGroup(ctx, cmdProto, parentID)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		cmdID, err = e.w.BeginGroup(ctx, cmdProto)
-		if err != nil {
-			return 0, err
-		}
+	cmdID, err := e.w.BeginGroup(ctx, cmdProto)
+	if err != nil {
+		return 0, err
 	}
 	e.cmdIDs[cmd] = cmdID
 	return cmdID, nil

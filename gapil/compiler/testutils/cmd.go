@@ -41,12 +41,6 @@ var _ api.Cmd = &Cmd{}
 // API stubs the api.Cmd interface.
 func (c *Cmd) API() api.API { return nil }
 
-// Caller stubs the api.Cmd interface.
-func (c *Cmd) Caller() api.CmdID { return 0 }
-
-// SetCaller stubs the api.Cmd interface.
-func (c *Cmd) SetCaller(api.CmdID) {}
-
 // Thread stubs the api.Cmd interface.
 func (c *Cmd) Thread() uint64 { return c.T }
 

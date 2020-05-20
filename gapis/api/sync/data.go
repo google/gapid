@@ -43,9 +43,6 @@ type SubcommandReference struct {
 	// If GeneratingCmd is nil, then MidExecutionCommandData contains the data
 	// that the API needs in order to reconstruct this command.
 	MidExecutionCommandData interface{}
-	// IsCalledGroup is true if the reference is to a nested call, otherwise
-	// the reference belongs to a command-list.
-	IsCallerGroup bool
 }
 
 // SyncNodeIdx is the identifier for a node in the sync dependency graph.

@@ -38,7 +38,6 @@ func init() {
 	Cmds.B = cb.CmdTypeMix(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, false, Voidᵖ(0xabcdef9), 200)
 
 	Cmds.IgnoreArena.Register(func(c compare.Comparator, reference, value *CmdTypeMix) {
-		c.With(c.Path.Member("Caller", reference, value)).Compare(reference.Caller(), value.Caller())
 		c.With(c.Path.Member("Thread", reference, value)).Compare(reference.Thread(), value.Thread())
 		c.With(c.Path.Member("CmdName", reference, value)).Compare(reference.CmdName(), value.CmdName())
 		c.With(c.Path.Member("Extras", reference, value)).Compare(reference.Extras(), value.Extras())

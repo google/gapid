@@ -69,14 +69,6 @@ func (t *captureLog) Flush(ctx context.Context, out Writer) error {
 	for idx := range t.cmds {
 		cmd := t.cmds[idx].Clone(a)
 		t.cmds[idx] = cmd
-		if caller := cmd.Caller(); caller.IsReal() {
-			if id, ok := t.ids[caller]; ok {
-				cmd.SetCaller(id)
-			} else {
-				log.W(ctx, "Callee without caller %v: %v", caller, cmd)
-				cmd.SetCaller(api.CmdNoID)
-			}
-		}
 	}
 
 	c, err := capture.NewGraphicsCapture(ctx, a, "capturelog", t.header, nil, t.cmds)

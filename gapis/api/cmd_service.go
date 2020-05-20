@@ -79,7 +79,6 @@ func ServiceToCmd(a arena.Arena, c *Command) (Cmd, error) {
 		return nil, fmt.Errorf("Unknown command '%v.%v'", api.Name(), c.Name)
 	}
 
-	cmd.SetCaller(CmdNoID) // TODO: Include this in the proto
 	cmd.SetThread(c.Thread)
 
 	for _, s := range c.Parameters {

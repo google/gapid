@@ -227,14 +227,12 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					append(api.SubCmdIdx{}, nv[1:]...),
 					api.CmdNoID,
 					cb.CommandReferences().Get(uint32(i)),
-					false,
 				}
 			} else {
 				ref = sync.SubcommandReference{
 					append(api.SubCmdIdx{}, nv[1:]...),
 					commandMap[generatingId],
 					nil,
-					false,
 				}
 			}
 			d.SubcommandLookup.SetValue(nv, ref)

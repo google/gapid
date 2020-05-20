@@ -133,9 +133,6 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 			cmd.Extras().Add(oldCmd.Extras().All()...)
 		}
 
-		// Propagate caller (not exposed to client)
-		cmd.SetCaller(oldCmd.Caller())
-
 		// Replace the command
 		cmds[cmdIdx] = cmd
 

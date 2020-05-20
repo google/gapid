@@ -89,10 +89,12 @@ func (d *decoder) endGroupImpl(ctx context.Context, id uint64, terminated bool) 
 	case *cmdGroup:
 		obj.invoked = true
 		obj.cmd.SetTerminated(terminated)
-		id := d.builder.addCmd(ctx, obj.cmd)
-		for _, c := range obj.children {
-			c.SetCaller(id)
+
+		if len(obj.children) > 0 {
+			return fmt.Errorf("Nested commands not supported, but command %v has children", id)
 		}
+
+		d.builder.addCmd(ctx, obj.cmd)
 	}
 
 	return nil

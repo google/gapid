@@ -44,14 +44,6 @@ func (*InsertionCommand) Mutate(ctx context.Context, cmd api.CmdID, g *api.Globa
 	return nil
 }
 
-func (s *InsertionCommand) Caller() api.CmdID {
-	return s.callee.Caller()
-}
-
-func (s *InsertionCommand) SetCaller(c api.CmdID) {
-	s.callee.SetCaller(c)
-}
-
 func (s *InsertionCommand) Thread() uint64 {
 	return s.callee.Thread()
 }

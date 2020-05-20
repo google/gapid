@@ -91,52 +91,9 @@ func deleteCommand(ctx context.Context, a arena.Arena, p path.Node) (*path.Captu
 func removeCommandFromList(cmdIdx uint64, oldCmds []api.Cmd, a arena.Arena) []api.Cmd {
 	const MAXID = math.MaxUint64
 
-	firstChildToRemove := cmdIdx
-
-	// All the children(and grandchildren) of the command are consequent to each other
-	for i := int(cmdIdx - 1); i > 0; i-- {
-		callerID := oldCmds[i].Caller()
-
-		if callerID == api.CmdNoID || uint64(callerID) > cmdIdx {
-			break
-		}
-
-		firstChildToRemove = uint64(i)
-	}
-
-	parentShift := cmdIdx - firstChildToRemove + 1
-	newCommandListLength := uint64(len(oldCmds)) - parentShift
-
-	cmds := make([]api.Cmd, 0, newCommandListLength)
-	cmds = append(cmds, oldCmds[:firstChildToRemove]...)
-
-	// Update the parents of any siblings of the command to remove
-	for i := int(firstChildToRemove - 1); i > 0; i-- {
-		callerID := cmds[i].Caller()
-
-		if callerID == api.CmdNoID {
-			break
-		}
-
-		if uint64(callerID) > cmdIdx {
-			cmds[i] = cmds[i].Clone(a)
-			cmds[i].SetCaller(api.CmdID(uint64(callerID) - parentShift))
-		}
-	}
-
+	cmds := make([]api.Cmd, 0, uint64(len(oldCmds))-1)
+	cmds = append(cmds, oldCmds[:cmdIdx]...)
 	cmds = append(cmds, oldCmds[cmdIdx+1:]...)
-
-	// Update the any parent id for the rest of the trace
-	for i := firstChildToRemove; i < newCommandListLength; i++ {
-		callerID := cmds[i].Caller()
-
-		if callerID == api.CmdNoID {
-			continue
-		}
-
-		cmds[i] = cmds[i].Clone(a)
-		cmds[i].SetCaller(api.CmdID(uint64(callerID) - parentShift))
-	}
 
 	return cmds
 }

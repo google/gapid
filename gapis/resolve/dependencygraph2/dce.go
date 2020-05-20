@@ -276,12 +276,6 @@ func (b *DCEBuilder) processLiveCmd(ctx context.Context, a arena.Arena, id api.C
 		}
 	}
 
-	// Adjust the command's `Caller`, if necessary
-	if b.LiveCmdID(cmd.Caller()) != cmd.Caller() {
-		cloneCmd()
-		cmd.SetCaller(b.LiveCmdID(cmd.Caller()))
-	}
-
 	// Attach any orphan observations to this command
 	if len(b.orphanObs) > 0 {
 		cloneCmd()
