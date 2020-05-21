@@ -44,9 +44,12 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
                   END {print major"."minor"."micro}' $BIN/pkg/build.properties)
 
 # Combine package contents.
-mkdir -p agi/jre
+mkdir agi
 cp -r $BIN/pkg/* agi/
-"$SRC/copy_jre.sh" agi/jre
+# TODO(b/150268876): update to a JRE usable for notarization. In the mean time,
+# do not embed a JRE.
+# mkdir -p agi/jre
+# "$SRC/copy_jre.sh" agi/jre
 
 # Create a zip file.
 zip -r agi-$VERSION-macos.zip agi/
