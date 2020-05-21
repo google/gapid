@@ -160,6 +160,10 @@ public abstract class State {
     }
   }
 
+  public double getWidth() {
+    return width;
+  }
+
   public Track.DataRequest toRequest() {
     return new Track.DataRequest(visibleTime, resolution);
   }

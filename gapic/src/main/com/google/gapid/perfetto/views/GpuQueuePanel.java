@@ -152,17 +152,17 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       }
 
       if (hoveredTitle != null) {
+        double cardW = hoveredSize.w + 2 * HOVER_PADDING;
+        double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - cardW);
         ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(
-            mouseXpos + HOVER_MARGIN, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
+        ctx.fillRect(cardX, mouseYpos, cardW, hoveredSize.h);
 
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, hoveredTitle,
-            mouseXpos + HOVER_MARGIN + HOVER_PADDING, mouseYpos + HOVER_PADDING / 2);
+        ctx.drawText(Fonts.Style.Normal, hoveredTitle, cardX + HOVER_PADDING,
+            mouseYpos + HOVER_PADDING / 2);
         if (!hoveredCategory.isEmpty()) {
           ctx.setForegroundColor(colors().textAlt);
-          ctx.drawText(Fonts.Style.Normal, hoveredCategory,
-              mouseXpos + HOVER_MARGIN + HOVER_PADDING,
+          ctx.drawText(Fonts.Style.Normal, hoveredCategory, cardX + HOVER_PADDING,
               mouseYpos + hoveredSize.h / 2, hoveredSize.h / 2);
         }
       }
@@ -214,8 +214,9 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         return new Hover() {
           @Override
           public Area getRedraw() {
-            return new Area(
-                x + HOVER_MARGIN, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
+            double redrawW = hoveredSize.w + 2 * HOVER_PADDING;
+            double redrawX = Math.min(x + HOVER_MARGIN, state.getWidth() - redrawW);
+            return new Area(redrawX, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
           }
 
           @Override

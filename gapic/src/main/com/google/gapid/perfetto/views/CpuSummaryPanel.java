@@ -103,18 +103,17 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
       });
 
       if (hovered != null && hovered.bucket >= start) {
-        double x = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
-        if (x < w) {
-          double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
-          double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
-          ctx.setBackgroundColor(colors().hoverBackground);
-          ctx.fillRect(x + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
-          ctx.setForegroundColor(colors().textMain);
-          ctx.drawText(Fonts.Style.Normal, hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
+        double mouseX = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
+        double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
+        double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
+        double cardX = Math.min(mouseX, w - dx);
+        ctx.setBackgroundColor(colors().hoverBackground);
+        ctx.fillRect(cardX + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
+        ctx.setForegroundColor(colors().textMain);
+        ctx.drawText(Fonts.Style.Normal, hovered.text, cardX + HOVER_MARGIN + HOVER_PADDING, h - dy);
 
-          ctx.setForegroundColor(colors().textMain);
-          ctx.drawCircle(x, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
-        }
+        ctx.setForegroundColor(colors().textMain);
+        ctx.drawCircle(mouseX, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
       }
     });
   }
@@ -144,7 +143,8 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseX - CURSOR_SIZE, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
+        double redrawX = Math.min(mouseX - CURSOR_SIZE, state.getWidth() - dx);
+        return new Area(redrawX, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
       }
 
       @Override

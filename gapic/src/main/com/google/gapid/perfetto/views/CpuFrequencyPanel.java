@@ -151,13 +151,14 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
         });
 
         // Draw the tooltip.
+        double cardX = Math.min(mouseXpos + 5, w - (textSize.w + 16));
         ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(mouseXpos + 5, 0, textSize.w + 16, h);
+        ctx.fillRect(cardX, 0, textSize.w + 16, h);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, hoverLabel, mouseXpos + 5 + 8, (h - 2 * textSize.h) / 4);
+        ctx.drawText(Fonts.Style.Normal, hoverLabel, cardX + 8, (h - 2 * textSize.h) / 4);
         if (hoveredIdle != null && hoveredIdle != -1) {
           String idle = "Idle: " + (hoveredIdle + 1);
-          ctx.drawText(Fonts.Style.Normal, idle, mouseXpos + 5 + 8, (3 * h - 2 * textSize.h) / 4);
+          ctx.drawText(Fonts.Style.Normal, idle, cardX + 8, (3 * h - 2 * textSize.h) / 4);
         }
       }
 
@@ -197,7 +198,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
         return new Hover() {
           @Override
           public Area getRedraw() {
-            return new Area(xStart, 0, xEnd - xStart, HEIGHT);
+            return new Area(Math.min(xStart, state.getWidth() - (xEnd - xStart)), 0, xEnd - xStart, HEIGHT);
           }
 
           @Override

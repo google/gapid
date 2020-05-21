@@ -92,7 +92,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
       }
 
       switch (data.kind) {
-        case slice: renderSlices(ctx, data, h); break;
+        case slice: renderSlices(ctx, data, w, h); break;
         case summary: renderSummary(ctx, data, w, h); break;
       }
     });
@@ -135,22 +135,21 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
     }
 
     if (hovered != null && hovered.bucket >= start) {
-      double x = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
-      if (x < w) {
-        double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
-        double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
-        ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(x + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
-        ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
+      double mouseX = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
+      double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
+      double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
+      double cardX = Math.min(mouseX + HOVER_MARGIN, w - dx);
+      ctx.setBackgroundColor(colors().hoverBackground);
+      ctx.fillRect(cardX, h - HOVER_PADDING - dy, dx, dy);
+      ctx.setForegroundColor(colors().textMain);
+      ctx.drawText(Fonts.Style.Normal, hovered.text, cardX + HOVER_PADDING, h - dy);
 
-        ctx.setForegroundColor(colors().textMain);
-        ctx.drawCircle(x, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
-      }
+      ctx.setForegroundColor(colors().textMain);
+      ctx.drawCircle(mouseX, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
     }
   }
 
-  private void renderSlices(RenderContext ctx, CpuTrack.Data data, double h) {
+  private void renderSlices(RenderContext ctx, CpuTrack.Data data, double w, double h) {
     TimeSpan visible = state.getVisibleTime();
     Selection<?> selected = state.getSelection(Selection.Kind.Cpu);
     List<Highlight> visibleSelected = Lists.newArrayList();
@@ -196,15 +195,15 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
     }
 
     if (hoveredThread != null) {
+      double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - (hoveredWidth + 2 * HOVER_PADDING));
       ctx.setBackgroundColor(colors().hoverBackground);
-      ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, hoveredWidth + 2 * HOVER_PADDING, h);
+      ctx.fillRect(cardX, 0, hoveredWidth + 2 * HOVER_PADDING, h);
 
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(Fonts.Style.Normal, hoveredThread.title,
-          mouseXpos + HOVER_MARGIN + HOVER_PADDING, 2, (h / 2) - 4);
+      ctx.drawText(Fonts.Style.Normal, hoveredThread.title, cardX + HOVER_PADDING, 2, (h / 2) - 4);
       if (!hoveredThread.subTitle.isEmpty()) {
-        ctx.drawText(Fonts.Style.Normal, hoveredThread.subTitle,
-            mouseXpos+ HOVER_MARGIN + HOVER_PADDING, (h / 2) + 2, (h / 2) - 4);
+        ctx.drawText(Fonts.Style.Normal, hoveredThread.subTitle, cardX + HOVER_PADDING,
+            (h / 2) + 2, (h / 2) - 4);
       }
     }
   }
@@ -241,7 +240,9 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
         return new Hover() {
           @Override
           public Area getRedraw() {
-            return new Area(x + HOVER_MARGIN, 0, hoveredWidth + 2 * HOVER_PADDING, HEIGHT);
+            double redrawW = hoveredWidth + 2 * HOVER_PADDING;
+            double redrawX = Math.min(x + HOVER_MARGIN, state.getWidth() - redrawW);
+            return new Area(redrawX, 0, redrawW, HEIGHT);
           }
 
           @Override
@@ -293,7 +294,9 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseX - CURSOR_SIZE, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
+        double redrawW = CURSOR_SIZE + HOVER_MARGIN + dx;
+        double redrawX = Math.min(mouseX - CURSOR_SIZE, state.getWidth() - redrawW);
+        return new Area(redrawX, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
       }
 
       @Override

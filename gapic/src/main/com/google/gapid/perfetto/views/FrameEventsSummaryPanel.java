@@ -94,7 +94,7 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
       }
 
       switch(data.kind) {
-        case slices: renderSlices(ctx, data); break;
+        case slices: renderSlices(ctx, data, w); break;
         case summary: renderSummary(ctx, data, w, h); break;
       }
     });
@@ -140,23 +140,22 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
     }
 
     if (hovered != null && hovered.bucket >= start) {
-      double x = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
-      if (x < w) {
-        double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
-        double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
-        ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(x + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
-        ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
+      double mouseX = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
+      double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
+      double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
+      double cardX = Math.min(mouseX + HOVER_MARGIN, w - dx);
+      ctx.setBackgroundColor(colors().hoverBackground);
+      ctx.fillRect(cardX, h - HOVER_PADDING - dy, dx, dy);
+      ctx.setForegroundColor(colors().textMain);
+      ctx.drawText(Fonts.Style.Normal, hovered.text, cardX + HOVER_PADDING, h - dy);
 
-        ctx.setForegroundColor(colors().textMain);
-        ctx.drawCircle(x, Math.round(Math.max(0,h - (h * (hovered.numEvents)))), CURSOR_SIZE / 2);
-      }
+      ctx.setForegroundColor(colors().textMain);
+      ctx.drawCircle(mouseX, Math.round(Math.max(0,h - (h * (hovered.numEvents)))), CURSOR_SIZE / 2);
     }
   }
 
 
-  public void renderSlices(RenderContext ctx, FrameEventsTrack.Data data) {
+  public void renderSlices(RenderContext ctx, FrameEventsTrack.Data data, double w) {
     TimeSpan visible = state.getVisibleTime();
     Selection<?> selected = state.getSelection(Selection.Kind.FrameEvents);
     List<Highlight> visibleSelected = Lists.newArrayList();
@@ -220,17 +219,16 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
     }
 
     if (hoveredTitle != null) {
+      double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - (hoveredSize.w + 2 * HOVER_PADDING));
       ctx.setBackgroundColor(colors().hoverBackground);
-      ctx.fillRect(
-          mouseXpos + HOVER_MARGIN, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
+      ctx.fillRect(cardX, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
 
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(Fonts.Style.Normal, hoveredTitle,
-          mouseXpos + HOVER_MARGIN + HOVER_PADDING, mouseYpos + HOVER_PADDING / 2);
+      ctx.drawText(Fonts.Style.Normal, hoveredTitle, cardX + HOVER_PADDING,
+          mouseYpos + HOVER_PADDING / 2);
       if (!hoveredCategory.isEmpty()) {
         ctx.setForegroundColor(colors().textAlt);
-        ctx.drawText(Fonts.Style.Normal, hoveredCategory,
-            mouseXpos + HOVER_MARGIN + HOVER_PADDING,
+        ctx.drawText(Fonts.Style.Normal, hoveredCategory, cardX + HOVER_PADDING,
             mouseYpos + hoveredSize.h / 2, hoveredSize.h / 2);
       }
     }
@@ -282,7 +280,9 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseX - CURSOR_SIZE, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
+        double redrawW = CURSOR_SIZE + HOVER_MARGIN + dx;
+        double redrawX = Math.min(mouseX - CURSOR_SIZE, state.getWidth() - redrawW);
+        return new Area(redrawX, -TRACK_MARGIN, redrawW, dy);
       }
 
       @Override
@@ -345,8 +345,9 @@ public class FrameEventsSummaryPanel extends TrackPanel<FrameEventsSummaryPanel>
         return new Hover() {
           @Override
           public Area getRedraw() {
-            return new Area(
-                x + HOVER_MARGIN, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
+            double redrawW = hoveredSize.w + 2 * HOVER_PADDING;
+            double redrawX = Math.min(x + HOVER_MARGIN, state.getWidth() - redrawW);
+            return new Area(redrawX, mouseYpos, redrawW, hoveredSize.h);
           }
 
           @Override

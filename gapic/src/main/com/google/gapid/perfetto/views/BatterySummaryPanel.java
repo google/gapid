@@ -134,11 +134,12 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
 
       // Draw hovered card.
       if (hovered != null) {
+        double cardW = hovered.allSize.w + 3 * HOVER_PADDING + LEGEND_SIZE;
+        double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - cardW);
         ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(mouseXpos + HOVER_MARGIN, mouseYpos,
-            hovered.allSize.w + 3 * HOVER_PADDING + LEGEND_SIZE, hovered.allSize.h);
+        ctx.fillRect(cardX, mouseYpos, cardW, hovered.allSize.h);
 
-        double x = mouseXpos + HOVER_MARGIN + HOVER_PADDING, y = mouseYpos;
+        double x = cardX + HOVER_PADDING, y = mouseYpos;
         double dy = hovered.allSize.h / 2;
 
         (hovered.current > 0 ? batteryOutGradient() : batteryInGradient()).applyBase(ctx);
@@ -185,9 +186,9 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseXpos - CURSOR_SIZE, -TRACK_MARGIN,
-            CURSOR_SIZE + HOVER_MARGIN + hovered.allSize.w + 3 * HOVER_PADDING + LEGEND_SIZE,
-            HEIGHT + 2 * TRACK_MARGIN);
+        double redrawW = CURSOR_SIZE + HOVER_MARGIN + hovered.allSize.w + 3 * HOVER_PADDING + LEGEND_SIZE;
+        double redrawX = Math.min(mouseXpos - CURSOR_SIZE, state.getWidth() - redrawW);
+        return new Area(redrawX, -TRACK_MARGIN, redrawW, HEIGHT + 2 * TRACK_MARGIN);
       }
 
       @Override

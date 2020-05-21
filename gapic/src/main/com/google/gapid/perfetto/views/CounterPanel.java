@@ -138,7 +138,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
         ctx.setBackgroundColor(colors().hoverBackground);
         double bgH = Math.max(hovered.size.h, trackHeight);
-        double x = hovered.getTooltipX();
+        double x = Math.min(hovered.getTooltipX(), w - (2 * HOVER_PADDING + hovered.size.w));
         ctx.fillRect(x, Math.min((trackHeight - bgH) / 2, 0),
             2 * HOVER_PADDING + hovered.size.w, bgH);
         ctx.setForegroundColor(colors().textMain);
@@ -153,7 +153,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         x += hovered.leftWidth;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.label, x, y, dy);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.avg, x, y + dy, dy);
-        x = hovered.getTooltipX() + HOVER_PADDING + hovered.size.w;
+        x = Math.min(hovered.getTooltipX() + HOVER_PADDING + hovered.size.w, w - HOVER_PADDING);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.min, x, y, dy);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.max, x, y + dy, dy);
       }
@@ -192,6 +192,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       @Override
       public Area getRedraw() {
         double start = Math.min(hovered.mouseX - CURSOR_SIZE / 2, startX);
+        start = Math.min(start, state.getWidth() - hovered.size.w - 2 * HOVER_PADDING);
         double end = Math.max(
             hovered.getTooltipX() + HOVER_PADDING + hovered.size.w + HOVER_PADDING,
             endX);
