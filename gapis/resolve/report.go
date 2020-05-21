@@ -107,6 +107,13 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		}
 	}
 
+	// Start with issues that are not specific to a command, like
+	// replay connection errors.
+	for _, issue := range issues[api.CmdNoID] {
+		item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command), messages.ErrReplayDriver(issue.Error.Error()))
+		builder.Add(ctx, item)
+	}
+
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
 	api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

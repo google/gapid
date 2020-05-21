@@ -1243,6 +1243,9 @@ func (a API) Profile(
 	handleMappings := make(map[uint64][]service.VulkanHandleMappingItem)
 	r := profileRequest{traceOptions, handler, &buffer, &handleMappings}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
+	if err != nil {
+		return nil, err
+	}
 	handler.DoneSignal.Wait(ctx)
 
 	s, err := resolve.SyncData(ctx, intent.Capture)

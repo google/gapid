@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"time"
 
@@ -211,7 +212,7 @@ func (c *connection) HandleReplayCommunication(
 	ctx = c.attachAuthToken(ctx)
 	replayStream, err := c.servClient.Replay(ctx)
 	if err != nil {
-		return log.Err(ctx, err, "Gettting replay stream client")
+		return log.Err(ctx, err, "Getting replay stream client")
 	}
 	c.stream = replayStream
 	connected <- nil
@@ -243,7 +244,7 @@ func (c *connection) HandleReplayCommunication(
 				return log.Errf(ctx, err, "Handling replay crash dump")
 			}
 			// No valid replay response after crash dump.
-			return nil
+			return fmt.Errorf("Replay crash")
 		case *replaysrv.ReplayResponse_PostData:
 			if err := handler.HandlePostData(ctx, r.GetPostData()); err != nil {
 				return log.Errf(ctx, err, "Handling post data")
