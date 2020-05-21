@@ -260,3 +260,56 @@ makes it easy to get flamegraphs.
 To profile the replayer using AGI itself, you can export a given replay into a
 standalone APK (using `gapit export_replay -apk`), and profile that replay-APK
 using AGI.
+
+## Unit tests
+
+Unit testing is achieved with separate frameworks depending on the programming
+language, but they are all accessible with Bazel.
+
+### List tests
+
+```sh
+# List all tests
+bazel query 'tests(//...)'
+
+# List all Go tests
+bazel query 'kind(go_.*, tests(//...))'
+# List all C++ tests
+bazel query 'kind(cc_.*, tests(//...))'
+```
+
+### Run tests
+
+```sh
+# Run all the tests
+bazel test tests
+
+# Run a given test
+bazel test //core/log:go_default_test
+```
+
+### Golang
+
+Following the [regular Go test](https://golang.org/doc/code.html#Testing) setup,
+tests are written as `func TestXXX(t *testing.T)` functions in `*_test.go`
+files.
+
+Adding a Go test file into Bazel is done by invoking Gazelle. The
+`kokoro/presubmit/presubmit.sh` script does that for you: if you create or
+remove `*_test.go` files, running the presubmit script automatically edit the
+BUILD.bazel files to reflect your changes.
+
+A few useful homemade packages:
+
+- `github.com/google/gapid/core/assert` defines an assertion framework.
+
+- `github.com/google/gapid/core/log` lets you create contexts for tests with
+  `ctx := log.Testing(t)`
+
+### C++
+
+> TODO
+
+### Java
+
+> TODO
