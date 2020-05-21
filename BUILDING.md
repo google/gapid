@@ -25,15 +25,18 @@ The build output will be at `<path-to-agi-source>/bazel-bin/pkg`.
 
 ### Install Bazel
 
-In the console (with administrator privilege) type:
+Start a console, with administrator privilege, and type:
 
-`choco install bazel`
+`choco install bazel --version 2.0.0`
 
-Note: Installing bazel will also install MSYS into `C:\tools\msys64` and Python into `C:\tools\python27`.
+In the same console, install Python 2.7 and MSYS2 as well:
+
+`choco install python2`
+`choco install msys2`
 
 ### Install additional tools
 
-Using the msys64 shell at `C:\tools\msys64\mingw64`:
+Using the msys64 shell (installed by choco at `C:\tools\msys64\mingw64`):
 1. Update MSYS with: `pacman -Syu`.
 2. If the update ends with “close the window and run it again”, close and reopen the window and repeat 1.
 3. Fetch required tools with: `pacman -S curl git zip unzip patch`
