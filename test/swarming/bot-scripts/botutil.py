@@ -86,7 +86,7 @@ def install_apk(test_params):
 '''
     force = False
     if 'force_install' in test_params.keys():
-        force = test_params['force']
+        force = test_params['force_install']
     # -g: grant all needed permissions, -t: accept test APK
     install_flags = ['-g', '-t']
     if 'install_flags' in test_params.keys():

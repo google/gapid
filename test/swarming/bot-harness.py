@@ -80,11 +80,16 @@ def main():
     # Wake up (224) and unlock (82) screen, sleep to pass any kind of animation
     botutil.adb(['shell', 'input', 'keyevent', '224'])
     time.sleep(2)
+    # TODO(b/157444640): Temporary workaround: touch the screen before unlocking it to bypass a possible "Android preview" notification
+    botutil.adb(['shell', 'input', 'touchscreen', 'tap', '100', '100'])
+    time.sleep(1)
     botutil.adb(['shell', 'input', 'keyevent', '82'])
     time.sleep(1)
     # Turn brightness to a minimum, to prevent device to get too hot
     botutil.adb(['shell', 'settings', 'put', 'system', 'screen_brightness', '0'])
-    # remove any implicit vulkan layers
+    # Make sure to have the screen "stay awake" during the test, we turn off the screen ourselves at the end
+    botutil.adb(['shell', 'settings', 'put', 'global', 'stay_on_while_plugged_in', '7'])
+    # Remove any implicit vulkan layers
     botutil.adb(['shell', 'settings', 'delete', 'global', 'enable_gpu_debug_layers'])
     botutil.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_app'])
     botutil.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_layers'])

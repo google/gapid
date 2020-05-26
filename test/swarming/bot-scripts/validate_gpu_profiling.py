@@ -43,6 +43,9 @@ def main():
 
     #### Install APK
     if 'apk' in test_params.keys():
+        if not 'package' in test_params.keys():
+            botutil.log('Error: have "apk" but no "package" in params.json')
+            return 1
         botutil.install_apk(test_params)
 
     #### Call gapit command
