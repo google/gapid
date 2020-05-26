@@ -51,7 +51,8 @@ def main():
         gapit, 'validate_gpu_profiling',
         '-os', 'android'
     ]
-    botutil.runcmd(cmd)
+    p = botutil.runcmd(cmd)
+    return p.returncode
 
 
 if __name__ == '__main__':

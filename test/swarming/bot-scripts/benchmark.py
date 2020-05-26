@@ -56,13 +56,15 @@ def main():
 
     cmd += [test_params['package'] + '/' + test_params['activity']]
 
-    botutil.runcmd(cmd)
+    p = botutil.runcmd(cmd)
 
     #### Save gfxtrace
     gfxtrace = 'benchmark.gfxtrace'
     if os.path.isfile(gfxtrace):
         dest = os.path.join(out_dir, gfxtrace)
         os.rename(gfxtrace, dest)
+
+    return p.returncode
 
 
 if __name__ == '__main__':
