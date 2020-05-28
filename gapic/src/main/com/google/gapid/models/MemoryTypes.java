@@ -107,12 +107,12 @@ public class MemoryTypes {
    * containing relevant information.
    */
   public ListenableFuture<StructNode> loadStructNode(StructObservation structOb) {
-    Path.Any memoryAsType = memoryAsType(structOb.source.command, structOb.source.pool, structOb.range);
-    return transformAsync(client.get(memoryAsType, structOb.device),
-        val -> transform(loadTypes(structOb.getRange().getType()),
-            $ -> new StructNode(structOb.getRange().getType().getAPI(),
-                getType(structOb.getRange().getType()), val.getMemoryBox(),
-                structOb.range.getRoot(), this)));
+    return transform(loadTypes(structOb.getRange().getType()), $ ->
+        new StructNode(structOb.getRange().getType().getAPI(),
+            getType(structOb.getRange().getType()),
+            structOb.getRange().getValue(),
+            structOb.range.getRoot(),
+            this));
   }
 
   /**

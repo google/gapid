@@ -916,6 +916,8 @@ message TypedMemoryRange {
   MemoryRange range = 2;
   // The root of the memory observation
   uint64 root = 3;
+  // The structured value of the typed memory observation.
+  memory_box.Value value = 4;
 }
 
 // Resources contains the full list of resources used by a capture.

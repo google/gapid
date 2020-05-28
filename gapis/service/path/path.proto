@@ -398,6 +398,7 @@ message Memory {
 
 // MemoryAsType is a path to a particular piece of memory
 //  interpreted as a specific type
+// Resolves to a memory_box.Value.
 message MemoryAsType {
   // Base address of the region of memory.
   uint64 address = 1;

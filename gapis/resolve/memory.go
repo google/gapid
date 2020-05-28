@@ -127,6 +127,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 				if rng.Overlaps(r) {
 					interval.Merge(&reads, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
+						value, err := memoryAsType(ctx, s, rng, pool, id, p, rc)
+						if err != nil {
+							return
+						}
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
 								Type: &path.Type{
@@ -137,7 +141,8 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 									Base: rng.Base,
 									Size: rng.Size,
 								},
-								Root: root,
+								Root:  root,
+								Value: value,
 							},
 						)
 					}
@@ -147,6 +152,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 				if rng.Overlaps(r) {
 					interval.Merge(&writes, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
+						value, err := memoryAsType(ctx, s, rng, pool, id, p, rc)
+						if err != nil {
+							return
+						}
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
 								Type: &path.Type{
@@ -157,7 +166,8 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 									Base: rng.Base,
 									Size: rng.Size,
 								},
-								Root: root,
+								Root:  root,
+								Value: value,
 							},
 						)
 					}
@@ -204,6 +214,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 }
 
 // MemoryAsType resolves and returns the memory from the path p.
+// This is a resolving function accessible indirectly to gapic.
 func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveConfig) (*memory_box.Value, error) {
 	ctx = SetupContext(ctx, path.FindCapture(p), rc)
 
@@ -250,17 +261,27 @@ func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveCon
 	if err != nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrInvalidMemoryPool(p.Pool)}
 	}
-	sz := p.Size
+
+	rng := memory.Range{Base: p.Address, Size: p.Size}
+	return memoryAsType(ctx, s, rng, pool, p.Type.TypeIndex, p, rc)
+}
+
+// Function memoryAsType resolves typed memory related raw data,
+// and return the decoded memory.
+// This is a private resolving function inside gapis,.
+func memoryAsType(ctx context.Context, s *api.GlobalState, rng memory.Range, pool *memory.Pool, typeIndex uint64,
+	p path.Node, rc *path.ResolveConfig) (*memory_box.Value, error) {
+	sz := rng.Size
 	if sz == 0 {
 		sz = 0xFFFFFFFFFFFFFFFF
 	}
 
 	dec := s.MemoryDecoder(ctx, pool.Slice(memory.Range{
-		Base: p.Address,
+		Base: rng.Base,
 		Size: sz,
 	}))
 
-	e, err := types.GetType(p.Type.TypeIndex)
+	ty, err := types.GetType(typeIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +289,7 @@ func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveCon
 	nElems := 1
 	elemSize := 0
 	isSlice := false
-	ty := e
-	if sl, ok := e.Ty.(*types.Type_Slice); ok {
+	if sl, ok := ty.Ty.(*types.Type_Slice); ok {
 		isSlice = true
 		sliceType, err := types.GetType(sl.Slice.Underlying)
 		if err != nil {
@@ -279,13 +299,13 @@ func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveCon
 		if err != nil {
 			return nil, err
 		}
-		if p.Size == 0 {
+		if sz == 0 {
 			return nil, log.Err(ctx, nil, "Cannot have an unsized range with a slice")
 		}
 		nElems = int(sz / uint64(elemSize))
 		ty = sliceType
 	} else {
-		elemSize, err = e.Size(ctx, s.MemoryLayout)
+		elemSize, err = ty.Size(ctx, s.MemoryLayout)
 		if err != nil {
 			return nil, err
 		}
