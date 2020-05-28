@@ -889,7 +889,6 @@ func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, tr
 		ObserveDrawFrequency:      0,
 		StartFrame:                uint32(verb.StartFrame),
 		FramesToCapture:           uint32(verb.NumFrames),
-		RecordErrorState:          false,
 		DeferStart:                false,
 		NoBuffer:                  false,
 		HideUnknownExtensions:     true,

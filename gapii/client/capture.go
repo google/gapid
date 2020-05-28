@@ -34,9 +34,6 @@ import (
 type Flags uint32
 
 const (
-	// RecordErrorState queries the driver error state after each all and stores
-	// errors as extras.
-	RecordErrorState Flags = 0x10000000
 	// DeferStart does not start tracing right away but waits for a signal
 	// from gapit
 	DeferStart Flags = 0x00000010

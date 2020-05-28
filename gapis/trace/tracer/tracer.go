@@ -111,9 +111,6 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 	}
 
 	flags := gapii.Flags(0)
-	if o.RecordErrorState {
-		flags |= gapii.RecordErrorState
-	}
 	if o.DeferStart {
 		flags |= gapii.DeferStart
 	}

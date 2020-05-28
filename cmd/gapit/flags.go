@@ -301,7 +301,6 @@ type (
 			CoherentMemoryTracker bool `help:"_disables the coherent memory tracker so it won't interfere with gdb during trace"`
 		}
 		Record struct {
-			Errors     bool `help:"_record device error state"`
 			TraceTimes bool `help:"record trace timing into the capture"`
 		}
 		Clear struct {

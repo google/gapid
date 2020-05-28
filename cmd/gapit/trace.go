@@ -236,7 +236,6 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		ObserveDrawFrequency:         uint32(verb.Observe.Draws),
 		StartFrame:                   uint32(verb.Start.At.Frame),
 		FramesToCapture:              uint32(verb.Capture.Frames),
-		RecordErrorState:             verb.Record.Errors,
 		DeferStart:                   verb.Start.Defer,
 		NoBuffer:                     verb.No.Buffer,
 		HideUnknownExtensions:        verb.Disable.Unknown.Extensions,
