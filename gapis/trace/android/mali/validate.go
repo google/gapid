@@ -27,11 +27,9 @@ var (
 		{6, "GPU active cycles", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
 		{8, "Fragment jobs", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
 		{196, "Fragment active cycles", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
-		{233, "Compressed texture line fetch requests", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
 		{65536, "GPU utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
 		{65538, "Fragment queue utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
 		{65579, "Execution core utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
-		{65585, "Texture data fetches form compressed lines", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
 	}
 )
 
