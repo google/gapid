@@ -13,6 +13,21 @@ cd <path-to-agi-source>
 bazel build pkg
 ```
 
+> :warning: We currently use NDK r21 to have access to the unified Khronos
+> validation layer. Bazel 2.0.0 has no official support for r21, so **the
+> following build warning is expected and can be ignored:**
+>
+> ```
+> WARNING: The major revision of the Android NDK referenced by
+> android_ndk_repository rule 'androidndk' is 21. The major
+> revisions supported by Bazel are [10, 11, 12, 13, 14, 15, 16,
+> 17, 18, 19, 20]. Bazel will attempt to treat the NDK as if it
+> was r20. This may cause compilation and linkage problems.
+> Please download a supported NDK version.
+> ```
+>
+> This issue is tracked by https://github.com/google/agi/issues/305
+
 The build output will be at `<path-to-agi-source>/bazel-bin/pkg`.
 
 ---
@@ -62,7 +77,7 @@ cd <sdk-path>
 tools\bin\sdkmanager.bat "platforms;android-26" "build-tools;29.0.2" ndk-bundle
 ```
 
-Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The minimum required version of the NDK is **r21**.
+Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The recommended version of the NDK is **r21**.
 
 If you do not have adb installed you can do so with:
 ```
@@ -120,7 +135,7 @@ cd <sdk-path>
 tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2" ndk-bundle
 ```
 
-Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.
+Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The recommended version of the NDK is **r21**.
 
 If you do not have adb installed you can do so with:
 ```
@@ -187,7 +202,7 @@ cd <sdk-path>
 tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2" ndk-bundle
 ```
 
-Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.
+Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The recommended version of the NDK is **r21**.
 
 If you do not have adb installed you can do so with:
 ```
