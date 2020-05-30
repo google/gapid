@@ -1769,7 +1769,7 @@ func (sb *stateBuilder) primeImage(img ImageObjectʳ, imgPrimer *imagePrimer, op
 				if toQ.IsNil() {
 					toQ = imgLevel.LastBoundQueue()
 				}
-				if queue.Family() != toQ.Family() {
+				if !toQ.IsNil() && queue.Family() != toQ.Family() {
 					ownerTransferInfo = append(ownerTransferInfo, imageQueueFamilyTransferInfo{
 						image:      img.VulkanHandle(),
 						aspectMask: ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
