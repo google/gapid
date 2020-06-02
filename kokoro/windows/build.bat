@@ -19,7 +19,7 @@ Windows Build Script.
 set BUILD_ROOT=%cd%
 set SRC=%cd%\github\agi
 
-REM Use a fixed JDK.
+REM Use a fixed Java8 to use Android sdkmanager
 set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
 
 REM Install the Android SDK components and NDK.
@@ -30,6 +30,7 @@ REM This file might need to be updated in the future.
 copy /Y "%SRC%\kokoro\windows\android-sdk-license" "%ANDROID_HOME%\licenses\"
 
 REM Install Android SDK platform, build tools and NDK
+REM Note: the SDK manager needs Java8, call it before switching to Java11
 setlocal
 call %ANDROID_HOME%\tools\bin\sdkmanager.bat platforms;android-26 build-tools;29.0.2
 endlocal
@@ -61,6 +62,13 @@ wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-crt-git-8.0.0.5647.1
 c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-crt-git-8.0.0.5647.1fe2e62e-1-any.pkg.tar.xz"
 set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
 set BAZEL_SH=c:\tools\msys64\usr\bin\bash
+
+REM Get Zulu JDK11 from bazel, see https://mirror.bazel.build/openjdk/index.html
+set ZULU_JDK=zulu11.31.11-ca-jdk11.0.3
+wget -q https://mirror.bazel.build/openjdk/azul-%ZULU_JDK%/%ZULU_JDK%-win_x64.zip
+echo "a9695617b8374bfa171f166951214965b1d1d08f43218db9a2a780b71c665c18  %ZULU_JDK%-win_x64.zip" | sha256sum --check
+unzip -q %ZULU_JDK%-win_x64.zip
+set JAVA_HOME=%CD%\%ZULU_JDK%-win_x64
 
 REM Install Bazel.
 set BAZEL_VERSION=2.0.0

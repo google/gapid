@@ -19,6 +19,13 @@ set -ex
 BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
 
+# Get Zulu JDK11 from bazel, see https://mirror.bazel.build/openjdk/index.html
+ZULU_JDK="zulu11.31.11-ca-jdk11.0.3"
+curl -L -k -O -s https://mirror.bazel.build/openjdk/azul-${ZULU_JDK}/${ZULU_JDK}-linux_x64.tar.gz
+echo "ddb0fd4526089cf1ce2db36282c282263f587a9e8be373fa02f511a12923cc48  ${ZULU_JDK}-linux_x64.tar.gz" | sha256sum --check
+tar xzf ${ZULU_JDK}-linux_x64.tar.gz
+export JAVA_HOME=${PWD}/${ZULU_JDK}-linux_x64
+
 # Get bazel
 BAZEL_VERSION=2.0.0
 curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh

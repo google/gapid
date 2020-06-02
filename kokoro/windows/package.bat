@@ -57,6 +57,9 @@ copy "c:\tools\msys64\mingw64\bin\libgcc_s_seh-1.dll" agi
 copy "c:\tools\msys64\mingw64\bin\libstdc++-6.dll" agi
 copy "c:\tools\msys64\mingw64\bin\libwinpthread-1.dll" agi
 call "%~dp0\copy_jre.bat" "%cd%\agi\jre"
+REM Must include the JDK source code for legal reasons
+wget -q https://mirror.bazel.build/openjdk/azul-zulu11.31.11-ca-jdk11.0.3/zsrc11.31.11-jdk11.0.3.zip
+move zsrc11.31.11-jdk11.0.3.zip agi\jre\zsrc11.31.11-jdk11.0.3.zip
 
 REM Package up the zip file.
 zip -r agi-%VERSION%-windows.zip agi

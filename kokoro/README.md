@@ -28,7 +28,7 @@ agi\
 ├─ gapid-arm64-v8a.apk
 ├─ gapid-armeabi-v7a.apk
 ├─ gapid-x86.apk
-├─ gapid.bat (shell script to launch the client)
+├─ agi.exe (small program to launch the client)
 ├─ gapir.exe
 ├─ gapis.exe
 ├─ gapit.exe
@@ -56,7 +56,7 @@ AGI.app/
    └─ Info.plist
 ```
 
-Along with the `.dmg` disk image, a `.zip` file with the same content's as
+Along with the `.dmg` disk image, a `.zip` file with the same contents as
 inside the `Contents/MacOS/` folder of the `.app` package is built:
 
 ```
@@ -70,7 +70,7 @@ inside the `Contents/MacOS/` folder of the `.app` package is built:
 ├─ gapid-arm64-v8a.apk
 ├─ gapid-armeabi-v7a.apk
 ├─ gapid-x86.apk
-├─ gapid (shell script to launch the client)
+├─ agi (small program to launch the client)
 ├─ gapir
 ├─ gapis
 └─ gapit
@@ -103,7 +103,7 @@ package provides. The file layout is:
 ├─ gapid-arm64-v8a.apk
 ├─ gapid-armeabi-v7a.apk
 ├─ gapid-x86.apk
-├─ gapid (shell script to launch the client)
+├─ agi (small program to launch the client)
 ├─ gapir
 ├─ gapis
 └─ gapit
