@@ -33,6 +33,7 @@ import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.CommandStream.Node;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
+import com.google.gapid.models.Profile;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
@@ -55,6 +56,7 @@ import com.google.gapid.widgets.SearchBox;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.TreePath;
+import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.ImageData;
@@ -78,7 +80,7 @@ import java.util.logging.Logger;
  * API command view displaying the commands with their hierarchy grouping in a tree.
  */
 public class CommandTree extends Composite
-    implements Tab, Capture.Listener, CommandStream.Listener {
+    implements Tab, Capture.Listener, CommandStream.Listener, Profile.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandTree.class.getName());
 
   private final Models models;
@@ -102,9 +104,11 @@ public class CommandTree extends Composite
 
     models.capture.addListener(this);
     models.commands.addListener(this);
+    models.profile.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
+      models.profile.removeListener(this);
     });
 
     search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
@@ -225,6 +229,11 @@ public class CommandTree extends Composite
     selectionHandler.updateSelectionFromModel(() -> getTreePath(index).get(), tree::setSelection);
   }
 
+  @Override
+  public void onProfileLoaded(Loadable.Message error) {
+    tree.refresh();
+  }
+
   private void updateTree(boolean assumeLoading) {
     if (assumeLoading || !models.commands.isLoaded()) {
       loading.startLoading();
@@ -283,6 +292,7 @@ public class CommandTree extends Composite
 
   private static class Tree extends LinkifiedTreeWithImages<CommandStream.Node, String> {
     private static final float COLOR_INTENSITY = 0.15f;
+    private static final int DURATION_WIDTH = 95;
 
     protected final Models models;
     private final Widgets widgets;
@@ -292,6 +302,28 @@ public class CommandTree extends Composite
       super(parent, SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI, widgets);
       this.models = models;
       this.widgets = widgets;
+
+      addColumn("GPU Time", false);
+      addColumn("Wall Time", true);
+    }
+
+    private void addColumn(String title, boolean wallTime) {
+      TreeViewerColumn column = addColumn(title, node -> {
+        Service.CommandTreeNode data = node.getData();
+        if (data == null) {
+          return "";
+        } else if (!models.profile.isLoaded()) {
+          return "Profiling...";
+        } else {
+          Profile.Duration duration = models.profile.getData().getDuration(data.getCommands());
+          return wallTime ? duration.formatWallTime() : duration.formatGpuTime();
+        }
+      }, DURATION_WIDTH);
+      column.getColumn().setAlignment(SWT.RIGHT);
+    }
+
+    public void refresh() {
+      refresher.refresh();
     }
 
     @Override

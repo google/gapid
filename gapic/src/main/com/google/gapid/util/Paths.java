@@ -28,6 +28,7 @@ import com.google.gapid.views.Formatter;
 import com.google.protobuf.Message;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Predicate;
 
 /**
@@ -435,17 +436,20 @@ public class Paths {
     } else if (isNull(b)) {
       return 1;
     }
+    return compareCommands(a.getIndicesList(), b.getIndicesList(), false);
+  }
 
-    for (int i = 0; i < a.getIndicesCount(); i++) {
-      if (i >= b.getIndicesCount()) {
+  public static int compareCommands(List<Long> a, List<Long> b, boolean open) {
+    for (int i = 0; i < a.size(); i++) {
+      if (i >= b.size()) {
         return 1;
       }
-      int r = Long.compare(a.getIndices(i), b.getIndices(i));
+      int r = Long.compare(a.get(i), b.get(i));
       if (r != 0) {
         return r;
       }
     }
-    return (a.getIndicesCount() == b.getIndicesCount()) ? 0 : -1;
+    return open || (a.size() == b.size()) ? 0 : -1;
   }
 
   public static boolean contains(Path.Any path, Predicate<Object> predicate) {

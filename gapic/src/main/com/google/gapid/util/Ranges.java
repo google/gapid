@@ -17,6 +17,7 @@ package com.google.gapid.util;
 
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.path.Path;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,5 +101,25 @@ public class Ranges {
         // Sequential streams don't need a combiner.
         throw new UnsupportedOperationException();
       });
+  }
+
+  public static boolean contains(Path.Commands range, Path.Command command) {
+    return Paths.compareCommands(range.getFromList(), command.getIndicesList(), false) <= 0 &&
+        Paths.compareCommands(range.getToList(), command.getIndicesList(), true) >= 0;
+  }
+
+  /**
+   * Returns how the given command relates to the given range:
+   * -1 if it comes before, 0 if it's within, and 1 if it's after the range.
+   */
+  public static int compare(Path.Commands range, Path.Command command) {
+    int r = Paths.compareCommands(command.getIndicesList(), range.getFromList(), false);
+    if (r > 0) { // Only need to compare to the end if command is after start.
+      // If command is before or equal end, it's within the range, otherwise after.
+      if (Paths.compareCommands(range.getToList(), command.getIndicesList(), true) >= 0) {
+        r = 0;
+      }
+    }
+    return r;
   }
 }

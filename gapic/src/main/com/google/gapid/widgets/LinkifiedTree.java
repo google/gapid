@@ -17,6 +17,7 @@ package com.google.gapid.widgets;
 
 import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.util.Arrays.last;
+import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
 
@@ -29,12 +30,15 @@ import com.google.gapid.views.Formatter.LinkableStyledString;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.CopySources.ColumnTextProvider;
 
+import org.eclipse.jface.layout.TreeColumnLayout;
+import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.OwnerDrawLabelProvider;
 import org.eclipse.jface.viewers.StyledString;
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeSelection;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.events.MouseEvent;
@@ -54,6 +58,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -143,6 +148,24 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
   protected LabelProvider createLabelProvider(Theme theme) {
     return new LabelProvider(theme);
+  }
+
+  // Should be called from the constructor.
+  protected TreeViewerColumn addColumn(String title, Function<T, String> labels, int width) {
+    if (viewer.getTree().getColumnCount() < 1) {
+      // This is the first additional column being added. Get us in a good state.
+      viewer.getTree().setHeaderVisible(true);
+      TreeViewerColumn column = createTreeColumn(viewer, "");
+      column.setLabelProvider(labelProvider);
+      TreeColumnLayout layout = new TreeColumnLayout();
+      layout.setColumnData(column.getColumn(), new ColumnWeightData(100));
+      setLayout(layout);
+    }
+
+    TreeViewerColumn column = createTreeColumn(viewer, title, labels);
+    ((TreeColumnLayout)getLayout())
+        .setColumnData(column.getColumn(), new ColumnWeightData(0, width));
+    return column;
   }
 
   public void setInput(T root) {
