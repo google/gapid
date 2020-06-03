@@ -41,6 +41,7 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 
+import com.google.gapid.views.Formatter;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.concurrent.ExecutionException;
@@ -374,6 +375,16 @@ public class CommandStream
     public CommandIndex getIndex() {
       return (data == null) ? null : CommandIndex.forNode(data.getRepresentation(),
           getPath(Path.CommandTreeNode.newBuilder()).build());
+    }
+
+    public String getIndexString() {
+      if (data == null) {
+        return "";
+      } else if (data.getGroup().isEmpty() && data.hasCommands()) {
+        return Formatter.lastIndex(data.getCommands());
+      } else {
+        return Formatter.firstIndex(data.getCommands());
+      }
     }
 
     public ListenableFuture<Node> load(Shell shell, Supplier<ListenableFuture<NodeData>> loader) {

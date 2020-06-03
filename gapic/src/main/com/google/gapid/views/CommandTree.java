@@ -21,6 +21,8 @@ import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Paths.lastCommand;
+import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.withIndents;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -67,6 +69,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 
@@ -82,10 +85,13 @@ import java.util.logging.Logger;
 public class CommandTree extends Composite
     implements Tab, Capture.Listener, CommandStream.Listener, Profile.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandTree.class.getName());
+  private static final String COMMAND_INDEX_HOVER = "Double click to copy index. Use Ctrl+G to jump to a given command index.";
+  private static final String COMMAND_INDEX_DSCRP = "Command index: ";
 
   private final Models models;
   private final LoadablePanel<Tree> loading;
   protected final Tree tree;
+  private final Label commandIdx;
   private final SelectionHandler<Control> selectionHandler;
   private final SingleInFlight searchController = new SingleInFlight();
 
@@ -98,9 +104,17 @@ public class CommandTree extends Composite
     SearchBox search = new SearchBox(this, false);
     loading = LoadablePanel.create(this, widgets, p -> new Tree(p, models, widgets));
     tree = loading.getContents();
+    commandIdx = createLabel(this, COMMAND_INDEX_DSCRP);
+    commandIdx.setToolTipText(COMMAND_INDEX_HOVER);
+    commandIdx.addListener(SWT.MouseDoubleClick, e -> {
+      if (commandIdx.getText().length() > COMMAND_INDEX_DSCRP.length()) {
+        widgets.copypaste.setContents(commandIdx.getText().substring(COMMAND_INDEX_DSCRP.length()));
+      }
+    });
 
     search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    commandIdx.setLayoutData(withIndents(new GridData(SWT.FILL, SWT.FILL, true, false), 3, 0));
 
     models.capture.addListener(this);
     models.commands.addListener(this);
@@ -123,6 +137,7 @@ public class CommandTree extends Composite
           if (index == null) {
             models.commands.load(node, () -> models.commands.selectCommands(node.getIndex(), false));
           } else {
+            commandIdx.setText(COMMAND_INDEX_DSCRP + node.getIndexString());
             models.commands.selectCommands(index, false);
           }
         }
@@ -238,6 +253,7 @@ public class CommandTree extends Composite
     if (assumeLoading || !models.commands.isLoaded()) {
       loading.startLoading();
       tree.setInput(null);
+      commandIdx.setText(COMMAND_INDEX_DSCRP);
       return;
     }
 
@@ -364,7 +380,6 @@ public class CommandTree extends Composite
         string.append("Loading...", string.structureStyle());
       } else {
         if (data.getGroup().isEmpty() && data.hasCommands()) {
-          string.append(Formatter.lastIndex(data.getCommands()) + ": ", string.defaultStyle());
           API.Command cmd = element.getCommand();
           if (cmd == null) {
             string.append("Loading...", string.structureStyle());
@@ -373,7 +388,6 @@ public class CommandTree extends Composite
                 string, string.identifierStyle());
           }
         } else {
-          string.append(Formatter.firstIndex(data.getCommands()) + ": ", string.defaultStyle());
           string.append(data.getGroup(), string.labelStyle());
           long count = data.getNumCommands();
           string.append(
