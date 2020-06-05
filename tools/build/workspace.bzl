@@ -71,6 +71,18 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "grpc",
         commit = "c599e6a922a80e40e24a2d3c994a6dd51046796b",  # 1.22.1
         sha256 = "d17ead923510b3c8a03eec623fffe4cba64d43e10b3695f027a1c8f10c03756a",
+	# This patch works around a naming conflict in grpc which leads to
+	# compilation issues in recent gcc/glibc. This issue is fixed on recent
+	# grpc versions (since
+	# https://github.com/grpc/grpc/commit/de6255941a5e1c2fb2d50e57f84e38c09f45023d),
+	# but updating our grpc version leads to errors in compiling the abseil
+	# dependency of grpc
+	# (https://github.com/abseil/abseil-cpp/issues/326). We tried to pull
+	# abseil ourselves and patch it, but abseil also fails to compile with
+	# gcc on windows, so we choose to patch grpc directly. Once grpc has a
+	# version that builds fine on all our targets, we can update grpc and
+	# drop this patch.
+	patch_file = "@gapid//tools/build/third_party/com_github_grpc_grpc:com_github_grpc_grpc_fix.patch",
     )
     _grpc_deps(locals)
 
