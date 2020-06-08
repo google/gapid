@@ -22,7 +22,6 @@ import json
 import os
 import subprocess
 import sys
-from string import Template
 
 def main():
     parser = argparse.ArgumentParser()
@@ -64,27 +63,19 @@ def main():
     isolate_file = swarming_params['test_name'] + '.isolate'
     # The trailing '/' in variables -> files -> $test_dir/ is necessary to
     # indicate all the directory content must be uploaded.
-    # ${ISOLATED_OUTDIR} is a special string for isolate, which must appear as-is.
-    isolate_tmpl = Template('''{
+    isolate_body = '''{
   'variables': {
     'files': [
       'agi/',
       'bot-harness.py',
       'bot-scripts/',
-      '$test_dir/',
-    ],
-    'command': [
-      'python3',
-      './bot-harness.py',
-      '$timeout',
-      '$test_dir',
-      '$${ISOLATED_OUTDIR}',
-    ],
+''' + "'" + swarming_params['test_dir'] + "/'" + ''',
+    ]
   },
 }
-''')
+'''
     with open(isolate_file, 'w') as f:
-        f.write(isolate_tmpl.substitute(swarming_params))
+        f.write(isolate_body)
 
     #### Upload to isolate
     isolated_file = swarming_params['test_name'] + '.isolated'
@@ -135,6 +126,21 @@ def main():
         ]
         if ('SWARMING_AUTH_FLAG' in os.environ.keys()) and (os.environ['SWARMING_AUTH_FLAG'] != ''):
             cmd += [ os.environ['SWARMING_AUTH_FLAG'] ]
+
+        # Since June 2020, using the 'command' field in the 'isolate' file is
+        # deprecated on Swarming infra, so we MUST use the --raw-cmd flag.
+        cmd += [
+            '--raw-cmd', '--',
+            'python3',
+            './bot-harness.py',
+            swarming_params['timeout'],
+            swarming_params['test_dir'],
+            # '${ISOLATED_OUTDIR}' is a special string that must appear as-is, it
+            # is replaced by Swarming to point to the directory where test
+            # outputs can be saved
+            '${ISOLATED_OUTDIR}',
+        ]
+
         # We expect this command to always succeed
         subprocess.run(cmd, check=True)
         # The task JSON file must be produced
