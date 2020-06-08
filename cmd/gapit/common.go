@@ -78,7 +78,18 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 		// gapir argument string for gapis.
 		args = append(args, "--gapir-args", gapirFlags.Args)
 	}
-	args = append(args, "--idle-timeout", "1m")
+
+	// Default idle timeout to 1m
+	foundIdleTimeout := false
+	for _, s := range args {
+		if s == "-idle-timeout" || s == "--idle-timeout" {
+			foundIdleTimeout = true
+			break
+		}
+	}
+	if !foundIdleTimeout {
+		args = append(args, "--idle-timeout", "1m")
+	}
 
 	var token auth.Token
 	if gapisFlags.Port == 0 {
