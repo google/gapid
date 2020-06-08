@@ -173,14 +173,13 @@ func run() error {
 
 	// Collect all the external package file mappings.
 
-	// After resolving symlinks, bazel-gapid/external points to:
-	// /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/execroot/gapid/external
-	// But this directory is not ideal, as it only includes the externals from the last bazel build or run.
-	// Instead, we can resolve bazel-gapid and go up to get to:
+	// After resolving symlinks, bazel-out points to:
+	// /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/execroot/gapid/bazel-out
+	// We edit the path to get:
 	// /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/external
 	// ...which includes all externals
 
-	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/execroot/gapid
+	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/execroot/gapid/bazel-out
 	bazelGapidResolved, err := filepath.EvalSymlinks(filepath.Join(projectRoot, "bazel-out"))
 	if err != nil {
 		return err
@@ -199,9 +198,9 @@ func run() error {
 	extMapping := mappings{}
 	for pkg, imp := range externals {
 		src := filepath.Join(bazelExternals, pkg)
-		fmt.Println("Collecting .go files from:", src)
+		fmt.Println("Collecting .go, .h and .hpp files from:", src)
 		dst := filepath.Join(fusedRoot, "src", imp)
-		m := collect(src, always).ifTrue(and(isFile, hasSuffix(".go"))).
+		m := collect(src, always).ifTrue(and(isFile, or(hasSuffix(".go"), hasSuffix(".h"), hasSuffix(".hpp")))).
 			mapping(func(path string) string {
 				return filepath.Join(dst, rel(src, path))
 			})
