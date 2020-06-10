@@ -26,10 +26,16 @@
 #include <grpc++/grpc++.h>
 
 #include <atomic>
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
 #include <thread>
+
+namespace {
+// Duration for which pending RPC can cleanly terminate upon a shutdown.
+const std::chrono::seconds kShutdownTimeout(1);
+}  // namespace
 
 namespace gapir {
 
@@ -116,10 +122,14 @@ class Server {
   // Wait blocks until the server shuts down.
   void wait() { mGrpcServer->Wait(); }
 
-  // Shuts down the server, it waits for all RPC processing to finish.
+  // Shuts down the server, give it a little time to finish RPC processing.
   void shutdown() {
     if (!mShuttingDown.exchange(true)) {
-      std::thread([this] { this->mGrpcServer->Shutdown(); }).detach();
+      std::thread([this] {
+        auto deadline = std::chrono::system_clock::now() + kShutdownTimeout;
+        this->mGrpcServer->Shutdown(deadline);
+      })
+          .detach();
     }
   }
 
