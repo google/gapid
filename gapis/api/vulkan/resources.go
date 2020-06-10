@@ -1008,6 +1008,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	var framebuffer FramebufferObjectʳ
 	var boundDsets map[uint32]DescriptorSetObjectʳ
 	var renderpass RenderPassObjectʳ
+	var dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ
 	// Convert the DynamicStates map to have VkDynamicState be the key
 	// for quick lookup (i.e. make it a set)
 	dynamicStates := make(map[VkDynamicState]bool)
@@ -1024,6 +1025,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 				renderpass = ldi.RenderPass()
 				framebuffer = ldi.Framebuffer()
 				boundDsets = ldi.DescriptorSets().All()
+				dynamicOffsets = ldi.BufferBindingOffsets().All()
 			}
 		}
 
@@ -1039,12 +1041,12 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 
 	stages := []*api.Stage{
 		p.inputAssembly(cmd, drawCallInfo),
-		p.vertexShader(ctx, s, cmd, resources, boundDsets),
-		p.tessellationControlShader(ctx, s, cmd, resources, boundDsets),
-		p.tessellationEvulationShader(ctx, s, cmd, resources, boundDsets),
-		p.geometryShader(ctx, s, cmd, resources, boundDsets),
+		p.vertexShader(ctx, s, cmd, resources, boundDsets, dynamicOffsets),
+		p.tessellationControlShader(ctx, s, cmd, resources, boundDsets, dynamicOffsets),
+		p.tessellationEvulationShader(ctx, s, cmd, resources, boundDsets, dynamicOffsets),
+		p.geometryShader(ctx, s, cmd, resources, boundDsets, dynamicOffsets),
 		p.rasterizer(s, dynamicStates),
-		p.fragmentShader(ctx, s, cmd, resources, boundDsets),
+		p.fragmentShader(ctx, s, cmd, resources, boundDsets, dynamicOffsets),
 		p.colorBlending(ctx, s, cmd, dynamicStates, framebuffer, renderpass),
 	}
 
@@ -1066,6 +1068,7 @@ func commonShaderDataGroups(ctx context.Context,
 	cmd *path.Command,
 	resources api.ResourceMap,
 	boundDsets map[uint32]DescriptorSetObjectʳ,
+	dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ,
 	usedSets map[uint32]DescriptorUsage,
 	vkStage VkShaderStageFlagBits,
 	stages map[uint32]StageData,
@@ -1174,9 +1177,8 @@ func commonShaderDataGroups(ctx context.Context,
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
 
-						case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-							VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-							VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+							VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 							descInfo := bindingInfo.BufferBinding().Get(i)
 
 							bufferHandle := descInfo.Buffer()
@@ -1200,6 +1202,38 @@ func commonShaderDataGroups(ctx context.Context,
 								currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Range()))
 							}
 
+						case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+							VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+							descInfo := bindingInfo.BufferBinding().Get(i)
+
+							bufferHandle := descInfo.Buffer()
+							bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(descInfo.Buffer()).Path()
+							currentSetData = append(currentSetData, api.CreateLinkedDataValue("url", []*path.Any{bufferPath}, api.CreatePoDDataValue("VkBuffer", bufferHandle)))
+
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+							dynamicOffset := VkDeviceSize(0)
+
+							if dynamicOffsetSet, ok := dynamicOffsets[usedSet.Set()]; ok {
+								if dynamicOffsetBinding, ok := dynamicOffsetSet.All()[usedSet.Binding()]; ok {
+									dynamicOffset = dynamicOffsetBinding.All()[i]
+								}
+							}
+							currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Offset()+dynamicOffset))
+
+							if descInfo.Range() == ^VkDeviceSize(0) {
+								bufferObject, ok := GetState(s).Buffers().Lookup(descInfo.Buffer())
+
+								if ok {
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", fmt.Sprintf("VK_WHOLE_SIZE(%d)", bufferObject.Info().Size())))
+								} else {
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VKDeviceSize", "VK_WHOLE_SIZE"))
+								}
+
+							} else {
+								currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Range()))
+							}
 						}
 					}
 
@@ -1390,10 +1424,11 @@ func (p GraphicsPipelineObjectʳ) vertexShader(
 	s *api.GlobalState,
 	cmd *path.Command,
 	resources api.ResourceMap,
-	boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	boundDsets map[uint32]DescriptorSetObjectʳ,
+	dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ) *api.Stage {
 
-	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, p.UsedDescriptors().All(),
-		VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT, p.Stages().All())
+	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, dynamicOffsets,
+		p.UsedDescriptors().All(), VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT, p.Stages().All())
 	if dataGroups != nil {
 		return &api.Stage{
 			StageName: "Vertex Shader",
@@ -1416,10 +1451,11 @@ func (p GraphicsPipelineObjectʳ) tessellationControlShader(
 	s *api.GlobalState,
 	cmd *path.Command,
 	resources api.ResourceMap,
-	boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	boundDsets map[uint32]DescriptorSetObjectʳ,
+	dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ) *api.Stage {
 
-	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, p.UsedDescriptors().All(),
-		VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, p.Stages().All())
+	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, dynamicOffsets,
+		p.UsedDescriptors().All(), VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, p.Stages().All())
 	if dataGroups != nil {
 		tessState := p.TessellationState()
 		if !tessState.IsNil() {
@@ -1457,10 +1493,11 @@ func (p GraphicsPipelineObjectʳ) tessellationEvulationShader(
 	s *api.GlobalState,
 	cmd *path.Command,
 	resources api.ResourceMap,
-	boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	boundDsets map[uint32]DescriptorSetObjectʳ,
+	dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ) *api.Stage {
 
-	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, p.UsedDescriptors().All(),
-		VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, p.Stages().All())
+	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, dynamicOffsets,
+		p.UsedDescriptors().All(), VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, p.Stages().All())
 	if dataGroups != nil {
 		return &api.Stage{
 			StageName: "Tessellation Evaluation Shader",
@@ -1482,10 +1519,11 @@ func (p GraphicsPipelineObjectʳ) geometryShader(
 	s *api.GlobalState,
 	cmd *path.Command,
 	resources api.ResourceMap,
-	boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	boundDsets map[uint32]DescriptorSetObjectʳ,
+	dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ) *api.Stage {
 
-	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, p.UsedDescriptors().All(),
-		VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT, p.Stages().All())
+	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, dynamicOffsets,
+		p.UsedDescriptors().All(), VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT, p.Stages().All())
 	if dataGroups != nil {
 		return &api.Stage{
 			StageName: "Geometry Shader",
@@ -1658,10 +1696,11 @@ func (p GraphicsPipelineObjectʳ) fragmentShader(
 	s *api.GlobalState,
 	cmd *path.Command,
 	resources api.ResourceMap,
-	boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	boundDsets map[uint32]DescriptorSetObjectʳ,
+	dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ) *api.Stage {
 
-	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, p.UsedDescriptors().All(),
-		VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT, p.Stages().All())
+	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, dynamicOffsets,
+		p.UsedDescriptors().All(), VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT, p.Stages().All())
 	if dataGroups != nil {
 		return &api.Stage{
 			StageName: "Fragment Shader",
@@ -1949,6 +1988,7 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 	isBound := false
 	var dispatchInfo DispatchParameters = NilDispatchParameters
 	var boundDsets map[uint32]DescriptorSetObjectʳ
+	var dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ
 	// Use LastComputeInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1960,14 +2000,16 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 				isBound = true
 				dispatchInfo = lci.CommandParameters()
 				boundDsets = lci.DescriptorSets().All()
+				dynamicOffsets = lci.BufferBindingOffsets().All()
 			}
 		}
 	}
 
 	resourceMeta, _ := resolve.ResourceMeta(ctx, nil, cmd, r)
 
-	dataGroups := commonShaderDataGroups(ctx, s, cmd, resourceMeta.IDMap, boundDsets, p.UsedDescriptors().All(),
-		VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT, map[uint32]StageData{0: p.Stage()})
+	dataGroups := commonShaderDataGroups(ctx, s, cmd, resourceMeta.IDMap, boundDsets, dynamicOffsets,
+		p.UsedDescriptors().All(), VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT,
+		map[uint32]StageData{0: p.Stage()})
 
 	dispatchList := &api.KeyValuePairList{}
 
