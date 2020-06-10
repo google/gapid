@@ -19,22 +19,6 @@ set -ex
 BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
 
-# Get the Android NDK
-curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r21-linux-x86_64.zip
-unzip -q android-ndk-r21-linux-x86_64.zip
-export ANDROID_NDK_HOME=$PWD/android-ndk-r21
-
-# Get recent build tools
-# Note: the SDK manager needs Java8, call it before switching to Java11
-echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
-
-# Get Zulu JDK11 from bazel, see https://mirror.bazel.build/openjdk/index.html
-ZULU_JDK="zulu11.31.11-ca-jdk11.0.3"
-curl -L -k -O -s https://mirror.bazel.build/openjdk/azul-${ZULU_JDK}/${ZULU_JDK}-linux_x64.tar.gz
-echo "ddb0fd4526089cf1ce2db36282c282263f587a9e8be373fa02f511a12923cc48  ${ZULU_JDK}-linux_x64.tar.gz" | sha256sum --check
-tar xzf ${ZULU_JDK}-linux_x64.tar.gz
-export JAVA_HOME=${PWD}/${ZULU_JDK}-linux_x64
-
 # Get bazel.
 BAZEL_VERSION=2.0.0
 curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
@@ -47,6 +31,14 @@ sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 sudo apt-get -q update
 sudo apt-get -qy install gcc-8 g++-8
 export CC=/usr/bin/gcc-8
+
+# Get the Android NDK
+curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r21-linux-x86_64.zip
+unzip -q android-ndk-r21-linux-x86_64.zip
+export ANDROID_NDK_HOME=$PWD/android-ndk-r21
+
+# Get recent build tools
+echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
 
 cd $SRC
 BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}

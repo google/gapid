@@ -46,11 +46,10 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
 # Combine package contents.
 mkdir agi
 cp -r $BIN/pkg/* agi/
-mkdir -p agi/jre
-"$SRC/copy_jre.sh" agi/jre
-# Must include the JDK source code for legal reasons
-curl -L -k -O -s https://mirror.bazel.build/openjdk/azul-zulu11.31.11-ca-jdk11.0.3/zsrc11.31.11-jdk11.0.3.zip
-mv zsrc11.31.11-jdk11.0.3.zip agi/jre/
+# TODO(b/150268876): update to a JRE usable for notarization. In the mean time,
+# do not embed a JRE.
+# mkdir -p agi/jre
+# "$SRC/copy_jre.sh" agi/jre
 
 # Create a zip file.
 zip -r agi-$VERSION-macos.zip agi/

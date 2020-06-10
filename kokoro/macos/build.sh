@@ -20,7 +20,6 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
 
 # Setup the Android SDK and NDK
-# Note: the SDK manager needs Java8, call it before switching to Java11
 curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
@@ -29,13 +28,6 @@ curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r21-darwin
 unzip -q android-ndk-r21-darwin-x86_64.zip -d android
 export ANDROID_HOME=$PWD/android
 export ANDROID_NDK_HOME=$PWD/android/android-ndk-r21
-
-# Get Zulu JDK11 from bazel, see https://mirror.bazel.build/openjdk/index.html
-ZULU_JDK="zulu11.31.11-ca-jdk11.0.3"
-curl -L -k -O -s https://mirror.bazel.build/openjdk/azul-${ZULU_JDK}/${ZULU_JDK}-macosx_x64.tar.gz
-echo "98df91fa49f16b73dbc09e153628190640ff6c3fac2322b8142bc00077a0f738  ${ZULU_JDK}-macosx_x64.tar.gz" | sha256sum --check
-tar xzf ${ZULU_JDK}-macosx_x64.tar.gz
-export JAVA_HOME=${PWD}/${ZULU_JDK}-macosx_x64
 
 # Get bazel.
 BAZEL_VERSION=2.0.0
