@@ -31,8 +31,8 @@ import (
 const (
 	versionPrefix = `version "`
 	googleInfix   = "-google-"
-	minJavaMajor  = 1
-	minJavaMinor  = 8
+	minJavaMajor  = 11
+	minJavaMinor  = 0
 )
 
 type config struct {
@@ -213,11 +213,11 @@ func (c *config) locateVM() error {
 	}
 
 	if runtime.GOOS == "linux" {
-		if java := "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java"; c.checkVM(java, true) {
+		if java := "/usr/lib/jvm/java-11-openjdk-amd64/bin/java"; c.checkVM(java, true) {
 			c.vm = java
 			return nil
 		} else {
-			fmt.Println("To get a suitable JVM on Linux, install a regular (non-Google) JVM version >= 8 (e.g. openjdk-jre-8)")
+			fmt.Println("To get a suitable JVM on Linux, install a regular (non-Google) JVM version >= 11 (e.g. openjdk-jre-11)")
 		}
 	}
 

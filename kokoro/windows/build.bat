@@ -62,6 +62,21 @@ c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-
 set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
 set BAZEL_SH=c:\tools\msys64\usr\bin\bash
 
+REM Get the JDK and JRE from our mirror. This needs to be after the Android update above (needs 1.8).
+set JDK_BUILD=zulu11.39.15-ca
+set JDK_VERSION=11.0.7
+set JDK_NAME=%JDK_BUILD%-jdk%JDK_VERSION%-win_x64
+set JRE_NAME=%JDK_BUILD%-jre%JDK_VERSION%-win_x64
+wget -q https://storage.googleapis.com/jdk-mirror/%JDK_BUILD%/%JDK_NAME%.zip
+echo "1d947cb3a846d87aca12d4ae94e1b51e1079fdcd9e4faea9684909b8072f8ed4  %JDK_NAME%.zip" | sha256sum --check
+unzip -q %JDK_NAME%.zip
+set JAVA_HOME=%CD%\%JDK_NAME%
+
+wget -q https://storage.googleapis.com/jdk-mirror/%JDK_BUILD%/%JRE_NAME%.zip
+echo "339f622f688b129de16876ce8ee252eac0ab7663d81596016abf2efacab01d86  %JRE_NAME%.zip" | sha256sum --check
+unzip -q %JRE_NAME%.zip
+set JRE_HOME=%CD%\%JRE_NAME%
+
 REM Install Bazel.
 set BAZEL_VERSION=2.0.0
 wget -q https://github.com/bazelbuild/bazel/releases/download/%BAZEL_VERSION%/bazel-%BAZEL_VERSION%-windows-x86_64.zip

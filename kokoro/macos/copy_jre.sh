@@ -20,45 +20,29 @@ if [ $# -ne 1 ]; then
 	exit
 fi
 
-cp -r $(/usr/libexec/java_home -v 1.8)/jre/ $1/
+if [ -z $JRE_HOME ]; then
+  echo Expected the JRE_HOME env variable.
+  exit
+fi
+
+cp -r $JRE_HOME/* $1
 
 # Remove unnecessary files.
-# See http://www.oracle.com/technetwork/java/javase/jre-8-readme-2095710.html
-rm -f $1/THIRDPARTYLICENSEREADME-JAVAFX.txt
-
+rm -f $1/bin/jaotc
+rm -f $1/bin/jfr
 rm -f $1/bin/jjs
+rm -f $1/bin/jrunscript
 rm -f $1/bin/keytool
-rm -f $1/bin/orbd
 rm -f $1/bin/pack200
-rm -f $1/bin/policytool
 rm -f $1/bin/rmid
 rm -f $1/bin/rmiregistry
-rm -f $1/bin/servertool
-rm -f $1/bin/tnameserv
 rm -f $1/bin/unpack200
 
-rm -rf $1/lib/deploy/
-rm -f $1/lib/ant?javafx.jar
-rm -f $1/lib/deploy.jar
-rm -f $1/lib/javafx.properties
-rm -f $1/lib/javaws.jar
 rm -rf $1/lib/jfr/
-rm -f $1/lib/jfr.jar
-rm -f $1/lib/jfxswt.jar
-rm -f $1/lib/libdecora*.*
-rm -f $1/lib/libdeploy.dylib
-rm -f $1/lib/libfxplugins.dylib
-rm -f $1/lib/libglass.dylib
-rm -f $1/lib/libglib?lite.dylib
-rm -f $1/lib/libgstreamer?lite.dylib
-rm -f $1/lib/libjava?crw?demo.dylib
-rm -f $1/lib/libjavafx*.dylib
-rm -f $1/lib/libjfr.dylib
-rm -f $1/lib/libjfxmedia*.dylib
-rm -f $1/lib/libjfxwebkit.dylib
-rm -f $1/lib/libprism?common.dylib
-rm -f $1/lib/libprism?sw.dylib
-rm -f $1/lib/libprism?es2.dylib
-rm -f $1/lib/plugin.jar
 
 rm -rf $1/man/
+
+# "Work-around" for some strange OSX behavior. Without this folder next to the java binary, when
+# launching the app, the menu bar is unresponsive. Switching to another app and back makes it come
+# to live, and so does creating a "Contents" folder next to the binaries. Go figure.
+mkdir $1/bin/Contents

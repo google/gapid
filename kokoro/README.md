@@ -24,11 +24,11 @@ agi\
 │  ├─ libVkLayer_VirtualSwapchain.dll
 │  └─ VirtualSwapchainLayer.json
 ├─ strings\en-us.stb
+├─ agi.exe
 ├─ build.properties
 ├─ gapid-arm64-v8a.apk
 ├─ gapid-armeabi-v7a.apk
 ├─ gapid-x86.apk
-├─ gapid.bat (shell script to launch the client)
 ├─ gapir.exe
 ├─ gapis.exe
 ├─ gapit.exe
@@ -66,28 +66,28 @@ inside the `Contents/MacOS/` folder of the `.app` package is built:
 │  ├─ gapic.jar
 │  └─ libgapii.dylib
 ├─ strings/en-us.stb
+├─ agi
 ├─ build.properties
 ├─ gapid-arm64-v8a.apk
 ├─ gapid-armeabi-v7a.apk
 ├─ gapid-x86.apk
-├─ gapid (shell script to launch the client)
 ├─ gapir
 ├─ gapis
 └─ gapit
 ```
 
-When running the `.app` application, the `gapid` executable is invoked. When
+When running the `.app` application, the `agi` executable is invoked. When
 using the `.zip` file, the only way to run the application is via the
-terminal by running the `gapid` executable.
+terminal by running the `agi` executable.
 
 ## Linux
 
 A Debian `.deb` package and a `.zip` file with the same contents are built.
 The package installs into `/opt/agi`, while archives can be expanded anywhere.
-The Debian package depends on `openjdk-8-jre` and neither it nor the `.zip`
+The Debian package depends on `openjdk-11-jre` and neither it nor the `.zip`
 archives contain the JRE. The launcher script looks for `java` first in
 `$JAVA_HOME`, then on the `$PATH`, and finally the hard-coded
-`/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java`, which the `openjdk-8-jre`
+`/usr/lib/jvm/java-11-openjdk-amd64/jre/bin/java`, which the `openjdk-11-jre`
 package provides. The file layout is:
 
 ```
@@ -99,11 +99,11 @@ package provides. The file layout is:
 │  ├─ libVkLayer_VirtualSwapchain.so
 │  └─ VirtualSwapchainLayer.json
 ├─ strings/en-us.stb
+├─ agi
 ├─ build.properties
 ├─ gapid-arm64-v8a.apk
 ├─ gapid-armeabi-v7a.apk
 ├─ gapid-x86.apk
-├─ gapid (shell script to launch the client)
 ├─ gapir
 ├─ gapis
 └─ gapit

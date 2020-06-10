@@ -46,10 +46,8 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
 # Combine package contents.
 mkdir agi
 cp -r $BIN/pkg/* agi/
-# TODO(b/150268876): update to a JRE usable for notarization. In the mean time,
-# do not embed a JRE.
-# mkdir -p agi/jre
-# "$SRC/copy_jre.sh" agi/jre
+mkdir -p agi/jre
+"$SRC/copy_jre.sh" agi/jre
 
 # Create a zip file.
 zip -r agi-$VERSION-macos.zip agi/
@@ -65,6 +63,10 @@ for i in 512 256 128 64 32 16; do
   cp "$SRC/../../tools/logo/logo_$((i*2)).png" AGI.iconset/icon_${i}x${i}\@2x.png
 done
 iconutil -c icns -o AGI.app/Contents/Resources/AGI.icns AGI.iconset
+
+# Move the JRE's legal notices to the Resources folder, so signing doesn't complain.
+mkdir AGI.app/Contents/Resources/jre
+mv AGI.app/Contents/MacOS/jre/legal AGI.app/Contents/Resources/jre
 
 # Make a dmg file.
 pip install --upgrade --user dmgbuild pyobjc-framework-Quartz
