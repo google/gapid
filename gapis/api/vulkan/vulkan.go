@@ -461,7 +461,7 @@ func (API) RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, dat 
 var _ sync.SynchronizedAPI = &API{}
 
 func (API) GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error) {
-	return NewVulkanTerminator(ctx, c)
+	return newVulkanTerminator(ctx, c)
 }
 
 func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,

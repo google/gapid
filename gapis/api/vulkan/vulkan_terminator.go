@@ -47,7 +47,7 @@ type VulkanTerminator struct {
 
 var _ transform.Terminator = &VulkanTerminator{}
 
-func NewVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTerminator, error) {
+func newVulkanTerminator(ctx context.Context, capture *path.Capture) (*VulkanTerminator, error) {
 	s, err := resolve.SyncData(ctx, capture)
 	if err != nil {
 		return nil, err

@@ -24,7 +24,10 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/commandGenerator"
+	"github.com/google/gapid/gapis/api/controlFlowGenerator"
 	"github.com/google/gapid/gapis/api/transform"
+	"github.com/google/gapid/gapis/api/transform2"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
@@ -857,6 +860,108 @@ func (a API) CleanupResources(ctx context.Context,
 	return transforms.TransformAll(ctx, []api.Cmd{}, 0, out)
 }
 
+func getCommonInitializationTransforms(tag string) []transform2.Transform {
+	return []transform2.Transform{
+		newMakeAttachmentReadable2(false),
+		newDropInvalidDestroy2(tag),
+	}
+}
+
+func appendLogTransforms(ctx context.Context, tag string, capture *capture.GraphicsCapture, transforms []transform2.Transform) []transform2.Transform {
+	if config.LogTransformsToFile {
+		newTransforms := make([]transform2.Transform, 0)
+		newTransforms = append(newTransforms, newFileLog(ctx, "0_original_cmds"))
+		for i, t := range transforms {
+			var name string
+			if n, ok := t.(interface {
+				Name() string
+			}); ok {
+				name = n.Name()
+			} else {
+				name = strings.Replace(fmt.Sprintf("%T", t), "*", "", -1)
+			}
+			newTransforms = append(newTransforms, t, newFileLog(ctx, fmt.Sprintf("%v_cmds_after_%v", i+1, name)))
+		}
+		transforms = newTransforms
+	}
+
+	if config.LogTransformsToCapture {
+		transforms = append(transforms, newCaptureLog(ctx, capture, tag+"_replay_log.gfxtrace"))
+	}
+
+	if config.LogMappingsToFile {
+		transforms = append(transforms, newMappingExporterWithPrint(ctx, tag+"_mappings.txt"))
+	}
+
+	return transforms
+}
+
+func getInitialCmds(ctx context.Context,
+	dependentPayload string,
+	intent replay.Intent,
+	out transform2.Writer) []api.Cmd {
+
+	// Melih TODO: Do we really need this(dependentPayload) for the particular replay type?
+	// b/158597615
+	if dependentPayload == "" {
+		cmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
+		out.State().Allocator.ReserveRanges(im)
+		return cmds
+	}
+
+	return []api.Cmd{}
+}
+
+// Melih TODO: This function may change as we moved other queries
+// Depending on how much code repetation it has and if it is avoidable
+// without making things complicated again
+func replayIssues(ctx context.Context,
+	intent replay.Intent,
+	cfg replay.Config,
+	dependentPayload string,
+	rrs []replay.RequestAndResult,
+	c *capture.GraphicsCapture,
+	out transform2.Writer) error {
+
+	initialCmds := getInitialCmds(ctx, dependentPayload, intent, out)
+
+	transforms := make([]transform2.Transform, 0)
+	transforms = append(transforms, getCommonInitializationTransforms("IssuesReplay")...)
+
+	issuesTransform := newFindIssues(ctx, c, api.CmdID(len(initialCmds)))
+	doDisplayToSurface := false
+
+	// Melih TODO: Can we get rid of this loop and typecast.
+	// b/158597615
+	for _, rr := range rrs {
+		issuesTransform.AddResult(rr.Result)
+		req := rr.Request.(issuesRequest)
+		if req.displayToSurface {
+			doDisplayToSurface = true
+		}
+	}
+
+	transforms = append(transforms, issuesTransform)
+
+	if doDisplayToSurface {
+		transforms = append(transforms, newDisplayToSurface2())
+	}
+
+	transforms = append(transforms, newDestroyResourcesAtEOS2())
+	transforms = appendLogTransforms(ctx, "IssuesReplay", c, transforms)
+
+	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
+	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
+	err := controlFlow.TransformAll(ctx)
+	if err != nil {
+		log.E(ctx, "[Issues Replay] Error: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (a API) Replay(
 	ctx context.Context,
 	intent replay.Intent,
@@ -869,6 +974,17 @@ func (a API) Replay(
 	if a.GetReplayPriority(ctx, device, c.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
+
+	// Melih TODO: This will be a dispatcher when other queries also merged.
+	// This function written as if it can run multiple types of request at once but
+	// it actually cannot. So, I am trying to clean this up.
+	for _, rr := range rrs {
+		switch rr.Request.(type) {
+		case issuesRequest:
+			return replayIssues(ctx, intent, cfg, dependentPayload, rrs, c, out)
+		}
+	}
+
 	optimize := !config.DisableDeadCodeElimination
 
 	cmds := c.Commands
@@ -882,11 +998,10 @@ func (a API) Replay(
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}
 	// Gathers and reports any issues found.
-	var issues *findIssues
 	var timestamps *queryTimestamps
 	var frameloop *frameLoop
 
-	earlyTerminator, err := NewVulkanTerminator(ctx, intent.Capture)
+	earlyTerminator, err := newVulkanTerminator(ctx, intent.Capture)
 	if err != nil {
 		return err
 	}
@@ -963,19 +1078,6 @@ func (a API) Replay(
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
-		case issuesRequest:
-			if issues == nil {
-				issues = newFindIssues(ctx, c)
-			}
-			issues.AddResult(rr.Result)
-			optimize = false
-			if req.displayToSurface {
-				doDisplayToSurface = true
-			}
-			willLoop := req.loopCount > 1
-			if willLoop {
-				frameloop = newFrameLoop(ctx, c, api.CmdID(0), frameLoopEndCmdID(cmds), req.loopCount)
-			}
 		case timestampsRequest:
 			if timestamps == nil {
 				willLoop := req.loopCount > 1
@@ -1081,12 +1183,7 @@ func (a API) Replay(
 		transforms.Add(newDisplayToSurface())
 	}
 
-	if issues != nil {
-		transforms.Add(issues) // Issue reporting required.
-		if frameloop != nil {
-			transforms.Add(frameloop)
-		}
-	} else if profile != nil {
+	if profile != nil {
 		transforms.Add(profile)
 	} else {
 		if frameloop != nil {
@@ -1104,7 +1201,7 @@ func (a API) Replay(
 		transforms.Add(overdraw)
 	}
 
-	if issues == nil && profile == nil {
+	if profile == nil {
 		transforms.Add(splitter)
 		transforms.Add(readFramebuffer, injector)
 	}
