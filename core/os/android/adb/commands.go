@@ -373,6 +373,58 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 	return result, nil
 }
 
+// Currently using Android Q/10, API 29 as ANGLE support cut-off
+func (b *binding) SupportsAngle(ctx context.Context) bool {
+	os := b.Instance().GetConfiguration().GetOS()
+	return os.GetAPIVersion() >= 29
+}
+
+func (b *binding) QueryAnglePackageName(ctx context.Context) (string, error) {
+	if !b.SupportsAngle(ctx) {
+		return "", fmt.Errorf("ANGLE not supported on this device")
+	}
+	// ANGLE supported, so check for installed ANGLE package
+	// Favor custom installed package first, followed by default system package
+	custom := "com.chromium.angle"
+	system := "com.google.android.angle"
+	// Check installed packages for ANGLE package
+	packages, _ := b.InstalledPackages(ctx)
+	if pkg := packages.FindByName(custom); pkg != nil {
+		return custom, nil
+	}
+	if pkg := packages.FindByName(system); pkg != nil {
+		return system, nil
+	}
+	return "", fmt.Errorf("No ANGLE packages installed on this device")
+}
+
+func SetupAngle(ctx context.Context, d Device, p *android.InstalledPackage) (app.Cleanup, error) {
+	// Restore ANGLE settings during app cleanup
+	angleDriverValues, err := d.SystemSetting(ctx, "global", "angle_gl_driver_selection_values")
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to get original ANGLE driver selection name.")
+	}
+	angleDriverPkgs, err := d.SystemSetting(ctx, "global", "angle_gl_driver_selection_pkgs")
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to get original ANGLE enabled packages.")
+	}
+	anglePackage, err := d.SystemSetting(ctx, "global", "angle_debug_package")
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to get original ANGLE package name.")
+	}
+	log.I(ctx, "Saved original ANGLE pkg %s for app %s to restore during cleanup.", anglePackage, angleDriverPkgs)
+	// We successfully saved old settings, now set new ANGLE values for tracing
+	d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_values", "angle")
+	d.SetSystemSetting(ctx, "global", "angle_debug_package", anglePackage)
+	d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_pkgs", p.Name)
+	// Return cleanup function to restore original ANGLE settings
+	return func(ctx context.Context) {
+		d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_values", angleDriverValues)
+		d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_pkgs", angleDriverPkgs)
+		d.SetSystemSetting(ctx, "global", "angle_debug_package", anglePackage)
+	}, nil
+}
+
 func extrasFlags(extras []android.ActionExtra) []string {
 	flags := []string{}
 	for _, e := range extras {

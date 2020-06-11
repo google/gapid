@@ -217,6 +217,11 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		d.To.Configuration.PerfettoCapability = perfettoCapability
 	}
 
+	// Query device ANGLE support
+	if anglePackage, err := d.QueryAnglePackageName(ctx); err == nil {
+		d.To.Configuration.AnglePackage = anglePackage
+	}
+
 	// If the VkRenderStagesProducer layer exist, we assume the render stages producer is
 	// implemented in the layer.
 	for _, l := range d.To.Configuration.GetDrivers().GetVulkan().GetLayers() {

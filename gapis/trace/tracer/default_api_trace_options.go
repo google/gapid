@@ -29,6 +29,17 @@ func VulkanTraceOptions() *service.TraceTypeCapabilities {
 	}
 }
 
+// AngleTraceOptions returns the default trace options for Angle.
+func AngleTraceOptions() *service.TraceTypeCapabilities {
+	return &service.TraceTypeCapabilities{
+		Type:                           service.TraceType_Graphics,
+		Api:                            "OpenGL on ANGLE",
+		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
+		CanEnableUnsupportedExtensions: true,
+		RequiresApplication:            true,
+	}
+}
+
 // PerfettoTraceOptions returns the default trace options for Perfetto.
 func PerfettoTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{

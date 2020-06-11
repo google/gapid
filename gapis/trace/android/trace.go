@@ -283,6 +283,10 @@ func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.Device
 	*/
 	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 && *flags.EnableVulkanTracing {
 		apis = append(apis, tracer.VulkanTraceOptions())
+		// If ANGLE is enabled and available, need to also append ANGLE trace mode
+		if *flags.EnableAngleTracing && t.b.SupportsAngle(ctx) {
+			apis = append(apis, tracer.AngleTraceOptions())
+		}
 	}
 	if t.b.SupportsPerfetto(ctx) {
 		apis = append(apis, tracer.PerfettoTraceOptions())

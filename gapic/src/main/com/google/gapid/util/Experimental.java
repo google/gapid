@@ -33,7 +33,10 @@ public class Experimental {
       false, "Enable the experimental feature Frame Lifecycle.");
 
   public static final Flag<Boolean> enableVulkanTracing = Flags.value("experimental-enable-vulkan-tracing",
-      false, "Enable the experimental feature Vulakn tracing.");
+      false, "Enable the experimental feature Vulkan tracing.");
+
+  public static final Flag<Boolean> enableAngleTracing = Flags.value("experimental-enable-angle-tracing",
+      false, "Enable the experimental feature Angle tracing.");
 
   public static List<String> getGapisFlags(boolean enableAllExperimentalFeatures) {
     List<String> args = Lists.newArrayList();
@@ -42,12 +45,16 @@ public class Experimental {
       // All --experimental-enable-<feature-name> flags must be added here.
       args.add("--experimental-enable-frame-lifecycle");
       args.add("--experimental-enable-vulkan-tracing");
+      args.add("--experimental-enable-angle-tracing");
     } else {
       if (Experimental.enableFrameLifecycle.get()) {
         args.add("--experimental-enable-frame-lifecycle");
       }
       if (Experimental.enableVulkanTracing.get()) {
         args.add("--experimental-enable-vulkan-tracing");
+      }
+      if (Experimental.enableAngleTracing.get()) {
+        args.add("--experimental-enable-angle-tracing");
       }
     }
     return args;

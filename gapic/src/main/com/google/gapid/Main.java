@@ -208,6 +208,7 @@ public class Main {
     Experimental.enableAll,
     Experimental.enableFrameLifecycle,
     Experimental.enableVulkanTracing,
+    Experimental.enableAngleTracing,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,
     GapisProcess.disableGapisTimeout,

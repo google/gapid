@@ -271,6 +271,7 @@ public class TracerDialog {
       private static final String DEFAULT_TRACE_FILE = "trace";
       private static final String TRACE_EXTENSION = ".gfxtrace";
       private static final String PERFETTO_EXTENSION = ".perfetto";
+      private static final String ANGLE_STRING = "_angle";
       private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
       private static final String TARGET_LABEL = "Application";
       private static final String FRAMES_LABEL = "Stop After:";
@@ -844,7 +845,9 @@ public class TracerDialog {
       protected String formatTraceName(String name) {
         TraceTypeCapabilities config = getSelectedApi();
         String ext = config != null && isPerfetto(config) ? PERFETTO_EXTENSION : TRACE_EXTENSION;
-        return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + date + ext;
+        // For ANGLE captures include "_angle" in trace name
+        String angle = isAngle(config) ? ANGLE_STRING : "";
+        return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + angle + date + ext;
       }
 
       public boolean isReady() {
@@ -1006,6 +1009,10 @@ public class TracerDialog {
 
       private static boolean isPerfetto(TraceTypeCapabilities config) {
         return config != null && config.getType() == TraceType.Perfetto;
+      }
+
+      private static boolean isAngle(TraceTypeCapabilities config) {
+        return config != null && config.getApi().equalsIgnoreCase("OpenGL on ANGLE");
       }
     }
 

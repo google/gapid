@@ -89,6 +89,25 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		return nil, cleanup.Invoke(ctx), log.Err(ctx, nil, "Failed to locate pre-release driver package")
 	}
 
+	// TODO: Need to clean this up and get it working
+	// If Angle was selected, then save current angle settings to restore and then set Angle for selected app
+	log.I(ctx, "Checking if ANGLE requested")
+	if o.EnableAngle {
+		log.I(ctx, "ANGLE is enabled")
+		if anglePackage := p.Device.Instance().GetConfiguration().AnglePackage; anglePackage != "" {
+			log.I(ctx, "Found ANGLE package %s, enabling it for %s", anglePackage, p.Name)
+			nextCleanup, err := adb.SetupAngle(ctx, d, a.Package)
+			cleanup = cleanup.Then(nextCleanup)
+			if err != nil {
+				return nil, cleanup.Invoke(ctx), err
+			}
+		} else {
+			// We shouldn't be able to get here. EnableAngle flag should only be set
+			//  when there's an Angle package on the device to enable.
+			log.W(ctx, "ANGLE enabled but no package found")
+		}
+	}
+
 	// For NativeBridge emulated devices opt for the native ABI of the emulator.
 	abi = d.NativeBridgeABI(ctx, abi)
 

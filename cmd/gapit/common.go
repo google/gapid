@@ -68,6 +68,7 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	args = append(args, "--enable-local-files")
 
 	args = append(args, "--experimental-enable-vulkan-tracing")
+	args = append(args, "--experimental-enable-angle-tracing")
 	args = append(args, "--experimental-enable-frame-lifecycle")
 
 	if app.Flags.Analytics != "" {

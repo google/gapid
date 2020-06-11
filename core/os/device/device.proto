@@ -173,6 +173,8 @@ message Configuration {
   Drivers drivers = 4;
   // Perfetto capability.
   PerfettoCapability perfetto_capability = 5;
+  // Angle package name
+  string angle_package = 6;
 }
 
 message VulkanProfilingLayers {

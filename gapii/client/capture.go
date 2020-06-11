@@ -69,6 +69,8 @@ type Options struct {
 	Flags Flags
 	// Additional flags to pass to am start
 	AdditionalFlags string
+	// Enable ANGLE for application prior to start
+	EnableAngle bool
 	// The name of the pipe to connect/listen to.
 	PipeName string
 }
