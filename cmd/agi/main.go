@@ -18,7 +18,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -200,6 +199,13 @@ func (c *config) locateVM() error {
 		return nil
 	}
 
+	if runtime.GOOS == "linux" {
+		if java := "/usr/lib/jvm/java-11-openjdk-amd64/bin/java"; c.checkVM(java, true) {
+			c.vm = java
+			return nil
+		}
+	}
+
 	if home := os.Getenv("JAVA_HOME"); home != "" {
 		if java := c.javaInHome(home); c.checkVM(java, true) {
 			c.vm = java
@@ -212,16 +218,7 @@ func (c *config) locateVM() error {
 		return nil
 	}
 
-	if runtime.GOOS == "linux" {
-		if java := "/usr/lib/jvm/java-11-openjdk-amd64/bin/java"; c.checkVM(java, true) {
-			c.vm = java
-			return nil
-		} else {
-			fmt.Println("To get a suitable JVM on Linux, install a regular (non-Google) JVM version >= 11 (e.g. openjdk-jre-11)")
-		}
-	}
-
-	return errors.New("No suitable JVM found")
+	return fmt.Errorf("No suitable JVM found. A JRE >= %d.%d is required.", minJavaMajor, minJavaMinor)
 }
 
 func (c *config) javaExecutable() string {
