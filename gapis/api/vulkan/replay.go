@@ -839,61 +839,44 @@ type profileRequest struct {
 	handleMappings *map[uint64][]service.VulkanHandleMappingItem
 }
 
+// GetInitialPayload creates a replay that emits instructions for
+// state priming of a capture.
 func (a API) GetInitialPayload(ctx context.Context,
 	capture *path.Capture,
 	device *device.Instance,
-	out transform.Writer) error {
-	transforms := transform.Transforms{}
-	transforms.Add(&makeAttachementReadable{false})
-	transforms.Add(&dropInvalidDestroy{tag: "GetInitialPayload"})
+	out transform2.Writer) error {
+
 	initialCmds, im, _ := initialcmds.InitialCommands(ctx, capture)
 	out.State().Allocator.ReserveRanges(im)
+	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, nil)
 
-	return transforms.TransformAll(ctx, initialCmds, uint64(len(initialCmds)), out)
+	transforms := getCommonInitializationTransforms("GetInitialPayload")
+
+	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
+	if err := controlFlow.TransformAll(ctx); err != nil {
+		log.E(ctx, "[GetInitialPayload] Error: %v", err)
+		return err
+	}
+
+	return nil
 }
 
-func (a API) CleanupResources(ctx context.Context,
-	device *device.Instance,
-	out transform.Writer) error {
-	transforms := transform.Transforms{}
-	transforms.Add(&destroyResourcesAtEOS{})
-	return transforms.TransformAll(ctx, []api.Cmd{}, 0, out)
-}
-
-func getCommonInitializationTransforms(tag string) []transform2.Transform {
-	return []transform2.Transform{
-		newMakeAttachmentReadable2(false),
-		newDropInvalidDestroy2(tag),
+// CleanupResources creates a replay that emits instructions for
+// destroying resources at a given state
+func (a API) CleanupResources(ctx context.Context, device *device.Instance, out transform2.Writer) error {
+	cmdGenerator := commandGenerator.NewLinearCommandGenerator(nil, nil)
+	transforms := []transform2.Transform{
+		newDestroyResourcesAtEOS2(),
 	}
-}
-
-func appendLogTransforms(ctx context.Context, tag string, capture *capture.GraphicsCapture, transforms []transform2.Transform) []transform2.Transform {
-	if config.LogTransformsToFile {
-		newTransforms := make([]transform2.Transform, 0)
-		newTransforms = append(newTransforms, newFileLog(ctx, "0_original_cmds"))
-		for i, t := range transforms {
-			var name string
-			if n, ok := t.(interface {
-				Name() string
-			}); ok {
-				name = n.Name()
-			} else {
-				name = strings.Replace(fmt.Sprintf("%T", t), "*", "", -1)
-			}
-			newTransforms = append(newTransforms, t, newFileLog(ctx, fmt.Sprintf("%v_cmds_after_%v", i+1, name)))
-		}
-		transforms = newTransforms
+	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
+	if err := controlFlow.TransformAll(ctx); err != nil {
+		log.E(ctx, "[CleanupResources] Error: %v", err)
+		return err
 	}
 
-	if config.LogTransformsToCapture {
-		transforms = append(transforms, newCaptureLog(ctx, capture, tag+"_replay_log.gfxtrace"))
-	}
-
-	if config.LogMappingsToFile {
-		transforms = append(transforms, newMappingExporterWithPrint(ctx, tag+"_mappings.txt"))
-	}
-
-	return transforms
+	return nil
 }
 
 func getInitialCmds(ctx context.Context,
@@ -953,8 +936,7 @@ func replayIssues(ctx context.Context,
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
 	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
-	err := controlFlow.TransformAll(ctx)
-	if err != nil {
+	if err := controlFlow.TransformAll(ctx); err != nil {
 		log.E(ctx, "[Issues Replay] Error: %v", err)
 		return err
 	}
@@ -1352,4 +1334,40 @@ func (a API) Profile(
 
 	d, err := trace.ProcessProfilingData(ctx, intent.Device, intent.Capture, &buffer, &handleMappings, s)
 	return d, err
+}
+
+func getCommonInitializationTransforms(tag string) []transform2.Transform {
+	return []transform2.Transform{
+		newMakeAttachmentReadable2(false),
+		newDropInvalidDestroy2(tag),
+	}
+}
+
+func appendLogTransforms(ctx context.Context, tag string, capture *capture.GraphicsCapture, transforms []transform2.Transform) []transform2.Transform {
+	if config.LogTransformsToFile {
+		newTransforms := make([]transform2.Transform, 0)
+		newTransforms = append(newTransforms, newFileLog(ctx, "0_original_cmds"))
+		for i, t := range transforms {
+			var name string
+			if n, ok := t.(interface {
+				Name() string
+			}); ok {
+				name = n.Name()
+			} else {
+				name = strings.Replace(fmt.Sprintf("%T", t), "*", "", -1)
+			}
+			newTransforms = append(newTransforms, t, newFileLog(ctx, fmt.Sprintf("%v_cmds_after_%v", i+1, name)))
+		}
+		transforms = newTransforms
+	}
+
+	if config.LogTransformsToCapture {
+		transforms = append(transforms, newCaptureLog(ctx, capture, tag+"_replay_log.gfxtrace"))
+	}
+
+	if config.LogMappingsToFile {
+		transforms = append(transforms, newMappingExporterWithPrint(ctx, tag+"_mappings.txt"))
+	}
+
+	return transforms
 }

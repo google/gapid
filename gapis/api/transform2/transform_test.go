@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform2
+package transform2_test
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/commandGenerator"
 	"github.com/google/gapid/gapis/api/test"
+	"github.com/google/gapid/gapis/api/transform2"
 )
 
 func TestSingleTransformTransformChain(t *testing.T) {
@@ -31,15 +32,15 @@ func TestSingleTransformTransformChain(t *testing.T) {
 	inputCmds := []api.Cmd{createNewCmd(0, 1)}
 
 	generator := commandGenerator.NewLinearCommandGenerator(nil, inputCmds)
-	transforms := []Transform{&multiplier_transform{}}
+	transforms := []transform2.Transform{&multiplier_transform{}}
 	writer := newTestWriter()
-	chain := CreateTransformChain(generator, transforms, writer)
+	chain := transform2.CreateTransformChain(generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
 		chain.GetNextTransformedCommands(ctx)
 	}
 
-	assert.For(ctx, "TestTransformChain").ThatSlice(writer.output).IsLength(2)
+	assert.For(ctx, "TestSingleTransformTransformChain").ThatSlice(writer.output).IsLength(2)
 }
 
 func TestMultipleTransformTransformChain(t *testing.T) {
@@ -48,15 +49,15 @@ func TestMultipleTransformTransformChain(t *testing.T) {
 	inputCmds := []api.Cmd{createNewCmd(0, 1)}
 
 	generator := commandGenerator.NewLinearCommandGenerator(nil, inputCmds)
-	transforms := []Transform{&multiplier_transform{}, &multiplier_transform{}, &multiplier_transform{}}
+	transforms := []transform2.Transform{&multiplier_transform{}, &multiplier_transform{}, &multiplier_transform{}}
 	writer := newTestWriter()
-	chain := CreateTransformChain(generator, transforms, writer)
+	chain := transform2.CreateTransformChain(generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
 		chain.GetNextTransformedCommands(ctx)
 	}
 
-	assert.For(ctx, "TestTransformChain").ThatSlice(writer.output).IsLength(8)
+	assert.For(ctx, "TestMultipleTransformTransformChain").ThatSlice(writer.output).IsLength(8)
 }
 
 func createNewCmd(id api.CmdID, tag uint64) api.Cmd {

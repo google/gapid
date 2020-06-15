@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api/transform"
+	"github.com/google/gapid/gapis/api/transform2"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -50,12 +51,12 @@ type SplitGenerator interface {
 	GetInitialPayload(ctx context.Context,
 		capture *path.Capture,
 		device *device.Instance,
-		out transform.Writer) error
+		out transform2.Writer) error
 	// CleanupResources returns a set of instructions
 	// that can be used to clean up from the Initial payload.
 	CleanupResources(ctx context.Context,
 		device *device.Instance,
-		out transform.Writer) error
+		out transform2.Writer) error
 }
 
 // Intent describes the source capture and replay target information used for
