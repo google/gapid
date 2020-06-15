@@ -177,6 +177,7 @@ public abstract class LinkifiedTreeWithImages<T, F> extends LinkifiedTree<T, F> 
       }
 
       bounds.x += TEXT_START;
+      bounds.width -= TEXT_START;
       super.drawText(node, gc, bounds, label, ignoreColors);
     }
 

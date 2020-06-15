@@ -377,10 +377,7 @@ public abstract class LinkifiedTree<T, F> extends Composite {
     protected void drawText(@SuppressWarnings("unused") T node, GC gc, Rectangle bounds,
         Label label, boolean ignoreColors) {
       updateLayout(label.string, ignoreColors);
-      Rectangle clip = gc.getClipping();
-      gc.setClipping(bounds);
       layout.draw(gc, bounds.x, bounds.y + (bounds.height - label.bounds.height) / 2);
-      gc.setClipping(clip);
     }
 
     private void drawFocus(Event event) {
