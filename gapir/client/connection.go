@@ -224,11 +224,11 @@ func (c *connection) HandleReplayCommunication(
 	}()
 	for {
 		if c.stream == nil {
-			return log.Errf(ctx, nil, "Replay stream connection lost")
+			return log.Errf(ctx, nil, "No connection to replayer")
 		}
 		r, err := c.stream.Recv()
 		if err != nil {
-			return log.Errf(ctx, err, "Recv")
+			return log.Errf(ctx, err, "Replayer connection lost")
 		}
 		switch r.Res.(type) {
 		case *replaysrv.ReplayResponse_PayloadRequest:
