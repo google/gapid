@@ -18,7 +18,6 @@ BAZEL=${BAZEL:-bazel}
 BUILDIFIER=${BUILDIFIER:-buildifier}
 BUILDOZER=${BUILDOZER:-buildozer}
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
-GOFMT=${GOFMT:-gofmt}
 
 if test -t 1; then
   ncolors=$(tput colors)
@@ -74,10 +73,6 @@ function run_clang_format() {
   find . \( -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" \) -print | xargs $CLANG_FORMAT -i -style=file
 }
 
-function run_gofmt() {
-  find . -name "*.go" | xargs $GOFMT -w
-}
-
 function run_buildifier() {
   find . -name "*.BUILD" -o -name "BUILD.bazel" | xargs $BUILDIFIER
 }
@@ -101,6 +96,12 @@ function run_gazelle() {
   $BAZEL run gazelle
 }
 
+function run_gofmt() {
+  # Use 'go fmt' from the Go SDK downloaded by Bazel.
+  GOFMT=$($BAZEL info output_base)/external/go_sdk/bin/gofmt
+  find . -name "*.go" | xargs $GOFMT -w
+}
+
 # Ensure we are clean to start out with.
 check "git workspace must be clean" true
 
@@ -109,9 +110,6 @@ check copyright-headers run_copyright_headers
 
 # Check clang-format.
 check clang-format run_clang_format
-
-# Check gofmt.
-check gofmt run_gofmt
 
 # Check buildifier.
 check buildifier run_buildifier
@@ -124,6 +122,10 @@ check "//:tests contains all tests" run_enumerate_tests
 
 # Check gazelle.
 check "gazelle" run_gazelle
+
+# Check gofmt. This needs to be done AFTER Gazelle, such that Bazel has
+# installed its Go SDK (as a dependency to run Gazelle).
+check gofmt run_gofmt
 
 echo
 echo "${green}All check completed successfully.$normal"
