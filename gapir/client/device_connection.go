@@ -44,6 +44,8 @@ const (
 	deviceConnectionTimeout    = time.Second * 30
 	maxCheckSocketFileAttempts = 10
 	checkSocketFileRetryDelay  = time.Second
+	// socketName must match kSocketName in gapir/cc/main.cpp
+	socketName = "gapir-socket"
 )
 
 type deviceConnectionInfo struct {
@@ -233,13 +235,6 @@ func newHost(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []s
 	return &deviceConnectionInfo{port: port, authToken: authToken, cleanupFunc: cleanupFunc}, nil
 }
 
-var socketNames = map[device.Architecture]string{
-	device.ARMv7a: "gapir-arm",
-	device.ARMv8a: "gapir-arm64",
-	device.X86:    "gapir-x86",
-	device.X86_64: "gapir-x86-64",
-}
-
 func newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	ctx = log.V{"abi": abi}.Bind(ctx)
 
@@ -299,11 +294,7 @@ func newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []str
 	}
 
 	port := int(localPort)
-	socket, ok := socketNames[abi.Architecture]
-	ctx = log.V{"socket": socket}.Bind(ctx)
-	if !ok {
-		return nil, log.Errf(ctx, nil, "Unsupported architecture: %v", abi.Architecture)
-	}
+	ctx = log.V{"socket": socketName}.Bind(ctx)
 	apkDir, err := apk.FileDir(ctx)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Getting gapid.apk files directory")
@@ -319,7 +310,7 @@ func newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []str
 	_, _ = d.Shell("run-as", apk.Name, "chmod", "+x", appDir).Call(ctx)
 
 	// Wait for the socket file to be created
-	socketPath := strings.Join([]string{apkDir, socket}, "/")
+	socketPath := strings.Join([]string{apkDir, socketName}, "/")
 	err = task.Retry(ctx, maxCheckSocketFileAttempts, checkSocketFileRetryDelay,
 		func(ctx context.Context) (bool, error) {
 			str, err := d.Shell("run-as", apk.Name, "ls", socketPath).Call(ctx)

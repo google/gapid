@@ -59,6 +59,9 @@ using namespace gapir;
 
 namespace {
 
+// kSocketName must match "socketName" in gapir/client/device_connection.go
+const std::string kSocketName("gapir-socket");
+
 std::shared_ptr<MemoryAllocator> createAllocator() {
 #if defined(__x86_64) || defined(__aarch64__)
   size_t size = 16ull * 1024ull * 1024ull * 1024ull;
@@ -539,20 +542,6 @@ int jni_call_i(JNIEnv* env, jobject obj, const char* name, const char* sig,
   return env->CallIntMethod(obj, mid, std::forward<Args>(args)...);
 }
 
-const char* pipeName() {
-#ifdef __x86_64
-  return "gapir-x86-64";
-#elif defined __i386
-  return "gapir-x86";
-#elif defined __ARM_ARCH_7A__
-  return "gapir-arm";
-#elif defined __aarch64__
-  return "gapir-arm64";
-#else
-#error "Unrecognised target architecture"
-#endif
-}
-
 void android_process(struct android_app* app, int32_t cmd) {
   switch (cmd) {
     case APP_CMD_INIT_WINDOW: {
@@ -704,9 +693,8 @@ void android_main(struct android_app* app) {
   std::atomic<bool> thread_is_done(false);
 
   // Get the path of the file system socket.
-  const char* pipe = pipeName();
   std::string internal_data_path = std::string(app->activity->internalDataPath);
-  std::string socket_file_path = internal_data_path + "/" + std::string(pipe);
+  std::string socket_file_path = internal_data_path + "/" + kSocketName;
   std::string uri = std::string("unix://") + socket_file_path;
   std::unique_ptr<Server> server = nullptr;
   std::shared_ptr<MemoryAllocator> allocator = createAllocator();
