@@ -45,10 +45,12 @@ def main():
 
     #### Call benchmark command
     gapit = os.path.join(agi_dir, 'gapit')
+    dumptrace = os.path.join(out_dir, 'benchmark.systrace')
     cmd = [
         gapit, 'benchmark',
         '-startframe', test_params['startframe'],
-        '-numframes', test_params['numframes']
+        '-numframes', test_params['numframes'],
+        '-dumptrace', dumptrace
     ]
 
     if 'additionalargs' in test_params.keys():
