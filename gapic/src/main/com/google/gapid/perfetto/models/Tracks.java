@@ -31,7 +31,7 @@ import com.google.gapid.perfetto.views.CounterPanel;
 import com.google.gapid.perfetto.views.CpuFrequencyPanel;
 import com.google.gapid.perfetto.views.CpuPanel;
 import com.google.gapid.perfetto.views.CpuSummaryPanel;
-import com.google.gapid.perfetto.views.FrameEventsSummaryPanel;
+import com.google.gapid.perfetto.views.FrameEventsPanel;
 import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
@@ -168,14 +168,27 @@ public class Tracks {
   }
 
   public static Perfetto.Data.Builder enumerateFrame(Perfetto.Data.Builder data) {
-    if (data.getFrame().bufferCount() > 0) {
-      data.tracks.addLabelGroup(null, "sf_events", "Surface Flinger Events",
-          group(state -> new TitlePanel("Surface Flinger Events"), true));
+    if (data.getFrame().layerCount() > 0) {
       String parent = "sf_events";
-      for (FrameInfo.Buffer buffer : data.getFrame().buffers()) {
-        FrameEventsTrack track = FrameEventsTrack.forBuffer(data.qe, buffer);
-        data.tracks.addTrack(parent, track.getId(), buffer.getDisplay(),
-            single(state -> new FrameEventsSummaryPanel(state, buffer, track), true, false));
+      data.tracks.addLabelGroup(null, parent, "Surface Flinger Events",
+          group(state -> new TitlePanel("Surface Flinger Events"), true));
+
+      for (FrameInfo.Layer layer : data.getFrame().layers()) {
+        data.tracks.addLabelGroup(parent, layer.layerName, layer.layerName,
+            group(state -> new TitlePanel(layer.layerName), true));
+        for (FrameInfo.Event phase : layer.phaseEvents()) {
+          FrameEventsTrack track = FrameEventsTrack.forFrameEvent(data.qe, layer.layerName, phase);
+          data.tracks.addTrack(layer.layerName, track.getId(), phase.getDisplay(),
+              single(state -> new FrameEventsPanel(state, phase, track), true, false));
+        }
+        String buffersGroup = "buffers_" + layer.layerName;
+        data.tracks.addLabelGroup(layer.layerName, buffersGroup, "Buffers",
+            group(state -> new TitlePanel("Buffers"), false));
+        for (FrameInfo.Event buffer : layer.bufferEvents()) {
+          FrameEventsTrack track = FrameEventsTrack.forFrameEvent(data.qe, layer.layerName, buffer);
+          data.tracks.addTrack(buffersGroup, track.getId(), buffer.getDisplay(),
+              single(state -> new FrameEventsPanel(state, buffer, track), true, false));
+        }
       }
     }
     return data;

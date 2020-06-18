@@ -39,9 +39,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
 /**
  * Displays information about a selected Frame event.
  */
@@ -74,36 +71,23 @@ public class FrameEventsSelectionView extends Composite {
     createLabel(main, "Duration:");
     createLabel(main, timeToString(slice.durs.get(0)));
 
-    if (slice.frameStats.get(0) != null) {
       // If the selected event is a displayed frame slice, show the frame stats
-      Composite stats = withLayoutData(createComposite(this, new GridLayout(2, false)),
-          withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), PANEL_INDENT, 0));
-      withLayoutData(createBoldLabel(stats, "Frame Stats:"),
-          withSpans(new GridData(), 2, 1));
+    Composite stats = withLayoutData(createComposite(this, new GridLayout(2, false)),
+        withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), PANEL_INDENT, 0));
+    withLayoutData(createBoldLabel(stats, "Frame Stats:"),
+        withSpans(new GridData(), 2, 1));
 
-      slice.frameStats.get(0).forEach((k, v) -> {
-        withLayoutData(createBoldLabel(stats, k.toString()),
-            withSpans(new GridData(), 2, 1));
+    createLabel(stats, "Frame number: ");
+    createLabel(stats, Long.toString(slice.frameNumbers.get(0)));
 
-        createLabel(stats, "Frame number: ");
-        createLabel(stats, Long.toString(v.frameNumber));
+    createLabel(stats, "Queue to Acquire: ");
+    createLabel(stats, timeToString(slice.queueToAcquireTimes.get(0)));
 
-        createLabel(stats, "Queue to Acquire: ");
-        createLabel(stats, timeToString(v.queueToAcquireTime));
+    createLabel(stats, "Acquire to Latch: ");
+    createLabel(stats, timeToString(slice.acquireToLatchTimes.get(0)));
 
-        createLabel(stats, "Acquire to Latch: ");
-        createLabel(stats, timeToString(v.acquireToLatchTime));
-
-        createLabel(stats, "Latch to Present: ");
-        createLabel(stats, timeToString(v.latchToPresentTime));
-      });
-    } else {
-      // Show the frame number associated with the event
-      createLabel(main, "Frame Number:");
-      createLabel(main, Arrays.stream(slice.frameNumbers.get(0))
-          .map(l -> Long.toString(l))
-          .collect(Collectors.joining(", ")));
-    }
+    createLabel(stats, "Latch to Present: ");
+      createLabel(stats, timeToString(slice.latchToPresentTimes.get(0)));
 
     if (!slice.argsets.get(0).isEmpty()) {
       String[] keys = Iterables.toArray(slice.argsets.get(0).keys(), String.class);
@@ -158,8 +142,13 @@ public class FrameEventsSelectionView extends Composite {
     viewer.setLabelProvider(new LabelProvider());
 
     createTreeColumn(viewer, "Name", e -> n(e).name);
+    createTreeColumn(viewer, "Frame Number", e -> Long.toString(n(e).frameNumber));
     createTreeColumn(viewer, "Self Time", e -> timeToString(n(e).self));
-    createTreeColumn(viewer, "Layers", e -> String.join(", ", n(e).layers));
+    createTreeColumn(viewer, "Event type", e -> n(e).eventName);
+    createTreeColumn(viewer, "Layers", e -> n(e).layerName);
+    createTreeColumn(viewer, "Queue to Acquire Time", e -> timeToString(n(e).queueToAcquireTime));
+    createTreeColumn(viewer, "Acquire to Latch Time", e -> timeToString(n(e).acquireToLatchTime));
+    createTreeColumn(viewer, "Latch to Present Time", e -> timeToString(n(e).latchToPresentTime));
     viewer.setInput(slices);
     packColumns(viewer.getTree());
   }
