@@ -43,19 +43,11 @@ VERSION=$(awk -F= 'BEGIN {major=0; minor=0; micro=0}
                   /Micro/ {micro=$2}
                   END {print major"."minor"."micro}' $BIN/pkg/build.properties)
 
-# Combine package contents.
-mkdir agi
-cp -r $BIN/pkg/* agi/
-mkdir -p agi/jre
-"$SRC/copy_jre.sh" agi/jre
-
-# Create a zip file.
-zip -r agi-$VERSION-macos.zip agi/
-
 # Create a .app package
-mkdir -p AGI.app/Contents/MacOS/
-cp -r agi/* AGI.app/Contents/MacOS/
+mkdir -p AGI.app/Contents/MacOS/jre
+cp -r $BIN/pkg/* AGI.app/Contents/MacOS/
 cp "$SRC/Info.plist" AGI.app/Contents/
+"$SRC/copy_jre.sh" AGI.app/Contents/MacOS/jre
 
 mkdir -p AGI.iconset AGI.app/Contents/Resources
 for i in 512 256 128 64 32 16; do
@@ -67,6 +59,9 @@ iconutil -c icns -o AGI.app/Contents/Resources/AGI.icns AGI.iconset
 # Move the JRE's legal notices to the Resources folder, so signing doesn't complain.
 mkdir AGI.app/Contents/Resources/jre
 mv AGI.app/Contents/MacOS/jre/legal AGI.app/Contents/Resources/jre
+
+# Create a zip file.
+zip -r agi-$VERSION-macos.zip AGI.app
 
 # Make a dmg file.
 pip install --upgrade --user dmgbuild pyobjc-framework-Quartz
