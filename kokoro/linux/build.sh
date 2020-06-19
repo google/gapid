@@ -180,7 +180,7 @@ test "${APP_EXIT_STATUS}" -eq 130
 # avoid build flakes due to b/144158856
 xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit trace -gapis-args "--idle-timeout 0" -device host -disable-coherentmemorytracker -disable-unknown-extensions -no-buffer -api vulkan -start-at-frame 5 -capture-frames 10 -observe-frames 1 -out vulkan_sample.gfxtrace bazel-bin/cmd/vulkan_sample/vulkan_sample
 
-xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit video -gapir-nofallback -type sxs -frames-minimum 10 -out vulkan_sample.mp4  vulkan_sample.gfxtrace
+xvfb-run -e xvfb.log -a bazel-bin/pkg/gapit video -gapis-args "--idle-timeout 0" -gapir-nofallback -type sxs -frames-minimum 10 -out vulkan_sample.mp4  vulkan_sample.gfxtrace
 
 ##
 ## Collect swarming test results
