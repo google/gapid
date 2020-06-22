@@ -850,7 +850,7 @@ func (a API) GetInitialPayload(ctx context.Context,
 	out.State().Allocator.ReserveRanges(im)
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, nil)
 
-	transforms := getCommonInitializationTransforms("GetInitialPayload")
+	transforms := getCommonInitializationTransforms("GetInitialPayload", false)
 
 	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
@@ -895,38 +895,81 @@ func getInitialCmds(ctx context.Context,
 	return []api.Cmd{}
 }
 
-// Melih TODO: This function may change as we moved other queries
-// Depending on how much code repetation it has and if it is avoidable
-// without making things complicated again
+func replayProfile(ctx context.Context,
+	intent replay.Intent,
+	dependentPayload string,
+	rrs []replay.RequestAndResult,
+	c *capture.GraphicsCapture,
+	device *device.Instance,
+	out transform2.Writer) error {
+
+	if len(rrs) > 1 {
+		panic("Batched request is not supported for profile")
+	}
+
+	if len(rrs) == 0 {
+		return fmt.Errorf("No request has been found for profile")
+	}
+
+	var layerName string
+	if device.GetConfiguration().GetPerfettoCapability().GetGpuProfiling().GetHasRenderStageProducerLayer() {
+		layerName = "VkRenderStagesProducer"
+	}
+
+	initialCmds := getInitialCmds(ctx, dependentPayload, intent, out)
+
+	transforms := make([]transform2.Transform, 0)
+	transforms = append(transforms, getCommonInitializationTransforms("ProfileReplay", true)...)
+
+	profileTransform := newEndOfReplay()
+	profileTransform.AddResult(rrs[0].Result)
+	request := rrs[0].Request.(profileRequest)
+	transforms = append(transforms, newWaitForPerfetto(request.traceOptions, request.handler, request.buffer, api.CmdID(len(initialCmds))))
+	transforms = append(transforms, newProfilingLayers(layerName))
+	transforms = append(transforms, newMappingExporter(ctx, request.handleMappings))
+	transforms = append(transforms, profileTransform)
+
+	transforms = append(transforms, newDestroyResourcesAtEOS2())
+	transforms = appendLogTransforms(ctx, "ProfileReplay", c, transforms)
+
+	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
+	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
+	err := controlFlow.TransformAll(ctx)
+	if err != nil {
+		log.E(ctx, "[Profile Replay] Error: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func replayIssues(ctx context.Context,
 	intent replay.Intent,
-	cfg replay.Config,
 	dependentPayload string,
 	rrs []replay.RequestAndResult,
 	c *capture.GraphicsCapture,
 	out transform2.Writer) error {
 
+	if len(rrs) > 1 {
+		panic("Batched request is not supported for issues")
+	}
+
+	if len(rrs) == 0 {
+		return fmt.Errorf("No request has been found for issues")
+	}
+
 	initialCmds := getInitialCmds(ctx, dependentPayload, intent, out)
 
 	transforms := make([]transform2.Transform, 0)
-	transforms = append(transforms, getCommonInitializationTransforms("IssuesReplay")...)
+	transforms = append(transforms, getCommonInitializationTransforms("IssuesReplay", false)...)
 
 	issuesTransform := newFindIssues(ctx, c, api.CmdID(len(initialCmds)))
-	doDisplayToSurface := false
-
-	// Melih TODO: Can we get rid of this loop and typecast.
-	// b/158597615
-	for _, rr := range rrs {
-		issuesTransform.AddResult(rr.Result)
-		req := rr.Request.(issuesRequest)
-		if req.displayToSurface {
-			doDisplayToSurface = true
-		}
-	}
-
+	issuesTransform.AddResult(rrs[0].Result)
 	transforms = append(transforms, issuesTransform)
 
-	if doDisplayToSurface {
+	req := rrs[0].Request.(issuesRequest)
+	if req.displayToSurface {
 		transforms = append(transforms, newDisplayToSurface2())
 	}
 
@@ -963,7 +1006,9 @@ func (a API) Replay(
 	for _, rr := range rrs {
 		switch rr.Request.(type) {
 		case issuesRequest:
-			return replayIssues(ctx, intent, cfg, dependentPayload, rrs, c, out)
+			return replayIssues(ctx, intent, dependentPayload, rrs, c, out)
+		case profileRequest:
+			return replayProfile(ctx, intent, dependentPayload, rrs, c, device, out)
 		}
 	}
 
@@ -1056,7 +1101,6 @@ func (a API) Replay(
 	wire := false
 	doDisplayToSurface := false
 	var overdraw *stencilOverdraw
-	var profile *replay.EndOfReplay
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
@@ -1126,20 +1170,8 @@ func (a API) Replay(
 			if req.displayToSurface {
 				doDisplayToSurface = true
 			}
-		case profileRequest:
-			if profile == nil {
-				profile = &replay.EndOfReplay{}
-			}
-			profile.AddResult(rr.Result)
-			makeReadable.imagesOnly = true
-			optimize = false
-			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer))
-			var layerName string
-			if device.GetConfiguration().GetPerfettoCapability().GetGpuProfiling().GetHasRenderStageProducerLayer() {
-				layerName = "VkRenderStagesProducer"
-			}
-			transforms.Add(&profilingLayers{layerName: layerName})
-			transforms.Add(replay.NewMappingExporter(ctx, req.handleMappings))
+		default:
+			return fmt.Errorf("Invalid Request Type; %v", req)
 		}
 	}
 
@@ -1165,28 +1197,21 @@ func (a API) Replay(
 		transforms.Add(newDisplayToSurface())
 	}
 
-	if profile != nil {
-		transforms.Add(profile)
+	if frameloop != nil {
+		transforms.Add(frameloop)
+	}
+	if timestamps != nil {
+		transforms.Add(timestamps)
 	} else {
-		if frameloop != nil {
-			transforms.Add(frameloop)
-		}
-		if timestamps != nil {
-			transforms.Add(timestamps)
-		} else {
-			transforms.Add(earlyTerminator)
-		}
-
+		transforms.Add(earlyTerminator)
 	}
 
 	if overdraw != nil {
 		transforms.Add(overdraw)
 	}
 
-	if profile == nil {
-		transforms.Add(splitter)
-		transforms.Add(readFramebuffer, injector)
-	}
+	transforms.Add(splitter)
+	transforms.Add(readFramebuffer, injector)
 
 	// Cleanup
 	transforms.Add(&destroyResourcesAtEOS{})
@@ -1336,9 +1361,9 @@ func (a API) Profile(
 	return d, err
 }
 
-func getCommonInitializationTransforms(tag string) []transform2.Transform {
+func getCommonInitializationTransforms(tag string, imagesOnly bool) []transform2.Transform {
 	return []transform2.Transform{
-		newMakeAttachmentReadable2(false),
+		newMakeAttachmentReadable2(imagesOnly),
 		newDropInvalidDestroy2(tag),
 	}
 }

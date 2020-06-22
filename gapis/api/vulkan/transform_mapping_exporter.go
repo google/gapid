@@ -26,11 +26,14 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform2"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 )
+
+var _ transform2.Transform = &mappingExporter{}
 
 type mappingHandle struct {
 	traceValue    uint64

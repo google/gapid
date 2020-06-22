@@ -18,8 +18,11 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform2"
 	"github.com/google/gapid/gapis/memory"
 )
+
+var _ transform2.Transform = &destroyResourcesAtEOS2{}
 
 type destroyResourcesAtEOS2 struct {
 }

@@ -18,8 +18,11 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform2"
 	"github.com/google/gapid/gapis/memory"
 )
+
+var _ transform2.Transform = &makeAttachmentReadable2{}
 
 type makeAttachmentReadable2 struct {
 	imagesOnly  bool

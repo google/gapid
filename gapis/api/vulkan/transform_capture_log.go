@@ -21,8 +21,11 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform2"
 	"github.com/google/gapid/gapis/capture"
 )
+
+var _ transform2.Transform = &captureLog{}
 
 type captureLog struct {
 	file   *os.File
