@@ -313,3 +313,58 @@ A few useful homemade packages:
 ### Java
 
 > TODO
+
+## Code generated at compile time
+
+A large amount of code is generated at compile time. Code is typically generated
+via APIC (API Compiler, `cmd/apic/`). APIC takes as input `.api` and `.tmpl`
+files, and it generates code in another language.
+
+```
+
+                    +----------+
+  <.api files>  --->|          |
+                    |   APIC   |---> <generated files>
+  <.tmpl files> --->|          |
+                    +----------+
+
+```
+
+`.api` files are GAPIL ("graphics API language") sources. GAPIL is a
+domain-specific language to specify a graphics API, it is documented in
+`gapil/README.md`. AGI currently supports only Vulkan, but its ancestor GAPID
+was designed to support arbitrary graphics APIs. Vulkan is described by API files
+located under `gapis/api/vulkan/`, the top-level file is
+`gapis/api/vulkan/vulkan.api`.
+
+`.tmpl` files are template files. The templating language is documented in
+`gapis/api/templates/README.md`. There are various template files in the project
+to generate code for the interceptor, server, replayer, Vulkan layers, etc.
+
+APIC is a GAPIL compiler, its entry-point is defined in `cmd/apic/` and the
+actual compiler logic is defined in `gapil/`. In a nutshell, APIC parses the
+`.api` files to gather information about the graphics API, and then instantiates
+the templates in the `.tmpl` files to generate code.
+
+### Where does the generated code end up?
+
+The generated code is not checked under version control. It is generated at
+compilation time by Bazel rules calling APIC, resulting in files that can be
+seen under e.g. `bazel-bin/`.
+
+For instance, generated C++ code for the interceptor can be found in:
+
+```
+user@machine:~/work/agi$ find -L bazel-bin -name '*_spy_*.cpp'
+bazel-bin/gapii/cc/vulkan_spy_0.cpp
+bazel-bin/gapii/cc/vulkan_spy_subroutines_1.cpp
+bazel-bin/gapii/cc/vulkan_spy_subroutines_0.cpp
+bazel-bin/gapii/cc/vulkan_spy_2.cpp
+bazel-bin/gapii/cc/vulkan_spy_3.cpp
+bazel-bin/gapii/cc/vulkan_spy_helpers.cpp
+bazel-bin/gapii/cc/vulkan_spy_1.cpp
+```
+
+To get a unified file tree view, interleaving source files with generated files,
+you can use the `cmd/gofuse` setup. `cmd/gofuse` links the generated source
+files in the same directories as their siblings in the same packages/namespaces.
