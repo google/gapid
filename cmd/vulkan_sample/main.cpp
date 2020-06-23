@@ -141,7 +141,7 @@ void ProcessNativeWindowEvents() {
 
 const int kOutHandle = 0;
 void write_error(int, const char* message) {
-  __android_log_print(ANDROID_LOG_ERROR, "GAPIDVKSAMPLE", "%s", message);
+  __android_log_print(ANDROID_LOG_ERROR, "AGIVKSAMPLE", "%s", message);
 }
 
 const char* kRequiredInstanceExtensions[] = {

@@ -25,11 +25,9 @@
 #include <android/log.h>
 #include <sys/system_properties.h>
 
-#define LOG_ERR(...) \
-  __android_log_print(ANDROID_LOG_ERROR, "GAPID", __VA_ARGS__);
+#define LOG_ERR(...) __android_log_print(ANDROID_LOG_ERROR, "AGI", __VA_ARGS__);
 
-#define LOG_WARN(...) \
-  __android_log_print(ANDROID_LOG_WARN, "GAPID", __VA_ARGS__);
+#define LOG_WARN(...) __android_log_print(ANDROID_LOG_WARN, "AGI", __VA_ARGS__);
 
 namespace {
 

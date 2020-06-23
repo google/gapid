@@ -48,7 +48,7 @@ const (
 
 	perfettoPort = NamedFileSystemSocket("/dev/socket/traced_consumer")
 
-	driverOverride = "gapid.driver_package_override"
+	driverOverride = "agi.driver_package_override"
 	driverProperty = "ro.gfx.driver.1"
 )
 
@@ -361,7 +361,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 			if gpu.GpuCounterDescriptor == nil {
 				gpu.GpuCounterDescriptor = &device.GpuCounterDescriptor{}
 			}
-			// We mirror the Perfetto GpuCounterDescriptor proto into GAPID, hence
+			// We mirror the Perfetto GpuCounterDescriptor proto into AGI, hence
 			// they are binary format compatible.
 			data, err := proto.Marshal(desc.GetGpuCounterDescriptor())
 			if err != nil {

@@ -27,7 +27,7 @@ extern "C" {
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))
 
 #define LOG_DEBUG(fmt, ...) \
-  __android_log_print(ANDROID_LOG_DEBUG, "GAPID", fmt, ##__VA_ARGS__)
+  __android_log_print(ANDROID_LOG_DEBUG, "AGI", fmt, ##__VA_ARGS__)
 
 #define PROC(name)                                                     \
   static PFN_##name fn = (PFN_##name)(getProcAddress("gapid_" #name)); \
