@@ -273,6 +273,10 @@ func rescaleBytes(ctx context.Context, data []byte, max int) {
 }
 
 func (verb *screenshotVerb) getAttachment(ctx context.Context) (uint32, error) {
+	if verb.Attachment == "" {
+		return 0, nil
+	}
+
 	// TODO: Add-back ability to type "depth" to get the depth attachment
 	i, err := strconv.ParseUint(verb.Attachment, 10, 32)
 	if err != nil {
