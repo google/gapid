@@ -91,8 +91,8 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		go func(idx int, command *path.Command) {
 			defer wg.Done()
 
-			var err error
-			if frame, err := verb.getSingleFrame(ctx, command, device, client); err == nil {
+			frame, err := verb.getSingleFrame(ctx, command, device, client)
+			if err == nil {
 				err = verb.writeSingleFrame(flipImg(frame), formatOut(verb.Out, idx, multi))
 			}
 			c <- err
