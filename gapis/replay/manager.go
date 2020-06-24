@@ -163,18 +163,18 @@ func (m *manager) destroyScheduler(ctx context.Context, device bind.Device) {
 	delete(m.schedulers, deviceID)
 }
 
-func (m *manager) connect(ctx context.Context, device bind.Device, replayABI *device.ABI) (*gapir.ConnectionKey, error) {
+func (m *manager) connect(ctx context.Context, device bind.Device, replayABI *device.ABI) (*gapir.ReplayerKey, error) {
 	return m.gapir.Connect(ctx, device, replayABI)
 }
 
-func (m *manager) BeginReplay(ctx context.Context, conn *gapir.ConnectionKey, payload string, dependent string) error {
-	return m.gapir.BeginReplay(ctx, conn, payload, dependent)
+func (m *manager) BeginReplay(ctx context.Context, key *gapir.ReplayerKey, payload string, dependent string) error {
+	return m.gapir.BeginReplay(ctx, key, payload, dependent)
 }
 
-func (m *manager) SetReplayExecutor(ctx context.Context, conn *gapir.ConnectionKey, executor gapir.ReplayExecutor) (func(), error) {
-	return m.gapir.SetReplayExecutor(ctx, conn, executor)
+func (m *manager) SetReplayExecutor(ctx context.Context, key *gapir.ReplayerKey, executor gapir.ReplayExecutor) (func(), error) {
+	return m.gapir.SetReplayExecutor(ctx, key, executor)
 }
 
-func (m *manager) PrewarmReplay(ctx context.Context, conn *gapir.ConnectionKey, payload string, cleanup string) error {
-	return m.gapir.PrewarmReplay(ctx, conn, payload, cleanup)
+func (m *manager) PrewarmReplay(ctx context.Context, key *gapir.ReplayerKey, payload string, cleanup string) error {
+	return m.gapir.PrewarmReplay(ctx, key, payload, cleanup)
 }

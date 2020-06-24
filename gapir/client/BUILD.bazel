@@ -17,12 +17,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "background_connection.go",
         "client.go",
-        "connection.go",
         "device_connection.go",
         "doc.go",
         "host_log_parser.go",
+        "replayer.go",
     ],
     importpath = "github.com/google/gapid/gapir/client",
     visibility = ["//visibility:public"],

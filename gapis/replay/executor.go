@@ -52,7 +52,7 @@ func Execute(
 	handleNotification builder.NotificationHandler,
 	fenceReadyCallback builder.FenceReadyRequestCallback,
 	m Manager,
-	conn *gapirClient.ConnectionKey,
+	key *gapirClient.ReplayerKey,
 	memoryLayout *device.MemoryLayout,
 	os *device.OS) error {
 
@@ -70,17 +70,17 @@ func Execute(
 		memoryLayout:       memoryLayout,
 		OS:                 os,
 		finished:           make(chan error),
-	}.execute(ctx, m.(*manager), conn)
+	}.execute(ctx, m.(*manager), key)
 }
 
-func (e executor) execute(ctx context.Context, m *manager, conn *gapirClient.ConnectionKey) error {
+func (e executor) execute(ctx context.Context, m *manager, key *gapirClient.ReplayerKey) error {
 	plid, err := database.Store(ctx, &e.payload)
 	if err != nil {
 		return log.Errf(ctx, err, "Storing replay payload")
 	}
 	e.payloadID = plid
 	log.I(ctx, "Replaying %v", plid)
-	clean, err := m.SetReplayExecutor(ctx, conn, e)
+	clean, err := m.SetReplayExecutor(ctx, key, e)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (e executor) execute(ctx context.Context, m *manager, conn *gapirClient.Con
 
 	log.I(ctx, "Beginning replay %v", plid)
 	// Start replay with id
-	m.BeginReplay(ctx, conn, plid.String(), e.dependent)
+	m.BeginReplay(ctx, key, plid.String(), e.dependent)
 	// Wait for finished
 	err = <-e.finished
 	return err

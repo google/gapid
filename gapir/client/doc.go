@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package client provides helper methods and types for communicating with the
-// GAPIR service.
+// Package client provides helper methods and types for starting GAPIR
+// instances and communicating with them. The actual interaction is
+// achieved via the gRPC service defined in:
+// gapir/replay_service/service.proto
+// The client package abstracts the RPC handling details and offers a
+// higher-level interface, in particular it can manage several live
+// GAPIR instances at the same time.
 package client
