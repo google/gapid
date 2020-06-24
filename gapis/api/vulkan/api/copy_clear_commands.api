@@ -627,7 +627,7 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
     aspectBit := aspectBits[0]
     isPackedDepth := (aspectBit == VK_IMAGE_ASPECT_DEPTH_BIT) && ((format == VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK_FORMAT_X8_D24_UNORM_PACK32))
     elementAndTexelBlockSize := getElementAndTexelBlockSizeForAspect(format, aspectBit)
-    elementSize := switch (aspectBit) {
+    elementSizeInBuffer := switch (aspectBit) {
       case VK_IMAGE_ASPECT_COLOR_BIT,
            VK_IMAGE_ASPECT_STENCIL_BIT:
           as!u64(elementAndTexelBlockSize.ElementSize)
@@ -635,6 +635,10 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
           depthElementSize
       default:
           as!u64(1)
+    }
+    elementSizeInImage := switch (isPackedDepth) {
+      case true: depthElementSizeInImage
+      case false: elementSizeInBuffer
     }
 
     // Note on computations below: we're not using roundUpTo when computing positions in terms of blocks,
@@ -647,7 +651,7 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
     rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
     rowLength := as!u64(roundUpTo(rowLengthAndImageHeight.RowLength, elementAndTexelBlockSize.TexelBlockSize.Width))
     imageHeight := as!u64(roundUpTo(rowLengthAndImageHeight.ImageHeight, elementAndTexelBlockSize.TexelBlockSize.Height))
-    layerSize := rowLength * imageHeight * elementSize
+    layerSizeInBuffer := rowLength * imageHeight * elementSizeInBuffer
     zStart := as!u64(region.imageOffset.z)
     zEnd := zStart + as!u64(region.imageExtent.depth)
     yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
@@ -659,9 +663,9 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
     // the source buffer memory.
     for j in (0 .. region.imageSubresource.layerCount) {
       layerIndex := region.imageSubresource.baseArrayLayer + j
-      bufferLayerOffset := (as!u64(j) * layerSize) + as!u64(region.bufferOffset)
+      bufferLayerOffset := (as!u64(j) * layerSizeInBuffer) + as!u64(region.bufferOffset)
       imageLevel := imageObject.Aspects[aspectBit].Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
-      imageLayout := getCopyImageLayout(imageLevel, elementAndTexelBlockSize.TexelBlockSize, elementSize)
+      imageLayout := getCopyImageLayout(imageLevel, elementAndTexelBlockSize.TexelBlockSize, elementSizeInImage)
       // Iterate through depths and rows to copy
       for z in (zStart .. zEnd) {
         zInExtent := z - zStart
@@ -672,12 +676,12 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
           rowStartBlockInExtent := ((zInExtent * imageHeight) + yInExtent) * rowLength
           if isPackedDepth {
             for x in (xStart .. xEnd) {
-              imgStart := as!VkDeviceSize(rowStartByte + x * depthElementSizeInImage)
-              rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
+              imgStart := as!VkDeviceSize(rowStartByte + x * elementSizeInImage)
+              rowStartInExtent := (rowStartBlockInExtent + x) * elementSizeInBuffer
               bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
-              readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize))
+              readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSizeInBuffer))
               // Discard the 4th byte in the buffer for current pixel.
-              bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(depthElementSizeInImage))
+              bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
               for _ , _ , piece in bufMemPieces {
                 bufMemStart := piece.MemoryOffset
                 bufMemEnd := bufMemStart + piece.Size
@@ -691,9 +695,9 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
               }
             }
           } else {
-            copySize := as!VkDeviceSize((xEnd - xStart) * elementSize)
-            imgStart := rowStartByte + xStart * elementSize
-            rowStartInExtent := rowStartBlockInExtent * elementSize
+            copySize := as!VkDeviceSize((xEnd - xStart) * elementSizeInImage)
+            imgStart := rowStartByte + xStart * elementSizeInImage
+            rowStartInExtent := rowStartBlockInExtent * elementSizeInImage
             bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
             readMemoryInBuffer(bufferObject, bufStart, copySize)
             bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
