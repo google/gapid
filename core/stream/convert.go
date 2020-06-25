@@ -87,13 +87,21 @@ func Convert(dst, src *Format, data []byte) ([]byte, error) {
 	// Some components can be implicitly added (alpha, Y, Z, W).
 	mappings = resolveImplicitMappings(count, mappings, src, data)
 
+	// Calculate min/max if floats
+	min, max := float64(math.MaxFloat64), -float64(math.MaxFloat64)
+	for _, m := range mappings {
+		if m.dst.component.DataType.IsInteger() && m.src.component.DataType.IsFloat() && !m.dst.component.DataType.Signed {
+			ftouMinMax(count, m.dst, m.src, &min, &max)
+		}
+	}
+
 	// Do the conversion work.
 	for _, m := range mappings {
 		if m.src.component == nil {
 			return nil, fmt.Errorf("Channel %v not found in source format: %v",
 				m.dst.component.Channel, src)
 		}
-		if err := m.conv(count); err != nil {
+		if err := m.conv(count, min, max); err != nil {
 			return nil, err
 		}
 
@@ -155,7 +163,7 @@ var (
 	buf1Norm = buf{[]byte{1}, &Component{DataType: &U1, Sampling: LinearNormalized}, 0, 0}
 )
 
-func (m *mapping) conv(count int) error {
+func (m *mapping) conv(count int, min, max float64) error {
 	d, s := m.dst.component, m.src.component
 	if d.GetSampling().GetCurve() != s.GetSampling().GetCurve() {
 		return fmt.Errorf("Cannot convert curve from %v to %v", s.GetSampling().GetCurve(), d.GetSampling().GetCurve())
@@ -187,20 +195,20 @@ func (m *mapping) conv(count int) error {
 		if d.DataType.Signed {
 			return ftos(count, m.dst, m.src)
 		}
-		return ftou(count, m.dst, m.src)
+		return ftou(count, m.dst, m.src, min, max)
 	}
 	return fmt.Errorf("Cannot convert from %v to %v", s, d)
 }
 
 // straight up copy.
 func clone(count int, dst, src buf) error {
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	bits := dst.component.DataType.Bits()
 	for i := 0; i < count; i++ {
-		ds.Write(ss.Read(bits), bits)
-		ds.WritePos += dst.stride - bits
-		ss.ReadPos += src.stride - bits
+		destStream.Write(sourceStream.Read(bits), bits)
+		destStream.WritePos += dst.stride - bits
+		sourceStream.ReadPos += src.stride - bits
 	}
 	return nil
 }
@@ -211,17 +219,17 @@ func intCast(count int, dst, src buf) error {
 	dstBitsIncSign, srcBitsIncSign := dstTy.Bits(), srcTy.Bits()
 	srcBitsExcSign := srcTy.GetInteger().Bits
 	signed := dstTy.Signed
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	srcSignEx := ^(uint64(1<<srcBitsExcSign) - 1)
 	for i := 0; i < count; i++ {
-		v := ss.Read(srcBitsExcSign)
-		if signed && ss.Read(1) == 1 {
+		v := sourceStream.Read(srcBitsExcSign)
+		if signed && sourceStream.Read(1) == 1 {
 			v |= srcSignEx
 		}
-		ds.Write(v, dstBitsIncSign)
-		ds.WritePos += dst.stride - dstBitsIncSign
-		ss.ReadPos += src.stride - srcBitsIncSign
+		destStream.Write(v, dstBitsIncSign)
+		destStream.WritePos += dst.stride - dstBitsIncSign
+		sourceStream.ReadPos += src.stride - srcBitsIncSign
 	}
 	return nil
 }
@@ -249,17 +257,17 @@ func intExpand(count int, dst, src buf) error {
 	toU64 := uintExpandPatterns[srcBitsExcSign] // index out of range? Add more patterns!
 	shift := 64 - dstBitsIncSign
 	signed := dstTy.Signed
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	for i := 0; i < count; i++ {
-		v := uint64(ss.Read(srcBitsExcSign))
+		v := uint64(sourceStream.Read(srcBitsExcSign))
 		v = (v * toU64) >> shift
-		ds.Write(uint64(v), dstBitsExcSign)
+		destStream.Write(uint64(v), dstBitsExcSign)
 		if signed {
-			ds.Write(ss.Read(1), 1) // Copy sign
+			destStream.Write(sourceStream.Read(1), 1) // Copy sign
 		}
-		ds.WritePos += dst.stride - dstBitsIncSign
-		ss.ReadPos += src.stride - srcBitsIncSign
+		destStream.WritePos += dst.stride - dstBitsIncSign
+		sourceStream.ReadPos += src.stride - srcBitsIncSign
 	}
 	return nil
 }
@@ -274,16 +282,16 @@ func intCollapse(count int, dst, src buf) error {
 	dstBitsExcSign, srcBitsExcSign := dstTy.GetInteger().Bits, srcTy.GetInteger().Bits
 	shift := srcBitsIncSign - dstBitsIncSign
 	signed := dstTy.Signed
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	for i := 0; i < count; i++ {
-		v := ss.Read(srcBitsExcSign) >> shift
-		ds.Write(uint64(v), dstBitsExcSign)
+		v := sourceStream.Read(srcBitsExcSign) >> shift
+		destStream.Write(uint64(v), dstBitsExcSign)
 		if signed {
-			ds.Write(ss.Read(1), 1) // Copy sign
+			destStream.Write(sourceStream.Read(1), 1) // Copy sign
 		}
-		ds.WritePos += dst.stride - dstBitsIncSign
-		ss.ReadPos += src.stride - srcBitsIncSign
+		destStream.WritePos += dst.stride - dstBitsIncSign
+		sourceStream.ReadPos += src.stride - srcBitsIncSign
 	}
 	return nil
 }
@@ -298,24 +306,24 @@ func utof(count int, dst, src buf) error {
 	norm := src.component.IsNormalized()
 	dstBitsIncSign := dstTy.Bits()
 	srcBits := srcTy.Bits()
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	scale := 1.0 / float64((uint(1)<<srcBits)-1)
 	for i := 0; i < count; i++ {
-		f := float64(ss.Read(srcBits))
+		f := float64(sourceStream.Read(srcBits))
 		if norm {
 			f *= scale
 		}
 		switch {
 		case dstIsF16:
-			ds.Write(uint64(f16.From(float32(f))), 16)
+			destStream.Write(uint64(f16.From(float32(f))), 16)
 		case dstIsF32:
-			ds.Write(uint64(math.Float32bits(float32(f))), 32)
+			destStream.Write(uint64(math.Float32bits(float32(f))), 32)
 		case dstIsF64:
-			ds.Write(math.Float64bits(f), 64)
+			destStream.Write(math.Float64bits(f), 64)
 		}
-		ds.WritePos += dst.stride - dstBitsIncSign
-		ss.ReadPos += src.stride - srcBits
+		destStream.WritePos += dst.stride - dstBitsIncSign
+		sourceStream.ReadPos += src.stride - srcBits
 	}
 
 	return nil
@@ -333,11 +341,11 @@ func stof(count int, dst, src buf) error {
 	norm := src.component.IsNormalized()
 	srcSignEx := ^(uint64(1<<srcBitsExcSign) - 1)
 	mid, max := float64(uint(1)<<srcBitsExcSign), float64((uint(1)<<srcBitsIncSign)-1)
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	for i := 0; i < count; i++ {
-		u := ss.Read(srcBitsExcSign)
-		if ss.Read(1) == 1 {
+		u := sourceStream.Read(srcBitsExcSign)
+		if sourceStream.Read(1) == 1 {
 			u |= srcSignEx
 		}
 		f := float64(int32(u))
@@ -346,14 +354,14 @@ func stof(count int, dst, src buf) error {
 		}
 		switch {
 		case dstIsF16:
-			ds.Write(uint64(f16.From(float32(f))), 16)
+			destStream.Write(uint64(f16.From(float32(f))), 16)
 		case dstIsF32:
-			ds.Write(uint64(math.Float32bits(float32(f))), 32)
+			destStream.Write(uint64(math.Float32bits(float32(f))), 32)
 		case dstIsF64:
-			ds.Write(math.Float64bits(f), 64)
+			destStream.Write(math.Float64bits(f), 64)
 		}
-		ds.WritePos += dst.stride - dstBitsIncSign
-		ss.ReadPos += src.stride - srcBitsIncSign
+		destStream.WritePos += dst.stride - dstBitsIncSign
+		sourceStream.ReadPos += src.stride - srcBitsIncSign
 	}
 
 	return nil
@@ -364,60 +372,151 @@ func writeUintClamped(bs *binary.BitStream, bits uint64, count uint32) {
 	bs.Write(u64.Min(bits, limit), count)
 }
 
+func ftouMinMax(count int, dst, src buf, min, max *float64) error {
+	srcTy := src.component.DataType
+	srcIsF16, srcIsF32, srcIsF64 := srcTy.Is(F16), srcTy.Is(F32), srcTy.Is(F64)
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	switch {
+	case srcIsF16:
+		for i := 0; i < count; i++ {
+			f := f16.Number(sourceStream.Read(16)).Float32()
+			if !math.IsInf(float64(f), 0) {
+				if float64(f) < *min {
+					*min = float64(f)
+				}
+				if float64(f) > *max {
+					*max = float64(f)
+				}
+			}
+			sourceStream.ReadPos += src.stride - 16
+		}
+	case srcIsF32:
+		for i := 0; i < count; i++ {
+			f := math.Float32frombits(uint32(sourceStream.Read(32)))
+			if !math.IsInf(float64(f), 0) {
+				if float64(f) < *min {
+					*min = float64(f)
+				}
+				if float64(f) > *max {
+					*max = float64(f)
+				}
+			}
+			sourceStream.ReadPos += src.stride - 32
+		}
+	case srcIsF64:
+		for i := 0; i < count; i++ {
+			f := math.Float64frombits(sourceStream.Read(64))
+			if !math.IsInf(f, 0) {
+				if f < *min {
+					*min = f
+				}
+				if f > *max {
+					*max = f
+				}
+			}
+			sourceStream.ReadPos += src.stride - 64
+		}
+	default:
+		for i := 0; i < count; i++ {
+			f := math.Float64frombits(sourceStream.Read(64))
+			if !math.IsInf(f, 0) {
+				if f < *min {
+					*min = f
+				}
+				if f > *max {
+					*max = f
+				}
+			}
+			sourceStream.ReadPos += src.stride - 64
+		}
+	}
+	return nil
+}
+
+func remapFloat(f, min, max float64, c Channel) float64 {
+	if c == Channel_Depth {
+		if max != min {
+			return (f - min) * (1 / (max - min))
+		} else {
+			return 0
+		}
+	} else if min < 0 && max > 0 {
+		if f <= 0 {
+			return (f - min) * (0.5 / -min)
+		} else {
+			return f*(0.5/max) + 0.5
+		}
+	} else if max <= 0 {
+		if min == 0 {
+			return 0
+		} else {
+			return (f - min) / -min
+		}
+	} else if max > 1 {
+		return f / max
+	}
+
+	return f
+}
+
 // float to unsigned int
-func ftou(count int, dst, src buf) error {
+func ftou(count int, dst, src buf, min, max float64) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
 	srcIsF16, srcIsF32, srcIsF64 := srcTy.Is(F16), srcTy.Is(F32), srcTy.Is(F64)
 	srcExpBits, srcManBits := srcTy.GetFloat().ExponentBits, srcTy.GetFloat().MantissaBits
 	norm := dst.component.IsNormalized()
 	dstBits, srcBits := dstTy.Bits(), srcTy.Bits()
 	dstMask := (1 << dstBits) - 1
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	switch {
 	case srcIsF16:
 		scale := float32(dstMask)
 		for i := 0; i < count; i++ {
-			f := f16.Number(ss.Read(16)).Float32()
+			f := f16.Number(sourceStream.Read(16)).Float32()
 			if norm {
+				f = float32(remapFloat(float64(f), min, max, src.component.Channel))
 				f *= scale
 			}
-			writeUintClamped(&ds, uint64(f), dstBits)
-			ds.WritePos += dst.stride - dstBits
-			ss.ReadPos += src.stride - 16
+			writeUintClamped(&destStream, uint64(f), dstBits)
+			destStream.WritePos += dst.stride - dstBits
+			sourceStream.ReadPos += src.stride - 16
 		}
 	case srcIsF32:
 		scale := float32(dstMask)
 		for i := 0; i < count; i++ {
-			f := math.Float32frombits(uint32(ss.Read(32)))
+			f := math.Float32frombits(uint32(sourceStream.Read(32)))
 			if norm {
+				f = float32(remapFloat(float64(f), min, max, src.component.Channel))
 				f *= scale
 			}
-			writeUintClamped(&ds, uint64(f), dstBits)
-			ds.WritePos += dst.stride - dstBits
-			ss.ReadPos += src.stride - 32
+			writeUintClamped(&destStream, uint64(f), dstBits)
+			destStream.WritePos += dst.stride - dstBits
+			sourceStream.ReadPos += src.stride - 32
 		}
 	case srcIsF64:
 		scale := float64(dstMask)
 		for i := 0; i < count; i++ {
-			f := math.Float64frombits(ss.Read(64))
+			f := math.Float64frombits(sourceStream.Read(64))
 			if norm {
+				f = remapFloat(f, min, max, src.component.Channel)
 				f *= scale
 			}
-			writeUintClamped(&ds, uint64(f), dstBits)
-			ds.WritePos += dst.stride - dstBits
-			ss.ReadPos += src.stride - 64
+			writeUintClamped(&destStream, uint64(f), dstBits)
+			destStream.WritePos += dst.stride - dstBits
+			sourceStream.ReadPos += src.stride - 64
 		}
 	default:
 		scale := float64(dstMask)
 		for i := 0; i < count; i++ {
-			f := float64(f64.FromBits(ss.Read(srcBits), srcExpBits, srcManBits))
+			f := float64(f64.FromBits(sourceStream.Read(srcBits), srcExpBits, srcManBits))
 			if norm {
+				f = remapFloat(f, min, max, src.component.Channel)
 				f *= scale
 			}
-			writeUintClamped(&ds, uint64(f), dstBits)
-			ds.WritePos += dst.stride - dstBits
-			ss.ReadPos += src.stride - srcBits
+			writeUintClamped(&destStream, uint64(f), dstBits)
+			destStream.WritePos += dst.stride - dstBits
+			sourceStream.ReadPos += src.stride - srcBits
 		}
 	}
 	return nil
@@ -432,48 +531,48 @@ func ftos(count int, dst, src buf) error {
 	dstBitsIncSign, srcBits := dstTy.Bits(), srcTy.Bits()
 	norm := dst.component.IsNormalized()
 	mul := (1 << dstBitsIncSign) - 1
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	switch {
 	case srcIsF16:
 		for i := 0; i < count; i++ {
-			f := f16.Number(ss.Read(16)).Float32()
+			f := f16.Number(sourceStream.Read(16)).Float32()
 			if norm {
 				f = (f * float32(mul) / 2) - 0.5
 			}
-			ds.Write(uint64(f32.Round(f)), dstBitsIncSign)
-			ds.WritePos += dst.stride - dstBitsIncSign
-			ss.ReadPos += src.stride - 16
+			destStream.Write(uint64(f32.Round(f)), dstBitsIncSign)
+			destStream.WritePos += dst.stride - dstBitsIncSign
+			sourceStream.ReadPos += src.stride - 16
 		}
 	case srcIsF32:
 		for i := 0; i < count; i++ {
-			f := math.Float32frombits(uint32(ss.Read(32)))
+			f := math.Float32frombits(uint32(sourceStream.Read(32)))
 			if norm {
 				f = (f * float32(mul) / 2) - 0.5
 			}
-			ds.Write(uint64(f32.Round(f)), dstBitsIncSign)
-			ds.WritePos += dst.stride - dstBitsIncSign
-			ss.ReadPos += src.stride - 32
+			destStream.Write(uint64(f32.Round(f)), dstBitsIncSign)
+			destStream.WritePos += dst.stride - dstBitsIncSign
+			sourceStream.ReadPos += src.stride - 32
 		}
 	case srcIsF64:
 		for i := 0; i < count; i++ {
-			f := math.Float64frombits(ss.Read(64))
+			f := math.Float64frombits(sourceStream.Read(64))
 			if norm {
 				f = (f * float64(mul) / 2) - 0.5
 			}
-			ds.Write(uint64(f64.Round(f)), dstBitsIncSign)
-			ds.WritePos += dst.stride - dstBitsIncSign
-			ss.ReadPos += src.stride - 64
+			destStream.Write(uint64(f64.Round(f)), dstBitsIncSign)
+			destStream.WritePos += dst.stride - dstBitsIncSign
+			sourceStream.ReadPos += src.stride - 64
 		}
 	default:
 		for i := 0; i < count; i++ {
-			f := float64(f64.FromBits(ss.Read(srcBits), srcExpBits, srcManBits))
+			f := float64(f64.FromBits(sourceStream.Read(srcBits), srcExpBits, srcManBits))
 			if norm {
 				f = (f * float64(mul) / 2) - 0.5
 			}
-			ds.Write(uint64(f64.Round(f)), dstBitsIncSign)
-			ds.WritePos += dst.stride - dstBitsIncSign
-			ss.ReadPos += src.stride - srcBits
+			destStream.Write(uint64(f64.Round(f)), dstBitsIncSign)
+			destStream.WritePos += dst.stride - dstBitsIncSign
+			sourceStream.ReadPos += src.stride - srcBits
 		}
 	}
 	return nil
@@ -489,31 +588,31 @@ func ftof(count int, dst, src buf) error {
 	if !(dstIsF16 || dstIsF32 || dstIsF64) {
 		return fmt.Errorf("Cannot convert to %v", dstTy)
 	}
-	ss := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
-	ds := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
+	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 
 	for i := 0; i < count; i++ {
 		var f float64
 		switch {
 		case srcIsF16:
-			f = float64(f16.Number(ss.Read(16)).Float32())
+			f = float64(f16.Number(sourceStream.Read(16)).Float32())
 		case srcIsF32:
-			f = float64(math.Float32frombits(uint32(ss.Read(32))))
+			f = float64(math.Float32frombits(uint32(sourceStream.Read(32))))
 		case srcIsF64:
-			f = float64(math.Float64frombits(ss.Read(64)))
+			f = float64(math.Float64frombits(sourceStream.Read(64)))
 		default:
-			f = float64(f64.FromBits(ss.Read(srcBits), srcExpBits, srcManBits))
+			f = float64(f64.FromBits(sourceStream.Read(srcBits), srcExpBits, srcManBits))
 		}
 		switch {
 		case dstIsF16:
-			ds.Write(uint64(f16.From(float32(f))), 16)
+			destStream.Write(uint64(f16.From(float32(f))), 16)
 		case dstIsF32:
-			ds.Write(uint64(math.Float32bits(float32(f))), 32)
+			destStream.Write(uint64(math.Float32bits(float32(f))), 32)
 		case dstIsF64:
-			ds.Write(math.Float64bits(f), 64)
+			destStream.Write(math.Float64bits(f), 64)
 		}
-		ds.WritePos += dst.stride - dstBits
-		ss.ReadPos += src.stride - srcBits
+		destStream.WritePos += dst.stride - dstBits
+		sourceStream.ReadPos += src.stride - srcBits
 
 	}
 	return nil

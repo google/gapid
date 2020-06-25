@@ -437,7 +437,7 @@ public class FramebufferView extends Composite
       }
 
       attachment.image = LoadableImage.newBuilder(widgets.loading)
-          .forImageData(noAlpha(models.images.getFramebufferImage(command, attachment.index, RenderSetting.RENDER_THUMB.getRenderSettings(models.settings),
+          .forImageData(noAlpha(models.images.getThumbnail(command, attachment.index, THUMB_SIZE,
               info -> scheduleIfNotDisposed(this, () -> setItemSize(index,
                       Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getWidth())),
                       Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getHeight())))))))

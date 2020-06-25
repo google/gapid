@@ -37,7 +37,7 @@ func (m *mapping) transform(count int, f func(float64) float64) error {
 			stride: 64,
 		},
 	}
-	if err := tmp.conv(count); err != nil {
+	if err := tmp.conv(count, 0, 0); err != nil {
 		return err
 	}
 	r := endian.Reader(bytes.NewReader(data), device.LittleEndian)

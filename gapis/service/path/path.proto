@@ -565,9 +565,10 @@ message Thumbnail {
     ResourceData resource = 4;
     Command command = 5;
     CommandTreeNode command_tree_node = 6;
+    FramebufferAttachment framebuffer_attachment = 7;
   }
 
-  bool disable_optimization = 7;
+  bool disable_optimization = 8;
 }
 
 message ResolveConfig {

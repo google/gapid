@@ -107,6 +107,12 @@ public class ImagesModel {
         image -> processImage(image, size));
   }
 
+  public ListenableFuture<ImageData> getThumbnail(CommandIndex command,
+      int attachment, int size, Consumer<Image.Info> onInfo) {
+    return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(command, attachment), onInfo),
+        image -> processImage(image, size));
+  }
+
   private Path.Thumbnail thumbnail(Path.Command command) {
     return Paths.thumbnail(command, THUMB_PIXELS, shouldDisableReplayOptimization());
   }
@@ -117,6 +123,10 @@ public class ImagesModel {
 
   private Path.Thumbnail thumbnail(Path.ResourceData resource) {
     return Paths.thumbnail(resource, THUMB_PIXELS, shouldDisableReplayOptimization());
+  }
+
+  private Path.Thumbnail thumbnail(CommandIndex command, int attachment) {
+    return Paths.thumbnail(command, attachment, THUMB_PIXELS, shouldDisableReplayOptimization());
   }
 
   private Path.Device getReplayDevice() {

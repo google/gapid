@@ -35,6 +35,8 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail, r *path.ResolveConfig) (*
 		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent, r)
 	case *path.ResourceData:
 		return ResourceDataThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent, r)
+	case *path.FramebufferAttachment:
+		return FramebufferAttachmentThumbnail(ctx, p.DesiredFormat, parent, r)
 	default:
 		return nil, fmt.Errorf("Unexpected Thumbnail parent %T", parent)
 	}
@@ -203,4 +205,28 @@ func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p 
 	}
 
 	return img.Resize(ctx, targetWidth, targetHeight, 1)
+}
+
+func FramebufferAttachmentThumbnail(
+	ctx context.Context,
+	f *image.Format,
+	p *path.FramebufferAttachment,
+	r *path.ResolveConfig) (*image.Info, error) {
+
+	imageInfoPath, err := FramebufferAttachment(ctx, p, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var boxedImageInfo interface{}
+	if f != nil {
+		boxedImageInfo, err = Get(ctx, imageInfoPath.(*service.FramebufferAttachment).GetImageInfo().As(f).Path(), r)
+	} else {
+		boxedImageInfo, err = Get(ctx, imageInfoPath.(*service.FramebufferAttachment).GetImageInfo().Path(), r)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return boxedImageInfo.(*image.Info), nil
 }

@@ -382,6 +382,20 @@ public class Paths {
         .build();
   }
 
+  public static Path.Thumbnail thumbnail(CommandIndex command, int attachment, int size, boolean disableOpt) {
+    return Path.Thumbnail.newBuilder()
+        .setFramebufferAttachment(framebufferAttachmentAfter(command, attachment,
+          renderSettings(size, size, Path.DrawMode.NORMAL, disableOpt),
+          Path.UsageHints.newBuilder()
+            .setPreview(true)
+            .build()).getFramebufferAttachment())
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .setDisableOptimization(disableOpt)
+        .build();
+  }
+
   public static Path.Any thumbnail(Path.Thumbnail thumb) {
     return Path.Any.newBuilder()
         .setThumbnail(thumb)
