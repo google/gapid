@@ -676,19 +676,23 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
           yInExtent := y - yStart
           rowStartByte := depthStartByte + y * imageLayout.rowPitch
           rowStartBlockInExtent := ((zInExtent * imageHeight) + yInExtent) * rowLength
+          bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartBlockInExtent * elementSizeInBuffer)
+          bufSize := as!VkDeviceSize((xEnd - xStart) * elementSizeInBuffer)
+          readMemoryInBuffer(bufferObject, bufStart, bufSize)
+          bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, bufSize)
+          imgStart := rowStartByte + xStart * elementSizeInImage
           if isPackedDepth {
-            for x in (xStart .. xEnd) {
-              imgStart := as!VkDeviceSize(rowStartByte + x * elementSizeInImage)
-              rowStartInExtent := (rowStartBlockInExtent + x) * elementSizeInBuffer
-              bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
-              readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSizeInBuffer))
-              // Discard the 4th byte in the buffer for current pixel.
-              bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
-              for _ , _ , piece in bufMemPieces {
-                bufMemStart := piece.MemoryOffset
-                bufMemEnd := bufMemStart + piece.Size
-                imgPieceStart := (piece.ResourceOffset - bufStart) + imgStart
-                imgPieceEnd := imgPieceStart + piece.Size
+            for _ , _ , piece in bufMemPieces {
+              // The below assumes that each memory piece is aligned to a multiple of
+              // elementSizeInBuffer. This has to be true, since the smallest alignment of pages is
+              // 64 bytes, and elementSizeInBuffer is 4.
+              pieceXStart := as!u64(piece.ResourceOffset - bufStart) / elementSizeInBuffer
+              pieceXEnd := as!u64(piece.Size) / elementSizeInBuffer
+              for x in (0 .. (pieceXEnd - pieceXStart)) {
+                bufMemStart := piece.MemoryOffset + as!VkDeviceSize(x * elementSizeInBuffer)
+                bufMemEnd := bufMemStart + as!VkDeviceSize(elementSizeInImage)
+                imgPieceStart := imgStart + x * elementSizeInImage
+                imgPieceEnd := imgPieceStart + elementSizeInImage
                 if isSrcBuffer {
                   copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
                 } else {
@@ -697,12 +701,6 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
               }
             }
           } else {
-            copySize := as!VkDeviceSize((xEnd - xStart) * elementSizeInImage)
-            imgStart := rowStartByte + xStart * elementSizeInImage
-            rowStartInExtent := rowStartBlockInExtent * elementSizeInImage
-            bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
-            readMemoryInBuffer(bufferObject, bufStart, copySize)
-            bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
             for _ , _ , piece in bufMemPieces {
               bufMemStart := piece.MemoryOffset
               bufMemEnd := bufMemStart + piece.Size
