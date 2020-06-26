@@ -222,7 +222,7 @@ type (
 	DumpShadersFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
-		At    int `help:"command index to dump the resources after"`
+		At    int `help:"command index to dump the resources after, e.g. '1234'"`
 		CaptureFileFlags
 	}
 	DumpFBOFlags struct {
@@ -263,7 +263,7 @@ type (
 		Gapir                GapirFlags
 		Handle               string `help:"required. handle or ID of the resource to replace"`
 		ResourcePath         string `help:"file path for the new resource"`
-		At                   int    `help:"command index to replace the resource(s) at"`
+		At                   int    `help:"command index to replace the resource(s) at, e.g. '1234'"`
 		UpdateResourceBinary string `help:"shaders only. binary to run for every shader; consumes resource data from standard input and writes to standard output"`
 		OutputTraceFile      string `help:"file name for the updated trace"`
 		SkipOutput           bool   `help:"skip writing the modified trace to a file"`
@@ -272,7 +272,7 @@ type (
 	StateFlags struct {
 		Gapis  GapisFlags
 		Gapir  GapirFlags
-		At     flags.U64Slice    `help:"command/subcommand index to get the state after. 0 for first command. Empty for last"`
+		At     flags.U64Slice    `help:"command/subcommand index to get the state after, e.g. '[123, 0, 0, 4]'. 0 for first command. Empty for last"`
 		Depth  int               `help:"How many nodes deep should the state tree be displayed. -1 for all"`
 		Filter flags.StringSlice `help:"Which path (e.g. '[root, Devices]') through the tree should we filter to, default All"`
 		CaptureFileFlags
@@ -358,7 +358,7 @@ type (
 	ScreenshotFlags struct {
 		Gapis      GapisFlags
 		Gapir      GapirFlags
-		At         []flags.U64Slice `help:"command/subcommand index for the screenshot (repeatable)"`
+		At         []flags.U64Slice `help:"command/subcommand index (e.g. '[123, 0, 0, 4]') for the screenshot (repeatable)"`
 		Frame      []int            `help:"frame index for the screenshot (repeatable). Empty for last"`
 		Draws      bool             `help:"create a screenshot of every draw call in the requested frame(s) (only honored if using -frame)"`
 		Out        string           `help:"output image file (default 'screenshot.png')"`
@@ -378,12 +378,12 @@ type (
 
 	MemoryFlags struct {
 		Gapis GapisFlags
-		At    flags.U64Slice `help:"command/subcommand index to get the memory after. Empty for last"`
+		At    flags.U64Slice `help:"command/subcommand index to get the memory after, e.g. '[123, 0, 0, 4]'. Empty for last"`
 		CaptureFileFlags
 	}
 	PipelineFlags struct {
 		Gapis GapisFlags
-		At    flags.U64Slice `help:"command/subcommand index to get the pipeline after. Empty for last"`
+		At    flags.U64Slice `help:"command/subcommand index to get the pipeline after, e.g. '[123, 0, 0, 4]'. Empty for last"`
 		Print struct {
 			Shaders bool `help:"print the disassembled shaders along with the bound descriptor values"`
 		}
