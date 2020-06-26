@@ -107,7 +107,7 @@ func keyFromIndex(idx api.SubCmdIdx) string {
 	return fmt.Sprintf("%v", idx)
 }
 
-func (t *readFramebuffer) Depth(ctx context.Context, id api.SubCmdIdx, idx uint32, res replay.Result) {
+func (t *readFramebuffer) Depth(ctx context.Context, id api.SubCmdIdx, requestWidth, requestHeight, idx uint32, res replay.Result) {
 	t.injections[keyFromIndex(id)] = append(t.injections[keyFromIndex(id)], injection{res,
 		func(ctx context.Context, cmd *InsertionCommand, res replay.Result, out transform.Writer) error {
 			s := out.State()
@@ -152,7 +152,7 @@ func (t *readFramebuffer) Depth(ctx context.Context, id api.SubCmdIdx, idx uint3
 			// first one.
 			// TODO: support multi-layer rendering.
 			layer := imageViewDepth.SubresourceRange().BaseArrayLayer()
-			return t.postImageData(ctx, cb, id, s, cmd.cmdBuffer, cmd.pendingCommandBuffers, depthImageObject, imageViewDepth.Fmt(), VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, layer, level, w, h, w, h, out, res)
+			return t.postImageData(ctx, cb, id, s, cmd.cmdBuffer, cmd.pendingCommandBuffers, depthImageObject, imageViewDepth.Fmt(), VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, layer, level, w, h, requestWidth, requestHeight, out, res)
 		}})
 }
 
