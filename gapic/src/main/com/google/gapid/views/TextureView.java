@@ -131,7 +131,7 @@ public class TextureView extends Composite
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
-    imagePanel = new ImagePanel(imageAndToolbar, View.Textures, models.analytics, widgets, false);
+    imagePanel = new ImagePanel(imageAndToolbar, View.Textures, models.analytics, widgets, true);
 
     splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Textures));
     addListener(SWT.Dispose, e ->
