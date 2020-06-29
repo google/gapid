@@ -180,7 +180,8 @@ public class QueryViewer extends Composite
 
       @Override
       protected void onUiThread(Perfetto.QueryResult result) {
-        tablePage.setMaximum((int)result.getNumRecords() / MAX_ENTRIES - 1);
+        tablePage.setMaximum(
+            Math.max(1, ((int)result.getNumRecords() + MAX_ENTRIES - 1) / MAX_ENTRIES));
         provider.setPage(1);
 
         table.setInput(null);
