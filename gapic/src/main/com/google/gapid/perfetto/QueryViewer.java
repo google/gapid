@@ -221,12 +221,12 @@ public class QueryViewer extends Composite
     dialog.setFilterExtensions(filters);
     String fileName = dialog.open();
     if (fileName != null) {
-      String filterExt = filters[dialog.getFilterIndex()].substring(1);
-      if (!fileName.substring(fileName.length()-4).equals(filterExt)) {
+      String filterExt = filters[Math.max(0, dialog.getFilterIndex())].substring(1);
+      if (!fileName.endsWith(filterExt)) {
         fileName += filterExt;
       }
       char separator = (filterExt.equals(".csv")) ? ',' : '\t';
-      LOG.log(Level.INFO, fileName);
+      LOG.log(Level.FINE, "Exporting to {0}", fileName);
       saveQuery(new File(fileName), separator);
     }
   }
