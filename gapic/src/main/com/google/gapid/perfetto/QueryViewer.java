@@ -17,8 +17,10 @@ package com.google.gapid.perfetto;
 
 import static com.google.gapid.widgets.Widgets.createButton;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
+import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 
@@ -54,6 +56,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.TableColumn;
 
@@ -75,8 +78,9 @@ public class QueryViewer extends Composite
   protected static final Logger LOG = Logger.getLogger(QueryViewer.class.getName());
 
   private final Models models;
-  private final Button run;
-  protected final Spinner tablePage;
+  private final Button run, export;
+  private final Spinner tablePage;
+  private final Label tablePageMax;
   private final StyledText query;
   protected final TableViewer table;
   protected final ResultContentProvider provider;
@@ -92,8 +96,8 @@ public class QueryViewer extends Composite
 
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
 
-    Composite top = createComposite(splitter, new GridLayout(1, false));
-
+    Composite top = withLayoutData(createComposite(splitter, new GridLayout(1, false)),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
     SourceViewer viewer = createSourceViewer(top, "select * from perfetto_tables");
     query = viewer.getTextWidget();
     query.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
@@ -105,20 +109,26 @@ public class QueryViewer extends Composite
       }
     });
 
-    Composite middle = createComposite(top, new GridLayout(2, false));
-    run = withLayoutData(createButton(middle, "Run", e -> exec()),
-        new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
-    withLayoutData(createButton(middle, "Export", e -> export()),
-        new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
-    tablePage = withLayoutData(createSpinner(middle, 1, 1, 1, e -> turnPage()),
-        new GridData(SWT.FILL, SWT.BOTTOM, false, false, 2, 1));
+    Composite middle = withLayoutData(createComposite(top, new GridLayout(2, false)),
+        new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
+    run = createButton(middle, "Run", e -> exec());
+    export = createButton(middle, "Export", e -> export());
 
-    table = Widgets.createTableViewer(splitter, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+    Composite bottom = createComposite(splitter, new GridLayout(1, false));
+    table = createTableViewer(bottom, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+    table.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     table.setContentProvider(provider);
     table.setLabelProvider(new LabelProvider());
 
+    Composite pager = withLayoutData(createComposite(bottom, new GridLayout(3, false)),
+        new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
+    createLabel(pager, "Page:");
+    tablePage = createSpinner(pager, 1, 1, 1, e -> turnPage());
+    tablePageMax = createLabel(pager, "of 1");
+
     splitter.setWeights(new int[] { 30, 70 });
     run.setEnabled(models.capture.isPerfetto());
+    export.setEnabled(models.capture.isPerfetto());
 
     models.capture.addListener(this);
     models.perfetto.addListener(this);
@@ -136,11 +146,13 @@ public class QueryViewer extends Composite
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
     run.setEnabled(false);
+    export.setEnabled(false);
   }
 
   @Override
   public void onPerfettoLoaded(Loadable.Message error) {
     run.setEnabled(error == null && models.capture.isPerfetto());
+    export.setEnabled(error == null && models.capture.isPerfetto());
   }
 
   private static SourceViewer createSourceViewer(Composite parent, String string) {
@@ -162,6 +174,16 @@ public class QueryViewer extends Composite
     return (e.stateMask & stateMask) == stateMask && e.keyCode == keyCode;
   }
 
+  protected void updatePager(Perfetto.QueryResult result) {
+    provider.setPage(1);
+
+    int max = Math.max(1, ((int)result.getNumRecords() + MAX_ENTRIES - 1) / MAX_ENTRIES);
+    tablePage.setMaximum(max);
+    tablePage.setSelection(1);
+    tablePageMax.setText("of " + max);
+    tablePageMax.requestLayout();
+  }
+
   private void exec() {
     Rpc.listen(models.perfetto.query(query.getText()),
         new UiCallback<Perfetto.QueryResult, Perfetto.QueryResult>(this, LOG) {
@@ -180,10 +202,7 @@ public class QueryViewer extends Composite
 
       @Override
       protected void onUiThread(Perfetto.QueryResult result) {
-        tablePage.setMaximum(
-            Math.max(1, ((int)result.getNumRecords() + MAX_ENTRIES - 1) / MAX_ENTRIES));
-        provider.setPage(1);
-
+        updatePager(result);
         table.setInput(null);
         for (TableColumn col : table.getTable().getColumns()) {
           col.dispose();
@@ -207,8 +226,6 @@ public class QueryViewer extends Composite
         table.setInput(result);
         packColumns(table.getTable());
         table.getTable().requestLayout();
-
-        tablePage.setSelection(1);
       }
     });
   }
