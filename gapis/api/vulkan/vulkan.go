@@ -253,7 +253,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 						parent: append(api.SubCmdIdx{}, idx...),
 					})
 				canStartDrawGrouping = false
-			} else if isDrawCmd {
+			} else if isDrawCmd && !canStartDrawGrouping {
 				// When a group is complete with state setting cmds following a draw command, override the group name.
 				groupName := cmdName
 				if strings.HasPrefix(groupName, "cmd_vkCmd") { // Remove "cmd_vkCmd".
