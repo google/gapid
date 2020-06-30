@@ -42,6 +42,7 @@ def main():
         'startframe': '100',
         'numframes': '5',
         'observe_frames': '1',
+        'api': 'vulkan',
     }
     required_keys = ['apk', 'package', 'activity']
     botutil.load_params(test_params, required_keys=required_keys)
@@ -54,7 +55,7 @@ def main():
     gfxtrace = os.path.join(out_dir, test_params['package'] + '.gfxtrace')
     cmd = [
         gapit, 'trace',
-        '-api', 'vulkan',
+        '-api', test_params['api'],
         '-start-at-frame', test_params['startframe'],
         '-capture-frames', test_params['numframes'],
         '-observe-frames', test_params['observe_frames'],

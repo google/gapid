@@ -318,7 +318,7 @@ type (
 		No struct {
 			Buffer bool `help:"Do not buffer the output, this helps if the application crashes"`
 		}
-		API   string `help:"only capture the given API valid options are vulkan and perfetto"`
+		API   string `help:"only capture the given API valid options are vulkan, angle and perfetto"`
 		Local struct {
 			Port int `help:"connect to an application already running on the server using this port"`
 		}

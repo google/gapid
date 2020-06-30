@@ -327,6 +327,12 @@ type apiAndType struct {
 
 func (verb *traceVerb) apiAndType() (apiAndType, error) {
 	switch verb.API {
+	case "angle":
+		return apiAndType{
+			service.TraceType_Graphics,
+			[]string{"OpenGL on ANGLE"},
+			".gfxtrace",
+		}, nil
 	case "vulkan":
 		return apiAndType{
 			service.TraceType_Graphics,

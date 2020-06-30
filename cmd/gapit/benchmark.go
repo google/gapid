@@ -792,7 +792,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 // This intentionally duplicates a lot of the gapit trace logic
-// so that we can independently chnage how what we do to benchmark
+// so that we can independently change what we do to benchmark
 // everything.
 func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, traceURI string) error {
 	ctx = status.Start(ctx, "Record Trace for %+v frames", verb.NumFrames)
