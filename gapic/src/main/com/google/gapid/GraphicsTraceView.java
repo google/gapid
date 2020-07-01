@@ -216,7 +216,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
               new MainTab(tab, parent -> tab.factory.create(parent, models, widgets).getControl()));
         }
         if (!toAddToLargest.isEmpty()) {
-          root = root.addToLargest(toAddToTop.toArray(new TabInfo[toAddToTop.size()]));
+          root = root.addToLargest(toAddToLargest.toArray(new TabInfo[toAddToLargest.size()]));
         }
         if (!toAddToTop.isEmpty()) {
           root = root.addToFirst(toAddToTop.toArray(new TabInfo[toAddToTop.size()]));
