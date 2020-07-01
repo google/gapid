@@ -39,6 +39,15 @@ func FramebufferAttachments(ctx context.Context, p *path.FramebufferAttachments,
 }
 
 func (r *FramebufferAttachmentsResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	cmd, err := Cmd(ctx, r.Path.After, r.Config)
+	if err != nil {
+		return []*service.FramebufferAttachment{}, err
+	}
+
+	if cmd.CmdFlags().IsSubmission() {
+		return []*service.FramebufferAttachment{}, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Please select a draw-call or present")}
+	}
+
 	changes, err := FramebufferChanges(ctx, r.Path.After.Capture, r.Config)
 	if err != nil {
 		return []*service.FramebufferAttachment{}, err

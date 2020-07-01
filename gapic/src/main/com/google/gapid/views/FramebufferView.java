@@ -133,6 +133,10 @@ public class FramebufferView extends Composite
   private final AttachmentPicker picker;
   private final Label pickerLabel;
 
+  private final GridData pickerGridData;
+  private final Button pickerToggle;
+  private boolean showAttachments;
+
   public FramebufferView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
@@ -153,9 +157,10 @@ public class FramebufferView extends Composite
 
     imagePanel = new ImagePanel(splitter, View.Framebuffer, models.analytics, widgets, true);
 
-    GridData pickerGridData = new GridData(SWT.FILL, SWT.FILL, true, false);
-    pickerGridData.exclude = !models.settings.ui().getFramebufferPicker().getEnabled();
-    picker.setVisible(!pickerGridData.exclude);
+    pickerGridData = new GridData(SWT.FILL, SWT.FILL, true, false);
+    showAttachments = models.settings.ui().getFramebufferPicker().getEnabled();
+    pickerGridData.exclude = true;
+    picker.setVisible(false);
 
     toolBar.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true, 1, 2));
     header.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
@@ -165,16 +170,18 @@ public class FramebufferView extends Composite
 
     pickerLabel = withLayoutData(createLabel(header, "Attachment:"),
       new GridData(SWT.FILL, SWT.CENTER, true, true));
-    Button pickerToggle = new Button(header, SWT.PUSH);
+    pickerToggle = new Button(header, SWT.PUSH);
     pickerToggle.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
-    pickerToggle.setText(pickerGridData.exclude ? "Show Attachments" : "Hide Attachments");
+    pickerToggle.setText(showAttachments ? "Hide Attachments" : "Show Attachments");
     pickerToggle.addListener(SWT.Selection, e -> {
-      pickerGridData.exclude = !pickerGridData.exclude;
-      picker.setVisible(!pickerGridData.exclude);
-      models.settings.writeUi().getFramebufferPickerBuilder().setEnabled(!pickerGridData.exclude);
-      pickerToggle.setText(pickerGridData.exclude ? "Show Attachments" : "Hide Attachments");
+      showAttachments = !showAttachments;
+      pickerGridData.exclude = !showAttachments;
+      picker.setVisible(showAttachments);
+      models.settings.writeUi().getFramebufferPickerBuilder().setEnabled(showAttachments);
+      pickerToggle.setText(showAttachments ? "Hide Attachments" : "Show Attachments");
       splitter.layout();
     });
+    pickerToggle.setEnabled(false);
 
     splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Framebuffers));
     splitter.addListener(SWT.Dispose, e ->
@@ -231,6 +238,9 @@ public class FramebufferView extends Composite
 
   @Override
   public void reinitialize() {
+    picker.setVisible(false);
+    pickerGridData.exclude = true;
+    pickerToggle.setEnabled(false);
     if (!models.capture.isLoaded()) {
       onCaptureLoadingStart(false);
     } else {
@@ -240,6 +250,9 @@ public class FramebufferView extends Composite
 
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
+    picker.setVisible(false);
+    pickerGridData.exclude = true;
+    pickerToggle.setEnabled(false);
     imagePanel.setImage(null);
     imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
     target = 0;
@@ -304,6 +317,10 @@ public class FramebufferView extends Composite
 
         @Override
         protected void onUiThreadSuccess(Service.FramebufferAttachments fbaList) {
+          pickerGridData.exclude = !showAttachments;
+          picker.setVisible(showAttachments);
+          pickerToggle.setEnabled(true);
+
           if (fbaList.getAttachmentsList().size() <= target) {
             target = 0;
           }
@@ -319,6 +336,9 @@ public class FramebufferView extends Composite
 
         @Override
         protected void onUiThreadError(Loadable.Message message) {
+          pickerGridData.exclude = true;
+          picker.setVisible(false);
+          pickerToggle.setEnabled(false);
           imagePanel.showMessage(message);
         }
       });
