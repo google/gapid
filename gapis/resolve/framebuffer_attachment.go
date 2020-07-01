@@ -56,11 +56,8 @@ func (r *FramebufferAttachmentsResolvable) Resolve(ctx context.Context) (interfa
 	out := []*service.FramebufferAttachment{}
 	for _, att := range changes.attachments {
 		info, err := att.after(ctx, api.SubCmdIdx(r.Path.After.Indices))
-		if err != nil {
-			return []*service.FramebufferAttachment{}, err
-		}
 
-		if info.Err == nil {
+		if err == nil && info.Err == nil {
 			out = append(out, &service.FramebufferAttachment{
 				Index: info.Index,
 				Type:  info.Type,
@@ -68,7 +65,12 @@ func (r *FramebufferAttachmentsResolvable) Resolve(ctx context.Context) (interfa
 			})
 		}
 	}
-	return &service.FramebufferAttachments{Attachments: out}, nil
+
+	if len(out) > 0 {
+		return &service.FramebufferAttachments{Attachments: out}, nil
+	} else {
+		return []*service.FramebufferAttachment{}, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()}
+	}
 }
 
 func typeToString(t api.FramebufferAttachmentType) string {
