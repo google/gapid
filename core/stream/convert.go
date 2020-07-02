@@ -284,8 +284,32 @@ func intCollapse(count int, dst, src buf) error {
 	signed := dstTy.Signed
 	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
 	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
+	maxPossibleValue := math.Pow(2, float64(srcBitsExcSign)) - 1
+	min, max := maxPossibleValue, float64(0)
+	if src.component.Channel == Channel_Depth {
+		for i := 0; i < count; i++ {
+			f := float64(sourceStream.Read(srcBitsExcSign)) / maxPossibleValue
+			if f < min {
+				min = f
+			}
+			if f > max {
+				max = f
+			}
+		}
+		sourceStream.ReadPos = src.offset
+	}
 	for i := 0; i < count; i++ {
-		v := sourceStream.Read(srcBitsExcSign) >> shift
+		v := sourceStream.Read(srcBitsExcSign)
+		if src.component.Channel == Channel_Depth {
+			f := float64(v) / maxPossibleValue
+			if max != min {
+				f = (f - min) * (1 / (max - min))
+			} else {
+				f = 0
+			}
+			v = uint64(f * maxPossibleValue)
+		}
+		v >>= shift
 		destStream.Write(uint64(v), dstBitsExcSign)
 		if signed {
 			destStream.Write(sourceStream.Read(1), 1) // Copy sign
