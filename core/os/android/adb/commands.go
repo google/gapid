@@ -48,7 +48,6 @@ const (
 
 	perfettoPort = NamedFileSystemSocket("/dev/socket/traced_consumer")
 
-	driverOverride = "agi.driver_package_override"
 	driverProperty = "ro.gfx.driver.1"
 )
 
@@ -443,7 +442,9 @@ func (b *binding) resolveDriverPath(ctx context.Context, driver string) (Driver,
 		return Driver{}, nil
 	}
 	path = path[8:]
-	if path == "" {
+	// If the driver package path doesn't have the /data/app prefix, it means the returned
+	// path is the preinstalled emtpy prerelease driver.
+	if path == "" || !strings.HasPrefix(path, "/data/app") {
 		return Driver{}, nil
 	}
 
@@ -453,8 +454,8 @@ func (b *binding) resolveDriverPath(ctx context.Context, driver string) (Driver,
 	}, nil
 }
 
-// PrereleaseGraphicsDriver queries and returns info on the prerelease graphics driver.
-func (b *binding) PrereleaseGraphicsDriver(ctx context.Context) (Driver, error) {
+// GraphicsDriver queries and returns info about the prerelease graphics driver.
+func (b *binding) GraphicsDriver(ctx context.Context) (Driver, error) {
 	driver, err := b.SystemProperty(ctx, driverProperty)
 	if err != nil {
 		return Driver{}, err
@@ -477,25 +478,4 @@ func (b *binding) DriverVersionCode(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return ip.VersionCode, err
-}
-
-// DriverPackage queries and returns the package of the preview graphics driver.
-func (b *binding) GraphicsDriver(ctx context.Context) (Driver, error) {
-	// Check if there is an override setup.
-	driver, err := b.SystemSetting(ctx, "global", driverOverride)
-	if err != nil {
-		driver = ""
-	}
-
-	if driver == "" || driver == "null" {
-		driver, err = b.SystemProperty(ctx, driverProperty)
-		if err != nil {
-			return Driver{}, err
-		}
-		if driver == "" {
-			// There is no prerelease driver.
-			return Driver{}, nil
-		}
-	}
-	return b.resolveDriverPath(ctx, driver)
 }

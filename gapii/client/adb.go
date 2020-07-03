@@ -72,7 +72,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		abi = p.Device.Instance().GetConfiguration().PreferredABI(nil)
 	}
 
-	driver, err := d.PrereleaseGraphicsDriver(ctx)
+	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
 		return nil, nil, log.Err(ctx, err, "Failed to locate pre-release driver package")
 	}
