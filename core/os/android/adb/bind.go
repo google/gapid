@@ -38,6 +38,11 @@ type Device interface {
 	RemoveForward(ctx context.Context, local Port) error
 	// GraphicsDriver queries and returns info about the prerelease graphics driver.
 	GraphicsDriver(ctx context.Context) (Driver, error)
+	// HasGpuProfilingSupportInSystemImage returns whether system image has GPU profiling support.
+	HasGpuProfilingSupportInSystemImage(ctx context.Context) (bool, error)
+	// GetGpuProfilingLayerPackageName queries and returns the package name of the apk that contains
+	// the GPU profiling Vulkan layer.
+	GetGpuProfilingLayerPackageName(ctx context.Context) (string, error)
 }
 
 // Driver contains the information about a graphics driver.

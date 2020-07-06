@@ -27,7 +27,7 @@ _NATIVE_LIBRARIES = {
 }
 
 _NATIVE_BINARIES = {
-    "launch_producer": "//cmd/launch_producer",
+    "agi_launch_producer": "//cmd/launch_producer",
 }
 
 gapid_apk(

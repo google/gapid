@@ -49,6 +49,9 @@ const (
 	perfettoPort = NamedFileSystemSocket("/dev/socket/traced_consumer")
 
 	driverProperty = "ro.gfx.driver.1"
+
+	systemImageGpuProfilerSupportProperty = "graphics.gpu.profiler.support"
+	gpuProfilerVulkanLayerApkProperty     = "graphics.gpu.profiler.vulkan_layer_apk"
 )
 
 func isRootSuccessful(line string) bool {
@@ -318,35 +321,54 @@ func (b *binding) EnsurePerfettoPersistent(ctx context.Context) error {
 	return nil
 }
 
+// QueryPerfettoServiceState queries all existing perfetto data sources
+// regardless of which it is registered from.
 func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
 	result := b.To.Configuration.PerfettoCapability
 	if result == nil {
 		result = &device.PerfettoCapability{
-			GpuProfiling: &device.GPUProfiling{},
+			SystemImageGpuProfiling: &device.GPUProfiling{},
+			GpuProfiling:            &device.GPUProfiling{},
 		}
-	}
-	gpu := result.GpuProfiling
-	if gpu == nil {
-		gpu = &device.GPUProfiling{}
-		result.GpuProfiling = gpu
-	}
-
-	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 && *flags.EnableFrameLifecycle {
-		gpu.HasFrameLifecycle = true
 	}
 
 	if !b.SupportsPerfetto(ctx) {
 		return result, fmt.Errorf("Perfetto is not supported on this device")
 	}
 
+	if supported, _ := b.HasGpuProfilingSupportInSystemImage(ctx); supported {
+		gpu, err := b.QueryPerfettoGpuProfilingDataSources(ctx)
+		if err != nil {
+			return result, log.Errf(ctx, err, "Failed to query perfetto GPU profiling data sources.")
+		}
+		gpu.HasRenderStage = true
+		layerApk, _ := b.GetGpuProfilingLayerPackageName(ctx)
+		gpu.HasRenderStageProducerLayer = layerApk != ""
+		result.SystemImageGpuProfiling = gpu
+	}
+
+	// SurfaceFlinger frame lifecycle perfetto producer is mandated by Android 11 CTS, hence it will
+	// always exist.
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 && *flags.EnableFrameLifecycle {
+		result.HasFrameLifecycle = true
+	}
+	return result, nil
+}
+
+// QueryPerfettoGpuProfilingDataSources queries and returns the data sources
+// that support the GPU profiling functionailities, it includes:
+//     1) gpu.counters
+//     2) gpu.renderstages
+func (b *binding) QueryPerfettoGpuProfilingDataSources(ctx context.Context) (*device.GPUProfiling, error) {
+	gpu := &device.GPUProfiling{}
 	encoded, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
 	if err != nil {
-		return result, log.Errf(ctx, err, "adb shell perfetto returned error: %s", encoded)
+		return gpu, log.Errf(ctx, err, "adb shell perfetto returned error: %s", encoded)
 	}
 	decoded, _ := base64.StdEncoding.DecodeString(encoded)
 	state := &common_pb.TracingServiceState{}
 	if err = proto.Unmarshal(decoded, state); err != nil {
-		return result, log.Errf(ctx, err, "Unmarshal returned error")
+		return gpu, log.Errf(ctx, err, "Unmarshal returned error")
 	}
 
 	for _, ds := range state.GetDataSources() {
@@ -369,7 +391,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 			proto.UnmarshalMerge(data, gpu.GpuCounterDescriptor)
 		}
 	}
-	return result, nil
+	return gpu, nil
 }
 
 // Currently using Android Q/10, API 29 as ANGLE support cut-off
@@ -443,7 +465,7 @@ func (b *binding) resolveDriverPath(ctx context.Context, driver string) (Driver,
 	}
 	path = path[8:]
 	// If the driver package path doesn't have the /data/app prefix, it means the returned
-	// path is the preinstalled emtpy prerelease driver.
+	// path is the preinstalled emtpy prerelease driver. Hence don't return it.
 	if path == "" || !strings.HasPrefix(path, "/data/app") {
 		return Driver{}, nil
 	}
@@ -478,4 +500,31 @@ func (b *binding) DriverVersionCode(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return ip.VersionCode, err
+}
+
+// HasGpuProfilingSupportInSystemImage returns whether system image has GPU profiling support.
+func (b *binding) HasGpuProfilingSupportInSystemImage(ctx context.Context) (bool, error) {
+	supported, err := b.SystemProperty(ctx, systemImageGpuProfilerSupportProperty)
+	if err != nil {
+		return false, err
+	}
+	return supported == "true", nil
+}
+
+// GetGpuProfilingLayerPackageName queries and returns the package name of the apk that contains
+// the GPU profiling Vulkan layer.
+// For Android 11, GPU profiling could be part of the system driver. It can be implemented as
+// a vulkan layer. Hence check whether GPU profiling is supported as part of the system driver,
+// and append the vulkan profiling layer apk package name as a place to discover the vulkan
+// profiling library.
+func (b *binding) GetGpuProfilingLayerPackageName(ctx context.Context) (string, error) {
+	supported, err := b.HasGpuProfilingSupportInSystemImage(ctx)
+	if !supported || err != nil {
+		return "", log.Err(ctx, err, "No GPU profiling support found in system image.")
+	}
+	vulkanLayerApk, err := b.SystemProperty(ctx, gpuProfilerVulkanLayerApkProperty)
+	if err != nil {
+		return "", err
+	}
+	return vulkanLayerApk, nil
 }

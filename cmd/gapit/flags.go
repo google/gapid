@@ -437,7 +437,8 @@ type (
 
 	ValidateGpuProfilingFlags struct {
 		DeviceFlags
-		Gapis GapisFlags
+		Gapis          GapisFlags
+		UseSystemImage bool `help:"If true then validate against the GPU profiling libraries in the system image."`
 	}
 
 	PerfettoFlags struct {

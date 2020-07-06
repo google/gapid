@@ -182,7 +182,7 @@ func ValidateGpuCounters(ctx context.Context, processor *perfetto.Processor, cou
 func GetTrackIDs(ctx context.Context, s Scope, processor *perfetto.Processor) ([]int64, error) {
 	queryResult, err := processor.Query(fmt.Sprintf(trackIDQuery, s))
 	if err != nil || queryResult.GetNumRecords() <= 0 {
-		return []int64{}, log.Err(ctx, err, "Failed to query GPU render stage track ids")
+		return []int64{}, log.Errf(ctx, err, "Failed to query track ids with scope: %v", s)
 	}
 	result := make([]int64, queryResult.GetNumRecords())
 	for i, v := range queryResult.GetColumns()[0].GetLongValues() {

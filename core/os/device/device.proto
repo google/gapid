@@ -186,13 +186,15 @@ message PerfettoCapability {
   GPUProfiling gpu_profiling = 1;
   VulkanProfilingLayers vulkan_profile_layers = 2;
   bool can_specify_atrace_apps = 3;
+  bool hasFrameLifecycle = 4;
+  GPUProfiling system_image_gpu_profiling = 5;
 }
 
 message GPUProfiling {
   bool hasRenderStage = 1;
   // The GPU performance counters.
   GpuCounterDescriptor gpu_counter_descriptor = 2;
-  bool hasFrameLifecycle = 3;
+  reserved 3;
   bool has_render_stage_producer_layer = 4;
 }
 

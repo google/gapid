@@ -52,6 +52,10 @@ var (
 	devInfoProviders      []DeviceInfoProvider
 	devInfoProvidersMutex sync.Mutex
 
+	// launchProducerProvider is called to launch perfetto producer.
+	launchProducerProvider      LaunchProducerProvider
+	launchProducerProviderMutex sync.Mutex
+
 	// cache is a map of device serials to fully resolved bindings.
 	cache      = map[string]*binding{}
 	cacheMutex sync.Mutex // Guards cache.
@@ -64,12 +68,21 @@ var (
 // Device.
 type DeviceInfoProvider func(ctx context.Context, d Device) error
 
+type LaunchProducerProvider func(ctx context.Context, d Device, useSystemImage bool) error
+
 // RegisterDeviceInfoProvider registers f to be called to add additional
 // information to a newly discovered Android device.
 func RegisterDeviceInfoProvider(f DeviceInfoProvider) {
 	devInfoProvidersMutex.Lock()
 	defer devInfoProvidersMutex.Unlock()
 	devInfoProviders = append(devInfoProviders, f)
+}
+
+// RegisterLaunchProducerProvider stores its argument as the LaunchProducerProvider to use.
+func RegisterLaunchProducerProvider(f LaunchProducerProvider) {
+	launchProducerProviderMutex.Lock()
+	defer launchProducerProviderMutex.Unlock()
+	launchProducerProvider = f
 }
 
 // Monitor updates the registry with devices that are added and removed at the
@@ -212,9 +225,30 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
+	// Attempt to launch the perfetto GPU profiling producers from system image.
+	// Ignore error as it shouldn't prevent us from querying existing data sources.
+	hasSystemImageGpuProfilingSupport, _ := d.HasGpuProfilingSupportInSystemImage(ctx)
+	if hasSystemImageGpuProfilingSupport {
+		launchProducerProviderMutex.Lock()
+		defer launchProducerProviderMutex.Unlock()
+		launchProducerProvider(ctx, d, true)
+	}
+
 	// Query device Perfetto service state
 	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
 		d.To.Configuration.PerfettoCapability = perfettoCapability
+	}
+
+	// If there's prerelease driver package, attempt to query the perfetto GPU
+	// profiling producers from it.
+	if driver, err := d.GraphicsDriver(ctx); err == nil && driver.Package != "" {
+		launchProducerProviderMutex.Lock()
+		defer launchProducerProviderMutex.Unlock()
+		if err := launchProducerProvider(ctx, d, false); err == nil {
+			if gpuProfiling, err := d.QueryPerfettoGpuProfilingDataSources(ctx); err == nil {
+				d.To.Configuration.PerfettoCapability.GpuProfiling = gpuProfiling
+			}
+		}
 	}
 
 	// Query device ANGLE support

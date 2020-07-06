@@ -15,7 +15,7 @@
 load("//tools/build:rules.bzl", "android_native_binary")
 
 android_native_binary(
-    name = "launch_producer",
+    name = "agi_launch_producer",
     srcs = ["main.cpp"],
     linkopts = [
         "-llog",

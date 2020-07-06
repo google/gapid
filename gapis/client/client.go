@@ -564,9 +564,10 @@ func (c *client) PerfettoQuery(ctx context.Context, capture *path.Capture, query
 	return res.GetResult(), nil
 }
 
-func (c *client) ValidateDevice(ctx context.Context, device *path.Device) error {
+func (c *client) ValidateDevice(ctx context.Context, device *path.Device, useSystemImage bool) error {
 	res, err := c.client.ValidateDevice(ctx, &service.ValidateDeviceRequest{
-		Device: device,
+		Device:         device,
+		UseSystemImage: useSystemImage,
 	})
 	if err != nil {
 		return err

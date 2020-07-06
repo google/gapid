@@ -77,7 +77,7 @@ type Tracer interface {
 	ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, capture *path.Capture, handleMapping *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error)
 	// Validate validates the GPU profiling capabilities of the given device and returns
 	// an error if validation failed or the GPU profiling data is invalid.
-	Validate(ctx context.Context) error
+	Validate(ctx context.Context, useSystemImage bool) error
 }
 
 // LayersFromOptions Parses the perfetto options, and returns the required layers

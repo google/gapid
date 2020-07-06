@@ -15,14 +15,19 @@
 package gapidapk
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -34,6 +39,10 @@ import (
 const (
 	installAttempts = 5
 	checkFrequency  = time.Second * 5
+
+	perfettoProducerLauncher = "agi_launch_producer"
+	launcherPath             = "/data/local/tmp/agi_launch_producer"
+	launcherScript           = "nohup %[1]s &"
 )
 
 var ensureInstalledMutex sync.Mutex
@@ -48,6 +57,10 @@ type lastInstallCheckKey struct{ *device.ABI }
 type lastInstallCheckRes struct {
 	time time.Time
 	apk  *APK
+}
+
+func init() {
+	adb.RegisterLaunchProducerProvider(ensurePerfettoProducerLaunched)
 }
 
 func ensureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, error) {
@@ -206,4 +219,126 @@ func LayerName(vulkan bool) string {
 	} else {
 		return LibGAPIIName
 	}
+}
+
+func ensurePerfettoProducerLaunched(ctx context.Context, d adb.Device, useSystemImage bool) error {
+	// Always kill the exisiting perfetto producer launcher, otherwise perfetto client
+	// may end up quering back wrong data source information.
+	d.Shell("killall", perfettoProducerLauncher).Run(ctx)
+	hasSystemImageSupport, err := d.HasGpuProfilingSupportInSystemImage(ctx)
+	if err != nil {
+		return log.Err(ctx, err, "Fail to query GPU profiling support in system image.")
+	}
+	if !hasSystemImageSupport && useSystemImage {
+		log.E(ctx, "System image producers are requested but no GPU profiling support found in system image.")
+		return log.Err(ctx, nil, "No GPU profiling support found in system image.")
+	}
+	startSignal, startFunc := task.NewSignal()
+	startFunc = task.Once(startFunc)
+	crash.Go(func() {
+		err := launchPerfettoProducer(ctx, d, useSystemImage, startFunc)
+		if err != nil {
+			log.E(ctx, "[ensurePerfettoProducerLaunched] error: %v", err)
+		}
+
+		// Ensure the start signal is fired on failure/immediate return.
+		startFunc(ctx)
+	})
+	startSignal.Wait(ctx)
+	// TODO(b/148420473): Data sources are queried before gpu.counters is registered.
+	time.Sleep(1 * time.Second)
+	return nil
+}
+
+func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) error {
+	packageName := PackageName(d.Instance().GetConfiguration().PreferredABI(nil))
+	res, err := d.Shell("pm", "path", packageName).Call(ctx)
+	if err != nil {
+		return log.Errf(ctx, err, "Failed to query path to apk %v", packageName)
+	}
+	packagePath := strings.Split(res, ":")[1]
+	d.Shell("rm", "-f", launcherPath).Call(ctx)
+	if _, err := d.Shell("unzip", "-o", packagePath, "assets/"+perfettoProducerLauncher, "-p", ">", launcherPath).Call(ctx); err != nil {
+		return log.Errf(ctx, err, "Failed to unzip %v from %v", perfettoProducerLauncher, packageName)
+	}
+
+	// Finally, make sure the binary is executable
+	d.Shell("chmod", "a+x", launcherPath).Call(ctx)
+	return nil
+}
+
+func launchPerfettoProducer(ctx context.Context, d adb.Device, useSystemImage bool, startFunc task.Task) error {
+	// Extract the producer launcher from the APK.
+	if err := preparePerfettoProducerLauncherFromApk(ctx, d); err != nil {
+		return err
+	}
+
+	// Construct the shell command to launch producer. If system image support
+	// is not requested, query and construct against the developer driver.
+	// Otherwise, directly run the command to launch the producer inside the
+	// system image.
+	script := fmt.Sprintf(launcherScript, launcherPath)
+	if !useSystemImage {
+		driver, err := d.GraphicsDriver(ctx)
+		if err != nil {
+			return err
+		}
+		if driver.Package == "" {
+			return log.Err(ctx, nil, "No prerelease driver found.")
+		}
+		abi := d.Instance().GetConfiguration().PreferredABI(nil)
+		script = "export LD_LIBRARY_PATH=\"" + driver.Path + "!/lib/" + abi.Name + "/\";" + script
+	}
+
+	// Construct IO pipe, shell command outputs to stdout, GAPID reads from
+	// reader for logging purpose.
+	reader, stdout := io.Pipe()
+	fail := make(chan error, 1)
+	crash.Go(func() {
+		buf := bufio.NewReader(reader)
+		for {
+			line, e := buf.ReadString('\n')
+			switch e {
+			default:
+				log.E(ctx, "[launch producer] Read error %v", e)
+				fail <- e
+				return
+			case io.EOF:
+				fail <- nil
+				return
+			case nil:
+				// As long as there's output, consider the binary starting running.
+				startFunc(ctx)
+				log.E(ctx, "[launch producer] %s", strings.TrimSuffix(adb.AnsiRegex.ReplaceAllString(line, ""), "\n"))
+			}
+		}
+	})
+
+	// Start the shell command to launch producer
+	process, err := d.Shell(script).
+		Capture(stdout, stdout).
+		Start(ctx)
+	if err != nil {
+		stdout.Close()
+		return err
+	}
+
+	wait := make(chan error, 1)
+	crash.Go(func() {
+		wait <- process.Wait(ctx)
+	})
+
+	// Wait until either an error or EOF is read, or shell command exits.
+	select {
+	case err = <-fail:
+		return err
+	case err = <-wait:
+		log.I(ctx, "[launch producer] Exit.")
+		// Do nothing.
+	}
+	stdout.Close()
+	if err != nil {
+		return err
+	}
+	return <-fail
 }

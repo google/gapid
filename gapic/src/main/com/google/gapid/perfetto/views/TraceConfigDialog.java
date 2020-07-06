@@ -191,7 +191,7 @@ public class TraceConfigDialog extends DialogBase {
     Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
     if (gpuCaps.getHasRenderStage() ||
         gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 ||
-        gpuCaps.getHasFrameLifecycle()) {
+        caps.getHasFrameLifecycle()) {
       if (p.getGpuOrBuilder().getEnabled()) {
         enabled.add("GPU");
       }
@@ -284,7 +284,7 @@ public class TraceConfigDialog extends DialogBase {
                     .setCounterPeriodNs(MILLISECONDS.toNanos(gpu.getCounterRate()));
         counters.addAllCounterIds(gpu.getCounterIdsList());
       }
-      if (gpuCaps.getHasFrameLifecycle() && gpu.getSurfaceFlinger()) {
+      if (caps.getHasFrameLifecycle() && gpu.getSurfaceFlinger()) {
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("android.surfaceflinger.frame");
@@ -469,7 +469,7 @@ public class TraceConfigDialog extends DialogBase {
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
       if (gpuCaps.getHasRenderStage() ||
           gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 ||
-          gpuCaps.getHasFrameLifecycle()) {
+          caps.getHasFrameLifecycle()) {
         gpu = createCheckbox(this, "GPU", sGpu.getEnabled(), e -> updateGpu());
         Composite gpuGroup = withLayoutData(
             createComposite(this, withMargin(new GridLayout(1, false), 5, 0)),
@@ -515,7 +515,7 @@ public class TraceConfigDialog extends DialogBase {
           gpuCountersSelect = null;
         }
 
-        if (gpuCaps.getHasFrameLifecycle()) {
+        if (caps.getHasFrameLifecycle()) {
           gpuFrame = createCheckbox(
               gpuGroup, "Frame Lifecycle (experimental)", sGpu.getSurfaceFlinger(), e -> updateGpu());
         } else {

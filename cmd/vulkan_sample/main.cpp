@@ -1571,6 +1571,7 @@ int main(int argc, const char** argv) {
                               swapchain_image_ready_semaphores[frame_parity],
                               VK_NULL_HANDLE, &next_image));
 
+    // Known issue b/158792228
     REQUIRE_SUCCESS(vkWaitForFences(device, 1, &ready_fences[frame_parity],
                                     false, static_cast<uint64_t>(-1)));
     REQUIRE_SUCCESS(vkResetFences(device, 1, &ready_fences[frame_parity]));

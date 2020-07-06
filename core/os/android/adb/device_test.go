@@ -45,6 +45,10 @@ func TestParseDevices(t_ *testing.T) {
 				Name: "flame",
 			},
 			ABIs: []*device.ABI{device.AndroidARM64v8a},
+			PerfettoCapability: &device.PerfettoCapability{
+				SystemImageGpuProfiling: &device.GPUProfiling{},
+				GpuProfiling:            &device.GPUProfiling{},
+			},
 		},
 	}
 	expected.GenID()
