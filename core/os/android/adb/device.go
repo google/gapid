@@ -230,8 +230,8 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 	hasSystemImageGpuProfilingSupport, _ := d.HasGpuProfilingSupportInSystemImage(ctx)
 	if hasSystemImageGpuProfilingSupport {
 		launchProducerProviderMutex.Lock()
-		defer launchProducerProviderMutex.Unlock()
 		launchProducerProvider(ctx, d, true)
+		launchProducerProviderMutex.Unlock()
 	}
 
 	// Query device Perfetto service state
@@ -243,12 +243,12 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 	// profiling producers from it.
 	if driver, err := d.GraphicsDriver(ctx); err == nil && driver.Package != "" {
 		launchProducerProviderMutex.Lock()
-		defer launchProducerProviderMutex.Unlock()
 		if err := launchProducerProvider(ctx, d, false); err == nil {
 			if gpuProfiling, err := d.QueryPerfettoGpuProfilingDataSources(ctx); err == nil {
 				d.To.Configuration.PerfettoCapability.GpuProfiling = gpuProfiling
 			}
 		}
+		launchProducerProviderMutex.Unlock()
 	}
 
 	// Query device ANGLE support
