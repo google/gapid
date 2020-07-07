@@ -33,12 +33,18 @@ rm -f $1/bin/jfr
 rm -f $1/bin/jjs
 rm -f $1/bin/jrunscript
 rm -f $1/bin/keytool
+rm -f $1/bin/orbd
 rm -f $1/bin/pack200
+rm -f $1/bin/policytool
 rm -f $1/bin/rmid
 rm -f $1/bin/rmiregistry
+rm -f $1/bin/servertool
+rm -f $1/bin/tnameserv
 rm -f $1/bin/unpack200
 
 rm -rf $1/lib/jfr/
+rm -f $1/lib/jfr.jar
+rm -f $1/lib/libjava?crw?demo.dylib
 
 rm -rf $1/man/
 

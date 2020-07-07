@@ -56,10 +56,6 @@ for i in 512 256 128 64 32 16; do
 done
 iconutil -c icns -o AGI.app/Contents/Resources/AGI.icns AGI.iconset
 
-# Move the JRE's legal notices to the Resources folder, so signing doesn't complain.
-mkdir AGI.app/Contents/Resources/jre
-mv AGI.app/Contents/MacOS/jre/legal AGI.app/Contents/Resources/jre
-
 # Create a zip file.
 zip -r agi-$VERSION-macos.zip AGI.app
 

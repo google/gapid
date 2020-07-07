@@ -40,12 +40,12 @@ export ANDROID_NDK_HOME=$PWD/android-ndk-r21d
 # Get recent build tools
 echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
 
-# Get the JDK from our mirror. This needs to be after the Android update above (needs 1.8).
-JDK_BUILD=zulu11.39.15-ca
-JDK_VERSION=11.0.7
+# Get the JDK from our mirror.
+JDK_BUILD=zulu8.46.0.19-ca
+JDK_VERSION=8.0.252
 JDK_NAME=$JDK_BUILD-jdk$JDK_VERSION-linux_x64
 curl -L -k -O -s https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JDK_NAME.zip
-echo "afbaa594447596a7fcd78df4ee59436ee19b43e27111e2e5a21a3272a89074cf  $JDK_NAME.zip" | sha256sum --check
+echo "ab9df193a482152ec9b7d5f37cc07637190e623efe5aaba240f0f4c2239d1046  $JDK_NAME.zip" | sha256sum --check
 unzip -q $JDK_NAME.zip
 export JAVA_HOME=$PWD/$JDK_NAME
 

@@ -29,20 +29,20 @@ unzip -q android-ndk-r21d-darwin-x86_64.zip -d android
 export ANDROID_HOME=$PWD/android
 export ANDROID_NDK_HOME=$PWD/android/android-ndk-r21d
 
-# Get the JDK and JRE from our mirror. This needs to be after the Android updates above (needs 1.8).
-JDK_BUILD=zulu11.39.15-ca
-JDK_VERSION=11.0.7
+# Get the JDK from our mirror.
+JDK_BUILD=zulu8.46.0.19-ca
+JDK_VERSION=8.0.252
 JDK_NAME=$JDK_BUILD-jdk$JDK_VERSION-macosx_x64
 JRE_NAME=$JDK_BUILD-jre$JDK_VERSION-macosx_x64
 curl -L -k -O -s https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JDK_NAME.zip
-echo "e5ea71dd86eefe6e2ef78720ea729f26a8b5c279bcb2f1770745698ef374f9b8  $JDK_NAME.zip" | shasum --check
+echo "c7ef75d36a1cf0a30c6ea3fdeadd780dd55cafeb120de6dce4a469f91e435cba  $JDK_NAME.zip" | shasum --check
 unzip -q $JDK_NAME.zip
-export JAVA_HOME=$PWD/$JDK_NAME/zulu-11.jdk/Contents/Home
+export JAVA_HOME=$PWD/$JDK_NAME/zulu-8.jdk/Contents/Home
 
 curl -L -k -O -s https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JRE_NAME.zip
-echo "d5f40f9a221816e3f4c3219ac658d184d8cb4f99c7a1fb19f4ffc45d88bafd73  $JRE_NAME.zip" | shasum --check
+echo "b84ac76e7126f60fa4120c331a5dfb12a461286ac3b91e77fa1ce7352bf6f54a  $JRE_NAME.zip" | shasum --check
 unzip -q $JRE_NAME.zip
-export JRE_HOME=$PWD/$JRE_NAME/zulu-11.jre/Contents/Home
+export JRE_HOME=$PWD/$JRE_NAME/zulu-8.jre/Contents/Home
 
 # Get bazel.
 BAZEL_VERSION=2.0.0

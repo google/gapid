@@ -60,7 +60,7 @@ Using the msys64 shell (installed by choco at `C:\tools\msys64\mingw64`):
 6. Install gcc with: `pacman -U mingw-w64-x86_64-gcc*-9.2.0-2-any.pkg.tar.xz`
 7. Close the MSYS terminal
 
-### Install Java Development Kit 11
+### Install Java Development Kit 1.8
 
 A JDK is required to run a custom build of AGI. If you do not already have a suitable JDK installed,
 you can [download the OpenJDK](http://jdk-mirror.storage.googleapis.com/index.html) we use on our
@@ -123,7 +123,7 @@ The following environment variables will need to be set prior to building:
 
 Follow the [MacOS Bazel Install](https://docs.bazel.build/versions/master/install-os-x.html) directions to install bazel.
 
-### Install Java Development Kit 11
+### Install Java Development Kit 1.8
 
 A JDK is required to run a custom build of AGI. If you do not already have a suitable JDK installed,
 you can [download the OpenJDK](http://jdk-mirror.storage.googleapis.com/index.html) we use on our
@@ -203,7 +203,7 @@ Follow the [Ubuntu Bazel Install](https://docs.bazel.build/versions/master/insta
 
 Alternatively, bazel can be downloaded from its [GitHub Releases Page](https://github.com/bazelbuild/bazel/releases).
 
-### Install Java Development Kit 11
+### Install Java Development Kit 1.8
 
 A JDK is required to run a custom build of AGI. If you do not already have a suitable JDK installed,
 you can [download the OpenJDK](http://jdk-mirror.storage.googleapis.com/index.html) we use on our
