@@ -33,7 +33,7 @@ def main():
     args = parser.parse_args()
 
     #### Check LUCI is installed
-    assert 'LUCI_CLIENT_ROOT' in os.environ.keys()
+    assert 'LUCI_ROOT' in os.environ.keys()
 
     #### Collect swarming result
     summary = 'summary.json'
@@ -41,12 +41,13 @@ def main():
     if os.path.exists(summary):
         os.remove(summary)
     cmd = [
-        os.path.join(os.environ['LUCI_CLIENT_ROOT'], 'swarming.py'),
+        os.path.join(os.environ['LUCI_ROOT'], 'swarming'),
         'collect',
-        '--swarming=https://chrome-swarming.appspot.com',
+        '--server=https://chrome-swarming.appspot.com',
         '--task-output-stdout=none',
+        '--task-summary-python',
         '--task-summary-json', summary,
-        '--json', args.task_json,
+        '--requests-json', args.task_json,
     ]
     if ('SWARMING_AUTH_FLAG' in os.environ.keys()) and (os.environ['SWARMING_AUTH_FLAG'] != ''):
         cmd += [ os.environ['SWARMING_AUTH_FLAG'] ]
@@ -74,17 +75,21 @@ def main():
             device = tag[len('device_type:'):]
     assert device != ''
     # Set status: default to fail, and lower the risk of false-positive by being
-    # pedantic to setup the 'pass' status. Warning: an expired task have less
-    # fields, e.g. it doesn't have the 'exit_code' field.
+    # pedantic to setup the 'pass' status. Warning: depending on the task status
+    # and the LUCI tools version, some fields may or may not be present, so
+    # check their existence before their value.
     status = 'fail'
-    if ('exit_code' in task_result.keys()) and (task_result['exit_code'] == '0') and (task_result['state'] == 'COMPLETED') and (task_result['failure'] == False) and (task_result['internal_failure'] == False):
-        status = 'pass'
+    exit_code_ok = ('exit_code' not in task_result.keys()) or (task_result['exit_code'] == '0')
+    failure = ('failure' in task_result.keys()) and task_result['failure']
+    internal_failure = ('internal_failure' in task_result.keys()) and task_result['internal_failure']
+    if internal_failure:
+        status = 'internal_failure'
     elif task_result['state'] == 'TIMED_OUT':
         status = 'timeout'
     elif task_result['state'] == 'EXPIRED':
         status = 'expired'
-    elif task_result['internal_failure']:
-        status = 'internal_failure'
+    elif (task_result['state'] == 'COMPLETED') and exit_code_ok and not failure and not internal_failure:
+        status = 'pass'
 
     #### Add result to result file
     # Results are stored in JSON with the following format:

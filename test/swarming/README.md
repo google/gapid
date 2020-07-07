@@ -31,10 +31,13 @@ running order is:
 
 Requirements:
 
-- LUCI tools installed, and the `LUCI_CLIENT_ROOT` environment variable set
-  accordingly.
+- LUCI `isolate` and `swarming` tools installed in a directory pointed at with
+the `LUCI_ROOT` environment variable. Search for "cipd" in
+`kokoro/linux/build.sh` to check how to install these tools using chromium's
+[CIPD](https://chromium.googlesource.com/chromium/src.git/+/master/docs/cipd.md).
 
-- valid Swarming/Isolate credentials.
+- valid Swarming/Isolate credentials: run `${LUCI_ROOT}/isolate login` to login,
+and `${LUCI_ROOT}/isolate whoami` to check your local credentials.
 
 You can trigger a Swarming test manually with:
 

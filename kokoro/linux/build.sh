@@ -101,12 +101,23 @@ $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
 ## Swarming tests, see test/swarming/README.md
 ##
 
-# Install LUCI
-curl -fsSL -o luci-py.tar.gz https://chromium.googlesource.com/infra/luci/luci-py.git/+archive/2128d8d9c36a0e2839afa200cf3da5e6f6ea845a.tar.gz
-mkdir luci-py
-tar xzf luci-py.tar.gz --directory luci-py
-export LUCI_CLIENT_ROOT="$PWD/luci-py/client"
+# "Swarming" is a tool from Chromium LUCI, install using the recommended CIPD
+# from depot_tool
+export LUCI_ROOT="`pwd`/luci"
+mkdir -p ${LUCI_ROOT}
 
+git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+export PATH="`pwd`/depot_tools:$PATH"
+
+# You can get valid git revision by looking up infra/tools/... at:
+# https://chrome-infra-packages.appspot.com/
+# Note that the '${platform}' must appear as-is in the ensure file,
+# hence the single quotes.
+(
+  echo 'infra/tools/luci/isolate/${platform} git_revision:fe882fb29f1eaa8d1a4cfc77af4d11bcf7d59318'
+  echo 'infra/tools/luci/swarming/${platform} git_revision:fe882fb29f1eaa8d1a4cfc77af4d11bcf7d59318'
+) > ${LUCI_ROOT}/ensure_file.txt
+cipd ensure -ensure-file ${LUCI_ROOT}/ensure_file.txt -root ${LUCI_ROOT}
 
 # Initialize some environment variables, unless they have already been set
 # (e.g. by build-nightly.sh)
@@ -118,7 +129,7 @@ if [ -z "${SWARMING_TASK_PREFIX}" ] ; then
   export SWARMING_TASK_PREFIX="Kokoro_PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
 fi
 
-export SWARMING_AUTH_FLAG="--auth-service-account-json=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key"
+export SWARMING_AUTH_FLAG="--service-account-json=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key"
 
 # Prepare Swarming files
 SWARMING_DIR=${SRC}/test/swarming

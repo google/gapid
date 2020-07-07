@@ -30,7 +30,7 @@ def main():
     args = parser.parse_args()
 
     #### Early checks and sanitization
-    assert 'LUCI_CLIENT_ROOT' in os.environ.keys()
+    assert 'LUCI_ROOT' in os.environ.keys()
     assert os.path.isdir(args.test_dir)
     test_dir = os.path.normpath(args.test_dir)
     prefix = ''
@@ -83,7 +83,7 @@ def main():
     if os.path.exists(isolated_file):
         os.remove(isolated_file)
     cmd = [
-        os.path.join(os.environ['LUCI_CLIENT_ROOT'], 'isolate.py'),
+        os.path.join(os.environ['LUCI_ROOT'], 'isolate'),
         'archive',
         '--isolate-server=https://chrome-isolated.appspot.com',
         '--isolate', isolate_file,
@@ -111,15 +111,15 @@ def main():
         if os.path.exists(task_json):
             os.remove(task_json)
         cmd = [
-            os.path.join(os.environ['LUCI_CLIENT_ROOT'], 'swarming.py'),
+            os.path.join(os.environ['LUCI_ROOT'], 'swarming'),
             'trigger',
-            '--swarming=https://chrome-swarming.appspot.com',
+            '--server=https://chrome-swarming.appspot.com',
             '--isolate-server=https://chrome-isolated.appspot.com',
             '--isolated', isolated_sha,
             '--task-name', swarming_params['task_name'],
             '--dump-json', task_json,
-            '--dimension', 'pool', 'SkiaInternal',
-            '--dimension', 'device_type', device,
+            '--dimension', 'pool=SkiaInternal',
+            '--dimension', 'device_type=' + device,
             '--priority', swarming_params['priority'],
             '--expiration', swarming_params['expiration'],
             '--hard-timeout', swarming_params['timeout'],
