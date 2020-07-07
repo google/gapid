@@ -152,22 +152,14 @@ func (client *Client) Connect(ctx context.Context, device bind.Device, abi *devi
 	return &key, nil
 }
 
-// removeConnection closes and removes a GAPIR instance.
-func (client *Client) removeConnection(ctx context.Context, key ReplayerKey) {
+// removeReplayer closes and removes a GAPIR instance.
+func (client *Client) removeReplayer(ctx context.Context, replayer *replayer) {
 	client.mutex.Lock()
 	defer client.mutex.Unlock()
 
-	if replayer, ok := client.replayers[key]; ok {
-		replayer.closeConnection(ctx)
-		delete(client.replayers, key)
-	}
-}
-
-// reconnect removes the replayer before re-creating it.
-func (client *Client) reconnect(ctx context.Context, replayer *replayer) {
+	replayer.closeConnection(ctx)
 	key := ReplayerKey{device: replayer.device, arch: replayer.abi.GetArchitecture()}
-	client.removeConnection(ctx, key)
-	client.Connect(ctx, replayer.device, replayer.abi)
+	delete(client.replayers, key)
 }
 
 // heartbeat regularly sends a ping to a replayer, and restarts it when it fails to reply.
@@ -180,7 +172,7 @@ func (client *Client) heartbeat(ctx context.Context, replayer *replayer) {
 			err := replayer.ping(ctx)
 			if err != nil {
 				log.E(ctx, "Error sending keep-alive ping. Error: %v", err)
-				client.reconnect(ctx, replayer)
+				client.removeReplayer(ctx, replayer)
 				return
 			}
 		}
