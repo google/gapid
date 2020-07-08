@@ -138,10 +138,20 @@ cp -r ${KOKORO_GFILE_DIR}/tests ${SWARMING_DIR}/tests
 
 # Swarming environment
 
-# Trigger the tests
+# Trigger the tests. Record trigger failures, but continue to trigger other
+# tests and collect their results, such that a single trigger failure does
+# not ruin a whole Swarming run.
+SWARMING_TRIGGER_ERROR=0
 pushd ${SWARMING_DIR}
 for t in tests/* ; do
+  set +e
   ./trigger.py --prefix ${SWARMING_TASK_PREFIX} ${t}
+  EXIT_CODE=$?
+  set -e
+  if [ ${EXIT_CODE} -ne 0 ] ; then
+    echo "Swarming trigger error on test: ${TEST_NAME}"
+    SWARMING_TRIGGER_ERROR=1
+  fi
 done
 popd
 
@@ -219,5 +229,10 @@ popd
 
 if [ ${SWARMING_FAILURE} -eq 1 ] ; then
   echo "Error: some Swarming test failed"
+  exit 1
+fi
+
+if [ ${SWARMING_TRIGGER_ERROR} -eq 1 ] ; then
+  echo "Error: could not trigger some Swarming tests"
   exit 1
 fi
