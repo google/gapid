@@ -256,10 +256,10 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       double leftLabel = Math.max(
           tm.measure(Fonts.Style.Normal, "Value:").w,
-          tm.measure(Fonts.Style.Normal, "Min:").w) + HOVER_PADDING;
-      double rightLabel = Math.max(
-          tm.measure(Fonts.Style.Normal, "Max:").w,
           tm.measure(Fonts.Style.Normal, "Avg:").w) + HOVER_PADDING;
+      double rightLabel = Math.max(
+          tm.measure(Fonts.Style.Normal, "Min:").w,
+          tm.measure(Fonts.Style.Normal, "Max:").w) + HOVER_PADDING;
       this.leftWidth = leftLabel + Math.max(valueSize.w, avgSize.w);
       this.size = new Size(leftWidth + HOVER_PADDING + rightLabel + Math.max(minSize.w, maxSize.w),
           Math.max(valueSize.h + avgSize.h, minSize.h + maxSize.h) + HOVER_PADDING);
