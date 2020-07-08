@@ -80,7 +80,7 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 		if len(traceVkDriver.GetPhysicalDevices()) == 0 {
 			return 1
 		}
-		// Requires same vendor, device and version of API.
+		// Requires same vendor, device, driver version and API version.
 		for _, devPhyInfo := range devVkDriver.GetPhysicalDevices() {
 			for _, tracePhyInfo := range traceVkDriver.GetPhysicalDevices() {
 				// TODO: More sophisticated rules
@@ -88,6 +88,9 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 					continue
 				}
 				if devPhyInfo.GetDeviceId() != tracePhyInfo.GetDeviceId() {
+					continue
+				}
+				if devPhyInfo.GetDriverVersion() != tracePhyInfo.GetDriverVersion() {
 					continue
 				}
 				// Ignore the API patch level (bottom 12 bits) when comparing the API version.

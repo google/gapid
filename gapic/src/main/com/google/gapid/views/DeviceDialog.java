@@ -31,6 +31,7 @@ import com.google.gapid.models.Devices;
 import com.google.gapid.models.Devices.DeviceValidationResult;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.device.Device;
+import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
@@ -172,8 +173,9 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
 
       // Recap capture info
       createLabel(composite, "Capture name: " + models.capture.getName());
+      Instance dev = models.capture.getData().capture.getDevice();
       createLabel(composite,
-          "Capture device: " + Devices.getLabel(models.capture.getData().capture.getDevice()));
+          "Capture device: " + Devices.getLabel(dev) + " (Vulkan driver version: " + Devices.getVulkanDriverVersions(dev) + ")");
 
       // Warning when no compatible device found
       noCompatibleDeviceFound = createLabel(composite, Messages.SELECT_DEVICE_NO_COMPATIBLE_FOUND);
