@@ -13,8 +13,8 @@ cd <path-to-agi-source>
 bazel build pkg
 ```
 
-> :warning: We currently use NDK r21 to have access to the unified Khronos
-> validation layer. Bazel 2.0.0 has no official support for r21, so **the
+> :warning: We currently use NDK r21d to have access to the unified Khronos
+> validation layer. Bazel 2.0.0 has no official support for r21d, so **the
 > following build warning is expected and can be ignored:**
 >
 > ```
@@ -86,7 +86,7 @@ tools\bin\sdkmanager.bat platform-tools
 ```
 
 Unzip the
-[Android NDK **r21**](https://dl.google.com/android/repository/android-ndk-r21-windows-x86_64.zip)
+[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-windows-x86_64.zip)
 into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
 variable to point to this directory.
 
@@ -153,7 +153,7 @@ tools/bin/sdkmanager platform-tools
 ```
 
 Unzip the
-[Android NDK **r21**](https://dl.google.com/android/repository/android-ndk-r21-darwin-x86_64.zip)
+[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.zip)
 into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
 variable to point to this directory:
 
@@ -229,7 +229,7 @@ tools/bin/sdkmanager platform-tools
 ```
 
 Unzip the
-[Android NDK **r21**](https://dl.google.com/android/repository/android-ndk-r21-linux-x86_64.zip)
+[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip)
 into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
 variable to point to this directory:
 

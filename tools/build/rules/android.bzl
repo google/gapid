@@ -139,7 +139,7 @@ ndk_vk_validation_layer = repository_rule(
 # Enforce NDK version by checking $ANDROID_NDK_HOME/source.properties
 def _ndk_version_check(repository_ctx):
     # This should be updated in sync with BUILDING.md documentation
-    expectedVersion = "21.0.6113669"
+    expectedVersion = "21.3.6528147"
 
     # Extract NDK version string from $ANDROID_NDK_HOME/source.properties,
     # which has the following format:

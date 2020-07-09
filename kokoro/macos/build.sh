@@ -24,10 +24,10 @@ curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.z
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
 echo y | ./android/tools/bin/sdkmanager build-tools\;29.0.2 platforms\;android-26
-curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r21-darwin-x86_64.zip
-unzip -q android-ndk-r21-darwin-x86_64.zip -d android
+curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.zip
+unzip -q android-ndk-r21d-darwin-x86_64.zip -d android
 export ANDROID_HOME=$PWD/android
-export ANDROID_NDK_HOME=$PWD/android/android-ndk-r21
+export ANDROID_NDK_HOME=$PWD/android/android-ndk-r21d
 
 # Get the JDK and JRE from our mirror. This needs to be after the Android updates above (needs 1.8).
 JDK_BUILD=zulu11.39.15-ca

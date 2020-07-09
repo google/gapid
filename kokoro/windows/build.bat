@@ -33,11 +33,10 @@ REM Install Android SDK platform, build tools and NDK
 setlocal
 call %ANDROID_HOME%\tools\bin\sdkmanager.bat platforms;android-26 build-tools;29.0.2
 endlocal
-echo on
 
-wget -q https://dl.google.com/android/repository/android-ndk-r21-windows-x86_64.zip
-unzip -q android-ndk-r21-windows-x86_64.zip
-set ANDROID_NDK_HOME=%CD%\android-ndk-r21
+wget -q https://dl.google.com/android/repository/android-ndk-r21d-windows-x86_64.zip
+unzip -q android-ndk-r21d-windows-x86_64.zip
+set ANDROID_NDK_HOME=%CD%\android-ndk-r21d
 
 REM Install WiX Toolset.
 wget -q https://github.com/wixtoolset/wix3/releases/download/wix311rtm/wix311-binaries.zip
