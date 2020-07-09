@@ -124,6 +124,7 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}, bins = {}):
         assets = assets,
         assets_dir = abi,
         deps = [
+            "@ndk_version_check//:version_check",
             "//gapidapk/android/app/src/main:gapid",
             ":" + name + "_native",
         ],

@@ -135,3 +135,51 @@ ndk_vk_validation_layer = repository_rule(
         "ANDROID_NDK_HOME",
     ],
 )
+
+# Enforce NDK version by checking $ANDROID_NDK_HOME/source.properties
+def _ndk_version_check(repository_ctx):
+    # This should be updated in sync with BUILDING.md documentation
+    expectedVersion = "21.0.6113669"
+
+    # Extract NDK version string from $ANDROID_NDK_HOME/source.properties,
+    # which has the following format:
+    #   Pkg.Desc = Android NDK
+    #   Pkg.Revision = 21.0.6113669
+    sourcePropFile = repository_ctx.os.environ["ANDROID_NDK_HOME"] + "/source.properties"
+    sourceProp = repository_ctx.read(sourcePropFile)
+    secondLine = sourceProp.split("\n")[1]
+    ndkVersion = secondLine.split(" ")[2]
+
+    # We want to fail only when Bazel tries to actually build a native target
+    # on Android, such that e.g. the presubmit check can pass without having
+    # to install the expected NDK version. To this aim, we create a rule to be
+    # used as a dependency in android_binary() rules. This rule fails when our
+    # check fails, and otherwise returns a CcInfo provider needed to be a
+    # valid dependency of android_binary().
+    ruleBody = "def _version_check(ctx):\n"
+    if ndkVersion != expectedVersion:
+        ruleBody += "    fail(\"Wrong NDK version: expected " + expectedVersion + ", got " + ndkVersion + "\")\n"
+    else:
+        ruleBody += "    return [CcInfo()]\n"
+    ruleBody += "\n"
+    ruleBody += "version_check = rule(implementation = _version_check)\n"
+    repository_ctx.file("version.bzl", ruleBody)
+
+    # Create a BUILD file to instanciate the rule.
+    build = """
+load("//:version.bzl", "version_check")
+
+version_check(
+    name = "version_check",
+    visibility = ["//visibility:public"],
+)
+"""
+    repository_ctx.file("BUILD", build)
+
+ndk_version_check = repository_rule(
+    implementation = _ndk_version_check,
+    local = True,
+    environ = [
+        "ANDROID_NDK_HOME",
+    ]
+)

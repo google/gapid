@@ -76,16 +76,19 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools\bin\sdkmanager.bat "platforms;android-26" "build-tools;29.0.2" ndk-bundle
+tools\bin\sdkmanager.bat "platforms;android-26" "build-tools;29.0.2"
 ```
-
-Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The recommended version of the NDK is **r21**.
 
 If you do not have adb installed you can do so with:
 ```
 cd <sdk-path>
 tools\bin\sdkmanager.bat platform-tools
 ```
+
+Unzip the
+[Android NDK **r21**](https://dl.google.com/android/repository/android-ndk-r21-windows-x86_64.zip)
+into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
+variable to point to this directory.
 
 ### Configure the environment
 
@@ -140,15 +143,22 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2" ndk-bundle
+tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2"
 ```
-
-Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The recommended version of the NDK is **r21**.
 
 If you do not have adb installed you can do so with:
 ```
 cd <sdk-path>
 tools/bin/sdkmanager platform-tools
+```
+
+Unzip the
+[Android NDK **r21**](https://dl.google.com/android/repository/android-ndk-r21-darwin-x86_64.zip)
+into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
+variable to point to this directory:
+
+```
+export ANDROID_NDK_HOME=<ndk-path>
 ```
 
 ### Install the XCode command line tools
@@ -209,15 +219,22 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2" ndk-bundle
+tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2"
 ```
-
-Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The recommended version of the NDK is **r21**.
 
 If you do not have adb installed you can do so with:
 ```
 cd <sdk-path>
 tools/bin/sdkmanager platform-tools
+```
+
+Unzip the
+[Android NDK **r21**](https://dl.google.com/android/repository/android-ndk-r21-linux-x86_64.zip)
+into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
+variable to point to this directory:
+
+```
+export ANDROID_NDK_HOME=<ndk-path>
 ```
 
 ### Install other libraries
