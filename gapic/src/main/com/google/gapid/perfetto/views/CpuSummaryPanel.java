@@ -106,11 +106,14 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
         double mouseX = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
         double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
         double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
-        double cardX = Math.min(mouseX, w - dx);
+        double cardX = mouseX + CURSOR_SIZE / 2 + HOVER_MARGIN;
+        if (cardX >= w - dx) {
+          cardX = mouseX - CURSOR_SIZE / 2 - HOVER_MARGIN - dx;
+        }
         ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(cardX + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
+        ctx.fillRect(cardX, h - HOVER_PADDING - dy, dx, dy);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, hovered.text, cardX + HOVER_MARGIN + HOVER_PADDING, h - dy);
+        ctx.drawText(Fonts.Style.Normal, hovered.text, cardX + HOVER_PADDING, h - dy);
 
         ctx.setForegroundColor(colors().textMain);
         ctx.drawCircle(mouseX, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
@@ -143,8 +146,16 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
     return new Hover() {
       @Override
       public Area getRedraw() {
-        double redrawX = Math.min(mouseX - CURSOR_SIZE, state.getWidth() - dx);
-        return new Area(redrawX, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
+        double redrawW = CURSOR_SIZE + HOVER_MARGIN + dx;
+        double redrawX = mouseX - CURSOR_SIZE / 2;
+        if (redrawX >= state.getWidth() - redrawW) {
+          redrawX = mouseX + CURSOR_SIZE / 2 - redrawW;
+          // If the hover card is drawn on the left side of the hover point, when moving the mouse
+          // from left to right, the right edge of the cursor doesn't seem to get redrawn all the
+          // time, this looks like a precision issue. Plus the radius of cursor here to avoid it.
+          redrawW += CURSOR_SIZE / 2;
+        }
+        return new Area(redrawX, -TRACK_MARGIN, redrawW, dy);
       }
 
       @Override

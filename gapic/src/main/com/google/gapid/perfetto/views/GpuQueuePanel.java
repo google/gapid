@@ -153,7 +153,10 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
 
       if (hoveredTitle != null) {
         double cardW = hoveredSize.w + 2 * HOVER_PADDING;
-        double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - cardW);
+        double cardX = mouseXpos + HOVER_MARGIN;
+        if (cardX >= w - cardW) {
+          cardX = mouseXpos - HOVER_MARGIN - cardW;
+        }
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(cardX, mouseYpos, cardW, hoveredSize.h);
 
@@ -214,9 +217,12 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         return new Hover() {
           @Override
           public Area getRedraw() {
-            double redrawW = hoveredSize.w + 2 * HOVER_PADDING;
-            double redrawX = Math.min(x + HOVER_MARGIN, state.getWidth() - redrawW);
-            return new Area(redrawX, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
+            double redrawW = HOVER_MARGIN + hoveredSize.w + 2 * HOVER_PADDING;
+            double redrawX = x;
+            if (redrawX >= state.getWidth() - redrawW) {
+              redrawX = x - redrawW;
+            }
+            return new Area(redrawX, mouseYpos, redrawW, hoveredSize.h);
           }
 
           @Override

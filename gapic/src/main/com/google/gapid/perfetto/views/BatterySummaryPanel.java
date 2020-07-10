@@ -135,7 +135,10 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
       // Draw hovered card.
       if (hovered != null) {
         double cardW = hovered.allSize.w + 3 * HOVER_PADDING + LEGEND_SIZE;
-        double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - cardW);
+        double cardX = mouseXpos + CURSOR_SIZE / 2 + HOVER_MARGIN;
+        if (cardX >= w - cardW) {
+          cardX = mouseXpos - CURSOR_SIZE / 2 - HOVER_MARGIN - cardW;
+        }
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(cardX, mouseYpos, cardW, hovered.allSize.h);
 
@@ -187,7 +190,18 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
       @Override
       public Area getRedraw() {
         double redrawW = CURSOR_SIZE + HOVER_MARGIN + hovered.allSize.w + 3 * HOVER_PADDING + LEGEND_SIZE;
-        double redrawX = Math.min(mouseXpos - CURSOR_SIZE, state.getWidth() - redrawW);
+        double redrawX = mouseXpos - CURSOR_SIZE / 2;
+        if (redrawX >= state.getWidth() - redrawW) {
+          redrawX = mouseXpos + CURSOR_SIZE / 2.0 - redrawW;
+
+          // If the hover card is drawn on the left side of the hover point, when moving the mouse
+          // from left to right, the right edge of the cursor doesn't seem to get redrawn all the
+          // time, this looks like a precision issue. This also happens when cursor is now on the
+          // right side of the hover card, and the mouse moving from right to left there seems to
+          // be a precision issue on the right edge of the cursor, hence extend the redraw with by
+          // plusing the radius of the cursor.
+          redrawW += CURSOR_SIZE / 2;
+        }
         return new Area(redrawX, -TRACK_MARGIN, redrawW, HEIGHT + 2 * TRACK_MARGIN);
       }
 

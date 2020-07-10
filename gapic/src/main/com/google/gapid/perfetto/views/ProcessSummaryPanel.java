@@ -153,7 +153,10 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
       double x = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
       double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
       double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
-      double cardX = Math.min(x + HOVER_MARGIN, w - dx);
+      double cardX = x + CURSOR_SIZE / 2 + HOVER_MARGIN;
+      if (cardX >= w - dx) {
+        cardX = x - CURSOR_SIZE / 2 - HOVER_MARGIN - dx;
+      }
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(cardX, h - HOVER_PADDING - dy, dx, dy);
       ctx.setForegroundColor(colors().textMain);
@@ -199,7 +202,10 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
     }
 
     if (hoveredThread != null) {
-      double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - (hoveredWidth + 2 * HOVER_PADDING));
+      double cardX = mouseXpos + HOVER_MARGIN;
+      if (cardX >= w - (hoveredWidth + 2 * HOVER_PADDING)) {
+        cardX = mouseXpos - HOVER_MARGIN - hoveredWidth - 2 * HOVER_PADDING;
+      }
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(cardX, 0, hoveredWidth + 2 * HOVER_PADDING, h);
 
@@ -252,8 +258,12 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
         return new Hover() {
           @Override
           public Area getRedraw() {
-            double redrawW = hoveredWidth + 2 * HOVER_PADDING;
-            double redrawX = Math.min(x + HOVER_MARGIN, state.getWidth() - redrawW);
+            double redrawW = HOVER_MARGIN + hoveredWidth + 2 * HOVER_PADDING;
+            double redrawX = x;
+            if (redrawX >= state.getWidth() - redrawW) {
+              redrawX = x - redrawW;
+              // redrawW *= 2;
+            }
             return new Area(redrawX, 0, redrawW, HEIGHT);
           }
 
@@ -307,7 +317,18 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
       @Override
       public Area getRedraw() {
         double redrawW = CURSOR_SIZE + HOVER_MARGIN + dx;
-        double redrawX = Math.min(mouseX - CURSOR_SIZE, state.getWidth() - redrawW);
+        double redrawX = mouseX - CURSOR_SIZE / 2;
+        if (redrawX >= state.getWidth() - redrawW) {
+          redrawX = mouseX + CURSOR_SIZE / 2 - redrawW;
+
+          // If the hover card is drawn on the left side of the hover point, when moving the mouse
+          // from left to right, the right edge of the cursor doesn't seem to get redrawn all the
+          // time, this looks like a precision issue. This also happens when cursor is now on the
+          // right side of the hover card, and the mouse moving from right to left there seems to
+          // be a precision issue on the right edge of the cursor, hence extend the redraw with by
+          // plusing the radius of the cursor.
+          redrawW += CURSOR_SIZE / 2;
+        }
         return new Area(redrawX, -TRACK_MARGIN, redrawW, dy);
       }
 

@@ -157,7 +157,10 @@ public class FrameEventsPanel extends TrackPanel<FrameEventsPanel>
     }
 
     if (hoveredTitle != null) {
-      double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - (hoveredSize.w + 2 * HOVER_PADDING));
+      double cardX = mouseXpos + HOVER_MARGIN;
+      if (cardX >= w - (hoveredSize.w + 2 * HOVER_PADDING)) {
+        cardX = mouseXpos - HOVER_MARGIN - hoveredSize.w - 2 * HOVER_PADDING;
+      }
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(cardX, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
 
@@ -221,8 +224,11 @@ public class FrameEventsPanel extends TrackPanel<FrameEventsPanel>
         return new Hover() {
           @Override
           public Area getRedraw() {
-            double redrawW = hoveredSize.w + 2 * HOVER_PADDING;
-            double redrawX = Math.min(x + HOVER_MARGIN, state.getWidth() - redrawW);
+            double redrawW = HOVER_MARGIN + hoveredSize.w + 2 * HOVER_PADDING;
+            double redrawX = x;
+            if (redrawX >= state.getWidth() - redrawW) {
+              redrawX = x - redrawW;
+            }
             return new Area(redrawX, mouseYpos, redrawW, hoveredSize.h);
           }
 

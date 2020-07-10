@@ -31,6 +31,9 @@ import com.google.gapid.perfetto.models.CpuFrequencyTrack;
  */
 public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
   private static final double HEIGHT = 30;
+  private static final double CURSOR_SIZE = 5;
+  private static final double HOVER_PADDING = 8;
+  private static final double HOVER_MARGIN = 10;
 
   private final CpuFrequencyTrack track;
 
@@ -145,27 +148,34 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
 
         // Draw change marker.
         ctx.path(path -> {
-          path.circle(xStart, y, 3);
+          path.circle(xStart, y, CURSOR_SIZE / 2);
           ctx.fillPath(path);
           ctx.drawPath(path);
         });
 
         // Draw the tooltip.
-        double cardX = Math.min(mouseXpos + 5, w - (textSize.w + 16));
+        // Technically the cursor is always drawn at the beginning of the sample, and hence when the
+        // track is not in quantized view, there's no cursor drawn near to the hover point most of
+        // the time. Hover, to be consistent with other cases, always assume the cursor is drawn at
+        // the hover point.
+        double cardX = mouseXpos + CURSOR_SIZE / 2 + HOVER_MARGIN;
+        if (cardX >= w - (textSize.w + 2 * HOVER_PADDING)) {
+          cardX = mouseXpos - CURSOR_SIZE / 2 - HOVER_MARGIN - textSize.w - 2 * HOVER_PADDING;
+        }
         ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(cardX, 0, textSize.w + 16, h);
+        ctx.fillRect(cardX, 0, textSize.w + 2 * HOVER_PADDING, h);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, hoverLabel, cardX + 8, (h - 2 * textSize.h) / 4);
+        ctx.drawText(Fonts.Style.Normal, hoverLabel, cardX + HOVER_PADDING, (h - 2 * textSize.h) / 4);
         if (hoveredIdle != null && hoveredIdle != -1) {
           String idle = "Idle: " + (hoveredIdle + 1);
-          ctx.drawText(Fonts.Style.Normal, idle, cardX + 8, (3 * h - 2 * textSize.h) / 4);
+          ctx.drawText(Fonts.Style.Normal, idle, cardX + HOVER_PADDING, (3 * h - 2 * textSize.h) / 4);
         }
       }
 
       // Write the Y scale on the top left corner.
       Size labelSize = ctx.measure(Fonts.Style.Normal, yLabel);
       ctx.setBackgroundColor(colors().hoverBackground);
-      ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
+      ctx.fillRect(0, 0, labelSize.w + HOVER_PADDING, labelSize.h + HOVER_PADDING);
 
       ctx.setForegroundColor(colors().textMain);
       ctx.drawText(Fonts.Style.Normal, yLabel, 4, 4);
@@ -190,15 +200,58 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
         hoverLabel = String.format(
             "%s: %,dkHz", (data.quantized ? "Average Freq" : "Freq"), hoveredValue);
 
-        double xStart = Math.floor(state.timeToPx(hoveredTs)) - 4;
-        double xEnd = Math.max(hoveredTsEnd == null ?
-            state.timeToPx(state.getVisibleTime().end) : Math.floor(state.timeToPx(hoveredTsEnd)),
-            x + m.measure(Fonts.Style.Normal, hoverLabel).w + 21);
+        double startX = Math.floor(state.timeToPx(hoveredTs)) - 4;
+        double endX = hoveredTsEnd == null ?
+                      state.timeToPx(state.getVisibleTime().end)
+                      : Math.floor(state.timeToPx(hoveredTsEnd));
 
         return new Hover() {
           @Override
           public Area getRedraw() {
-            return new Area(Math.min(xStart, state.getWidth() - (xEnd - xStart)), 0, xEnd - xStart, HEIGHT);
+            // The area of the sample, especially when in steady performance or idle state, can be
+            // larger than the hover card. Hence the redraw area needs to at least cover the whole
+            // sample because when we move between samples, the highlight of the previous sample
+            // needs to be redrawn without highlight. If the redraw area only covers the hover card
+            // then the area that is not intersected with the hover card will not be redrawn, and
+            // hence the highlight remains in that area.
+
+            // First, calculate the default left boundary x-axis coordinate and width of the
+            // redrawn area.
+            double defaultX = x - CURSOR_SIZE / 2;
+            double defaultW = CURSOR_SIZE + HOVER_MARGIN + HOVER_PADDING
+                              + m.measure(Fonts.Style.Normal, hoverLabel).w + HOVER_PADDING;
+
+            // Assuming the hover card is drawn on the right of the hover point.
+
+            // Determine the x-axis coordinate of the left boundary of the redrawn area.
+            double redrawLx = Math.min(defaultX, startX);
+
+            // Determine the x-axis coordinate of the right boundary of the redrawn area by
+            // comparing the right end of the sample with the right boundary of the default
+            // redrawn area.
+            double redrawRx = Math.max(defaultX + defaultW, endX);
+
+            // Calculate the real redrawn width.
+            double redrawW = redrawRx - redrawLx;
+
+            if (defaultX >= state.getWidth() - defaultW) {
+
+              // re-calculate the left boundary of the redrawn area by comparing the start end of
+              // the sample with the left boundary of the default redrawn area when the hover card
+              // is drawn on the left side of the hover point.
+              redrawLx = Math.min(startX, x + CURSOR_SIZE / 2 - defaultW);
+
+              // re-calculate the right boundary of the redrawn area by comparing the end of the
+              // sample with the right boundary of the default redrawn area when the hover card is
+              // drawn on the left side of the hover point.
+              redrawRx = Math.max(x + CURSOR_SIZE / 2, endX);
+
+              // Finally, re-calculate the redrawn width, plus radius of the cursor to avoid the
+              // precision issue at the right edge of the cursor.
+              redrawW = redrawRx - redrawLx + CURSOR_SIZE / 2;
+            }
+
+            return new Area(redrawLx, 0, redrawW, HEIGHT);
           }
 
           @Override

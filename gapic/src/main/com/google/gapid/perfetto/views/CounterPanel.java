@@ -138,22 +138,28 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
         ctx.setBackgroundColor(colors().hoverBackground);
         double bgH = Math.max(hovered.size.h, trackHeight);
-        double x = Math.min(hovered.getTooltipX(), w - (2 * HOVER_PADDING + hovered.size.w));
-        ctx.fillRect(x, Math.min((trackHeight - bgH) / 2, 0),
+        // The left x-axis coordinate of HoverCard.
+        double hx = hovered.mouseX + CURSOR_SIZE / 2 + HOVER_MARGIN;
+        if (hx >= w - (2 * HOVER_PADDING + hovered.size.w)) {
+          hx = hovered.mouseX - CURSOR_SIZE / 2 - HOVER_MARGIN - 2 * HOVER_PADDING - hovered.size.w;
+        }
+        ctx.fillRect(hx, Math.min((trackHeight - bgH) / 2, 0),
             2 * HOVER_PADDING + hovered.size.w, bgH);
         ctx.setForegroundColor(colors().textMain);
-        x += HOVER_PADDING;
+        // The left x-axis coordinate of the left labels.
+        double x = hx + HOVER_PADDING;
         y = (trackHeight - hovered.size.h) / 2;
+        // The difference between the x-axis coordinate of the left labels and the right labels.
         double dx = hovered.leftWidth + HOVER_PADDING, dy = hovered.size.h / 2;
         ctx.drawText(Fonts.Style.Normal, "Value:", x, y);
         ctx.drawText(Fonts.Style.Normal, "Avg:", x, y + dy);
         ctx.drawText(Fonts.Style.Normal, "Min:", x + dx, y);
         ctx.drawText(Fonts.Style.Normal, "Max:", x + dx, y + dy);
 
-        x += hovered.leftWidth;
+        x = hx + HOVER_PADDING + hovered.leftWidth;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.label, x, y, dy);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.avg, x, y + dy, dy);
-        x = Math.min(hovered.getTooltipX() + HOVER_PADDING + hovered.size.w, w - HOVER_PADDING);
+        x = hx + HOVER_PADDING + hovered.size.w;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.min, x, y, dy);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.max, x, y + dy, dy);
       }
@@ -191,12 +197,48 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     return new Hover() {
       @Override
       public Area getRedraw() {
-        double start = Math.min(hovered.mouseX - CURSOR_SIZE / 2, startX);
-        start = Math.min(start, state.getWidth() - hovered.size.w - 2 * HOVER_PADDING);
-        double end = Math.max(
-            hovered.getTooltipX() + HOVER_PADDING + hovered.size.w + HOVER_PADDING,
-            endX);
-        return new Area(start, -TRACK_MARGIN, end - start, trackHeight + 2 * TRACK_MARGIN);
+        // The area of the sample can be larger than the hover card. Hence the redraw area needs to
+        // at least cover the whole sample because when we move between samples, the highlight of
+        // the previous sample needs to be redrawn without highlight. If the redraw area only
+        // covers the hover card then the area that is not intersected with the hover card will
+        // not be redrawn, and hence the highlight remains in that area.
+
+        // First, calculate the default left boundary x-axis coordinate and width of the
+        // redrawn area.
+        final double defaultX = hovered.mouseX - CURSOR_SIZE / 2;
+        final double defaultW = CURSOR_SIZE + HOVER_MARGIN + HOVER_PADDING + hovered.size.w +
+                                HOVER_PADDING;
+
+        // Assuming the hover card is drawn on the right of the hover point.
+
+        // Determine the x-axis coordinate of the left boundary of the redrawn area.
+        double redrawLx = Math.min(defaultX, startX);
+
+        // Determine the x-axis coordinate of the right boundary of the redrawn area by comparing
+        // the right end of the sample with the right boundary of the default redrawn area.
+        double redrawRx = Math.max(defaultX + defaultW, endX);
+
+        // Calculate the real redrawn width.
+        double redrawW = redrawRx - redrawLx;
+
+        if (defaultX >= state.getWidth() - defaultW) {
+
+          // re-calculate the left boundary of the redrawn area by comparing the start end of the
+          // sample with the left boundary of the default redrawn area when the hover card is drawn
+          // on the left side of the hover point.
+          redrawLx = Math.min(startX, hovered.mouseX + CURSOR_SIZE / 2 - defaultW);
+
+          // re-calculate the right boundary of the redrawn area by comparing the end of the sample
+          // with the right boundary of the default redrawn area when the hover card is drawn on
+          // the left side of the hover point.
+          redrawRx = Math.max(hovered.mouseX + CURSOR_SIZE / 2, endX);
+
+          // Finally, re-calculate the redrawn width, plus radius of the cursor to avoid the
+          // precision issue at the right edge of the cursor.
+          redrawW = redrawRx - redrawLx + CURSOR_SIZE / 2;
+        }
+
+        return new Area(redrawLx, -TRACK_MARGIN, redrawW, trackHeight + 2 * TRACK_MARGIN);
       }
 
       @Override
@@ -263,11 +305,6 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       this.leftWidth = leftLabel + Math.max(valueSize.w, avgSize.w);
       this.size = new Size(leftWidth + HOVER_PADDING + rightLabel + Math.max(minSize.w, maxSize.w),
           Math.max(valueSize.h + avgSize.h, minSize.h + maxSize.h) + HOVER_PADDING);
-    }
-
-    public double getTooltipX() {
-      // If the sample is smaller than the tooltip, show the tooltip after the sample.
-      return ((size.w < endX - startX) ? mouseX + CURSOR_SIZE / 2 : endX) + HOVER_MARGIN;
     }
   }
 }

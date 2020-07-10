@@ -138,7 +138,10 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
       double mouseX = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
       double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
       double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
-      double cardX = Math.min(mouseX + HOVER_MARGIN, w - dx);
+      double cardX = mouseX + CURSOR_SIZE / 2 + HOVER_MARGIN;
+      if (cardX >= w - dx) {
+        cardX = mouseX - CURSOR_SIZE / 2 - HOVER_MARGIN - dx;
+      }
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(cardX, h - HOVER_PADDING - dy, dx, dy);
       ctx.setForegroundColor(colors().textMain);
@@ -195,7 +198,10 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
     }
 
     if (hoveredThread != null) {
-      double cardX = Math.min(mouseXpos + HOVER_MARGIN, w - (hoveredWidth + 2 * HOVER_PADDING));
+      double cardX = mouseXpos + HOVER_MARGIN;
+      if (cardX >= w - (hoveredWidth + 2 * HOVER_PADDING)) {
+        cardX = mouseXpos - HOVER_MARGIN - hoveredWidth - 2 * HOVER_PADDING;
+      }
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(cardX, 0, hoveredWidth + 2 * HOVER_PADDING, h);
 
@@ -240,8 +246,11 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
         return new Hover() {
           @Override
           public Area getRedraw() {
-            double redrawW = hoveredWidth + 2 * HOVER_PADDING;
-            double redrawX = Math.min(x + HOVER_MARGIN, state.getWidth() - redrawW);
+            double redrawW = HOVER_MARGIN + hoveredWidth + 2 * HOVER_PADDING;
+            double redrawX = x;
+            if (redrawX >= state.getWidth() - redrawW) {
+              redrawX = x - redrawW;
+            }
             return new Area(redrawX, 0, redrawW, HEIGHT);
           }
 
@@ -295,8 +304,12 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
       @Override
       public Area getRedraw() {
         double redrawW = CURSOR_SIZE + HOVER_MARGIN + dx;
-        double redrawX = Math.min(mouseX - CURSOR_SIZE, state.getWidth() - redrawW);
-        return new Area(redrawX, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
+        double redrawX = mouseX - CURSOR_SIZE / 2;
+        if (redrawX >= state.getWidth() - redrawW) {
+          redrawX = mouseX + CURSOR_SIZE / 2 - redrawW;
+          redrawW += CURSOR_SIZE / 2;
+        }
+        return new Area(redrawX, -TRACK_MARGIN, redrawW, dy);
       }
 
       @Override
