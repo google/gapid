@@ -111,11 +111,15 @@ export PATH="`pwd`/depot_tools:$PATH"
 
 # You can get valid git revision by looking up infra/tools/... at:
 # https://chrome-infra-packages.appspot.com/
+# These corresponds to git revision of the infra repo, where luci-go commits
+# are regularly rolled out:
+# https://chromium.googlesource.com/infra/infra
 # Note that the '${platform}' must appear as-is in the ensure file,
 # hence the single quotes.
 (
-  echo 'infra/tools/luci/isolate/${platform} git_revision:fe882fb29f1eaa8d1a4cfc77af4d11bcf7d59318'
-  echo 'infra/tools/luci/swarming/${platform} git_revision:fe882fb29f1eaa8d1a4cfc77af4d11bcf7d59318'
+  INFRA_GIT_REVISION=6e4e898781a05ef1fcb35e3a0594b290a2e950aa
+  echo 'infra/tools/luci/isolate/${platform} git_revision:'"${INFRA_GIT_REVISION}"
+  echo 'infra/tools/luci/swarming/${platform} git_revision:'"${INFRA_GIT_REVISION}"
 ) > ${LUCI_ROOT}/ensure_file.txt
 cipd ensure -ensure-file ${LUCI_ROOT}/ensure_file.txt -root ${LUCI_ROOT}
 
