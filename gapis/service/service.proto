@@ -737,7 +737,6 @@ service Gapid {
 
 message ValidateDeviceRequest {
   path.Device device = 1;
-  bool use_system_image = 2;
 }
 
 message ValidateDeviceResponse {
@@ -1143,8 +1142,6 @@ message TraceOptions {
   bool disable_coherent_memory_tracker = 25;
   // The config to use if doing a Perfetto trace.
   perfetto.protos.TraceConfig perfetto_config = 24;
-  // Whether to use GPU profiling libraries from the system image.
-  bool use_system_image_gpu_profiling = 26;
 }
 
 enum TraceEvent {

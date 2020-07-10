@@ -133,15 +133,15 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 
 		packages := []string{}
-		if !opts.UseSystemImageGpuProfiling {
-			log.I(ctx, "Use GPU profiling libraries from updatable driver package.")
-			driver, err := d.GraphicsDriver(ctx)
-			if err != nil {
-				return nil, cleanup.Invoke(ctx), err
-			}
-			if driver.Package == "" {
-				return nil, cleanup.Invoke(ctx), log.Err(ctx, nil, "No prerelease driver found.")
-			}
+		driver, err := d.GraphicsDriver(ctx)
+		if err != nil {
+			// If there's an error, keep going to attempt to use GPU profiling
+			// libraries in system image.
+			log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
+		}
+		if driver.Package != "" {
+			log.I(ctx, "Using GPU profiling libraries from developer driver package: %v.", driver.Package)
+
 			// Setup the application to use the prerelease driver.
 			nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, a.Package)
 			cleanup = cleanup.Then(nextCleanup)
@@ -150,9 +150,9 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 			}
 			packages = append(packages, driver.Package)
 		} else {
-			log.I(ctx, "Use GPU profiling libraries from system image.")
+			log.I(ctx, "No developer driver found, attempting to use GPU profiling libraries in system image.")
 			if supported, err := d.HasGpuProfilingSupportInSystemImage(ctx); err != nil || !supported {
-				return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "No GPU profiling support found in system image.")
+				return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "No developer driver found, and no GPU profiling support found in system image.")
 			}
 			if vulkanLayerApk, err := d.GetGpuProfilingLayerPackageName(ctx); err == nil && vulkanLayerApk != "" {
 				packages = append(packages, vulkanLayerApk)

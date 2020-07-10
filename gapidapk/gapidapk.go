@@ -59,10 +59,6 @@ type lastInstallCheckRes struct {
 	apk  *APK
 }
 
-func init() {
-	adb.RegisterLaunchProducerProvider(ensurePerfettoProducerLaunched)
-}
-
 func ensureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, error) {
 	ctx = log.V{"abi": abi.Name}.Bind(ctx)
 
@@ -221,22 +217,36 @@ func LayerName(vulkan bool) string {
 	}
 }
 
-func ensurePerfettoProducerLaunched(ctx context.Context, d adb.Device, useSystemImage bool) error {
+func ensurePerfettoProducerLaunched(ctx context.Context, d adb.Device) error {
 	// Always kill the exisiting perfetto producer launcher, otherwise perfetto client
 	// may end up quering back wrong data source information.
 	d.Shell("killall", perfettoProducerLauncher).Run(ctx)
-	hasSystemImageSupport, err := d.HasGpuProfilingSupportInSystemImage(ctx)
+	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
-		return log.Err(ctx, err, "Fail to query GPU profiling support in system image.")
+		log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
 	}
-	if !hasSystemImageSupport && useSystemImage {
-		log.E(ctx, "System image producers are requested but no GPU profiling support found in system image.")
-		return log.Err(ctx, nil, "No GPU profiling support found in system image.")
+	if driver.Package == "" {
+		log.I(ctx, "No developer driver found.")
+		// When there's no developer drivers, attempt to use the GPU profiling
+		// libraries in the system image. If there's no GPU profiling support
+		// found in system image, then abort because there's no GPU profiling
+		// capabilities.
+		hasSystemImageSupport, err := d.HasGpuProfilingSupportInSystemImage(ctx)
+		if err != nil {
+			return log.Err(ctx, err, "No developer drivers and fail to query GPU profiling support in system image.")
+		}
+		if !hasSystemImageSupport {
+			log.E(ctx, "No developer drivers and no GPU profiling support found in system image.")
+			return log.Err(ctx, nil, "No developer drivers and no GPU profiling support found in system image.")
+		}
+		// Can proceed to start the data producers because GPU profiling support
+		// is found in system image.
 	}
+
 	startSignal, startFunc := task.NewSignal()
 	startFunc = task.Once(startFunc)
 	crash.Go(func() {
-		err := launchPerfettoProducer(ctx, d, useSystemImage, startFunc)
+		err := launchPerfettoProducer(ctx, d, driver, startFunc)
 		if err != nil {
 			log.E(ctx, "[ensurePerfettoProducerLaunched] error: %v", err)
 		}
@@ -267,25 +277,17 @@ func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) e
 	return nil
 }
 
-func launchPerfettoProducer(ctx context.Context, d adb.Device, useSystemImage bool, startFunc task.Task) error {
+func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver, startFunc task.Task) error {
 	// Extract the producer launcher from the APK.
 	if err := preparePerfettoProducerLauncherFromApk(ctx, d); err != nil {
 		return err
 	}
 
-	// Construct the shell command to launch producer. If system image support
-	// is not requested, query and construct against the developer driver.
-	// Otherwise, directly run the command to launch the producer inside the
-	// system image.
+	// Construct the shell command to launch producer. If developer driver is
+	// found, then construct against it. Otherwise, directly run the command to
+	// launch the data producers in the system image.
 	script := fmt.Sprintf(launcherScript, launcherPath)
-	if !useSystemImage {
-		driver, err := d.GraphicsDriver(ctx)
-		if err != nil {
-			return err
-		}
-		if driver.Package == "" {
-			return log.Err(ctx, nil, "No prerelease driver found.")
-		}
+	if driver.Package != "" {
 		abi := d.Instance().GetConfiguration().PreferredABI(nil)
 		script = "export LD_LIBRARY_PATH=\"" + driver.Path + "!/lib/" + abi.Name + "/\";" + script
 	}

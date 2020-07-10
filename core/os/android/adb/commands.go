@@ -327,8 +327,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 	result := b.To.Configuration.PerfettoCapability
 	if result == nil {
 		result = &device.PerfettoCapability{
-			SystemImageGpuProfiling: &device.GPUProfiling{},
-			GpuProfiling:            &device.GPUProfiling{},
+			GpuProfiling: &device.GPUProfiling{},
 		}
 	}
 
@@ -336,16 +335,11 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		return result, fmt.Errorf("Perfetto is not supported on this device")
 	}
 
-	if supported, _ := b.HasGpuProfilingSupportInSystemImage(ctx); supported {
-		gpu, err := b.QueryPerfettoGpuProfilingDataSources(ctx)
-		if err != nil {
-			return result, log.Errf(ctx, err, "Failed to query perfetto GPU profiling data sources.")
-		}
-		gpu.HasRenderStage = true
-		layerApk, _ := b.GetGpuProfilingLayerPackageName(ctx)
-		gpu.HasRenderStageProducerLayer = layerApk != ""
-		result.SystemImageGpuProfiling = gpu
+	gpu, err := b.QueryPerfettoGpuProfilingDataSources(ctx)
+	if err != nil {
+		return result, log.Errf(ctx, err, "Failed to query perfetto GPU profiling data sources.")
 	}
+	result.GpuProfiling = gpu
 
 	// SurfaceFlinger frame lifecycle perfetto producer is mandated by Android 11 CTS, hence it will
 	// always exist.

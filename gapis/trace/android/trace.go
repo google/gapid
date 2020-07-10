@@ -87,7 +87,7 @@ func newValidator(dev bind.Device) validate.Validator {
 	return nil
 }
 
-func deviceValidationTraceOptions(ctx context.Context, v validate.Validator, useSystemImage bool) (*service.TraceOptions, error) {
+func deviceValidationTraceOptions(ctx context.Context, v validate.Validator) (*service.TraceOptions, error) {
 	counters := v.GetCounters()
 	ids := make([]uint32, len(counters))
 	for i, counter := range counters {
@@ -117,7 +117,6 @@ func deviceValidationTraceOptions(ctx context.Context, v validate.Validator, use
 				},
 			},
 		},
-		UseSystemImageGpuProfiling: useSystemImage,
 	}, nil
 }
 
@@ -149,7 +148,7 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 	return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
 }
 
-func (t *androidTracer) Validate(ctx context.Context, useSystemImage bool) error {
+func (t *androidTracer) Validate(ctx context.Context) error {
 	ctx = status.Start(ctx, "Android Device Validation")
 	defer status.Finish(ctx)
 	if t.v == nil {
@@ -160,17 +159,8 @@ func (t *androidTracer) Validate(ctx context.Context, useSystemImage bool) error
 	if osConfiguration.GetPerfettoCapability() == nil {
 		return log.Errf(ctx, nil, "No Perfetto Capability found on device %d", d.Instance().ID.ID())
 	}
-	if useSystemImage {
-		if gpuProfiling := osConfiguration.GetPerfettoCapability().GetSystemImageGpuProfiling(); gpuProfiling == nil || gpuProfiling.GetGpuCounterDescriptor() == nil {
-			return log.Errf(ctx, nil, "No GPU profiling capabilities found on device %d", d.Instance().ID.ID())
-		}
-	} else {
-		if driver, _ := d.GraphicsDriver(ctx); driver.Package == "" {
-			return log.Errf(ctx, nil, "No updatable graphics driver found on device %d", d.Instance().ID.ID())
-		}
-		if gpuProfiling := osConfiguration.GetPerfettoCapability().GetGpuProfiling(); gpuProfiling == nil || gpuProfiling.GetGpuCounterDescriptor() == nil {
-			return log.Errf(ctx, nil, "No GPU profiling capabilities found on device %d", d.Instance().ID.ID())
-		}
+	if gpuProfiling := osConfiguration.GetPerfettoCapability().GetGpuProfiling(); gpuProfiling == nil || gpuProfiling.GetGpuCounterDescriptor() == nil {
+		return log.Errf(ctx, nil, "No GPU profiling capabilities found on device %d", d.Instance().ID.ID())
 	}
 
 	// Get ActivityAction
@@ -186,7 +176,7 @@ func (t *androidTracer) Validate(ctx context.Context, useSystemImage bool) error
 	}
 
 	// Construct trace config
-	traceOpts, err := deviceValidationTraceOptions(ctx, t.v, useSystemImage)
+	traceOpts, err := deviceValidationTraceOptions(ctx, t.v)
 	if err != nil {
 		return log.Err(ctx, err, "Could not get the trace configuration")
 	}

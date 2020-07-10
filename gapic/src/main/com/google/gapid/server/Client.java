@@ -251,7 +251,6 @@ public class Client {
         stack -> MoreFutures.transformAsync(
             client.validateDevice(Service.ValidateDeviceRequest.newBuilder()
                 .setDevice(device)
-                .setUseSystemImage(false)
                 .build()),
             in -> immediateFuture(in)));
   }

@@ -115,12 +115,12 @@ func ProcessProfilingData(ctx context.Context, device *path.Device, capture *pat
 	return t.ProcessProfilingData(ctx, buffer, capture, handleMapping, syncData)
 }
 
-func Validate(ctx context.Context, device *path.Device, useSystemImage bool) error {
+func Validate(ctx context.Context, device *path.Device) error {
 	t, err := GetTracer(ctx, device)
 	if err != nil {
 		return err
 	}
-	return t.Validate(ctx, useSystemImage)
+	return t.Validate(ctx)
 }
 
 func GetTracer(ctx context.Context, device *path.Device) (tracer.Tracer, error) {

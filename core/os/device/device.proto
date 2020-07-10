@@ -187,7 +187,6 @@ message PerfettoCapability {
   VulkanProfilingLayers vulkan_profile_layers = 2;
   bool can_specify_atrace_apps = 3;
   bool hasFrameLifecycle = 4;
-  GPUProfiling system_image_gpu_profiling = 5;
 }
 
 message GPUProfiling {
