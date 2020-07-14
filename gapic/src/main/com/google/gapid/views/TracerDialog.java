@@ -447,8 +447,10 @@ public class TracerDialog {
             perfettoConfig, PERFETTO_LABEL + getConfigSummary(models.settings, getPerfettoCaps()));
         Widgets.createButton(perfettoConfig, "Configure", e -> {
           showPerfettoConfigDialog(getShell(), models, widgets, getPerfettoCaps());
-          updatePerfettoConfigLabel(models.settings);
-          updateEmptyAppWithRenderStageWarning(models.settings);
+          if (!isDisposed()) {
+            updatePerfettoConfigLabel(models.settings);
+            updateEmptyAppWithRenderStageWarning(models.settings);
+          }
         });
         perfettoConfig.setVisible(false);
 
