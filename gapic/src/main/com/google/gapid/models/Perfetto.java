@@ -184,13 +184,14 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public final GpuInfo gpu;
     public final FrameInfo frame;
     public final ImmutableMap<Long, CounterInfo> counters;
+    public final ImmutableListMultimap<Long, Long> gpuCounterGroups;
     public final VSync vsync;
     public final TrackConfig tracks;
 
     public Data(QueryEngine queries, TimeSpan traceTime, CpuInfo cpu,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
-        GpuInfo gpu, FrameInfo frame, ImmutableMap<Long, CounterInfo> counters, VSync vsync,
-        TrackConfig tracks) {
+        GpuInfo gpu, FrameInfo frame, ImmutableMap<Long, CounterInfo> counters,
+        ImmutableListMultimap<Long, Long> gpuCounterGroups, VSync vsync, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
       this.cpu = cpu;
@@ -199,6 +200,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       this.gpu = gpu;
       this.frame = frame;
       this.counters = counters;
+      this.gpuCounterGroups = gpuCounterGroups;
       this.vsync = vsync;
       this.tracks = tracks;
     }
@@ -212,6 +214,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       private GpuInfo gpu = GpuInfo.NONE;
       private FrameInfo frame = FrameInfo.NONE;
       private ImmutableMap<Long, CounterInfo> counters;
+      private ImmutableListMultimap<Long, Long> gpuCounterGroups;
       private Map<CounterInfo.Type, ImmutableListMultimap<String, CounterInfo>> countersByName;
       private VSync vsync = VSync.EMPTY;
       public final TrackConfig.Builder tracks = new TrackConfig.Builder();
@@ -278,6 +281,10 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return counters;
       }
 
+      public ImmutableListMultimap<Long, Long> getGpuCounterGroups() {
+        return gpuCounterGroups;
+      }
+
       public ImmutableListMultimap<String, CounterInfo> getCounters(CounterInfo.Type type) {
         ImmutableListMultimap<String, CounterInfo> r = countersByName.get(type);
         return (r == null) ? ImmutableListMultimap.of() : r;
@@ -287,6 +294,11 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         this.counters = counters;
         this.countersByName = counters.values().stream()
             .collect(groupingBy(c -> c.type, toImmutableListMultimap(c -> c.name, identity())));
+        return this;
+      }
+
+      public Builder setCounterGroups(ImmutableListMultimap<Long, Long> groups) {
+        this.gpuCounterGroups = groups;
         return this;
       }
 
@@ -301,7 +313,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
 
       public Data build() {
         return new Data(
-            qe, traceTime, cpu, processes, threads, gpu, frame, counters, vsync, tracks.build());
+            qe, traceTime, cpu, processes, threads, gpu, frame, counters, gpuCounterGroups, vsync, tracks.build());
       }
     }
   }

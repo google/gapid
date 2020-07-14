@@ -17,9 +17,11 @@ package com.google.gapid.perfetto.models;
 
 import static com.google.common.collect.Streams.stream;
 import static com.google.gapid.util.MoreFutures.transform;
+import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
@@ -44,6 +46,9 @@ public class CounterInfo {
         "left join counter on (track_id = ct.id) " +
       "where (value + 1 > value or value - 1 < value) " +
       "group by ct.id";
+
+  private static final String LIST_COUNTER_GROUP_SQL =
+      "select group_id, track_id from gpu_counter_group";
 
   private static final ImmutableMap<Integer, Unit> UNITS = ImmutableMap.<Integer, Unit> builder()
       .put(GpuProfiling.GpuCounterDescriptor.MeasureUnit.NONE_VALUE, Unit.NONE)
@@ -169,10 +174,19 @@ public class CounterInfo {
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> listCounters(Perfetto.Data.Builder data) {
-    return transform(data.qe.query(LIST_SQL), res -> {
-      ImmutableMap.Builder<Long, CounterInfo> counters = ImmutableMap.builder();
-      res.forEachRow((i, r) -> counters.put(r.getLong(0), new CounterInfo(r)));
-      return data.setCounters(counters.build());
+    return transformAsync(listCounterGroups(data), $1 -> transform(
+      data.qe.query(LIST_SQL), res -> {
+        ImmutableMap.Builder<Long, CounterInfo> counters = ImmutableMap.builder();
+        res.forEachRow((i, r) -> counters.put(r.getLong(0), new CounterInfo(r)));
+        return data.setCounters(counters.build());
+      }));
+  }
+
+  private static ListenableFuture<Perfetto.Data.Builder> listCounterGroups(Perfetto.Data.Builder data) {
+    return transform(data.qe.query(LIST_COUNTER_GROUP_SQL), res -> {
+      ImmutableListMultimap.Builder<Long, Long> groups = ImmutableListMultimap.builder();
+      res.forEachRow((i, r) -> groups.put(r.getLong(0), r.getLong(1)));
+      return data.setCounterGroups(groups.build());
     });
   }
 

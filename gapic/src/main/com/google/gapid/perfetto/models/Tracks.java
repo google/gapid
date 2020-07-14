@@ -20,9 +20,12 @@ import static com.google.gapid.perfetto.views.StyleConstants.PROCESS_COUNTER_TRA
 import static com.google.gapid.perfetto.views.TrackContainer.group;
 import static com.google.gapid.perfetto.views.TrackContainer.single;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.canvas.Panel;
@@ -38,10 +41,14 @@ import com.google.gapid.perfetto.views.ThreadPanel;
 import com.google.gapid.perfetto.views.TitlePanel;
 import com.google.gapid.perfetto.views.VulkanCounterPanel;
 import com.google.gapid.perfetto.views.VulkanEventPanel;
+import com.google.gapid.proto.device.GpuProfiling.GpuCounterDescriptor.GpuCounterGroup;
 import com.google.gapid.util.Scheduler;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -55,6 +62,17 @@ public class Tracks {
   private static final ImmutableSet<String> PROC_STATS_COUNTER = ImmutableSet.of(
       "mem.virt", "mem.rss", "mem.locked", "oom_score_adj"
   );
+
+  private static final ImmutableMap<GpuCounterGroup, String> GPU_COUNTER_GROUP_NAMES =
+      new ImmutableMap.Builder<GpuCounterGroup, String>()
+          .put(GpuCounterGroup.UNCLASSIFIED, "General Counters")
+          .put(GpuCounterGroup.SYSTEM, "System Counters")
+          .put(GpuCounterGroup.VERTICES, "Vertex Counters")
+          .put(GpuCounterGroup.FRAGMENTS, "Fragment Counters")
+          .put(GpuCounterGroup.PRIMITIVES, "Primitive Counters")
+          .put(GpuCounterGroup.MEMORY, "Memory Counters")
+          .put(GpuCounterGroup.COMPUTE, "Compute Counters")
+          .build();
 
   private Tracks() {
   }
@@ -111,9 +129,9 @@ public class Tracks {
   }
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {
-    List<CounterInfo> counters = data.getCounters(CounterInfo.Type.Gpu).values().stream()
+    Map<Long, CounterInfo> counters = data.getCounters(CounterInfo.Type.Gpu).values().stream()
         .filter(c -> c.count > 0)
-        .collect(toList());
+        .collect(toMap(c -> c.id, c -> c));
 
     if (counters.isEmpty() && data.getGpu().isEmpty()) {
       // No GPU data available.
@@ -157,11 +175,39 @@ public class Tracks {
             group(state -> new TitlePanel("GPU Counters"), true));
         parent = "gpu_counters";
       }
-      for (CounterInfo counter : counters) {
-        CounterTrack track = new CounterTrack(data.qe, counter);
-        data.tracks.addTrack(parent, track.getId(), counter.name,
-            single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true,
-                /*right truncate*/ true));
+      Map<CounterInfo, CounterTrack> addedTracks = new HashMap();
+      Multimap<Long, Long> groups = data.getGpuCounterGroups();
+      if (groups.keySet().size() > 1) {
+        for (GpuCounterGroup group : GpuCounterGroup.values()) {
+          if (group == GpuCounterGroup.UNRECOGNIZED) {
+            continue;
+          }
+          Collection<Long> grouped_counters = groups.get(Long.valueOf(group.getNumber()));
+          if (grouped_counters.isEmpty()) {
+            continue;
+          }
+          parent = "gpu_counters_group_" + group.name();
+          String name = GPU_COUNTER_GROUP_NAMES.get(group);
+          data.tracks.addLabelGroup("gpu_counters", parent, name,
+              group(state -> new TitlePanel(name), true));
+          for (Long counter_id : grouped_counters) {
+            CounterInfo counter = counters.get(counter_id);
+            if (counter == null) {
+              continue;
+            }
+            CounterTrack track = addedTracks.computeIfAbsent(counter, res -> new CounterTrack(data.qe, counter));
+            data.tracks.addTrack(parent, group.name() + track.getId(), counter.name,
+                single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true,
+                  /*right truncate*/ true));
+          }
+        }
+      } else {
+        for (CounterInfo counter : counters.values()) {
+          CounterTrack track = new CounterTrack(data.qe, counter);
+          data.tracks.addTrack(parent, track.getId(), counter.name,
+              single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true,
+                  /*right truncate*/ true));
+        }
       }
     }
     return data;
