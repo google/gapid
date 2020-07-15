@@ -1110,7 +1110,7 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 		flags := mem.MemoryAllocateFlagsInfo()
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			NewVkMemoryAllocateFlagsInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
 				pNext,              // pNext
 				flags.Flags(),      // flags
 				flags.DeviceMask(), // deviceMask
