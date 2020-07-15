@@ -31,7 +31,7 @@ import (
 const (
 	// maxSearchBytes is the maximum number of bytes at the beginning of the
 	// file to search for the Perfetto magic UUID.
-	maxSearchBytes = 256
+	maxSearchBytes = 4096
 )
 
 // perfettoUUID is the magic UUID found near the beginning of a Perfetto trace.
