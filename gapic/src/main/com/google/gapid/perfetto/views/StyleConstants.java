@@ -51,6 +51,10 @@ public class StyleConstants {
   public static final double KB_ZOOM_SLOW = 2 * ZOOM_FACTOR_SCALE;
   public static final double KB_ZOOM_FAST = 3 * ZOOM_FACTOR_SCALE;
 
+  // Touchpad handling constants.
+  public static final int TP_PAN_SLOW = 30;
+  public static final int TP_PAN_FAST = 60;
+
   public static class Colors {
     public final RGBA background;
     public final RGBA titleBackground;

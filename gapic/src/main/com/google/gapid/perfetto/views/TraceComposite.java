@@ -21,6 +21,8 @@ import static com.google.gapid.perfetto.views.StyleConstants.KB_PAN_FAST;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_PAN_SLOW;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_FAST;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_SLOW;
+import static com.google.gapid.perfetto.views.StyleConstants.TP_PAN_FAST;
+import static com.google.gapid.perfetto.views.StyleConstants.TP_PAN_SLOW;
 import static com.google.gapid.perfetto.views.StyleConstants.ZOOM_FACTOR_SCALE;
 import static com.google.gapid.widgets.Widgets.createButtonWithImage;
 import static com.google.gapid.widgets.Widgets.createLabel;
@@ -82,9 +84,17 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
       }
     });
     canvas.addListener(SWT.MouseHorizontalWheel, e -> {
-      if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
-        // Ignore horizontal scroll, only when zooming.
-        e.doit = false;
+      int mods = e.stateMask & SWT.MODIFIER_MASK;
+      // Treat horizontal touch pad/scroll wheel ourselves, rather than going through the
+      // scrollbar, since the scrollbar's size is limited.
+      e.doit = false;
+      if (mods == SWT.MOD1) {
+        // Ignore horizontal scroll, when zooming.
+      } else {
+        if (state.dragX(
+            state.getVisibleTime(), e.count * ((mods == SWT.SHIFT) ? TP_PAN_FAST : TP_PAN_SLOW))) {
+          canvas.redraw(Area.FULL, true);
+        }
       }
     });
     canvas.addListener(SWT.Gesture, this::handleGesture);
