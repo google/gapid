@@ -21,6 +21,7 @@ import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.Paths.capture;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -31,6 +32,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
+import com.google.gapid.server.Client.InternalServerErrorException;
 import com.google.gapid.server.Client.UnsupportedVersionException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
@@ -130,6 +132,15 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
     } catch (BadCaptureException e) {
       throttleLogRpcError(LOG, "Failed to load trace file", e);
       return error(Loadable.Message.error(e));
+    } catch (InternalServerErrorException e) {
+      analytics.reportException(e);
+      if (e.getMessage().contains("Cause: Failed to convert")) {
+        LOG.log(WARNING, "Invalid capture format load error:", e);
+        return error(Loadable.Message.error(
+            "Failed to load capture: file contains unsupported, outdated, or corrupted trace data."));
+      } else {
+        return error(Loadable.Message.error(e));
+      }
     } catch (RpcException e) {
       analytics.reportException(e);
       return error(Loadable.Message.error(e));
