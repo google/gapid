@@ -59,8 +59,14 @@ func (d Dynamic) Format(f fmt.State, r rune) {
 				fields = append(fields, fmt.Sprintf("%v%v", v, suffix))
 			}
 		}
+		// TODO: we should sort the fields before formatting, so that we can exit out early, as soon
+		// as the requested number of chars has been reached.
 		sort.Strings(fields)
-		fmt.Fprintf(f, "%vᵈ{%s}", d.Desc.GetName(), strings.Join(fields, ", "))
+		joined := strings.Join(fields, ", ")
+		if width, hasWidth := f.Width(); hasWidth && len(joined) > width {
+			joined = joined[0:width] + "..."
+		}
+		fmt.Fprintf(f, "%vᵈ{%s}", d.Desc.GetName(), joined)
 	}
 }
 

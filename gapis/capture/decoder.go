@@ -165,7 +165,7 @@ func (d *decoder) add(ctx context.Context, child, parent interface{}) error {
 		case api.State:
 			return d.builder.addInitialState(ctx, obj)
 		default:
-			return fmt.Errorf("We do not expect a %T as a child of an initial state: %+v", obj, obj)
+			return fmt.Errorf("We do not expect a %T as a child of an initial state: %+200v", obj, obj)
 		}
 	}
 	return nil
