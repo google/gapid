@@ -89,6 +89,8 @@ def main():
     botutil.adb(['shell', 'settings', 'put', 'system', 'screen_brightness', '0'])
     # Make sure to have the screen "stay awake" during the test, we turn off the screen ourselves at the end
     botutil.adb(['shell', 'settings', 'put', 'global', 'stay_on_while_plugged_in', '7'])
+    # Avoid "Viewing full screen" notifications that makes app loose focus
+    botutil.adb(['shell', 'settings', 'put', 'secure', 'immersive_mode_confirmations', 'confirmed'])
     # Remove any implicit vulkan layers
     botutil.adb(['shell', 'settings', 'delete', 'global', 'enable_gpu_debug_layers'])
     botutil.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_app'])
