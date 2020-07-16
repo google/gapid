@@ -35,6 +35,15 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh, r *path.
 		return nil, nil
 	}
 
+	cmd, err := resolve.Cmd(ctx, cmdPath, r)
+	if err != nil {
+		return nil, err
+	}
+
+	if !cmd.CmdFlags().IsExecutedDraw() {
+		return nil, nil
+	}
+
 	s, err := resolve.GlobalState(ctx, cmdPath.GlobalStateAfter(), r)
 	if err != nil {
 		return nil, err

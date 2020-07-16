@@ -26,9 +26,7 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
-	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -140,7 +138,7 @@ func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.Resolv
 	case *VkQueueSubmit:
 		return drawCallMesh(ctx, dc, p, r)
 	}
-	return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
+	return nil, nil
 }
 
 type MarkerType int
