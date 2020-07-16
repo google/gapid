@@ -279,6 +279,7 @@ public class GeometryView extends Composite
       originalModelItem.setEnabled(false);
       facetedModelItem.setEnabled(false);
       saveItem.setEnabled(false);
+      statusBar.setText("");
     }
   }
 
@@ -294,7 +295,6 @@ public class GeometryView extends Composite
     Geometries.Data meshes = models.geos.getData();
     if (!meshes.hasFaceted()) {
       loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
-      // ?? saveItem.setEnabled(false);
       return;
     }
 
