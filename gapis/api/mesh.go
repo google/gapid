@@ -17,6 +17,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/gapid/core/data/endian"
@@ -29,10 +30,15 @@ import (
 	"github.com/google/gapid/gapis/vertex"
 )
 
+var (
+	// ErrMeshNotAvailable is an error returned by MeshProvider if a mesh is
+	// requested on an object that does not have a mesh (e.g. non-draw call).
+	ErrMeshNotAvailable = errors.New("Mesh not available at this command")
+)
+
 // MeshProvider is the interface implemented by types that provide meshes.
 type MeshProvider interface {
 	// Mesh returns the mesh representation of the object o.
-	// If nil, nil then the object cannot be represented as a mesh.
 	Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*Mesh, error)
 }
 

@@ -30,15 +30,10 @@ func Mesh(ctx context.Context, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, 
 	if err != nil {
 		return nil, err
 	}
-	mesh, err := meshFor(ctx, obj, p, r)
-	switch {
-	case err != nil:
-		return nil, err
-	case mesh != nil:
-		return mesh, nil
-	default:
-		return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
+	if mesh, err := meshFor(ctx, obj, p, r); err != api.ErrMeshNotAvailable {
+		return mesh, err
 	}
+	return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
 }
 
 func meshFor(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
@@ -71,7 +66,7 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveCo
 		for i := o.Commands.To[lastSubcommand]; i >= o.Commands.From[lastSubcommand]; i-- {
 			cmd[lastSubcommand] = i
 			p := o.Commands.Capture.Command(cmd[0], cmd[1:]...).Mesh(p.Options)
-			if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p, r); mesh != nil || err != nil {
+			if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p, r); err != api.ErrMeshNotAvailable {
 				return mesh, err
 			}
 		}

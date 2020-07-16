@@ -138,7 +138,7 @@ func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.Resolv
 	case *VkQueueSubmit:
 		return drawCallMesh(ctx, dc, p, r)
 	}
-	return nil, nil
+	return nil, api.ErrMeshNotAvailable
 }
 
 type MarkerType int

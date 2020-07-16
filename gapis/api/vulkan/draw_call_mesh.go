@@ -32,7 +32,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh, r *path.
 	cmdPath := path.FindCommand(p)
 	if cmdPath == nil {
 		log.W(ctx, "Couldn't find command at path '%v'", p)
-		return nil, nil
+		return nil, api.ErrMeshNotAvailable
 	}
 
 	cmd, err := resolve.Cmd(ctx, cmdPath, r)
@@ -41,7 +41,7 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh, r *path.
 	}
 
 	if !cmd.CmdFlags().IsExecutedDraw() {
-		return nil, nil
+		return nil, api.ErrMeshNotAvailable
 	}
 
 	s, err := resolve.GlobalState(ctx, cmdPath.GlobalStateAfter(), r)
