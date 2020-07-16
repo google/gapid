@@ -78,7 +78,9 @@ def main():
 
     #### Prepare device
     # Wake up (224) and unlock (82) screen, sleep to pass any kind of animation
-    botutil.adb(['shell', 'input', 'keyevent', '224'])
+    # The screen wakeup (224) call sometimes takes more than a second to return,
+    # hence the extended timeout.
+    botutil.adb(['shell', 'input', 'keyevent', '224'], timeout=2)
     time.sleep(2)
     # TODO(b/157444640): Temporary workaround: touch the screen before unlocking it to bypass a possible "Android preview" notification
     botutil.adb(['shell', 'input', 'touchscreen', 'tap', '100', '100'])
