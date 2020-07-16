@@ -60,29 +60,19 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveCo
 			return nil, log.Errf(ctx, nil, "Subcommand indices must be the same length")
 		}
 
-		if len(o.Commands.From) == 1 {
-			s, e := o.Commands.From[0], o.Commands.To[0]
-			for i := e; int64(i) >= int64(s); i-- {
-				p := o.Commands.Capture.Command(i).Mesh(p.Options)
-				if mesh, err := meshFor(ctx, cmds[i], p, r); mesh != nil || err != nil {
-					return mesh, err
-				}
+		lastSubcommand := len(o.Commands.From) - 1
+		for i := 0; i < lastSubcommand; i++ {
+			if o.Commands.From[i] != o.Commands.To[i] {
+				return nil, log.Errf(ctx, nil, "Subcommand ranges must be identical everywhere but the last element")
 			}
-		} else {
-			lastSubcommand := len(o.Commands.From) - 1
-			for i := 0; i < lastSubcommand; i++ {
-				if o.Commands.From[i] != o.Commands.To[i] {
-					return nil, log.Errf(ctx, nil, "Subcommand ranges must be identical everywhere but the last element")
-				}
-			}
+		}
 
-			for i := o.Commands.To[lastSubcommand]; i >= o.Commands.From[lastSubcommand]; i-- {
-				cmd := append([]uint64{}, o.Commands.From[1:]...)
-				cmd[lastSubcommand-1] = i
-				p := o.Commands.Capture.Command(o.Commands.From[0], cmd...).Mesh(p.Options)
-				if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p, r); mesh != nil || err != nil {
-					return mesh, err
-				}
+		cmd := append([]uint64{}, o.Commands.From...) // make a copy of o.Commands.From
+		for i := o.Commands.To[lastSubcommand]; i >= o.Commands.From[lastSubcommand]; i-- {
+			cmd[lastSubcommand] = i
+			p := o.Commands.Capture.Command(cmd[0], cmd[1:]...).Mesh(p.Options)
+			if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p, r); mesh != nil || err != nil {
+				return mesh, err
 			}
 		}
 
