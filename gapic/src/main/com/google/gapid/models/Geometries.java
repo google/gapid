@@ -38,6 +38,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
+import com.google.gapid.server.Client.InvalidArgumentException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
@@ -200,7 +201,7 @@ public class Geometries
     API.DrawPrimitive primitive = mesh.getDrawPrimitive();
     if (positions == null || (normals == null && isPolygon(primitive))) {
       return Futures.immediateFailedFuture(
-          new DataUnavailableException(NO_MESH_ERR, new Client.Stack(() -> "")));
+          new InvalidArgumentException(NO_MESH_ERR, new Client.Stack(() -> "")));
     }
 
     int[] indices = mesh.getIndexBuffer().getIndicesList().stream().mapToInt(x -> x).toArray();
