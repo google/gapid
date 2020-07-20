@@ -275,7 +275,7 @@ func flushDataToMemory(sb *stateBuilder, deviceMemory VkDeviceMemory, alignment 
 	dev := GetState(sb.newState).DeviceMemories().Get(deviceMemory).Device()
 	sort.Slice(dataSlices, func(i, j int) bool { return dataSlices[i].offset < dataSlices[j].offset })
 	begin := dataSlices[0].offset / alignment * alignment
-	end := nextMultipleOf(dataSlices[len(dataSlices)-1].offset+dataSlices[len(dataSlices)-1].data.size, 256)
+	end := nextMultipleOf(dataSlices[len(dataSlices)-1].offset+dataSlices[len(dataSlices)-1].data.size, alignment)
 	atData := sb.MustReserve(end - begin)
 	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
 
