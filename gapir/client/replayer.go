@@ -187,15 +187,23 @@ func (replayer *replayer) handleReplayCommunication(
 			// No valid replay response after crash dump.
 			return log.Errf(ctx, nil, "Replay crash")
 		case *replaysrv.ReplayResponse_PostData:
+			if replayer.executor == nil {
+				return log.Err(ctx, nil, "Got an out-of-band PostData response")
+			}
 			if err := replayer.executor.HandlePostData(ctx, r.GetPostData()); err != nil {
 				return log.Errf(ctx, err, "Handling post data")
 			}
 		case *replaysrv.ReplayResponse_Notification:
-			if err := replayer.executor.HandleNotification(ctx, r.GetNotification()); err != nil {
+			if replayer.executor == nil {
+				// Ignore any out-of-band notifications (e.g. from the prewarm).
+				log.W(ctx, "Got an out-of-band notification: %v", r.GetNotification())
+			} else if err := replayer.executor.HandleNotification(ctx, r.GetNotification()); err != nil {
 				return log.Errf(ctx, err, "Handling notification")
 			}
 		case *replaysrv.ReplayResponse_Finished:
-			if err := replayer.executor.HandleFinished(ctx, nil); err != nil {
+			if replayer.executor == nil {
+				log.I(ctx, "Got a replay finished response for an already finished replay.")
+			} else if err := replayer.executor.HandleFinished(ctx, nil); err != nil {
 				return log.Errf(ctx, err, "Handling finished")
 			}
 		case *replaysrv.ReplayResponse_FenceReadyRequest:
