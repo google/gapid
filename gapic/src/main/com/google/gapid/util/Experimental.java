@@ -16,7 +16,7 @@
 package com.google.gapid.util;
 
 import com.google.common.collect.Lists;
-import com.google.gapid.util.Flags;
+import com.google.gapid.models.Settings;
 import com.google.gapid.util.Flags.Flag;
 
 import java.util.List;
@@ -58,5 +58,10 @@ public class Experimental {
       }
     }
     return args;
+  }
+
+  public static boolean enableVulkanTracing(Settings settings) {
+    return settings.preferences().getEnableAllExperimentalFeatures() ||
+        enableAll.get() || enableVulkanTracing.get();
   }
 }

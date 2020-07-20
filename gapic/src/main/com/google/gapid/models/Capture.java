@@ -35,6 +35,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.InternalServerErrorException;
 import com.google.gapid.server.Client.UnsupportedVersionException;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
 
@@ -124,6 +125,10 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
       Data data = result.get();
       if (data == null || data.path == null) {
         return error(Loadable.Message.error("Invalid/Corrupted trace file!"));
+      } else if (data.isGraphics() && !Experimental.enableVulkanTracing(settings)) {
+        return error(Loadable.Message.error(
+            "The experimental graphics trace feature is currently disabled.\n" +
+            "Enable it via the --experimental-enable-vulkan-tracing command line flag."));
       } else {
         return success(data);
       }
