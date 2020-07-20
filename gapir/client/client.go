@@ -247,7 +247,7 @@ func (client *Client) PrewarmReplay(ctx context.Context, key *ReplayerKey, paylo
 
 	replayer, err := client.getActiveReplayer(ctx, key)
 	if err != nil {
-		return log.Err(ctx, err, "Getting replayer replayer")
+		return log.Err(ctx, err, "Getting active replayer")
 	}
 
 	PrerunReq := replaysrv.ReplayRequest{
