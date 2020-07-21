@@ -92,6 +92,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
         dialog.close();
       }
     });
+    selectReplayDevice();
   }
 
   @Override
@@ -105,7 +106,6 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
   }
 
   protected void selectReplayDevice() {
-
     // If the dialog has been closed, remove the reference to it.
     if (dialog != null && dialog.getShell() == null) {
       dialog = null;
