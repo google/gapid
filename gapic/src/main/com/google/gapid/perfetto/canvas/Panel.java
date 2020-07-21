@@ -264,6 +264,40 @@ public interface Panel {
     }
   }
 
+  public static interface Grouper {
+    public int getPanelCount();
+    public Panel getPanel(int idx);
+    public void setVisible(int idx, boolean visible);
+    public void setFiltered(int idx, boolean filtered);
+
+    public default boolean updateFilter(Function<Panel, FilterValue> include) {
+      boolean found = false;
+      for (int i = 0; i < getPanelCount(); i++) {
+        Panel panel = getPanel(i);
+        FilterValue filter = include.apply(panel);
+        boolean keep = true;
+        if (panel instanceof Grouper) {
+          if (filter == FilterValue.Include) {
+            ((Grouper)panel).updateFilter($ -> FilterValue.Include);
+          } else {
+            keep = ((Grouper)panel).updateFilter(include);
+          }
+        } else if (filter == FilterValue.DescendOrExclude) {
+          keep = false;
+        }
+        setFiltered(i, !keep);
+        found |= keep;
+      }
+      return found;
+    }
+  }
+
+  public static enum FilterValue {
+    Include,           // Include this panel and if it's a group, all its children.
+    DescendOrInclude,  // If this panel is a group then recursively filter, otherwise include it.
+    DescendOrExclude;  // If this panel is a group then recursively filter, otherwise exclude it.
+  }
+
   public abstract static class Base implements Panel {
     protected double width;
     protected double height;

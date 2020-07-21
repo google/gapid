@@ -29,6 +29,7 @@ import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
+import static com.google.gapid.widgets.Widgets.withSizeHints;
 
 import com.google.gapid.models.Analytics;
 import com.google.gapid.perfetto.TimeSpan;
@@ -46,6 +47,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.ScrollBar;
+import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 
 import java.util.function.Consumer;
@@ -66,7 +68,7 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
     state.addListener(this);
 
     setLayout(withMargin(new GridLayout(1, false), 0, 0));
-    TopBar topBar = withLayoutData(new TopBar(this, analytics, theme),
+    TopBar topBar = withLayoutData(new TopBar(this, analytics, theme, this::updateFilter),
         new GridData(SWT.FILL, SWT.TOP, true, false));
     canvas = withLayoutData(new PanelCanvas(this, SWT.H_SCROLL | SWT.V_SCROLL, theme, rootPanel),
         new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -211,6 +213,11 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
   protected abstract S createState();
   protected abstract RootPanel<S> createRootPanel();
 
+  private void updateFilter(String search) {
+    rootPanel.updateFilter(search);
+    canvas.structureHasChanged();
+  }
+
   public S getState() {
     return state;
   }
@@ -300,16 +307,24 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
   private static class TopBar extends Composite {
     private final ToolBar toolBar;
 
-    public TopBar(Composite parent, Analytics analytics, Theme theme) {
+    public TopBar(Composite parent, Analytics analytics, Theme theme, Consumer<String> onSearch) {
       super(parent, SWT.NONE);
-      setLayout(new GridLayout(3, false));
+      setLayout(new GridLayout(4, false));
       withLayoutData(createLabel(this, "Mode:"),
           new GridData(SWT.BEGINNING, SWT.CENTER, false, false));
       toolBar = withLayoutData(new ToolBar(this, SWT.FLAT | SWT.HORIZONTAL | SWT.TRAIL),
-          new GridData(SWT.FILL, SWT.CENTER, true, true));
+          new GridData(SWT.BEGINNING, SWT.CENTER, false, false));
+      Text search = withLayoutData(
+          new Text(this, SWT.SINGLE | SWT.SEARCH | SWT.ICON_SEARCH | SWT.ICON_CANCEL),
+          withSizeHints(new GridData(SWT.BEGINNING, SWT.CENTER, false, false), 300, SWT.DEFAULT));
+      search.setMessage("Filter tracks by name...");
       withLayoutData(
           createButtonWithImage(this, theme.help(), e -> showHelp(getShell(), analytics, theme)),
-          new GridData(SWT.END, SWT.CENTER, false, false));
+          new GridData(SWT.END, SWT.CENTER, true, false));
+
+      search.addListener(SWT.Modify, e -> {
+        onSearch.accept(search.getText().trim().toLowerCase());
+      });
     }
 
     public Consumer<RootPanel.MouseMode> buildModeActions(Theme theme, Consumer<MouseMode> onClick) {

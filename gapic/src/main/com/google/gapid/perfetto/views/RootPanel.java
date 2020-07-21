@@ -519,6 +519,17 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     return state.setVisibleTime(new TimeSpan(newStart, newEnd));
   }
 
+  public void updateFilter(String search) {
+    bottom.updateFilter(panel -> {
+      if (panel instanceof FilterablePanel) {
+        return ((FilterablePanel)panel).include(search) ?
+            Panel.FilterValue.Include : Panel.FilterValue.DescendOrExclude;
+      }
+      // Panels that are not filterable, should be shown if they are not groups.
+      return Panel.FilterValue.DescendOrInclude;
+    });
+  }
+
   public static class ForSystemTrace extends RootPanel<State.ForSystemTrace> {
 
     public ForSystemTrace(State.ForSystemTrace state, Settings settings) {

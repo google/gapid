@@ -97,7 +97,7 @@ public class TrackContainer {
   }
 
   private static class Single<T extends TrackPanel<T>> extends Panel.Base
-      implements CopyablePanel<Single<T>> {
+      implements CopyablePanel<Single<T>>, FilterablePanel {
     private final T track;
     private final boolean sep;
     protected final BiConsumer<T, Boolean> toggleDetails;
@@ -129,6 +129,11 @@ public class TrackContainer {
 
     private Single<T> copyWithSeparator() {
       return new Single<T>(track.copy(), true, toggleDetails, showDetails, pinState, rightTruncate);
+    }
+
+    @Override
+    public boolean include(String search) {
+      return track.getTitle().toLowerCase().contains(search);
     }
 
     @Override
@@ -209,7 +214,7 @@ public class TrackContainer {
   }
 
   private static class Group<T extends CopyablePanel<T> & TitledPanel, D extends CopyablePanel<D>>
-      extends Panel.Base implements CopyablePanel<Group<T, D>> {
+      extends Panel.Base implements CopyablePanel<Group<T, D>>, Panel.Grouper, FilterablePanel {
     private final T summary;
     private final CopyablePanel.Group children;
     protected final BiConsumer<CopyablePanel.Group, Boolean> toggleDetails;
@@ -242,6 +247,11 @@ public class TrackContainer {
     public TrackContainer.Group<T, D> copy() {
       return new TrackContainer.Group<T, D>(
           summary.copy(), children.copy(), expanded, toggleDetails, showDetails, pinState);
+    }
+
+    @Override
+    public boolean include(String search) {
+      return summary.getTitle().toLowerCase().contains(search);
     }
 
     @Override
@@ -370,6 +380,26 @@ public class TrackContainer {
       } else {
         return summary.onMouseMove(m, x, y, mods);
       }
+    }
+
+    @Override
+    public int getPanelCount() {
+      return children.getPanelCount();
+    }
+
+    @Override
+    public Panel getPanel(int idx) {
+      return children.getPanel(idx);
+    }
+
+    @Override
+    public void setVisible(int idx, boolean visible) {
+      children.setVisible(idx, visible);
+    }
+
+    @Override
+    public void setFiltered(int idx, boolean filtered) {
+      children.setFiltered(idx, filtered);
     }
 
     private class TrackTitleHover extends TrackContainer.TrackTitleHover {

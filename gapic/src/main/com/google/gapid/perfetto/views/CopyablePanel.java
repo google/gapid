@@ -33,13 +33,13 @@ public interface CopyablePanel<T extends CopyablePanel<T>> extends Panel {
    */
   public T copy();
 
-  public static class Group implements CopyablePanel<Group> {
+  public static class Group implements CopyablePanel<Group>, Panel.Grouper {
     private final PanelGroup group = new PanelGroup();
 
     @Override
     public Group copy() {
       Group copy = new Group();
-      for (int i = 0; i < group.size(); i++) {
+      for (int i = 0; i < group.getPanelCount(); i++) {
         copy.add(((CopyablePanel<?>)group.getPanel(i)).copy());
         copy.group.setVisible(i, group.isVisible(i));
       }
@@ -50,6 +50,7 @@ public interface CopyablePanel<T extends CopyablePanel<T>> extends Panel {
       group.add(child);
     }
 
+    @Override
     public void setVisible(int idx, boolean visible) {
       group.setVisible(idx, visible);
     }
@@ -82,6 +83,21 @@ public interface CopyablePanel<T extends CopyablePanel<T>> extends Panel {
     @Override
     public void visit(Visitor v, Area area) {
       group.visit(v, area);
+    }
+
+    @Override
+    public int getPanelCount() {
+      return group.getPanelCount();
+    }
+
+    @Override
+    public Panel getPanel(int idx) {
+      return group.getPanel(idx);
+    }
+
+    @Override
+    public void setFiltered(int idx, boolean filtered) {
+      group.setFiltered(idx, filtered);
     }
   }
 }

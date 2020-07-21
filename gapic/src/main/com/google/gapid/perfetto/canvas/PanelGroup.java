@@ -23,16 +23,18 @@ import java.util.List;
 /**
  * Contains a list of child {@link Panel panels}, which are laid out vertically.
  */
-public class PanelGroup extends Panel.Base {
+public class PanelGroup extends Panel.Base implements Panel.Grouper {
   private final List<PanelGroup.Child> panels = Lists.newArrayList();
 
   public PanelGroup() {
   }
 
-  public int size() {
+  @Override
+  public int getPanelCount() {
     return panels.size();
   }
 
+  @Override
   public Panel getPanel(int idx) {
     return panels.get(idx).panel;
   }
@@ -65,18 +67,24 @@ public class PanelGroup extends Panel.Base {
   }
 
   public boolean isVisible(int idx) {
-    return panels.get(idx).visible;
+    return panels.get(idx).isVisible();
   }
 
+  @Override
   public void setVisible(int idx, boolean visible) {
-    panels.get(idx).visible = visible;
+    panels.get(idx).setVisibile(visible);
+  }
+
+  @Override
+  public void setFiltered(int idx, boolean include) {
+    panels.get(idx).setFiltered(include);
   }
 
   @Override
   public double getPreferredHeight() {
     double y = 0;
     for (Child child : panels) {
-      double want = child.visible ? child.panel.getPreferredHeight() : 0;
+      double want = child.isVisible() ? child.panel.getPreferredHeight() : 0;
       child.y = y;
       child.h = want;
       y += want;
@@ -88,7 +96,7 @@ public class PanelGroup extends Panel.Base {
   public void setSize(double w, double h) {
     super.setSize(w, h);
     for (PanelGroup.Child child : panels) {
-      if (child.visible) {
+      if (child.isVisible()) {
         child.panel.setSize(w, child.h);
       }
     }
@@ -101,7 +109,7 @@ public class PanelGroup extends Panel.Base {
 
     for (int i = first; i < panels.size(); i++) {
       PanelGroup.Child child = panels.get(i);
-      if (!child.visible) {
+      if (!child.isVisible()) {
         continue;
       }
 
@@ -122,7 +130,7 @@ public class PanelGroup extends Panel.Base {
     int first = findPanelIdx(area.y);
     for (int i = first; i < panels.size(); i++) {
       PanelGroup.Child child = panels.get(i);
-      if (!child.visible) {
+      if (!child.isVisible()) {
         continue;
       }
       area.intersect(0, child.y, width, child.h)
@@ -150,7 +158,7 @@ public class PanelGroup extends Panel.Base {
 
   private int findPanelIdx(double y) {
     int first = Collections.binarySearch(panels, null, (c1, ign) -> {
-      if (c1.visible) {
+      if (c1.isVisible()) {
         return (y >= c1.y && y < c1.getNextY()) ? 0 : Double.compare(c1.y, y);
       } else {
         return c1.y < y ? -1 : 1;
@@ -167,17 +175,31 @@ public class PanelGroup extends Panel.Base {
   private static class Child {
     public final Panel panel;
     public double y, h;
-    public boolean visible;
+    private boolean visible;
+    private boolean filtered;
 
     public Child(Panel panel, double y, double h) {
       this.panel = panel;
       this.y = y;
       this.h = Math.max(0, h);
       this.visible = true;
+      this.filtered = false;
     }
 
     public double getNextY() {
       return y + h;
+    }
+
+    public void setVisibile(boolean visible) {
+      this.visible = visible;
+    }
+
+    public void setFiltered(boolean filtered) {
+      this.filtered = filtered;
+    }
+
+    public boolean isVisible() {
+      return visible && !filtered;
     }
   }
 }
