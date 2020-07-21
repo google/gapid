@@ -75,6 +75,10 @@ public interface Messages {
   public static final String SETTINGS_TITLE = "Modify Settings";
   public static final String ERROR_MESSAGE =
       "The application encountered an error:\n%s\n\nPlease check the logs for details.";
+  public static final String SERVER_ERROR_MESSAGE =
+      "\nThe server has exited with an error code of: %s \n" +
+      "Most functions in AGI are unavailable without a server. \n" +
+      "You can restart the server, exit AGI, or close the dialog to continue without a server.";
   public static final String BUG_BODY =
       "AGI Version: " + GAPID_VERSION.toString() + "\n" +
       "OS: " + OS.name + " " + OS.arch + "\n\n" +

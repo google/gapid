@@ -81,6 +81,7 @@ public class MainWindow extends ApplicationWindow {
   private final Settings settings;
   private final Theme theme;
   private Composite mainArea;
+  private LoadablePanel<MainViewContainer> mainUi;
   private LoadingScreen loadingScreen;
   protected StatusBar statusBar;
 
@@ -105,13 +106,14 @@ public class MainWindow extends ApplicationWindow {
     loadingScreen.showOptions(client, models, widgets);
   }
 
+
   public void initMainUi(Client client, Models models, Widgets widgets) {
     Shell shell = getShell();
 
     showLoadingMessage("Setting up UI...");
     initMenus(client, models, widgets);
 
-    LoadablePanel<MainViewContainer> mainUi = new LoadablePanel<MainViewContainer>(
+    mainUi = new LoadablePanel<MainViewContainer>(
         mainArea, widgets, parent -> new MainViewContainer(parent, models, widgets));
     models.capture.addListener(new Capture.Listener() {
       @Override
@@ -181,6 +183,7 @@ public class MainWindow extends ApplicationWindow {
       }
     });
   }
+
 
   private void watchForUpdates(Client client, Models models) {
     new UpdateWatcher(models.settings, client, (release) -> {
@@ -267,6 +270,12 @@ public class MainWindow extends ApplicationWindow {
         Math.max(0, bounds.height - size.y) / 3);
   }
 
+  public void showWelcomeScreen() {
+    if (loadingScreen != null) {
+      setTopControl(loadingScreen);
+    }
+  }
+
   @Override
   protected MenuManager createMenuManager() {
     MenuManager manager = new MenuManager();
@@ -340,7 +349,7 @@ public class MainWindow extends ApplicationWindow {
   }
 
   private MenuManager createEditMenu(Models models, Widgets widgets) {
-    MenuManager manager = new MenuManager("&Edit");
+    MenuManager manager = new MenuManager("&Edit", MenuItems.EDIT_ID);
     Action editCopy = MenuItems.EditCopy.create(() -> {
       models.analytics.postInteraction(View.Main, ClientAction.Copy);
       widgets.copypaste.doCopy();
@@ -362,7 +371,7 @@ public class MainWindow extends ApplicationWindow {
   }
 
   private MenuManager createGotoMenu(Models models) {
-    MenuManager manager = new MenuManager("&Goto");
+    MenuManager manager = new MenuManager("&Goto", MenuItems.GOTO_ID);
     Action gotoCommand = MenuItems.GotoCommand.create(() -> showGotoCommandDialog(getShell(), models));
     Action gotoMemory = MenuItems.GotoMemory.create(() -> showGotoMemoryDialog(getShell(), models));
 
@@ -400,7 +409,7 @@ public class MainWindow extends ApplicationWindow {
   }
 
   private MenuManager createHelpMenu(Models models, Widgets widgets) {
-    MenuManager manager = new MenuManager("&Help");
+    MenuManager manager = new MenuManager("&Help", MenuItems.HELP_ID);
     manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp(models.analytics)));
     manager.add(MenuItems.HelpAbout.create(
         () -> showAbout(getShell(), models.analytics, widgets)));
@@ -488,7 +497,10 @@ public class MainWindow extends ApplicationWindow {
     HelpFileBug("File a &Bug");
 
     public static final String FILE_ID = "file";
+    public static final String EDIT_ID = "edit";
+    public static final String GOTO_ID = "goto";
     public static final String VIEW_ID = "view";
+    public static final String HELP_ID = "help";
 
     private final String label;
     private final int accelerator;

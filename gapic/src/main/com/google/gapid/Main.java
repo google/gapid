@@ -17,6 +17,7 @@ package com.google.gapid;
 
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
+import static com.google.gapid.views.ErrorDialog.showErrorDialogWithTwoButtons;
 import static com.google.gapid.views.WelcomeDialog.showFirstTimeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
@@ -28,6 +29,7 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
+import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.server.GapisProcess;
 import com.google.gapid.util.Crash2ExceptionHandler;
@@ -44,7 +46,9 @@ import com.google.gapid.views.TracerDialog;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
+import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.window.Window;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
@@ -89,8 +93,10 @@ public class Main {
     private final ExceptionHandler handler;
     private final String[] args;
     protected final MainWindow window;
-    private final Server server;
 
+    // Client is an immutable wrapper keeping track of inner server-dependent GapidClient instance.
+    private final Client client;
+    private Server server;
     private Models models;
     private Widgets widgets;
 
@@ -106,7 +112,8 @@ public class Main {
           scheduleIfNotDisposed(getShell(), () -> Scheduler.EXECUTOR.execute(UI.this::startup));
         }
       };
-      server = new Server(settings);
+      this.client = new Client();
+      server = new Server(settings, client);
 
       registerWindowExceptionHandler();
     }
@@ -149,8 +156,8 @@ public class Main {
     }
 
     private void uiStartup(Shell shell) {
-      models = Models.create(shell, settings, handler, server.getClient(), window.getStatusBar());
-      widgets = Widgets.create(shell.getDisplay(), theme, server.getClient(), models);
+      models = Models.create(shell, settings, handler, client, window.getStatusBar());
+      widgets = Widgets.create(shell.getDisplay(), theme, client, models);
 
       Runnable onStart = () -> {
         if (args.length == 1) {
@@ -158,7 +165,7 @@ public class Main {
         }
       };
 
-      window.initMainUi(server.getClient(), models, widgets);
+      window.initMainUi(client, models, widgets);
       if (models.settings.preferences().getSkipFirstRunDialog()) {
         shell.getDisplay().asyncExec(onStart);
       } else {
@@ -166,7 +173,7 @@ public class Main {
       }
 
       // Add the links on Loading Screen after the server set up.
-      window.updateLoadingScreen(server.getClient(), models, widgets);
+      window.updateLoadingScreen(client, models, widgets);
     }
 
     @Override
@@ -176,11 +183,26 @@ public class Main {
 
     @Override
     public void onServerExit(int code, String panic) {
-      scheduleIfStillOpen(shell ->
-        // TODO: try to restart the server?
-        showErrorDialog(shell, getAnalytics(),
-            "The gapis server has exited with an error code of: " + code, panic)
+      scheduleIfStillOpen(shell -> showErrorDialogWithTwoButtons(
+          shell, getAnalytics(), String.format(Messages.SERVER_ERROR_MESSAGE, code), panic,
+          IDialogConstants.RETRY_ID, "Restart Server", this::restartServer,
+          IDialogConstants.CLOSE_ID, "Exit", window::close)
       );
+    }
+
+    private void restartServer() {
+      try {
+        server = new Server(settings, client);
+        server.connect(this);
+        scheduleIfStillOpen(this::restartUi);
+      } catch (GapisInitException e) {
+        onServerExit(-42, Throwables.getStackTraceAsString(e));
+      }
+    }
+
+    private void restartUi(Shell shell) {
+      models.reset();
+      window.showWelcomeScreen();
     }
 
     private void scheduleIfStillOpen(ShellRunnable run) {

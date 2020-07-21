@@ -64,9 +64,15 @@ import java.util.logging.Logger;
 public class Client {
   private static final Logger LOG = Logger.getLogger(Client.class.getName());
 
-  private final GapidClient client;
+  private GapidClient client;
+
+  public Client() { /* Initialize an empty wrapper. */}
 
   public Client(GapidClient client) {
+    this.client = client;
+  }
+
+  public void setGapidClient(GapidClient client) {
     this.client = client;
   }
 

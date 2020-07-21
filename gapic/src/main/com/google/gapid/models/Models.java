@@ -90,6 +90,20 @@ public class Models {
         status);
   }
 
+  public void reset() {
+    capture.reset();
+    devices.resetReplayDevice();
+    timeline.reset();
+    commands.reset();
+    resources.reset();
+    state.reset();
+    reports.reset();
+    geos.reset();
+    memory.reset();
+    perfetto.reset();
+    profile.reset();
+  }
+
   public void dispose() {
     settings.save();
   }

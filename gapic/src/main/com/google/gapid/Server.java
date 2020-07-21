@@ -60,11 +60,12 @@ public class Server {
       "cache", true, "Whether to use a cache between the UI and the gapis server.", true);
 
   private final Settings settings;
+  private final Client client;
   private GapisConnection gapisConnection;
-  private Client client;
 
-  public Server(Settings settings) {
+  public Server(Settings settings, Client client) {
     this.settings = settings;
+    this.client = client;
   }
 
   public void connect(GapisProcess.Listener listener) throws GapisInitException {
@@ -86,10 +87,6 @@ public class Server {
     }
   }
 
-  public Client getClient() {
-    return client;
-  }
-
   public void disconnect() {
     if (gapisConnection != null) {
       gapisConnection.close();
@@ -107,7 +104,7 @@ public class Server {
       if (!useCache.get()) {
         LOG.log(WARNING, "** Not using caching in the UI, this is only meant for testing. **");
       }
-      client = new Client(connection.createGapidClient(useCache.get()));
+      client.setGapidClient(connection.createGapidClient(useCache.get()));
     } catch (IOException e) {
       throw new GapisInitException(
           GapisInitException.MESSAGE_FAILED_CONNECT, "unable to create client", e);
