@@ -21,37 +21,45 @@ import (
 	"github.com/google/gapid/gapis/api/transform2"
 )
 
-var _ transform2.Transform = &displayToSurface2{}
+var _ transform2.Transform = &displayToSurface{}
 
-// displayToSurface2 is a transformation that enables rendering during replay to
+// displayToSurface is a transformation that enables rendering during replay to
 // the original surface.
-type displayToSurface2 struct {
+type displayToSurface struct {
 	surfaceTypes map[uint64]uint32
 }
 
-func newDisplayToSurface2() *displayToSurface2 {
-	return &displayToSurface2{
+func newDisplayToSurface() *displayToSurface {
+	return &displayToSurface{
 		surfaceTypes: map[uint64]uint32{},
 	}
 }
 
-func (t *displayToSurface2) RequiresAccurateState() bool {
+func (surfaceTransform *displayToSurface) RequiresAccurateState() bool {
 	return false
 }
 
-func (surfaceTransform *displayToSurface2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (surfaceTransform *displayToSurface) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (surfaceTransform *displayToSurface) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
+func (surfaceTransform *displayToSurface) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }
 
-func (surfaceTransform *displayToSurface2) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (surfaceTransform *displayToSurface) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }
 
-func (surfaceTransform *displayToSurface2) ClearTransformResources(ctx context.Context) {
+func (surfaceTransform *displayToSurface) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
 
-func (surfaceTransform *displayToSurface2) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if modifiedCmd := surfaceTransform.modifySurface(ctx, cmd, inputState); modifiedCmd != nil {
 			inputCommands[i] = modifiedCmd
@@ -61,7 +69,7 @@ func (surfaceTransform *displayToSurface2) TransformCommand(ctx context.Context,
 	return inputCommands, nil
 }
 
-func (surfaceTransform *displayToSurface2) modifySurface(ctx context.Context, cmd api.Cmd, inputState *api.GlobalState) api.Cmd {
+func (surfaceTransform *displayToSurface) modifySurface(ctx context.Context, cmd api.Cmd, inputState *api.GlobalState) api.Cmd {
 	if swapchainCmd, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		newCmd := swapchainCmd.clone(inputState.Arena)
 		newCmd.extras = api.CmdExtras{}

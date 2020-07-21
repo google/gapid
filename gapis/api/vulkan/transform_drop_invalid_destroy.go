@@ -40,6 +40,14 @@ func (dropTransform *dropInvalidDestroy2) RequiresAccurateState() bool {
 	return false
 }
 
+func (dropTransform *dropInvalidDestroy2) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (dropTransform *dropInvalidDestroy2) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (dropTransform *dropInvalidDestroy2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	dropTransform.allocations = NewAllocationTracker(inputState)
 	return inputCommands, nil

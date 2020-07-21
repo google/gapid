@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/terminator"
+	"github.com/google/gapid/gapis/api/transform2"
 )
 
 var _ terminator.Terminator = &earlyTerminator{}
@@ -47,6 +48,14 @@ func (earlyTerminatorTransform *earlyTerminator) Add(ctx context.Context, id api
 
 func (earlyTerminatorTransform *earlyTerminator) RequiresAccurateState() bool {
 	return false
+}
+
+func (earlyTerminatorTransform *earlyTerminator) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (earlyTerminatorTransform *earlyTerminator) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
 }
 
 func (earlyTerminatorTransform *earlyTerminator) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {

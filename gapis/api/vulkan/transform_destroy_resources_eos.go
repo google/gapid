@@ -35,6 +35,14 @@ func (dropTransform *destroyResourcesAtEOS2) RequiresAccurateState() bool {
 	return false
 }
 
+func (dropTransform *destroyResourcesAtEOS2) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (dropTransform *destroyResourcesAtEOS2) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (dropTransform *destroyResourcesAtEOS2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }

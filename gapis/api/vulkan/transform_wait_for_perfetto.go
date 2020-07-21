@@ -54,6 +54,14 @@ func (perfettoTransform *waitForPerfetto) RequiresAccurateState() bool {
 	return false
 }
 
+func (perfettoTransform *waitForPerfetto) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (perfettoTransform *waitForPerfetto) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (perfettoTransform *waitForPerfetto) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }

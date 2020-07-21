@@ -578,3 +578,12 @@ func (t *queryTimestamps) cleanup(ctx context.Context, out transform.Writer) {
 }
 
 func (t *queryTimestamps) BuffersCommands() bool { return false }
+
+func writeEach(ctx context.Context, out transform.Writer, cmds ...api.Cmd) error {
+	for _, cmd := range cmds {
+		if err := out.MutateAndWrite(ctx, api.CmdNoID, cmd); err != nil {
+			return err
+		}
+	}
+	return nil
+}

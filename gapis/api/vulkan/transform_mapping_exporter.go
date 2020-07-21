@@ -75,6 +75,14 @@ func (mappingTransform *mappingExporter) RequiresAccurateState() bool {
 	return false
 }
 
+func (mappingTransform *mappingExporter) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (mappingTransform *mappingExporter) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (mappingTransform *mappingExporter) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }

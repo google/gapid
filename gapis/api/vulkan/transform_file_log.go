@@ -46,6 +46,14 @@ func (fileLog *fileLogTransform) RequiresAccurateState() bool {
 	return false
 }
 
+func (fileLog *fileLogTransform) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (fileLog *fileLogTransform) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (fileLog *fileLogTransform) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }

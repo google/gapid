@@ -40,6 +40,14 @@ func (profilingLayerTransform *profilingLayers) RequiresAccurateState() bool {
 	return false
 }
 
+func (profilingLayerTransform *profilingLayers) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (profilingLayerTransform *profilingLayers) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (profilingLayerTransform *profilingLayers) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	profilingLayerTransform.allocations = NewAllocationTracker(inputState)
 	return inputCommands, nil

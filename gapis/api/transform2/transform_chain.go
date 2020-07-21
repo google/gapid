@@ -26,30 +26,49 @@ import (
 // TransformChain is responsible for running all the transforms on
 // all the commands produced by command enerator
 type TransformChain struct {
-	transforms       []Transform
-	out              Writer
-	generator        commandGenerator.CommandGenerator
-	hasBegun         bool
-	hasEnded         bool
-	currentCommandID api.CmdID
+	transforms            []Transform
+	out                   Writer
+	generator             commandGenerator.CommandGenerator
+	hasBegun              bool
+	hasEnded              bool
+	currentCommandID      api.CmdID
+	currentTransformIndex int
+	mutator               StateMutator
 }
 
 // CreateTransformChain creates a transform chain that will run
 // the required transforms on every command coming from commandGenerator
-func CreateTransformChain(generator commandGenerator.CommandGenerator, transforms []Transform, out Writer) *TransformChain {
-	return &TransformChain{
+func CreateTransformChain(ctx context.Context, generator commandGenerator.CommandGenerator, transforms []Transform, out Writer) *TransformChain {
+	chain := TransformChain{
 		generator:        generator,
 		transforms:       transforms,
 		out:              out,
 		hasBegun:         false,
 		hasEnded:         false,
 		currentCommandID: 0,
+		mutator:          nil,
 	}
+
+	chain.mutator = func(cmds []api.Cmd) error {
+		return chain.stateMutator(ctx, cmds)
+	}
+
+	for _, t := range chain.transforms {
+		if t.RequiresAccurateState() {
+			// Melih TODO: Temporary check until we implement accurate state
+			panic("Implement accurate state")
+		}
+
+		if t.RequiresInnerStateMutation() {
+			t.SetInnerStateMutationFunction(chain.mutator)
+		}
+	}
+
+	return &chain
 }
 
 func (chain *TransformChain) beginChain(ctx context.Context) error {
 	chain.handleInitialState(chain.out.State())
-
 	var err error
 	cmds := make([]api.Cmd, 0)
 
@@ -105,29 +124,31 @@ func (chain *TransformChain) endChain(ctx context.Context) error {
 	return nil
 }
 
-func (chain *TransformChain) transformCommand(ctx context.Context, inputCmd api.Cmd, id api.CmdID) error {
-	var err error
-	cmds := []api.Cmd{inputCmd}
-
-	for _, transform := range chain.transforms {
-		cmds, err = transform.TransformCommand(ctx, id, cmds, chain.out.State())
+func (chain *TransformChain) transformCommands(ctx context.Context, id api.CmdID, inputCmds []api.Cmd, beginTransformIndex int) error {
+	for i := beginTransformIndex; i < len(chain.transforms); i++ {
+		chain.currentTransformIndex = i
+		var err error
+		inputCmds, err = chain.transforms[i].TransformCommand(ctx, id, inputCmds, chain.out.State())
 		if err != nil {
-			log.W(ctx, "Error on Transform on cmd [%v:%v] with transform [%v] : %v", id, inputCmd, transform, err)
+			log.W(ctx, "Error on Transform on cmd [%v:%v] with transform [:v:%v] : %v", id, inputCmds, i, chain.transforms[i], err)
 			return err
 		}
 
-		if transform.RequiresAccurateState() {
+		if chain.transforms[i].RequiresAccurateState() {
 			// Melih TODO: Temporary check until we implement accurate state
 			panic("Implement accurate state")
 		}
+
 	}
 
-	if err = mutateAndWrite(ctx, id, cmds, chain.out); err != nil {
+	if err := mutateAndWrite(ctx, id, inputCmds, chain.out); err != nil {
 		return err
 	}
 
-	for _, transform := range chain.transforms {
-		transform.ClearTransformResources(ctx)
+	if beginTransformIndex == 0 {
+		for _, transform := range chain.transforms {
+			transform.ClearTransformResources(ctx)
+		}
 	}
 
 	return nil
@@ -157,12 +178,32 @@ func (chain *TransformChain) GetNextTransformedCommands(ctx context.Context) err
 		log.I(ctx, "Transforming... (%v:%v)", chain.currentCommandID, currentCommand)
 	}
 
-	err := chain.transformCommand(ctx, currentCommand, chain.currentCommandID)
+	inputCmds := make([]api.Cmd, 0)
+	inputCmds = append(inputCmds, currentCommand)
+	err := chain.transformCommands(ctx, chain.currentCommandID, inputCmds, 0)
 	if err != nil {
 		log.E(ctx, "Replay error (%v:%v): %v", chain.currentCommandID, currentCommand, err)
 	}
+
 	chain.currentCommandID++
 	return err
+}
+
+func (chain *TransformChain) stateMutator(ctx context.Context, cmds []api.Cmd) error {
+	// When we are mutating the state in the middle of the transform
+	// we want to transform the rest of the transforms first
+	beginTransformIndex := chain.currentTransformIndex + 1
+
+	if err := chain.transformCommands(ctx, chain.currentCommandID, cmds, beginTransformIndex); err != nil {
+		log.E(ctx, "state mutator error (%v:%v): %v", chain.currentCommandID, cmds, err)
+		return err
+	}
+
+	// After we finish state mutation we have to restore the value of the currentTransformIndex
+	// that has modified during the state mutation, so that we can continue the current transform
+	// properly.
+	chain.currentTransformIndex = beginTransformIndex - 1
+	return nil
 }
 
 func (chain *TransformChain) handleInitialState(state *api.GlobalState) (*api.GlobalState, error) {

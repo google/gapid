@@ -50,6 +50,14 @@ func (logTransform *captureLog) RequiresAccurateState() bool {
 	return false
 }
 
+func (logTransform *captureLog) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (logTransform *captureLog) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (logTransform *captureLog) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }

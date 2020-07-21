@@ -34,7 +34,7 @@ func TestSingleTransformTransformChain(t *testing.T) {
 	generator := commandGenerator.NewLinearCommandGenerator(nil, inputCmds)
 	transforms := []transform2.Transform{&multiplier_transform{}}
 	writer := newTestWriter()
-	chain := transform2.CreateTransformChain(generator, transforms, writer)
+	chain := transform2.CreateTransformChain(ctx, generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
 		chain.GetNextTransformedCommands(ctx)
@@ -51,7 +51,7 @@ func TestMultipleTransformTransformChain(t *testing.T) {
 	generator := commandGenerator.NewLinearCommandGenerator(nil, inputCmds)
 	transforms := []transform2.Transform{&multiplier_transform{}, &multiplier_transform{}, &multiplier_transform{}}
 	writer := newTestWriter()
-	chain := transform2.CreateTransformChain(generator, transforms, writer)
+	chain := transform2.CreateTransformChain(ctx, generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
 		chain.GetNextTransformedCommands(ctx)
@@ -110,6 +110,14 @@ func (t *multiplier_transform) ClearTransformResources(ctx context.Context) {
 
 func (t *multiplier_transform) RequiresAccurateState() bool {
 	return false
+}
+
+func (t *multiplier_transform) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (t *multiplier_transform) SetInnerStateMutationFunction(stateMutator transform2.StateMutator) {
+	// Do nothing
 }
 
 func multiply(inputCommands []api.Cmd) []api.Cmd {

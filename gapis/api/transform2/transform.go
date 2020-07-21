@@ -23,6 +23,10 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
+// StateMutator is a function that allows transformation to mutate state during transformation
+// TODO: Refactor the transforms that use this to remove this behaviour
+type StateMutator func(cmds []api.Cmd) error
+
 // Transform is the interface that wraps the basic Transform functionality.
 // Implementers of this interface, should take a list of commands and a state
 // so they can do the necessary operations with them to achieve the results
@@ -45,8 +49,15 @@ type Transform interface {
 	// Resources are needed for the state mutation, therefore this should be called after mutation.
 	ClearTransformResources(ctx context.Context)
 
-	// RequiresAccurateState returns true if transform needs the observe the accurate state.
+	// RequiresAccurateState returns true if the transform needs to observe the accurate state.
 	RequiresAccurateState() bool
+
+	// RequiresInnerStateMutation returns true if the transform needs to mutate state during the transformation
+	RequiresInnerStateMutation() bool
+
+	// SetInnerStateMutationFunction sets a mutator function for making a branch in the transform
+	// to transform and mutate pending commands to be able to continue transform.
+	SetInnerStateMutationFunction(stateMutator StateMutator)
 }
 
 // Writer is the interface which consumes the output of transforms.

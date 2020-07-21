@@ -755,60 +755,6 @@ func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Write
 func (t *destroyResourcesAtEOS) PostLoop(ctx context.Context, out transform.Writer) {}
 func (t *destroyResourcesAtEOS) BuffersCommands() bool                              { return false }
 
-func newDisplayToSurface() *DisplayToSurface {
-	return &DisplayToSurface{
-		SurfaceTypes: map[uint64]uint32{},
-	}
-}
-
-// DisplayToSurface is a transformation that enables rendering during replay to
-// the original surface.
-func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) error {
-	switch c := cmd.(type) {
-	case *VkCreateSwapchainKHR:
-		newCmd := c.clone(out.State().Arena)
-		newCmd.extras = api.CmdExtras{}
-		// Add an extra to indicate to custom_replay to add a flag to
-		// the virtual swapchain pNext
-		newCmd.extras = append(api.CmdExtras{t}, cmd.Extras().All()...)
-		return out.MutateAndWrite(ctx, id, newCmd)
-	case *VkCreateAndroidSurfaceKHR:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR)
-	case *VkCreateWaylandSurfaceKHR:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR)
-	case *VkCreateWin32SurfaceKHR:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR)
-	case *VkCreateXcbSurfaceKHR:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR)
-	case *VkCreateXlibSurfaceKHR:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR)
-	case *VkCreateMacOSSurfaceMVK:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK)
-	case *VkCreateStreamDescriptorSurfaceGGP:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP)
-	}
-	return out.MutateAndWrite(ctx, id, cmd)
-}
-
-func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) error { return nil }
-func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)     {}
-func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer)    {}
-func (t *DisplayToSurface) BuffersCommands() bool                                 { return false }
-
 // issuesConfig is a replay.Config used by issuesRequests.
 type issuesConfig struct {
 }
@@ -855,7 +801,7 @@ func (a API) GetInitialPayload(ctx context.Context,
 
 	transforms := getCommonInitializationTransforms("GetInitialPayload", false)
 
-	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
 	if err := controlFlow.TransformAll(ctx); err != nil {
 		log.E(ctx, "[GetInitialPayload] Error: %v", err)
@@ -872,7 +818,7 @@ func (a API) CleanupResources(ctx context.Context, device *device.Instance, out 
 	transforms := []transform2.Transform{
 		newDestroyResourcesAtEOS2(),
 	}
-	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
 	if err := controlFlow.TransformAll(ctx); err != nil {
 		log.E(ctx, "[CleanupResources] Error: %v", err)
@@ -936,7 +882,7 @@ func replayProfile(ctx context.Context,
 	transforms = appendLogTransforms(ctx, "ProfileReplay", c, transforms)
 
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
-	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
 	err := controlFlow.TransformAll(ctx)
 	if err != nil {
@@ -973,17 +919,125 @@ func replayIssues(ctx context.Context,
 
 	req := rrs[0].Request.(issuesRequest)
 	if req.displayToSurface {
-		transforms = append(transforms, newDisplayToSurface2())
+		transforms = append(transforms, newDisplayToSurface())
 	}
 
 	transforms = append(transforms, newDestroyResourcesAtEOS2())
 	transforms = appendLogTransforms(ctx, "IssuesReplay", c, transforms)
 
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
-	chain := transform2.CreateTransformChain(cmdGenerator, transforms, out)
+	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
 	if err := controlFlow.TransformAll(ctx); err != nil {
 		log.E(ctx, "[Issues Replay] Error: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func replayFramebuffer(ctx context.Context,
+	intent replay.Intent,
+	cfg replay.Config,
+	dependentPayload string,
+	rrs []replay.RequestAndResult,
+	c *capture.GraphicsCapture,
+	out transform2.Writer) error {
+
+	initialCmds := getInitialCmds(ctx, dependentPayload, intent, out)
+
+	transforms := make([]transform2.Transform, 0)
+	transforms = append(transforms, getCommonInitializationTransforms("FramebufferReplay", false)...)
+
+	// Melih TODO : DCE should happen here when we move it.
+
+	shouldRenderWired := false
+	doDisplayToSurface := false
+	shouldOverDraw := false
+
+	vulkanTerminator, err := newVulkanTerminator2(ctx, intent.Capture, api.CmdID(len(initialCmds)))
+	if err != nil {
+		log.E(ctx, "Vulkan terminator failed: %v", err)
+		return err
+	}
+
+	splitterTransform := NewCommandSplitter(ctx)
+	readFramebufferTransform := newReadFramebuffer(ctx)
+	overdrawTransform := NewStencilOverdraw()
+
+	for _, rr := range rrs {
+		request := rr.Request.(framebufferRequest)
+
+		cfg := cfg.(drawConfig)
+		cmdID := request.after[0]
+
+		if cfg.drawMode == path.DrawMode_OVERDRAW {
+			// TODO(subcommands): Add subcommand support here
+			if err := vulkanTerminator.Add(ctx, api.CmdID(cmdID), request.after[1:]); err != nil {
+				log.E(ctx, "Vulkan terminator error on Cmd(%v) : %v", cmdID, err)
+				return err
+			}
+			shouldOverDraw = true
+			overdrawTransform.add(ctx, request.after, intent.Capture, rr.Result)
+			break
+		}
+
+		if err := vulkanTerminator.Add(ctx, api.CmdID(cmdID), api.SubCmdIdx{}); err != nil {
+			log.E(ctx, "Vulkan terminator error on Cmd(%v) : %v", cmdID, err)
+			return err
+		}
+
+		subIdx := append(api.SubCmdIdx{}, request.after...)
+		splitterTransform.Split(ctx, subIdx)
+
+		switch cfg.drawMode {
+		case path.DrawMode_WIREFRAME_ALL:
+			shouldRenderWired = true
+		case path.DrawMode_WIREFRAME_OVERLAY:
+			return fmt.Errorf("Overlay wireframe view is not currently supported")
+			// Overdraw is handled above, since it breaks out of the normal read flow.
+		}
+
+		switch request.attachment {
+		case api.FramebufferAttachmentType_OutputDepth, api.FramebufferAttachmentType_InputDepth:
+			readFramebufferTransform.Depth(ctx, subIdx, request.width, request.height, request.framebufferIndex, rr.Result)
+		case api.FramebufferAttachmentType_OutputColor, api.FramebufferAttachmentType_InputColor:
+			readFramebufferTransform.Color(ctx, subIdx, request.width, request.height, request.framebufferIndex, rr.Result)
+		default:
+			return fmt.Errorf("Stencil attachments are not currently supported")
+		}
+
+		if request.displayToSurface {
+			doDisplayToSurface = true
+		}
+	}
+
+	if shouldRenderWired {
+		transforms = append(transforms, newWireframeTransform())
+	}
+
+	if doDisplayToSurface {
+		transforms = append(transforms, newDisplayToSurface())
+	}
+
+	transforms = append(transforms, vulkanTerminator)
+
+	if shouldOverDraw {
+		transforms = append(transforms, overdrawTransform)
+	}
+
+	transforms = append(transforms, splitterTransform)
+	transforms = append(transforms, readFramebufferTransform)
+
+	// Add destroy only to end of whole replay
+	transforms = append(transforms, newDestroyResourcesAtEOS2())
+	transforms = appendLogTransforms(ctx, "FramebufferReplay", c, transforms)
+
+	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
+	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
+	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
+	if err := controlFlow.TransformAll(ctx); err != nil {
+		log.E(ctx, "[Framebuffer Replay] Error: %v", err)
 		return err
 	}
 
@@ -1012,6 +1066,8 @@ func (a API) Replay(
 			return replayIssues(ctx, intent, dependentPayload, rrs, c, out)
 		case profileRequest:
 			return replayProfile(ctx, intent, dependentPayload, rrs, c, device, out)
+		case framebufferRequest:
+			return replayFramebuffer(ctx, intent, cfg, dependentPayload, rrs, c, out)
 		}
 	}
 
@@ -1024,17 +1080,8 @@ func (a API) Replay(
 	transforms.Add(makeReadable)
 	transforms.Add(&dropInvalidDestroy{tag: "Replay"})
 
-	splitter := NewCommandSplitter(ctx)
-	readFramebuffer := newReadFramebuffer(ctx)
-	injector := &transform.Injector{}
-	// Gathers and reports any issues found.
 	var timestamps *queryTimestamps
 	var frameloop *frameLoop
-
-	earlyTerminator, err := newVulkanTerminator(ctx, intent.Capture)
-	if err != nil {
-		return err
-	}
 
 	// Populate the dead-code eliminitation later, only once we are sure
 	// we will need it.
@@ -1101,10 +1148,6 @@ func (a API) Replay(
 		return lastCmdID
 	}
 
-	wire := false
-	doDisplayToSurface := false
-	var overdraw *stencilOverdraw
-
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case timestampsRequest:
@@ -1118,61 +1161,6 @@ func (a API) Replay(
 			}
 			timestamps.AddResult(rr.Result)
 			optimize = false
-		case framebufferRequest:
-			cfg := cfg.(drawConfig)
-			if cfg.disableReplayOptimization {
-				optimize = false
-			}
-
-			cmdID := req.after[0]
-
-			if optimize {
-				// Should have been built in expandCommands()
-				if dceBuilder != nil {
-					dceBuilder.Request(ctx, api.SubCmdIdx{cmdID})
-				} else {
-					optimize = false
-				}
-			}
-
-			if cfg.drawMode == path.DrawMode_OVERDRAW {
-				// TODO(subcommands): Add subcommand support here
-				if err := earlyTerminator.Add(ctx, api.CmdID(cmdID), req.after[1:]); err != nil {
-					return err
-				}
-
-				if overdraw == nil {
-					overdraw = newStencilOverdraw()
-				}
-				overdraw.add(ctx, req.after, intent.Capture, rr.Result)
-				break
-			}
-			if err := earlyTerminator.Add(ctx, api.CmdID(cmdID), api.SubCmdIdx{}); err != nil {
-				return err
-			}
-			subIdx := append(api.SubCmdIdx{}, req.after...)
-			splitter.Split(ctx, subIdx)
-			switch cfg.drawMode {
-			case path.DrawMode_WIREFRAME_ALL:
-				wire = true
-			case path.DrawMode_WIREFRAME_OVERLAY:
-				return fmt.Errorf("Overlay wireframe view is not currently supported")
-			// Overdraw is handled above, since it breaks out of the normal read flow.
-			default:
-			}
-
-			switch req.attachment {
-			case api.FramebufferAttachmentType_OutputDepth, api.FramebufferAttachmentType_InputDepth:
-				readFramebuffer.Depth(ctx, subIdx, req.width, req.height, req.framebufferIndex, rr.Result)
-			case api.FramebufferAttachmentType_OutputColor, api.FramebufferAttachmentType_InputColor:
-				readFramebuffer.Color(ctx, subIdx, req.width, req.height, req.framebufferIndex, rr.Result)
-			default:
-				return fmt.Errorf("Stencil attachments are not currently supported")
-			}
-
-			if req.displayToSurface {
-				doDisplayToSurface = true
-			}
 		default:
 			return fmt.Errorf("Invalid Request Type; %v", req)
 		}
@@ -1192,29 +1180,13 @@ func (a API) Replay(
 		}
 	}
 
-	if wire {
-		transforms.Add(wireframe(ctx))
-	}
-
-	if doDisplayToSurface {
-		transforms.Add(newDisplayToSurface())
-	}
-
 	if frameloop != nil {
 		transforms.Add(frameloop)
 	}
+
 	if timestamps != nil {
 		transforms.Add(timestamps)
-	} else {
-		transforms.Add(earlyTerminator)
 	}
-
-	if overdraw != nil {
-		transforms.Add(overdraw)
-	}
-
-	transforms.Add(splitter)
-	transforms.Add(readFramebuffer, injector)
 
 	// Cleanup
 	transforms.Add(&destroyResourcesAtEOS{})

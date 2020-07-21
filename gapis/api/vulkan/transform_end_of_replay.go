@@ -46,8 +46,16 @@ func (endTransform *endOfReplay) AddResult(r replay.Result) {
 	endTransform.res = append(endTransform.res, r)
 }
 
-func (t *endOfReplay) RequiresAccurateState() bool {
+func (endTransform *endOfReplay) RequiresAccurateState() bool {
 	return false
+}
+
+func (endTransform *endOfReplay) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (endTransform *endOfReplay) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
 }
 
 func (endTransform *endOfReplay) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {

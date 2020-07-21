@@ -40,6 +40,14 @@ func (attachmentTransform *makeAttachmentReadable2) RequiresAccurateState() bool
 	return false
 }
 
+func (attachmentTransform *makeAttachmentReadable2) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (attachmentTransform *makeAttachmentReadable2) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (attachmentTransform *makeAttachmentReadable2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	attachmentTransform.allocations = NewAllocationTracker(inputState)
 	return inputCommands, nil
@@ -50,10 +58,7 @@ func (attachmentTransform *makeAttachmentReadable2) EndTransform(ctx context.Con
 }
 
 func (attachmentTransform *makeAttachmentReadable2) ClearTransformResources(ctx context.Context) {
-	// Melih TODO: This transform seems to be never releasing the allocations
-	// Check if it's intended
-	// b/158597615
-	// attachmentTransform.allocations.FreeAllocations()
+	attachmentTransform.allocations.FreeAllocations()
 }
 
 func (attachmentTransform *makeAttachmentReadable2) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {

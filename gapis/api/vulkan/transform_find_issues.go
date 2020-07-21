@@ -69,6 +69,18 @@ func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, realCmdOffse
 	return t
 }
 
+func (issueTransform *findIssues) RequiresAccurateState() bool {
+	return false
+}
+
+func (issueTransform *findIssues) RequiresInnerStateMutation() bool {
+	return false
+}
+
+func (issueTransform *findIssues) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+	// This transform do not require inner state mutation
+}
+
 func (issueTransform *findIssues) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	issueTransform.allocations = NewAllocationTracker(inputState)
 	return inputCommands, nil
