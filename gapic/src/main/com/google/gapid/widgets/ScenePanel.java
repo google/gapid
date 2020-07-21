@@ -118,17 +118,17 @@ public class ScenePanel<T> extends GlCanvas {
 
   private void initialize() {
     renderer.initialize();
-    Point size = DPIUtil.autoScaleUp(getSize());
-    renderer.setSize(size.x, size.y);
+    Point size = getSize();
+    renderer.setSize(size.x, size.y, DPIUtil.getDeviceZoom() / 100f);
     scene.init(renderer);
   }
 
   private void dispatchEvents(Event event) {
     withSuspendedUpdate(() -> {
       if (event.type == SWT.Resize && isOpenGL()) {
-        Point size = DPIUtil.autoScaleUp(getSize());
+        Point size = getSize();
         setCurrent();
-        renderer.setSize(size.x, size.y);
+        renderer.setSize(size.x, size.y, DPIUtil.getDeviceZoom() / 100f);
         scene.resize(renderer, size.x, size.y);
       }
       for (Listener listener : eventListeners.get(event.type)) {

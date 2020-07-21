@@ -23,7 +23,6 @@ import com.google.gapid.glviewer.vec.MatD;
 import com.google.gapid.glviewer.vec.VecD;
 
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.internal.DPIUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
@@ -77,11 +76,11 @@ public final class Renderer {
    * @param width of the back-buffer in real pixels.
    * @param height of the back-buffer in real pixels.
    */
-  public void setSize(int width, int height) {
-    physicalWidth = width;
-    physicalHeight = height;
-    dipWidth = DPIUtil.autoScaleDown(width);
-    dipHeight = DPIUtil.autoScaleDown(height);
+  public void setSize(int width, int height, float factor) {
+    physicalWidth = (int)(width * factor);
+    physicalHeight = (int)(height * factor);
+    dipWidth = width;
+    dipHeight = height;
     GL11.glViewport(0, 0, physicalWidth, physicalHeight);
   }
 
