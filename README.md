@@ -34,4 +34,4 @@ After building AGI, you can run the client from `<agi-root>/bazel-bin/pkg/agi`.
 
 ## Command-Line Interface
 
-AGI exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gpuinspector.dev/cli/).
+AGI exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gpuinspector.dev/docs/cli).
