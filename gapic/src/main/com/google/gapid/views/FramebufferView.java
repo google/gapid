@@ -290,12 +290,13 @@ public class FramebufferView extends Composite
   }
 
   private void loadBuffer() {
+    imagePanel.startLoading();
+
     if (models.commands.getSelectedCommands() == null) {
       imagePanel.showMessage(Info, Messages.SELECT_COMMAND);
     } else if (!models.devices.hasReplayDevice()) {
       imagePanel.showMessage(Error, Messages.NO_REPLAY_DEVICE);
-    } else {
-      imagePanel.startLoading();
+    } else if (models.resources.isLoaded()) {
       Rpc.listen(models.resources.loadFramebufferAttachments(),
           new UiErrorCallback<Service.FramebufferAttachments, Service.FramebufferAttachments, Loadable.Message>(this, LOG) {
         @Override

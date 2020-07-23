@@ -253,7 +253,12 @@ public class TextureView extends Composite
   }
 
   private void updateTextures(boolean resourcesChanged) {
-    if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
+    if (!models.resources.isLoaded()) {
+      imagePanel.startLoading();
+    } else if (models.commands.getSelectedCommands() == null) {
+      imagePanel.showMessage(Info, Messages.SELECT_COMMAND);
+      clear();
+    } else {
       // Memorize selection index before disposing image resource.
       // When comparator is reset, the table is refreshed, and early image disposal will introduce null error.
       ViewerComparator comparator = textureTable.getComparator();
@@ -285,9 +290,6 @@ public class TextureView extends Composite
         imagePanel.showMessage(Info, Messages.SELECT_TEXTURE);
       }
       updateSelection();
-    } else {
-      imagePanel.showMessage(Info, Messages.SELECT_COMMAND);
-      clear();
     }
   }
 

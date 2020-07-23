@@ -170,8 +170,11 @@ public class PipelineView extends Composite
   }
 
   private void updatePipelines() {
-    if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
-      loading.startLoading();
+    loading.startLoading();
+
+    if (models.commands.getSelectedCommands() == null) {
+      loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
+    } else if (models.resources.isLoaded()) {
       Rpc.listen(models.resources.loadBoundPipelines(),
           new UiErrorCallback<API.MultiResourceData, List<API.Pipeline>, Loadable.Message>(this, LOG) {
         @Override
@@ -207,8 +210,6 @@ public class PipelineView extends Composite
           loading.showMessage(error);
         }
       });
-    } else {
-      loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
     }
   }
 
