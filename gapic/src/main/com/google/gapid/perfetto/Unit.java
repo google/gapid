@@ -72,7 +72,7 @@ public class Unit {
   public static final Unit FAHRENHEIT = new Unit("F", new Formatter.Simple("F"));
   public static final Unit KELVIN = new Unit("K", new Formatter.Simple("K"));
 
-  public static final Unit PERCENT = new Unit("%", new Formatter.Simple("%"));
+  public static final Unit PERCENT = new Unit("%", new Formatter.Percent());
 
   public static final Unit INSTRUCTION = new Unit("instr", new Formatter.Simple("instr"));
 
@@ -144,6 +144,8 @@ public class Unit {
   public String format(double value) {
     if (Double.isNaN(value) || Double.isInfinite(value)) {
       return (Double.toString(value) + " " + name).trim();
+    } else if (value == 0) {
+      return formatter.format(0);
     }
 
     double abs = Math.abs(value);
@@ -189,6 +191,17 @@ public class Unit {
       @Override
       public String format(double value) {
         return String.format("%,g%s", value, unit);
+      }
+    }
+
+    public static class Percent extends Simple {
+      public Percent() {
+        super("%");
+      }
+
+      @Override
+      public String format(double value) {
+        return (value == 100) ? super.format(100) : super.format(value);
       }
     }
 
