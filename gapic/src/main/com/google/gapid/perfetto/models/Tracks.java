@@ -16,9 +16,10 @@
 package com.google.gapid.perfetto.models;
 
 import static com.google.gapid.perfetto.views.StyleConstants.DEFAULT_COUNTER_TRACK_HEIGHT;
-import static com.google.gapid.perfetto.views.StyleConstants.PROCESS_COUNTER_TRACK_HIGHT;
+import static com.google.gapid.perfetto.views.StyleConstants.PROCESS_COUNTER_TRACK_HEIGHT;
 import static com.google.gapid.perfetto.views.TrackContainer.group;
 import static com.google.gapid.perfetto.views.TrackContainer.single;
+import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
@@ -50,12 +51,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
  * Determines what tracks to show for a trace.
  */
 public class Tracks {
+  private static final Logger LOG = Logger.getLogger(Tracks.class.getName());
+
   // CPU usage percentage at which a process/thread is considered idle.
   private static final double IDLE_PERCENT_CUTOFF = 0.001; // 0.1%.
   // Polled counters from the process_stats data source.
@@ -133,12 +137,28 @@ public class Tracks {
         .filter(c -> c.count > 0)
         .collect(toMap(c -> c.id, c -> c));
 
-    if (counters.isEmpty() && data.getGpu().isEmpty()) {
+    List<CounterInfo> gpuMemGlobalCounter = data.getCounters().values().stream()
+        .filter(c -> c.type == CounterInfo.Type.Global && c.ref == 0 /* pid - 0 */
+        && c.count > 0 && c.name.equals("gpumemtotal.global"))
+        .collect(toList());
+
+    if (counters.isEmpty() && data.getGpu().isEmpty() && gpuMemGlobalCounter.isEmpty()) {
       // No GPU data available.
       return data;
     }
 
     data.tracks.addLabelGroup(null, "gpu", "GPU", group(state -> new TitlePanel("GPU"), true));
+
+    if (!gpuMemGlobalCounter.isEmpty()) {
+      if (gpuMemGlobalCounter.size() > 1) {
+        LOG.log(WARNING, "Expected 1 global gpu memory counter. Found " + gpuMemGlobalCounter.size());
+      }
+      CounterInfo counter = gpuMemGlobalCounter.get(0);
+      CounterTrack track = new CounterTrack(data.qe, counter);
+      data.tracks.addTrack("gpu", track.getId(), counter.name,
+          single(state -> new CounterPanel(state, track, DEFAULT_COUNTER_TRACK_HEIGHT), true,
+              /*right truncate*/ true));
+    }
 
     if (data.getGpu().queueCount() > 0) {
       String parent = "gpu";
@@ -296,7 +316,7 @@ public class Tracks {
         for (CounterInfo counter : counters) {
           CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack(parentId, track.getId(), counter.name,
-              single(state -> new CounterPanel(state, track, PROCESS_COUNTER_TRACK_HIGHT),false,
+              single(state -> new CounterPanel(state, track, PROCESS_COUNTER_TRACK_HEIGHT),false,
                   false));
         }
       }

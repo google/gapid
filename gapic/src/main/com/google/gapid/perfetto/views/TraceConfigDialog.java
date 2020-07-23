@@ -56,8 +56,8 @@ import com.google.protobuf.TextFormat.ParseException;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
+import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.ICheckStateListener;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
@@ -136,6 +136,9 @@ public class TraceConfigDialog extends DialogBase {
   };
   private static final String[] GPU_FREQ_FTRACE = {
       "power/gpu_frequency",
+  };
+  private static final String[] GPU_MEM_FTRACE = {
+      "gpu_mem/gpu_mem_total",
   };
   private static final PerfettoConfig.MeminfoCounters[] MEM_COUNTERS = {
       PerfettoConfig.MeminfoCounters.MEMINFO_MEM_TOTAL,
@@ -264,6 +267,7 @@ public class TraceConfigDialog extends DialogBase {
 
     if (p.getGpuOrBuilder().getEnabled()) {
       ftrace.addAllFtraceEvents(Arrays.asList(GPU_FREQ_FTRACE));
+      ftrace.addAllFtraceEvents(Arrays.asList(GPU_MEM_FTRACE));
 
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
       SettingsProto.Perfetto.GPUOrBuilder gpu = p.getGpuOrBuilder();
@@ -828,6 +832,7 @@ public class TraceConfigDialog extends DialogBase {
         collectCheckedElements();
 
         table.addCheckStateListener(new ICheckStateListener() {
+          @Override
           public void checkStateChanged(CheckStateChangedEvent event) {
             if (event.getChecked()) {
               checkedElements.add(event.getElement());

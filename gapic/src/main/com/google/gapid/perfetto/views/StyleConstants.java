@@ -38,7 +38,7 @@ public class StyleConstants {
   public static final double LABEL_TOGGLE_X = LABEL_PIN_X - LABEL_ICON_SIZE;
   public static final double TRACK_MARGIN = 4;
   public static final double DEFAULT_COUNTER_TRACK_HEIGHT = 45;
-  public static final double PROCESS_COUNTER_TRACK_HIGHT = 30;
+  public static final double PROCESS_COUNTER_TRACK_HEIGHT = 30;
   public static final double HIGHLIGHT_EDGE_NEARBY_WIDTH = 10;
   public static final double SELECTION_THRESHOLD = 0.333;
   public static final double ZOOM_FACTOR_SCALE = 0.05;

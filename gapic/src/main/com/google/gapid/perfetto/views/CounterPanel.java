@@ -23,7 +23,6 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
-
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -66,6 +65,12 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     CounterInfo info = track.getCounter();
     if (info.type == CounterInfo.Type.Gpu && "gpufreq".equals(info.name)) {
       return "GPU " + info.ref + " Frequency";
+    }
+    if (info.type == CounterInfo.Type.Process && "gpumemtotal.process".equals(info.name)) {
+      return "GPU Memory Process Total";
+    }
+    if (info.type == CounterInfo.Type.Global && "gpumemtotal.global".equals(info.name)) {
+      return "GPU Memory Global Total";
     }
     return track.getCounter().name;
   }
