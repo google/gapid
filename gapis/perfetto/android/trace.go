@@ -255,19 +255,24 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 		return 0, log.Err(ctx, err, "Failed to setup Perfetto trace")
 	}
 
-	// TODO(b/150141871) Figure out a robust way to determine whether tracing is
-	// ready. Setting up ftrace trace points takes time, hence sometimes there's
+	// Setting up ftrace trace points takes time, hence sometimes there's
 	// a gap at the beginning of the trace. In order to avoid this issue, we
-	// need to know when ftrace trace points are ready. This workaround checks
-	// the sysfs node of the ftrace event task_newtask that is always enabled
-	// regardless of the user selection. Skip if ftrace is not enabled.
+	// need to know when ftrace trace points are ready. This checks the node
+	// of the ftrace event task_newtask that is always enabled regardless of
+	// the user selection. Skip if ftrace is not enabled.
 	if hasDataSourceEnabled(p.config, ftraceDataSourceName) {
 		sessionReadySignal, sessionReadyFunc := task.NewSignal()
 		timeout := false
 		crash.Go(func() {
 			cnt := 0
+			fTraceFilePath := "/sys/kernel/tracing/events/task/task_newtask/enable"
+			// debugfs was deprecated in Android 11, and hence AGI must use the path
+			// to debugfs before Android 11.
+			if p.device.Instance().GetConfiguration().GetOS().GetAPIVersion() < 30 {
+				fTraceFilePath = "/sys/kernel/debug/tracing/events/task/task_newtask/enable"
+			}
 			for {
-				res, _ := p.device.Shell("cat", "/sys/kernel/debug/tracing/events/task/task_newtask/enable").Call(ctx)
+				res, _ := p.device.Shell("cat", fTraceFilePath).Call(ctx)
 				if res == "1" {
 					sessionReadyFunc(ctx)
 					break
