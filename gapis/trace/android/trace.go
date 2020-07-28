@@ -64,6 +64,7 @@ const (
 	durationMs                              = 7000
 	gpuCountersDataSourceDescriptorName     = "gpu.counters"
 	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
+	minimumSupportedApiLevel                = 29
 )
 
 // Only update the package list every 30 seconds at most
@@ -156,6 +157,9 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 	}
 	d := t.b.(adb.Device)
 	osConfiguration := d.Instance().GetConfiguration()
+	if osConfiguration.GetOS().GetAPIVersion() < minimumSupportedApiLevel {
+		return log.Errf(ctx, nil, "Unsupported OS version on device %d", d.Instance().ID.ID())
+	}
 	if osConfiguration.GetPerfettoCapability() == nil {
 		return log.Errf(ctx, nil, "No Perfetto Capability found on device %d", d.Instance().ID.ID())
 	}
