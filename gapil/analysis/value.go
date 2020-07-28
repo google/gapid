@@ -204,7 +204,7 @@ func UnionOf(vals ...Value) Value {
 
 // unknownOf returns the unbounded value for the given type.
 func (s *scope) unknownOf(ty semantic.Type) Value {
-	if ty == nil { // sanity check.
+	if ty == nil {
 		panic("unknownOf passed nil type")
 	}
 
@@ -289,7 +289,7 @@ func (s *scope) unknownOf(ty semantic.Type) Value {
 
 // defaultOf returns the default value for the given type.
 func (s *scope) defaultOf(ty semantic.Type) (out Value) {
-	if ty == nil { // sanity check.
+	if ty == nil {
 		panic("valueOf passed nil type")
 	}
 
@@ -372,7 +372,7 @@ type fieldHolder interface {
 // valueOf evaluates the expression n and returns a value and a function that
 // can change the value within the scope s.
 func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
-	if n == nil { // sanity check.
+	if n == nil {
 		panic("valueOf passed nil expression")
 	}
 
