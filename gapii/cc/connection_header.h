@@ -57,7 +57,7 @@ class ConnectionHeader {
   // on success or false on error.
   bool read(core::StreamReader* reader);
 
-  void read_dummy() {
+  void read_fake() {
     mMagic[0] = 's';
     mMagic[1] = 'p';
     mMagic[2] = 'y';

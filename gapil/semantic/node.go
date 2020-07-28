@@ -18,7 +18,7 @@ import "github.com/google/gapid/gapil/ast"
 
 // Node represents any semantic-tree node type.
 type Node interface {
-	isNode() // A dummy function that's implemented by all semantic node types.
+	isNode() // A placeholder function that's implemented by all semantic node types.
 }
 
 // NamedNode represents any semantic-tree node that carries a name.

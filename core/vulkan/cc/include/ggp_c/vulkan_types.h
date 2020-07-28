@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef DUMMY_VULKAN_TYPES_H__
-#define DUMMY_VULKAN_TYPES_H__
+#ifndef GGP_PLACEHOLDER_VULKAN_TYPES_H__
+#define GGP_PLACEHOLDER_VULKAN_TYPES_H__
 
 #include <cstdint>
 
 typedef uint32_t GgpStreamDescriptor;
 typedef uint64_t GgpFrameToken;
 
-#endif  // DUMMY_VULKAN_TYPES_H__
+#endif  // GGP_PLACEHOLDER_VULKAN_TYPES_H__

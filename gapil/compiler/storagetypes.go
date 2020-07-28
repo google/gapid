@@ -64,14 +64,14 @@ func (c *C) StorageTypes(layout *device.MemoryLayout, prefix string) *StorageTyp
 	for _, t := range toBuild {
 		offset := uint64(0)
 		fields := make([]codegen.Field, 0, len(t.Fields))
-		dummyFields := 0
+		paddingFields := 0
 		for _, f := range t.Fields {
 			size := s.StrideOf(f.Type)
 			alignment := s.AlignOf(f.Type)
 			newOffset := (offset + (alignment - 1)) & ^(alignment - 1)
 			if newOffset != offset {
-				nm := fmt.Sprintf("__dummy%d", dummyFields)
-				dummyFields++
+				nm := fmt.Sprintf("__padding%d", paddingFields)
+				paddingFields++
 				fields = append(fields, codegen.Field{Name: nm, Type: c.T.Array(s.Get(semantic.Uint8Type), int(newOffset-offset))})
 			}
 			offset = newOffset + size
@@ -79,7 +79,7 @@ func (c *C) StorageTypes(layout *device.MemoryLayout, prefix string) *StorageTyp
 		}
 		totalSize := s.StrideOf(t)
 		if totalSize != offset {
-			nm := fmt.Sprintf("__dummy%d", dummyFields)
+			nm := fmt.Sprintf("__padding%d", paddingFields)
 			fields = append(fields, codegen.Field{Name: nm, Type: c.T.Array(s.Get(semantic.Uint8Type), int(totalSize-offset))})
 		}
 

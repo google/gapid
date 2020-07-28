@@ -167,12 +167,12 @@ func TestMessages(t *testing.T) {
 		type u32   GLuint // 32 bit, unsigned binary integer.
 		type u64   GLuint64 // 64 bit, unsigned binary integer.
 
-		class ERR_DUMMY {
+		class ERR_FAKE {
 			u32 big
 			u64 bigger
 		}
 
-		class ERR_DUMMY_PSEUDO {
+		class ERR_FAKE_PSEUDO {
 			GLuint big
 			GLuint64 bigger
 		}
@@ -181,46 +181,46 @@ func TestMessages(t *testing.T) {
 		{
 			name: "ref!class -> message implicit cast",
 			source: boilerplate + `
-			cmd void dummy() {
-				foo(new!ERR_DUMMY(big: 0, bigger: 1))
+			cmd void fake() {
+				foo(new!ERR_FAKE(big: 0, bigger: 1))
 			}`,
 		}, {
 			name: "Actual -> pseudonym resolution as an argument in constructor",
 			source: boilerplate + `
-			cmd void dummy() {
-				foo(new!ERR_DUMMY_PSEUDO(big: 0, bigger: 1))
+			cmd void fake() {
+				foo(new!ERR_FAKE_PSEUDO(big: 0, bigger: 1))
 			}`,
 		}, {
 			name: "Pseudonym -> actual resolution as an argument in constructor",
 			source: boilerplate + `
-			cmd void dummy() {
+			cmd void fake() {
 				a := as!GLuint(-10)
 				b := as!GLuint64(-1)
-				foo(new!ERR_DUMMY_PSEUDO(big: a, bigger: b))
+				foo(new!ERR_FAKE_PSEUDO(big: a, bigger: b))
 			}`,
 		}, {
 			name: "Mixed pseudonym and actual resolution as an argument in constructor",
 			source: boilerplate + `
-			cmd void dummy() {
+			cmd void fake() {
 				b := as!GLuint64(-1)
-				foo(new!ERR_DUMMY_PSEUDO(big: 10, bigger: b))
+				foo(new!ERR_FAKE_PSEUDO(big: 10, bigger: b))
 				}`,
 		}, {
 			name: "Pseudonym -> actual resolution as an argument in constructor - wrong pseudonym",
 			source: boilerplate + `
 			type s64   GLint64 // 64 bit, signed, two's complement binary integer.
 
-			cmd void dummy() {
+			cmd void fake() {
 				a := as!GLuint(-10)
 				b := as!GLint64(-1)
-				foo(new!ERR_DUMMY_PSEUDO(big: a, bigger: b))
+				foo(new!ERR_FAKE_PSEUDO(big: a, bigger: b))
 			}`,
 			errors: err("cannot assign GLint64 to field 'bigger' of type GLuint64"),
 		}, {
 			name: "Accept only create statements as message - pass local variable",
 			source: boilerplate + `
-			cmd void dummy() {
-				msg := new!ERR_DUMMY(big: 1, bigger: 10)
+			cmd void fake() {
+				msg := new!ERR_FAKE(big: 1, bigger: 10)
 				foo(msg)
 			}`,
 			errors: err("Message arguments require a new class instance or forwarded message parameter, got: *semantic.Local"),

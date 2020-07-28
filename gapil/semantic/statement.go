@@ -20,7 +20,7 @@ import "github.com/google/gapid/core/data/slice"
 // Statement is the interface implemented by all statement types.
 type Statement interface {
 	Node
-	isStatement() // A dummy function that's implemented by all semantic statements.
+	isStatement() // A placeholder function that's implemented by all semantic statements.
 }
 
 // Statements is a list of statements.

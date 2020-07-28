@@ -55,8 +55,8 @@ std::vector<Resource> ResourceCache::anticipateNextResources(
 
   auto resMapIter = mResourceIterators.find(resource.getID());
   if (resMapIter == mResourceIterators.end()) {
-    return expectedResources;  // We don't know about this resource so we're
-                               // blind. Return the empty vector.
+    // We don't know about this resource. Return the empty vector.
+    return expectedResources;
   }
 
   auto resIter = resMapIter->second;

@@ -51,19 +51,19 @@ public abstract class GlCanvas extends Canvas {
 
   public GlCanvas(Composite parent, int style) {
     super(parent, checkStyle(parent, style));
-    Canvas dummy = new Canvas(parent, style);
+    Canvas initCanvas = new Canvas(parent, style);
     parent.getDisplay().setData(USE_OWNDC_KEY, Boolean.FALSE);
 
-    Context dummyContext = new Context(dummy.handle).createSimplePixelFormat();
-    if (dummyContext == null) {
+    Context initContext = new Context(initCanvas.handle).createSimplePixelFormat();
+    if (initContext == null) {
       context = 0;
       initialized = false;
       return;
     }
 
     Context actualContext;
-    if (dummyContext.createPixelFormat()) {
-      actualContext = new Context(handle).setPixelFormat(dummyContext.pixelFormat);
+    if (initContext.createPixelFormat()) {
+      actualContext = new Context(handle).setPixelFormat(initContext.pixelFormat);
     } else {
       actualContext = new Context(handle).createSimplePixelFormat();
     }
@@ -76,8 +76,8 @@ public abstract class GlCanvas extends Canvas {
       initialized = true;
     }
 
-    dummyContext.release();
-    dummy.dispose();
+    initContext.release();
+    initCanvas.dispose();
 
     if (initialized) {
       addListener(SWT.Dispose, e -> {

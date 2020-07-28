@@ -463,7 +463,7 @@ public abstract class LinkifiedTree<T, F> extends Composite {
       LinkableStyledString string =
           format(getElement(item), LinkableStyledString.create(theme), lastPrefetcher);
       string.endLink();
-      string.append("dummy", string.defaultStyle());
+      string.append("placeholder", string.defaultStyle());
       updateLayout(string.getString(), false);
 
       Rectangle textBounds = layout.getBounds();

@@ -50,8 +50,8 @@ struct MesaLLVMOpener {
 void* getVulkanInstanceProcAddress(size_t instance, const char* name) {
   typedef PFN_vkVoidFunction (*VPAPROC)(VkInstance instance, const char* name);
 
-  static MesaLLVMOpener _dummy;
-  (void)_dummy;
+  static MesaLLVMOpener _dlopenAllMesaVersions;
+  (void)_dlopenAllMesaVersions;
 
   static DlLoader dylib("libvulkan.so", "libvulkan.so.1");
 

@@ -47,12 +47,12 @@ func (p TCPPort) adbForwardString() string {
 // * The system _may_ hold on to the socket after it has been told to close.
 // Because of these issues, there is a potential for flakiness.
 func LocalFreeTCPPort() (TCPPort, error) {
-	dummy, err := net.Listen("tcp", ":0")
+	socket, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return 0, err
 	}
-	defer dummy.Close()
-	return TCPPort(dummy.Addr().(*net.TCPAddr).Port), nil
+	defer socket.Close()
+	return TCPPort(socket.Addr().(*net.TCPAddr).Port), nil
 }
 
 // NamedAbstractSocket represents an abstract UNIX domain socket name on either

@@ -109,7 +109,7 @@ type Span interface {
 	split(i uint64) (Span, Span)
 }
 
-// SpanItem is a dummy interface exclusively implemented by CmdIDGroup,
+// SpanItem is a placeholder interface exclusively implemented by CmdIDGroup,
 // SubCmdIdx and SubCmdRoot
 type SpanItem interface {
 	isGroupOrIDOrRoot()

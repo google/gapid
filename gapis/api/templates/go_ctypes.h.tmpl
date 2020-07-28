@@ -107,7 +107,7 @@
       {{Template "C.Type" $f}} {{CFieldName $f.Name}};
     {{end}}
     {{if not (len $.Fields)}}
-      uint8_t dummy; // At least one field so Cgo sees the type.
+      uint8_t placeholder; // At least one field so Cgo sees the type.
     {{end}}
   } {{$name}};¶
 {{end}}

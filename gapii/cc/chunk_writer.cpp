@@ -28,7 +28,7 @@ constexpr size_t kBufferSize = 32 * 1024;
 class ChunkWriterImpl : public gapii::ChunkWriter {
  public:
   ChunkWriterImpl(const std::shared_ptr<core::StreamWriter>& writer,
-                  bool paranoid = false);
+                  bool no_buffer = false);
 
   ~ChunkWriterImpl();
 

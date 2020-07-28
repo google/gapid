@@ -13,7 +13,7 @@
 # limitations under the License.
 
 cc_library(
-    name = "vulkan_ggp_dummy",
+    name = "vulkan_ggp_placeholder",
     hdrs = glob(["*.h"]),
     include_prefix = "ggp_c",
     visibility = ["//visibility:public"],

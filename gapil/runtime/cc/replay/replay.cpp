@@ -40,8 +40,8 @@ using namespace gapil::runtime::replay;
 // Ensure that replay.cpp is not stripped from the final executable.
 // Typically the symbols defined by this compilation unit are only dynamically
 // referenced by the JIT'd code, so the linker may decide to strip it from the
-// final executable. This is a dummy symbol referenced by builder.cpp (which
-// is directly used by the GAPIS executable).
+// final executable. This is a placeholder symbol referenced by builder.cpp
+// (which is directly used by the GAPIS executable).
 int GAPIL_REPLAY_FORCE_LINK = 0;
 
 namespace {

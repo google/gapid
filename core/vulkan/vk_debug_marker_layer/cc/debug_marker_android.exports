@@ -4,4 +4,4 @@ vkEnumerateInstanceLayerProperties
 vkEnumerateInstanceExtensionProperties
 vkEnumerateDeviceLayerProperties
 vkEnumerateDeviceExtensionProperties
-_layer_dummy_func__
+_layer_keep_alive_func__

@@ -234,8 +234,8 @@ import (
   {{template "Go.CommentHeader" "API"}}
   {{Template "DeclareAPI" $}}
 ¶
-  // uncompareable is a dummy function used in types that must not be used for
-  // go equality or as map keys.
+  // uncompareable is a placeholder function used in types that must not be used
+  // for go equality or as map keys.
   type uncompareable func()
 ¶
   // constantArena is an arena used for globally persisted immutable values.
@@ -1512,16 +1512,16 @@ import (
     {{$to := Macro "Go.Type" $.To}}
     type {{$name}} {{$to}}
     {{if IsSize $ty}}
-      // Dummy function to make {{$name}} implement SizeTy interface
+      // Placeholder function to make {{$name}} implement SizeTy interface
       func ({{$name}}) IsMemorySize() {}
     {{else if IsChar $ty}}
-      // Dummy function to make {{$name}} implement CharTy interface
+      // Placeholder function to make {{$name}} implement CharTy interface
       func ({{$name}}) IsChar() {}
     {{else if IsInt $ty}}
-      // Dummy function to make {{$name}} implement IntTy interface
+      // Placeholder function to make {{$name}} implement IntTy interface
       func ({{$name}}) IsInt() {}
     {{else if IsUint $ty}}
-      // Dummy function to make {{$name}} implement UintTy interface
+      // Placeholder function to make {{$name}} implement UintTy interface
       func ({{$name}}) IsUint() {}
     {{end}}
     func Decode{{$name}}(ϟd *ϟmem.Decoder, ϟa arena.Arena) {{$name}} {

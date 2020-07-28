@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is a very dumb script (see imDumb()) that tries to update the swt.bzl
+// This is a very brittle script (see giveUp()) that tries to update the swt.bzl
 // and jface.bzl files to upgrade SWT and JFace to a new Eclipse release
 // version. To update to a newer version, visit
 // https://download.eclipse.org/eclipse/downloads/, choose your version and
 // click on it. The version to pass to this script is the last URL segment and
 // should take the form "[RS]-<version>-<datetime>".
 // This tool uses a bunch of regex's to parse HTML and the .bzl files, and does
-// so in a dumb, but defensive manner. This means that trivial changes to the
+// so in a rigid, but defensive manner. This means that trivial changes to the
 // Eclipse HTML or the .bzl files will likely make the parsing fail, but at
 // least if it succeeds, it's fairly confident that what it got is what it
 // thinks it got.
@@ -107,8 +107,8 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func imDumb(ctx context.Context, cause error, fmt string, args ...interface{}) error {
-	log.E(ctx, "I'm a really dumb script and something may have changed. I give up.")
+func giveUp(ctx context.Context, cause error, fmt string, args ...interface{}) error {
+	log.E(ctx, "My input parsing is very strict and some HTML may have changed. I give up.")
 	return log.Errf(ctx, cause, fmt, args...)
 }
 
@@ -131,40 +131,40 @@ func getRepo(ctx context.Context, version string) (*repo, error) {
 
 	repoTable, err := extractTable(ctx, html, repoTableRegex)
 	if err != nil {
-		return nil, imDumb(ctx, err, "Failed to extract repository table")
+		return nil, giveUp(ctx, err, "Failed to extract repository table")
 	}
 	if len(repoTable) != 2 || len(repoTable[1]) != 1 {
-		return nil, imDumb(ctx, err, "Repo table has unexpected dimensions (%v)", repoTable)
+		return nil, giveUp(ctx, err, "Repo table has unexpected dimensions (%v)", repoTable)
 	}
 	base, err := extractLink(ctx, repoUrl, repoTable[1][0])
 	if err != nil {
-		return nil, imDumb(ctx, err, "Failed to extract repo URL")
+		return nil, giveUp(ctx, err, "Failed to extract repo URL")
 	}
 
 	r := &repo{base: base}
 
 	swtTable, err := extractTable(ctx, html, swtTableRegex)
 	if err != nil {
-		return nil, imDumb(ctx, err, "Failed to extract SWT table")
+		return nil, giveUp(ctx, err, "Failed to extract SWT table")
 	}
 	if len(swtTable) < 2 {
-		return nil, imDumb(ctx, err, "SWT table has not enough rows (%v)", swtTable)
+		return nil, giveUp(ctx, err, "SWT table has not enough rows (%v)", swtTable)
 	}
 	for _, row := range swtTable[1:] { // skip over the table headers
 		if len(row) != 3 {
-			return nil, imDumb(ctx, err, "SWT table has unexpected dimensions (%v)", swtTable)
+			return nil, giveUp(ctx, err, "SWT table has unexpected dimensions (%v)", swtTable)
 		}
 		link, err := extractLink(ctx, repoUrl, row[1])
 		if err != nil {
-			return nil, imDumb(ctx, err, "Failed to extract SWT URL")
+			return nil, giveUp(ctx, err, "Failed to extract SWT URL")
 		}
 		file := link.Query().Get("dropFile")
 		if file == "" {
-			return nil, imDumb(ctx, nil, "URL %v didn't contain a dropFile query parameter", link)
+			return nil, giveUp(ctx, nil, "URL %v didn't contain a dropFile query parameter", link)
 		}
 		link, err = link.Parse(file)
 		if err != nil {
-			return nil, imDumb(ctx, err, "Drop file '%s' caused an invalid URL", file)
+			return nil, giveUp(ctx, err, "Drop file '%s' caused an invalid URL", file)
 		}
 
 		switch row[0] {
@@ -181,7 +181,7 @@ func getRepo(ctx context.Context, version string) (*repo, error) {
 	}
 
 	if r.swtLinux == nil || r.swtWindows == nil || r.swtMacOS == nil {
-		return nil, imDumb(ctx, nil, "Didn't find SWT for every OS: %v %v %v", r.swtLinux, r.swtWindows, r.swtMacOS)
+		return nil, giveUp(ctx, nil, "Didn't find SWT for every OS: %v %v %v", r.swtLinux, r.swtWindows, r.swtMacOS)
 	}
 
 	return r, nil
@@ -206,11 +206,11 @@ func (r *repo) editSWTBazel(ctx context.Context) (err error) {
 
 	src, err := ioutil.ReadFile(swtBzl)
 	if err != nil {
-		return imDumb(ctx, err, "Failed to read swt.bzl at %s", swtBzl)
+		return giveUp(ctx, err, "Failed to read swt.bzl at %s", swtBzl)
 	}
 	matches := swtBzlRegex.FindAllSubmatchIndex(src, -1)
 	if len(matches) != 6 {
-		return imDumb(ctx, err, "Failed to match the swt.bzl regex (%b)", matches)
+		return giveUp(ctx, err, "Failed to match the swt.bzl regex (%b)", matches)
 	}
 
 	var b bytes.Buffer
@@ -238,11 +238,11 @@ func (r *repo) editSWTBazel(ctx context.Context) (err error) {
 
 	for os, d := range data {
 		if d.done != 3 {
-			return imDumb(ctx, nil, "Didn't find SHA/URL for OS %s (%d)", os, d.done)
+			return giveUp(ctx, nil, "Didn't find SHA/URL for OS %s (%d)", os, d.done)
 		}
 	}
 	if err := ioutil.WriteFile(swtBzl, b.Bytes(), 0644); err != nil {
-		return imDumb(ctx, err, "Failed to write output to swt.bzl")
+		return giveUp(ctx, err, "Failed to write output to swt.bzl")
 	}
 
 	log.I(ctx, "I've updated %s successfully... I think.", swtBzl)
@@ -257,29 +257,29 @@ func (r *repo) editJFaceBazel(ctx context.Context) error {
 	}
 	div, err := extractDiv(ctx, html, pluginsRegex)
 	if err != nil {
-		return imDumb(ctx, err, "Failed to extract plugins file list")
+		return giveUp(ctx, err, "Failed to extract plugins file list")
 	}
 	links, err := extractLinks(ctx, base, div)
 	if err != nil {
-		return imDumb(ctx, err, "Failed to extract plugins links")
+		return giveUp(ctx, err, "Failed to extract plugins links")
 	}
 	links = filterJars(links)
 
 	src, err := ioutil.ReadFile(jfaceBzl)
 	if err != nil {
-		return imDumb(ctx, err, "Failed to read jface.bzl at %s", jfaceBzl)
+		return giveUp(ctx, err, "Failed to read jface.bzl at %s", jfaceBzl)
 	}
 
 	matches := jfaceBaseRegex.FindAllIndex(src, -1)
 	if len(matches) != 1 {
-		return imDumb(ctx, err, "Failed to match the base JFace regex (%v)", matches)
+		return giveUp(ctx, err, "Failed to match the base JFace regex (%v)", matches)
 	}
 	src = append(src[:matches[0][0]],
 		append([]byte("_BASE = \""+base.String()+"\""), src[matches[0][1]:]...)...)
 
 	matches = jfaceBzlRegex.FindAllSubmatchIndex(src, -1)
 	if len(matches) == 0 {
-		return imDumb(ctx, nil, "Failed to match the JFace regex (%v)", matches)
+		return giveUp(ctx, nil, "Failed to match the JFace regex (%v)", matches)
 	}
 	if len(matches) != 8 {
 		log.W(ctx, "I found %d JFace jars, but I expected 8. Closing my eyes and continuing...", len(matches))
@@ -301,16 +301,16 @@ func (r *repo) editJFaceBazel(ctx context.Context) error {
 			}
 		}
 		if jar == nil || srcJar == nil {
-			return imDumb(ctx, nil, "Didn't find jar/src jar for %s", name)
+			return giveUp(ctx, nil, "Didn't find jar/src jar for %s", name)
 		}
 		version := jar.label[len(name)+1 : len(jar.label)-4]
 		jarSha, err := sha(ctx, jar.url.String())
 		if err != nil {
-			return imDumb(ctx, err, "Failed to get SHA for JAR %s", jar.label)
+			return giveUp(ctx, err, "Failed to get SHA for JAR %s", jar.label)
 		}
 		srcSha, err := sha(ctx, srcJar.url.String())
 		if err != nil {
-			return imDumb(ctx, err, "Failed to get SHA for src JAR %s", srcJar.label)
+			return giveUp(ctx, err, "Failed to get SHA for src JAR %s", srcJar.label)
 		}
 		fmt.Println(jarSha + " " + srcSha)
 		b.Write(src[loc[0]:loc[4]])
@@ -324,7 +324,7 @@ func (r *repo) editJFaceBazel(ctx context.Context) error {
 	b.Write(src[last:])
 
 	if err := ioutil.WriteFile(jfaceBzl, b.Bytes(), 0644); err != nil {
-		return imDumb(ctx, err, "Failed to write output to jface.bzl")
+		return giveUp(ctx, err, "Failed to write output to jface.bzl")
 	}
 
 	log.I(ctx, "I've updated %s successfully... I think.", jfaceBzl)
@@ -343,16 +343,16 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 	log.I(ctx, "Fetching %s...", url)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, imDumb(ctx, err, "Failed to download '%s'", url)
+		return nil, giveUp(ctx, err, "Failed to download '%s'", url)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, imDumb(ctx, err, "Got a failure response (%d) from '%s'", resp.StatusCode, url)
+		return nil, giveUp(ctx, err, "Got a failure response (%d) from '%s'", resp.StatusCode, url)
 	}
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, imDumb(ctx, err, "Failed to read response from '%s'", url)
+		return nil, giveUp(ctx, err, "Failed to read response from '%s'", url)
 	}
 	return data, nil
 }

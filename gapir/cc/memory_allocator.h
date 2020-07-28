@@ -68,15 +68,15 @@ class MemoryAllocator {
   // so you need to take care of that yourself for now!
   class Handle {
    public:
-    Handle() : _backing(_dummyMap.end()) {}
+    Handle() : _backing(_emptyMap.end()) {}
 
     bool operator!() const { return *this == nullptr; }
     bool operator==(unsigned char* rhs) const {
-      return (_backing == _dummyMap.end() ? nullptr
+      return (_backing == _emptyMap.end() ? nullptr
                                           : _backing->second->first) == rhs;
     }
     bool operator!=(unsigned char* rhs) const {
-      return (_backing == _dummyMap.end() ? nullptr
+      return (_backing == _emptyMap.end() ? nullptr
                                           : _backing->second->first) != rhs;
     }
     unsigned char& operator*() const { return *_backing->second->first; }
@@ -96,7 +96,7 @@ class MemoryAllocator {
 
     static std::map<unsigned int,
                     std::map<unsigned char*, MemoryRegion>::iterator>
-        _dummyMap;
+        _emptyMap;
 
     friend class MemoryAllocator;
   };

@@ -129,7 +129,7 @@ class TestFixture : public ::testing::Test {
     mutex_thread_init_order_.lock();
     normal_thread_run_before_signal_handler_.lock();
     m_.lock();
-    dummy_lock_.store(false, std::memory_order_seq_cst);
+    fake_lock_.store(false, std::memory_order_seq_cst);
     deadlocked_.store(false, std::memory_order_seq_cst);
     unique_test_ = this;
   }
@@ -150,29 +150,29 @@ class TestFixture : public ::testing::Test {
     thread_second.join();
   }
 
-  // DoTask acquires the dummy lock and runs the given function.
+  // DoTask acquires the fake lock and runs the given function.
   void DoTask(std::function<void(void)> task) {
-    DummyLock();
+    FakeLock();
     normal_thread_run_before_signal_handler_
         .unlock();  // This is to make sure the signal will only be send after
                     // the normal threads
     task();
-    DummyUnlock();
+    FakeUnlock();
   }
 
   // RegisterHandlerAndTriggerSignal does the following things:
-  //  1) Registers a signal handler to SIGUSR1 which acquires the dummy lock.
-  //  2) Creates a child thread which will acquire the dummy lock.
+  //  1) Registers a signal handler to SIGUSR1 which acquires the fake lock.
+  //  2) Creates a child thread which will acquire the fake lock.
   //  3) Waits for the child thread to run then sends a signal interrupt to the
   //  child thread.
   //  4) Waits until the child thread finishes and clean up.
   void RegisterHandlerAndTriggerSignal(void* (*child_thread_func)(void*)) {
     auto handler_func = [](int, siginfo_t*, void*) {
-      // DummyLock is to simulate the case that the coherent memory tracker's
+      // FakeLock is to simulate the case that the coherent memory tracker's
       // signal handler needs to access shared data.
-      unique_test_->DummyLock();
+      unique_test_->FakeLock();
       ;
-      unique_test_->DummyUnlock();
+      unique_test_->FakeUnlock();
     };
     struct sigaction orig_action;
     ASSERT_TRUE(RegisterSignalHandler(SIGUSR1, handler_func, &orig_action));
@@ -186,16 +186,16 @@ class TestFixture : public ::testing::Test {
   }
 
  protected:
-  // Acquires the dummy lock. If the dummy lock has already been locked, i.e.
+  // Acquires the fake lock. If the fake lock has already been locked, i.e.
   // its value is true, sets the deadlocked_ flag.
-  void DummyLock() {
-    if (dummy_lock_.load(std::memory_order_seq_cst)) {
+  void FakeLock() {
+    if (fake_lock_.load(std::memory_order_seq_cst)) {
       deadlocked_.exchange(true);
     }
-    dummy_lock_.exchange(true);
+    fake_lock_.exchange(true);
   }
-  // Releases the dummy lock by setting its value to false.
-  void DummyUnlock() { dummy_lock_.exchange(false); }
+  // Releases the fake lock by setting its value to false.
+  void FakeUnlock() { fake_lock_.exchange(false); }
 
   std::mutex normal_thread_run_before_signal_handler_;  // A mutex to
                                                         // guarantee the normal
@@ -206,7 +206,7 @@ class TestFixture : public ::testing::Test {
                                         // initiated before the other one
   std::mutex m_;  // A mutex for tuning execution order in tests
   std::atomic<bool>
-      dummy_lock_;  // An atomic bool to simulate the lock/unlock state
+      fake_lock_;  // An atomic bool to simulate the lock/unlock state
   std::atomic<bool> deadlocked_;  // A flag to indicate deadlocked or not state
 
   static TestFixture* unique_test_;  // A static pointer of this test fixture,

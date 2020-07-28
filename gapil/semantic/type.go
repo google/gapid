@@ -23,7 +23,7 @@ import (
 // Type is the interface to any object that can act as a type to the api
 // language.
 type Type interface {
-	isType() // A dummy function that's implemented by all semantic types.
+	isType() // A placeholder function that's implemented by all semantic types.
 	Owner
 }
 
@@ -31,7 +31,7 @@ type Type interface {
 // language, it must be able to correctly report the type of value it would
 // return if executed.
 type Expression interface {
-	isExpression() // A dummy function that's implemented by all semantic types.
+	isExpression() // A placeholder function that's implemented by all semantic types.
 	Node
 	ExpressionType() Type // returns the expression value type.
 }

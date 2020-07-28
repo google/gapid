@@ -471,7 +471,7 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
     return result;
   }
 
-  // Dummy function that we can pass down to the specific memory tracker.
+  // Placeholder function that we can pass down to the specific memory tracker.
   bool DoHandleSegfault(void* v) { return HandleSegfault(v); }
 
   // A helper function that returns the first tracking range that overlaps with

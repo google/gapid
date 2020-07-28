@@ -123,7 +123,7 @@ Spy::Spy()
       GAPID_FATAL("Failed to read connection header");
     }
   } else {
-    header.read_dummy();
+    header.read_fake();
   }
 
   GAPID_INFO("Connection header read");

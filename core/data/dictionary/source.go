@@ -33,8 +33,8 @@ var (
 	vTy = generic.T2Ty
 )
 
-// Source is a dummy interface used to prototype a generic dictionary type.
-// K and V can be subsituted with a different type.
+// Source is a placeholder interface used to prototype a generic dictionary
+// type. K and V can be subsituted with a different type.
 type Source interface {
 	// Get returns the value of the entry with the given key.
 	Get(K) V

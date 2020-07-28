@@ -2,9 +2,8 @@
 
 String tables provide a solution for displaying localized messages in the
 client(s) with the ability to include graphics API specific details. Given that
-the clients are designed to be as dumb-terminal like as possible, and have no
-graphics API knowledge, these string tables are provided by the server to the
-clients via RPCs.
+the clients are designed to be API-agnostic, these string tables are provided by
+the server to the clients via RPCs to form detailed messages.
 
 String tables also provide support for rich-text formatting.
 

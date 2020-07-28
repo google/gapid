@@ -96,7 +96,7 @@ bool vkLayersAndExtensions(
     std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);
 
 // vkPhysicalDevices populates the VulkanPhysicalDevices fields in the
-// given device::VulkanDriver and creates a dummy VkDevice. Returns true if
+// given device::VulkanDriver and optionally creates a VkDevice. Returns true if
 // succeeded. If a vkGetInstanceProcAddress function is given, that function
 // will be used to resolve Vulkan API calls, otherwise Vulkan loader will be
 // used.

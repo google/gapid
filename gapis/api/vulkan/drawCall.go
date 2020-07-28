@@ -16,8 +16,8 @@ package vulkan
 
 import "github.com/google/gapid/gapis/api"
 
-// A dummy interface for draw calls to conform the DrawCall annotation in API
-// files. In Vulkan, all the drawing actually happens in the execution of
+// A placeholder interface for draw calls to conform the DrawCall annotation in
+// API files. In Vulkan, all the drawing actually happens in the execution of
 // vkQueueSubmit and all the drawing information should be found in the state
 // when vkQueueSubmit is called.
 type drawCall interface {

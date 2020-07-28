@@ -65,7 +65,7 @@ vkDestroyImage
   {{if (and (HasPrefix $.Name "vk") (Contains "pAllocator" (Macro "C++.CallArguments" $)) )}}true{{end}}
 {{end}}
 
-{{Global "Vulkan.OverrideFunctions" "dummy\n"}}
+{{Global "Vulkan.OverrideFunctions" "placeholder\n"}}
 {{/* We need to override all the functions that use allocation callback or relate to gpu allocation */}}
 {{range $c := AllCommands $}}
   {{if (or (Macro "DoesGpuAllocation" $c) (Macro "DoesHaveAllocatorParam" $c) )}}
@@ -75,7 +75,7 @@ vkDestroyImage
 {{end}}
 
 {{Global "Vulkan.OverrideFunctions" ((Global "Vulkan.OverrideFunctions") | SplitEOL)}}
-{{Global "Vulkan.OtherUsedFunctions" "dummy" "vkGetPhysicalDeviceMemoryProperties" "vkGetBufferMemoryRequirements" "vkGetImageMemoryRequirements"}}
+{{Global "Vulkan.OtherUsedFunctions" "placeholder" "vkGetPhysicalDeviceMemoryProperties" "vkGetBufferMemoryRequirements" "vkGetImageMemoryRequirements"}}
 
 {{$ | Macro "AllocationCallbackTracking" | Reflow 4 | Write "allocation_callbacks_impl.cpp"}}
 
@@ -106,4 +106,3 @@ extern MemoryTracker memory_tracker_instance;
 {{end}}
 
 {{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
-

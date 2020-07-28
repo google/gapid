@@ -1631,7 +1631,7 @@ cmd void ClearMapOnFree() {
 			// causing a "Instruction does not dominate all uses!" error.
 			name: "RefCount.ReleaseInNestedScopes",
 			src: `
-sub string CrazyNestedLogic(u32 i) {
+sub string DeepNestedLogic(u32 i) {
 	if i == 0 {
 		s := "cat"
 		switch(s) {
@@ -1653,7 +1653,7 @@ sub string CrazyNestedLogic(u32 i) {
 	return "the-end"
 }
 cmd void ReleaseInNestedScopes(u32 i) {
-	x := CrazyNestedLogic(i)
+	x := DeepNestedLogic(i)
 }`,
 			cmds: []cmd{{
 				N: "ReleaseInNestedScopes",

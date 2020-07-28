@@ -97,7 +97,7 @@ public abstract class MeasuringViewLabelProvider extends StyledCellLabelProvider
     LinkableStyledString string =
         format(cell.getItem(), cell.getElement(), LinkableStyledString.create(theme));
     string.endLink();
-    string.append("dummy", string.defaultStyle());
+    string.append("placeholder", string.defaultStyle());
     updateLayout(cell, string.getString());
 
     Rectangle bounds = cell.getTextBounds();

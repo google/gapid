@@ -41,7 +41,7 @@ type IntTy interface {
 	IsInt()
 }
 
-// IsInt is a dummy function to make Int implement IntTy interface
+// IsInt is a placeholder function to make Int implement IntTy interface
 func (Int) IsInt() {}
 
 // Uint is an unsigned integer type.
@@ -52,7 +52,7 @@ type UintTy interface {
 	IsUint()
 }
 
-// IsUint is a dummy function to make Uint implement UintTy interface
+// IsUint is a placeholder function to make Uint implement UintTy interface
 func (Uint) IsUint() {}
 
 // Char is the possibly signed but maybe unsigned C/C++ char.
@@ -63,7 +63,7 @@ type CharTy interface {
 	IsChar()
 }
 
-// IsChar is a dummy function to make Char implement CharTy interface
+// IsChar is a placeholder function to make Char implement CharTy interface
 func (Char) IsChar() {}
 
 // CharToBytes changes the Char values to their byte[] representation.
@@ -83,7 +83,7 @@ type SizeTy interface {
 	IsMemorySize()
 }
 
-// IsMemorySize is a dummy function to make Size implement SizeTy interface
+// IsMemorySize is a placeholder function to make Size implement SizeTy interface
 func (Size) IsMemorySize() {}
 
 // IsSize returns true if v is a Size or alias to a Size.

@@ -280,7 +280,7 @@ public class MainWindow extends ApplicationWindow {
   protected MenuManager createMenuManager() {
     MenuManager manager = new MenuManager();
 
-    // Add a dummy file menu, so the UI doesn't move once the rest of the menus are created.
+    // Add a placeholder file menu, so the UI doesn't move once the rest of the menus are created.
     MenuManager file = new MenuManager("&File", MenuItems.FILE_ID);
     file.add(MenuItems.FileExit.create(this::close));
     manager.add(file);

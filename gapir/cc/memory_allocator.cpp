@@ -29,7 +29,7 @@ namespace gapir {
 
 std::map<unsigned int,
          std::map<unsigned char*, MemoryAllocator::MemoryRegion>::iterator>
-    MemoryAllocator::Handle::_dummyMap;
+    MemoryAllocator::Handle::_emptyMap;
 
 std::unique_ptr<MemoryAllocator> MemoryAllocator::create(size_t heapSize) {
   return std::unique_ptr<MemoryAllocator>(new MemoryAllocator(heapSize));

@@ -29,7 +29,7 @@ type repeated struct {
 }
 
 const (
-	dummyFlag = "dummy"
+	phFlag = "placeholder"
 )
 
 func newRepeatedFlag(value reflect.Value) flag.Value {
@@ -38,28 +38,28 @@ func newRepeatedFlag(value reflect.Value) flag.Value {
 	single := reflect.New(value.Type().Elem())
 	switch s := single.Interface().(type) {
 	case *bool:
-		fs.BoolVar(s, dummyFlag, *s, "")
+		fs.BoolVar(s, phFlag, *s, "")
 	case *int:
-		fs.IntVar(s, dummyFlag, *s, "")
+		fs.IntVar(s, phFlag, *s, "")
 	case *int64:
-		fs.Int64Var(s, dummyFlag, *s, "")
+		fs.Int64Var(s, phFlag, *s, "")
 	case *uint:
-		fs.UintVar(s, dummyFlag, *s, "")
+		fs.UintVar(s, phFlag, *s, "")
 	case *uint64:
-		fs.Uint64Var(s, dummyFlag, *s, "")
+		fs.Uint64Var(s, phFlag, *s, "")
 	case *float64:
-		fs.Float64Var(s, dummyFlag, *s, "")
+		fs.Float64Var(s, phFlag, *s, "")
 	case *string:
-		fs.StringVar(s, dummyFlag, *s, "")
+		fs.StringVar(s, phFlag, *s, "")
 	case *time.Duration:
-		fs.DurationVar(s, dummyFlag, *s, "")
+		fs.DurationVar(s, phFlag, *s, "")
 	case flag.Value:
-		fs.Var(s, dummyFlag, "")
+		fs.Var(s, phFlag, "")
 	default:
 		panic(fmt.Sprintf("Unhandled flag type: %v", single.Type()))
 	}
 
-	return &repeated{value, single, fs.Lookup(dummyFlag).Value}
+	return &repeated{value, single, fs.Lookup(phFlag).Value}
 }
 
 func (f *repeated) String() string {
