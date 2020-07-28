@@ -253,7 +253,7 @@ func (c *config) checkVM(java string, checkVersion bool) bool {
 
 	versionStr := string(version)
 
-	// Blacklist the Google custom JDKs.
+	// Don't use the Google custom JDKs as they don't work with our JNI libs.
 	if p := strings.Index(versionStr, googleInfix); p >= 0 {
 		c.logIfVerbose("Not using " + java + ": is a Google JDK (go/gapid-jdk)")
 		return false
