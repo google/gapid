@@ -80,7 +80,7 @@ func (*Observed) isExpression() {}
 // ExpressionType implements Expression for observed parameter lookup.
 func (e *Observed) ExpressionType() Type { return e.Parameter.Type }
 
-// Callable wraps a Function declaration into a first class function value expression,
+// Callable wraps a Function declaration into a function value expression,
 // optionally binding to an object if its a method.
 type Callable struct {
 	Object   Expression // the object to use as the this parameter for a method
