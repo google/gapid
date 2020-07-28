@@ -168,8 +168,10 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
     mouseYpos = SLICE_Y + depth * SLICE_HEIGHT;
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
-      if (data.depths[i] == depth && data.starts[i] <= t && t <= data.ends[i]) {
-        hoveredName = data.names[i];
+      long tStart = data.starts[i];
+      long tEnd = data.ends[i];
+      if (data.depths[i] == depth && tStart <= t && t <= tEnd) {
+        hoveredName = data.names[i] + " (" + TimeSpan.timeToString(tEnd - tStart) + ")";
         hoveredSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
             m.measure(Fonts.Style.Normal, hoveredName));
         mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,

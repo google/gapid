@@ -193,7 +193,9 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
     mouseYpos = depth * SLICE_HEIGHT;
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
-      if (data.depths[i] == depth && data.starts[i] <= t && t <= data.ends[i]) {
+      long tStart = data.starts[i];
+      long tEnd = data.ends[i];
+      if (data.depths[i] == depth && tStart <= t && t <= tEnd) {
         hoveredTitle = data.titles[i];
         hoveredCategory = data.categories[i];
         if (hoveredTitle.isEmpty()) {
@@ -204,6 +206,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
           hoveredCategory = "";
         }
         hoveredTitle = buildSliceTitle(hoveredTitle, data.args[i]);
+        hoveredTitle += " (" + TimeSpan.timeToString(tEnd - tStart) + ")";
 
         hoveredSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
             m.measure(Fonts.Style.Normal, hoveredTitle),
