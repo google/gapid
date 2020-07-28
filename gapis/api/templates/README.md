@@ -48,19 +48,6 @@ being the faster option:
     {{Template "Foocakes" "Hello world"}}
     ```
 
-## File macros
-
-AGI also adds support for emitting multiple files from a single `.tmpl` source using the `file` function.
-`file` is identical to `Macro`, but it takes one additional argument for the output file name:
-
-```go
-{{File filename macro-name single-arg}}
-{{File filename macro-name arg0-key arg0-value arg1-key arg1-value...}}
-```
-
-The outputted file will created in the directory of the ‘master’ output file and
-will adopt the same extension.
-
 ## Special symbols
 
 To try and help with the formatting of the generated output, AGI's templates support a number of custom unicode symbols:

@@ -26,7 +26,7 @@ func TestParseLog(t *testing.T) {
   ǁf3cdfb4d9b662e0d66b5779d02370115e136a008ǀBen ClaytonǀUpdate freetype path and fix for breaking changes.ǀ
   ǁ92ee22e53df7b361224670cf0f5ce4b12cdbc040ǀBen Clayton <bclayton@google.com>ǀMerge pull request #154 from google/recreate_ctrlsǀAdd recreateControls flag to the OnDataChanged list/tree event.
   ǁ73c5a5ba67edfd06d20f9f52249b06984a324d0cǀMr4xǀUpdated Grid Layoutǀ
-  ǁ1d039c122e95122e68e5862aab3580bba15bd1adǀMr4xǀMerge pull request #1 from google/masterǀUpdate`
+  ǁ1d039c122e95122e68e5862aab3580bba15bd1adǀMr4xǀMerge pull request #1 from google/fooǀUpdate`
 	expected := []ChangeList{
 		{
 			SHA:         SHA{0xa5, 0xea, 0xeb, 0xbe, 0x90, 0xd6, 0x0b, 0x56, 0x0e, 0x08, 0xa6, 0x75, 0x09, 0x58, 0x75, 0x5a, 0x58, 0xe6, 0xf9, 0x99},
@@ -53,7 +53,7 @@ func TestParseLog(t *testing.T) {
 		{
 			SHA:         SHA{0x1d, 0x03, 0x9c, 0x12, 0x2e, 0x95, 0x12, 0x2e, 0x68, 0xe5, 0x86, 0x2a, 0xab, 0x35, 0x80, 0xbb, 0xa1, 0x5b, 0xd1, 0xad},
 			Author:      "Mr4x",
-			Subject:     "Merge pull request #1 from google/master",
+			Subject:     "Merge pull request #1 from google/foo",
 			Description: "Update",
 		},
 	}
