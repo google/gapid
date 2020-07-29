@@ -43,7 +43,6 @@ import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
 import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
-import com.google.gapid.views.ThumbnailScrubber;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;
 import com.google.gapid.widgets.TabArea.Persistance;
@@ -352,7 +351,6 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
      * Information about the available tabs.
      */
     public static enum Type {
-      Filmstrip(View.FilmStrip, "Filmstrip", DefaultPosition.Top, ThumbnailScrubber::new),
       Profile(View.Profile, "Profile", DefaultPosition.Top, ProfileView::new),
 
       ApiCalls(View.Commands, "Commands", DefaultPosition.Left, CommandTree::new),

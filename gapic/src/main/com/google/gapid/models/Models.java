@@ -28,7 +28,6 @@ public class Models {
   public final Capture capture;
   public final Devices devices;
   public final CommandStream commands;
-  public final Timeline timeline;
   public final Resources resources;
   public final ApiState state;
   public final Reports reports;
@@ -42,7 +41,7 @@ public class Models {
   public final StatusBar status; // The "model" part of this "widget".
 
   public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
-      Devices devices, CommandStream commands, Timeline timeline, Resources resources,
+      Devices devices, CommandStream commands, Resources resources,
       ApiState state, Reports reports, ImagesModel images, ConstantSets constants, Geometries geos,
       Memory memory, MemoryTypes types, Perfetto perfetto, Profile profile, StatusBar status) {
     this.settings = settings;
@@ -51,7 +50,6 @@ public class Models {
     this.capture = capture;
     this.devices = devices;
     this.commands = commands;
-    this.timeline = timeline;
     this.resources = resources;
     this.state = state;
     this.reports = reports;
@@ -71,7 +69,6 @@ public class Models {
     Capture capture = new Capture(shell, analytics, client, settings);
     Devices devices = new Devices(shell, analytics, client, capture, settings);
     ConstantSets constants = new ConstantSets(client, devices);
-    Timeline timeline = new Timeline(shell, analytics, client, capture, devices);
     CommandStream commands = new CommandStream(
         shell, analytics, client, capture, devices, constants);
     Resources resources = new Resources(shell, analytics, client, capture, devices, commands);
@@ -85,9 +82,8 @@ public class Models {
     MemoryTypes types = new MemoryTypes(client, devices, constants);
     Perfetto perfetto = new Perfetto(shell, analytics, client, capture, status);
     Profile profile = new Profile(shell, analytics, client, capture, devices);
-    return new Models(settings, analytics, follower, capture, devices, commands, timeline,
-        resources, state, reports, images, constants, geometries, memory, types, perfetto, profile,
-        status);
+    return new Models(settings, analytics, follower, capture, devices, commands, resources, state,
+        reports, images, constants, geometries, memory, types, perfetto, profile, status);
   }
 
   public void reset() {
