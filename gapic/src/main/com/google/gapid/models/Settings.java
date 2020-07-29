@@ -82,7 +82,7 @@ public class Settings {
               .setType(SettingsProto.Trace.Duration.Type.MANUAL)
               .setStartFrame(100)
               .setStartTime(10)
-              .setDuration(7))
+              .setDuration(1))
           .setProfileDuration(SettingsProto.Trace.Duration.newBuilder()
               .setType(SettingsProto.Trace.Duration.Type.MANUAL)
               .setStartTime(10)

@@ -122,7 +122,7 @@ public class TracerDialog {
   protected static final Logger LOG = Logger.getLogger(TracerDialog.class.getName());
 
   public static final Flag<Integer> maxFrames = Flags.value(
-      "max-frames", 20, "The maximum number of frames to allow for graphics captures", true);
+      "max-frames", 1, "The maximum number of frames to allow for graphics captures", true);
   public static final Flag<Integer> maxPerfetto = Flags.value(
       "max-perfetto", 10 * 60, "The maximum amount of time to allow for profile captures", true);
 
@@ -423,9 +423,12 @@ public class TracerDialog {
         mecWarningLabel = createLabel(durGroup, "");
 
         durationLabel = createLabel(durGroup, FRAMES_LABEL);
-        duration = withLayoutData(createSpinner(durGroup, 7, 1, DURATION_FRAMES_MAX),
+        durationLabel.setVisible(DURATION_FRAMES_MAX > 1);
+        duration = withLayoutData(createSpinner(durGroup, 1, 1, DURATION_FRAMES_MAX),
             new GridData(SWT.FILL, SWT.TOP, false, false));
+        duration.setVisible(DURATION_FRAMES_MAX > 1);
         durationUnit = createLabel(durGroup, DURATION_FRAMES_UNIT);
+        durationUnit.setVisible(DURATION_FRAMES_MAX > 1);
 
         Group optGroup  = withLayoutData(
             createGroup(this, "Trace Options", new GridLayout(2, false)),
@@ -695,10 +698,14 @@ public class TracerDialog {
             startType.select(StartType.Manual.ordinal());
         }
 
-        duration.setSelection(dur.getDuration());
+        int maxDuration = isPerfetto ? DURATION_PERFETTO_MAX : DURATION_FRAMES_MAX;
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
-        duration.setMaximum(isPerfetto ? DURATION_PERFETTO_MAX : DURATION_FRAMES_MAX);
+        durationLabel.setVisible(maxDuration > 1);
+        duration.setMaximum(maxDuration);
+        duration.setSelection(Math.min(dur.getDuration(), maxDuration));
+        duration.setVisible(maxDuration > 1);
         durationUnit.setText(isPerfetto ? DURATION_PERFETTO_UNIT : DURATION_FRAMES_UNIT);
+        durationUnit.setVisible(maxDuration > 1);
         durationUnit.requestLayout();
 
         perfettoConfig.setVisible(isPerfetto);
