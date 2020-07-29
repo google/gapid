@@ -20,6 +20,7 @@ import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createSelectableLabel;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
@@ -63,19 +64,19 @@ public class VulkanEventsSelectionView extends Composite {
     withLayoutData(createBoldLabel(main, "Slice:"), withSpans(new GridData(), 2, 1));
 
     createLabel(main, "Name:");
-    createLabel(main, slice.names.get(0));
+    createSelectableLabel(main, slice.names.get(0));
 
     createLabel(main, "Time:");
-    createLabel(main, timeToString(slice.times.get(0) - state.getTraceTime().start));
+    createSelectableLabel(main, timeToString(slice.times.get(0) - state.getTraceTime().start));
 
     createLabel(main, "Duration:");
-    createLabel(main, timeToString(slice.durs.get(0)));
+    createSelectableLabel(main, timeToString(slice.durs.get(0)));
 
     createLabel(main, "Command Buffer:");
-    createLabel(main, Long.toString(slice.commandBuffers.get(0)));
+    createSelectableLabel(main, String.format("0x%08X", slice.commandBuffers.get(0)));
 
     createLabel(main, "Submission ID:");
-    createLabel(main, Long.toString(slice.submissionIds.get(0)));
+    createSelectableLabel(main, Long.toString(slice.submissionIds.get(0)));
 
     if (!slice.argSets.get(0).isEmpty()) {
       String[] keys = Iterables.toArray(slice.argSets.get(0).keys(), String.class);
@@ -88,9 +89,9 @@ public class VulkanEventsSelectionView extends Composite {
       for (int i = 0; i < keys.length && i < PROPERTIES_PER_PANEL; i++) {
         int cols = (keys.length - i + PROPERTIES_PER_PANEL - 1) / PROPERTIES_PER_PANEL;
         for (int c = 0; c < cols; c++) {
-          withLayoutData(createLabel(props, keys[i + c * PROPERTIES_PER_PANEL] + ":"),
+          withLayoutData(createSelectableLabel(props, keys[i + c * PROPERTIES_PER_PANEL] + ":"),
               withIndents(new GridData(), (c == 0) ? 0 : PANEL_INDENT, 0));
-          createLabel(props, String.valueOf(slice.argSets.get(0).get(keys[i + c * PROPERTIES_PER_PANEL])));
+          createSelectableLabel(props, String.valueOf(slice.argSets.get(0).get(keys[i + c * PROPERTIES_PER_PANEL])));
         }
         if (cols != panels) {
           withLayoutData(createLabel(props, ""), withSpans(new GridData(), 2 * (panels - cols), 1));

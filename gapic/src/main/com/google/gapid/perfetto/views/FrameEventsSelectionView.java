@@ -19,6 +19,7 @@ import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createSelectableLabel;
 import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
@@ -63,13 +64,13 @@ public class FrameEventsSelectionView extends Composite {
     withLayoutData(createBoldLabel(main, "Slice:"), withSpans(new GridData(), 2, 1));
 
     createLabel(main, "Name:");
-    createLabel(main, slice.names.get(0));
+    createSelectableLabel(main, slice.names.get(0));
 
     createLabel(main, "Time:");
-    createLabel(main, timeToString(slice.times.get(0) - state.getTraceTime().start));
+    createSelectableLabel(main, timeToString(slice.times.get(0) - state.getTraceTime().start));
 
     createLabel(main, "Duration:");
-    createLabel(main, timeToString(slice.durs.get(0)));
+    createSelectableLabel(main, timeToString(slice.durs.get(0)));
 
       // If the selected event is a displayed frame slice, show the frame stats
     Composite stats = withLayoutData(createComposite(this, new GridLayout(2, false)),
@@ -78,16 +79,16 @@ public class FrameEventsSelectionView extends Composite {
         withSpans(new GridData(), 2, 1));
 
     createLabel(stats, "Frame number: ");
-    createLabel(stats, Long.toString(slice.frameNumbers.get(0)));
+    createSelectableLabel(stats, Long.toString(slice.frameNumbers.get(0)));
 
     createLabel(stats, "Queue to Acquire: ");
-    createLabel(stats, timeToString(slice.queueToAcquireTimes.get(0)));
+    createSelectableLabel(stats, timeToString(slice.queueToAcquireTimes.get(0)));
 
     createLabel(stats, "Acquire to Latch: ");
-    createLabel(stats, timeToString(slice.acquireToLatchTimes.get(0)));
+    createSelectableLabel(stats, timeToString(slice.acquireToLatchTimes.get(0)));
 
     createLabel(stats, "Latch to Present: ");
-      createLabel(stats, timeToString(slice.latchToPresentTimes.get(0)));
+    createSelectableLabel(stats, timeToString(slice.latchToPresentTimes.get(0)));
 
     if (!slice.argsets.get(0).isEmpty()) {
       String[] keys = Iterables.toArray(slice.argsets.get(0).keys(), String.class);
@@ -100,9 +101,9 @@ public class FrameEventsSelectionView extends Composite {
       for (int i = 0; i < keys.length && i < PROPERTIES_PER_PANEL; i++) {
         int cols = (keys.length - i + PROPERTIES_PER_PANEL - 1) / PROPERTIES_PER_PANEL;
         for (int c = 0; c < cols; c++) {
-          withLayoutData(createLabel(props, keys[i + c * PROPERTIES_PER_PANEL] + ":"),
+          withLayoutData(createSelectableLabel(props, keys[i + c * PROPERTIES_PER_PANEL] + ":"),
               withIndents(new GridData(), (c == 0) ? 0 : PANEL_INDENT, 0));
-          createLabel(props, String.valueOf(slice.argsets.get(0).get(keys[i + c * PROPERTIES_PER_PANEL])));
+          createSelectableLabel(props, String.valueOf(slice.argsets.get(0).get(keys[i + c * PROPERTIES_PER_PANEL])));
         }
         if (cols != panels) {
           withLayoutData(createLabel(props, ""), withSpans(new GridData(), 2 * (panels - cols), 1));

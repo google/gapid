@@ -19,6 +19,7 @@ import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createSelectableLabel;
 import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
@@ -136,8 +137,8 @@ public class SlicesSelectionView extends Composite {
         withLayoutData(createBoldLabel(main, "Vulkan Info:"),
             withSpans(new GridData(), 2, 1));
         props.forEach((key, value) -> {
-          createLabel(main, key);
-          createLabel(main, value);
+          createSelectableLabel(main, key);
+          createSelectableLabel(main, value);
         });
       }
     }
@@ -153,9 +154,9 @@ public class SlicesSelectionView extends Composite {
       for (int i = 0; i < keys.length && i < PROPERTIES_PER_PANEL; i++) {
         int cols = (keys.length - i + PROPERTIES_PER_PANEL - 1) / PROPERTIES_PER_PANEL;
         for (int c = 0; c < cols; c++) {
-          withLayoutData(createLabel(props, keys[i + c * PROPERTIES_PER_PANEL] + ":"),
+          withLayoutData(createSelectableLabel(props, keys[i + c * PROPERTIES_PER_PANEL] + ":"),
               withIndents(new GridData(), (c == 0) ? 0 : PANEL_INDENT, 0));
-          createLabel(props, String.valueOf(slice.argsets.get(0).get(keys[i + c * PROPERTIES_PER_PANEL])));
+          createSelectableLabel(props, String.valueOf(slice.argsets.get(0).get(keys[i + c * PROPERTIES_PER_PANEL])));
         }
         if (cols != panels) {
           withLayoutData(createLabel(props, ""), withSpans(new GridData(), 2 * (panels - cols), 1));

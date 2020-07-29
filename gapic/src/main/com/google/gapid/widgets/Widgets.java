@@ -49,7 +49,9 @@ import org.eclipse.swt.SWTError;
 import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
@@ -63,6 +65,7 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
@@ -450,6 +453,23 @@ public class Widgets {
   public static Text createTextarea(Composite parent, String text) {
     Text result = new Text(parent, SWT.MULTI | SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL);
     result.setText(text);
+    return result;
+  }
+
+  public static StyledText createSelectableLabel(Composite parent, String text) {
+    StyledText result = new StyledText(parent, SWT.READ_ONLY | SWT.SINGLE);
+    result.setText(text);
+    result.setEditable(false);
+    result.setBackground(parent.getShell().getBackground());
+    result.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+    // Set caret to null by default to hide caret.
+    result.setCaret(null);
+    // Clear selection when out of focus.
+    result.addListener(SWT.FocusOut, new Listener() {
+      public void handleEvent(Event e) {
+        result.setSelection(0);
+      }
+    });
     return result;
   }
 
