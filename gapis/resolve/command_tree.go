@@ -441,32 +441,47 @@ func addContainingGroups(
 	}
 }
 
+type frame struct {
+	index int
+	start api.CmdID
+	end   api.CmdID
+	repr  api.CmdID
+}
+
+func (f frame) addGroup(t *commandTree) {
+	group, _ := t.root.AddGroup(f.start, f.end+1, fmt.Sprintf("Frame %v", f.index))
+	if group != nil {
+		group.UserData = &CmdGroupData{Representation: f.repr}
+	}
+}
+
 func addFrameGroups(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
-	frameCount, frameStart, frameEnd := 0, api.CmdID(0), api.CmdID(0)
+	frameCount := 0
+	firstFrame, curFrame := frame{}, frame{}
 	for _, e := range events.List {
 		i := api.CmdID(e.Command.Indices[0])
 		switch e.Kind {
 		case service.EventKind_FirstInFrame:
-			frameStart = i
+			curFrame.start = i
 
 			// If the start is within existing group, move it past the end of the group
-			if idx := t.root.Spans.IndexOf(frameStart); idx != -1 {
+			if idx := t.root.Spans.IndexOf(curFrame.start); idx != -1 {
 				span := t.root.Spans[idx]
 				if span.Bounds().Start < i { // Unless the start is equal to the group start.
 					if subgroup, ok := span.(*api.CmdIDGroup); ok {
-						frameStart = subgroup.Range.End
+						curFrame.start = subgroup.Range.End
 					}
 				}
 			}
 
 		case service.EventKind_LastInFrame:
 			frameCount++
-			frameEnd = i
+			curFrame.index, curFrame.end, curFrame.repr = frameCount, i, i
 
 			// If the end is within existing group, move it to the end of the group
-			if idx := t.root.Spans.IndexOf(frameEnd); idx != -1 {
+			if idx := t.root.Spans.IndexOf(curFrame.end); idx != -1 {
 				if subgroup, ok := t.root.Spans[idx].(*api.CmdIDGroup); ok {
-					frameEnd = subgroup.Range.Last()
+					curFrame.end = subgroup.Range.Last()
 				}
 			}
 
@@ -475,14 +490,25 @@ func addFrameGroups(ctx context.Context, events *service.Events, p *path.Command
 			// However, we can not reliably detect this situation as the user
 			// group might be surrounded by (potentially filtered) commands.
 
-			group, _ := t.root.AddGroup(frameStart, frameEnd+1, fmt.Sprintf("Frame %v", frameCount))
-			if group != nil {
-				group.UserData = &CmdGroupData{Representation: i}
+			// If this is the first frame, don't add it yet, until we see a second
+			// frame. This way we don't have a single "Frame 1" group for 1 frame
+			// traces (the norm).
+			if frameCount == 1 {
+				firstFrame = curFrame
+			} else {
+				if firstFrame.end != 0 {
+					firstFrame.addGroup(t)
+					firstFrame.end = 0
+				}
+				curFrame.addGroup(t)
 			}
 		}
 	}
-	if p.AllowIncompleteFrame && frameCount > 0 && frameStart > frameEnd {
-		t.root.AddGroup(frameStart, last, "Incomplete Frame")
+	if p.AllowIncompleteFrame && frameCount > 0 && curFrame.start > curFrame.end {
+		if firstFrame.end != 0 {
+			firstFrame.addGroup(t)
+		}
+		t.root.AddGroup(curFrame.start, last, "Incomplete Frame")
 	}
 }
 
