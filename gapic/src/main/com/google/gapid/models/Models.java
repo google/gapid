@@ -89,7 +89,6 @@ public class Models {
   public void reset() {
     capture.reset();
     devices.resetReplayDevice();
-    timeline.reset();
     commands.reset();
     resources.reset();
     state.reset();
