@@ -75,8 +75,8 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
     return new ThreadPanel(state, track, expanded);
   }
 
-  public void setCollapsed(boolean collapsed) {
-    this.expanded = !collapsed;
+  public void setExpanded(boolean expanded) {
+    this.expanded = expanded;
   }
 
   @Override

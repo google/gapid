@@ -58,14 +58,14 @@ public class TrackContainer {
   }
 
   public static <T extends TrackPanel<T>> TrackConfig.Track.UiFactory<Panel> single(
-      TrackConfig.Track.UiFactory<T> track, boolean sep, BiConsumer<T, Boolean> filter,
-      boolean initial, boolean rightTruncate) {
+      TrackConfig.Track.UiFactory<T> track, boolean sep, BiConsumer<T, Boolean> toggleDetails,
+      boolean showDetails, boolean rightTruncate) {
     return state -> {
       T panel = track.createPanel(state);
-      if (initial) {
-        filter.accept(panel, initial);
+      if (!showDetails) {
+        toggleDetails.accept(panel, false);
       }
-      return new Single<T>(state, panel, sep, filter, initial, rightTruncate);
+      return new Single<T>(state, panel, sep, toggleDetails, showDetails, rightTruncate);
     };
   }
 
@@ -82,16 +82,17 @@ public class TrackContainer {
 
   public static <T extends TitledPanel & CopyablePanel<T>> TrackConfig.Group.UiFactory group(
       TrackConfig.Track.UiFactory<T> summary, boolean expanded,
-      BiConsumer<CopyablePanel.Group, Boolean> filter, boolean initial) {
+      BiConsumer<CopyablePanel.Group, Boolean> toggleDetails, boolean showDetails) {
     return (state, detail) -> {
       CopyablePanel.Group group = new CopyablePanel.Group();
       for (CopyablePanel<?> track : detail) {
         group.add(track);
       }
-      if (initial) {
-        filter.accept(group, true);
+      if (!showDetails) {
+        toggleDetails.accept(group, false);
       }
-      return Group.of(state, summary.createPanel(state), group, expanded, filter, initial);
+      return Group.of(
+          state, summary.createPanel(state), group, expanded, toggleDetails, showDetails);
     };
   }
 
@@ -99,35 +100,35 @@ public class TrackContainer {
       implements CopyablePanel<Single<T>> {
     private final T track;
     private final boolean sep;
-    protected final BiConsumer<T, Boolean> filter;
+    protected final BiConsumer<T, Boolean> toggleDetails;
     private final PinState pinState;
     private final boolean rightTruncate; // False -> Left truncate, True -> Right truncate
 
-    protected boolean filtered;
+    protected boolean showDetails;
     protected boolean hovered = false;
 
-    public Single(State.ForSystemTrace state, T track, boolean sep, BiConsumer<T, Boolean> filter,
-        boolean filtered, boolean rightTruncate) {
-      this(track ,sep, filter, filtered, new PinState(state), rightTruncate);
+    public Single(State.ForSystemTrace state, T track, boolean sep,
+        BiConsumer<T, Boolean> toggleDetails, boolean showDetails, boolean rightTruncate) {
+      this(track ,sep, toggleDetails, showDetails, new PinState(state), rightTruncate);
     }
 
-    private Single(T track, boolean sep, BiConsumer<T, Boolean> filter,
-        boolean filtered, PinState pinState, boolean rightTruncate) {
+    private Single(T track, boolean sep, BiConsumer<T, Boolean> toggleDetails, boolean showDetails,
+        PinState pinState, boolean rightTruncate) {
       this.track = track;
       this.sep = sep;
-      this.filter = filter;
+      this.toggleDetails = toggleDetails;
       this.pinState = pinState;
-      this.filtered = filtered;
+      this.showDetails = showDetails;
       this.rightTruncate = rightTruncate;
     }
 
     @Override
     public Single<T> copy() {
-      return new Single<T>(track.copy(), sep, filter, filtered, pinState, rightTruncate);
+      return new Single<T>(track.copy(), sep, toggleDetails, showDetails, pinState, rightTruncate);
     }
 
     private Single<T> copyWithSeparator() {
-      return new Single<T>(track.copy(), true, filter, filtered, pinState, rightTruncate);
+      return new Single<T>(track.copy(), true, toggleDetails, showDetails, pinState, rightTruncate);
     }
 
     @Override
@@ -146,10 +147,10 @@ public class TrackContainer {
       ctx.withClip(0, 0, LABEL_WIDTH, height, () -> {
         ctx.setForegroundColor(colors().textMain);
         ctx.drawTextTruncate(Fonts.Style.Normal, track.getTitle(), LABEL_OFFSET, 0,
-            ((filter == null) ? LABEL_PIN_X  : LABEL_TOGGLE_X) - LABEL_MARGIN - LABEL_OFFSET,
+            ((toggleDetails == null) ? LABEL_PIN_X : LABEL_TOGGLE_X) - LABEL_MARGIN - LABEL_OFFSET,
             TITLE_HEIGHT, rightTruncate);
-        if (filter != null) {
-          ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
+        if (toggleDetails != null) {
+          ctx.drawIcon(showDetails ? unfoldLess(ctx.theme) : unfoldMore(ctx.theme),
               LABEL_TOGGLE_X, 0, TITLE_HEIGHT);
         }
         if (hovered || pinState.isPinned()) {
@@ -178,10 +179,10 @@ public class TrackContainer {
     public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
       if (x < LABEL_WIDTH) {
         hovered = true;
-        if (filter != null && y < TITLE_HEIGHT && x >= LABEL_TOGGLE_X && x < LABEL_PIN_X) {
+        if (toggleDetails != null && y < TITLE_HEIGHT && x >= LABEL_TOGGLE_X && x < LABEL_PIN_X) {
           return new TrackTitleHover(track.onMouseMove(m, x, y, mods), () -> {
-            filtered = !filtered;
-            filter.accept(track, filtered);
+            showDetails = !showDetails;
+            toggleDetails.accept(track, showDetails);
           });
         } else if (y < TITLE_HEIGHT && x >= LABEL_PIN_X) {
           return new TrackTitleHover(
@@ -210,48 +211,49 @@ public class TrackContainer {
   private static class Group<T extends CopyablePanel<T> & TitledPanel, D extends CopyablePanel<D>>
       extends Panel.Base implements CopyablePanel<Group<T, D>> {
     private final T summary;
-    private final CopyablePanel.Group detail;
-    protected final BiConsumer<CopyablePanel.Group, Boolean> filter;
+    private final CopyablePanel.Group children;
+    protected final BiConsumer<CopyablePanel.Group, Boolean> toggleDetails;
     private final PinState pinState;
 
     protected boolean expanded;
-    protected boolean filtered;
+    protected boolean showDetails;
     protected boolean hovered = false;
 
-    private Group(T summary, CopyablePanel.Group detail, boolean expanded,
-        BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered, PinState pinState) {
+    private Group(T summary, CopyablePanel.Group children, boolean expanded,
+        BiConsumer<CopyablePanel.Group, Boolean> toggleDetails, boolean showDetails,
+        PinState pinState) {
       this.summary = summary;
-      this.detail = detail;
+      this.children = children;
       this.expanded = expanded;
-      this.filter = filter;
-      this.filtered = filtered;
+      this.toggleDetails = toggleDetails;
+      this.showDetails = showDetails;
       this.pinState = pinState;
     }
 
     public static <T extends CopyablePanel<T> & TitledPanel, D extends CopyablePanel<D>>
         TrackContainer.Group<T, D> of(State.ForSystemTrace state, T summary,
             CopyablePanel.Group detail, boolean expanded,
-            BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
+            BiConsumer<CopyablePanel.Group, Boolean> toggleDetails, boolean showDetails) {
       return new TrackContainer.Group<T, D>(
-          summary, detail, expanded, filter, filtered, new PinState(state));
+          summary, detail, expanded, toggleDetails, showDetails, new PinState(state));
     }
 
     @Override
     public TrackContainer.Group<T, D> copy() {
       return new TrackContainer.Group<T, D>(
-          summary.copy(), detail.copy(), expanded, filter, filtered, pinState);
+          summary.copy(), children.copy(), expanded, toggleDetails, showDetails, pinState);
     }
 
     @Override
     public double getPreferredHeight() {
-      return expanded ? TITLE_HEIGHT + detail.getPreferredHeight() : summary.getPreferredHeight();
+      return expanded ? TITLE_HEIGHT + children.getPreferredHeight() : summary.getPreferredHeight();
     }
 
     @Override
     public void setSize(double w, double h) {
       super.setSize(w, h);
       if (expanded) {
-        detail.setSize(w, h - TITLE_HEIGHT);
+        children.setSize(w, h - TITLE_HEIGHT);
       } else {
         summary.setSize(w, h);
       }
@@ -269,9 +271,9 @@ public class TrackContainer {
 
         double x = Math.max(LABEL_TOGGLE_X, LABEL_OFFSET +
             Math.ceil(ctx.measure(Fonts.Style.Normal, summary.getTitle()).w) + LABEL_MARGIN);
-        if (filter != null) {
+        if (toggleDetails != null) {
           ctx.drawIcon(
-              filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme), x, 0, TITLE_HEIGHT);
+              showDetails ? unfoldLess(ctx.theme) : unfoldMore(ctx.theme), x, 0, TITLE_HEIGHT);
           x += LABEL_ICON_SIZE;
         }
         if (hovered || pinState.isPinned()) {
@@ -283,7 +285,7 @@ public class TrackContainer {
         summary.decorateTitle(ctx, repainter);
 
         ctx.withTranslation(0, TITLE_HEIGHT, () ->
-          detail.render(ctx, repainter.translated(0, TITLE_HEIGHT)));
+          children.render(ctx, repainter.translated(0, TITLE_HEIGHT)));
       } else {
         ctx.withClip(0, 0, LABEL_WIDTH, height, () -> {
           ctx.setForegroundColor(colors().textMain);
@@ -311,7 +313,7 @@ public class TrackContainer {
       super.visit(v, area);
       if (expanded) {
         area.intersect(0, TITLE_HEIGHT, width, height - TITLE_HEIGHT)
-            .ifNotEmpty(a -> detail.visit(v, area.translate(0, -TITLE_HEIGHT)));
+            .ifNotEmpty(a -> children.visit(v, area.translate(0, -TITLE_HEIGHT)));
       } else {
         summary.visit(v, area);
       }
@@ -321,7 +323,7 @@ public class TrackContainer {
     public Dragger onDragStart(double x, double y, int mods) {
       if (expanded) {
         return (y < TITLE_HEIGHT) ? Dragger.NONE :
-          detail.onDragStart(x, y - TITLE_HEIGHT, mods).translated(0, TITLE_HEIGHT);
+          children.onDragStart(x, y - TITLE_HEIGHT, mods).translated(0, TITLE_HEIGHT);
       } else {
         return summary.onDragStart(x, y, mods);
       }
@@ -334,7 +336,7 @@ public class TrackContainer {
         double textEnd =
             Math.ceil(m.measure(Fonts.Style.Normal, summary.getTitle()).w) + LABEL_OFFSET;
         double gapEnd = expanded ? Math.max(textEnd, LABEL_TOGGLE_X) : LABEL_TOGGLE_X;
-        double toggleEnd = (expanded && filter != null) ? gapEnd + LABEL_ICON_SIZE : gapEnd;
+        double toggleEnd = (expanded && toggleDetails != null) ? gapEnd + LABEL_ICON_SIZE : gapEnd;
         double pinEnd = Math.max(LABEL_PIN_X, toggleEnd) + LABEL_ICON_SIZE;
         double redraw = (pinEnd > LABEL_WIDTH) ? pinEnd + LABEL_MARGIN : 0;
         if (expanded) {
@@ -348,10 +350,10 @@ public class TrackContainer {
           toggleEnd = LABEL_PIN_X;
           pinEnd = LABEL_WIDTH;
         }
-        if (expanded && filter != null && x >= gapEnd && x < toggleEnd) {
+        if (expanded && toggleDetails != null && x >= gapEnd && x < toggleEnd) {
           return new TrackTitleHover(Hover.NONE, redraw, () -> {
-            filtered = !filtered;
-            filter.accept(detail, filtered);
+            showDetails = !showDetails;
+            toggleDetails.accept(children, showDetails);
           });
         }
         if (x >= toggleEnd && x < pinEnd) {
@@ -364,7 +366,7 @@ public class TrackContainer {
       }
 
       if (expanded) {
-        return detail.onMouseMove(m, x, y - TITLE_HEIGHT, mods).translated(0, TITLE_HEIGHT);
+        return children.onMouseMove(m, x, y - TITLE_HEIGHT, mods).translated(0, TITLE_HEIGHT);
       } else {
         return summary.onMouseMove(m, x, y, mods);
       }

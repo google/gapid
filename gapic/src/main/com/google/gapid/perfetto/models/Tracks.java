@@ -26,6 +26,7 @@ import static java.util.stream.Collectors.toMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
@@ -47,7 +48,6 @@ import com.google.gapid.util.Scheduler;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -113,14 +113,14 @@ public class Tracks {
     }
 
     Group.UiFactory ui = hasAnyFrequency ?
-        group(state -> new CpuSummaryPanel(state, summary), true, (group, filtered) -> {
+        group(state -> new CpuSummaryPanel(state, summary), true, (group, showDetails) -> {
           for (int cpu = 0, track = 0; cpu < data.getCpu().count(); cpu++, track++) {
             if (data.getCpu().get(cpu).hasFrequency()) {
               track++;
-              group.setVisible(track, !filtered);
+              group.setVisible(track, showDetails);
             }
           }
-        }, true) :
+        }, false) :
         group(state -> new CpuSummaryPanel(state, summary), true);
     data.tracks.addLabelGroup(null, summary.getId(), "CPU Usage", ui);
     return data;
@@ -195,7 +195,7 @@ public class Tracks {
             group(state -> new TitlePanel("GPU Counters"), true));
         parent = "gpu_counters";
       }
-      Map<CounterInfo, CounterTrack> addedTracks = new HashMap();
+      Map<CounterInfo, CounterTrack> addedTracks = Maps.newHashMap();
       Multimap<Long, Long> groups = data.getGpuCounterGroups();
       if (groups.keySet().size() > 1) {
         for (GpuCounterGroup group : GpuCounterGroup.values()) {
@@ -339,9 +339,8 @@ public class Tracks {
           ui = single(state -> new ThreadPanel(state, track, false), false, false);
         } else {
           boolean expanded = !isIdleProcess && !isIdleThread;
-          ui = single(state ->
-            new ThreadPanel(state, track, expanded), false, ThreadPanel::setCollapsed, !expanded,
-            false);
+          ui = single(state -> new ThreadPanel(state, track, expanded), false,
+              ThreadPanel::setExpanded, expanded, false);
         }
         String threadParent = isIdleThread ? summary.getId() + "_idle" : summary.getId();
         data.tracks.addTrack(threadParent, track.getId(), track.getThread().getDisplay(), ui);
