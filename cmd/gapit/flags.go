@@ -269,6 +269,14 @@ type (
 		SkipOutput           bool   `help:"skip writing the modified trace to a file"`
 		CaptureFileFlags
 	}
+	ServerPerformanceFlags struct {
+		Gapis          GapisFlags
+		Gapir          GapirFlags
+		OriginalDevice bool `help:"export replay for the original device"`
+		LoopCount      int  `help:"_The number of times to loop the trace. (experimental)"`
+		CommandFilterFlags
+		CaptureFileFlags
+	}
 	StateFlags struct {
 		Gapis  GapisFlags
 		Gapir  GapirFlags
