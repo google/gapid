@@ -169,6 +169,10 @@ public class Profile
       return profile.getSlices();
     }
 
+    public List<Service.ProfilingData.Counter> getCounters() {
+      return profile.getCountersList();
+    }
+
     public TimeSpan getSlicesTimeSpan() {
       if (!hasSlices()) {
         return TimeSpan.ZERO;
@@ -183,22 +187,16 @@ public class Profile
     }
 
     public Duration getDuration(Path.Commands range) {
-      int idx = binarySearch(groups, null, (g, $) -> Ranges.compare(range, g.getLink()));
-      if (idx < 0) {
+      List<TimeSpan> spans = getSpans(range);
+      if (spans.size() == 0) {
         return Duration.NONE;
       }
-      List<TimeSpan> spans = Lists.newArrayList(spansByGroup.get(groups.get(idx).getId()));
-      for (int i = idx - 1; i >= 0 && Ranges.contains(range, groups.get(i).getLink()); i--) {
-        spans.addAll(spansByGroup.get(groups.get(i).getId()));
-      }
-      for (int i = idx + 1; i < groups.size() && Ranges.contains(range, groups.get(i).getLink()); i++) {
-        spans.addAll(spansByGroup.get(groups.get(i).getId()));
-      }
-
-      Collections.sort(spans, (s1, s2) -> Long.compare(s1.start, s2.start));
+      long start = Long.MAX_VALUE, end = Long.MIN_VALUE;
       long gpuTime = 0, wallTime = 0;
       TimeSpan last = TimeSpan.ZERO;
       for (TimeSpan span : spans) {
+        start = Math.min(start, span.start);
+        end = Math.max(end, span.end);
         long duration = span.getDuration();
         gpuTime += duration;
         if (span.start < last.end) {
@@ -211,12 +209,85 @@ public class Profile
         last = span;
       }
 
-      return new Duration(gpuTime, wallTime);
+      TimeSpan ts = start < end ? new TimeSpan(start, end) : TimeSpan.ZERO;
+      return new Duration(gpuTime, wallTime, ts);
+    }
+
+    // Return an aggregated number to denote counter performance, for a specific counter at a commands range.
+    public Double getCounterAggregation(Path.Commands range, Service.ProfilingData.Counter counter) {
+      // Reduce overlapped GPU slices spans size.
+      List<TimeSpan> spans = getSpans(range);
+      if (spans.size() == 0) {
+        return Double.NaN;
+      }
+
+      // Reduce overlapped counter samples size.
+      // Filter out the counter samples whose implicit range collides with `range`'s gpu time.
+      long rangeStart = spans.stream().mapToLong(s -> s.start).min().getAsLong();
+      long rangeEnd = spans.stream().mapToLong(s -> s.end).max().getAsLong();
+      List<Long> ts = Lists.newArrayList();
+      List<Double> vs = Lists.newArrayList();
+      for (int i = 0; i < counter.getTimestampsCount(); i++) {
+        if (i > 0 && counter.getTimestamps(i - 1) > rangeEnd) {
+          break;
+        }
+        if (counter.getTimestamps(i) > rangeStart) {
+          ts.add(counter.getTimestamps(i));
+          vs.add(counter.getValues(i));
+        }
+      }
+      if (ts.size() == 0) {
+        return Double.NaN;
+      }
+
+      // Aggregate counter samples.
+      // Contribution time is the overlapped time between a counter sample's implicit range and a gpu slice.
+      long ctSum = 0; // Accumulation of contribution time.
+      double weightedValuesum = 0; // Accumulation of (counter value * counter's contribution time).
+      for (TimeSpan span : spans) {
+        if (ts.get(0) > span.start) {
+          long ct = Math.min(ts.get(0), span.end) - span.start;
+          ctSum += ct;
+          weightedValuesum += ct * vs.get(0);
+        }
+        for (int i = 1; i < ts.size(); i++) {
+          long start = ts.get(i - 1), end = ts.get(i);
+          if (end < span.start) {      // Sample earlier than GPU slice's span.
+            continue;
+          } else if (end < span.end) { // Sample inside GPU slice's span.
+            long ct = end - Math.max(start, span.start);
+            ctSum += ct;
+            weightedValuesum += ct * vs.get(i);
+          } else {                     // Sample later than GPU slice's span.
+            long ct = Math.max(0, span.end - start);
+            ctSum += ct;
+            weightedValuesum += ct * vs.get(i);
+            break;
+          }
+        }
+      }
+      return ctSum == 0 ? 0 : weightedValuesum / ctSum;
+    }
+
+    private List<TimeSpan> getSpans(Path.Commands range) {
+      List<TimeSpan> spans = Lists.newArrayList();
+      int idx = binarySearch(groups, null, (g, $) -> Ranges.compare(range, g.getLink()));
+      if (idx < 0) {
+        return spans;
+      }
+      for (int i = idx; i >= 0 && Ranges.contains(range, groups.get(i).getLink()); i--) {
+        spans.addAll(spansByGroup.get(groups.get(i).getId()));
+      }
+      for (int i = idx + 1; i < groups.size() && Ranges.contains(range, groups.get(i).getLink()); i++) {
+        spans.addAll(spansByGroup.get(groups.get(i).getId()));
+      }
+      Collections.sort(spans, (s1, s2) -> Long.compare(s1.start, s2.start));
+      return spans;
     }
   }
 
   public static class Duration {
-    public static final Duration NONE = new Duration(0, 0) {
+    public static final Duration NONE = new Duration(0, 0, TimeSpan.ZERO) {
       @Override
       public String formatGpuTime() {
         return "";
@@ -230,10 +301,12 @@ public class Profile
 
     public final long gpuTime;
     public final long wallTime;
+    public final TimeSpan timeSpan;
 
-    public Duration(long gpuTime, long wallTime) {
+    public Duration(long gpuTime, long wallTime, TimeSpan timeSpan) {
       this.gpuTime = gpuTime;
       this.wallTime = wallTime;
+      this.timeSpan = timeSpan;
     }
 
     public String formatGpuTime() {

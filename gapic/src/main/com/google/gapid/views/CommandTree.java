@@ -306,7 +306,7 @@ public class CommandTree extends Composite
     return getTreePath(child, path, indices);
   }
 
-  private static class Tree extends LinkifiedTreeWithImages<CommandStream.Node, String> {
+  protected static class Tree extends LinkifiedTreeWithImages<CommandStream.Node, String> {
     private static final float COLOR_INTENSITY = 0.15f;
     private static final int DURATION_WIDTH = 95;
 

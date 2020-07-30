@@ -26,4 +26,5 @@ var (
 	EnableFrameLifecycle = flag.Bool("experimental-enable-frame-lifecycle", false, "Enable the experimental feature Frame Lifecycle.")
 	EnableVulkanTracing  = flag.Bool("experimental-enable-vulkan-tracing", false, "Enable the experimental feature Vulkan tracing.")
 	EnableAngleTracing   = flag.Bool("experimental-enable-angle-tracing", false, "Enable the experimental feature ANGLE tracing.")
+	EnablePerfTab        = flag.Bool("experimental-enable-perf-tab", false, "Enable the experimental feature Counter performance tab.")
 )

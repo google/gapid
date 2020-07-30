@@ -377,6 +377,13 @@ public class Widgets {
     return button;
   }
 
+  public static MenuItem createMenuItem(Menu parent, String text, Listener listener) {
+    MenuItem item = new MenuItem(parent, SWT.PUSH);
+    item.setText(text);
+    item.addListener(SWT.Selection, listener);
+    return item;
+  }
+
   public static MenuItem createMenuItem(
       Menu parent, String text, int accelerator, Listener listener) {
     MenuItem item = new MenuItem(parent, SWT.PUSH);

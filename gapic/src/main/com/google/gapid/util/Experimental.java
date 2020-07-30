@@ -38,6 +38,9 @@ public class Experimental {
   public static final Flag<Boolean> enableAngleTracing = Flags.value("experimental-enable-angle-tracing",
       false, "Enable the experimental feature Angle tracing.");
 
+  public static final Flag<Boolean> enablePerfTab = Flags.value("experimental-enable-perf-tab",
+      false, "Enable the experimental feature Counter performance tab.");
+
   public static List<String> getGapisFlags(boolean enableAllExperimentalFeatures) {
     List<String> args = Lists.newArrayList();
     // The --experimental-enable-all flag is a sugar flag from the UI. GAPIS knows nothing about it.
@@ -46,6 +49,7 @@ public class Experimental {
       args.add("--experimental-enable-frame-lifecycle");
       args.add("--experimental-enable-vulkan-tracing");
       args.add("--experimental-enable-angle-tracing");
+      args.add("--experimental-enable-perf-tab");
     } else {
       if (Experimental.enableFrameLifecycle.get()) {
         args.add("--experimental-enable-frame-lifecycle");
@@ -56,6 +60,9 @@ public class Experimental {
       if (Experimental.enableAngleTracing.get()) {
         args.add("--experimental-enable-angle-tracing");
       }
+      if (Experimental.enablePerfTab.get()) {
+        args.add("--experimental-enable-perf-tab");
+      }
     }
     return args;
   }
@@ -63,5 +70,10 @@ public class Experimental {
   public static boolean enableVulkanTracing(Settings settings) {
     return settings.preferences().getEnableAllExperimentalFeatures() ||
         enableAll.get() || enableVulkanTracing.get();
+  }
+
+  public static boolean enablePerfTab(Settings settings) {
+    return settings.preferences().getEnableAllExperimentalFeatures() ||
+        enableAll.get() || enablePerfTab.get();
   }
 }

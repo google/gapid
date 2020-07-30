@@ -19,6 +19,7 @@ import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.util.Arrays.last;
 import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
+import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
 
 import com.google.gapid.models.Follower;
@@ -166,6 +167,10 @@ public abstract class LinkifiedTree<T, F> extends Composite {
     ((TreeColumnLayout)getLayout())
         .setColumnData(column.getColumn(), new ColumnWeightData(0, width));
     return column;
+  }
+
+  public void packColumn() {
+    packColumns(viewer.getTree());
   }
 
   public void setInput(T root) {
