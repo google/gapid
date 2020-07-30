@@ -152,13 +152,12 @@ cd <sdk-path>
 tools/bin/sdkmanager platform-tools
 ```
 
-Unzip the
-[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.zip)
-into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
-variable to point to this directory:
+Install
+[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.dmg) (installing the App Bundle is needed in order to keep the notarization) 
+into the /Applications/ folder, and set the `ANDROID_NDK_HOME` environment pointing to NDK subdirectory:
 
 ```
-export ANDROID_NDK_HOME=<ndk-path>
+export ANDROID_NDK_HOME=/Applications/AndroidNDK6528147.app/Contents/NDK
 ```
 
 ### Install the XCode command line tools
