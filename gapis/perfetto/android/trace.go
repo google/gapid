@@ -73,11 +73,14 @@ func SetupProfileLayersSource(ctx context.Context, d adb.Device, apk *android.In
 	if err != nil {
 		return cleanup.Invoke(ctx), err
 	}
+	packages := []string{}
 	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
 		return nil, err
 	}
-	packages := []string{driver.Package}
+	if driver.Package != "" {
+		packages = append(packages, driver.Package)
+	}
 	if abi != nil {
 		packages = append(packages, gapidapk.PackageName(abi))
 	}
@@ -133,35 +136,18 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 
 		packages := []string{}
-		driver, err := d.GraphicsDriver(ctx)
-		if err != nil {
-			// If there's an error, keep going to attempt to use GPU profiling
-			// libraries in system image.
-			log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
+		supported, packageName, nextCleanup, err := d.PrepareGpuProfiling(ctx, a.Package)
+		cleanup = cleanup.Then(nextCleanup)
+		if err != nil || !supported {
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "GPU profiling is not supported")
 		}
-		if driver.Package != "" {
-			log.I(ctx, "Using GPU profiling libraries from developer driver package: %v.", driver.Package)
-
-			// Setup the application to use the prerelease driver.
-			nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, a.Package)
-			cleanup = cleanup.Then(nextCleanup)
-			if err != nil {
-				return nil, cleanup.Invoke(ctx), err
-			}
-			packages = append(packages, driver.Package)
-		} else {
-			log.I(ctx, "No developer driver found, attempting to use GPU profiling libraries in system image.")
-			if supported, err := d.HasGpuProfilingSupportInSystemImage(ctx); err != nil || !supported {
-				return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "No developer driver found, and no GPU profiling support found in system image.")
-			}
-			if vulkanLayerApk, err := d.GetGpuProfilingLayerPackageName(ctx); err == nil && vulkanLayerApk != "" {
-				packages = append(packages, vulkanLayerApk)
-			}
+		if packageName != "" {
+			packages = append(packages, packageName)
 		}
-		hasRenderStages := hasDataSourceEnabled(opts.PerfettoConfig, gpuRenderStagesDataSourceName)
 
 		// Setup the profiling layers.
-		nextCleanup, err := setupProfileLayers(ctx, d, a.Package.Name, hasRenderStages, abi, packages, layers)
+		hasRenderStages := hasDataSourceEnabled(opts.PerfettoConfig, gpuRenderStagesDataSourceName)
+		nextCleanup, err = setupProfileLayers(ctx, d, a.Package.Name, hasRenderStages, abi, packages, layers)
 		cleanup = cleanup.Then(nextCleanup)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), err

@@ -225,23 +225,6 @@ func ensurePerfettoProducerLaunched(ctx context.Context, d adb.Device) error {
 	if err != nil {
 		log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
 	}
-	if driver.Package == "" {
-		log.I(ctx, "No developer driver found.")
-		// When there's no developer drivers, attempt to use the GPU profiling
-		// libraries in the system image. If there's no GPU profiling support
-		// found in system image, then abort because there's no GPU profiling
-		// capabilities.
-		hasSystemImageSupport, err := d.HasGpuProfilingSupportInSystemImage(ctx)
-		if err != nil {
-			return log.Err(ctx, err, "No developer drivers and fail to query GPU profiling support in system image.")
-		}
-		if !hasSystemImageSupport {
-			log.E(ctx, "No developer drivers and no GPU profiling support found in system image.")
-			return log.Err(ctx, nil, "No developer drivers and no GPU profiling support found in system image.")
-		}
-		// Can proceed to start the data producers because GPU profiling support
-		// is found in system image.
-	}
 
 	startSignal, startFunc := task.NewSignal()
 	startFunc = task.Once(startFunc)

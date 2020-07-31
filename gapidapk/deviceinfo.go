@@ -107,46 +107,30 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	var cleanup app.Cleanup
 
 	packages := []string{}
-	driver, err := d.GraphicsDriver(ctx)
-	if err != nil {
-		// If there's an error, keep going to attempt to use GPU profiling
-		// libraries in system image.
-		log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
-	}
-	if driver.Package != "" {
-		log.I(ctx, "Using GPU profiling libraries from developer driver package: %v.", driver.Package)
-
-		// Set up device info service to use prerelease driver.
-		nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, apk.InstalledPackage)
-		cleanup = cleanup.Then(nextCleanup)
-		if err != nil {
-			cleanup.Invoke(ctx)
-			return err
-		}
-		packages = append(packages, driver.Package)
-	} else {
-		log.I(ctx, "No developer driver found, attempting to use GPU profiling libraries in system image.")
-		if supported, err := d.HasGpuProfilingSupportInSystemImage(ctx); err != nil || !supported {
-			cleanup.Invoke(ctx)
-			return log.Err(ctx, err, "No developer driver found, and no GPU profiling support found in system image.")
-		}
-		if vulkanLayerApk, err := d.GetGpuProfilingLayerPackageName(ctx); err == nil && vulkanLayerApk != "" {
-			packages = append(packages, vulkanLayerApk)
-		}
-	}
-
-	// Set driver package
-	nextCleanup, err := android.SetupLayers(ctx, d, apk.Name, packages, []string{})
+	supported, packageName, nextCleanup, err := d.PrepareGpuProfiling(ctx, apk.InstalledPackage)
 	cleanup = cleanup.Then(nextCleanup)
 	if err != nil {
 		cleanup.Invoke(ctx)
 		return err
 	}
-	defer cleanup.Invoke(ctx)
+	if packageName != "" {
+		packages = append(packages, packageName)
+	}
 
-	if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
-		if err := ensurePerfettoProducerLaunched(ctx, d); err != nil {
+	if supported {
+		// Set driver package
+		nextCleanup, err := android.SetupLayers(ctx, d, apk.Name, packages, []string{})
+		cleanup = cleanup.Then(nextCleanup)
+		defer cleanup.Invoke(ctx)
+		if err != nil {
 			return err
+		}
+
+		// Start perfetto producer
+		if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
+			if err := ensurePerfettoProducerLaunched(ctx, d); err != nil {
+				return err
+			}
 		}
 	}
 

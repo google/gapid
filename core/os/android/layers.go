@@ -30,7 +30,7 @@ func SupportsVulkanLayersViaSystemSettings(d Device) bool {
 	return apiVersion >= 28
 }
 
-// SetupLayer initializes d to use Vulkan layers from layerPkgs
+// SetupLayers initializes d to use Vulkan layers from layerPkgs
 // limited to the app with package appPkg using the system settings and returns
 // a cleanup to remove the layer settings.
 func SetupLayers(ctx context.Context, d Device, appPkg string, layerPkgs []string, layers []string) (app.Cleanup, error) {

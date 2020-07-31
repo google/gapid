@@ -496,29 +496,43 @@ func (b *binding) DriverVersionCode(ctx context.Context) (int, error) {
 	return ip.VersionCode, err
 }
 
-// HasGpuProfilingSupportInSystemImage returns whether system image has GPU profiling support.
-func (b *binding) HasGpuProfilingSupportInSystemImage(ctx context.Context) (bool, error) {
+// PrepareGpuProfiling implements the adb.Device interface.
+func (b *binding) PrepareGpuProfiling(ctx context.Context, installedPackage *android.InstalledPackage) (bool, string, app.Cleanup, error) {
+	driver, err := b.GraphicsDriver(ctx)
+	if err != nil {
+		// If there's an error, keep going to attempt to use GPU profiling
+		// libraries in system image.
+		log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
+	}
+
+	if driver.Package != "" {
+		log.I(ctx, "Using GPU profiling libraries from developer driver package: %v.", driver.Package)
+
+		// Set up device info service to use prerelease driver.
+		cleanup, err := SetupPrereleaseDriver(ctx, b, installedPackage)
+		if err != nil {
+			return false, "", cleanup, err
+		}
+		return true, driver.Package, cleanup, nil
+	}
+
+	// For Android 11, GPU profiling could be part of the system driver. It can be implemented as
+	// a vulkan layer. Hence check whether GPU profiling is supported as part of the system driver,
+	// and append the vulkan profiling layer apk package name as a place to discover the vulkan
+	// profiling library.
+	log.I(ctx, "No developer driver found, attempting to use GPU profiling libraries in system image.")
+
 	supported, err := b.SystemProperty(ctx, systemImageGpuProfilerSupportProperty)
 	if err != nil {
-		return false, err
+		return false, "", nil, err
 	}
-	return supported == "true", nil
-}
+	if supported != "true" {
+		return false, "", nil, nil
+	}
 
-// GetGpuProfilingLayerPackageName queries and returns the package name of the apk that contains
-// the GPU profiling Vulkan layer.
-// For Android 11, GPU profiling could be part of the system driver. It can be implemented as
-// a vulkan layer. Hence check whether GPU profiling is supported as part of the system driver,
-// and append the vulkan profiling layer apk package name as a place to discover the vulkan
-// profiling library.
-func (b *binding) GetGpuProfilingLayerPackageName(ctx context.Context) (string, error) {
-	supported, err := b.HasGpuProfilingSupportInSystemImage(ctx)
-	if !supported || err != nil {
-		return "", log.Err(ctx, err, "No GPU profiling support found in system image.")
-	}
-	vulkanLayerApk, err := b.SystemProperty(ctx, gpuProfilerVulkanLayerApkProperty)
+	packageName, err := b.SystemProperty(ctx, gpuProfilerVulkanLayerApkProperty)
 	if err != nil {
-		return "", err
+		return false, "", nil, err
 	}
-	return vulkanLayerApk, nil
+	return true, packageName, nil, nil
 }
