@@ -132,6 +132,7 @@ public class FramebufferView extends Composite
   private int target = 0;
   private final AttachmentPicker picker;
   private final Label pickerLabel;
+  private final Composite splitter;
 
   private final GridData pickerGridData;
   private final Button pickerToggle;
@@ -148,8 +149,7 @@ public class FramebufferView extends Composite
 
     Composite header = createComposite(this, new GridLayout(2, false));
 
-    SashForm splitter = new SashForm(this, SWT.VERTICAL);
-    splitter.setLayout(new GridLayout(1, false));
+    splitter = createComposite(this, new GridLayout(1, false));
 
     picker = new AttachmentPicker(splitter);
     picker.addContentListener(SWT.MouseDown,
@@ -161,6 +161,8 @@ public class FramebufferView extends Composite
     showAttachments = models.settings.ui().getFramebufferPicker().getEnabled();
     pickerGridData.exclude = true;
     picker.setVisible(false);
+
+    splitter.addListener(SWT.Resize, e -> picker.resize());
 
     toolBar.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true, 1, 2));
     header.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
@@ -182,11 +184,6 @@ public class FramebufferView extends Composite
       splitter.layout();
     });
     pickerToggle.setEnabled(false);
-
-    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Framebuffers));
-    splitter.addListener(SWT.Dispose, e ->
-        models.settings.setSplitterWeights(Settings.SplitterWeights.Framebuffers, splitter.getWeights()));
-    splitter.setSashWidth(5);
 
     imagePanel.createToolbar(toolBar, widgets.theme);
     // Work around for https://bugs.eclipse.org/bugs/show_bug.cgi?id=517480
@@ -388,6 +385,8 @@ public class FramebufferView extends Composite
 
     public LoadableImage image;
 
+    public int width, height;
+
     public Attachment(int index, API.FramebufferAttachmentType type, String label) {
       this.index = index;
       this.type = type;
@@ -406,8 +405,8 @@ public class FramebufferView extends Composite
 
       Rectangle size = toDraw.getBounds();
       gc.drawImage(toDraw, 0, 0, size.width, size.height,
-          x + (w - size.width) / 2, y + (h - size.height) / 2,
-          size.width, size.height);
+          x, y,
+          w, h);
 
       Point labelSize = gc.stringExtent(label);
       gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_LIST_FOREGROUND));
@@ -451,6 +450,35 @@ public class FramebufferView extends Composite
       attachment.paint(gc, toDraw, x, y, w, h, selectedIndex == index);
     }
 
+    public void resize() {
+      if (!attachments.isEmpty()) {
+        int maxAttachmentHeight = 0;
+        for (Attachment attachment : attachments) {
+          if (attachment.height > maxAttachmentHeight) {
+            maxAttachmentHeight = attachment.height;
+          }
+        }
+
+        int pickerHeight = Math.min(maxAttachmentHeight, (int)(splitter.getBounds().height * 0.2));
+
+        // Note: we will delay repainting until the layout call
+        for (int i = 0; i < attachments.size(); i++) {
+          Attachment attachment = attachments.get(i);
+
+          if (attachment.height > pickerHeight) {
+            float aspectRatio = attachment.width / (float)attachment.height;
+            int imageWidth = (int)(aspectRatio * pickerHeight);
+            setItemSize(i, imageWidth, pickerHeight, false);
+          } else {
+            setItemSize(i, attachment.width, attachment.height, false);
+          }
+        }
+
+        pickerGridData.heightHint = pickerHeight;
+        splitter.layout();
+      }
+    }
+
     public void load(Attachment attachment, int index) {
       CommandIndex command = models.commands.getSelectedCommands();
       if (command == null) {
@@ -461,7 +489,8 @@ public class FramebufferView extends Composite
           .forImageData(noAlpha(models.images.getThumbnail(command, attachment.index, THUMB_SIZE,
               info -> scheduleIfNotDisposed(this, () -> setItemSize(index,
                       Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getWidth())),
-                      Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getHeight())))))))
+                      Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getHeight())),
+                      true)))))
           .onErrorShowErrorIcon(widgets.theme)
           .build(this, this);
 
@@ -469,7 +498,10 @@ public class FramebufferView extends Composite
         @Override
         public void onLoaded(boolean success) {
           Rectangle bounds = attachment.image.getImage().getBounds();
-          setItemSize(index, Math.max(MIN_SIZE, bounds.width), Math.max(MIN_SIZE, bounds.height));
+          attachment.width = Math.max(MIN_SIZE, bounds.width);
+          attachment.height = Math.max(MIN_SIZE, bounds.height);
+          setItemSize(index, attachment.width, attachment.height, false);
+          resize();
         }
       });
     }
@@ -488,6 +520,7 @@ public class FramebufferView extends Composite
       selectedIndex = -1;
       setItemCount(0, THUMB_SIZE, THUMB_SIZE);
       pickerLabel.setText("Attachment:");
+      resize();
     }
 
     public void selectAttachment(int index) {

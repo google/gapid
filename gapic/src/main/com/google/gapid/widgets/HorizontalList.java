@@ -88,7 +88,7 @@ public abstract class HorizontalList extends Composite {
     }
   }
 
-  public void setItemSize(int index, int width, int height) {
+  public void setItemSize(int index, int width, int height, boolean repaint) {
     int dx = width - items[index].width, oldHeight = items[index].height;
     items[index].width = width;
     items[index].height = height;
@@ -108,7 +108,7 @@ public abstract class HorizontalList extends Composite {
       }
     }
 
-    if (isVisible()) {
+    if (isVisible() && repaint) {
       updateScrollbar();
       repaint();
     }
