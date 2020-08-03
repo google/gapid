@@ -237,6 +237,9 @@ public class Follower {
       case RESOURCE_DATA:
         onFollowResource(path.getResourceData());
         break;
+      case FRAMEBUFFER_ATTACHMENT:
+        listeners.fire().onFramebufferAttachmentFollowed(path.getFramebufferAttachment());
+        break;
       default:
         LOG.log(WARNING, "Unknown follow path result: " + path);
     }
@@ -282,7 +285,15 @@ public class Follower {
      */
     public default void onMemoryFollowed(Path.Memory path)  { /* empty */ }
 
+    /**
+     * Event indicating that a link to the given resource was followed.
+     */
     public default void onTextureFollowed(Service.Resource resource) {}
+
+    /**
+     * Event indicating that a link with the given path to a framebuffer attachment was followed.
+     */
+    public default void onFramebufferAttachmentFollowed(Path.FramebufferAttachment path) {}
   }
 
   public static interface Prefetcher<K> {

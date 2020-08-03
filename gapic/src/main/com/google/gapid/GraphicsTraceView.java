@@ -140,6 +140,11 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView,
     tabs.showTab(MainTab.Type.Textures);
   }
 
+  @Override
+  public void onFramebufferAttachmentFollowed(Path.FramebufferAttachment path) {
+    tabs.showTab(MainTab.Type.Framebuffer);
+  }
+
   private MenuManager createViewTabsMenu() {
     MenuManager manager = new MenuManager("&Tabs");
     for (MainTab.Type type : MainTab.Type.values()) {

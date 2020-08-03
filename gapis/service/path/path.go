@@ -645,9 +645,20 @@ func (n *Command) ResourcesAfter(ids []*ID) *MultiResourceData {
 	}
 }
 
+// FramebufferAttachmentsAfter returns the path node to the framebuffer attachments
+// list afthis this command
 func (n *Command) FramebufferAttachmentsAfter() *FramebufferAttachments {
 	return &FramebufferAttachments{
 		After: n,
+	}
+}
+
+// FramebufferAttachmentAfter returns the path to the framebuffer attachment
+// with the given index after this command
+func (n *Command) FramebufferAttachmentAfter(index uint32) *FramebufferAttachment {
+	return &FramebufferAttachment{
+		After: n,
+		Index: index,
 	}
 }
 

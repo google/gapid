@@ -44,6 +44,7 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Devices;
+import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.device.Device;
@@ -92,12 +93,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * View that displays the framebuffer at the current selection in an {@link ImagePanel}.
  */
 public class FramebufferView extends Composite
-    implements Tab, Capture.Listener, Devices.Listener, CommandStream.Listener {
+    implements Tab, Capture.Listener, Devices.Listener, CommandStream.Listener, Follower.Listener {
   private static final Logger LOG = Logger.getLogger(FramebufferView.class.getName());
   private static final int MAX_SIZE = 0xffff;
 
@@ -194,10 +196,12 @@ public class FramebufferView extends Composite
     models.capture.addListener(this);
     models.devices.addListener(this);
     models.commands.addListener(this);
+    models.follower.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.devices.removeListener(this);
       models.commands.removeListener(this);
+      models.follower.removeListener(this);
     });
   }
 
@@ -279,6 +283,11 @@ public class FramebufferView extends Composite
   @Override
   public void onReplayDeviceChanged(Device.Instance dev) {
     loadBuffer();
+  }
+
+  @Override
+  public void onFramebufferAttachmentFollowed(Path.FramebufferAttachment path) {
+    picker.selectAttachment(path.getIndex());
   }
 
   private void updateRenderTarget(int attachment) {
