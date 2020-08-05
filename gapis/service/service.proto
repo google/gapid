@@ -635,6 +635,8 @@ service Gapid {
   rpc DCECapture(DCECaptureRequest) returns (DCECaptureResponse) {
   }
 
+  // GetGraphVisualization returns a representation of the dependency graph of
+  // the requested capture, in the requested format.
   rpc GetGraphVisualization(GraphVisualizationRequest)
       returns (GraphVisualizationResponse) {
   }
@@ -731,6 +733,8 @@ service Gapid {
       returns (stream GetTimestampsResponse) {
   }
 
+  // ValidateDevice checks the GPU profiling capabilities of the requested
+  // device
   rpc ValidateDevice(ValidateDeviceRequest) returns (ValidateDeviceResponse) {
   }
 }
