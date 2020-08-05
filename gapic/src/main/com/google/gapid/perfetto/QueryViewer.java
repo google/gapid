@@ -337,7 +337,7 @@ public class QueryViewer extends Composite
     }
   }
 
-  private static class ResultContentProvider implements IStructuredContentProvider {
+  public static class ResultContentProvider implements IStructuredContentProvider {
     private int page;
 
     public ResultContentProvider() {
@@ -368,7 +368,7 @@ public class QueryViewer extends Composite
     }
   }
 
-  private static class Row {
+  public static class Row {
     public final Perfetto.QueryResult result;
     public final int row;
 

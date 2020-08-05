@@ -27,8 +27,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
+import com.google.gapid.models.Perfetto;
 import com.google.gapid.models.Profile;
 import com.google.gapid.models.Settings;
 import com.google.gapid.perfetto.TimeSpan;
@@ -76,7 +78,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
-    loading = new LoadablePanel<TraceUi>(this, widgets, p -> new TraceUi(p, models, widgets.theme) {
+    loading = new LoadablePanel<TraceUi>(this, widgets, p -> new TraceUi(p, models.analytics, models.perfetto, widgets.theme) {
       @Override
       protected Settings settings() {
         return models.settings;
@@ -147,8 +149,8 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
   private abstract static class TraceUi extends TraceComposite<State> {
     protected final List<Panel> panels = Lists.newArrayList();
 
-    public TraceUi(Composite parent, Models models, Theme theme) {
-      super(parent, models.analytics, theme);
+    public TraceUi(Composite parent, Analytics analytics, Perfetto perfetto, Theme theme) {
+      super(parent, analytics, perfetto, theme);
     }
 
     public void update(Profile.Data data) {

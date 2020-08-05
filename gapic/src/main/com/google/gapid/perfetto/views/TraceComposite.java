@@ -16,6 +16,7 @@
 package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.KeyboardMouseHelpDialog.showHelp;
+import static com.google.gapid.perfetto.views.TraceMetadataDialog.showMetadata;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_DELAY;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_PAN_FAST;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_PAN_SLOW;
@@ -32,6 +33,8 @@ import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSizeHints;
 
 import com.google.gapid.models.Analytics;
+import com.google.gapid.models.Models;
+import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
@@ -61,14 +64,14 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
   private final RootPanel<S> rootPanel;
   private final PanelCanvas canvas;
 
-  public TraceComposite(Composite parent, Analytics analytics, Theme theme) {
+  public TraceComposite(Composite parent, Analytics analytics, Perfetto perfetto, Theme theme) {
     super(parent, SWT.NONE);
     this.state = createState();
     this.rootPanel = createRootPanel();
     state.addListener(this);
 
     setLayout(withMargin(new GridLayout(1, false), 0, 0));
-    TopBar topBar = withLayoutData(new TopBar(this, analytics, theme, this::updateFilter),
+    TopBar topBar = withLayoutData(new TopBar(this, analytics, perfetto, theme, this::updateFilter),
         new GridData(SWT.FILL, SWT.TOP, true, false));
     canvas = withLayoutData(new PanelCanvas(this, SWT.H_SCROLL | SWT.V_SCROLL, theme, rootPanel),
         new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -195,6 +198,9 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
         case '0':
           redraw = state.setVisibleTime(state.getTraceTime());
           break;
+        case 'i':
+          TraceMetadataDialog.showMetadata(getShell(), analytics, perfetto, theme);
+          break;
       }
 
       switch (e.character) {
@@ -307,9 +313,9 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
   private static class TopBar extends Composite {
     private final ToolBar toolBar;
 
-    public TopBar(Composite parent, Analytics analytics, Theme theme, Consumer<String> onSearch) {
+    public TopBar(Composite parent, Analytics analytics, Perfetto perfetto, Theme theme, Consumer<String> onSearch) {
       super(parent, SWT.NONE);
-      setLayout(new GridLayout(4, false));
+      setLayout(new GridLayout(5, false));
       withLayoutData(createLabel(this, "Mode:"),
           new GridData(SWT.BEGINNING, SWT.CENTER, false, false));
       toolBar = withLayoutData(new ToolBar(this, SWT.FLAT | SWT.HORIZONTAL | SWT.TRAIL),
@@ -319,8 +325,11 @@ public abstract class TraceComposite<S extends State> extends Composite implemen
           withSizeHints(new GridData(SWT.BEGINNING, SWT.CENTER, false, false), 300, SWT.DEFAULT));
       search.setMessage("Filter tracks by name...");
       withLayoutData(
-          createButtonWithImage(this, theme.help(), e -> showHelp(getShell(), analytics, theme)),
+          createButtonWithImage(this, theme.info(), e -> showMetadata(getShell(), analytics, perfetto, theme)),
           new GridData(SWT.END, SWT.CENTER, true, false));
+      withLayoutData(
+          createButtonWithImage(this, theme.help(), e -> showHelp(getShell(), analytics, theme)),
+          new GridData(SWT.END, SWT.CENTER, false, false));
 
       search.addListener(SWT.Modify, e -> {
         onSearch.accept(search.getText().trim().toLowerCase());

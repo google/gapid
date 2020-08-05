@@ -86,6 +86,7 @@ public interface Theme {
   @Icon(file = "jump.png") public Image jump();
   @Icon(file = "help.png") public Image help();
   @Icon(file = "histogram.png") public Image toggleHistogram();
+  @Icon(file = "info.png") public Image info();
   @Icon(file = "lit.png") public Image lit();
   @Icon(file = "logo_128.png") public Image dialogLogo();
   @Icon(file = "more.png") public Image more();
