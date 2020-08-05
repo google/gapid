@@ -72,21 +72,13 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		abi = p.Device.Instance().GetConfiguration().PreferredABI(nil)
 	}
 
-	driver, err := d.GraphicsDriver(ctx)
-	if err != nil {
-		return nil, nil, log.Err(ctx, err, "Failed to locate pre-release driver package")
+	if a == nil || a.Package == nil {
+		return nil, nil, log.Err(ctx, nil, "Invalid activity information.")
 	}
 
-	cleanup := app.Cleanup(func(ctx context.Context) {})
-	// Force the traced app to use the pre-release driver, or fail early
-	if driver.Package != "" && a != nil && a.Package != nil {
-		nextCleanup, err := adb.SetupPrereleaseDriver(ctx, d, a.Package)
-		cleanup = cleanup.Then(nextCleanup)
-		if err != nil {
-			return nil, cleanup.Invoke(ctx), err
-		}
-	} else {
-		return nil, cleanup.Invoke(ctx), log.Err(ctx, nil, "Failed to locate pre-release driver package")
+	supported, _, cleanup, err := d.PrepareGpuProfiling(ctx, a.Package)
+	if err != nil || !supported {
+		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "GPU profiling is not supported.")
 	}
 
 	// TODO: Need to clean this up and get it working

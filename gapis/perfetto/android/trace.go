@@ -69,17 +69,14 @@ func hasDataSourceEnabled(perfettoConfig *perfetto_pb.TraceConfig, ds string) bo
 
 // SetupProfileLayersSource configures the device to allow packages to be used as layer sources for profiling
 func SetupProfileLayersSource(ctx context.Context, d adb.Device, apk *android.InstalledPackage, abi *device.ABI) (app.Cleanup, error) {
-	cleanup, err := adb.SetupPrereleaseDriver(ctx, d, apk)
-	if err != nil {
+	supported, packageName, cleanup, err := d.PrepareGpuProfiling(ctx, apk)
+	if err != nil || !supported {
 		return cleanup.Invoke(ctx), err
 	}
+
 	packages := []string{}
-	driver, err := d.GraphicsDriver(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if driver.Package != "" {
-		packages = append(packages, driver.Package)
+	if packageName != "" {
+		packages = append(packages, packageName)
 	}
 	if abi != nil {
 		packages = append(packages, gapidapk.PackageName(abi))
