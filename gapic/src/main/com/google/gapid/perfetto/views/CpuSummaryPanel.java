@@ -121,8 +121,9 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
-    CpuSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
+  protected Hover onTrackMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
+    CpuSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
     if (data == null || data.utilizations.length == 0) {
       return Hover.NONE;
     }

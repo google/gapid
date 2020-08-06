@@ -217,8 +217,9 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
   }
 
   @Override
-  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
-    ProcessSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
+  public Hover onTrackMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
+    ProcessSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
     if (data == null) {
       return Hover.NONE;
     }

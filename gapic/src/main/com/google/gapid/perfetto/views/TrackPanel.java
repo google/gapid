@@ -122,16 +122,13 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
     } else if (y < TRACK_MARGIN || y > height - TRACK_MARGIN) {
       return Hover.NONE;
     }
-    return onTrackMouseMove(m, x - LABEL_WIDTH, y - TRACK_MARGIN, mods)
-        .translated(LABEL_WIDTH, TRACK_MARGIN);
+    return onTrackMouseMove(m, repainter.translated(LABEL_WIDTH, TRACK_MARGIN),
+        x - LABEL_WIDTH, y - TRACK_MARGIN, mods
+      ).translated(LABEL_WIDTH, TRACK_MARGIN);
   }
 
-  protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods);
-
-  // Helper functions for the track.getData(..) calls.
-  protected <D> Track.OnUiThread<D> onUiThread() {
-    return onUiThread(state, () -> { /* do nothing */ });
-  }
+  protected abstract Hover onTrackMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods);
 
   // Helper functions for the track.getData(..) calls.
   protected <D> Track.OnUiThread<D> onUiThread(Repainter repainter) {

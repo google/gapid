@@ -24,7 +24,6 @@ import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
-import com.google.gapid.perfetto.canvas.Fonts.TextMeasurer;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.GpuInfo;
@@ -152,8 +151,9 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
   }
 
   @Override
-  protected Hover onTrackMouseMove(TextMeasurer m, double x, double y, int mods) {
-    VulkanEventTrack.Data data = track.getData(state.toRequest(), onUiThread());
+  protected Hover onTrackMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
+    VulkanEventTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
     if (data == null) {
       return Hover.NONE;
     }

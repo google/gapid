@@ -164,8 +164,9 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
-    CounterTrack.Data data = track.getData(state.toRequest(), onUiThread());
+  protected Hover onTrackMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
+    CounterTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
     }

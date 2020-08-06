@@ -177,8 +177,9 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
   }
 
   @Override
-  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
-    SliceTrack.Data data = track.getData(state.toRequest(), onUiThread());
+  protected Hover onTrackMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
+    SliceTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
     if (data == null) {
       return Hover.NONE;
     }
