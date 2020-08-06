@@ -16,7 +16,7 @@
 package com.google.gapid.perfetto.views;
 
 import com.google.gapid.perfetto.canvas.Area;
-import com.google.gapid.perfetto.canvas.Fonts.TextMeasurer;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.PanelGroup;
 import com.google.gapid.perfetto.canvas.RenderContext;
@@ -65,8 +65,9 @@ public class PinnedTracks extends Panel.Base {
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y, int mods) {
-    return group.onMouseMove(m, x, y, mods);
+  public Hover onMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
+    return group.onMouseMove(m, repainter, x, y, mods);
   }
 
   @Override

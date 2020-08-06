@@ -269,8 +269,9 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       }
 
       @Override
-      public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
-        return (x < LABEL_WIDTH) ? Hover.NONE : track.onMouseMove(m, x, y, mods);
+      public Hover onMouseMove(
+          Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
+        return (x < LABEL_WIDTH) ? Hover.NONE : track.onMouseMove(m, repainter, x, y, mods);
       }
     }
 
@@ -296,14 +297,14 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       public ListenableFuture<Slices> getSlices(String concatedId) {
         Set<Long> ids = Sets.newHashSet();
         Arrays.stream(concatedId.split(",")).mapToLong(Long::parseLong).forEach(ids::add);
-        return Scheduler.EXECUTOR.submit(() -> this.toSlices(slices.stream()
+        return Scheduler.EXECUTOR.submit(() -> toSlices(slices.stream()
             .filter(s -> ids.contains(s.getId()))
             .collect(toList())));
       }
 
       @Override
       public ListenableFuture<Slices> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
-        return Scheduler.EXECUTOR.submit(() -> this.toSlices(slices.stream()
+        return Scheduler.EXECUTOR.submit(() -> toSlices(slices.stream()
             .filter(s -> ts.overlaps(s.getTs(), s.getTs() + s.getDur()))
             .filter(s -> s.getDepth() >= minDepth && s.getDepth() <= maxDepth)
             .collect(toList())));
@@ -342,11 +343,11 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
         });
       }
 
-      private Slices toSlices(Service.ProfilingData.GpuSlices.Slice serverSlice) {
+      private static Slices toSlices(Service.ProfilingData.GpuSlices.Slice serverSlice) {
         return new Slices(Lists.newArrayList(serverSlice), "GPU Queue Events");
       }
 
-      private Slices toSlices(List<Service.ProfilingData.GpuSlices.Slice> serverSlices) {
+      private static Slices toSlices(List<Service.ProfilingData.GpuSlices.Slice> serverSlices) {
         return new Slices(serverSlices, "GPU Queue Events");
       }
     }

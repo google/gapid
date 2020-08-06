@@ -181,22 +181,23 @@ public class TrackContainer {
     }
 
     @Override
-    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+    public Hover onMouseMove(
+        Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
       if (x < LABEL_WIDTH) {
         hovered = true;
         if (toggleDetails != null && y < TITLE_HEIGHT && x >= LABEL_TOGGLE_X && x < LABEL_PIN_X) {
-          return new TrackTitleHover(track.onMouseMove(m, x, y, mods), () -> {
+          return new TrackTitleHover(track.onMouseMove(m, repainter, x, y, mods), () -> {
             showDetails = !showDetails;
             toggleDetails.accept(track, showDetails);
           });
         } else if (y < TITLE_HEIGHT && x >= LABEL_PIN_X) {
-          return new TrackTitleHover(
-              track.onMouseMove(m, x, y, mods), () -> pinState.toggle(this::copyWithSeparator));
+          return new TrackTitleHover(track.onMouseMove(m, repainter, x, y, mods),
+              () -> pinState.toggle(this::copyWithSeparator));
         } else {
-          return new TrackTitleHover(track.onMouseMove(m, x, y, mods), null);
+          return new TrackTitleHover(track.onMouseMove(m, repainter, x, y, mods), null);
         }
       } else {
-        return track.onMouseMove(m, x, y, mods);
+        return track.onMouseMove(m, repainter, x, y, mods);
       }
     }
 
@@ -340,7 +341,8 @@ public class TrackContainer {
     }
 
     @Override
-    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+    public Hover onMouseMove(
+        Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
       if (y < TITLE_HEIGHT && (expanded || x < LABEL_WIDTH)) {
         hovered = true;
         double textEnd =
@@ -355,7 +357,8 @@ public class TrackContainer {
           }
         } else {
           if (x < Math.min(textEnd, LABEL_PIN_X - LABEL_MARGIN)) {
-            return new TrackTitleHover(summary.onMouseMove(m, x, y, mods), redraw, () -> expanded = true);
+            return new TrackTitleHover(
+                summary.onMouseMove(m, repainter, x, y, mods), redraw, () -> expanded = true);
           }
           toggleEnd = LABEL_PIN_X;
           pinEnd = LABEL_WIDTH;
@@ -376,9 +379,11 @@ public class TrackContainer {
       }
 
       if (expanded) {
-        return children.onMouseMove(m, x, y - TITLE_HEIGHT, mods).translated(0, TITLE_HEIGHT);
+        return children.onMouseMove(
+            m, repainter.translated(0, TITLE_HEIGHT), x, y - TITLE_HEIGHT, mods
+          ).translated(0, TITLE_HEIGHT);
       } else {
-        return summary.onMouseMove(m, x, y, mods);
+        return summary.onMouseMove(m, repainter, x, y, mods);
       }
     }
 

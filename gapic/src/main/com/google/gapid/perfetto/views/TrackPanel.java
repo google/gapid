@@ -93,7 +93,8 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
   }
 
   @Override
-  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y, int mods) {
+  public Hover onMouseMove(
+      Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
     if (x < LABEL_WIDTH) {
       String text = getTooltip();
       if (text.isEmpty()) {

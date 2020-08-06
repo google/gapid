@@ -146,7 +146,8 @@ public class PanelCanvas extends Canvas {
         }
         return;
       }
-      hover = panel.onMouseMove(context, x, y, mods);
+      hover = panel.onMouseMove(
+          context, a -> scheduleIfNotDisposed(this, () -> redraw(a, true)), x, y, mods);
       if (!dragging) {
         setCursor(hover.getCursor(getDisplay()));
       }
