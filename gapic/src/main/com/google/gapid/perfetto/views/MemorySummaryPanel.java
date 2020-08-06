@@ -30,7 +30,6 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.MemorySummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.Selection.Kind;
 
 import org.eclipse.swt.SWT;
@@ -241,7 +240,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> implement
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     builder.add(Selection.Kind.Memory, track.getValues(ts));
   }
 

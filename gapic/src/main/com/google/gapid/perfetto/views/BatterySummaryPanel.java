@@ -30,7 +30,6 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.BatterySummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.Selection.Kind;
 
 import org.eclipse.swt.SWT;
@@ -46,7 +45,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
   private static final double CURSOR_SIZE = 5;
   private static final double LEGEND_SIZE = 8;
 
-  private final BatterySummaryTrack track;
+  protected final BatterySummaryTrack track;
   protected HoverCard hovered = null;
   protected double mouseXpos, mouseYpos;
 
@@ -228,7 +227,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> impleme
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     builder.add(Selection.Kind.Battery, track.getValues(ts));
   }
 

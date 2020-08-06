@@ -29,7 +29,6 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.VulkanEventTrack;
 
 import org.eclipse.swt.SWT;
@@ -218,7 +217,7 @@ public class VulkanEventPanel extends TrackPanel<VulkanEventPanel> implements Se
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     int startDepth = (int)((area.y - SLICE_Y) / SLICE_HEIGHT);
     int endDepth = (int)((area.y + area.h - SLICE_Y) / SLICE_HEIGHT);
     if (startDepth == endDepth && area.h / SLICE_HEIGHT < SELECTION_THRESHOLD) {

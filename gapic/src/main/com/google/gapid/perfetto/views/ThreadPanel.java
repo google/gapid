@@ -23,7 +23,6 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
-
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
@@ -33,7 +32,6 @@ import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack.Slices;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.ThreadTrack;
 
@@ -403,7 +401,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     int startDepth = (int)(area.y / SLICE_HEIGHT);
     int endDepth = (int)((area.y + area.h) / SLICE_HEIGHT);
     if (startDepth == endDepth && area.h / SLICE_HEIGHT < SELECTION_THRESHOLD) {
@@ -421,10 +419,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
     if (startDepth == 0) {
       builder.add(Selection.Kind.ThreadState, track.getStates(ts));
-      builder.add(Selection.Kind.Cpu, (ListenableFuture<Slices>)transform(track.getCpuSlices(ts), slices -> {
-        slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
-        return slices;
-      }));
+      builder.add(Selection.Kind.Cpu, computeSelection(ts));
     }
 
     startDepth = Math.max(0, startDepth - 1);
@@ -435,6 +430,13 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       }
       builder.add(Selection.Kind.Thread, track.getSlices(ts, startDepth, endDepth));
     }
+  }
+
+  private ListenableFuture<Slices> computeSelection(TimeSpan ts) {
+    return transform(track.getCpuSlices(ts), slices -> {
+      slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
+      return slices;
+    });
   }
 
   private static class Highlight {

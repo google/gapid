@@ -30,7 +30,6 @@ import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.VulkanEventTrack;
 
@@ -264,7 +263,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     int startDepth = (int)(area.y / SLICE_HEIGHT);
     int endDepth = (int)((area.y + area.h) / SLICE_HEIGHT);
     if (startDepth == endDepth && area.h / SLICE_HEIGHT < SELECTION_THRESHOLD) {

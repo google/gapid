@@ -30,7 +30,6 @@ import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.FrameEventsTrack;
 import com.google.gapid.perfetto.models.FrameInfo;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -261,7 +260,7 @@ public class FrameEventsPanel extends TrackPanel<FrameEventsPanel>
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     int startDepth = (int)(area.y / SLICE_HEIGHT);
     int endDepth = (int)((area.y + area.h) / SLICE_HEIGHT);
     if (startDepth == endDepth && area.h / SLICE_HEIGHT < SELECTION_THRESHOLD) {

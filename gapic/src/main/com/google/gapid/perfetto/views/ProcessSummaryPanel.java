@@ -24,7 +24,6 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
-
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -34,7 +33,6 @@ import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.CpuTrack.Slices;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.util.Arrays;
 
@@ -365,11 +363,15 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> impleme
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.Cpu, (ListenableFuture<Slices>)transform(track.getSlices(ts), slices -> {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
+    builder.add(Selection.Kind.Cpu, computeSelection(ts));
+  }
+
+  private ListenableFuture<Slices> computeSelection(TimeSpan ts) {
+    return transform(track.getSlices(ts), slices -> {
       slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
       return slices;
-    }));
+    });
   }
 
   private static class HoverCard {

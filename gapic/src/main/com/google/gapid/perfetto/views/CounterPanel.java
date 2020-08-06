@@ -30,9 +30,7 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
-import com.google.gapid.perfetto.models.CounterTrack.Values;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -265,9 +263,13 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.Counter, (ListenableFuture<Values>)transform(track.getValues(ts),
-        data -> new CounterTrack.Values(track.getCounter().name, data)));
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
+    builder.add(Selection.Kind.Counter, computeSelection(ts));
+  }
+
+  private ListenableFuture<CounterTrack.Values> computeSelection(TimeSpan ts) {
+    return transform(track.getValues(ts),
+        data -> new CounterTrack.Values(track.getCounter().name, data));
   }
 
   private static class HoverCard {

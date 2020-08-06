@@ -33,10 +33,10 @@ import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.CountersSelectionView;
 import com.google.gapid.perfetto.views.State;
 
-import java.util.Map;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 

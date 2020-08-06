@@ -33,7 +33,6 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.ProcessMemoryTrack;
 import com.google.gapid.perfetto.models.Selection;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.Selection.Kind;
 
 import org.eclipse.swt.SWT;
@@ -83,7 +82,7 @@ public class ProcessMemoryPanel extends TrackPanel<ProcessMemoryPanel> implement
         return;
       }
 
-      Selection selected = state.getSelection(Selection.Kind.ProcessMemory);
+      Selection<?> selected = state.getSelection(Selection.Kind.ProcessMemory);
       List<Integer> visibleSelected = Lists.newArrayList();
       long maxUsage = track.getMaxUsage(), maxSwap = Math.max(maxUsage, track.getMaxSwap());
 
@@ -278,7 +277,7 @@ public class ProcessMemoryPanel extends TrackPanel<ProcessMemoryPanel> implement
   }
 
   @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     builder.add(Selection.Kind.ProcessMemory, track.getValues(ts));
   }
 

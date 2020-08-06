@@ -24,7 +24,6 @@ import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.util.concurrent.ListenableFuture;
-
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -168,11 +167,15 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
   @Override
   public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Selection.Kind.Cpu, (ListenableFuture<Slices>)transform(track.getSlices(ts), slices -> {
-        slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
-        return slices;
-      }));
+      builder.add(Selection.Kind.Cpu, computeSelection(ts));
     }
+  }
+
+  private ListenableFuture<Slices> computeSelection(TimeSpan ts) {
+    return transform(track.getSlices(ts), slices -> {
+      slices.utids.forEach(utid -> state.addSelectedThread(state.getThreadInfo(utid)));
+      return slices;
+    });
   }
 
   private static class HoverCard {
