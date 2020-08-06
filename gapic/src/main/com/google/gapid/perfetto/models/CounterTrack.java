@@ -56,6 +56,9 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   private static final String RANGE_SQL =
       "select ts, ts + dur, value, id from %s " +
       "where ts + dur >= %d and ts <= %d order by ts";
+  private static final String STATS_SQL =
+      "select min(value), max(value), avg(value) " +
+      "from counter where track_id = %d and ts >= %d and ts <= %d";
 
   private final CounterInfo counter;
 
@@ -166,6 +169,15 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     return format(RANGE_SQL, tableName("vals"), ts.start, ts.end);
   }
 
+  public ListenableFuture<Stats> getStats(TimeSpan span) {
+    return transform(expectOneRow(qe.query(statsSql(span))),
+        row -> new Stats(span, row.getDouble(0), row.getDouble(1), row.getDouble(2)));
+  }
+
+  private String statsSql(TimeSpan span) {
+    return format(STATS_SQL, counter.id, span.start, span.end);
+  }
+
   public static class Data extends Track.Data {
     public final long[] ts;
     public final double[] values;
@@ -180,6 +192,28 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
 
     public static Data empty(DataRequest req) {
       return new Data(req, new long[0], new double[0], new long[0]);
+    }
+  }
+
+  public static class Stats {
+    public final TimeSpan span;
+    public final double min;
+    public final double max;
+    public final double avg;
+
+    public Stats(TimeSpan span, double min, double max, double avg) {
+      this.span = span;
+      this.min = min;
+      this.max = max;
+      this.avg = avg;
+    }
+
+    public Stats(CounterInfo counter) {
+      this(TimeSpan.ZERO, counter.min, counter.max, counter.avg);
+    }
+
+    public boolean isTotal() {
+      return span.isEmpty();
     }
   }
 

@@ -46,11 +46,13 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   protected final CounterTrack track;
   protected final double trackHeight;
   protected HoverCard hovered = null;
+  private CounterTrack.Stats cachedStats;
 
   public CounterPanel(State state, CounterTrack track, double trackHeight) {
     super(state);
     this.track = track;
     this.trackHeight = trackHeight;
+    this.cachedStats = new CounterTrack.Stats(track.getCounter());
   }
 
   @Override
@@ -149,9 +151,9 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         // The difference between the x-axis coordinate of the left labels and the right labels.
         double dx = hovered.leftWidth + HOVER_PADDING, dy = hovered.size.h / 2;
         ctx.drawText(Fonts.Style.Normal, "Value:", x, y);
-        ctx.drawText(Fonts.Style.Normal, "Avg:", x, y + dy);
-        ctx.drawText(Fonts.Style.Normal, "Min:", x + dx, y);
-        ctx.drawText(Fonts.Style.Normal, "Max:", x + dx, y + dy);
+        ctx.drawText(Fonts.Style.Normal, hovered.avgLabel, x, y + dy);
+        ctx.drawText(Fonts.Style.Normal, hovered.minLabel, x + dx, y);
+        ctx.drawText(Fonts.Style.Normal, hovered.maxLabel, x + dx, y + dy);
 
         x = hx + HOVER_PADDING + hovered.leftWidth;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.label, x, y, dy);
@@ -190,7 +192,8 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
     long id = data.ids[idx];
     double startX = state.timeToPx(data.ts[idx]);
     double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
-    hovered = new HoverCard(m, track.getCounter(), data.values[idx], startX, endX, x);
+    hovered = new HoverCard(
+        m, track.getCounter(), getStats(repainter), data.values[idx], startX, endX, x);
 
     return new Hover() {
       @Override
@@ -273,25 +276,46 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
         data -> new CounterTrack.Values(track.getCounter().name, data));
   }
 
+  private CounterTrack.Stats getStats(Repainter repainter) {
+    TimeSpan span = state.getHighlight();
+    if (!span.equals(cachedStats.span)) {
+      if (span.isEmpty()) {
+        cachedStats = new CounterTrack.Stats(track.getCounter());
+      } else {
+        state.thenOnUiThread(track.getStats(span), stats -> {
+          cachedStats = stats;
+          repainter.repaint(Area.FULL);
+        });
+      }
+    }
+    return cachedStats;
+  }
+
   private static class HoverCard {
     public final double value;
     public final double startX, endX;
     public final double mouseX;
     public final String label;
     public final String min, max, avg;
+    public final String minLabel, maxLabel, avgLabel;
     public final double leftWidth;
     public final Size size;
 
-    public HoverCard(Fonts.TextMeasurer tm, CounterInfo counter, double value, double startX,
-        double endX, double mouseX) {
+    public HoverCard(Fonts.TextMeasurer tm, CounterInfo counter, CounterTrack.Stats stats,
+        double value, double startX, double endX, double mouseX) {
       this.value = value;
       this.startX = startX;
       this.endX = endX;
       this.mouseX = mouseX;
       this.label = counter.unit.format(value);
-      this.min = counter.unit.format(counter.min);
-      this.max = counter.unit.format(counter.max);
-      this.avg = counter.unit.format(counter.avg);
+      this.min = counter.unit.format(stats.min);
+      this.max = counter.unit.format(stats.max);
+      this.avg = counter.unit.format(stats.avg);
+      boolean isTotal = stats.isTotal();
+      this.minLabel = isTotal ? "Trace Min:" : "Range Min:";
+      this.maxLabel = isTotal ? "Trace Max:" : "Range Max:";
+      this.avgLabel = isTotal ? "Trace Avg:" : "Range Avg:";
+
 
       Size valueSize = tm.measure(Fonts.Style.Normal, label);
       Size minSize = tm.measure(Fonts.Style.Normal, min);
@@ -300,10 +324,10 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       double leftLabel = Math.max(
           tm.measure(Fonts.Style.Normal, "Value:").w,
-          tm.measure(Fonts.Style.Normal, "Avg:").w) + HOVER_PADDING;
+          tm.measure(Fonts.Style.Normal, avgLabel).w) + HOVER_PADDING;
       double rightLabel = Math.max(
-          tm.measure(Fonts.Style.Normal, "Min:").w,
-          tm.measure(Fonts.Style.Normal, "Max:").w) + HOVER_PADDING;
+          tm.measure(Fonts.Style.Normal, minLabel).w,
+          tm.measure(Fonts.Style.Normal, maxLabel).w) + HOVER_PADDING;
       this.leftWidth = leftLabel + Math.max(valueSize.w, avgSize.w);
       this.size = new Size(leftWidth + HOVER_PADDING + rightLabel + Math.max(minSize.w, maxSize.w),
           Math.max(valueSize.h + avgSize.h, minSize.h + maxSize.h) + HOVER_PADDING);
