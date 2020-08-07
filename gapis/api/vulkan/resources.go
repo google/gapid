@@ -1155,10 +1155,7 @@ func commonShaderDataGroups(ctx context.Context,
 							viewHandle := descInfo.ImageView()
 							viewPath := path.NewField("ImageViews", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(viewHandle).Path()
 
-							imageView, _ := vkState.ImageViews().Lookup(viewHandle)
-							imageViewPath := cmd.ResourceAfter(path.NewID(resources[imageView.Image().ResourceHandle()])).Path()
-
-							paths := []*path.Any{viewPath, imageViewPath}
+							paths := []*path.Any{viewPath}
 
 							if !fb.IsNil() {
 								for _, v := range fb.ImageAttachments().Keys() {
