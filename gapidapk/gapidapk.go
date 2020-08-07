@@ -27,7 +27,6 @@ import (
 
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
-	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -217,7 +216,9 @@ func LayerName(vulkan bool) string {
 	}
 }
 
-func ensurePerfettoProducerLaunched(ctx context.Context, d adb.Device) error {
+// EnsurePerfettoProducerLaunched kills the existing launch_producer and starts
+// a new one to launch the perfetto data producer.
+func EnsurePerfettoProducerLaunched(ctx context.Context, d adb.Device) error {
 	// Always kill the exisiting perfetto producer launcher, otherwise perfetto client
 	// may end up quering back wrong data source information.
 	d.Shell("killall", perfettoProducerLauncher).Run(ctx)
@@ -226,21 +227,17 @@ func ensurePerfettoProducerLaunched(ctx context.Context, d adb.Device) error {
 		log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
 	}
 
-	startSignal, startFunc := task.NewSignal()
-	startFunc = task.Once(startFunc)
+	launchErr := make(chan error)
 	crash.Go(func() {
-		err := launchPerfettoProducer(ctx, d, driver, startFunc)
+		err := launchPerfettoProducer(ctx, d, driver, launchErr)
 		if err != nil {
-			log.E(ctx, "[ensurePerfettoProducerLaunched] error: %v", err)
+			log.E(ctx, "[EnsurePerfettoProducerLaunched] error: %v", err)
 		}
-
-		// Ensure the start signal is fired on failure/immediate return.
-		startFunc(ctx)
 	})
-	startSignal.Wait(ctx)
+	err = <-launchErr
 	// TODO(b/148420473): Data sources are queried before gpu.counters is registered.
 	time.Sleep(1 * time.Second)
-	return nil
+	return err
 }
 
 func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) error {
@@ -260,9 +257,10 @@ func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) e
 	return nil
 }
 
-func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver, startFunc task.Task) error {
+func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver, launchErr chan<- error) error {
 	// Extract the producer launcher from the APK.
 	if err := preparePerfettoProducerLauncherFromApk(ctx, d); err != nil {
+		launchErr <- err
 		return err
 	}
 
@@ -281,6 +279,7 @@ func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver
 	fail := make(chan error, 1)
 	crash.Go(func() {
 		buf := bufio.NewReader(reader)
+		start := false
 		for {
 			line, e := buf.ReadString('\n')
 			switch e {
@@ -293,8 +292,11 @@ func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver
 				return
 			case nil:
 				// As long as there's output, consider the binary starting running.
-				startFunc(ctx)
-				log.E(ctx, "[launch producer] %s", strings.TrimSuffix(adb.AnsiRegex.ReplaceAllString(line, ""), "\n"))
+				if !start {
+					launchErr <- nil
+					start = true
+				}
+				log.I(ctx, "[launch producer] %s", strings.TrimSuffix(adb.AnsiRegex.ReplaceAllString(line, ""), "\n"))
 			}
 		}
 	})
@@ -305,6 +307,7 @@ func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver
 		Start(ctx)
 	if err != nil {
 		stdout.Close()
+		launchErr <- err
 		return err
 	}
 

@@ -128,7 +128,7 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 
 		// Start perfetto producer
 		if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
-			if err := ensurePerfettoProducerLaunched(ctx, d); err != nil {
+			if err := EnsurePerfettoProducerLaunched(ctx, d); err != nil {
 				return err
 			}
 		}
