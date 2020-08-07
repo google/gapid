@@ -32,7 +32,9 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -285,7 +287,7 @@ public class TraceConfigDialog extends DialogBase {
             .getConfigBuilder()
                 .setName("gpu.counters")
                 .getGpuCounterConfigBuilder()
-                    .setCounterPeriodNs(MILLISECONDS.toNanos(gpu.getCounterRate()));
+                    .setCounterPeriodNs(MICROSECONDS.toNanos(gpu.getCounterRate()));
         counters.addAllCounterIds(gpu.getCounterIdsList());
       }
       if (caps.getHasFrameLifecycle() && gpu.getSurfaceFlinger()) {
@@ -492,8 +494,27 @@ public class TraceConfigDialog extends DialogBase {
               withIndents(new GridData(), GROUP_INDENT, 0));
           gpuCountersLabels = new Label[3];
           gpuCountersLabels[1] = createLabel(counterGroup, "Poll Rate:");
-          gpuCountersRate = createSpinner(counterGroup, sGpu.getCounterRate(), 1, 1000);
-          gpuCountersLabels[2] = createLabel(counterGroup, "ms");
+
+          long minSamplingPeriod = NANOSECONDS.toMicros(gpuCaps.getGpuCounterDescriptor().getMinSamplingPeriodNs());
+          minSamplingPeriod = minSamplingPeriod > 0 ? minSamplingPeriod : MILLISECONDS.toMicros(1);
+          long maxSamplingPeriod = NANOSECONDS.toMicros(gpuCaps.getGpuCounterDescriptor().getMaxSamplingPeriodNs());
+          maxSamplingPeriod = maxSamplingPeriod > 0 ? maxSamplingPeriod : minSamplingPeriod * 1000;
+
+          long counterRate = Math.max(sGpu.getCounterRate(), minSamplingPeriod);
+          gpuCountersRate = createSpinner(counterGroup, (int)counterRate,
+                                          (int)minSamplingPeriod, (int)maxSamplingPeriod);
+
+          // If the minimum sampling period is smaller than 1ms, it means GPU
+          // counters can be sampled at a higher rate than 1ms. And hence set
+          // the incremental steps to 100us. Otherwise, it means the sampling
+          // rate can not be faster than 1ms, and hence set the incremental
+          // steps to 1ms, which is 1000us.
+          if (MILLISECONDS.toMicros(1) > minSamplingPeriod) {
+            gpuCountersRate.setIncrement(100);
+          } else {
+            gpuCountersRate.setIncrement(1000);
+          }
+          gpuCountersLabels[2] = createLabel(counterGroup, "us");
 
           long count = caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
               .filter(c -> sGpu.getCounterIdsList().contains(c.getCounterId())).count();
