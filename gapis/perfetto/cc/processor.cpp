@@ -27,6 +27,10 @@ namespace ptp = perfetto::trace_processor;
 
 processor new_processor() {
   ptp::Config config;
+  // TODO(b/154156099): In Android S, AGI should use the time when trace starts
+  // instead of the time when all data sources ack the start.
+  config.drop_ftrace_data_before =
+      ptp::DropFtraceDataBefore::kAllDataSourcesStarted;
   return ptp::TraceProcessor::CreateInstance(config).release();
 }
 
