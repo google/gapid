@@ -137,10 +137,13 @@ public class Tracks {
         .filter(c -> c.count > 0)
         .collect(toMap(c -> c.id, c -> c));
 
-    List<CounterInfo> gpuMemGlobalCounter = data.getCounters().values().stream()
-        .filter(c -> c.type == CounterInfo.Type.Global && c.ref == 0 /* pid - 0 */
-        && c.count > 0 && c.name.equals("gpumemtotal.global"))
-        .collect(toList());
+    List<CounterInfo> gpuMemGlobalCounter =
+        data.getCounters().values().stream()
+            .filter(c -> c.type == CounterInfo.Type.Global &&
+                c.ref == 0 /* pid - 0 */ &&
+                c.count > 0 &&
+                c.name.equals("GPU Memory"))
+            .collect(toList());
 
     if (counters.isEmpty() && data.getGpu().isEmpty() && gpuMemGlobalCounter.isEmpty()) {
       // No GPU data available.

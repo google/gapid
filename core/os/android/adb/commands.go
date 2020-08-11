@@ -45,6 +45,7 @@ const (
 
 	maxRootAttempts                         = 5
 	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
+	gpuMemTotalDataSourceDescriptorName     = "android.gpu.memory"
 
 	perfettoPort = NamedFileSystemSocket("/dev/socket/traced_consumer")
 
@@ -353,6 +354,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 // that support the GPU profiling functionailities, it includes:
 //     1) gpu.counters
 //     2) gpu.renderstages
+//     3) android.gpu.memory
 func (b *binding) QueryPerfettoGpuProfilingDataSources(ctx context.Context) (*device.GPUProfiling, error) {
 	gpu := &device.GPUProfiling{}
 	encoded, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
@@ -369,6 +371,10 @@ func (b *binding) QueryPerfettoGpuProfilingDataSources(ctx context.Context) (*de
 		desc := ds.GetDsDescriptor()
 		if desc.GetName() == gpuRenderStagesDataSourceDescriptorName {
 			gpu.HasRenderStage = true
+			continue
+		}
+		if desc.GetName() == gpuMemTotalDataSourceDescriptorName {
+			gpu.HasGpuMemTotal = true
 			continue
 		}
 		counters := desc.GetGpuCounterDescriptor().GetSpecs()

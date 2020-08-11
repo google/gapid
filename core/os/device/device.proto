@@ -195,6 +195,7 @@ message GPUProfiling {
   GpuCounterDescriptor gpu_counter_descriptor = 2;
   reserved 3;
   bool has_render_stage_producer_layer = 4;
+  bool has_gpu_mem_total = 5;
 }
 
 // Instance represents a physical device.

@@ -185,8 +185,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         name = "perfetto",
         locals = locals,
         remote = "https://android.googlesource.com/platform/external/perfetto",
-        commit = "bbba7b0b884545401dbf5272819823752812412b",
-        shallow_since = "1595504601 +0100",
+        commit = "1dd60f85b97ef5068e9a39a4165087ccbdf6b09f",
+        shallow_since = "1596837015 -0700",
     )
 
     maybe_repository(

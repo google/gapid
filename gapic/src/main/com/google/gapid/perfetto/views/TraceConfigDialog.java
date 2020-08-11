@@ -295,6 +295,14 @@ public class TraceConfigDialog extends DialogBase {
             .getConfigBuilder()
                 .setName("android.surfaceflinger.frame");
       }
+      // Always enable GPU memory total counters, if available, because this
+      // datasource provides the initial counters upon tracing start, while the
+      // gpu_mem/gpu_mem_total ftrace tracepoint provides later counter updates.
+      if (gpuCaps.getHasGpuMemTotal()) {
+        config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("android.gpu.memory");
+      }
     }
 
     if (p.getMemoryOrBuilder().getEnabled()) {
