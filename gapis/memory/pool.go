@@ -181,7 +181,7 @@ func (m *Pool) String() string {
 }
 
 // NextPoolID returns the next free pool ID (but does not assign it).
-// All existing pools in the set have pool ID which is less then this value.
+// All existing pools in the set have pool ID which is less than this value.
 func (m *Pools) NextPoolID() PoolID {
 	return m.nextPoolID
 }
@@ -201,7 +201,7 @@ func (m *Pools) New() (id PoolID, p *Pool) {
 // NewAt creates and returns a new Pool with a specific ID, fails if it cannot
 func (m *Pools) NewAt(id PoolID) *Pool {
 	if _, ok := m.pools[id]; ok {
-		panic("Could not create given pool")
+		panic(fmt.Sprintf("Could not create pool at id %v since it already exists", id))
 	}
 	p := &Pool{}
 	m.pools[id] = p

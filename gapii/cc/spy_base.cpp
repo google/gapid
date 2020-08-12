@@ -37,6 +37,7 @@ SpyBase::SpyBase()
 #endif  // TARGET_OS
       mDisableCoherentMemoryTracker(false),
       mHideUnknownExtensions(false),
+      mNextPoolId(1),  // Start at 1 as 0 is reserved for application pool
       mNullEncoder(PackEncoder::noop()),
       mDeviceInstance(nullptr),
       mCurrentABI(nullptr),
