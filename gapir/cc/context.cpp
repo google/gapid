@@ -240,6 +240,33 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                 "debug report extension, drop them and try again");
             if (api->replayCreateVkInstanceImpl(stack, pCreateInfo, pAllocator,
                                                 pInstance, true, &result)) {
+              // On Android, the replay happens in gapid APK, where any
+              // layer/extension provided by a library in the original APK will
+              // not be present. So if the original app depends on such layers,
+              // the instance creation will fail. Still, we cannot simply return
+              // false upon creation failure here, as the app may also have
+              // tried to create an instance and failed, and will subsequently
+              // re-try to create another instance with different parameters.
+              // Yet, instance creation is likely to be expected to be
+              // successful most of the time, we do emit a debug message upon
+              // failure.
+              if (result != Vulkan::VkResult::VK_SUCCESS) {
+                if (result == Vulkan::VkResult::VK_ERROR_LAYER_NOT_PRESENT) {
+                  onDebugMessage(LOG_LEVEL_WARNING, Vulkan::INDEX,
+                                 "Failed to create 'VkInstance': some layer(s) "
+                                 "are missing.");
+                }
+                if (result ==
+                    Vulkan::VkResult::VK_ERROR_EXTENSION_NOT_PRESENT) {
+                  onDebugMessage(LOG_LEVEL_WARNING, Vulkan::INDEX,
+                                 "Failed to create 'VkInstance': some "
+                                 "extension(s) are missing.");
+                }
+                onDebugMessage(
+                    LOG_LEVEL_WARNING, Vulkan::INDEX,
+                    "Failed to create 'VkInstance', even when validation"
+                    "layers and debug report extension have been dropped.");
+              }
               if (pushReturn) {
                 stack->push(result);
               }
