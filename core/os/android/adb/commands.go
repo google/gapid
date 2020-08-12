@@ -436,7 +436,7 @@ func SetupAngle(ctx context.Context, d Device, p *android.InstalledPackage) (app
 	log.I(ctx, "Saved original ANGLE pkg %s for app %s to restore during cleanup.", anglePackage, angleDriverPkgs)
 	// We successfully saved old settings, now set new ANGLE values for tracing
 	d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_values", "angle")
-	d.SetSystemSetting(ctx, "global", "angle_debug_package", anglePackage)
+	d.SetSystemSetting(ctx, "global", "angle_debug_package", d.Instance().GetConfiguration().GetAnglePackage())
 	d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_pkgs", p.Name)
 	// Return cleanup function to restore original ANGLE settings
 	return func(ctx context.Context) {
