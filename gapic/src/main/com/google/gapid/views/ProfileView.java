@@ -29,6 +29,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Capture;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.models.Profile;
@@ -42,6 +43,7 @@ import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.ProcessInfo;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.perfetto.views.GpuQueuePanel;
@@ -65,9 +67,12 @@ import org.eclipse.swt.widgets.Control;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
-public class ProfileView extends Composite implements Tab, Capture.Listener, Profile.Listener {
+public class ProfileView extends Composite implements Tab, Capture.Listener, Profile.Listener, State.Listener {
   private final Models models;
+  protected static final Logger LOG = Logger.getLogger(ProfileView.class.getName());
 
   private final LoadablePanel<TraceUi> loading;
   private final TraceUi traceUi;
@@ -88,6 +93,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
 
     models.capture.addListener(this);
     models.profile.addListener(this);
+    traceUi.getState().addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.profile.removeListener(this);
@@ -134,6 +140,30 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
     } else {
       loading.stopLoading();
       updateProfile(models.profile.getData());
+    }
+  }
+
+  @Override
+  public void onSelectionChanged(Selection.MultiSelection selection) {
+    Selection<?> selected = traceUi.getState().getSelection(Selection.Kind.Gpu);
+
+    if (selected instanceof TraceUi.GpuSliceTrack.GpuSlices) {
+      long firstGroupId = -1;
+      for (int i = 0; i < ((TraceUi.GpuSliceTrack.GpuSlices)selected).groupIds.size(); i++) {
+        if (((TraceUi.GpuSliceTrack.GpuSlices)selected).groupIds.get(i) >= 0) {
+          firstGroupId = ((TraceUi.GpuSliceTrack.GpuSlices)selected).groupIds.get(i);
+          break;
+        }
+      }
+
+      if (firstGroupId != -1) {
+        for (Service.ProfilingData.GpuSlices.Group group : models.profile.getData().getSlices().getGroupsList()) {
+          if (firstGroupId == group.getId()) {
+            models.commands.selectCommands(CommandIndex.forCommand(group.getLink()), false);
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -343,12 +373,24 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
         });
       }
 
-      private static Slices toSlices(Service.ProfilingData.GpuSlices.Slice serverSlice) {
-        return new Slices(Lists.newArrayList(serverSlice), "GPU Queue Events");
+      private static GpuSlices toSlices(Service.ProfilingData.GpuSlices.Slice serverSlice) {
+        return new GpuSlices(Lists.newArrayList(serverSlice), "GPU Queue Events");
       }
 
-      private static Slices toSlices(List<Service.ProfilingData.GpuSlices.Slice> serverSlices) {
-        return new Slices(serverSlices, "GPU Queue Events");
+      private static GpuSlices toSlices(List<Service.ProfilingData.GpuSlices.Slice> serverSlices) {
+        return new GpuSlices(serverSlices, "GPU Queue Events");
+      }
+
+      private static class GpuSlices extends Slices {
+        public final List<Long> groupIds = Lists.newArrayList();
+
+        public GpuSlices(List<Service.ProfilingData.GpuSlices.Slice> serverSlices, String title) {
+          super(serverSlices, title);
+
+          for (Service.ProfilingData.GpuSlices.Slice s : serverSlices) {
+            groupIds.add((long)s.getGroupId());
+          }
+        }
       }
     }
   }
