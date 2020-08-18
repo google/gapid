@@ -87,20 +87,20 @@ func (mappingTransform *mappingExporter) BeginTransform(ctx context.Context, inp
 	return inputCommands, nil
 }
 
-func (mappingTransform *mappingExporter) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (mappingTransform *mappingExporter) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	cb := CommandBuilder{Thread: mappingTransform.thread, Arena: inputState.Arena}
 	newCmd := cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		return mappingTransform.extractRemappings(ctx, s, b)
 	})
 
-	return append(inputCommands, newCmd), nil
+	return []api.Cmd{newCmd}, nil
 }
 
 func (mappingTransform *mappingExporter) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
 
-func (mappingTransform *mappingExporter) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (mappingTransform *mappingExporter) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if mappingTransform.thread == 0 && len(inputCommands) > 0 {
 		mappingTransform.thread = inputCommands[0].Thread()
 	}

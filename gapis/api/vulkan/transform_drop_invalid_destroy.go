@@ -22,50 +22,50 @@ import (
 	"github.com/google/gapid/gapis/api/transform2"
 )
 
-var _ transform2.Transform = &dropInvalidDestroy2{}
+var _ transform2.Transform = &dropInvalidDestroy{}
 
-type dropInvalidDestroy2 struct {
+type dropInvalidDestroy struct {
 	tag         string
 	allocations *allocationTracker
 }
 
-func newDropInvalidDestroy2(tag string) *dropInvalidDestroy2 {
-	return &dropInvalidDestroy2{
+func newDropInvalidDestroy(tag string) *dropInvalidDestroy {
+	return &dropInvalidDestroy{
 		tag:         tag,
 		allocations: nil,
 	}
 }
 
-func (dropTransform *dropInvalidDestroy2) RequiresAccurateState() bool {
+func (dropTransform *dropInvalidDestroy) RequiresAccurateState() bool {
 	return false
 }
 
-func (dropTransform *dropInvalidDestroy2) RequiresInnerStateMutation() bool {
+func (dropTransform *dropInvalidDestroy) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (dropTransform *dropInvalidDestroy2) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (dropTransform *dropInvalidDestroy) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (dropTransform *dropInvalidDestroy2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *dropInvalidDestroy) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	dropTransform.allocations = NewAllocationTracker(inputState)
 	return inputCommands, nil
 }
 
-func (dropTransform *dropInvalidDestroy2) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (dropTransform *dropInvalidDestroy) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
-func (dropTransform *dropInvalidDestroy2) ClearTransformResources(ctx context.Context) {
+func (dropTransform *dropInvalidDestroy) ClearTransformResources(ctx context.Context) {
 	dropTransform.allocations.FreeAllocations()
 }
 
-func (dropTransform *dropInvalidDestroy2) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *dropInvalidDestroy) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	outputCmds := make([]api.Cmd, 0)
 
 	for i, cmd := range inputCommands {
-		if newCmd := dropTransform.dropOrModifyCommand(ctx, inputState, id, i, cmd); newCmd != nil {
+		if newCmd := dropTransform.dropOrModifyCommand(ctx, inputState, id.GetID(), i, cmd); newCmd != nil {
 			outputCmds = append(outputCmds, newCmd)
 		}
 	}
@@ -73,7 +73,7 @@ func (dropTransform *dropInvalidDestroy2) TransformCommand(ctx context.Context, 
 	return outputCmds, nil
 }
 
-func (dropTransform *dropInvalidDestroy2) dropOrModifyCommand(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd api.Cmd) api.Cmd {
+func (dropTransform *dropInvalidDestroy) dropOrModifyCommand(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd api.Cmd) api.Cmd {
 	vulkanState := GetState(inputState)
 
 	switch cmd := cmd.(type) {
@@ -207,7 +207,7 @@ func (dropTransform *dropInvalidDestroy2) dropOrModifyCommand(ctx context.Contex
 	return cmd
 }
 
-func (dropTransform *dropInvalidDestroy2) dropOrModifyFreeDescriptorSets(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeDescriptorSets) api.Cmd {
+func (dropTransform *dropInvalidDestroy) dropOrModifyFreeDescriptorSets(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeDescriptorSets) api.Cmd {
 	descSetCount := cmd.DescriptorSetCount()
 	if descSetCount == 0 {
 		return cmd
@@ -250,7 +250,7 @@ func (dropTransform *dropInvalidDestroy2) dropOrModifyFreeDescriptorSets(ctx con
 	return newCmd
 }
 
-func (dropTransform *dropInvalidDestroy2) dropOrModifyFreeCommandBuffers(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeCommandBuffers) api.Cmd {
+func (dropTransform *dropInvalidDestroy) dropOrModifyFreeCommandBuffers(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeCommandBuffers) api.Cmd {
 	cmdBufCount := cmd.CommandBufferCount()
 	if cmdBufCount == 0 {
 		return cmd
@@ -292,10 +292,10 @@ func (dropTransform *dropInvalidDestroy2) dropOrModifyFreeCommandBuffers(ctx con
 	return newCmd
 }
 
-func (dropTransform *dropInvalidDestroy2) warnDropCmd(ctx context.Context, id api.CmdID, index int, cmd api.Cmd, handles ...interface{}) {
+func (dropTransform *dropInvalidDestroy) warnDropCmd(ctx context.Context, id api.CmdID, index int, cmd api.Cmd, handles ...interface{}) {
 	log.W(ctx, "[%v] Dropping [%d:%v]:%v because the creation of %v was not recorded", dropTransform.tag, id, index, cmd, handles)
 }
 
-func (dropTransform *dropInvalidDestroy2) warnModifyCmd(ctx context.Context, id api.CmdID, index int, cmd api.Cmd, handles ...interface{}) {
+func (dropTransform *dropInvalidDestroy) warnModifyCmd(ctx context.Context, id api.CmdID, index int, cmd api.Cmd, handles ...interface{}) {
 	log.W(ctx, "[%v] Modifing [%d:%v]:%v to remove the reference to %v because the creation of them were not recorded", dropTransform.tag, id, index, cmd, handles)
 }

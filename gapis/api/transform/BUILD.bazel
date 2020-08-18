@@ -17,10 +17,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "capture_log.go",
         "doc.go",
         "early_terminator.go",
-        "file_log.go",
         "injector.go",
         "recorder.go",
         "tasks.go",
@@ -31,10 +29,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/api/transform",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/log:go_default_library",
-        "//core/memory/arena:go_default_library",
         "//gapis/api:go_default_library",
-        "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
     ],
 )

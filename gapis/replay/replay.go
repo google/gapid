@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/api/transform2"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
@@ -39,7 +38,7 @@ type Generator interface {
 		requests []RequestAndResult,
 		device *device.Instance,
 		capture *capture.GraphicsCapture,
-		out transform.Writer) error
+		out transform2.Writer) error
 }
 
 // SplitGenerator is the interface for types that support

@@ -70,24 +70,29 @@ func (perfettoTransform *waitForPerfetto) ClearTransformResources(ctx context.Co
 	// Do nothing
 }
 
-func (perfettoTransform *waitForPerfetto) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	inputCommands = append(inputCommands, createVkDeviceWaitIdleCommandsForDevices(ctx, inputState)...)
+func (perfettoTransform *waitForPerfetto) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	cmds := make([]api.Cmd, 0)
+	cmds = append(cmds, createVkDeviceWaitIdleCommandsForDevices(ctx, inputState)...)
 
 	fenceID := uint32(0x3ffffff)
 	waitForFenceCmd := createWaitForFence(ctx, fenceID, func(ctx context.Context, request *gapir.FenceReadyRequest) {
 		perfettoTransform.endOfTransformCallback(ctx, request)
 	})
-	inputCommands = append(inputCommands, waitForFenceCmd)
-	return inputCommands, nil
+	cmds = append(cmds, waitForFenceCmd)
+	return cmds, nil
 }
 
-func (perfettoTransform *waitForPerfetto) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	if id != perfettoTransform.beginProfileCmdID {
+func (perfettoTransform *waitForPerfetto) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+	if id.GetCommandType() != transform2.TransformCommand {
+		return inputCommands, nil
+	}
+
+	if id.GetID() != perfettoTransform.beginProfileCmdID {
 		return inputCommands, nil
 	}
 
 	inputCommands = append(inputCommands, createVkDeviceWaitIdleCommandsForDevices(ctx, inputState)...)
-	waitForFenceCmd := createWaitForFence(ctx, uint32(id), func(ctx context.Context, request *gapir.FenceReadyRequest) {
+	waitForFenceCmd := createWaitForFence(ctx, uint32(id.GetID()), func(ctx context.Context, request *gapir.FenceReadyRequest) {
 		perfettoTransform.transformCallback(ctx, request)
 	})
 	inputCommands = append(inputCommands, waitForFenceCmd)

@@ -51,15 +51,15 @@ func (surfaceTransform *displayToSurface) BeginTransform(ctx context.Context, in
 	return inputCommands, nil
 }
 
-func (surfaceTransform *displayToSurface) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (surfaceTransform *displayToSurface) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
 func (surfaceTransform *displayToSurface) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
 
-func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if modifiedCmd := surfaceTransform.modifySurface(ctx, cmd, inputState); modifiedCmd != nil {
 			inputCommands[i] = modifiedCmd

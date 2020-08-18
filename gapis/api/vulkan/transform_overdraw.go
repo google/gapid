@@ -103,8 +103,8 @@ func (overdrawTransform *stencilOverdraw) BeginTransform(ctx context.Context, in
 	return inputCommands, nil
 }
 
-func (overdrawTransform *stencilOverdraw) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (overdrawTransform *stencilOverdraw) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
 func (overdrawTransform *stencilOverdraw) ClearTransformResources(ctx context.Context) {
@@ -115,7 +115,7 @@ func (overdrawTransform *stencilOverdraw) ClearTransformResources(ctx context.Co
 	}
 }
 
-func (overdrawTransform *stencilOverdraw) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (overdrawTransform *stencilOverdraw) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	vkQueueSubmitFound := false
 	var res replay.Result
 	res = nil
@@ -132,7 +132,7 @@ func (overdrawTransform *stencilOverdraw) TransformCommand(ctx context.Context, 
 		}
 
 		ok := false
-		res, ok = overdrawTransform.rewrite[id]
+		res, ok = overdrawTransform.rewrite[id.GetID()]
 		if !ok {
 			if err := overdrawTransform.writeCommands(cmd); err != nil {
 				return nil, err
@@ -143,7 +143,7 @@ func (overdrawTransform *stencilOverdraw) TransformCommand(ctx context.Context, 
 
 		if queueSubmitCmd, ok := cmd.(*VkQueueSubmit); ok {
 			vkQueueSubmitFound = true
-			if err := overdrawTransform.modifyStencilOverdraw(ctx, id, queueSubmitCmd, inputState, res); err != nil {
+			if err := overdrawTransform.modifyStencilOverdraw(ctx, id.GetID(), queueSubmitCmd, inputState, res); err != nil {
 				return nil, err
 			}
 

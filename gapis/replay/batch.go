@@ -422,6 +422,3 @@ func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
 	}
 	return err
 }
-
-func (w *adapter) NotifyPreLoop(ctx context.Context)  {}
-func (w *adapter) NotifyPostLoop(ctx context.Context) {}

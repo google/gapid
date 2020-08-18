@@ -110,8 +110,8 @@ func (vtTransform *vulkanTerminator2) BeginTransform(ctx context.Context, inputC
 	return inputCommands, nil
 }
 
-func (vtTransform *vulkanTerminator2) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (vtTransform *vulkanTerminator2) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
 func (vtTransform *vulkanTerminator2) ClearTransformResources(ctx context.Context) {
@@ -122,7 +122,7 @@ func (vtTransform *vulkanTerminator2) ClearTransformResources(ctx context.Contex
 	}
 }
 
-func (vtTransform *vulkanTerminator2) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (vtTransform *vulkanTerminator2) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if vtTransform.terminated {
 		return nil, nil
 	}
@@ -130,7 +130,7 @@ func (vtTransform *vulkanTerminator2) TransformCommand(ctx context.Context, id a
 	outputCmds := make([]api.Cmd, 0)
 	for _, cmd := range inputCommands {
 		if vkQueueSubmitCmd, ok := cmd.(*VkQueueSubmit); ok {
-			processedCmds := vtTransform.processVkQueueSubmit(ctx, id, vkQueueSubmitCmd, inputState)
+			processedCmds := vtTransform.processVkQueueSubmit(ctx, id.GetID(), vkQueueSubmitCmd, inputState)
 			outputCmds = append(outputCmds, processedCmds...)
 		} else {
 			outputCmds = append(outputCmds, cmd)

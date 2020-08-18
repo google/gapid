@@ -50,15 +50,15 @@ func (wireframe *wireframeTransform) BeginTransform(ctx context.Context, inputCo
 	return inputCommands, nil
 }
 
-func (wireframe *wireframeTransform) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (wireframe *wireframeTransform) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
 func (wireframe *wireframeTransform) ClearTransformResources(ctx context.Context) {
 	wireframe.allocations.FreeAllocations()
 }
 
-func (wireframe *wireframeTransform) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (wireframe *wireframeTransform) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if createGraphicsPipelinesCmd, ok := cmd.(*VkCreateGraphicsPipelines); ok {
 			modifiedCmd := wireframe.updateGraphicsPipelines(ctx, createGraphicsPipelinesCmd, inputState)

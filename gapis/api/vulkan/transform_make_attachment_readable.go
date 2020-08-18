@@ -22,46 +22,46 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-var _ transform2.Transform = &makeAttachmentReadable2{}
+var _ transform2.Transform = &makeAttachmentReadable{}
 
-type makeAttachmentReadable2 struct {
+type makeAttachmentReadable struct {
 	imagesOnly  bool
 	allocations *allocationTracker
 }
 
-func newMakeAttachmentReadable2(imagesOnly bool) *makeAttachmentReadable2 {
-	return &makeAttachmentReadable2{
+func newMakeAttachmentReadable(imagesOnly bool) *makeAttachmentReadable {
+	return &makeAttachmentReadable{
 		imagesOnly:  imagesOnly,
 		allocations: nil,
 	}
 }
 
-func (attachmentTransform *makeAttachmentReadable2) RequiresAccurateState() bool {
+func (attachmentTransform *makeAttachmentReadable) RequiresAccurateState() bool {
 	return false
 }
 
-func (attachmentTransform *makeAttachmentReadable2) RequiresInnerStateMutation() bool {
+func (attachmentTransform *makeAttachmentReadable) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (attachmentTransform *makeAttachmentReadable2) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (attachmentTransform *makeAttachmentReadable) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (attachmentTransform *makeAttachmentReadable2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (attachmentTransform *makeAttachmentReadable) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	attachmentTransform.allocations = NewAllocationTracker(inputState)
 	return inputCommands, nil
 }
 
-func (attachmentTransform *makeAttachmentReadable2) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (attachmentTransform *makeAttachmentReadable) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
-func (attachmentTransform *makeAttachmentReadable2) ClearTransformResources(ctx context.Context) {
+func (attachmentTransform *makeAttachmentReadable) ClearTransformResources(ctx context.Context) {
 	attachmentTransform.allocations.FreeAllocations()
 }
 
-func (attachmentTransform *makeAttachmentReadable2) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (attachmentTransform *makeAttachmentReadable) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
@@ -75,7 +75,7 @@ func (attachmentTransform *makeAttachmentReadable2) TransformCommand(ctx context
 		} else if createRenderPassCmd, ok := cmd.(*VkCreateRenderPass); ok && !attachmentTransform.imagesOnly {
 			modifiedCmd = attachmentTransform.makeRenderPassReadable(ctx, inputState, createRenderPassCmd)
 		} else if enumeratePhysicalDevicesCmd, ok := cmd.(*VkEnumeratePhysicalDevices); ok && !attachmentTransform.imagesOnly {
-			modifiedCmd = attachmentTransform.makePhysicalDevicesReadable(ctx, inputState, id, enumeratePhysicalDevicesCmd)
+			modifiedCmd = attachmentTransform.makePhysicalDevicesReadable(ctx, inputState, id.GetID(), enumeratePhysicalDevicesCmd)
 		} else if createBufferCmd, ok := cmd.(*VkCreateBuffer); ok {
 			modifiedCmd = attachmentTransform.makeBufferReadable(ctx, inputState, createBufferCmd)
 		}
@@ -88,7 +88,7 @@ func (attachmentTransform *makeAttachmentReadable2) TransformCommand(ctx context
 	return inputCommands, nil
 }
 
-func (attachmentTransform *makeAttachmentReadable2) makeImageReadable(ctx context.Context, inputState *api.GlobalState, createImageCmd *VkCreateImage) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeImageReadable(ctx context.Context, inputState *api.GlobalState, createImageCmd *VkCreateImage) api.Cmd {
 	pinfo := createImageCmd.PCreateInfo()
 	info := pinfo.MustRead(ctx, createImageCmd, inputState, nil)
 
@@ -132,7 +132,7 @@ func (attachmentTransform *makeAttachmentReadable2) makeImageReadable(ctx contex
 	return newCmd
 }
 
-func (attachmentTransform *makeAttachmentReadable2) makeSwapchainReadable(ctx context.Context, inputState *api.GlobalState, createSwapchainCmd *VkCreateSwapchainKHR) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeSwapchainReadable(ctx context.Context, inputState *api.GlobalState, createSwapchainCmd *VkCreateSwapchainKHR) api.Cmd {
 	pinfo := createSwapchainCmd.PCreateInfo()
 	info := pinfo.MustRead(ctx, createSwapchainCmd, inputState, nil)
 
@@ -170,7 +170,7 @@ func (attachmentTransform *makeAttachmentReadable2) makeSwapchainReadable(ctx co
 	return newCmd
 }
 
-func (attachmentTransform *makeAttachmentReadable2) makeRenderPassReadable(ctx context.Context, inputState *api.GlobalState, createRenderPassCmd *VkCreateRenderPass) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeRenderPassReadable(ctx context.Context, inputState *api.GlobalState, createRenderPassCmd *VkCreateRenderPass) api.Cmd {
 	pInfo := createRenderPassCmd.PCreateInfo()
 	info := pInfo.MustRead(ctx, createRenderPassCmd, inputState, nil)
 
@@ -237,7 +237,7 @@ func buildReplayEnumeratePhysicalDevices2(
 		numDevData.Data()).AddRead(phyDevData.Data()).AddRead(devIDData.Data())
 }
 
-func (attachmentTransform *makeAttachmentReadable2) makePhysicalDevicesReadable(ctx context.Context, inputState *api.GlobalState, id api.CmdID, enumeratePhysicalDeviceCmd *VkEnumeratePhysicalDevices) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makePhysicalDevicesReadable(ctx context.Context, inputState *api.GlobalState, id api.CmdID, enumeratePhysicalDeviceCmd *VkEnumeratePhysicalDevices) api.Cmd {
 	if enumeratePhysicalDeviceCmd.PPhysicalDevices() == 0 {
 		// Querying for the number of devices.
 		// No changes needed here.
@@ -264,7 +264,7 @@ func (attachmentTransform *makeAttachmentReadable2) makePhysicalDevicesReadable(
 	return newCmd
 }
 
-func (attachmentTransform *makeAttachmentReadable2) makeBufferReadable(ctx context.Context, inputState *api.GlobalState, createBufferCmd *VkCreateBuffer) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeBufferReadable(ctx context.Context, inputState *api.GlobalState, createBufferCmd *VkCreateBuffer) api.Cmd {
 	pinfo := createBufferCmd.PCreateInfo()
 	info := pinfo.MustRead(ctx, createBufferCmd, inputState, nil)
 

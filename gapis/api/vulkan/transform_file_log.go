@@ -62,12 +62,12 @@ func (fileLog *fileLogTransform) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
 
-func (fileLog *fileLogTransform) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (fileLog *fileLogTransform) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	fileLog.file.Close()
-	return inputCommands, nil
+	return nil, nil
 }
 
-func (fileLog *fileLogTransform) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (fileLog *fileLogTransform) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if len(inputCommands) == 0 {
 		return inputCommands, nil
 	}

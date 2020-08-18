@@ -53,11 +53,11 @@ func (profilingLayerTransform *profilingLayers) BeginTransform(ctx context.Conte
 	return inputCommands, nil
 }
 
-func (profilingLayerTransform *profilingLayers) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (profilingLayerTransform *profilingLayers) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
-func (profilingLayerTransform *profilingLayers) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (profilingLayerTransform *profilingLayers) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if createInstanceCommand, ok := cmd.(*VkCreateInstance); ok {
 			modifiedCmd := profilingLayerTransform.addProfilingLayersToCreateInstance(ctx, createInstanceCommand, inputState)

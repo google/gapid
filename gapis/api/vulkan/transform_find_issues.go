@@ -86,13 +86,13 @@ func (issueTransform *findIssues) BeginTransform(ctx context.Context, inputComma
 	return inputCommands, nil
 }
 
-func (issueTransform *findIssues) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (issueTransform *findIssues) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	ctx = log.Enter(ctx, "findIssues")
 
 	outputCmds := make([]api.Cmd, 0, len(inputCommands))
 
 	for _, cmd := range inputCommands {
-		mutateErr := cmd.Mutate(ctx, id, issueTransform.state, nil /* no builder */, nil /* no watcher */)
+		mutateErr := cmd.Mutate(ctx, id.GetID(), issueTransform.state, nil /* no builder */, nil /* no watcher */)
 		if mutateErr != nil {
 			// Ignore since downstream transform layers can only consume valid commands
 			return outputCmds, mutateErr
@@ -135,12 +135,14 @@ func (issueTransform *findIssues) ClearTransformResources(ctx context.Context) {
 	issueTransform.allocations.FreeAllocations()
 }
 
-func (issueTransform *findIssues) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (issueTransform *findIssues) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	cmds := make([]api.Cmd, 0)
+
 	commandBuilder := CommandBuilder{Thread: 0, Arena: inputState.Arena}
 	for instance, callback := range issueTransform.reportCallbacks {
 		newCmd := commandBuilder.ReplayDestroyVkDebugReportCallback(instance, callback)
 		if newCmd != nil {
-			inputCommands = append(inputCommands, newCmd)
+			cmds = append(cmds, newCmd)
 		}
 		// It is safe to delete keys in loop in Go
 		delete(issueTransform.reportCallbacks, instance)
@@ -156,8 +158,8 @@ func (issueTransform *findIssues) EndTransform(ctx context.Context, inputCommand
 		return issueTransform.issues
 	})
 
-	inputCommands = append(inputCommands, registerNotificationReader, notifyInstruction)
-	return inputCommands, nil
+	cmds = append(cmds, registerNotificationReader, notifyInstruction)
+	return cmds, nil
 }
 
 func (issueTransform *findIssues) notificationReader(ctx context.Context, n gapir.Notification) {

@@ -62,16 +62,16 @@ func (earlyTerminatorTransform *earlyTerminator) BeginTransform(ctx context.Cont
 	return inputCommands, nil
 }
 
-func (earlyTerminatorTransform *earlyTerminator) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (earlyTerminatorTransform *earlyTerminator) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
-func (earlyTerminatorTransform *earlyTerminator) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (earlyTerminatorTransform *earlyTerminator) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if earlyTerminatorTransform.terminated {
 		return nil, nil
 	}
 
-	if id >= earlyTerminatorTransform.lastID {
+	if id.GetID() == earlyTerminatorTransform.lastID {
 		earlyTerminatorTransform.terminated = true
 	}
 

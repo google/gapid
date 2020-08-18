@@ -84,7 +84,7 @@ type QueryFramebufferAttachment interface {
 // in a profiling mode while capturing profiling data.
 type Profiler interface {
 	// Profile execute a profilable replay.
-	Profile(
+	QueryProfile(
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,

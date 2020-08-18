@@ -66,11 +66,11 @@ func (endTransform *endOfReplay) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
 
-func (endTransform *endOfReplay) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return append(inputCommands, endTransform.CreateNotifyInstruction(ctx, defaultNotifyFunction)), nil
+func (endTransform *endOfReplay) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return []api.Cmd{endTransform.CreateNotifyInstruction(ctx, defaultNotifyFunction)}, nil
 }
 
-func (endTransform *endOfReplay) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (endTransform *endOfReplay) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }
 

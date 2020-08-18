@@ -89,12 +89,9 @@ func (framebufferTransform *readFramebuffer) BeginTransform(ctx context.Context,
 	return inputCommands, nil
 }
 
-func (framebufferTransform *readFramebuffer) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	// TODO: Do we need a cmdID here?
-	if err := framebufferTransform.FlushPending(ctx, inputState); err != nil {
-		return inputCommands, err
-	}
-	return inputCommands, nil
+func (framebufferTransform *readFramebuffer) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	err := framebufferTransform.FlushPending(ctx, inputState)
+	return nil, err
 }
 
 func (framebufferTransform *readFramebuffer) ClearTransformResources(ctx context.Context) {
@@ -103,7 +100,7 @@ func (framebufferTransform *readFramebuffer) ClearTransformResources(ctx context
 
 // If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
-func (framebufferTransform *readFramebuffer) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (framebufferTransform *readFramebuffer) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for _, cmd := range inputCommands {
 		if cmd, ok := cmd.(*InsertionCommand); ok {
 			idxstring := keyFromIndex(cmd.idx)
@@ -112,11 +109,11 @@ func (framebufferTransform *readFramebuffer) TransformCommand(ctx context.Contex
 				// we have the presentation info available.
 
 				if cmd.callee != nil && cmd.callee.CmdFlags().IsEndOfFrame() {
-					cmd.callee.Mutate(ctx, id, inputState, nil, nil)
+					cmd.callee.Mutate(ctx, id.GetID(), inputState, nil, nil)
 				}
 
 				for _, injection := range injectionList {
-					if err := injection.fn(ctx, id, cmd, injection.res, inputState); err != nil {
+					if err := injection.fn(ctx, id.GetID(), cmd, injection.res, inputState); err != nil {
 						return nil, err
 					}
 				}

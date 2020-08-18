@@ -96,11 +96,11 @@ func (t *multiplier_transform) BeginTransform(ctx context.Context, inputCommands
 	return inputCommands, nil
 }
 
-func (t *multiplier_transform) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (t *multiplier_transform) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	return nil, nil
 }
 
-func (t *multiplier_transform) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (t *multiplier_transform) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return multiply(inputCommands), nil
 }
 

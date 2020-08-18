@@ -36,14 +36,14 @@ type Transform interface {
 	BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error)
 
 	// EndTransform is called after all commands are transformed.
-	EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error)
+	EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error)
 
 	// TransformCommand takes a given command list and a state.
 	// It outputs a new set of commands after running the transformation.
 	// Transforms must not modify the input commands:
 	// they can add or remove commands in the command list,
 	// but they must not edit the internals of the commands that they receive as input.
-	TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error)
+	TransformCommand(ctx context.Context, id CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error)
 
 	// ClearTransformResources releases the resources that have been allocated during transform
 	// Resources are needed for the state mutation, therefore this should be called after mutation.

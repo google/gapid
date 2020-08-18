@@ -66,7 +66,7 @@ func (logTransform *captureLog) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
 
-func (logTransform *captureLog) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (logTransform *captureLog) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for _, cmd := range inputCommands {
 		if cmd.API() != nil {
 			logTransform.cmds = append(logTransform.cmds, cmd)
@@ -76,7 +76,7 @@ func (logTransform *captureLog) TransformCommand(ctx context.Context, id api.Cmd
 	return inputCommands, nil
 }
 
-func (logTransform *captureLog) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (logTransform *captureLog) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	a := arena.New()
 	defer a.Dispose()
 
@@ -88,13 +88,13 @@ func (logTransform *captureLog) EndTransform(ctx context.Context, inputCommands 
 	c, err := capture.NewGraphicsCapture(ctx, a, "capturelog", logTransform.header, nil, logTransform.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)
-		return inputCommands, err
+		return nil, err
 	}
 	if err := c.Export(ctx, logTransform.file); err != nil {
 		log.E(ctx, "Failed to write capture to file %v: %v", logTransform.file, err)
-		return inputCommands, err
+		return nil, err
 	}
 	logTransform.file.Close()
 
-	return inputCommands, nil
+	return nil, nil
 }

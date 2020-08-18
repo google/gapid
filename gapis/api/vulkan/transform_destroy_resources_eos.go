@@ -22,32 +22,32 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-var _ transform2.Transform = &destroyResourcesAtEOS2{}
+var _ transform2.Transform = &destroyResourcesAtEOS{}
 
-type destroyResourcesAtEOS2 struct {
+type destroyResourcesAtEOS struct {
 }
 
-func newDestroyResourcesAtEOS2() *destroyResourcesAtEOS2 {
-	return &destroyResourcesAtEOS2{}
+func newDestroyResourcesAtEOS() *destroyResourcesAtEOS {
+	return &destroyResourcesAtEOS{}
 }
 
-func (dropTransform *destroyResourcesAtEOS2) RequiresAccurateState() bool {
+func (dropTransform *destroyResourcesAtEOS) RequiresAccurateState() bool {
 	return false
 }
 
-func (dropTransform *destroyResourcesAtEOS2) RequiresInnerStateMutation() bool {
+func (dropTransform *destroyResourcesAtEOS) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (dropTransform *destroyResourcesAtEOS2) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (dropTransform *destroyResourcesAtEOS) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (dropTransform *destroyResourcesAtEOS2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *destroyResourcesAtEOS) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }
 
-func (dropTransform *destroyResourcesAtEOS2) EndTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *destroyResourcesAtEOS) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	vulkanState := GetState(inputState)
 
 	cb := CommandBuilder{Thread: 0, Arena: inputState.Arena} // TODO: Check that using any old thread is okay.
@@ -181,13 +181,13 @@ func (dropTransform *destroyResourcesAtEOS2) EndTransform(ctx context.Context, i
 		cleanupCommands = append(cleanupCommands, cb.VkDestroyInstance(handle, p))
 	}
 
-	return append(inputCommands, cleanupCommands...), nil
+	return cleanupCommands, nil
 }
 
-func (dropTransform *destroyResourcesAtEOS2) TransformCommand(ctx context.Context, id api.CmdID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *destroyResourcesAtEOS) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }
 
-func (dropTransform *destroyResourcesAtEOS2) ClearTransformResources(ctx context.Context) {
+func (dropTransform *destroyResourcesAtEOS) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
