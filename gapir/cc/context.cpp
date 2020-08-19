@@ -526,6 +526,22 @@ void Context::registerCallbacks(Interpreter* interpreter) {
       });
 
   interpreter->registerBuiltin(
+      Vulkan::INDEX, Builtins::ReplayWaitForFences,
+      [this](uint32_t label, Stack* stack, bool pushReturn) {
+        GAPID_DEBUG("[%u]replayWaitForFences()", label);
+        if (mVulkanRenderer != nullptr) {
+          auto* api = mVulkanRenderer->getApi<Vulkan>();
+          return api->replayWaitForFences(stack, pushReturn);
+        } else {
+          GAPID_WARNING(
+              "[%u]replayWaitForFences called without a bound Vulkan "
+              "renderer",
+              label);
+          return false;
+        }
+      });
+
+  interpreter->registerBuiltin(
       Vulkan::INDEX, Builtins::ReplayCreateVkDebugReportCallback,
       [this](uint32_t label, Stack* stack, bool push_return) {
         if (mVulkanRenderer != nullptr) {

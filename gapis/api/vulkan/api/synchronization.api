@@ -137,6 +137,7 @@ cmd VkResult vkGetFenceStatus(
 @indirect("VkDevice")
 @threadsafe
 @alive
+@custom
 cmd VkResult vkWaitForFences(
     VkDevice       device,
     u32            fenceCount,
@@ -155,6 +156,8 @@ cmd VkResult vkWaitForFences(
       vkErrorInvalidFence(f)
     }
   }
+  fence
+  recordWaitedFences(device, fenceCount, pFences)
   return ?
 }
 
@@ -631,6 +634,7 @@ extern void recordEventSet(VkEvent event)
 extern void recordFenceSignal(VkFence fence)
 extern void recordFenceWait(VkFence fence)
 extern void recordFenceReset(VkFence fence)
+extern void recordWaitedFences(VkDevice device, u32 fenceCount, const VkFence* pFences)
 
 sub void processBarriers(VkPipelineStageFlags             srcStageMask,
                          VkPipelineStageFlags             dstStageMask,

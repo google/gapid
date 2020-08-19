@@ -451,6 +451,9 @@ func (e externs) recordFenceReset(fence VkFence) {
 	}
 }
 
+func (e externs) recordWaitedFences(device VkDevice, fenceCount uint32, pFences VkFenceᶜᵖ) {
+}
+
 type eventSignal uint64
 
 func (e externs) recordEventWait(event VkEvent) {

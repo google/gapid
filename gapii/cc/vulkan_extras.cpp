@@ -16,6 +16,7 @@
 #include <bitset>
 #include "gapii/cc/vulkan_layer_extras.h"
 #include "gapii/cc/vulkan_spy.h"
+#include "gapis/api/vulkan/vulkan_pb/extras.pb.h"
 
 #include <third_party/SPIRV-Reflect/spirv_reflect.h>
 
@@ -993,4 +994,20 @@ void VulkanSpy::walkImageSubRng(
     }
   }
 }
+
+void VulkanSpy::recordWaitedFences(CallObserver* observer, VkDevice device,
+                                   uint32_t fenceCount,
+                                   VkFence const* pFences) {
+  auto it = mImports.mVkDeviceFunctions.find(device);
+
+  vulkan_pb::FenceState state;
+
+  for (size_t i = 0; i < fenceCount; ++i) {
+    state.add_fences(pFences[i]);
+    state.add_statuses(it->second.vkGetFenceStatus(device, pFences[i]));
+  }
+
+  observer->encode_message(&state);
+}
+
 }  // namespace gapii

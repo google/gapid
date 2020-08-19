@@ -81,6 +81,7 @@ cc_library(
         "//core/os/device/deviceinfo/cc",
         "//gapil/runtime/cc",
         "//gapis/api:api_cc_proto",
+        "//gapis/api/vulkan/vulkan_pb:extras_cc_proto",
         "//gapis/capture:capture_cc_proto",
         "//gapis/memory/memory_pb:memory_pb_cc_proto",
         "@com_google_protobuf//:protobuf",

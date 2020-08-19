@@ -667,6 +667,41 @@ bool Vulkan::replayCreateVkDebugReportCallback(Stack* stack, bool pushReturn) {
     }
 }
 ¶
+bool Vulkan::replayWaitForFences(Stack* stack, bool pushReturn) {
+    auto timeout = stack->pop<uint64_t>();
+    auto waitAll = stack->pop<bool>();
+    auto expecteds = stack->pop<uint64_t*>();
+    auto fences = stack->pop<uint64_t*>();
+    auto count = stack->pop<uint64_t>();
+    auto device = static_cast<size_val>(stack->pop<size_val>());
+    if (stack->isValid()) {
+      GAPID_DEBUG("vkWaitForFences(%zu)", device);
+
+      std::vector<uint64_t> newFences;
+      for (uint64_t i = 0; i < count; ++i) {
+        if (expecteds[i] == VkResult::VK_SUCCESS) {
+          newFences.push_back(fences[i]);
+        }
+      }
+
+      uint32_t fence_status = VkResult::VK_TIMEOUT;
+      if (newFences.empty()) {
+        fence_status = mVkDeviceFunctionStubs[device].vkWaitForFences(device, count, fences, waitAll, timeout);
+      } else {
+        fence_status = mVkDeviceFunctionStubs[device].vkWaitForFences(
+            device, newFences.size(), newFences.data(), true, UINT64_MAX);
+      }
+
+      if (pushReturn) {
+          stack->push(fence_status);
+      }
+      return true;
+    } else {
+      GAPID_WARNING("Error during calling function vkWaitForFences");
+      return false;
+   }
+}
+¶
 bool Vulkan::replayDestroyVkDebugReportCallback(Stack* stack) {
     uint32_t cmdLabel = ~0;
     auto callback = stack->pop<uint64_t>();
