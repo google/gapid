@@ -152,7 +152,10 @@ public class FrameInfo {
   private static ListenableFuture<List<List<Event>>> createPhases(QueryEngine qe,
       List<List<Event>> phases, List<String> layerNames, int idx) {
     String layerName = layerNames.get(idx);
-    String baseName = layerName.replaceAll("[^A-Za-z0-9]", "");
+    // SQL tables cannot start with a numeric or contain special characters.
+    // Some toast messages do not set the layer name properly.
+    // For example, "#0" is a valid layer name but cannot be used directly for SQL
+    String baseName = ("Layer" + layerName).replaceAll("[^A-Za-z0-9]", "");
     List<Event> currentLayerPhases = Lists.newArrayList();
 
     // Example:
