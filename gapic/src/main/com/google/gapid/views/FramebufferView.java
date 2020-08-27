@@ -119,9 +119,9 @@ public class FramebufferView extends Composite
       this.maxHeight = maxHeight;
       this.drawMode = drawMode;
     }
-  
+
     public Path.RenderSettings getRenderSettings(Settings settings) {
-      return Paths.renderSettings(maxWidth, maxHeight, drawMode, 
+      return Paths.renderSettings(maxWidth, maxHeight, drawMode,
         settings.preferences().getDisableReplayOptimization());
     }
   }
@@ -414,8 +414,8 @@ public class FramebufferView extends Composite
 
       Rectangle size = toDraw.getBounds();
       gc.drawImage(toDraw, 0, 0, size.width, size.height,
-          x, y,
-          w, h);
+          Math.max(x, x + (w - size.width) / 2), Math.max(y, y + (h - size.height) / 2),
+          Math.min(size.width, w), Math.min(size.height, h));
 
       Point labelSize = gc.stringExtent(label);
       gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_LIST_FOREGROUND));
@@ -557,5 +557,5 @@ public class FramebufferView extends Composite
         repaint();
       }
     }
-  }  
+  }
 }
