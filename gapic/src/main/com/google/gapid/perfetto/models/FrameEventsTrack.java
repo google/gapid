@@ -49,13 +49,14 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
       "queue_to_acquire_time, acquire_to_latch_time, latch_to_present_time";
   private static final String SLICE_SQL =
       "select * from " +
-      "(select " + BASE_COLUMNS + " from frame_slice where id = %d) join " +
+      "(select " + BASE_COLUMNS + " from frame_slice where id = %d) left join " +
       "(select " + STAT_COLUMNS + " from frame_slice " +
         "where name = 'PresentFenceSignaled' and frame_number = " +
-          "(select frame_number from frame_slice where id = %d))";
+          "(select frame_number from frame_slice where id = %d) " +
+          "and layer_name = '%s')";
   private static final String SLICES_SQL =
        "select " + BASE_COLUMNS + " from %s " +
-       "where ts >= %d - dur and ts <= %d order by ts";
+       "where dur >= 0 and ts >= %d - dur and ts <= %d order by ts";
   private static final String RANGE_SQL =
       "select " + BASE_COLUMNS + ", " + STAT_COLUMNS + " from " +
       "(select " + BASE_COLUMNS + " from %s) " +
@@ -63,7 +64,7 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
       "(select frame_number, " + STAT_COLUMNS + " from frame_slice " +
           "where layer_name = '%s' and name = 'PresentFenceSignaled') " +
       "using(frame_number) " +
-      "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
+      "where dur >= 0 and ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
 
   private static final long SIGNAL_MARGIN_NS = 10000;
 
@@ -124,12 +125,12 @@ public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Dat
   }
 
   public ListenableFuture<Slices> getSlice(long id) {
-    return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
+    return transformAsync(expectOneRow(qe.query(sliceSql(id, layerName))), r ->
       transform(qe.getArgs(r.getLong(7)), args -> new Slices(r, args, layerName, eventName)));
   }
 
-  private static String sliceSql(long id) {
-    return format(SLICE_SQL, id, id);
+  private static String sliceSql(long id, String layerName) {
+    return format(SLICE_SQL, id, id, layerName);
   }
 
   public ListenableFuture<Slices> getSlices(TimeSpan ts, int minDepth, int maxDepth) {

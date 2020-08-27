@@ -137,7 +137,7 @@ public class FrameEventsPanel extends TrackPanel<FrameEventsPanel>
         double y = depth * SLICE_HEIGHT;
         double[] diamondX = { rectStart - (rectWidth / 2), rectStart, rectStart + (rectWidth / 2),
             rectStart};
-        double[] diamondY = { y + (SLICE_HEIGHT / 2), y, y + (SLICE_HEIGHT / 2), SLICE_HEIGHT };
+        double[] diamondY = { y + (SLICE_HEIGHT / 2), y, y + (SLICE_HEIGHT / 2), y + SLICE_HEIGHT };
         ctx.fillPolygon(diamondX, diamondY, 4);
 
         if (selected.contains(data.ids[i]) || selectedFrameNumbers.contains(data.frameNumbers[i])) {

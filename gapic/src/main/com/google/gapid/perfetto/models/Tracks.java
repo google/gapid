@@ -242,9 +242,19 @@ public class Tracks {
       data.tracks.addLabelGroup(null, parent, "Surface Flinger Events",
           group(state -> new TitlePanel("Surface Flinger Events"), true));
 
+      // We assume here that the target application's layer will generally have more
+      // events than unintended layers from the likes of StatusBar, NavBar etc.
+      long maxEvents = 0;
       for (FrameInfo.Layer layer : data.getFrame().layers()) {
+        if (layer.numEvents > maxEvents) {
+          maxEvents = layer.numEvents;
+        }
+      }
+
+      for (FrameInfo.Layer layer : data.getFrame().layers()) {
+        boolean expanded = (layer.numEvents == maxEvents);
         data.tracks.addLabelGroup(parent, layer.layerName, layer.layerName,
-            group(state -> new TitlePanel(layer.layerName), true));
+            group(state -> new TitlePanel("Layer - " + layer.layerName), expanded));
         for (FrameInfo.Event phase : layer.phaseEvents()) {
           FrameEventsTrack track = FrameEventsTrack.forFrameEvent(data.qe, layer.layerName, phase);
           data.tracks.addTrack(layer.layerName, track.getId(), phase.getDisplay(),

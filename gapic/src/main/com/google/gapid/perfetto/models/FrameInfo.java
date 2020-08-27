@@ -76,6 +76,8 @@ public class FrameInfo {
       "where gpu_track.id = %d";
   private static final String MAX_DEPTH_QUERY =
       "select max(depth) from %s";
+  private static final String EVENTS_COUNT_QUERY =
+      "select COUNT(1) from %s";
 
   private static final String DISPLAY_TOOLTIP =
       "The time when from was on screen";
@@ -264,13 +266,15 @@ public class FrameInfo {
     return transformAsync(qe.queries(
         dropView("buffer_" + trackId),
         createView("buffer_" + trackId, buffersViewQuery(trackId))), $ -> {
-          // Depth of instant events is always 1, the depth query can be avoided here.
-          buffers.add(new Event(names.get(idx), "buffer_" + trackId, 1));
-          if (idx + 1 >= trackIds.size()) {
-            return Futures.immediateFuture(buffers);
-          }
-          // Create view for the next buffer.
-          return createBufferViews(qe, trackIds, names, buffers, idx + 1);
+          return transformAsync(expectOneRow(qe.query(eventsCountQuery("buffer_" + trackId))), r -> {
+            // Depth of instant events is always 1, the depth query can be avoided here.
+            buffers.add(new Event(names.get(idx), "buffer_" + trackId, 1, r.getLong(0)));
+            if (idx + 1 >= trackIds.size()) {
+              return Futures.immediateFuture(buffers);
+            }
+            // Create view for the next buffer.
+            return createBufferViews(qe, trackIds, names, buffers, idx + 1);
+          });
     });
   }
 
@@ -286,8 +290,13 @@ public class FrameInfo {
     return format(BUFFERS_VIEW_QUERY, filter);
   }
 
+  private static String eventsCountQuery(String viewName) {
+    return format(EVENTS_COUNT_QUERY, viewName);
+  }
+
   public static class Layer {
     public final String layerName;
+    public final long numEvents;
     private final List<Event> bufferEvents;
     private final List<Event> phaseEvents;
 
@@ -295,6 +304,7 @@ public class FrameInfo {
       this.layerName = layerName;
       this.bufferEvents = bufferEvents;
       this.phaseEvents = phaseEvents;
+      this.numEvents = bufferEvents.stream().mapToLong(e -> e.numEvents).sum();
     }
 
     public boolean isBufferEventsEmpty() {
@@ -327,19 +337,22 @@ public class FrameInfo {
     public final String viewName;
     public final long maxDepth;
     public final String tooltip;
+    public final long numEvents;
 
     public Event(String name, String viewName, long maxDepth, String tooltip) {
       this.name = name;
       this.viewName = viewName;
       this.maxDepth = maxDepth;
       this.tooltip = tooltip;
+      this.numEvents = 0;
     }
 
-    public Event(String name, String viewName, long maxDepth) {
+    public Event(String name, String viewName, long maxDepth, long numEvents) {
       this.name = name;
       this.viewName = viewName;
       this.maxDepth = maxDepth;
       this.tooltip = name;
+      this.numEvents = numEvents;
     }
 
     public String getDisplay() {
