@@ -48,6 +48,13 @@ whether or not Vulkan support is functioning. This repository contains
 applications that use most parts of the API, and will be expanded as more interesting and tricky
 uses of the API are found.
 
+## Partial extension support
+Some extensions are not supported by GAPID, but have stubs defined in the API
+files.
+The current list of partially supported extensions:
+
+* VK_EXT_conditional_rendering
+
 ## Current Support
 The current status of support for the Vulkan API on a method by method basis
 are as follows.

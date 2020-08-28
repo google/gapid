@@ -66,6 +66,7 @@ import "api/synchronization.api"
 import "api/queued_command_tracking.api"
 import "api/util.api"
 
+import "extensions/ext_conditional_rendering.api"
 import "extensions/ext_debug_marker.api"
 import "extensions/ext_debug_report.api"
 import "extensions/ext_debug_utils.api"
