@@ -50,7 +50,7 @@ import org.eclipse.swt.widgets.Composite;
  * Displays information about a list of selected slices.
  */
 public class SlicesSelectionView extends Composite {
-  private static final int PROPERTIES_PER_PANEL = 8;
+  private static final int PROPERTIES_PER_PANEL = 9;
   private static final int PANEL_INDENT = 25;
 
   public SlicesSelectionView(Composite parent, State state, SliceTrack.Slices slices) {
@@ -104,39 +104,48 @@ public class SlicesSelectionView extends Composite {
     if (slice instanceof GpuSlices) {
       renderStageInfo = ((GpuSlices)slice).getRenderStageInfoAt(0);
     }
+    ImmutableMap.Builder<String, String> propsBuilder = ImmutableMap.builder();
     if (renderStageInfo != null && renderStageInfo != RenderStageInfo.EMPTY) {
-      ImmutableMap.Builder<String, String> propsBuilder = ImmutableMap.builder();
+      ImmutableMap.Builder<String, String> vkPropsBuilder = ImmutableMap.builder();
       if (renderStageInfo.frameBufferHandle != 0) {
         if (renderStageInfo.frameBufferName.isEmpty()) {
-          propsBuilder.put("VkFrameBuffer:", String.format("0x%08X", renderStageInfo.frameBufferHandle));
+          propsBuilder.put("Render Target:", String.format("0x%08X", renderStageInfo.frameBufferHandle));
         } else {
-          propsBuilder.put("VkFrameBuffer:", renderStageInfo.frameBufferName + " <" + String.format("0x%08X", renderStageInfo.frameBufferHandle) + ">");
+          propsBuilder.put("Render Target:", renderStageInfo.frameBufferName + " <" + String.format("0x%08X", renderStageInfo.frameBufferHandle) + ">");
         }
       }
       if (renderStageInfo.renderPassHandle != 0) {
         if (renderStageInfo.renderPassName.isEmpty()) {
-          propsBuilder.put("VkRenderPass:", String.format("0x%08X", renderStageInfo.renderPassHandle));
+          vkPropsBuilder.put("VkRenderPass:", String.format("0x%08X", renderStageInfo.renderPassHandle));
         } else {
-          propsBuilder.put("VkRenderPass:", renderStageInfo.renderPassName + " <" + String.format("0x%08X", renderStageInfo.renderPassHandle) + ">");
+          vkPropsBuilder.put("VkRenderPass:", renderStageInfo.renderPassName + " <" + String.format("0x%08X", renderStageInfo.renderPassHandle) + ">");
         }
       }
       if (renderStageInfo.commandBufferHandle != 0) {
         if (renderStageInfo.commandBufferName.isEmpty()) {
-          propsBuilder.put("VkCommandBuffer:", String.format("0x%08X", renderStageInfo.commandBufferHandle));
+          vkPropsBuilder.put("VkCommandBuffer:", String.format("0x%08X", renderStageInfo.commandBufferHandle));
         } else {
-          propsBuilder.put("VkCommandBuffer:", renderStageInfo.commandBufferName + " <" + String.format("0x%08X", renderStageInfo.commandBufferHandle) + ">");
+          vkPropsBuilder.put("VkCommandBuffer:", renderStageInfo.commandBufferName + " <" + String.format("0x%08X", renderStageInfo.commandBufferHandle) + ">");
         }
       }
 
       if (renderStageInfo.submissionId != 0) {
         propsBuilder.put("SubmissionId:", Long.toString(renderStageInfo.submissionId));
       }
-
       ImmutableMap<String, String> props = propsBuilder.build();
       if (!props.isEmpty()) {
-        withLayoutData(createBoldLabel(main, "Vulkan Info:"),
+        withLayoutData(createBoldLabel(main, "General Info:"),
             withSpans(new GridData(), 2, 1));
         props.forEach((key, value) -> {
+          createSelectableLabel(main, key);
+          createSelectableLabel(main, value);
+        });
+      }
+      ImmutableMap<String, String> vkProps = vkPropsBuilder.build();
+      if (!vkProps.isEmpty()) {
+        withLayoutData(createBoldLabel(main, "Vulkan Info:"),
+            withSpans(new GridData(), 2, 1));
+        vkProps.forEach((key, value) -> {
           createSelectableLabel(main, key);
           createSelectableLabel(main, value);
         });
