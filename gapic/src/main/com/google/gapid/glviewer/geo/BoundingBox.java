@@ -51,15 +51,17 @@ public class BoundingBox {
   /**
    * @return a matrix that will center the model at the origin and scale it to the given size.
    */
-  public MatD getCenteringMatrix(double diagonalSize, boolean zUp) {
+  public MatD getCenteringMatrix(double diagonalSize, boolean zUp, boolean flipUpAxis) {
     VecD minV = VecD.fromArray(min), maxV = VecD.fromArray(max);
     double diagonal = maxV.distance(minV);
 
     VecD translation = maxV.subtract(minV).multiply(0.5f).add(minV).multiply(-1);
     double scale = (diagonal == 0) ? 1 : diagonalSize / diagonal;
 
-    return zUp ? makeScaleTranslationZupToYup(scale, translation) :
-        MatD.makeScaleTranslation(scale, translation);
+    MatD flipMatrix = flipUpAxis ? MatD.makeScale(1, -1, 1) : MatD.IDENTITY;
+
+    return zUp ? flipMatrix.multiply(MatD.makeScaleTranslationZupToYup(scale, translation)) :
+        flipMatrix.multiply(MatD.makeScaleTranslation(scale, translation));
   }
 
   public BoundingBox transform(MatD transform) {

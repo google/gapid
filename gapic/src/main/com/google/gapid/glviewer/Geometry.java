@@ -31,16 +31,18 @@ import org.lwjgl.opengl.GL11;
  * point cloud, wire mesh, or solid.
  */
 public class Geometry {
-  public static final Geometry NULL = new Geometry(null, false);
+  public static final Geometry NULL = new Geometry(null, false, false);
 
   public final Model model;
   public final boolean zUp;
+  public final boolean flipUpAxis;
   public final MatD modelMatrix;
 
-  public Geometry(Model model, boolean zUp) {
+  public Geometry(Model model, boolean zUp, boolean flipUpAxis) {
     this.model = model;
     this.zUp = zUp;
-    this.modelMatrix = getBounds().getCenteringMatrix(Constants.SCENE_SCALE_FACTOR, zUp);
+    this.flipUpAxis = flipUpAxis;
+    this.modelMatrix = getBounds().getCenteringMatrix(Constants.SCENE_SCALE_FACTOR, zUp, flipUpAxis);
   }
 
   public BoundingBox getBounds() {

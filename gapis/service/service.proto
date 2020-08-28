@@ -501,12 +501,14 @@ enum ClientAction {
   Wireframe = 45;
   YUp = 46;
   ZUp = 47;
-  ZoomActual = 48;
-  ZoomFit = 49;
-  ZoomIn = 50;
-  ZoomOut = 51;
-  VertexSemantics = 52;
-  Overdraw = 53;
+  YDown = 48;
+  ZDown = 49;
+  ZoomActual = 50;
+  ZoomFit = 51;
+  ZoomIn = 52;
+  ZoomOut = 53;
+  VertexSemantics = 54;
+  Overdraw = 55;
 }
 
 message ClientInteraction {

@@ -123,6 +123,8 @@ public interface Theme {
   @Icon(file = "wireframe_overlay.png") public Image wireframeOverlay();
   @Icon(file = "yup.png") public Image yUp();
   @Icon(file = "zup.png") public Image zUp();
+  @Icon(file = "ydown.png") public Image yDown();
+  @Icon(file = "zdown.png") public Image zDown();
   @Icon(file = "zoom_actual.png") public Image zoomActual();
   @Icon(file = "zoom_fit.png") public Image zoomFit();
   @Icon(file = "zoom_in.png") public Image zoomIn();

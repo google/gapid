@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
+import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSeparator;
@@ -55,6 +56,7 @@ import com.google.gapid.widgets.Widgets;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Combo;
@@ -131,12 +133,28 @@ public class GeometryView extends Composite
 
   private ToolBar createToolbar(Theme theme) {
     ToolBar bar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);
-    createToolItem(bar, theme.yUp(), e -> {
-      boolean zUp = !data.geometry.zUp;
-      models.analytics.postInteraction(View.Geometry, zUp ? ClientAction.ZUp : ClientAction.YUp);
-      ((ToolItem)e.widget).setImage(zUp ? theme.zUp() : theme.yUp());
-      setSceneData(data.withGeometry(new Geometry(data.geometry.model, zUp), displayMode));
-    }, "Toggle Y/Z up");
+    createBaloonToolItem(bar, theme.yUp(), shell -> {
+      Composite c = createComposite(shell, new FillLayout(SWT.VERTICAL), SWT.BORDER);
+      ToolBar b = new ToolBar(c, SWT.HORIZONTAL | SWT.FLAT);
+      exclusiveSelection(
+        createToggleToolItem(b, theme.yUp(), e -> {
+          models.analytics.postInteraction(View.Geometry, ClientAction.YUp);
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, false, false), displayMode));
+        }, "Select Y-Up Axis"),
+        createToggleToolItem(b, theme.yDown(), e -> {
+          models.analytics.postInteraction(View.Geometry, ClientAction.YDown);
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, false, true), displayMode));
+        }, "Select Y-Down Axis"),
+        createToggleToolItem(b, theme.zUp(), e -> {
+          models.analytics.postInteraction(View.Geometry, ClientAction.ZUp);
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, true, false), displayMode));
+        }, "Select Z-Up Axis"),
+        createToggleToolItem(b, theme.zDown(), e -> {
+          models.analytics.postInteraction(View.Geometry, ClientAction.ZDown);
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, true, true), displayMode));
+        }, "Select Z-Down Axis")
+      );
+    }, "Choose up axis");
     createToolItem(bar, theme.windingCCW(), e -> {
       boolean cw = data.winding == GeometryScene.Winding.CCW; // cw represent the new value.
       models.analytics.postInteraction(
@@ -347,7 +365,7 @@ public class GeometryView extends Composite
     renderAsPoints.setSelection(newDisplayMode == Geometry.DisplayMode.POINTS);
     displayMode = newDisplayMode;
 
-    setSceneData(data.withGeometry(new Geometry(model, data.geometry.zUp), displayMode));
+    setSceneData(data.withGeometry(new Geometry(model, data.geometry.zUp, data.geometry.flipUpAxis), displayMode));
     statusBar.setText(model.getStatusMessage());
   }
 
