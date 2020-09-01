@@ -34,7 +34,7 @@ func init() {
 	verb := &profileVerb{GpuProfileFlags{}}
 	app.AddVerb(&app.Verb{
 		Name:      "profile",
-		ShortHelp: "Profile a replay to get time slices for gpu render stages.",
+		ShortHelp: "Profile a replay to get GPU activity and counter data.",
 		Action:    verb,
 	})
 }

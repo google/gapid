@@ -277,7 +277,7 @@ func newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []str
 
 	if err != nil {
 		// TODO(apbodnar) Fail here if we know we need render stages
-		log.W(ctx, "Failed to setup render stage environment for replayer")
+		log.W(ctx, "Failed to setup GPU activity producer environment for replayer")
 		cleanup.Invoke(ctx)
 	}
 

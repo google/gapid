@@ -204,7 +204,7 @@ func ValidateGpuSlices(ctx context.Context, processor *perfetto.Processor) error
 		}
 		numRecords := queryResult.GetNumRecords()
 		if numRecords == 0 {
-			log.W(ctx, "No gpu slices found in GPU track: %v", tId)
+			log.W(ctx, "No GPU activity slices found in GPU track: %v", tId)
 			continue
 		}
 		columns := queryResult.GetColumns()
@@ -213,10 +213,10 @@ func ValidateGpuSlices(ctx context.Context, processor *perfetto.Processor) error
 		submissionIds := columns[2].GetLongValues()
 		for i := uint64(0); i < numRecords; i++ {
 			if commandBuffers[i] == 0 {
-				return log.Errf(ctx, nil, "Gpu slice %v has null command buffer", names[i])
+				return log.Errf(ctx, nil, "GPU activity slice %v has null command buffer", names[i])
 			}
 			if submissionIds[i] == 0 {
-				return log.Errf(ctx, nil, "Gpu slice %v has null submission id", names[i])
+				return log.Errf(ctx, nil, "GPU activity slice %v has null submission id", names[i])
 			}
 		}
 	}
@@ -239,7 +239,7 @@ func ValidateVulkanEvents(ctx context.Context, processor *perfetto.Processor) er
 		names := columns[0].GetStringValues()
 		submissionIds := columns[1].GetLongValues()
 		if numRecords == 0 {
-			return log.Err(ctx, nil, "No render stage slices")
+			return log.Err(ctx, nil, "No GPU activity slices")
 		}
 		for i := uint64(0); i < numRecords; i++ {
 			if names[i] == "vkQueueSubmit" && submissionIds[i] == 0 {
