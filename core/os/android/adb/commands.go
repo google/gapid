@@ -406,7 +406,7 @@ func (b *binding) QueryAnglePackageName(ctx context.Context) (string, error) {
 	}
 	// ANGLE supported, so check for installed ANGLE package
 	// Favor custom installed package first, followed by default system package
-	custom := "com.chromium.angle"
+	custom := "org.chromium.angle"
 	system := "com.google.android.angle"
 	// Check installed packages for ANGLE package
 	packages, _ := b.InstalledPackages(ctx)
