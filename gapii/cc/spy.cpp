@@ -16,15 +16,14 @@
 
 #include "spy.h"
 
+#include <cstdlib>
+#include <memory>
+#include <sstream>
+#include <thread>
+#include <vector>
+
 #include "connection_header.h"
 #include "connection_stream.h"
-#include "protocol.h"
-
-#include "gapil/runtime/cc/runtime.h"
-
-#include "gapii/cc/gles_exports.h"
-#include "gapii/cc/spy.h"
-
 #include "core/cc/gl/formats.h"
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
@@ -33,27 +32,26 @@
 #include "core/cc/target.h"
 #include "core/cc/timer.h"
 #include "core/os/device/deviceinfo/cc/query.h"
-
+#include "gapii/cc/gles_exports.h"
+#include "gapii/cc/spy.h"
+#include "gapil/runtime/cc/runtime.h"
 #include "gapis/api/gles/gles_pb/extras.pb.h"
 #include "gapis/capture/capture.pb.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
-
-#include <cstdlib>
-#include <memory>
-#include <sstream>
-#include <thread>
-#include <vector>
+#include "protocol.h"
 
 #if TARGET_OS == GAPID_OS_WINDOWS
+#include <windows.h>
+
 #include "windows/wgl.h"
 #endif  //  TARGET_OS == GAPID_OS_WINDOWS
 
 #if TARGET_OS == GAPID_OS_ANDROID
-#include "gapii/cc/android/gvr_install.h"
-#include "gapii/cc/android/installer.h"
-
 #include <jni.h>
 #include <sys/prctl.h>
+
+#include "gapii/cc/android/gvr_install.h"
+#include "gapii/cc/android/installer.h"
 
 static std::unique_ptr<gapii::Installer> gInstaller;
 
@@ -98,11 +96,13 @@ const int32_t kSuspendIndefinitely = -1;
 thread_local gapii::CallObserver* gContext = nullptr;
 
 }  // anonymous namespace
-
 namespace gapii {
 
 struct spy_creator {
   spy_creator() {
+#if TARGET_OS == GAPID_OS_WINDOWS
+    LoadLibraryA("libgapii");
+#endif
     GAPID_LOGGER_INIT(LOG_LEVEL_INFO, "gapii", nullptr);
     GAPID_INFO("Constructing spy...");
     m_spy.reset(new Spy());
