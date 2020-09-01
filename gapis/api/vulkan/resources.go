@@ -1062,6 +1062,7 @@ func commonShaderDataGroups(ctx context.Context,
 	vkStage VkShaderStageFlagBits,
 	stages map[uint32]StageData,
 ) []*api.DataGroup {
+	vkState := GetState(s)
 	for _, stage := range stages {
 		if stage.Stage() == vkStage {
 			module := stage.Module()
@@ -1161,6 +1162,7 @@ func commonShaderDataGroups(ctx context.Context,
 						case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 							VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 							VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+
 							descInfo := bindingInfo.BufferBinding().Get(i)
 
 							bufferHandle := descInfo.Buffer()
@@ -1169,7 +1171,26 @@ func commonShaderDataGroups(ctx context.Context,
 
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
 							currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
-							currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Offset()))
+
+							if ok && (bindingType == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
+								bindingType == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
+								if vkStage == VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT {
+									if lci, ok := vkState.LastComputeInfos().Lookup(vkState.LastBoundQueue().VulkanHandle()); ok {
+										currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", lci.BufferBindingOffsets().Get(usedSet.Set()).Get(usedSet.Binding()).Get(i)))
+									} else {
+										currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", 0))
+									}
+								} else {
+									if ldi, ok := vkState.LastDrawInfos().Lookup(vkState.LastBoundQueue().VulkanHandle()); ok {
+										currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", ldi.BufferBindingOffsets().Get(usedSet.Set()).Get(usedSet.Binding()).Get(i)))
+									} else {
+										currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", 0))
+									}
+								}
+
+							} else {
+								currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Offset()))
+							}
 
 							if descInfo.Range() == ^VkDeviceSize(0) {
 								bufferObject, ok := GetState(s).Buffers().Lookup(descInfo.Buffer())
