@@ -49,6 +49,21 @@ class VkConditionalRenderingBeginInfoEXT {
 }
 
 @extension("VK_EXT_conditional_rendering")
+class VkCommandBufferInheritanceConditionalRenderingInfoEXT {
+  VkStructureType sType
+  const void* pNext
+  VkBool32 conditionalRenderingEnable
+}
+
+@extension("VK_EXT_conditional_rendering")
+class VkPhysicalDeviceConditionalRenderingFeaturesEXT {
+  VkStructureType sType
+  const void* pNext
+  VkBool32 conditionalRendering
+  VkBool32 inheritedConditionalRendering
+}
+
+@extension("VK_EXT_conditional_rendering")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer, const VkConditionalRenderingBeginInfoEXT* pConditinalRenderingBegin) {
