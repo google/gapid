@@ -48,7 +48,6 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.window.Window;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
@@ -228,7 +227,6 @@ public class Main {
     Flags.version,
     Devices.skipDeviceValidation,
     Experimental.enableAll,
-    Experimental.enableFrameLifecycle,
     Experimental.enableVulkanTracing,
     Experimental.enableAngleTracing,
     Experimental.enablePerfTab,

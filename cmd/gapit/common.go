@@ -69,7 +69,6 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 
 	args = append(args, "--experimental-enable-vulkan-tracing")
 	args = append(args, "--experimental-enable-angle-tracing")
-	args = append(args, "--experimental-enable-frame-lifecycle")
 	args = append(args, "--experimental-enable-perf-tab")
 
 	if app.Flags.Analytics != "" {

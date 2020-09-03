@@ -26,7 +26,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
@@ -344,7 +343,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 
 	// SurfaceFlinger frame lifecycle perfetto producer is mandated by Android 11 CTS, hence it will
 	// always exist.
-	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 && *flags.EnableFrameLifecycle {
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 {
 		result.HasFrameLifecycle = true
 	}
 	return result, nil
