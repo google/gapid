@@ -16,11 +16,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["terminator.go"],
+    srcs = [
+        "terminator.go",
+        "transform_early_terminator.go",
+    ],
     importpath = "github.com/google/gapid/gapis/api/terminator",
     visibility = ["//visibility:public"],
     deps = [
         "//gapis/api:go_default_library",
-        "//gapis/api/transform2:go_default_library",
+        "//gapis/api/transform:go_default_library",
     ],
 )

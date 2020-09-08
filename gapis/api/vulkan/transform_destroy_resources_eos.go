@@ -18,11 +18,11 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 )
 
-var _ transform2.Transform = &destroyResourcesAtEOS{}
+var _ transform.Transform = &destroyResourcesAtEOS{}
 
 type destroyResourcesAtEOS struct {
 }
@@ -39,12 +39,12 @@ func (dropTransform *destroyResourcesAtEOS) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (dropTransform *destroyResourcesAtEOS) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (dropTransform *destroyResourcesAtEOS) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (dropTransform *destroyResourcesAtEOS) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (dropTransform *destroyResourcesAtEOS) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (dropTransform *destroyResourcesAtEOS) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -184,7 +184,7 @@ func (dropTransform *destroyResourcesAtEOS) EndTransform(ctx context.Context, in
 	return cleanupCommands, nil
 }
 
-func (dropTransform *destroyResourcesAtEOS) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *destroyResourcesAtEOS) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }
 

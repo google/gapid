@@ -48,3 +48,7 @@ func (generator *linearCommandGenerator) GetNextCommand(ctx context.Context) api
 func (generator *linearCommandGenerator) IsEndOfCommands() bool {
 	return generator.index >= len(generator.commands)
 }
+
+func (generator *linearCommandGenerator) GetNumOfRemainingCommands() uint64 {
+	return uint64(len(generator.commands))
+}

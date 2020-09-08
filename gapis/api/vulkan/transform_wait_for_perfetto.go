@@ -22,14 +22,14 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/trace"
 )
 
-var _ transform2.Transform = &waitForPerfetto{}
+var _ transform.Transform = &waitForPerfetto{}
 
 // waitForPerfetto adds a fence to the trace to be able to wait perfetto
 type waitForPerfetto struct {
@@ -58,12 +58,12 @@ func (perfettoTransform *waitForPerfetto) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (perfettoTransform *waitForPerfetto) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (perfettoTransform *waitForPerfetto) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (perfettoTransform *waitForPerfetto) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (perfettoTransform *waitForPerfetto) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (perfettoTransform *waitForPerfetto) ClearTransformResources(ctx context.Context) {
@@ -82,8 +82,8 @@ func (perfettoTransform *waitForPerfetto) EndTransform(ctx context.Context, inpu
 	return cmds, nil
 }
 
-func (perfettoTransform *waitForPerfetto) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	if id.GetCommandType() != transform2.TransformCommand {
+func (perfettoTransform *waitForPerfetto) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+	if id.GetCommandType() != transform.TransformCommand {
 		return inputCommands, nil
 	}
 

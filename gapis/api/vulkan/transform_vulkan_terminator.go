@@ -21,12 +21,12 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/api/terminator"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// vulkanTerminator2 is very similar to EarlyTerminator.
+// vulkanTerminator is very similar to EarlyTerminator.
 // It has 2 additional properties.
 //   1) If a VkQueueSubmit is found, and it contains an event that will be
 //      signaled after the final request, we remove the event from the
@@ -39,7 +39,7 @@ import (
 //      all pending events have been successfully completed.
 //      TODO(awoloszyn): Handle #2
 // This takes advantage of the fact that all commands will be in order.
-type vulkanTerminator2 struct {
+type vulkanTerminator struct {
 	lastRequest       api.CmdID
 	realCommandOffset api.CmdID
 	requestSubIndex   []uint64
@@ -49,15 +49,15 @@ type vulkanTerminator2 struct {
 	cleanupFunctions  []func()
 }
 
-var _ terminator.Terminator = &vulkanTerminator2{}
+var _ terminator.Terminator = &vulkanTerminator{}
 
-func newVulkanTerminator2(ctx context.Context, capture *path.Capture, realCommandOffset api.CmdID) (*vulkanTerminator2, error) {
+func newVulkanTerminator(ctx context.Context, capture *path.Capture, realCommandOffset api.CmdID) (*vulkanTerminator, error) {
 	s, err := resolve.SyncData(ctx, capture)
 	if err != nil {
 		return nil, err
 	}
 
-	return &vulkanTerminator2{
+	return &vulkanTerminator{
 		lastRequest:       api.CmdID(0),
 		realCommandOffset: realCommandOffset,
 		requestSubIndex:   make([]uint64, 0),
@@ -69,9 +69,9 @@ func newVulkanTerminator2(ctx context.Context, capture *path.Capture, realComman
 }
 
 // Add adds the command with identifier id to the set of commands that must be
-// seen before the vulkanTerminator2 will consume all commands (excluding the EOS
+// seen before the vulkanTerminator will consume all commands (excluding the EOS
 // command).
-func (vtTransform *vulkanTerminator2) Add(ctx context.Context, id api.CmdID, subcommand api.SubCmdIdx) error {
+func (vtTransform *vulkanTerminator) Add(ctx context.Context, id api.CmdID, subcommand api.SubCmdIdx) error {
 	if len(vtTransform.requestSubIndex) != 0 {
 		return log.Errf(ctx, nil, "Cannot handle multiple requests when requesting a subcommand")
 	}
@@ -93,28 +93,28 @@ func (vtTransform *vulkanTerminator2) Add(ctx context.Context, id api.CmdID, sub
 	return nil
 }
 
-func (vtTransform *vulkanTerminator2) RequiresAccurateState() bool {
+func (vtTransform *vulkanTerminator) RequiresAccurateState() bool {
 	return false
 }
 
-func (vtTransform *vulkanTerminator2) RequiresInnerStateMutation() bool {
+func (vtTransform *vulkanTerminator) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (vtTransform *vulkanTerminator2) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (vtTransform *vulkanTerminator) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (vtTransform *vulkanTerminator2) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (vtTransform *vulkanTerminator) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	vtTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
-func (vtTransform *vulkanTerminator2) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (vtTransform *vulkanTerminator) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return nil, nil
 }
 
-func (vtTransform *vulkanTerminator2) ClearTransformResources(ctx context.Context) {
+func (vtTransform *vulkanTerminator) ClearTransformResources(ctx context.Context) {
 	vtTransform.allocations.FreeAllocations()
 
 	for _, f := range vtTransform.cleanupFunctions {
@@ -122,7 +122,7 @@ func (vtTransform *vulkanTerminator2) ClearTransformResources(ctx context.Contex
 	}
 }
 
-func (vtTransform *vulkanTerminator2) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (vtTransform *vulkanTerminator) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if vtTransform.terminated {
 		return nil, nil
 	}
@@ -137,10 +137,14 @@ func (vtTransform *vulkanTerminator2) TransformCommand(ctx context.Context, id t
 		}
 	}
 
+	if id.GetID() == vtTransform.lastRequest {
+		vtTransform.terminated = true
+	}
+
 	return outputCmds, nil
 }
 
-func (vtTransform *vulkanTerminator2) processVkQueueSubmit(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, inputState *api.GlobalState) []api.Cmd {
+func (vtTransform *vulkanTerminator) processVkQueueSubmit(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, inputState *api.GlobalState) []api.Cmd {
 	doCut := false
 	cutIndex := api.SubCmdIdx(nil)
 	// If we have been requested to cut at a particular subindex,
@@ -152,10 +156,6 @@ func (vtTransform *vulkanTerminator2) processVkQueueSubmit(ctx context.Context, 
 			cutIndex = vtTransform.requestSubIndex[1:]
 			doCut = true
 		}
-	}
-
-	if id == vtTransform.lastRequest {
-		vtTransform.terminated = true
 	}
 
 	if !doCut {
@@ -171,7 +171,7 @@ func (vtTransform *vulkanTerminator2) processVkQueueSubmit(ctx context.Context, 
 // It will make sure that if the replay were to stop at the given
 // index it would remain valid. This means closing any open
 // RenderPasses.
-func (vtTransform *vulkanTerminator2) cutCommandBuffer(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, idx api.SubCmdIdx, inputState *api.GlobalState) []api.Cmd {
+func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, idx api.SubCmdIdx, inputState *api.GlobalState) []api.Cmd {
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	layout := inputState.MemoryLayout

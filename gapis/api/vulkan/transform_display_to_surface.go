@@ -18,10 +18,10 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
-var _ transform2.Transform = &displayToSurface{}
+var _ transform.Transform = &displayToSurface{}
 
 // displayToSurface is a transformation that enables rendering during replay to
 // the original surface.
@@ -43,12 +43,12 @@ func (surfaceTransform *displayToSurface) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (surfaceTransform *displayToSurface) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (surfaceTransform *displayToSurface) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (surfaceTransform *displayToSurface) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (surfaceTransform *displayToSurface) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (surfaceTransform *displayToSurface) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -59,7 +59,7 @@ func (surfaceTransform *displayToSurface) ClearTransformResources(ctx context.Co
 	// No resource allocated
 }
 
-func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if modifiedCmd := surfaceTransform.modifySurface(ctx, cmd, inputState); modifiedCmd != nil {
 			inputCommands[i] = modifiedCmd

@@ -24,7 +24,7 @@ import (
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
-	"github.com/google/gapid/gapis/api/transform"
+	"github.com/google/gapid/gapis/api/terminator"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
@@ -458,8 +458,8 @@ func (API) RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, dat 
 // Interface check
 var _ sync.SynchronizedAPI = &API{}
 
-func (API) GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error) {
-	return newVulkanTerminator(ctx, c)
+func (API) GetTerminator(ctx context.Context, c *path.Capture) (terminator.Terminator, error) {
+	return newVulkanTerminator(ctx, c, 0)
 }
 
 func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,

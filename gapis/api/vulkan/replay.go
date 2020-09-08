@@ -24,7 +24,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/commandGenerator"
 	"github.com/google/gapid/gapis/api/controlFlowGenerator"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay"
@@ -37,17 +37,17 @@ import (
 func (a API) GetInitialPayload(ctx context.Context,
 	capture *path.Capture,
 	device *device.Instance,
-	out transform2.Writer) error {
+	out transform.Writer) error {
 
 	initialCmds, im, _ := initialcmds.InitialCommands(ctx, capture)
 	out.State().Allocator.ReserveRanges(im)
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, nil)
 
-	transforms := make([]transform2.Transform, 0)
+	transforms := make([]transform.Transform, 0)
 	transforms = append(transforms, newMakeAttachmentReadable(false))
 	transforms = append(transforms, newDropInvalidDestroy("GetInitialPayload"))
 
-	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
+	chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
 	if err := controlFlow.TransformAll(ctx); err != nil {
 		log.E(ctx, "[GetInitialPayload] Error: %v", err)
@@ -59,12 +59,12 @@ func (a API) GetInitialPayload(ctx context.Context,
 
 // CleanupResources creates a replay that emits instructions for
 // destroying resources at a given stateg
-func (a API) CleanupResources(ctx context.Context, device *device.Instance, out transform2.Writer) error {
+func (a API) CleanupResources(ctx context.Context, device *device.Instance, out transform.Writer) error {
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(nil, nil)
-	transforms := []transform2.Transform{
+	transforms := []transform.Transform{
 		newDestroyResourcesAtEOS(),
 	}
-	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
+	chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
 	if err := controlFlow.TransformAll(ctx); err != nil {
 		log.E(ctx, "[CleanupResources] Error: %v", err)
@@ -82,7 +82,7 @@ func (a API) Replay(
 	rrs []replay.RequestAndResult,
 	device *device.Instance,
 	c *capture.GraphicsCapture,
-	out transform2.Writer) error {
+	out transform.Writer) error {
 	if a.GetReplayPriority(ctx, device, c.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
@@ -101,7 +101,7 @@ func (a API) Replay(
 		}
 	}
 
-	transforms := make([]transform2.Transform, 0)
+	transforms := make([]transform.Transform, 0)
 
 	_, isProfileRequest := firstRequest.(profileRequest)
 	transforms = append(transforms, newMakeAttachmentReadable(isProfileRequest))
@@ -135,7 +135,7 @@ func (a API) Replay(
 	transforms = appendLogTransforms(ctx, replayType, c, transforms)
 
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
-	chain := transform2.CreateTransformChain(ctx, cmdGenerator, transforms, out)
+	chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
 	if err := controlFlow.TransformAll(ctx); err != nil {
 		log.E(ctx, "%v Error: %v", replayType, err)
@@ -149,13 +149,13 @@ func getFramebufferTransforms(ctx context.Context,
 	numOfInitialCmds api.CmdID,
 	intent replay.Intent,
 	cfg replay.Config,
-	rrs []replay.RequestAndResult) ([]transform2.Transform, error) {
+	rrs []replay.RequestAndResult) ([]transform.Transform, error) {
 
 	shouldRenderWired := false
 	doDisplayToSurface := false
 	shouldOverDraw := false
 
-	vulkanTerminator, err := newVulkanTerminator2(ctx, intent.Capture, numOfInitialCmds)
+	vulkanTerminator, err := newVulkanTerminator(ctx, intent.Capture, numOfInitialCmds)
 	if err != nil {
 		log.E(ctx, "Vulkan terminator failed: %v", err)
 		return nil, err
@@ -212,7 +212,7 @@ func getFramebufferTransforms(ctx context.Context,
 		}
 	}
 
-	transforms := make([]transform2.Transform, 0)
+	transforms := make([]transform.Transform, 0)
 
 	if shouldRenderWired {
 		transforms = append(transforms, newWireframeTransform())
@@ -236,8 +236,8 @@ func getFramebufferTransforms(ctx context.Context,
 func getIssuesTransforms(ctx context.Context,
 	c *capture.GraphicsCapture,
 	numOfInitialCmds api.CmdID,
-	requestAndResult *replay.RequestAndResult) []transform2.Transform {
-	transforms := make([]transform2.Transform, 0)
+	requestAndResult *replay.RequestAndResult) []transform.Transform {
+	transforms := make([]transform.Transform, 0)
 
 	issuesTransform := newFindIssues(ctx, c, numOfInitialCmds)
 	issuesTransform.AddResult(requestAndResult.Result)
@@ -254,7 +254,7 @@ func getIssuesTransforms(ctx context.Context,
 func getProfileTransforms(ctx context.Context,
 	numOfInitialCmds api.CmdID,
 	device *device.Instance,
-	requestAndResult *replay.RequestAndResult) []transform2.Transform {
+	requestAndResult *replay.RequestAndResult) []transform.Transform {
 	var layerName string
 	if device.GetConfiguration().GetPerfettoCapability().GetGpuProfiling().GetHasRenderStageProducerLayer() {
 		layerName = "VkRenderStagesProducer"
@@ -265,7 +265,7 @@ func getProfileTransforms(ctx context.Context,
 	profileTransform := newEndOfReplay()
 	profileTransform.AddResult(requestAndResult.Result)
 
-	transforms := make([]transform2.Transform, 0)
+	transforms := make([]transform.Transform, 0)
 	transforms = append(transforms, newWaitForPerfetto(request.traceOptions, request.handler, request.buffer, numOfInitialCmds))
 	transforms = append(transforms, newProfilingLayers(layerName))
 	transforms = append(transforms, newMappingExporter(ctx, request.handleMappings))
@@ -274,16 +274,16 @@ func getProfileTransforms(ctx context.Context,
 }
 
 func getTimestampTransforms(ctx context.Context,
-	requestAndResult *replay.RequestAndResult) []transform2.Transform {
+	requestAndResult *replay.RequestAndResult) []transform.Transform {
 	request := requestAndResult.Request.(timestampsRequest)
 	timestampTransform := newQueryTimestamps(ctx, request.handler)
 	timestampTransform.AddResult(requestAndResult.Result)
-	return []transform2.Transform{timestampTransform}
+	return []transform.Transform{timestampTransform}
 }
 
-func appendLogTransforms(ctx context.Context, tag string, capture *capture.GraphicsCapture, transforms []transform2.Transform) []transform2.Transform {
+func appendLogTransforms(ctx context.Context, tag string, capture *capture.GraphicsCapture, transforms []transform.Transform) []transform.Transform {
 	if config.LogTransformsToFile {
-		newTransforms := make([]transform2.Transform, 0)
+		newTransforms := make([]transform.Transform, 0)
 		newTransforms = append(newTransforms, newFileLog(ctx, "0_original_cmds"))
 		for i, t := range transforms {
 			var name string
@@ -313,7 +313,7 @@ func appendLogTransforms(ctx context.Context, tag string, capture *capture.Graph
 func getInitialCmds(ctx context.Context,
 	dependentPayload string,
 	intent replay.Intent,
-	out transform2.Writer) []api.Cmd {
+	out transform.Writer) []api.Cmd {
 
 	if dependentPayload == "" {
 		cmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)

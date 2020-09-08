@@ -21,13 +21,24 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/value"
 )
+
+type legacyTransformWriter interface {
+	// State returns the state object associated with this writer.
+	State() *api.GlobalState
+	// MutateAndWrite mutates the state object associated with this writer,
+	// and it passes the command to further consumers.
+	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error
+	//Notify next transformer it's ready to start loop the trace.
+	NotifyPreLoop(ctx context.Context)
+	//Notify next transformer it's the end of the loop.
+	NotifyPostLoop(ctx context.Context)
+}
 
 type stateWatcher struct {
 	memoryWrites map[memory.PoolID]*interval.U64SpanList
@@ -327,7 +338,7 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 	}
 }
 
-func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, out transform.Writer) error {
+func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, out legacyTransformWriter) error {
 
 	// If we're looping only once we can just passthrough commands
 	if f.loopCount == 1 {
@@ -485,7 +496,7 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 	return fmt.Errorf("FrameLoop: Internal control flow error: Should not be possible to reach this statement.")
 }
 
-func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out transform.Writer) error {
+func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out legacyTransformWriter) error {
 
 	// Notify the other transforms that we're about to emit the start of the loop.
 	out.NotifyPreLoop(ctx)
@@ -503,7 +514,7 @@ func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out tran
 	return nil
 }
 
-func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) error {
+func (f *frameLoop) Flush(ctx context.Context, out legacyTransformWriter) error {
 
 	log.W(ctx, "FrameLoop FLUSH")
 
@@ -519,9 +530,9 @@ func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) error {
 	return nil
 }
 
-func (f *frameLoop) PreLoop(ctx context.Context, out transform.Writer) {
+func (f *frameLoop) PreLoop(ctx context.Context, out legacyTransformWriter) {
 }
-func (f *frameLoop) PostLoop(ctx context.Context, out transform.Writer) {
+func (f *frameLoop) PostLoop(ctx context.Context, out legacyTransformWriter) {
 }
 func (f *frameLoop) BuffersCommands() bool { return true }
 

@@ -26,14 +26,14 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 )
 
-var _ transform2.Transform = &mappingExporter{}
+var _ transform.Transform = &mappingExporter{}
 
 type mappingHandle struct {
 	traceValue    uint64
@@ -79,12 +79,12 @@ func (mappingTransform *mappingExporter) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (mappingTransform *mappingExporter) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (mappingTransform *mappingExporter) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (mappingTransform *mappingExporter) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (mappingTransform *mappingExporter) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (mappingTransform *mappingExporter) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -100,7 +100,7 @@ func (mappingTransform *mappingExporter) ClearTransformResources(ctx context.Con
 	// No resource allocated
 }
 
-func (mappingTransform *mappingExporter) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (mappingTransform *mappingExporter) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if mappingTransform.thread == 0 && len(inputCommands) > 0 {
 		mappingTransform.thread = inputCommands[0].Thread()
 	}

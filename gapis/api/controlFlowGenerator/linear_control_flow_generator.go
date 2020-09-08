@@ -16,28 +16,68 @@ package controlFlowGenerator
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/context/keys"
+	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
 type linearControlFlowGenerator struct {
-	chain *transform2.TransformChain
+	chain *transform.TransformChain
 }
 
 // NewLinearControlFlowGenerator generates a simple control flow
 // that takes initial and real commands and transforms all of them
-func NewLinearControlFlowGenerator(chain *transform2.TransformChain) ControlFlowGenerator {
+func NewLinearControlFlowGenerator(chain *transform.TransformChain) ControlFlowGenerator {
 	return &linearControlFlowGenerator{
 		chain: chain,
 	}
 }
 
 func (cf *linearControlFlowGenerator) TransformAll(ctx context.Context) error {
+	numberOfCmds := cf.chain.GetNumOfRemainingCommands()
+	ctx = status.Start(ctx, "Running LinearControlFlow <count:%v>", numberOfCmds)
+	defer status.Finish(ctx)
+
+	var id transform.CommandID
+	defer recoverFromPanic(id)
+
+	subctx := keys.Clone(context.Background(), ctx)
 	for !cf.chain.IsEndOfCommands() {
-		if err := cf.chain.GetNextTransformedCommands(ctx); err != nil {
+		id = cf.chain.GetCurrentCommandID()
+		if id.GetCommandType() == transform.TransformCommand {
+			cmdID := uint64(id.GetID())
+			if cmdID%100 == 99 {
+				status.UpdateProgress(ctx, cmdID, numberOfCmds)
+			}
+		}
+
+		if err := cf.chain.GetNextTransformedCommands(subctx); err != nil {
+			return err
+		}
+
+		if err := task.StopReason(ctx); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func recoverFromPanic(id transform.CommandID) {
+	r := recover()
+	if r == nil {
+		return
+	}
+
+	switch id.GetCommandType() {
+	case transform.TransformCommand:
+		panic(fmt.Errorf("Panic at command %v\n%v", id.GetID(), r))
+	case transform.EndCommand:
+		panic(fmt.Errorf("Panic at end command\n%v", r))
+	default:
+		panic(fmt.Errorf("Panic at Unknown command type\n%v", r))
+	}
 }

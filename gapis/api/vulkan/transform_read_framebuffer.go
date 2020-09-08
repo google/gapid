@@ -22,7 +22,7 @@ import (
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
@@ -60,7 +60,7 @@ type readFramebuffer struct {
 	injections   map[string][]injection
 	pendingReads []pendingRead
 	allocations  *allocationTracker
-	stateMutator transform2.StateMutator
+	stateMutator transform.StateMutator
 }
 
 func newReadFramebuffer(ctx context.Context) *readFramebuffer {
@@ -80,13 +80,13 @@ func (framebufferTransform *readFramebuffer) RequiresInnerStateMutation() bool {
 	return true
 }
 
-func (framebufferTransform *readFramebuffer) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (framebufferTransform *readFramebuffer) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	framebufferTransform.stateMutator = mutator
 }
 
-func (framebufferTransform *readFramebuffer) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (framebufferTransform *readFramebuffer) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	framebufferTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (framebufferTransform *readFramebuffer) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -100,7 +100,7 @@ func (framebufferTransform *readFramebuffer) ClearTransformResources(ctx context
 
 // If we are acutally swapping, we really do want to show the image before
 // the framebuffer read.
-func (framebufferTransform *readFramebuffer) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (framebufferTransform *readFramebuffer) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for _, cmd := range inputCommands {
 		if cmd, ok := cmd.(*InsertionCommand); ok {
 			idxstring := keyFromIndex(cmd.idx)

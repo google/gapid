@@ -20,13 +20,13 @@ import (
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
 )
 
-var _ transform2.Transform = &endOfReplay{}
+var _ transform.Transform = &endOfReplay{}
 
 // endOfReplay is a transform that causes a post back at the end of the replay. It can be used to
 // ensure that GAPIS waits for a replay to finish, if there are no postbacks, or no pending
@@ -54,12 +54,12 @@ func (endTransform *endOfReplay) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (endTransform *endOfReplay) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (endTransform *endOfReplay) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (endTransform *endOfReplay) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (endTransform *endOfReplay) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (endTransform *endOfReplay) ClearTransformResources(ctx context.Context) {
@@ -70,7 +70,7 @@ func (endTransform *endOfReplay) EndTransform(ctx context.Context, inputState *a
 	return []api.Cmd{endTransform.CreateNotifyInstruction(ctx, defaultNotifyFunction)}, nil
 }
 
-func (endTransform *endOfReplay) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (endTransform *endOfReplay) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return inputCommands, nil
 }
 

@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/messages"
@@ -41,7 +41,7 @@ type stencilOverdraw struct {
 	allocations      *allocationTracker
 	cleanupCmds      []api.Cmd
 	cleanupFunctions []func()
-	stateMutator     transform2.StateMutator
+	stateMutator     transform.StateMutator
 }
 
 func NewStencilOverdraw() *stencilOverdraw {
@@ -84,7 +84,7 @@ func (overdrawTransform *stencilOverdraw) RequiresInnerStateMutation() bool {
 	return true
 }
 
-func (overdrawTransform *stencilOverdraw) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (overdrawTransform *stencilOverdraw) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	overdrawTransform.stateMutator = mutator
 }
 
@@ -98,9 +98,9 @@ func (overdrawTransform *stencilOverdraw) writeCommands(cmds ...api.Cmd) error {
 	return nil
 }
 
-func (overdrawTransform *stencilOverdraw) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (overdrawTransform *stencilOverdraw) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	overdrawTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (overdrawTransform *stencilOverdraw) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -115,7 +115,7 @@ func (overdrawTransform *stencilOverdraw) ClearTransformResources(ctx context.Co
 	}
 }
 
-func (overdrawTransform *stencilOverdraw) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (overdrawTransform *stencilOverdraw) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	vkQueueSubmitFound := false
 	var res replay.Result
 	res = nil

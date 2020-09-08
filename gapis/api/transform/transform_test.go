@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform2_test
+package transform_test
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/commandGenerator"
 	"github.com/google/gapid/gapis/api/test"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
 func TestSingleTransformTransformChain(t *testing.T) {
@@ -32,9 +32,9 @@ func TestSingleTransformTransformChain(t *testing.T) {
 	inputCmds := []api.Cmd{createNewCmd(0, 1)}
 
 	generator := commandGenerator.NewLinearCommandGenerator(nil, inputCmds)
-	transforms := []transform2.Transform{&multiplier_transform{}}
+	transforms := []transform.Transform{&multiplier_transform{}}
 	writer := newTestWriter()
-	chain := transform2.CreateTransformChain(ctx, generator, transforms, writer)
+	chain := transform.CreateTransformChain(ctx, generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
 		chain.GetNextTransformedCommands(ctx)
@@ -49,9 +49,9 @@ func TestMultipleTransformTransformChain(t *testing.T) {
 	inputCmds := []api.Cmd{createNewCmd(0, 1)}
 
 	generator := commandGenerator.NewLinearCommandGenerator(nil, inputCmds)
-	transforms := []transform2.Transform{&multiplier_transform{}, &multiplier_transform{}, &multiplier_transform{}}
+	transforms := []transform.Transform{&multiplier_transform{}, &multiplier_transform{}, &multiplier_transform{}}
 	writer := newTestWriter()
-	chain := transform2.CreateTransformChain(ctx, generator, transforms, writer)
+	chain := transform.CreateTransformChain(ctx, generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
 		chain.GetNextTransformedCommands(ctx)
@@ -92,15 +92,15 @@ func (writer *testWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd 
 // two cmds per cmd it receives.
 type multiplier_transform struct{}
 
-func (t *multiplier_transform) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (t *multiplier_transform) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (t *multiplier_transform) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return nil, nil
 }
 
-func (t *multiplier_transform) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (t *multiplier_transform) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return multiply(inputCommands), nil
 }
 
@@ -116,7 +116,7 @@ func (t *multiplier_transform) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (t *multiplier_transform) SetInnerStateMutationFunction(stateMutator transform2.StateMutator) {
+func (t *multiplier_transform) SetInnerStateMutationFunction(stateMutator transform.StateMutator) {
 	// Do nothing
 }
 

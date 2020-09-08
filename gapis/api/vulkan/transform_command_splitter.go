@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -95,7 +95,7 @@ type commandSplitter struct {
 	fixedGraphicsPipelines map[VkPipeline]VkPipeline
 
 	pendingCommandBuffers []VkCommandBuffer
-	stateMutator          transform2.StateMutator
+	stateMutator          transform.StateMutator
 	allocations           *allocationTracker
 }
 
@@ -125,13 +125,13 @@ func (splitTransform *commandSplitter) RequiresInnerStateMutation() bool {
 	return true
 }
 
-func (splitTransform *commandSplitter) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (splitTransform *commandSplitter) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	splitTransform.stateMutator = mutator
 }
 
-func (splitTransform *commandSplitter) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (splitTransform *commandSplitter) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	splitTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (splitTransform *commandSplitter) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -142,7 +142,7 @@ func (splitTransform *commandSplitter) ClearTransformResources(ctx context.Conte
 	splitTransform.allocations.FreeAllocations()
 }
 
-func (splitTransform *commandSplitter) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (splitTransform *commandSplitter) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if len(inputCommands) == 0 {
 		return inputCommands, nil
 	}

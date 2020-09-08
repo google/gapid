@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package transform2 contains the elements to be able to transform
+// Package transform contains the elements to be able to transform
 // commands which consist of interfaces for individual transform operations
 // and a transform chain to run all of them.
-package transform2
+package transform
 
 import (
 	"context"
@@ -33,7 +33,7 @@ type StateMutator func(cmds []api.Cmd) error
 // they aim to do and emit a list of commands to pass it to the next transform.
 type Transform interface {
 	// BeginTransform is called before transforming any command.
-	BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error)
+	BeginTransform(ctx context.Context, inputState *api.GlobalState) error
 
 	// EndTransform is called after all commands are transformed.
 	EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error)

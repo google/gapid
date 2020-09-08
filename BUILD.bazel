@@ -312,7 +312,6 @@ test_suite(
         "//gapis/api:go_default_test",
         "//gapis/api/test:go_default_test",
         "//gapis/api/transform:go_default_test",
-        "//gapis/api/transform2:go_default_test",
         "//gapis/api/vulkan:go_default_test",
     ],
 )
@@ -433,7 +432,6 @@ test_suite(
         "//gapis/api:go_default_test",
         "//gapis/api/test:go_default_test",
         "//gapis/api/transform:go_default_test",
-        "//gapis/api/transform2:go_default_test",
         "//gapis/api/vulkan:go_default_test",
         "//gapis/capture:go_default_test",
         "//gapis/memory:go_default_test",

@@ -24,7 +24,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -83,9 +83,9 @@ func (timestampTransform *queryTimestamps) RequiresAccurateState() bool {
 	return false
 }
 
-func (timestampTransform *queryTimestamps) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (timestampTransform *queryTimestamps) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	timestampTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (timestampTransform *queryTimestamps) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -112,7 +112,7 @@ func (timestampTransform *queryTimestamps) ClearTransformResources(ctx context.C
 	timestampTransform.allocations.FreeAllocations()
 }
 
-func (timestampTransform *queryTimestamps) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (timestampTransform *queryTimestamps) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	outputCmds := make([]api.Cmd, 0, len(inputCommands))
 
 	for i, cmd := range inputCommands {

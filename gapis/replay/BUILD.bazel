@@ -51,7 +51,7 @@ go_library(
         "//gapir:go_default_library",
         "//gapir/client:go_default_library",
         "//gapis/api:go_default_library",
-        "//gapis/api/transform2:go_default_library",
+        "//gapis/api/transform:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",

@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
 // wireframeTransform implements a transform that sets each graphics pipeline
@@ -41,13 +41,13 @@ func (wireframe *wireframeTransform) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (wireframe *wireframeTransform) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (wireframe *wireframeTransform) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (wireframe *wireframeTransform) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (wireframe *wireframeTransform) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	wireframe.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (wireframe *wireframeTransform) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -58,7 +58,7 @@ func (wireframe *wireframeTransform) ClearTransformResources(ctx context.Context
 	wireframe.allocations.FreeAllocations()
 }
 
-func (wireframe *wireframeTransform) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (wireframe *wireframeTransform) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if createGraphicsPipelinesCmd, ok := cmd.(*VkCreateGraphicsPipelines); ok {
 			modifiedCmd := wireframe.updateGraphicsPipelines(ctx, createGraphicsPipelinesCmd, inputState)

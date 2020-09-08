@@ -22,7 +22,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
@@ -37,7 +37,7 @@ const (
 	debugReportExtension = "VK_EXT_debug_report"
 )
 
-var _ transform2.Transform = &findIssues{}
+var _ transform.Transform = &findIssues{}
 
 // findIssues is a command transform that detects issues when replaying the
 // stream of commands. Any issues that are found are written to all the chans in
@@ -77,16 +77,16 @@ func (issueTransform *findIssues) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (issueTransform *findIssues) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (issueTransform *findIssues) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (issueTransform *findIssues) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (issueTransform *findIssues) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	issueTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
-func (issueTransform *findIssues) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (issueTransform *findIssues) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	ctx = log.Enter(ctx, "findIssues")
 
 	outputCmds := make([]api.Cmd, 0, len(inputCommands))

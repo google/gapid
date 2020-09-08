@@ -18,11 +18,11 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 )
 
-var _ transform2.Transform = &makeAttachmentReadable{}
+var _ transform.Transform = &makeAttachmentReadable{}
 
 type makeAttachmentReadable struct {
 	imagesOnly  bool
@@ -44,13 +44,13 @@ func (attachmentTransform *makeAttachmentReadable) RequiresInnerStateMutation() 
 	return false
 }
 
-func (attachmentTransform *makeAttachmentReadable) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (attachmentTransform *makeAttachmentReadable) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (attachmentTransform *makeAttachmentReadable) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (attachmentTransform *makeAttachmentReadable) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	attachmentTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (attachmentTransform *makeAttachmentReadable) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -61,7 +61,7 @@ func (attachmentTransform *makeAttachmentReadable) ClearTransformResources(ctx c
 	attachmentTransform.allocations.FreeAllocations()
 }
 
-func (attachmentTransform *makeAttachmentReadable) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (attachmentTransform *makeAttachmentReadable) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 

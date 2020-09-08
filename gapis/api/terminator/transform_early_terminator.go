@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package vulkan
+package terminator
 
 import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/terminator"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
-var _ terminator.Terminator = &earlyTerminator{}
+var _ Terminator = &earlyTerminator{}
 
 type earlyTerminator struct {
 	lastID     api.CmdID
@@ -31,7 +30,7 @@ type earlyTerminator struct {
 
 // NewEarlyTerminator returns a Terminator that will consume all commands
 // after the last command passed to Add.
-func NewEarlyTerminator() terminator.Terminator {
+func NewEarlyTerminator() Terminator {
 	return &earlyTerminator{
 		lastID:     0,
 		terminated: false,
@@ -54,19 +53,19 @@ func (earlyTerminatorTransform *earlyTerminator) RequiresInnerStateMutation() bo
 	return false
 }
 
-func (earlyTerminatorTransform *earlyTerminator) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (earlyTerminatorTransform *earlyTerminator) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (earlyTerminatorTransform *earlyTerminator) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (earlyTerminatorTransform *earlyTerminator) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (earlyTerminatorTransform *earlyTerminator) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return nil, nil
 }
 
-func (earlyTerminatorTransform *earlyTerminator) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (earlyTerminatorTransform *earlyTerminator) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if earlyTerminatorTransform.terminated {
 		return nil, nil
 	}

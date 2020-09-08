@@ -22,5 +22,10 @@ go_library(
     ],
     importpath = "github.com/google/gapid/gapis/api/controlFlowGenerator",
     visibility = ["//visibility:public"],
-    deps = ["//gapis/api/transform2:go_default_library"],
+    deps = [
+        "//core/app/status:go_default_library",
+        "//core/context/keys:go_default_library",
+        "//core/event/task:go_default_library",
+        "//gapis/api/transform:go_default_library",
+    ],
 )

@@ -19,10 +19,10 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
-var _ transform2.Transform = &profilingLayers{}
+var _ transform.Transform = &profilingLayers{}
 
 type profilingLayers struct {
 	allocations *allocationTracker
@@ -44,20 +44,20 @@ func (profilingLayerTransform *profilingLayers) RequiresInnerStateMutation() boo
 	return false
 }
 
-func (profilingLayerTransform *profilingLayers) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (profilingLayerTransform *profilingLayers) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (profilingLayerTransform *profilingLayers) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (profilingLayerTransform *profilingLayers) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	profilingLayerTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (profilingLayerTransform *profilingLayers) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	return nil, nil
 }
 
-func (profilingLayerTransform *profilingLayers) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (profilingLayerTransform *profilingLayers) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if createInstanceCommand, ok := cmd.(*VkCreateInstance); ok {
 			modifiedCmd := profilingLayerTransform.addProfilingLayersToCreateInstance(ctx, createInstanceCommand, inputState)

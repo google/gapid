@@ -27,6 +27,9 @@ import (
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/commandGenerator"
+	"github.com/google/gapid/gapis/api/controlFlowGenerator"
+	"github.com/google/gapid/gapis/api/terminator"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
@@ -46,7 +49,7 @@ func (e NoMECSubcommandsError) Error() string {
 type SynchronizedAPI interface {
 	// GetTerminator returns a transform that will allow the given capture to be terminated
 	// after a command.
-	GetTerminator(ctx context.Context, c *path.Capture) (transform.Terminator, error)
+	GetTerminator(ctx context.Context, c *path.Capture) (terminator.Terminator, error)
 
 	// ResolveSynchronization resolve all of the synchronization information for
 	// the given API.
@@ -89,9 +92,6 @@ func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) 
 	return nil
 }
 
-func (s *writer) NotifyPreLoop(ctx context.Context)  {}
-func (s *writer) NotifyPostLoop(ctx context.Context) {}
-
 // MutationCmdsFor returns a list of command that represent the correct
 // mutations to have the state for all commands before and including the given
 // index.
@@ -123,9 +123,10 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		}
 	}
 
-	terminators := make([]transform.Terminator, 0)
-	transforms := transform.Transforms{}
+	terminators := make([]terminator.Terminator, 0)
+	transforms := make([]transform.Transform, 0)
 	isTrivial := true
+
 	for _, api := range rc.APIs {
 		if sync, ok := api.(SynchronizedAPI); ok {
 			term, err := sync.GetTerminator(ctx, c)
@@ -143,19 +144,24 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 				continue
 			}
 		}
-		terminators = append(terminators, transform.NewEarlyTerminator(api.ID()))
+		terminators = append(terminators, terminator.NewEarlyTerminator())
 	}
 	for _, t := range terminators {
 		if err := t.Add(ctx, id, subindex); err != nil {
 			return nil, err
 		}
-		transforms.Add(t)
+		transforms = append(transforms, t)
 	}
 	if isTrivial {
 		return cmds[0 : id+1], nil
 	}
 	w := &writer{rc.NewState(ctx), nil}
-	if err := transforms.TransformAll(ctx, cmds, 0, w); err != nil {
+
+	cmdGenerator := commandGenerator.NewLinearCommandGenerator(nil, cmds)
+	chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, w)
+	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
+	if err := controlFlow.TransformAll(ctx); err != nil {
+		log.E(ctx, "Sync Error: %v", err)
 		return nil, err
 	}
 

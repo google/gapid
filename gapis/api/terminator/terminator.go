@@ -20,13 +20,13 @@ import (
 	"context"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
 // Terminator is an Transformer that prevents commands passing-through it after
 // a certain point in the stream.
 type Terminator interface {
-	transform2.Transform
+	transform.Transform
 
 	// Add relaxes the termination limit to pass-through all commands before and
 	// including the command or subcommand.

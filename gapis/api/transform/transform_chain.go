@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform2
+package transform
 
 import (
 	"context"
@@ -45,7 +45,7 @@ func CreateTransformChain(ctx context.Context, generator commandGenerator.Comman
 		out:              out,
 		hasBegun:         false,
 		hasEnded:         false,
-		currentCommandID: NewBeginCommandID(),
+		currentCommandID: NewTransformCommandID(0),
 		mutator:          nil,
 	}
 
@@ -70,11 +70,9 @@ func CreateTransformChain(ctx context.Context, generator commandGenerator.Comman
 func (chain *TransformChain) beginChain(ctx context.Context) error {
 	chain.handleInitialState(chain.out.State())
 	var err error
-	cmds := make([]api.Cmd, 0)
 
-	chain.currentCommandID = NewBeginCommandID()
 	for _, transform := range chain.transforms {
-		cmds, err = transform.BeginTransform(ctx, cmds, chain.out.State())
+		err = transform.BeginTransform(ctx, chain.out.State())
 		if err != nil {
 			log.W(ctx, "Begin Transform Error [%v] : %v", transform, err)
 			return err
@@ -84,10 +82,6 @@ func (chain *TransformChain) beginChain(ctx context.Context) error {
 			// Melih TODO: Temporary check until we implement accurate state
 			panic("Implement accurate state")
 		}
-	}
-
-	if err = mutateAndWrite(ctx, 0, cmds, chain.out); err != nil {
-		return err
 	}
 
 	for _, transform := range chain.transforms {
@@ -140,7 +134,7 @@ func (chain *TransformChain) transformCommands(ctx context.Context, id CommandID
 
 	}
 
-	if err := mutateAndWrite(ctx, id.id, inputCmds, chain.out); err != nil {
+	if err := mutateAndWrite(ctx, id, inputCmds, chain.out); err != nil {
 		return err
 	}
 
@@ -157,12 +151,20 @@ func (chain *TransformChain) IsEndOfCommands() bool {
 	return chain.hasEnded
 }
 
+func (chain *TransformChain) GetCurrentCommandID() CommandID {
+	return chain.currentCommandID
+}
+
+func (chain *TransformChain) GetNumOfRemainingCommands() uint64 {
+	return chain.generator.GetNumOfRemainingCommands()
+}
+
 func (chain *TransformChain) GetNextTransformedCommands(ctx context.Context) error {
 	if !chain.hasBegun {
 		chain.hasBegun = true
-		err := chain.beginChain(ctx)
-		chain.currentCommandID = NewTransformCommandID(0)
-		return err
+		if err := chain.beginChain(ctx); err != nil {
+			return err
+		}
 	}
 
 	if chain.generator.IsEndOfCommands() {
@@ -175,6 +177,10 @@ func (chain *TransformChain) GetNextTransformedCommands(ctx context.Context) err
 	}
 
 	currentCommand := chain.generator.GetNextCommand(ctx)
+	if !currentCommand.Terminated() {
+		// Run only the commands that terminated during trace time.
+		return nil
+	}
 	if config.DebugReplay {
 		log.I(ctx, "Transforming... (%v:%v)", chain.currentCommandID, currentCommand)
 	}
@@ -218,10 +224,15 @@ func (chain *TransformChain) handleInitialState(state *api.GlobalState) (*api.Gl
 	return state, nil
 }
 
-func mutateAndWrite(ctx context.Context, id api.CmdID, cmds []api.Cmd, out Writer) error {
+func mutateAndWrite(ctx context.Context, id CommandID, cmds []api.Cmd, out Writer) error {
+	cmdID := api.CmdID(0)
+	if id.GetCommandType() == TransformCommand {
+		cmdID = id.GetID()
+	}
+
 	for i, cmd := range cmds {
-		if err := out.MutateAndWrite(ctx, id, cmd); err != nil {
-			log.W(ctx, "State mutation error in command [%v:%v]:%v", id, i, cmd)
+		if err := out.MutateAndWrite(ctx, cmdID, cmd); err != nil {
+			log.W(ctx, "State mutation error in %v, [%v:%v]) : %v", id.GetCommandType(), cmdID, i, cmd)
 			return err
 		}
 	}

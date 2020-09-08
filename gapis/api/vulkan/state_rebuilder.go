@@ -24,7 +24,7 @@ import (
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -87,10 +87,10 @@ func (o *initialStateOutput) getNewState() *api.GlobalState {
 }
 
 type transformerOutput struct {
-	out transform2.Writer
+	out transform.Writer
 }
 
-func newTransformerOutput(out transform2.Writer) *transformerOutput {
+func newTransformerOutput(out transform.Writer) *transformerOutput {
 	return &transformerOutput{out}
 }
 

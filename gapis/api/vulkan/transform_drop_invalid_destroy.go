@@ -19,10 +19,10 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
-var _ transform2.Transform = &dropInvalidDestroy{}
+var _ transform.Transform = &dropInvalidDestroy{}
 
 type dropInvalidDestroy struct {
 	tag         string
@@ -44,13 +44,13 @@ func (dropTransform *dropInvalidDestroy) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (dropTransform *dropInvalidDestroy) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (dropTransform *dropInvalidDestroy) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (dropTransform *dropInvalidDestroy) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *dropInvalidDestroy) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	dropTransform.allocations = NewAllocationTracker(inputState)
-	return inputCommands, nil
+	return nil
 }
 
 func (dropTransform *dropInvalidDestroy) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
@@ -61,7 +61,7 @@ func (dropTransform *dropInvalidDestroy) ClearTransformResources(ctx context.Con
 	dropTransform.allocations.FreeAllocations()
 }
 
-func (dropTransform *dropInvalidDestroy) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (dropTransform *dropInvalidDestroy) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	outputCmds := make([]api.Cmd, 0)
 
 	for i, cmd := range inputCommands {

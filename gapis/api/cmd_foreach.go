@@ -33,6 +33,7 @@ import (
 // If cb panics, the error will be annotated with the panicing command index and
 // command.
 // onlyTerminated: skip commands that were not terminated as capture time
+
 func ForeachCmd(ctx context.Context, cmds []Cmd, onlyTerminated bool, cb func(context.Context, CmdID, Cmd) error) error {
 	ctx = status.Start(ctx, "ForeachCmd<count: %v>", len(cmds))
 	defer status.Finish(ctx)

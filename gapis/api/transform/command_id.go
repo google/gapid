@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package transform2 contains the elements to be able to transform
+// Package transform contains the elements to be able to transform
 // commands which consist of interfaces for individual transform operations
 // and a transform chain to run all of them.
-package transform2
+package transform
 
 import (
 	"github.com/google/gapid/gapis/api"
@@ -24,10 +24,20 @@ import (
 type CommandType uint32
 
 const (
-	BeginCommand     CommandType = 0
-	TransformCommand CommandType = 1
-	EndCommand       CommandType = 2
+	TransformCommand CommandType = 0
+	EndCommand       CommandType = 1
 )
+
+func (cmdType CommandType) String() string {
+	switch cmdType {
+	case TransformCommand:
+		return "Transform Command"
+	case EndCommand:
+		return "End Command"
+	default:
+		panic("Unknown Command Type")
+	}
+}
 
 type CommandID struct {
 	id          api.CmdID
@@ -38,13 +48,6 @@ func NewTransformCommandID(id api.CmdID) CommandID {
 	return CommandID{
 		id:          id,
 		commandType: TransformCommand,
-	}
-}
-
-func NewBeginCommandID() CommandID {
-	return CommandID{
-		id:          0,
-		commandType: BeginCommand,
 	}
 }
 

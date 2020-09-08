@@ -21,11 +21,11 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/config"
 )
 
-var _ transform2.Transform = &fileLogTransform{}
+var _ transform.Transform = &fileLogTransform{}
 
 type fileLogTransform struct {
 	file *os.File
@@ -50,12 +50,12 @@ func (fileLog *fileLogTransform) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (fileLog *fileLogTransform) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (fileLog *fileLogTransform) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (fileLog *fileLogTransform) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (fileLog *fileLogTransform) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (fileLog *fileLogTransform) ClearTransformResources(ctx context.Context) {
@@ -67,7 +67,7 @@ func (fileLog *fileLogTransform) EndTransform(ctx context.Context, inputState *a
 	return nil, nil
 }
 
-func (fileLog *fileLogTransform) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (fileLog *fileLogTransform) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if len(inputCommands) == 0 {
 		return inputCommands, nil
 	}

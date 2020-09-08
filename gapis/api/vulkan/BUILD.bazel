@@ -94,7 +94,6 @@ go_library(
         "transform_destroy_resources_eos.go",
         "transform_display_to_surface.go",
         "transform_drop_invalid_destroy.go",
-        "transform_early_terminator.go",
         "transform_end_of_replay.go",
         "transform_file_log.go",
         "transform_find_issues.go",
@@ -108,7 +107,6 @@ go_library(
         "transform_wait_for_perfetto.go",
         "transform_wireframe.go",
         "vulkan.go",
-        "vulkan_terminator.go",
     ],
     embed = [
         ":generated",  # keep
@@ -141,7 +139,6 @@ go_library(
         "//gapis/api/sync:go_default_library",
         "//gapis/api/terminator:go_default_library",
         "//gapis/api/transform:go_default_library",
-        "//gapis/api/transform2:go_default_library",
         "//gapis/api/vulkan/vulkan_pb:go_default_library",  # keep
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",

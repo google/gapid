@@ -21,11 +21,11 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform2"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 )
 
-var _ transform2.Transform = &captureLog{}
+var _ transform.Transform = &captureLog{}
 
 type captureLog struct {
 	file   *os.File
@@ -54,19 +54,19 @@ func (logTransform *captureLog) RequiresInnerStateMutation() bool {
 	return false
 }
 
-func (logTransform *captureLog) SetInnerStateMutationFunction(mutator transform2.StateMutator) {
+func (logTransform *captureLog) SetInnerStateMutationFunction(mutator transform.StateMutator) {
 	// This transform do not require inner state mutation
 }
 
-func (logTransform *captureLog) BeginTransform(ctx context.Context, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return inputCommands, nil
+func (logTransform *captureLog) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	return nil
 }
 
 func (logTransform *captureLog) ClearTransformResources(ctx context.Context) {
 	// No resource allocated
 }
 
-func (logTransform *captureLog) TransformCommand(ctx context.Context, id transform2.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (logTransform *captureLog) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for _, cmd := range inputCommands {
 		if cmd.API() != nil {
 			logTransform.cmds = append(logTransform.cmds, cmd)
