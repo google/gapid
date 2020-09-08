@@ -275,7 +275,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       setValidationStatus(models.devices.getValidationStatus(dev));
       if (!models.devices.getValidationStatus(dev).passed) {
         validationStatusLoader.startLoading();
-        validationStatusText.setText("Device is being validated");
+        validationStatusText.setText("Device support is being validated");
         rpcController.start().listen(models.devices.validateDevice(dev),
             new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(
                 validationStatusLoader, LOG) {
@@ -298,7 +298,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
 
               @Override
               protected void onUiThreadError(DeviceValidationResult result) {
-                LOG.log(WARNING, "UI thread error while validating device");
+                LOG.log(WARNING, "UI thread error while validating device support");
                 setValidationStatus(result);
               }
             });
@@ -309,12 +309,12 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       if (result.skipped) {
         validationStatusLoader.updateStatus(true);
         validationStatusLoader.stopLoading();
-        validationStatusText.setText("Validation skipped.");
+        validationStatusText.setText("Device support validation skipped.");
         validationPassed = true;
       } else {
         validationStatusLoader.updateStatus(result.passed);
-        validationStatusText.setText("Validation "
-            + (result.passed ? "Passed." : "Failed. " + Messages.VALIDATION_FAILED_LANDING_PAGE));
+        validationStatusText.setText("Device support validation "
+            + (result.passed ? "passed." : "failed. " + Messages.VALIDATION_FAILED_LANDING_PAGE));
         validationStatusLoader.stopLoading();
         validationPassed = result.passed;
       }

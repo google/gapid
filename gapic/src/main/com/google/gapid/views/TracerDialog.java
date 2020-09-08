@@ -615,7 +615,7 @@ public class TracerDialog {
         setValidationStatus(validation);
         if (!validation.passed) {
           validationStatusLoader.startLoading();
-          validationStatusText.setText("Device is being validated");
+          validationStatusText.setText("Device support is being validated");
           rpcController.start().listen(models.devices.validateDevice(dev),
               new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(validationStatusLoader, LOG) {
             @Override
@@ -636,7 +636,7 @@ public class TracerDialog {
 
             @Override
             protected void onUiThreadError(DeviceValidationResult result) {
-              LOG.log(WARNING, "UI thread error while validating device");
+              LOG.log(WARNING, "UI thread error while validating device support");
               setValidationStatus(result);
             }
           });
@@ -647,11 +647,11 @@ public class TracerDialog {
         if (result.skipped) {
           validationStatusLoader.updateStatus(true);
           validationStatusLoader.stopLoading();
-          validationStatusText.setText("Validation skipped.");
+          validationStatusText.setText("Device support validation skipped.");
           validationStatus = true;
         } else {
           validationStatusLoader.updateStatus(result.passed);
-          validationStatusText.setText("Validation " + (result.passed ? "Passed." : "Failed. " + Messages.VALIDATION_FAILED_LANDING_PAGE));
+          validationStatusText.setText("Device support validation " + (result.passed ? "passed." : "failed. " + Messages.VALIDATION_FAILED_LANDING_PAGE));
           validationStatusLoader.stopLoading();
           validationStatus = result.passed;
         }

@@ -70,8 +70,8 @@ public class Devices {
   private List<DeviceCaptureInfo> devices;
 
   public static final Flag<Boolean> skipDeviceValidation = Flags.value("skip-device-validation", false,
-      "Skips the device validation process. " +
-      "Device validation verifies that the GPU events emitted are within the acceptable threshold.", true);
+      "Skips the device support validation process. " +
+      "Device support validation verifies that the GPU events emitted are within the acceptable threshold.", true);
 
   public Devices(Shell shell, Analytics analytics, Client client, Capture capture, Settings settings) {
     this.shell = shell;
