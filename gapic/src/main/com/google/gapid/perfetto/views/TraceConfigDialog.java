@@ -527,6 +527,17 @@ public class TraceConfigDialog extends DialogBase {
           long count = caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
               .filter(c -> sGpu.getCounterIdsList().contains(c.getCounterId())).count();
           long total = caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsCount();
+          if (count == 0 && sGpu.getCounters()) {
+            // Select all counters by default if none where remembered, but counters are turned on.
+            // TODO(pmuetschard): possibly use the ones marked "default" instead.
+            settings.writePerfetto().getGpuBuilder()
+                .clearCounterIds()
+                .addAllCounterIds(caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList()
+                    .stream()
+                    .map(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
+                    .collect(toList()));
+            count = total;
+          }
           gpuCountersLabels[0] = createLabel(counterGroup, count + " of " + total + " selected");
           gpuCountersSelect = Widgets.createButton(counterGroup, "Select", e -> {
             List<Integer> currentIds = settings.perfetto().getGpuOrBuilder().getCounterIdsList();
