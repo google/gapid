@@ -537,6 +537,7 @@ public class TraceConfigDialog extends DialogBase {
                   .clearCounterIds()
                   .addAllCounterIds(newIds)
                   .setCounters(!newIds.isEmpty());
+              gpuCounters.setSelection(!newIds.isEmpty());
               gpuCountersLabels[0].setText(newIds.size() + " of " + total + " selected");
               gpuCountersLabels[0].requestLayout();
               updateGpu();
@@ -761,7 +762,7 @@ public class TraceConfigDialog extends DialogBase {
         gpuCounters.setEnabled(enabled);
         boolean countersEnabled = enabled && gpuCounters.getSelection();
         gpuCountersRate.setEnabled(countersEnabled);
-        gpuCountersSelect.setEnabled(countersEnabled);
+        gpuCountersSelect.setEnabled(enabled);
         for (Label label : gpuCountersLabels) {
           label.setEnabled(countersEnabled);
         }
