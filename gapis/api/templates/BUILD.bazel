@@ -55,10 +55,7 @@ filegroup(
 
 api_template(
     name = "api",
-    includes = [
-        "c_common.tmpl",
-        ":go_common_deps",
-    ],
+    includes = [":go_common_deps"],
     outputs = [
         "api.go",
         "api_amrp.go",

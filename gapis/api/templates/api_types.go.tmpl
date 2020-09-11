@@ -16,7 +16,6 @@
 
 {{/* ---- Includes ---- */}}
 {{Include "go_common.tmpl"}}
-{{Include "c_common.tmpl"}}
 
 {{$ | Macro "api_types.go" | GoFmt | Write "api_types.go"}}
 
