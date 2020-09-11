@@ -138,7 +138,7 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTi
 	stoppedSignal, stopped := task.NewSignal()
 	defer func() {
 		stop()
-		server.GracefulStop()
+		server.Stop()
 		stopped(ctx)
 	}()
 
@@ -171,7 +171,7 @@ func (s *grpcServer) stopOnInterrupt(ctx context.Context, server *grpc.Server, s
 	stoppedSignal, stopped := task.NewSignal()
 	defer func() {
 		stop()
-		server.GracefulStop()
+		server.Stop()
 		stopped(ctx)
 	}()
 
