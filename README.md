@@ -19,8 +19,7 @@ developers. See also the README files under some source directories.
 
 ## Downloads
 
-> The first stable release is still under work.
-<!-- **[Download the latest version of AGI here.](https://github.com/google/agi/releases)** -->
+**[Download the latest version of AGI here.](https://github.com/google/agi/releases)**
 
 *Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases).
 
