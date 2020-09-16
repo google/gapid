@@ -24,6 +24,7 @@
 
 #include "gapii/cc/spy.h"
 
+#include "core/cc/debugger.h"
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
 #include "core/cc/null_writer.h"
@@ -172,6 +173,13 @@ Spy::Spy()
   SpyBase::set_current_abi(query::currentABI());
   if (!SpyBase::writeHeader()) {
     GAPID_ERROR("Failed at writing trace header.");
+  }
+
+  // Waiting for debugger must come after we sent back the trace header,
+  // otherwise GAPIS thinks GAPII had an issue at init time.
+  if (header.mFlags & ConnectionHeader::FLAG_WAIT_FOR_DEBUGGER) {
+    GAPID_INFO("Wait for debugger");
+    core::Debugger::waitForAttach();
   }
 
   auto context = enter("init", 0);

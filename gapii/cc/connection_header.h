@@ -38,6 +38,8 @@ class ConnectionHeader {
 
   static const size_t MAX_PATH = 512;
 
+  // NOTE: flags must be kept in sync with gapii/client/capture.go
+
   // Fakes no support for PCS, forcing the app to share shader source.
   static const uint32_t FLAG_DISABLE_PRECOMPILED_SHADERS = 0x00000001;
   // Driver errors are queried after each call and stored as extras.
@@ -52,6 +54,8 @@ class ConnectionHeader {
   static const uint32_t FLAG_STORE_TIMESTAMPS = 0x00000080;
   // Disables the coherent memory tracker (useful for debug)
   static const uint32_t FLAG_DISABLE_COHERENT_MEMORY_TRACKER = 0x00000100;
+  // Waits for the debugger to attach (useful for debug)
+  static const uint32_t FLAG_WAIT_FOR_DEBUGGER = 0x00000200;
 
   // read reads the ConnectionHeader from the provided stream, returning true
   // on success or false on error.

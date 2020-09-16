@@ -1146,6 +1146,8 @@ message TraceOptions {
   string pipe_name = 22;
   // Disable coherent_memory_tracking. (Useful if you want to attach a debugger)
   bool disable_coherent_memory_tracker = 25;
+  // Make GAPII wait for a debugger to attach
+  bool wait_for_debugger = 26;
   // The config to use if doing a Perfetto trace.
   perfetto.protos.TraceConfig perfetto_config = 24;
 }

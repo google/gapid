@@ -131,6 +131,9 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 	if o.DisableCoherentMemoryTracker {
 		flags |= gapii.DisableCoherentMemoryTracker
 	}
+	if o.WaitForDebugger {
+		flags |= gapii.WaitForDebugger
+	}
 
 	return gapii.Options{
 		o.ObserveFrameFrequency,

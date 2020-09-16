@@ -34,6 +34,9 @@ import (
 type Flags uint32
 
 const (
+
+	// NOTE: flags must be kept in sync with gapii/cc/connection_header.h
+
 	// DeferStart does not start tracing right away but waits for a signal
 	// from gapit
 	DeferStart Flags = 0x00000010
@@ -47,6 +50,8 @@ const (
 	StoreTimestamps Flags = 0x00000080
 	// DisableCoherentMemoryTracker disables the coherent memory tracker from running.
 	DisableCoherentMemoryTracker Flags = 0x000000100
+	// WaitForDebugger makes gapii wait for a debugger to connect
+	WaitForDebugger Flags = 0x000000200
 
 	// VulkanAPI is hard-coded bit mask for Vulkan API, it needs to be kept in sync
 	// with the api_index in the vulkan.api file.

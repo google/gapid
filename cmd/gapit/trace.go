@@ -244,6 +244,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		ServerLocalSavePath:          out,
 		PipeName:                     verb.PipeName,
 		DisableCoherentMemoryTracker: verb.Disable.CoherentMemoryTracker,
+		WaitForDebugger:              verb.WaitForDebugger,
 	}
 	target(options)
 
