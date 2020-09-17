@@ -135,9 +135,17 @@ Follow these steps to use the delve debugger for Go with VSCode to debug `gapis`
 
 1. Make sure to complete the Golang setup above for AGI.
 
-2. Create a `launch.json` file under the workspace directory with `Ctrl + Shift + P` and `Debug: Open launch.json`
+2. Settings file: There are two settings file(`settings.json`) that can be written.
+	- Global one that applies to all projects that can be opened with `Ctrl + Shift + P` and `Preferences: Open Settings (JSON)`. 
+	Add this line to ensure that you have a stable tools directory:
+	`"go.toolsGopath": "<path-to-go-plugin-tools-folder>",`
+	
+	- Local one is under `.vscode` folder in your project folder. Create one if it does not already exist and add this line to your local settings to be able to search source code in AGI:
+	`"go.gopath": "<path-to-agi-gofuse>"`,
 
-3. Paste the following as one of the launch configurations. This will ensure that there is a launch configuration for attaching to Delve.
+3. Launch file: Create a `launch.json` file under the workspace directory with `Ctrl + Shift + P` and `Debug: Open launch.json`
+
+4. Paste the following as one of the launch configurations. This will ensure that there is a launch configuration for attaching to Delve.
 ```
 {
     ...
@@ -149,8 +157,8 @@ Follow these steps to use the delve debugger for Go with VSCode to debug `gapis`
             "request": "attach",
             "mode": "remote",
             "apiVersion": 2,
-            "remotePath": "gapis/",
-            "cwd": "${workspaceFolder}/src/github.com/google/agi/gapis",
+            "remotePath": "",
+            "cwd": "`<path-to-agi-gofuse>`",
             "dlvLoadConfig": {
                 "followPointers": true,
                 "maxVariableRecurse": 1,
@@ -167,7 +175,7 @@ Follow these steps to use the delve debugger for Go with VSCode to debug `gapis`
 ```
 As an example, `<host>` could be `127.0.0.1` and `<port>` could be `1234`.
 
-4. Start delve in headless mode in the AGI root folder.
+5. Start delve in headless mode in the AGI root folder.
 ```
 dlv exec --headless --listen=<host>:<port> --api-version 2 ./bazel-bin/pkg/gapis -- <gapis-arguments>
 ```
@@ -177,9 +185,11 @@ The command below will allow using port `1234` (or any other preferred port) to 
 dlv exec --headless --listen=127.0.0.1:1234 --api-version 2 ./bazel-bin/pkg/gapis -- -persist -rpc localhost:8888
 ```
 
-5. Start debugging with `Debug->Start Debugging` (on Linux with `F5`) and make sure `Attach to Delve` is selected as the launch configuration.
+6. Start debugging with `Debug->Start Debugging` (on Linux with `F5`) and make sure `Attach to Delve` is selected as the launch configuration.
 
-6. Now VSCode can interact with Delve and can be used for debugging `gapis` in VSCode UI instead of the command line. Enjoy your debugging :)
+7. Now VSCode can interact with Delve and can be used for debugging `gapis` in VSCode UI instead of the command line. Enjoy your debugging :)
+
+This allows you to put breakpoint at any line in AGI Go source code regardless if they are handwritten, generated or in Go Standard Library. For the generated file, you can put the breakpoints under the `bazel-bin/` or `bazel-out/` folder and the debugger will still find it under the fuse directory during debugging and open it. The only downside is you will have two versions of the same file but this is the only working workaround until Go Plugin supports bazel-generated files.
 
 ## How to debug via printing message
 
