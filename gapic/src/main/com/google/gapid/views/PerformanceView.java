@@ -101,6 +101,10 @@ public class PerformanceView extends Composite
 
   @Override
   public void onProfileLoaded(Loadable.Message error) {
+    if (error != null) {
+      loading.showMessage(error);
+      return;
+    }
     // Create columns for counters after profile get loaded, because we need to know counter numbers.
     for (Service.ProfilingData.Counter counter : models.profile.getData().getCounters()) {
       tree.addColumnForCounter(counter);
