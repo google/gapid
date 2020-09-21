@@ -471,9 +471,11 @@ cmd void vkCmdEndRenderPass(
     } else {
       rpo := cmdBuf.CurrentRecordingRenderpass
       for _, i, at in rpo.AttachmentDescriptions {
-        view := cmdBuf.CurrentRecordingFramebuffer.ImageAttachments[i]
-        rng := view.SubresourceRange
-        RecordLayoutTransition(cmdBuf, view.Image, rng, at.finalLayout)
+        if (i < len(cmdBuf.CurrentRecordingFramebuffer.ImageAttachments)) {
+          view := cmdBuf.CurrentRecordingFramebuffer.ImageAttachments[i]
+          rng := view.SubresourceRange
+          RecordLayoutTransition(cmdBuf, view.Image, rng, at.finalLayout)
+        }
       }
     }
     cmdBuf.CurrentRecordingRenderpass = null
