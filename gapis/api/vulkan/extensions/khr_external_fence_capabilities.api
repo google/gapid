@@ -68,13 +68,16 @@ type VkFlags VkExternalFenceFeatureFlagsKHR
 
 @extension("VK_KHR_external_fence_capabilities")
 class VkPhysicalDeviceExternalFenceInfoKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO)
     VkStructureType                          sType
     const void*                              pNext
     VkExternalFenceHandleTypeFlagBits        handleType
 }
 
 @extension("VK_KHR_external_fence_capabilities")
+@returnedchain
 class VkExternalFencePropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES)
     VkStructureType                   sType
     void*                             pNext
     VkExternalFenceHandleTypeFlags    exportFromImportedHandleTypes

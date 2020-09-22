@@ -40,7 +40,9 @@
 @extension("VK_KHR_shader_subgroup_extended_types") define VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME "VK_KHR_shader_subgroup_extended_types"
 
 @extension("VK_KHR_shader_subgroup_extended_types")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR)
     VkStructureType    sType
     void*              pNext
     VkBool32           shaderSubgroupExtendedTypes

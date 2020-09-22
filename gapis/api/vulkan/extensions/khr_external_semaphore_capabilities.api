@@ -69,13 +69,16 @@ type VkFlags VkExternalSemaphoreFeatureFlagsKHR
 
 @extension("VK_KHR_external_semaphore_capabilities")
 class VkPhysicalDeviceExternalSemaphoreInfoKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO)
     VkStructureType                          sType
     const void*                              pNext
     VkExternalSemaphoreHandleTypeFlagBits    handleType
 }
 
 @extension("VK_KHR_external_semaphore_capabilities")
+@returnedchain
 class VkExternalSemaphorePropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES)
     VkStructureType                       sType
     void*                                 pNext
     VkExternalSemaphoreHandleTypeFlags    exportFromImportedHandleTypes

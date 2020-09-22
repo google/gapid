@@ -238,8 +238,10 @@ cmd VkResult vkCreateGraphicsPipelines(
     VkDevice                            device,
     VkPipelineCache                     pipelineCache,
     u32                                 createInfoCount,
+    @len("createInfoCount")
     const VkGraphicsPipelineCreateInfo* pCreateInfos,
     AllocationCallbacks                 pAllocator,
+    @len("createInfoCount")
     VkPipeline*                         pPipelines) {
 
   if !(device in Devices) { vkErrorInvalidDevice(device) }
@@ -634,8 +636,10 @@ cmd VkResult vkCreateComputePipelines(
     VkDevice                           device,
     VkPipelineCache                    pipelineCache,
     u32                                createInfoCount,
+    @len("createInfoCount")
     const VkComputePipelineCreateInfo* pCreateInfos,
     AllocationCallbacks                pAllocator,
+    @len("createInfoCount")
     VkPipeline*                        pPipelines) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pipelineCache != as!VkPipelineCache(0) {
@@ -894,6 +898,7 @@ cmd VkResult vkGetPipelineCacheData(
     VkDevice        device,
     VkPipelineCache pipelineCache,
     size*           pDataSize,
+    @len_bytes("pDataSize")
     void*           pData) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(pipelineCache in PipelineCaches) { vkErrorInvalidPipelineCache(pipelineCache) }
@@ -913,6 +918,7 @@ cmd VkResult vkMergePipelineCaches(
     VkDevice               device,
     VkPipelineCache        dstCache,
     u32                    srcCacheCount,
+    @len("srcCacheCount")
     const VkPipelineCache* pSrcCaches) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(dstCache in PipelineCaches) { vkErrorInvalidPipelineCache(dstCache) }
@@ -981,6 +987,7 @@ cmd void vkCmdSetViewport(
     VkCommandBuffer   commandBuffer,
     u32               firstViewport,
     u32               viewportCount,
+    @len("viewportCount")
     const VkViewport* pViewports) {
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if pViewports == null { vkErrorNullPointer("VkViewport") }
@@ -1019,6 +1026,7 @@ cmd void vkCmdSetScissor(
     VkCommandBuffer commandBuffer,
     u32             firstScissor,
     u32             scissorCount,
+    @len("scissorCount")
     const VkRect2D* pScissors) {
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if pScissors == null { vkErrorNullPointer("VkRect2D") }

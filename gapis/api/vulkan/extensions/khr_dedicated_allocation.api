@@ -41,7 +41,10 @@
 /////////////
 
 @extension("VK_KHR_dedicated_allocation")
+@returnedchain
+@structextends("VkMemoryRequirements2")
 class VkMemoryDedicatedRequirementsKHR {
+  @values(VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS)
   VkStructureType sType
   void*           pNext
   VkBool32        prefersDedicatedAllocation

@@ -117,6 +117,7 @@ cmd VkResult vkGetQueryPoolResults(
     u32                firstQuery,
     u32                queryCount,
     size               dataSize,
+    @len_bytes("dataSize")
     void*              pData,
     VkDeviceSize       stride,
     VkQueryResultFlags flags) {

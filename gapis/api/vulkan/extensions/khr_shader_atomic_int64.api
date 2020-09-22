@@ -40,7 +40,9 @@
 @extension("VK_KHR_shader_atomic_int64") define VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME "VK_KHR_shader_atomic_int64"
 
 @extension("VK_KHR_shader_atomic_int64")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceShaderAtomicInt64FeaturesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR)
     VkStructureType    sType
     void*              pNext
     VkBool32           shaderBufferInt64Atomics

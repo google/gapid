@@ -125,7 +125,9 @@ cmd void vkCmdBindVertexBuffers(
     VkCommandBuffer     commandBuffer,
     u32                 firstBinding,
     u32                 bindingCount,
+    @len("bindingCount")
     const VkBuffer*     pBuffers,
+    @len("bindingCount")
     const VkDeviceSize* pOffsets) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)

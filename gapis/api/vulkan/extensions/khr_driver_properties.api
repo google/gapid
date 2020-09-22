@@ -60,7 +60,10 @@ enum VkDriverIdKHR {
 }
 
 @extension("VK_KHR_driver_properties")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceDriverPropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR)
     VkStructureType                      sType
     void*                                pNext
     VkDriverIdKHR                        driverID

@@ -42,20 +42,25 @@
 
 @extension("VK_KHR_get_surface_capabilities2")
 class VkPhysicalDeviceSurfaceInfo2KHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR)
   VkStructureType sType
   const void*     pNext
   VkSurfaceKHR    surface
 }
 
 @extension("VK_KHR_get_surface_capabilities2")
+@returnedchain
 class VkSurfaceCapabilities2KHR {
+  @values(VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR)
   VkStructureType          sType
   void*                    pNext
   VkSurfaceCapabilitiesKHR surfaceCapabilities
 }
 
 @extension("VK_KHR_get_surface_capabilities2")
+@returnedchain
 class VkSurfaceFormat2KHR {
+  @values(VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR)
   VkStructureType    sType
   void*              pNext
   VkSurfaceFormatKHR surfaceFormat
@@ -102,6 +107,7 @@ cmd VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
     VkPhysicalDevice                       physicalDevice,
     const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
     u32*                                   pSurfaceFormatCount,
+    @len("pSurfaceFormatCount")
     VkSurfaceFormat2KHR*                   pSurfaceFormats) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pSurfaceInfo == null { vkErrorNullPointer("const VkPhysicalDeviceSurfaceInfo2KHR") }

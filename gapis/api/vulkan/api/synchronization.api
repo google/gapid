@@ -100,6 +100,7 @@ cmd void vkDestroyFence(
 cmd VkResult vkResetFences(
     VkDevice       device,
     u32            fenceCount,
+    @len("fenceCount")
     const VkFence* pFences) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   fences := pFences[0:fenceCount]
@@ -140,6 +141,7 @@ cmd VkResult vkGetFenceStatus(
 cmd VkResult vkWaitForFences(
     VkDevice       device,
     u32            fenceCount,
+    @len("fenceCount")
     const VkFence* pFences,
     VkBool32       waitAll,
     u64            timeout) { /// timeout in nanoseconds
@@ -503,14 +505,18 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
 cmd void vkCmdWaitEvents(
     VkCommandBuffer              commandBuffer,
     u32                          eventCount,
+    @len("eventCount")
     const VkEvent*               pEvents,
     VkPipelineStageFlags         srcStageMask,
     VkPipelineStageFlags         dstStageMask,
     u32                          memoryBarrierCount,
+    @len("memoryBarrierCount")
     const VkMemoryBarrier*       pMemoryBarriers,
     u32                          bufferMemoryBarrierCount,
+    @len("bufferMemoryBarrierCount")
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
+    @len("imageMemoryBarrierCount")
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -638,10 +644,13 @@ cmd void vkCmdPipelineBarrier(
     VkPipelineStageFlags         dstStageMask,
     VkDependencyFlags            dependencyFlags,
     u32                          memoryBarrierCount,
+    @len("memoryBarrierCount")
     const VkMemoryBarrier*       pMemoryBarriers,
     u32                          bufferMemoryBarrierCount,
+    @len("bufferMemoryBarrierCount")
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
+    @len("imageMemoryBarrierCount")
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)

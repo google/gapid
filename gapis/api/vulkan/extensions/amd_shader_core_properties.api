@@ -44,7 +44,10 @@
 @extension("VK_AMD_shader_core_properties") define VK_AMD_SHADER_CORE_PROPERTIES_EXTENSION_NAME "VK_AMD_shader_core_properties"
 
 @extension("VK_AMD_shader_core_properties")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceShaderCorePropertiesAMD {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD)
     VkStructureType    sType
     void*              pNext
     u32                shaderEngineCount

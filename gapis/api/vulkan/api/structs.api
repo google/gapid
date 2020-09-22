@@ -39,23 +39,31 @@
 // Structs defined in  Vulkan 1.0 Core spec
 
 class VkApplicationInfo {
+  @values(VK_STRUCTURE_TYPE_APPLICATION_INFO)
   VkStructureType sType              /// Type of structure. Should be VK_STRUCTURE_TYPE_APPLICATION_INFO
   const void*     pNext              /// Next structure in chain
+  @str
   const char*     pApplicationName
   u32             applicationVersion
+  @str
   const char*     pEngineName
   u32             engineVersion
   u32             apiVersion
 }
 
 class VkInstanceCreateInfo {
+  @values(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
   VkStructureType          sType                   /// Should be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
   const void*              pNext                   /// Pointer to next structure
   VkInstanceCreateFlags    flags
   const VkApplicationInfo* pApplicationInfo
   u32                      enabledLayerCount
+  @str
+  @len("enabledLayerCount")
   const char* const*       ppEnabledLayerNames     /// Ordered list of layer names to be enabled
   u32                      enabledExtensionCount
+  @str
+  @len("enabledExtensionCount")
   const char* const*       ppEnabledExtensionNames /// Extension names to be enabled
 }
 
@@ -126,6 +134,7 @@ class VkPhysicalDeviceFeatures {
   VkBool32 inheritedQueries
 }
 
+@returnedonly
 class VkFormatProperties {
   VkFormatFeatureFlags linearTilingFeatures  /// Format features in case of linear tiling
   VkFormatFeatureFlags optimalTilingFeatures /// Format features in case of optimal tiling
@@ -138,6 +147,7 @@ class VkExtent3D {
   u32 depth
 }
 
+@returnedonly
 class VkImageFormatProperties {
   VkExtent3D         maxExtent       /// max image dimensions for this resource type
   u32                maxMipLevels    /// max number of mipmap levels for this resource type
@@ -146,6 +156,7 @@ class VkImageFormatProperties {
   VkDeviceSize       maxResourceSize /// max size (in bytes) of this resource type
 }
 
+@returnedonly
 class VkPhysicalDeviceLimits {
   /// resource maximum sizes
   u32 maxImageDimension1D    /// max 1D image dimension
@@ -276,6 +287,7 @@ class VkPhysicalDeviceLimits {
   VkDeviceSize nonCoherentAtomSize
 }
 
+@returnedonly
 class VkPhysicalDeviceSparseProperties {
   VkBool32 residencyStandard2DBlockShape            /// Sparse resources support: GPU will access all 2D (single sample) sparse resources using the standard block shapes (based on pixel format)
   VkBool32 residencyStandard2DMultisampleBlockShape /// Sparse resources support: GPU will access all 2D (multisample) sparse resources using the standard block shapes (based on pixel format)
@@ -284,6 +296,7 @@ class VkPhysicalDeviceSparseProperties {
   VkBool32 residencyNonResidentStrict               /// Sparse resources support: GPU can safely access non-resident regions of a resource, all reads return as if data is 0, writes are discarded
 }
 
+@returnedonly
 class VkPhysicalDeviceProperties {
   u32                                    apiVersion
   u32                                    driverVersion
@@ -296,6 +309,7 @@ class VkPhysicalDeviceProperties {
   VkPhysicalDeviceSparseProperties       sparseProperties
 }
 
+@returnedonly
 class VkQueueFamilyProperties {
   VkQueueFlags queueFlags                  /// Queue flags
   u32          queueCount
@@ -303,16 +317,19 @@ class VkQueueFamilyProperties {
   VkExtent3D   minImageTransferGranularity
 }
 
+@returnedonly
 class VkMemoryType {
   VkMemoryPropertyFlags propertyFlags /// Memory properties of this memory type
   u32                   heapIndex     /// Index of the memory heap allocations of this memory type are taken from
 }
 
+@returnedonly
 class VkMemoryHeap {
   VkDeviceSize      size  /// Available memory in the heap
   VkMemoryHeapFlags flags /// Flags for the heap
 }
 
+@returnedonly
 class VkPhysicalDeviceMemoryProperties {
   u32                               memoryTypeCount
   VkMemoryType[VK_MAX_MEMORY_TYPES] memoryTypes
@@ -321,32 +338,42 @@ class VkPhysicalDeviceMemoryProperties {
 }
 
 class VkDeviceQueueCreateInfo {
+  @values(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
   VkStructureType          sType            /// Should be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
   const void*              pNext            /// Pointer to next structure
   VkDeviceQueueCreateFlags flags
   u32                      queueFamilyIndex
   u32                      queueCount
+  @len("queueCount")
   const f32*               pQueuePriorities
 }
 
 class VkDeviceCreateInfo {
+  @values(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
   VkStructureType                 sType                   /// Should be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
   const void*                     pNext                   /// Pointer to next structure
   VkDeviceCreateFlags             flags
   u32                             queueCreateInfoCount
+  @len("queueCreateInfoCount")
   const VkDeviceQueueCreateInfo*  pQueueCreateInfos
   u32                             enabledLayerCount
+  @str
+  @len("enabledLayerCount")
   const char* const*              ppEnabledLayerNames     /// Ordered list of layer names to be enabled
   u32                             enabledExtensionCount
+  @str
+  @len("enabledExtensionCount")
   const char* const*              ppEnabledExtensionNames
   const VkPhysicalDeviceFeatures* pEnabledFeatures
 }
 
+@returnedonly
 class VkExtensionProperties {
   char[VK_MAX_EXTENSION_NAME_SIZE] extensionName /// extension name
   u32                              specVersion   /// version of the extension specification implemented
 }
 
+@returnedonly
 class VkLayerProperties {
   char[VK_MAX_EXTENSION_NAME_SIZE] layerName             /// layer name
   u32                              specVersion           /// version of the layer specification implemented
@@ -355,18 +382,24 @@ class VkLayerProperties {
 }
 
 class VkSubmitInfo {
+  @values(VK_STRUCTURE_TYPE_SUBMIT_INFO)
   VkStructureType             sType                /// Type of structure. Should be VK_STRUCTURE_TYPE_SUBMIT_INFO
   const void*                 pNext                /// Next structure in chain
   u32                         waitSemaphoreCount
+  @len("waitSemaphoreCount")
   const VkSemaphore*          pWaitSemaphores
+  @len("waitSemaphoreCount")
   const VkPipelineStageFlags* pWaitDstStageMask
   u32                         commandBufferCount
+  @len("commandBufferCount")
   const VkCommandBuffer*      pCommandBuffers
   u32                         signalSemaphoreCount
+  @len("signalSemaphoreCount")
   const VkSemaphore*          pSignalSemaphores
 }
 
 class VkMemoryAllocateInfo {
+  @values(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
   VkStructureType sType           /// Must be VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
   const void*     pNext           /// Pointer to next structure
   VkDeviceSize    allocationSize  /// Size of memory allocation
@@ -374,6 +407,7 @@ class VkMemoryAllocateInfo {
 }
 
 class VkMappedMemoryRange {
+  @values(VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE)
   VkStructureType sType  /// Must be VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE
   const void*     pNext  /// Pointer to next structure
   VkDeviceMemory  memory /// Mapped memory object
@@ -381,18 +415,21 @@ class VkMappedMemoryRange {
   VkDeviceSize    size   /// Size of the range within the mapped memory
 }
 
+@returnedonly
 class VkMemoryRequirements {
   VkDeviceSize size           /// Specified in bytes
   VkDeviceSize alignment      /// Specified in bytes
   u32          memoryTypeBits /// Bitfield of the allowed memory type indices into memoryTypes[] for this object
 }
 
+@returnedonly
 class VkSparseImageFormatProperties {
   VkImageAspectFlags       aspectMask
   VkExtent3D               imageGranularity
   VkSparseImageFormatFlags flags
 }
 
+@returnedonly
 class VkSparseImageMemoryRequirements {
   VkSparseImageFormatProperties formatProperties
   u32                           imageMipTailFirstLod
@@ -412,12 +449,14 @@ class VkSparseMemoryBind {
 class VkSparseBufferMemoryBindInfo {
   VkBuffer                  buffer
   u32                       bindCount
+  @len("bindCount")
   const VkSparseMemoryBind* pBinds
 }
 
 class VkSparseImageOpaqueMemoryBindInfo {
   VkImage                   image
   u32                       bindCount
+  @len("bindCount")
   const VkSparseMemoryBind* pBinds
 }
 
@@ -445,43 +484,54 @@ class VkSparseImageMemoryBind {
 class VkSparseImageMemoryBindInfo {
   VkImage                        image
   u32                            bindCount
+  @len("bindCount")
   const VkSparseImageMemoryBind* pBinds
 }
 
 class VkBindSparseInfo {
+  @values(VK_STRUCTURE_TYPE_BIND_SPARSE_INFO)
   VkStructureType                          sType                /// Must be VK_STRUCTURE_TYPE_BIND_SPARSE_INFO
   const void*                              pNext
   u32                                      waitSemaphoreCount
+  @len("waitSemaphoreCount")
   const VkSemaphore*                       pWaitSemaphores
   u32                                      bufferBindCount
+  @len("bufferBindCount")
   const VkSparseBufferMemoryBindInfo*      pBufferBinds
   u32                                      imageOpaqueBindCount
+  @len("imageOpaqueBindCount")
   const VkSparseImageOpaqueMemoryBindInfo* pImageOpaqueBinds
   u32                                      imageBindCount
+  @len("imageBindCount")
   const VkSparseImageMemoryBindInfo*       pImageBinds
   u32                                      signalSemaphoreCount
+  @len("signalSemaphoreCount")
   const VkSemaphore*                       pSignalSemaphores
 }
 
 class VkFenceCreateInfo {
+  @values(VK_STRUCTURE_TYPE_FENCE_CREATE_INFO)
   VkStructureType    sType /// Must be VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
   const void*        pNext /// Pointer to next structure
   VkFenceCreateFlags flags /// Fence creation flags
 }
 
 class VkSemaphoreCreateInfo {
+  @values(VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO)
   VkStructureType        sType /// Must be VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
   const void*            pNext /// Pointer to next structure
   VkSemaphoreCreateFlags flags /// Semaphore creation flags
 }
 
 class VkEventCreateInfo {
+  @values(VK_STRUCTURE_TYPE_EVENT_CREATE_INFO)
   VkStructureType    sType /// Must be VK_STRUCTURE_TYPE_EVENT_CREATE_INFO
   const void*        pNext /// Pointer to next structure
   VkEventCreateFlags flags /// Event creation flags
 }
 
 class VkQueryPoolCreateInfo {
+  @values(VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO)
   VkStructureType               sType              /// Must be VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO
   const void*                   pNext              /// Pointer to next structure
   VkQueryPoolCreateFlags        flags
@@ -491,6 +541,7 @@ class VkQueryPoolCreateInfo {
 }
 
 class VkBufferCreateInfo {
+  @values(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
   VkStructureType     sType                 /// Must be VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
   const void*         pNext                 /// Pointer to next structure.
   VkBufferCreateFlags flags                 /// Buffer creation flags
@@ -498,10 +549,12 @@ class VkBufferCreateInfo {
   VkBufferUsageFlags  usage                 /// Buffer usage flags
   VkSharingMode       sharingMode
   u32                 queueFamilyIndexCount
+  @len("queueFamilyIndexCount")
   const u32*          pQueueFamilyIndices
 }
 
 class VkBufferViewCreateInfo {
+  @values(VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO)
   VkStructureType         sType  /// Must be VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO
   const void*             pNext  /// Pointer to next structure.
   VkBufferViewCreateFlags flags
@@ -512,6 +565,7 @@ class VkBufferViewCreateInfo {
 }
 
 class VkImageCreateInfo {
+  @values(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
   VkStructureType       sType                 /// Must be VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
   const void*           pNext                 /// Pointer to next structure.
   VkImageCreateFlags    flags                 /// Image creation flags
@@ -525,10 +579,12 @@ class VkImageCreateInfo {
   VkImageUsageFlags     usage                 /// Image usage flags
   VkSharingMode         sharingMode           /// Cross-queue-family sharing mode
   u32                   queueFamilyIndexCount /// Number of queue families to share across
+  @len("queueFamilyIndexCount")
   const u32*            pQueueFamilyIndices   /// Array of queue family indices to share across
   VkImageLayout         initialLayout         /// Initial image layout for all subresources
 }
 
+@returnedonly
 class VkSubresourceLayout {
   VkDeviceSize offset     /// Specified in bytes
   VkDeviceSize size       /// Specified in bytes
@@ -553,6 +609,7 @@ class VkImageSubresourceRange {
 }
 
 class VkImageViewCreateInfo {
+  @values(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
   VkStructureType         sType            /// Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
   const void*             pNext            /// Pointer to next structure
   VkImageViewCreateFlags  flags
@@ -564,18 +621,22 @@ class VkImageViewCreateInfo {
 }
 
 class VkShaderModuleCreateInfo {
+  @values(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
   VkStructureType           sType    /// Must be VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
   const void*               pNext    /// Pointer to next structure
   VkShaderModuleCreateFlags flags    /// Reserved
   size                      codeSize /// Specified in bytes
+  @len("codeSize / 4")
   const u32*                pCode    /// Binary code of size codeSize
 }
 
 class VkPipelineCacheCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO)
   VkStructureType            sType           /// Must be VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
   const void*                pNext           /// Pointer to next structure
   VkPipelineCacheCreateFlags flags
   size                       initialDataSize /// Size of initial data to populate cache, in bytes
+  @len_bytes("initialDataSize")
   const void*                pInitialData    /// Initial data to populate cache
 }
 
@@ -587,17 +648,21 @@ class VkSpecializationMapEntry {
 
 class VkSpecializationInfo {
   u32                             mapEntryCount /// Number of entries in the map
+  @len("mapEntryCount")
   const VkSpecializationMapEntry* pMapEntries   /// Array of map entries
   size                            dataSize      /// Size in bytes of pData
+  @len_bytes("dataSize")
   const void*                     pData         /// Pointer to SpecConstant data
 }
 
 class VkPipelineShaderStageCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
   VkStructureType                  sType               /// Must be VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
   const void*                      pNext               /// Pointer to next structure
   VkPipelineShaderStageCreateFlags flags
   VkShaderStageFlagBits            stage
   VkShaderModule                   module
+  @str
   const char*                      pName
   const VkSpecializationInfo*      pSpecializationInfo
 }
@@ -616,16 +681,20 @@ class VkVertexInputAttributeDescription {
 }
 
 class VkPipelineVertexInputStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
   VkStructureType                          sType                           /// Should be VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
   const void*                              pNext                           /// Pointer to next structure
   VkPipelineVertexInputStateCreateFlags    flags
   u32                                      vertexBindingDescriptionCount   /// number of bindings
+  @len("vertexBindingDescriptionCount")
   const VkVertexInputBindingDescription*   pVertexBindingDescriptions
   u32                                      vertexAttributeDescriptionCount /// number of attributes
+  @len("vertexAttributeDescriptionCount")
   const VkVertexInputAttributeDescription* pVertexAttributeDescriptions
 }
 
 class VkPipelineInputAssemblyStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
   VkStructureType                         sType                  /// Must be VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
   const void*                             pNext                  /// Pointer to next structure
   VkPipelineInputAssemblyStateCreateFlags flags
@@ -634,6 +703,7 @@ class VkPipelineInputAssemblyStateCreateInfo {
 }
 
 class VkPipelineTessellationStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO)
   VkStructureType                        sType              /// Must be VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
   const void*                            pNext              /// Pointer to next structure
   VkPipelineTessellationStateCreateFlags flags
@@ -665,16 +735,20 @@ class VkRect2D {
 }
 
 class VkPipelineViewportStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
   VkStructureType                    sType         /// Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
   const void*                        pNext         /// Pointer to next structure
   VkPipelineViewportStateCreateFlags flags
   u32                                viewportCount
+  @len("viewportCount")
   const VkViewport*                  pViewports
   u32                                scissorCount
+  @len("scissorCount")
   const VkRect2D*                    pScissors
 }
 
 class VkPipelineRasterizationStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
   VkStructureType                         sType                   /// Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
   const void*                             pNext                   /// Pointer to next structure
   VkPipelineRasterizationStateCreateFlags flags
@@ -691,12 +765,14 @@ class VkPipelineRasterizationStateCreateInfo {
 }
 
 class VkPipelineMultisampleStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
   VkStructureType                       sType                 /// Must be VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
   const void*                           pNext                 /// Pointer to next structure
   VkPipelineMultisampleStateCreateFlags flags
   VkSampleCountFlagBits                 rasterizationSamples  /// Number of samples used for rasterization
   VkBool32                              sampleShadingEnable   /// optional (GL45)
   f32                                   minSampleShading      /// optional (GL45)
+  @len("(rasterizationSamples + 31) / 32")
   const VkSampleMask*                   pSampleMask
   VkBool32                              alphaToCoverageEnable
   VkBool32                              alphaToOneEnable
@@ -713,6 +789,7 @@ class VkStencilOpState {
 }
 
 class VkPipelineDepthStencilStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
   VkStructureType                        sType                 /// Must be VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
   const void*                            pNext                 /// Pointer to next structure
   VkPipelineDepthStencilStateCreateFlags flags
@@ -739,29 +816,35 @@ class VkPipelineColorBlendAttachmentState {
 }
 
 class VkPipelineColorBlendStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
   VkStructureType                            sType           /// Must be VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
   const void*                                pNext           /// Pointer to next structure
   VkPipelineColorBlendStateCreateFlags       flags
   VkBool32                                   logicOpEnable
   VkLogicOp                                  logicOp
   u32                                        attachmentCount /// # of pAttachments
+  @len("attachmentCount")
   const VkPipelineColorBlendAttachmentState* pAttachments
   f32[4]                                     blendConstants
 }
 
 class VkPipelineDynamicStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO)
   VkStructureType                   sType             /// Must be VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
   const void*                       pNext             /// Pointer to next structure
   VkPipelineDynamicStateCreateFlags flags
   u32                               dynamicStateCount
+  @len("dynamicStateCount")
   const VkDynamicState*             pDynamicStates
 }
 
 class VkGraphicsPipelineCreateInfo {
+  @values(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
   VkStructureType                               sType               /// Must be VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
   const void*                                   pNext               /// Pointer to next structure
   VkPipelineCreateFlags                         flags               /// Pipeline creation flags
   u32                                           stageCount
+  @len("stageCount")
   const VkPipelineShaderStageCreateInfo*        pStages             /// One entry for each active shader stage
   const VkPipelineVertexInputStateCreateInfo*   pVertexInputState
   const VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState
@@ -780,6 +863,7 @@ class VkGraphicsPipelineCreateInfo {
 }
 
 class VkComputePipelineCreateInfo {
+  @values(VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO)
   VkStructureType                 sType              /// Must be VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO
   const void*                     pNext              /// Pointer to next structure
   VkPipelineCreateFlags           flags              /// Pipeline creation flags
@@ -796,16 +880,20 @@ class VkPushConstantRange {
 }
 
 class VkPipelineLayoutCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
   VkStructureType              sType                  /// Must be VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
   const void*                  pNext                  /// Pointer to next structure
   VkPipelineLayoutCreateFlags  flags
   u32                          setLayoutCount         /// Number of descriptor sets interfaced by the pipeline
+  @len("setLayoutCount")
   const VkDescriptorSetLayout* pSetLayouts            /// Array of <setCount> number of descriptor set layout objects defining the layout of the
   u32                          pushConstantRangeCount /// Number of push-constant ranges used by the pipeline
+  @len("pushConstantRangeCount")
   const VkPushConstantRange*   pPushConstantRanges    /// Array of pushConstantRangeCount number of ranges used by various shader stages
 }
 
 class VkSamplerCreateInfo {
+  @values(VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
   VkStructureType      sType                   /// Must be VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
   const void*          pNext                   /// Pointer to next structure
   VkSamplerCreateFlags flags
@@ -831,14 +919,17 @@ class VkDescriptorSetLayoutBinding {
   VkDescriptorType   descriptorType     /// Type of the descriptors in this binding
   u32                descriptorCount    /// Number of descriptors in this binding
   VkShaderStageFlags stageFlags         /// Shader stages this binding is visible to
+  @len("descriptorCount")
   const VkSampler*   pImmutableSamplers /// Immutable samplers (used if descriptor type is SAMPLER or COMBINED_IMAGE_SAMPLER, is either NULL or contains <count> number of elements)
 }
 
 class VkDescriptorSetLayoutCreateInfo {
+  @values(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
   VkStructureType                     sType        /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
   const void*                         pNext        /// Pointer to next structure
   VkDescriptorSetLayoutCreateFlags    flags
   u32                                 bindingCount /// Number of bindings in the descriptor set layout
+  @len("bindingCount")
   const VkDescriptorSetLayoutBinding* pBindings    /// Array of descriptor set layout bindings
 }
 
@@ -848,19 +939,23 @@ class VkDescriptorPoolSize {
 }
 
 class VkDescriptorPoolCreateInfo {
+  @values(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
   VkStructureType             sType         /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
   const void*                 pNext         /// Pointer to next structure
   VkDescriptorPoolCreateFlags flags
   u32                         maxSets
   u32                         poolSizeCount
+  @len("poolSizeCount")
   const VkDescriptorPoolSize* pPoolSizes
 }
 
 class VkDescriptorSetAllocateInfo {
+  @values(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
   VkStructureType              sType              /// Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
   const void*                  pNext              /// Pointer to next structure
   VkDescriptorPool             descriptorPool
   u32                          descriptorSetCount
+  @len("descriptorSetCount")
   const VkDescriptorSetLayout* pSetLayouts
 }
 
@@ -877,6 +972,7 @@ class VkDescriptorBufferInfo {
 }
 
 class VkWriteDescriptorSet {
+  @values(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
   VkStructureType               sType            /// Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
   const void*                   pNext            /// Pointer to next structure
   VkDescriptorSet               dstSet           /// Destination descriptor set
@@ -884,12 +980,16 @@ class VkWriteDescriptorSet {
   u32                           dstArrayElement  /// Array element within the destination binding to write
   u32                           descriptorCount  /// Number of descriptors to write (determines the size of the array pointed by <pDescriptors>)
   VkDescriptorType              descriptorType   /// Descriptor type to write (determines which fields of the array pointed by <pDescriptors> are going to be used)
+  @len("descriptorCount")
   const VkDescriptorImageInfo*  pImageInfo
+  @len("descriptorCount")
   const VkDescriptorBufferInfo* pBufferInfo
+  @len("descriptorCount")
   const VkBufferView*           pTexelBufferView
 }
 
 class VkCopyDescriptorSet {
+  @values(VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET)
   VkStructureType sType           /// Must be VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET
   const void*     pNext           /// Pointer to next structure
   VkDescriptorSet srcSet          /// Source descriptor set
@@ -902,11 +1002,13 @@ class VkCopyDescriptorSet {
 }
 
 class VkFramebufferCreateInfo {
+  @values(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
   VkStructureType          sType           /// Must be VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
   const void*              pNext           /// Pointer to next structure
   VkFramebufferCreateFlags flags
   VkRenderPass             renderPass
   u32                      attachmentCount
+  @len("attachmentCount")
   const VkImageView*       pAttachments
   u32                      width
   u32                      height
@@ -934,12 +1036,16 @@ class VkSubpassDescription {
   VkSubpassDescriptionFlags    flags
   VkPipelineBindPoint          pipelineBindPoint       /// Must be VK_PIPELINE_BIND_POINT_GRAPHICS for now
   u32                          inputAttachmentCount
+  @len("inputAttachmentCount")
   const VkAttachmentReference* pInputAttachments
   u32                          colorAttachmentCount
+  @len("colorAttachmentCount")
   const VkAttachmentReference* pColorAttachments
+  @len("colorAttachmentCount")
   const VkAttachmentReference* pResolveAttachments
   const VkAttachmentReference* pDepthStencilAttachment
   u32                          preserveAttachmentCount
+  @len("preserveAttachmentCount")
   const u32*                   pPreserveAttachments
 }
 
@@ -954,18 +1060,23 @@ class VkSubpassDependency {
 }
 
 class VkRenderPassCreateInfo {
+  @values(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
   VkStructureType                sType           /// Must be VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
   const void*                    pNext           /// Pointer to next structure
   VkRenderPassCreateFlags        flags
   u32                            attachmentCount
+  @len("attachmentCount")
   const VkAttachmentDescription* pAttachments
   u32                            subpassCount
+  @len("subpassCount")
   const VkSubpassDescription*    pSubpasses
   u32                            dependencyCount
+  @len("dependencyCount")
   const VkSubpassDependency*     pDependencies
 }
 
 class VkCommandPoolCreateInfo {
+  @values(VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO)
   VkStructureType          sType            /// Must be VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
   const void*              pNext            /// Pointer to next structure
   VkCommandPoolCreateFlags flags            /// Command pool creation flags
@@ -973,6 +1084,7 @@ class VkCommandPoolCreateInfo {
 }
 
 class VkCommandBufferAllocateInfo {
+  @values(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
   VkStructureType      sType              /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
   const void*          pNext              /// Pointer to next structure
   VkCommandPool        commandPool
@@ -981,6 +1093,7 @@ class VkCommandBufferAllocateInfo {
 }
 
 class VkCommandBufferInheritanceInfo {
+  @values(VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO)
   VkStructureType               sType                /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
   const void*                   pNext                /// Pointer to next structure
   VkRenderPass                  renderPass           /// Render pass for secondary command buffers
@@ -992,6 +1105,7 @@ class VkCommandBufferInheritanceInfo {
 }
 
 class VkCommandBufferBeginInfo {
+  @values(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
   VkStructureType                       sType            /// Must be VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
   const void*                           pNext            /// Pointer to next structure
   VkCommandBufferUsageFlags             flags            /// Command buffer usage flags
@@ -1082,6 +1196,7 @@ class VkImageResolve {
 }
 
 class VkMemoryBarrier {
+  @values(VK_STRUCTURE_TYPE_MEMORY_BARRIER)
   VkStructureType sType         /// Must be VK_STRUCTURE_TYPE_MEMORY_BARRIER
   const void*     pNext         /// Pointer to next structure.
   VkAccessFlags   srcAccessMask
@@ -1089,6 +1204,7 @@ class VkMemoryBarrier {
 }
 
 class VkBufferMemoryBarrier {
+  @values(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER)
   VkStructureType sType               /// Must be VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER
   const void*     pNext               /// Pointer to next structure.
   VkAccessFlags   srcAccessMask
@@ -1101,6 +1217,7 @@ class VkBufferMemoryBarrier {
 }
 
 class VkImageMemoryBarrier {
+  @values(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
   VkStructureType         sType               /// Must be VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
   const void*             pNext               /// Pointer to next structure.
   VkAccessFlags           srcAccessMask
@@ -1114,12 +1231,14 @@ class VkImageMemoryBarrier {
 }
 
 class VkRenderPassBeginInfo {
+  @values(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
   VkStructureType     sType           /// Must be VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
   const void*         pNext           /// Pointer to next structure
   VkRenderPass        renderPass
   VkFramebuffer       framebuffer
   VkRect2D            renderArea
   u32                 clearValueCount
+  @len("clearValueCount")
   const VkClearValue* pClearValues
 }
 

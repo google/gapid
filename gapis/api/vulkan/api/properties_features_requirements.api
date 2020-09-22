@@ -42,8 +42,10 @@
 
 @override
 cmd VkResult vkEnumerateInstanceExtensionProperties(
+    @str
     const char*            pLayerName,
     u32*                   pPropertyCount,
+    @len("pPropertyCount")
     VkExtensionProperties* pProperties) {
 
   _ = as!string(pLayerName)
@@ -56,6 +58,7 @@ cmd VkResult vkEnumerateInstanceExtensionProperties(
 @override
 cmd VkResult vkEnumerateInstanceLayerProperties(
     u32*               pPropertyCount,
+    @len("pPropertyCount")
     VkLayerProperties* pProperties) {
   queryLayerProperties(pPropertyCount, pProperties)
   return ?
@@ -65,8 +68,10 @@ cmd VkResult vkEnumerateInstanceLayerProperties(
 @override
 cmd VkResult vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice       physicalDevice,
+    @str
     const char*            pLayerName,
     u32*                   pPropertyCount,
+    @len("pPropertyCount")
     VkExtensionProperties* pProperties) {
 
   _ = as!string(pLayerName)
@@ -82,6 +87,7 @@ cmd VkResult vkEnumerateDeviceExtensionProperties(
 cmd VkResult vkEnumerateDeviceLayerProperties(
     VkPhysicalDevice   physicalDevice,
     u32*               pPropertyCount,
+    @len("pPropertyCount")
     VkLayerProperties* pProperties) {
   // Do not check validness of physicalDevice as the loader may feed 0 to it.
   queryLayerProperties(pPropertyCount, pProperties)
@@ -172,6 +178,7 @@ cmd void vkGetPhysicalDeviceProperties(
 cmd void vkGetPhysicalDeviceQueueFamilyProperties(
     VkPhysicalDevice         physicalDevice,
     u32*                     pQueueFamilyPropertyCount,
+    @len("pQueueFamilyPropertyCount")
     VkQueueFamilyProperties* pQueueFamilyProperties) {
   if pQueueFamilyPropertyCount == null { vkErrorNullPointer("uint32_t") }
   _ = pQueueFamilyPropertyCount[0]
@@ -216,6 +223,7 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties(
     VkImageUsageFlags              usage,
     VkImageTiling                  tiling,
     u32*                           pPropertyCount,
+    @len("pPropertyCount")
     VkSparseImageFormatProperties* pProperties) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pPropertyCount == null { vkErrorNullPointer("uint32_t") }
@@ -287,6 +295,7 @@ cmd void vkGetImageSparseMemoryRequirements(
     VkDevice                         device,
     VkImage                          image,
     u32*                             pSparseMemoryRequirementCount,
+    @len("pSparseMemoryRequirementCount")
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(image in Images) { vkErrorInvalidImage(image) }
@@ -769,6 +778,7 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties2(
     VkPhysicalDevice                              physicalDevice,
     const VkPhysicalDeviceSparseImageFormatInfo2* pFormatInfo,
     u32*                                          pPropertyCount,
+    @len("pPropertyCount")
     VkSparseImageFormatProperties2*               pProperties) {
   GetPhysicalDeviceSparseImageFormatProperties2(
     physicalDevice, pFormatInfo, pPropertyCount, pProperties)
@@ -807,6 +817,7 @@ sub void GetPhysicalDeviceQueueFamilyProperties2(
 cmd void vkGetPhysicalDeviceQueueFamilyProperties2(
     VkPhysicalDevice          physicalDevice,
     u32*                      pQueueFamilyPropertyCount,
+    @len("pQueueFamilyPropertyCount")
     VkQueueFamilyProperties2* pQueueFamilyProperties) {
   GetPhysicalDeviceQueueFamilyProperties2(
     physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties)
@@ -1154,6 +1165,7 @@ cmd void vkGetImageSparseMemoryRequirements2(
     VkDevice                                    device,
     const VkImageSparseMemoryRequirementsInfo2* pInfo,
     u32*                                        pSparseMemoryRequirementCount,
+    @len("pSparseMemoryRequirementCount")
     VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements) {
   GetImageSparseMemoryRequirements2(
     device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements)

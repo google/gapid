@@ -61,17 +61,23 @@ enum VkTessellationDomainOriginKHR: u32 {
 /////////////
 
 @extension("VK_KHR_maintenance2")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDevicePointClippingPropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES)
     VkStructureType            sType
     void*                      pNext
     VkPointClippingBehavior    pointClippingBehavior
 }
 
 @extension("VK_KHR_maintenance2")
+@structextends("VkRenderPassCreateInfo")
 class VkRenderPassInputAttachmentAspectCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO)
     VkStructureType                            sType
     const void*                                pNext
     u32                                        aspectReferenceCount
+  @len("aspectReferenceCount")
     const VkInputAttachmentAspectReference*    pAspectReferences
 }
 
@@ -83,14 +89,18 @@ class VkInputAttachmentAspectReferenceKHR {
 }
 
 @extension("VK_KHR_maintenance2")
+@structextends("VkImageViewCreateInfo")
 class VkImageViewUsageCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO)
     VkStructureType      sType
     const void*          pNext
     VkImageUsageFlags    usage
 }
 
 @extension("VK_KHR_maintenance2")
+@structextends("VkPipelineTessellationStateCreateInfo")
 class VkPipelineTessellationDomainOriginStateCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO)
     VkStructureType               sType
     const void*                   pNext
     VkTessellationDomainOrigin    domainOrigin

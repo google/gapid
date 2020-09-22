@@ -41,6 +41,7 @@ type VkFlags VkConditionalRenderingFlagsEXT
 
 @extension("VK_EXT_conditional_rendering")
 class VkConditionalRenderingBeginInfoEXT {
+  @values(VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT)
   VkStructureType sType
   const void* pNext
   VkBuffer buffer
@@ -49,14 +50,18 @@ class VkConditionalRenderingBeginInfoEXT {
 }
 
 @extension("VK_EXT_conditional_rendering")
+@structextends("VkCommandBufferInheritanceInfo")
 class VkCommandBufferInheritanceConditionalRenderingInfoEXT {
+  @values(VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT)
   VkStructureType sType
   const void* pNext
   VkBool32 conditionalRenderingEnable
 }
 
 @extension("VK_EXT_conditional_rendering")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceConditionalRenderingFeaturesEXT {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT)
   VkStructureType sType
   const void* pNext
   VkBool32 conditionalRendering

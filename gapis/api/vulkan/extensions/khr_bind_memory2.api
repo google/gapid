@@ -48,6 +48,7 @@
 
 @extension("VK_KHR_bind_memory2")
 class VkBindBufferMemoryInfoKHR {
+  @values(VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO)
   VkStructureType sType
   const void*     pNext
   VkBuffer        buffer
@@ -57,6 +58,7 @@ class VkBindBufferMemoryInfoKHR {
 
 @extension("VK_KHR_bind_memory2")
 class VkBindImageMemoryInfoKHR {
+  @values(VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO)
   VkStructureType sType
   const void*     pNext
   VkImage         image

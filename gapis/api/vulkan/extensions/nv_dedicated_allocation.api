@@ -53,21 +53,27 @@ bitfield VkExternalMemoryHandleTypeFlagBitsNV {
 type VkFlags VkExternalMemoryHandleTypeFlagsNV
 
 @extension("VK_NV_dedicated_allocation")
+@structextends("VkImageCreateInfo")
 class VkDedicatedAllocationImageCreateInfoNV {
+  @values(VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV)
   @unused VkStructureType sType
   @unused const void*     pNext
   @unused VkBool32        dedicatedAllocation
 }
 
 @extension("VK_NV_dedicated_allocation")
+@structextends("VkBufferCreateInfo")
 class VkDedicatedAllocationBufferCreateInfoNV {
+  @values(VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV)
   @unused VkStructureType sType
   @unused const void*     pNext
   @unused VkBool32        dedicatedAllocation
 }
 
 @extension("VK_NV_dedicated_allocation")
+@structextends("VkMemoryAllocateInfo")
 class VkDedicatedAllocationMemoryAllocateInfoNV {
+  @values(VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV)
   @unused VkStructureType sType
   @unused const void*     pNext
   VkImage                 image

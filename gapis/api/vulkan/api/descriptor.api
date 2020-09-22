@@ -257,6 +257,7 @@ cmd VkResult vkResetDescriptorPool(
 cmd VkResult vkAllocateDescriptorSets(
     VkDevice                           device,
     const VkDescriptorSetAllocateInfo* pAllocateInfo,
+    @len("pAllocateInfo::descriptorSetCount")
     VkDescriptorSet*                   pDescriptorSets) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pAllocateInfo == null { vkErrorNullPointer("VkDescriptorSetAllocateInfo") }
@@ -300,6 +301,7 @@ cmd VkResult vkFreeDescriptorSets(
     VkDevice               device,
     VkDescriptorPool       descriptorPool,
     u32                    descriptorSetCount,
+    @len("descriptorSetCount")
     const VkDescriptorSet* pDescriptorSets) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(descriptorPool in DescriptorPools) { vkErrorInvalidDescriptorPool(descriptorPool) }
@@ -542,8 +544,10 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
 cmd void vkUpdateDescriptorSets(
     VkDevice                    device,
     u32                         descriptorWriteCount,
+    @len("descriptorWriteCount")
     const VkWriteDescriptorSet* pDescriptorWrites,
     u32                         descriptorCopyCount,
+    @len("descriptorCopyCount")
     const VkCopyDescriptorSet*  pDescriptorCopies) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   ws := pDescriptorWrites[0:descriptorWriteCount]
@@ -845,8 +849,10 @@ cmd void vkCmdBindDescriptorSets(
     VkPipelineLayout       layout,
     u32                    firstSet,
     u32                    descriptorSetCount,
+    @len("descriptorSetCount")
     const VkDescriptorSet* pDescriptorSets,
     u32                    dynamicOffsetCount,
+    @len("dynamicOffsetCount")
     const u32*             pDynamicOffsets) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -899,6 +905,7 @@ cmd void vkCmdPushConstants(
     VkShaderStageFlags stageFlags,
     u32                offset,
     u32                size,
+    @len_bytes("size")
     const void*        pValues) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
