@@ -47,7 +47,10 @@
 /////////////
 
 @extension("VK_KHR_maintenance3")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceMaintenance3PropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES)
   VkStructureType sType
   void*           pNext
   u32             maxPerSetDescriptors
@@ -55,7 +58,9 @@ class VkPhysicalDeviceMaintenance3PropertiesKHR {
 }
 
 @extension("VK_KHR_maintenance3")
+@returnedchain
 class VkDescriptorSetLayoutSupportKHR {
+  @values(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT)
   VkStructureType sType
   void*           pNext
   VkBool32        supported

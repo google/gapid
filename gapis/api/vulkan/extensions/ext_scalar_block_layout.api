@@ -40,7 +40,9 @@
 @extension("VK_EXT_scalar_block_layout") define VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME "VK_EXT_scalar_block_layout"
 
 @extension("VK_EXT_scalar_block_layout")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceScalarBlockLayoutFeaturesEXT {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT)
     VkStructureType    sType
     void*              pNext
     VkBool32           scalarBlockLayout

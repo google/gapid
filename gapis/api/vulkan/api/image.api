@@ -890,6 +890,7 @@ sub void BindImageMemory2(
 cmd VkResult vkBindImageMemory2(
     VkDevice                     device,
     u32                          bindInfoCount,
+    @len("bindInfoCount")
     const VkBindImageMemoryInfo* pBindInfos) {
   BindImageMemory2(device, bindInfoCount, pBindInfos)
   return ?

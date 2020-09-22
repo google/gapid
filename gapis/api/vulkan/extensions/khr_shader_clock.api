@@ -40,7 +40,9 @@
 @extension("VK_KHR_shader_clock") define VK_KHR_SHADER_CLOCK_TYPES_EXTENSION_NAME "VK_KHR_shader_clock"
 
 @extension("VK_KHR_shader_clock")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceShaderClockFeaturesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR)
     VkStructureType    sType
     void*              pNext
     VkBool32           shaderSubgroupClock

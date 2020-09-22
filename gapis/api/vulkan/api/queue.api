@@ -148,6 +148,7 @@ sub void addTimelineDataToSubmission(
 cmd VkResult vkQueueSubmit(
     VkQueue             queue,
     u32                 submitCount,
+    @len("submitCount")
     const VkSubmitInfo* pSubmits,
     VkFence             fence) {
   if !(queue in Queues) { vkErrorInvalidQueue(queue) }
@@ -331,6 +332,7 @@ sub void addSparseImageMemoryBinding(VkImage image, VkSparseImageMemoryBind bind
 cmd VkResult vkQueueBindSparse(
     VkQueue                 queue,
     u32                     bindInfoCount,
+    @len("bindInfoCount")
     const VkBindSparseInfo* pBindInfo,
     VkFence                 fence) {
   if !(queue in Queues) { vkErrorInvalidQueue(queue) }

@@ -48,7 +48,10 @@ enum VkShaderFloatControlsIndependenceKHR : u32 {
 }
 
 @extension("VK_KHR_shader_float_controls")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceFloatControlsPropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR)
     VkStructureType                         sType
     void*                                   pNext
     VkShaderFloatControlsIndependenceKHR    denormBehaviorIndependence

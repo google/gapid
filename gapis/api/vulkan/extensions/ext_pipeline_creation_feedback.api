@@ -52,16 +52,20 @@ enum VkPipelineCreationFeedbackFlagBitsEXT: u32 {
 type VkFlags VkPipelineCreationFeedbackFlagsEXT
 
 @extension("VK_EXT_pipeline_creation_feedback")
+@returnedonly
 class VkPipelineCreationFeedbackEXT {
     VkPipelineCreationFeedbackFlagsEXT    flags
     u64                                   duration
 }
 
 @extension("VK_EXT_pipeline_creation_feedback")
+@structextends("VkGraphicsPipelineCreateInfo","VkComputePipelineCreateInfo","VkRayTracingPipelineCreateInfoNV")
 class VkPipelineCreationFeedbackCreateInfoEXT {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT)
     VkStructureType                   sType
     const void*                       pNext
     VkPipelineCreationFeedbackEXT*    pPipelineCreationFeedback
     u32                               pipelineStageCreationFeedbackCount
+  @len("pipelineStageCreationFeedbackCount")
     VkPipelineCreationFeedbackEXT*    pPipelineStageCreationFeedbacks
 }

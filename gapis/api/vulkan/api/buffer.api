@@ -338,6 +338,7 @@ sub void BindBufferMemory2(
 cmd VkResult vkBindBufferMemory2(
     VkDevice                      device,
     u32                           bindInfoCount,
+    @len("bindInfoCount")
     const VkBindBufferMemoryInfo* pBindInfos) {
   BindBufferMemory2(device, bindInfoCount, pBindInfos)
   return ?

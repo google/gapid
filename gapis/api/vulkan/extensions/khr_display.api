@@ -77,8 +77,10 @@ type VkFlags VkDisplaySurfaceCreateFlagsKHR
 /////////////
 
 @extension("VK_KHR_display")
+@returnedonly
 class VkDisplayPropertiesKHR {
   VkDisplayKHR               display
+  @str
   char*                      displayName
   VkExtent2D                 physicalDimensions
   VkExtent2D                 physicalResolution
@@ -94,6 +96,7 @@ class VkDisplayModeParametersKHR {
 }
 
 @extension("VK_KHR_display")
+@returnedonly
 class VkDisplayModePropertiesKHR {
   VkDisplayModeKHR           displayMode
   VkDisplayModeParametersKHR parameters
@@ -101,6 +104,7 @@ class VkDisplayModePropertiesKHR {
 
 @extension("VK_KHR_display")
 class VkDisplayModeCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR)
   VkStructureType             sType
   const void*                 pNext
   VkDisplayModeCreateFlagsKHR flags
@@ -108,6 +112,7 @@ class VkDisplayModeCreateInfoKHR {
 }
 
 @extension("VK_KHR_display")
+@returnedonly
 class VkDisplayPlaneCapabilitiesKHR {
   VkDisplayPlaneAlphaFlagsKHR supportedAlpha
   VkOffset2D                  minSrcPosition
@@ -121,6 +126,7 @@ class VkDisplayPlaneCapabilitiesKHR {
 }
 
 @extension("VK_KHR_display")
+@returnedonly
 class VkDisplayPlanePropertiesKHR {
   VkDisplayKHR currentDisplay
   u32          currentStackIndex
@@ -128,6 +134,7 @@ class VkDisplayPlanePropertiesKHR {
 
 @extension("VK_KHR_display")
 class VkDisplaySurfaceCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR)
   VkStructureType                sType
   const void*                    pNext
   VkDisplaySurfaceCreateFlagsKHR flags
@@ -149,6 +156,7 @@ class VkDisplaySurfaceCreateInfoKHR {
 cmd VkResult vkGetPhysicalDeviceDisplayPropertiesKHR(
     VkPhysicalDevice        physicalDevice,
     u32*                    pPropertyCount,
+    @len("pPropertyCount")
     VkDisplayPropertiesKHR* pProperties) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pPropertyCount == null { vkErrorNullPointer("uint32_t") }
@@ -174,6 +182,7 @@ cmd VkResult vkGetPhysicalDeviceDisplayPropertiesKHR(
 cmd VkResult vkGetPhysicalDeviceDisplayPlanePropertiesKHR(
     VkPhysicalDevice             physicalDevice,
     u32*                         pPropertyCount,
+    @len("pPropertyCount")
     VkDisplayPlanePropertiesKHR* pProperties) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pPropertyCount == null { vkErrorNullPointer("uint32_t") }
@@ -199,6 +208,7 @@ cmd VkResult vkGetDisplayPlaneSupportedDisplaysKHR(
     VkPhysicalDevice physicalDevice,
     u32              planeIndex,
     u32*             pDisplayCount,
+    @len("pDisplayCount")
     VkDisplayKHR*    pDisplays) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pDisplayCount == null { vkErrorNullPointer("uint32_t") }
@@ -224,6 +234,7 @@ cmd VkResult vkGetDisplayModePropertiesKHR(
     VkPhysicalDevice            physicalDevice,
     VkDisplayKHR                display,
     u32*                        pPropertyCount,
+    @len("pPropertyCount")
     VkDisplayModePropertiesKHR* pProperties) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pPropertyCount == null { vkErrorNullPointer("uint32_t") }

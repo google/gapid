@@ -75,6 +75,7 @@ type VkFlags VkExternalMemoryFeatureFlagsKHR
 /////////////
 
 @extension("VK_KHR_external_memory_capabilities")
+@returnedonly
 class VkExternalMemoryPropertiesKHR {
     VkExternalMemoryFeatureFlags       externalMemoryFeatures
     VkExternalMemoryHandleTypeFlags    exportFromImportedHandleTypes
@@ -82,14 +83,19 @@ class VkExternalMemoryPropertiesKHR {
 }
 
 @extension("VK_KHR_external_memory_capabilities")
+@structextends("VkPhysicalDeviceImageFormatInfo2")
 class VkPhysicalDeviceExternalImageFormatInfoKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO)
     VkStructureType                       sType
     const void*                           pNext
     VkExternalMemoryHandleTypeFlagBits    handleType
 }
 
 @extension("VK_KHR_external_memory_capabilities")
+@returnedchain
+@structextends("VkImageFormatProperties2")
 class VkExternalImageFormatPropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES)
     VkStructureType               sType
     void*                         pNext
     VkExternalMemoryProperties    externalMemoryProperties
@@ -97,6 +103,7 @@ class VkExternalImageFormatPropertiesKHR {
 
 @extension("VK_KHR_external_memory_capabilities")
 class VkPhysicalDeviceExternalBufferInfoKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO)
     VkStructureType                       sType
     const void*                           pNext
     VkBufferCreateFlags                   flags
@@ -105,14 +112,19 @@ class VkPhysicalDeviceExternalBufferInfoKHR {
 }
 
 @extension("VK_KHR_external_memory_capabilities")
+@returnedchain
 class VkExternalBufferPropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES)
     VkStructureType               sType
     void*                         pNext
     VkExternalMemoryProperties    externalMemoryProperties
 }
 
 @extension("VK_KHR_external_memory_capabilities")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceIDPropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES)
     VkStructureType    sType
     void*              pNext
     u8[VK_UUID_SIZE]   deviceUUID

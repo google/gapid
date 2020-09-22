@@ -115,7 +115,9 @@ type VkFlags VkDebugReportFlagsEXT
 /////////////
 
 @extension("VK_EXT_debug_report")
+@structextends("VkInstanceCreateInfo")
 class VkDebugReportCallbackCreateInfoEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT)
   VkStructureType              sType
   const void*                  pNext
   VkDebugReportFlagsEXT        flags
@@ -191,7 +193,9 @@ cmd void vkDebugReportMessageEXT(
     u64                        object,
     size                       location,
     s32                        messageCode,
+    @str
     const char*                pLayerPrefix,
+    @str
     const char*                pMessage) {
 
   _ = as!string(pLayerPrefix)

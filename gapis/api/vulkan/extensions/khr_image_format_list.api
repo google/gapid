@@ -41,10 +41,13 @@
 
 
 @extension("VK_KHR_image_format_list")
+@structextends("VkImageCreateInfo","VkSwapchainCreateInfoKHR","VkPhysicalDeviceImageFormatInfo2")
 class VkImageFormatListCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR)
   VkStructureType       sType
   const void*           pNext
   u32                   viewFormatCount
+  @len("viewFormatCount")
   const VkFormat*       pViewFormats
 }
 

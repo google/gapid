@@ -71,7 +71,9 @@ enum VkChromaLocationKHR: u32 {
 /////////////
 
 @extension("VK_KHR_sampler_ycbcr_conversion")
+@structextends("VkSamplerCreateInfo","VkImageViewCreateInfo")
 class VkSamplerYcbcrConversionInfoKHR {
+  @values(VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO)
     VkStructureType             sType
     const void*                 pNext
     VkSamplerYcbcrConversion    conversion
@@ -79,6 +81,7 @@ class VkSamplerYcbcrConversionInfoKHR {
 
 @extension("VK_KHR_sampler_ycbcr_conversion")
 class VkSamplerYcbcrConversionCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO)
   VkStructureType               sType
   const void*                   pNext
   VkFormat                      format
@@ -92,28 +95,37 @@ class VkSamplerYcbcrConversionCreateInfoKHR {
 }
 
 @extension("VK_KHR_sampler_ycbcr_conversion")
+@structextends("VkBindImageMemoryInfo")
 class VkBindImagePlaneMemoryInfoKHR {
+  @values(VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO)
     VkStructureType          sType
     const void*              pNext
     VkImageAspectFlagBits    planeAspect
 }
 
 @extension("VK_KHR_sampler_ycbcr_conversion")
+@structextends("VkImageMemoryRequirementsInfo2")
 class VkImagePlaneMemoryRequirementsInfoKHR {
+  @values(VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO)
     VkStructureType          sType
     const void*              pNext
     VkImageAspectFlagBits    planeAspect
 }
 
 @extension("VK_KHR_sampler_ycbcr_conversion")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES)
     VkStructureType    sType
     void*              pNext
     VkBool32           samplerYcbcrConversion
 }
 
 @extension("VK_KHR_sampler_ycbcr_conversion")
+@returnedchain
+@structextends("VkImageFormatProperties2")
 class VkSamplerYcbcrConversionImageFormatPropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES)
   VkStructureType sType
   void*           pNext
   u32             combinedImageSamplerDescriptorCount

@@ -42,6 +42,7 @@
 
 @extension("VK_KHR_get_memory_requirements2")
 class VkBufferMemoryRequirementsInfo2KHR {
+  @values(VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2)
   VkStructureType sType
   const void*     pNext
   VkBuffer        buffer
@@ -49,13 +50,16 @@ class VkBufferMemoryRequirementsInfo2KHR {
 
 @extension("VK_KHR_get_memory_requirements2")
 class VkImageMemoryRequirementsInfo2KHR {
+  @values(VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2)
   VkStructureType sType
   const void*     pNext
   VkImage         image
 }
 
 @extension("VK_KHR_get_memory_requirements2")
+@returnedchain
 class VkMemoryRequirements2KHR {
+  @values(VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2)
   VkStructureType      sType
   void*                pNext
   VkMemoryRequirements memoryRequirements
@@ -63,13 +67,16 @@ class VkMemoryRequirements2KHR {
 
 @extension("VK_KHR_get_memory_requirements2")
 class VkImageSparseMemoryRequirementsInfo2KHR {
+  @values(VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2)
   VkStructureType sType
   const void*     pNext
   VkImage         image
 }
 
 @extension("VK_KHR_get_memory_requirements2")
+@returnedchain
 class VkSparseImageMemoryRequirements2KHR {
+  @values(VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2)
   VkStructureType                 sType
   void*                           pNext
   VkSparseImageMemoryRequirements memoryRequirements

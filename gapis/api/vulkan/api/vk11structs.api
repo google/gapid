@@ -38,14 +38,18 @@
 
 // Structs added in Vulkan 1.1 spec
 
+@structextends("VkBindBufferMemoryInfo")
 class VkBindBufferMemoryDeviceGroupInfo {
+  @values(VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO)
   VkStructureType sType
   const void*     pNext
   u32             deviceIndexCount
+  @len("deviceIndexCount")
   const u32*      pDeviceIndices
 }
 
 class VkBindBufferMemoryInfo {
+  @values(VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO)
   VkStructureType sType
   const void*     pNext
   VkBuffer        buffer
@@ -53,16 +57,21 @@ class VkBindBufferMemoryInfo {
   VkDeviceSize    memoryOffset
 }
 
+@structextends("VkBindImageMemoryInfo")
 class VkBindImageMemoryDeviceGroupInfo {
+  @values(VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO)
   VkStructureType sType
   const void*     pNext
   u32             deviceIndexCount
+  @len("deviceIndexCount")
   const u32*      pDeviceIndices
   u32             splitInstanceBindRegionCount
+  @len("splitInstanceBindRegionCount")
   const VkRect2D* pSplitInstanceBindRegions
 }
 
 class VkBindImageMemoryInfo {
+  @values(VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO)
   VkStructureType sType
   const void*     pNext
   VkImage         image
@@ -70,29 +79,36 @@ class VkBindImageMemoryInfo {
   VkDeviceSize    memoryOffset
 }
 
+@structextends("VkBindImageMemoryInfo")
 class VkBindImagePlaneMemoryInfo {
+  @values(VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO)
   VkStructureType       sType
   const void*           pNext
   VkImageAspectFlagBits planeAspect
 }
 
 class VkBufferMemoryRequirementsInfo2 {
+  @values(VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2)
   VkStructureType sType
   const void*     pNext
   VkBuffer        buffer
 }
 
+@returnedchain
 class VkDescriptorSetLayoutSupport {
+  @values(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT)
   VkStructureType sType
   void*           pNext
   VkBool32        supported
 }
 
 class VkDescriptorUpdateTemplateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO)
   VkStructureType                        sType
   void*                                  pNext
   VkDescriptorUpdateTemplateCreateFlags  flags
   u32                                    descriptorUpdateEntryCount
+  @len("descriptorUpdateEntryCount")
   const VkDescriptorUpdateTemplateEntry* pDescriptorUpdateEntries
   VkDescriptorUpdateTemplateType         templateType
   VkDescriptorSetLayout                  descriptorSetLayout
@@ -110,46 +126,62 @@ class VkDescriptorUpdateTemplateEntry {
   size             stride
 }
 
+@structextends("VkBindSparseInfo")
 class VkDeviceGroupBindSparseInfo {
+  @values(VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO)
   VkStructureType sType
   const void*     pNext
   u32             resourceDeviceIndex
   u32             memoryDeviceIndex
 }
 
+@structextends("VkCommandBufferBeginInfo")
 class VkDeviceGroupCommandBufferBeginInfo {
+  @values(VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO)
   VkStructureType sType
   const void*     pNext
   u32             deviceMask
 }
 
+@structextends("VkDeviceCreateInfo")
 class VkDeviceGroupDeviceCreateInfo {
+  @values(VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO)
   VkStructureType         sType
   const void*             pNext
   u32                     physicalDeviceCount
+  @len("physicalDeviceCount")
   const VkPhysicalDevice* pPhysicalDevices
 }
 
+@structextends("VkRenderPassBeginInfo")
 class VkDeviceGroupRenderPassBeginInfo {
+  @values(VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO)
   VkStructureType sType
   const void*     pNext
   u32             deviceMask
   u32             deviceRenderAreaCount
+  @len("deviceRenderAreaCount")
   const VkRect2D* pDeviceRenderAreas
 }
 
+@structextends("VkSubmitInfo")
 class VkDeviceGroupSubmitInfo {
+  @values(VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO)
   VkStructureType sType
   const void*     pNext
   u32             waitSemaphoreCount
+  @len("waitSemaphoreCount")
   const u32*      pWaitSemaphoreDeviceIndices
   u32             commandBufferCount
+  @len("commandBufferCount")
   const u32*      pCommandBufferDeviceMasks
   u32             signalSemaphoreCount
+  @len("signalSemaphoreCount")
   const u32*      pSignalSemaphoreDeviceIndices
 }
 
 class VkDeviceQueueInfo2 {
+  @values(VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2)
   VkStructureType          sType
   const void*              pNext
   VkDeviceQueueCreateFlags flags
@@ -157,31 +189,41 @@ class VkDeviceQueueInfo2 {
   u32                      queueIndex
 }
 
+@structextends("VkFenceCreateInfo")
 class VkExportFenceCreateInfo {
+  @values(VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO)
   VkStructureType                sType
   const void*                    pNext
   VkExternalFenceHandleTypeFlags handleTypes
 }
 
+@structextends("VkMemoryAllocateInfo")
 class VkExportMemoryAllocateInfo {
+  @values(VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO)
   VkStructureType                 sType
   const void*                     pNext
   VkExternalMemoryHandleTypeFlags handleTypes
 }
 
+@structextends("VkSemaphoreCreateInfo")
 class VkExportSemaphoreCreateInfo {
+  @values(VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO)
   VkStructureType                    sType
   const void*                        pNext
   VkExternalSemaphoreHandleTypeFlags handleTypes
 }
 
+@returnedchain
 class VkExternalBufferProperties {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES)
   VkStructureType            sType
   void*                      pNext
   VkExternalMemoryProperties externalMemoryProperties
 }
 
+@returnedchain
 class VkExternalFenceProperties {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES)
   VkStructureType                sType
   void*                          pNext
   VkExternalFenceHandleTypeFlags exportFromImportedHandleTypes
@@ -189,31 +231,41 @@ class VkExternalFenceProperties {
   VkExternalFenceFeatureFlags    externalFenceFeatures
 }
 
+@returnedchain
+@structextends("VkImageFormatProperties2")
 class VkExternalImageFormatProperties {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES)
   VkStructureType            sType
   void*                      pNext
   VkExternalMemoryProperties externalMemoryProperties
 }
 
+@structextends("VkBufferCreateInfo")
 class VkExternalMemoryBufferCreateInfo {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO)
   VkStructureType                 sType
   const void*                     pNext
   VkExternalMemoryHandleTypeFlags handleTypes
 }
 
+@structextends("VkImageCreateInfo")
 class VkExternalMemoryImageCreateInfo {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO)
   VkStructureType                 sType
   const void*                     pNext
   VkExternalMemoryHandleTypeFlags handleTypes
 }
 
+@returnedonly
 class VkExternalMemoryProperties {
   VkExternalMemoryFeatureFlags    externalMemoryFeatures
   VkExternalMemoryHandleTypeFlags exportFromImportedHandleTypes
   VkExternalMemoryHandleTypeFlags compatibleHandleTypes
 }
 
+@returnedchain
 class VkExternalSemaphoreProperties {
+  @values(VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES)
   VkStructureType                    sType
   void*                              pNext
   VkExternalSemaphoreHandleTypeFlags exportFromImportedHandleTypes
@@ -221,37 +273,47 @@ class VkExternalSemaphoreProperties {
   VkExternalSemaphoreFeatureFlags    externalSemaphoreFeatures
 }
 
+@returnedchain
 class VkFormatProperties2 {
+  @values(VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2)
   VkStructureType    sType
   void*              pNext
   VkFormatProperties formatProperties
 }
 
+@returnedchain
 class VkImageFormatProperties2 {
+  @values(VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2)
   VkStructureType         sType
   void*                   pNext
   VkImageFormatProperties imageFormatProperties
 }
 
 class VkImageMemoryRequirementsInfo2 {
+  @values(VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2)
   VkStructureType sType
   const void*     pNext
   VkImage         image
 }
 
+@structextends("VkImageMemoryRequirementsInfo2")
 class VkImagePlaneMemoryRequirementsInfo {
+  @values(VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO)
   VkStructureType       sType
   const void*           pNext
   VkImageAspectFlagBits planeAspect
 }
 
 class VkImageSparseMemoryRequirementsInfo2 {
+  @values(VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2)
   VkStructureType sType
   const void*     pNext
   VkImage         image
 }
 
+@structextends("VkImageViewCreateInfo")
 class VkImageViewUsageCreateInfo {
+  @values(VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO)
   VkStructureType   sType
   const void*       pNext
   VkImageUsageFlags usage
@@ -263,34 +325,45 @@ class VkInputAttachmentAspectReference {
   VkImageAspectFlags aspectMask
 }
 
+@structextends("VkMemoryAllocateInfo")
 class VkMemoryAllocateFlagsInfo {
+  @values(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO)
   VkStructureType       sType
   const void*           pNext
   VkMemoryAllocateFlags flags
   u32                   deviceMask
 }
 
+@structextends("VkMemoryAllocateInfo")
 class VkMemoryDedicatedAllocateInfo {
+  @values(VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO)
   VkStructureType sType
   const void*     pNext
   VkImage         image
   VkBuffer        buffer
 }
 
+@returnedchain
+@structextends("VkMemoryRequirements2")
 class VkMemoryDedicatedRequirements {
+  @values(VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS)
   VkStructureType sType
   void*           pNext
   VkBool32        prefersDedicatedAllocation
   VkBool32        requiresDedicatedAllocation
 }
 
+@returnedchain
 class VkMemoryRequirements2 {
+  @values(VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2)
   VkStructureType      sType
   void*                pNext
   VkMemoryRequirements memoryRequirements
 }
 
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDevice16BitStorageFeatures {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES)
   VkStructureType sType
   void*           pNext
   VkBool32        storageBuffer16BitAccess
@@ -300,6 +373,7 @@ class VkPhysicalDevice16BitStorageFeatures {
 }
 
 class VkPhysicalDeviceExternalBufferInfo {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO)
   VkStructureType                    sType
   const void*                        pNext
   VkBufferCreateFlags                flags
@@ -308,30 +382,38 @@ class VkPhysicalDeviceExternalBufferInfo {
 }
 
 class VkPhysicalDeviceExternalFenceInfo {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO)
   VkStructureType                   sType
   const void*                       pNext
   VkExternalFenceHandleTypeFlagBits handleType
 }
 
+@structextends("VkPhysicalDeviceImageFormatInfo2")
 class VkPhysicalDeviceExternalImageFormatInfo {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO)
   VkStructureType                    sType
   const void*                        pNext
   VkExternalMemoryHandleTypeFlagBits handleType
 }
 
 class VkPhysicalDeviceExternalSemaphoreInfo {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO)
   VkStructureType                       sType
   const void*                           pNext
   VkExternalSemaphoreHandleTypeFlagBits handleType
 }
 
+@structextends("VkDeviceCreateInfo")
 class VkPhysicalDeviceFeatures2 {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
   VkStructureType          sType
   void*                    pNext
   VkPhysicalDeviceFeatures features
 }
 
+@returnedchain
 class VkPhysicalDeviceGroupProperties {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES)
   VkStructureType                            sType
   void*                                      pNext
   u32                                        physicalDeviceCount
@@ -339,7 +421,10 @@ class VkPhysicalDeviceGroupProperties {
   VkBool32                                   subsetAllocation
 }
 
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceIDProperties {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES)
   VkStructureType  sType
   void*            pNext
   u8[VK_UUID_SIZE] deviceUUID
@@ -350,6 +435,7 @@ class VkPhysicalDeviceIDProperties {
 }
 
 class VkPhysicalDeviceImageFormatInfo2 {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2)
   VkStructureType    sType
   const void*        pNext
   VkFormat           format
@@ -359,20 +445,27 @@ class VkPhysicalDeviceImageFormatInfo2 {
   VkImageCreateFlags flags
 }
 
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceMaintenance3Properties {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES)
   VkStructureType sType
   void*           pNext
   u32             maxPerSetDescriptors
   VkDeviceSize    maxMemoryAllocationSize
 }
 
+@returnedchain
 class VkPhysicalDeviceMemoryProperties2 {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2)
   VkStructureType                  sType
   void*                            pNext
   VkPhysicalDeviceMemoryProperties memoryProperties
 }
 
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceMultiviewFeatures {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES)
   VkStructureType sType
   void*           pNext
   VkBool32        multiview
@@ -380,50 +473,68 @@ class VkPhysicalDeviceMultiviewFeatures {
   VkBool32        multiviewTessellationShader
 }
 
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceMultiviewProperties {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES)
   VkStructureType sType
   void*           pNext
   u32             maxMultiviewViewCount
   u32             maxMultiviewInstanceIndex
 }
 
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDevicePointClippingProperties {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES)
   VkStructureType         sType
   void*                   pNext
   VkPointClippingBehavior pointClippingBehavior
 }
 
+@returnedchain
 class VkPhysicalDeviceProperties2 {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2)
   VkStructureType            sType
   void*                      pNext
   VkPhysicalDeviceProperties properties
 }
 
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceProtectedMemoryFeatures {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES)
   VkStructureType sType
   void*           pNext
   VkBool32        protectedMemory
 }
 
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceProtectedMemoryProperties {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES)
   VkStructureType sType
   void*           pNext
   VkBool32        protectedNoFault
 }
 
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceSamplerYcbcrConversionFeatures {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES)
   VkStructureType sType
   void*           pNext
   VkBool32        samplerYcbcrConversion
 }
 
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceShaderDrawParameterFeatures {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES)
   VkStructureType sType
   void*           pNext
   VkBool32        shaderDrawParameters
 }
 
 class VkPhysicalDeviceSparseImageFormatInfo2 {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2)
   VkStructureType       sType
   const void*           pNext
   VkFormat              format
@@ -434,7 +545,10 @@ class VkPhysicalDeviceSparseImageFormatInfo2 {
 }
 
 
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceSubgroupProperties {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES)
   VkStructureType        sType
   void*                  pNext
   u32                    subgroupSize
@@ -443,50 +557,67 @@ class VkPhysicalDeviceSubgroupProperties {
   VkBool32               quadOperationsInAllStages
 }
 
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceVariablePointerFeatures {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES)
   VkStructureType sType
   void*           pNext
   VkBool32        variablePointersStorageBuffer
   VkBool32        variablePointers
 }
 
+@structextends("VkPipelineTessellationStateCreateInfo")
 class VkPipelineTessellationDomainOriginStateCreateInfo {
+  @values(VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO)
   VkStructureType            sType
   const void*                pNext
   VkTessellationDomainOrigin domainOrigin
 }
 
+@structextends("VkSubmitInfo")
 class VkProtectedSubmitInfo {
+  @values(VK_STRUCTURE_TYPE_PROTECTED_SUBMIT_INFO)
   VkStructureType sType
   const void*     pNext
   VkBool32        protectedSubmit
 }
 
+@returnedchain
 class VkQueueFamilyProperties2 {
+  @values(VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2)
   VkStructureType         sType
   void*                   pNext
   VkQueueFamilyProperties queueFamilyProperties
 }
 
+@structextends("VkRenderPassCreateInfo")
 class VkRenderPassInputAttachmentAspectCreateInfo {
+  @values(VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO)
   VkStructureType                         sType
   const void*                             pNext
   u32                                     aspectReferenceCount
+  @len("aspectReferenceCount")
   const VkInputAttachmentAspectReference* pAspectReferences
 }
 
+@structextends("VkRenderPassCreateInfo")
 class VkRenderPassMultiviewCreateInfo {
+  @values(VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO)
   VkStructureType sType
   const void*     pNext
   u32             subpassCount
+  @len("subpassCount")
   const u32*      pViewMasks
   u32             dependencyCount
+  @len("dependencyCount")
   const s32*      pViewOffsets
   u32             correlationMaskCount
+  @len("correlationMaskCount")
   const u32*      pCorrelationMasks
 }
 
 class VkSamplerYcbcrConversionCreateInfo {
+  @values(VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO)
   VkStructureType               sType
   const void*                   pNext
   VkFormat                      format
@@ -499,25 +630,34 @@ class VkSamplerYcbcrConversionCreateInfo {
   VkBool32                      forceExplicitReconstruction
 }
 
+@returnedchain
+@structextends("VkImageFormatProperties2")
 class VkSamplerYcbcrConversionImageFormatProperties {
+  @values(VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES)
   VkStructureType sType
   void*           pNext
   u32             combinedImageSamplerDescriptorCount
 }
 
+@structextends("VkSamplerCreateInfo","VkImageViewCreateInfo")
 class VkSamplerYcbcrConversionInfo {
+  @values(VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO)
   VkStructureType          sType
   const void*              pNext
   VkSamplerYcbcrConversion conversion
 }
 
+@returnedchain
 class VkSparseImageFormatProperties2 {
+  @values(VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2)
   VkStructureType               sType
   void*                         pNext
   VkSparseImageFormatProperties properties
 }
 
+@returnedchain
 class VkSparseImageMemoryRequirements2 {
+  @values(VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2)
   VkStructureType                 sType
   void*                           pNext
   VkSparseImageMemoryRequirements memoryRequirements

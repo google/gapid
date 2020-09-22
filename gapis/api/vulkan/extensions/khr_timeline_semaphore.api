@@ -48,6 +48,7 @@
 
 @extension("VK_KHR_timeline_semaphore")
 class VkSemaphoreSignalInfoKHR {
+  @values(VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO_KHR)
     VkStructureType    sType
     const void*        pNext
     VkSemaphore        semaphore
@@ -56,35 +57,47 @@ class VkSemaphoreSignalInfoKHR {
 
 @extension("VK_KHR_timeline_semaphore")
 class VkSemaphoreWaitInfoKHR {
+  @values(VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR)
     VkStructureType         sType
     const void*             pNext
     VkSemaphoreWaitFlags    flags
     u32                     semaphoreCount
+  @len("semaphoreCount")
     const VkSemaphore*      pSemaphores
+  @len("semaphoreCount")
     const u64*              pValues
 }
 
 @extension("VK_KHR_timeline_semaphore")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceTimelineSemaphoreFeaturesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR)
     VkStructureType    sType
     void*              pNext
     VkBool32           timelineSemaphore
 }
 
 @extension("VK_KHR_timeline_semaphore")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDeviceTimelineSemaphorePropertiesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR)
     VkStructureType    sType
     void*              pNext
     u64                maxTimelineSemaphoreValueDifference
 }
 
 @extension("VK_KHR_timeline_semaphore")
+@structextends("VkSubmitInfo","VkBindSparseInfo")
 class VkTimelineSemaphoreSubmitInfoKHR {
+  @values(VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR)
     VkStructureType    sType
     const void*        pNext
     u32                waitSemaphoreValueCount
+  @len("waitSemaphoreValueCount")
     const u64*         pWaitSemaphoreValues
     u32                signalSemaphoreValueCount
+  @len("signalSemaphoreValueCount")
     const u64*         pSignalSemaphoreValues
 }
 

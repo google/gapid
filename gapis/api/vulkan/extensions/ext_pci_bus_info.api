@@ -52,7 +52,10 @@ class PhysicalDevicePCIBusInfoPropertiesEXT {
 }
 
 @extension("VK_EXT_pci_bus_info")
+@returnedchain
+@structextends("VkPhysicalDeviceProperties2")
 class VkPhysicalDevicePCIBusInfoPropertiesEXT {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT)
     VkStructureType    sType
     void*              pNext
     u32                pciDomain

@@ -79,6 +79,7 @@
 cmd VkResult vkEnumeratePhysicalDevices(
     VkInstance        instance,
     u32*              pPhysicalDeviceCount,
+    @len("pPhysicalDeviceCount")
     VkPhysicalDevice* pPhysicalDevices) {
   if !(instance in Instances) { vkErrorInvalidInstance(instance) }
   if pPhysicalDeviceCount == null { vkErrorNullPointer("uint32_t") }

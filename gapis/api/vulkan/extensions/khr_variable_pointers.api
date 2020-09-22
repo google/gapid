@@ -41,7 +41,9 @@
 /////////////
 
 @extension("VK_KHR_variable_pointers")
+@structextends("VkPhysicalDeviceFeatures2","VkDeviceCreateInfo")
 class VkPhysicalDeviceVariablePointerFeaturesKHR {
+  @values(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES)
     VkStructureType    sType
     void*              pNext
     VkBool32           variablePointersStorageBuffer

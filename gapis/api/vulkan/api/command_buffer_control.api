@@ -385,6 +385,7 @@ sub void AddCommand(
 cmd VkResult vkAllocateCommandBuffers(
     VkDevice                           device,
     const VkCommandBufferAllocateInfo* pAllocateInfo,
+    @len("pAllocateInfo::commandBufferCount")
     VkCommandBuffer*                   pCommandBuffers) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pAllocateInfo == null { vkErrorNullPointer("VkCommandBufferAllocateInfo") }
@@ -428,6 +429,7 @@ cmd void vkFreeCommandBuffers(
     VkDevice               device,
     VkCommandPool          commandPool,
     u32                    commandBufferCount,
+    @len("commandBufferCount")
     const VkCommandBuffer* pCommandBuffers) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
@@ -655,6 +657,7 @@ sub void dovkCmdExecuteCommands(ref!vkCmdExecuteCommandsArgs cmds) {
 cmd void vkCmdExecuteCommands(
     VkCommandBuffer        commandBuffer,
     u32                    commandBufferCount,
+    @len("commandBufferCount")
     const VkCommandBuffer* pCommandBuffers) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)

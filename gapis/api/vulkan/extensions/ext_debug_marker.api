@@ -49,28 +49,34 @@
 
 @extension("VK_EXT_debug_marker")
 class VkDebugMarkerObjectNameInfoEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT)
   VkStructureType            sType
   const void*                pNext
   VkDebugReportObjectTypeEXT objectType
   u64                        object
+  @str
   const char*                pObjectName
 }
 
 @extension("VK_EXT_debug_marker")
 class VkDebugMarkerObjectTagInfoEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT)
   VkStructureType            sType
   const void*                pNext
   VkDebugReportObjectTypeEXT objectType
   u64                        object
   u64                        tagName
   size                       tagSize
+  @len_bytes("tagSize")
   const void*                pTag
 }
 
 @extension("VK_EXT_debug_marker")
 class VkDebugMarkerMarkerInfoEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT)
   VkStructureType  sType
   const void*      pNext
+  @str
   const char*      pMarkerName
   @readonly f32[4] color
 }

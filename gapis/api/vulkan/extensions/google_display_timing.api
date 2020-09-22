@@ -40,11 +40,13 @@
 @extension("VK_GOOGLE_display_timing") define VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME "VK_GOOGLE_display_timing"
 
 @extension("VK_GOOGLE_display_timing")
+@returnedonly
 class VkRefreshCycleDurationGOOGLE {
     u64         refreshDuration
 }
 
 @extension("VK_GOOGLE_display_timing")
+@returnedonly
 class VkPastPresentationTimingGOOGLE {
     u32         presentID
     u64         desiredPresentTime
@@ -60,10 +62,13 @@ class VkPresentTimeGOOGLE {
 }
 
 @extension("VK_GOOGLE_display_timing")
+@structextends("VkPresentInfoKHR")
 class VkPresentTimesInfoGOOGLE {
+  @values(VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE)
     VkStructureType               sType
     const void*                   pNext
     u32                           swapchainCount
+  @len("swapchainCount")
     const VkPresentTimeGOOGLE*    pTimes
 }
 
@@ -88,6 +93,7 @@ cmd VkResult vkGetPastPresentationTimingGOOGLE(
     VkDevice                                    device,
     VkSwapchainKHR                              swapchain,
     u32*                                        pPresentationTimingCount,
+    @len("pPresentationTimingCount")
     VkPastPresentationTimingGOOGLE*             pPresentationTimings) {
     if !(device in Devices) { vkErrorInvalidDevice(device) }
     if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }

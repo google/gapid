@@ -124,6 +124,7 @@ type VkFlags VkCompositeAlphaFlagsKHR
 /////////////
 
 @extension("VK_KHR_surface")
+@returnedonly
 class VkSurfaceCapabilitiesKHR {
   u32                           minImageCount
   u32                           maxImageCount
@@ -138,6 +139,7 @@ class VkSurfaceCapabilitiesKHR {
 }
 
 @extension("VK_KHR_surface")
+@returnedonly
 class VkSurfaceFormatKHR {
   VkFormat        format
   VkColorSpaceKHR colorSpace
@@ -202,6 +204,7 @@ cmd VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
     u32*                pSurfaceFormatCount,
+    @len("pSurfaceFormatCount")
     VkSurfaceFormatKHR* pSurfaceFormats) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if !(surface in Surfaces) { vkErrorInvalidSurface(surface) }
@@ -229,6 +232,7 @@ cmd VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkPhysicalDevice  physicalDevice,
     VkSurfaceKHR      surface,
     u32*              pPresentModeCount,
+    @len("pPresentModeCount")
     VkPresentModeKHR* pPresentModes) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if !(surface in Surfaces) { vkErrorInvalidSurface(surface) }

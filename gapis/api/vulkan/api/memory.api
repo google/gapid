@@ -207,6 +207,7 @@ cmd void vkUnmapMemory(
 cmd VkResult vkFlushMappedMemoryRanges(
     VkDevice                   device,
     u32                        memoryRangeCount
+    @len("memoryRangeCount")
     const VkMappedMemoryRange* pMemoryRanges) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   memoryRanges := pMemoryRanges[0:memoryRangeCount]
@@ -257,6 +258,7 @@ class MemoryRangeArray {
 cmd VkResult vkInvalidateMappedMemoryRanges(
     VkDevice                   device,
     u32                        memoryRangeCount,
+    @len("memoryRangeCount")
     const VkMappedMemoryRange* pMemoryRanges) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   ranges := new!MemoryRangeArray()

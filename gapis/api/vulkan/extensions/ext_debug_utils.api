@@ -93,34 +93,42 @@ type VkFlags VkDebugUtilsMessageTypeFlagsEXT
 
 @extension("VK_EXT_debug_utils")
 class VkDebugUtilsObjectNameInfoEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT)
   VkStructureType            sType
   const void*                pNext
   VkObjectType               objectType
   u64                        objectHandle
+  @str
   const char*                pObjectName
 }
 
 @extension("VK_EXT_debug_utils")
 class VkDebugUtilsObjectTagInfoEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT)
     VkStructureType          sType
     const void*              pNext
     VkObjectType             objectType
     u64                      objectHandle
     u64                      tagName
     size                     tagSize
+  @len_bytes("tagSize")
     const void*              pTag
 }
 
 @extension("VK_EXT_debug_utils")
 class VkDebugUtilsLabelEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT)
     VkStructureType         sType
     const void*             pNext
+  @str
     const char*             pLabelName
     f32[4]                  color
 }
 
 @extension("VK_EXT_debug_utils")
+@structextends("VkInstanceCreateInfo")
 class VkDebugUtilsMessengerCreateInfoEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT)
     VkStructureType                      sType
     const void*                          pNext
     VkDebugUtilsMessengerCreateFlagsEXT  flags
@@ -131,17 +139,23 @@ class VkDebugUtilsMessengerCreateInfoEXT {
 }
 
 class VkDebugUtilsMessengerCallbackDataEXT {
+  @values(VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT)
     VkStructureType                           sType
     const void*                               pNext
     VkDebugUtilsMessengerCallbackDataFlagsEXT flags
+  @str
     const char*                               pMessageIdName
     u32                                       messageIdNumber
+  @str
     const char*                               pMessage
     u32                                       queueLabelCount
+  @len("queueLabelCount")
     const VkDebugUtilsLabelEXT*               pQueueLabels
     u32                                       cmdBufLabelCount
+  @len("cmdBufLabelCount")
     const VkDebugUtilsLabelEXT*               pCmdBufLabels
     u32                                       objectCount
+  @len("objectCount")
     const VkDebugUtilsObjectNameInfoEXT*      pObjects
 }
 

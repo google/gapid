@@ -185,6 +185,7 @@ cmd void vkCmdCopyBuffer(
     VkBuffer            srcBuffer,
     VkBuffer            dstBuffer,
     u32                 regionCount,
+    @len("regionCount")
     const VkBufferCopy* pRegions) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -368,6 +369,7 @@ cmd void vkCmdCopyImage(
     VkImage            dstImage,
     VkImageLayout      dstImageLayout,
     u32                regionCount,
+    @len("regionCount")
     const VkImageCopy* pRegions) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -539,6 +541,7 @@ cmd void vkCmdBlitImage(
     VkImage            dstImage,
     VkImageLayout      dstImageLayout,
     u32                regionCount,
+    @len("regionCount")
     const VkImageBlit* pRegions,
     VkFilter           filter) {
   if !(commandBuffer in CommandBuffers) {
@@ -716,6 +719,7 @@ cmd void vkCmdCopyBufferToImage(
     VkImage                  dstImage,
     VkImageLayout            dstImageLayout,
     u32                      regionCount,
+    @len("regionCount")
     const VkBufferImageCopy* pRegions) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -769,6 +773,7 @@ cmd void vkCmdCopyImageToBuffer(
     VkImageLayout            srcImageLayout,
     VkBuffer                 dstBuffer,
     u32                      regionCount,
+    @len("regionCount")
     const VkBufferImageCopy* pRegions) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -829,6 +834,7 @@ cmd void vkCmdUpdateBuffer(
     VkBuffer        dstBuffer,
     VkDeviceSize    dstOffset,
     VkDeviceSize    dataSize,
+    @len_bytes("dataSize")
     const void*     pData) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -931,6 +937,7 @@ cmd void vkCmdClearColorImage(
     VkImageLayout                  imageLayout,
     const VkClearColorValue*       pColor,
     u32                            rangeCount,
+    @len("rangeCount")
     const VkImageSubresourceRange* pRanges) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -988,6 +995,7 @@ cmd void vkCmdClearDepthStencilImage(
     VkImageLayout                   imageLayout,
     const VkClearDepthStencilValue* pDepthStencil,
     u32                             rangeCount,
+    @len("rangeCount")
     const VkImageSubresourceRange*  pRanges) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -1036,8 +1044,10 @@ sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
 cmd void vkCmdClearAttachments(
     VkCommandBuffer          commandBuffer,
     u32                      attachmentCount,
+    @len("attachmentCount")
     const VkClearAttachment* pAttachments,
     u32                      rectCount,
+    @len("rectCount")
     const VkClearRect*       pRects) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
@@ -1107,6 +1117,7 @@ cmd void vkCmdResolveImage(
     VkImage               dstImage,
     VkImageLayout         dstImageLayout,
     u32                   regionCount,
+    @len("regionCount")
     const VkImageResolve* pRegions) {
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)

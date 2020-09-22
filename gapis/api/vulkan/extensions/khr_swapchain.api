@@ -70,6 +70,7 @@ type VkFlags VkSwapchainCreateFlagsKHR
 
 @extension("VK_KHR_swapchain")
 class VkSwapchainCreateInfoKHR {
+  @values(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
   VkStructureType               sType
   const void*                   pNext
   VkSwapchainCreateFlagsKHR     flags
@@ -82,6 +83,7 @@ class VkSwapchainCreateInfoKHR {
   VkImageUsageFlags             imageUsage
   VkSharingMode                 imageSharingMode
   u32                           queueFamilyIndexCount
+  @len("queueFamilyIndexCount")
   const u32*                    pQueueFamilyIndices
   VkSurfaceTransformFlagBitsKHR preTransform
   VkCompositeAlphaFlagBitsKHR   compositeAlpha
@@ -92,13 +94,18 @@ class VkSwapchainCreateInfoKHR {
 
 @extension("VK_KHR_swapchain")
 class VkPresentInfoKHR {
+  @values(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
   VkStructureType       sType
   const void*           pNext
   u32                   waitSemaphoreCount
+  @len("waitSemaphoreCount")
   const VkSemaphore*    pWaitSemaphores
   u32                   swapchainCount
+  @len("swapchainCount")
   const VkSwapchainKHR* pSwapchains
+  @len("swapchainCount")
   const u32*            pImageIndices
+  @len("swapchainCount")
   VkResult*             pResults
 }
 
@@ -228,6 +235,7 @@ cmd VkResult vkGetSwapchainImagesKHR(
     VkDevice       device,
     VkSwapchainKHR swapchain,
     u32*           pSwapchainImageCount,
+    @len("pSwapchainImageCount")
     VkImage*       pSwapchainImages) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }

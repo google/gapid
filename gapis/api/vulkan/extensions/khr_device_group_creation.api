@@ -65,6 +65,7 @@ cmd VkResult vkEnumeratePhysicalDeviceGroupsKHR(
 cmd VkResult vkEnumeratePhysicalDeviceGroups(
     VkInstance                                  instance,
     u32*                                        pPhysicalDeviceGroupCount,
+    @len("pPhysicalDeviceGroupCount")
     VkPhysicalDeviceGroupProperties*            pPhysicalDeviceGroupProperties) {
     EnumerateDeviceGroups(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties)
     return ?

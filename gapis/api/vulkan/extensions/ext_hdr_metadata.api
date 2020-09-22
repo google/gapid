@@ -51,6 +51,7 @@ class VkXYColorEXT {
 
 @extension("VK_EXT_hdr_metadata")
 class VkHdrMetadataEXT {
+  @values(VK_STRUCTURE_TYPE_HDR_METADATA_EXT)
     VkStructureType    sType
     const void*        pNext
     VkXYColorEXT       displayPrimaryRed
@@ -80,7 +81,9 @@ class ExtHDRMetadata {
 cmd void vkSetHdrMetadataEXT(
     VkDevice                device,
     u32                     swapchainCount,
+    @len("swapchainCount")
     const VkSwapchainKHR*   pSwapchains,
+    @len("swapchainCount")
     const VkHdrMetadataEXT* pMetadata) {
   swapchains := pSwapchains[0:swapchainCount]
   metadata := pMetadata[0:swapchainCount]
