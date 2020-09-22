@@ -49,7 +49,10 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) []*service.TypedMemor
 	sort.Slice(ranges, func(i, j int) bool {
 		return (ranges[i].Root < ranges[j].Root ||
 			ranges[i].Root == ranges[j].Root &&
-				ranges[i].Type.TypeIndex < ranges[j].Type.TypeIndex)
+				ranges[i].Type.TypeIndex < ranges[j].Type.TypeIndex ||
+			ranges[i].Root == ranges[j].Root &&
+				ranges[i].Type.TypeIndex == ranges[j].Type.TypeIndex &&
+				ranges[i].Range.Base < ranges[j].Range.Base)
 	})
 	newRanges := []*service.TypedMemoryRange{ranges[0]}
 	last := 0
@@ -63,6 +66,16 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) []*service.TypedMemor
 			end := newRanges[last].Range.Base + newRanges[last].Range.Size
 			if end < ranges[i].Range.Base+ranges[i].Range.Size {
 				end = ranges[i].Range.Base + ranges[i].Range.Size
+			}
+
+			if newRanges[last].Range.Size != end-start {
+				if sl, ok := newRanges[last].Value.Val.(*memory_box.Value_Slice); ok {
+					newRanges[last].Value = &memory_box.Value{
+						Val: &memory_box.Value_Slice{
+							Slice: &memory_box.Slice{
+								Values: append(sl.Slice.GetValues(), ranges[i].GetValue().GetSlice().GetValues()...),
+							}}}
+				}
 			}
 
 			newRanges[last].Range.Base = start
