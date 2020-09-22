@@ -16,6 +16,12 @@
 
 #include "spy.h"
 
+#include <cstdlib>
+#include <memory>
+#include <sstream>
+#include <thread>
+#include <vector>
+
 #include "connection_header.h"
 #include "connection_stream.h"
 #include "protocol.h"
@@ -36,11 +42,9 @@
 #include "gapis/capture/capture.pb.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
 
-#include <cstdlib>
-#include <memory>
-#include <sstream>
-#include <thread>
-#include <vector>
+#if TARGET_OS == GAPID_OS_WINDOWS
+#include <windows.h>
+#endif  //  TARGET_OS == GAPID_OS_WINDOWS
 
 #if TARGET_OS == GAPID_OS_ANDROID
 
@@ -69,6 +73,9 @@ namespace gapii {
 
 struct spy_creator {
   spy_creator() {
+#if TARGET_OS == GAPID_OS_WINDOWS
+    LoadLibraryA("libgapii");
+#endif
     GAPID_LOGGER_INIT(LOG_LEVEL_INFO, "gapii", nullptr);
     GAPID_INFO("Constructing spy...");
     m_spy.reset(new Spy());
