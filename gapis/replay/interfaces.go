@@ -89,7 +89,8 @@ type Profiler interface {
 		intent Intent,
 		mgr Manager,
 		hints *path.UsageHints,
-		traceOptions *service.TraceOptions) (*service.ProfilingData, error)
+		traceOptions *service.TraceOptions,
+		disabledCmds [][]uint64) (*service.ProfilingData, error)
 }
 
 // Issue represents a single replay issue reported by QueryIssues.

@@ -907,6 +907,11 @@ func (splitTransform *commandSplitter) Split(ctx context.Context, id api.SubCmdI
 	return nil
 }
 
+// Remove removes a draw call command from a command buffer.
+func (splitTransform *commandSplitter) Remove(ctx context.Context, id api.SubCmdIdx) error {
+	return fmt.Errorf("Drawcall removal not implemented")
+}
+
 type commandsplitTransformWriter struct {
 	state    *api.GlobalState
 	splitter *commandSplitter

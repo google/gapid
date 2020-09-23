@@ -124,7 +124,12 @@ func (a API) Replay(
 	case issuesRequest:
 		transforms = append(transforms, getIssuesTransforms(ctx, c, numOfInitialCmds, &rrs[0])...)
 	case profileRequest:
-		transforms = append(transforms, getProfileTransforms(ctx, numOfInitialCmds, device, &rrs[0])...)
+		profileTransforms, err := getProfileTransforms(ctx, numOfInitialCmds, device, &rrs[0])
+		if err != nil {
+			log.E(ctx, "%v Error: %v", replayType, err)
+			return err
+		}
+		transforms = append(transforms, profileTransforms...)
 	case timestampsRequest:
 		transforms = append(transforms, getTimestampTransforms(ctx, &rrs[0])...)
 	default:
@@ -254,7 +259,7 @@ func getIssuesTransforms(ctx context.Context,
 func getProfileTransforms(ctx context.Context,
 	numOfInitialCmds api.CmdID,
 	device *device.Instance,
-	requestAndResult *replay.RequestAndResult) []transform.Transform {
+	requestAndResult *replay.RequestAndResult) ([]transform.Transform, error) {
 	var layerName string
 	if device.GetConfiguration().GetPerfettoCapability().GetGpuProfiling().GetHasRenderStageProducerLayer() {
 		layerName = "VkRenderStagesProducer"
@@ -269,8 +274,19 @@ func getProfileTransforms(ctx context.Context,
 	transforms = append(transforms, newWaitForPerfetto(request.traceOptions, request.handler, request.buffer, numOfInitialCmds))
 	transforms = append(transforms, newProfilingLayers(layerName))
 	transforms = append(transforms, newMappingExporter(ctx, request.handleMappings))
+
+	var err error
+	if len(request.disabledCmds) > 0 {
+		splitterTransform := NewCommandSplitter(ctx)
+		for _, disabledCmdId := range request.disabledCmds {
+			subIdx := append(api.SubCmdIdx{}, disabledCmdId...)
+			err = splitterTransform.Remove(ctx, subIdx)
+		}
+		transforms = append(transforms, splitterTransform)
+	}
+
 	transforms = append(transforms, profileTransform)
-	return transforms
+	return transforms, err
 }
 
 func getTimestampTransforms(ctx context.Context,

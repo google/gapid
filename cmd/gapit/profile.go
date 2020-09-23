@@ -24,14 +24,18 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type profileVerb struct{ GpuProfileFlags }
 
 func init() {
-	verb := &profileVerb{GpuProfileFlags{}}
+	verb := &profileVerb{GpuProfileFlags{
+		DisabledCmds: []flags.U64Slice{},
+	}}
 	app.AddVerb(&app.Verb{
 		Name:      "profile",
 		ShortHelp: "Profile a replay to get GPU activity and counter data.",
@@ -65,9 +69,17 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
+	var commands []*path.Command
+	if len(verb.DisabledCmds) > 0 {
+		for _, cmd := range verb.DisabledCmds {
+			commands = append(commands, capturePath.Command(cmd[0], cmd[1:]...))
+		}
+	}
+
 	req := &service.GpuProfileRequest{
-		Capture: capturePath,
-		Device:  device,
+		Capture:          capturePath,
+		Device:           device,
+		DisabledCommands: commands,
 	}
 
 	res, err := client.GpuProfile(ctx, req)

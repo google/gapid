@@ -1291,6 +1291,7 @@ message GpuProfileResponse {
 message GpuProfileRequest {
   path.Capture capture = 1;
   path.Device device = 2;
+  repeated path.Command disabledCommands = 3;
 }
 
 message SplitCaptureRequest {
