@@ -383,6 +383,14 @@ func (m *manager) execute(
 	if Events.OnReplay != nil {
 		Events.OnReplay(d, intent, cfg)
 	}
+
+	// TODO(pmuetschard): Make the "state reconstruction" an actual event status and have gapir let us
+	// know how far along it is in executing it. Also, there is technically still some server work
+	// happening after this (e.g. storing the payload in the db), but that is fast and passing things
+	// down isn't worth it.
+	// This transitions the status from building to executing.
+	r.Progress(ctx, 0, 1, 0)
+
 	executeTimer.Time(func() {
 		err = Execute(
 			ctx,

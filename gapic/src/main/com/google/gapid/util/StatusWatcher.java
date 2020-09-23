@@ -231,8 +231,12 @@ public class StatusWatcher {
       }
       if (executing > 0) {
         sb.append(sep).append(executing).append(" Running");
-        if (totalInstr > 0) {
+        if (totalInstr > 0 && doneInstr > 0) {
           sb.append(" ").append((int)(((double)doneInstr / totalInstr) * 100)).append("%");
+        } else {
+          // TODO(pmuetschard): This assumes that 0 done means state reconstruction. See server side
+          // for more details.
+          sb.append(" - Initializing");
         }
       }
       return (sb.length() == 0) ? "Idle" : sb.toString();

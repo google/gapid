@@ -213,6 +213,7 @@ func (client *Client) BeginReplay(ctx context.Context, key *ReplayerKey, payload
 			},
 		},
 	}
+	log.I(ctx, "Sending begin request")
 	err = replayer.rpcStream.Send(&idReq)
 	if err != nil {
 		return log.Err(ctx, err, "Sending replay id")
