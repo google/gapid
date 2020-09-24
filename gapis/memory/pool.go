@@ -276,7 +276,7 @@ func (m poolSlice) Get(ctx context.Context, offset uint64, dst []byte) error {
 }
 
 func (m poolSlice) ResourceID(ctx context.Context) (id.ID, error) {
-	getBytes := func() ([]byte, error) {
+	getBytes := func(ctx context.Context) ([]byte, error) {
 		bytes := make([]byte, m.Size())
 		if err := m.Get(ctx, 0, bytes); err != nil {
 			return []byte{}, err

@@ -564,7 +564,7 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 		colorRawSize := uint64(format.Size(int(l.Width()), 1, 1))
 		levelDataResID := l.Data().ResourceID(ctx, s)
 
-		resolveColorData := func() ([]byte, error) {
+		resolveColorData := func(ctx context.Context) ([]byte, error) {
 			levelDataRaw, err := database.Resolve(ctx, levelDataResID)
 			if err != nil {
 				return []byte{}, log.Errf(ctx, err, "Resolve color image level data failed")
@@ -627,7 +627,7 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 			return nil
 		}
 
-		resolveDepthStencilData := func() ([]byte, error) {
+		resolveDepthStencilData := func(ctx context.Context) ([]byte, error) {
 			depthDataRaw, err := database.Resolve(ctx, depthDataResID)
 			if err != nil {
 				return []byte{}, log.Errf(ctx, err, "[Resolve depth image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)

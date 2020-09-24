@@ -159,8 +159,8 @@ func (d *memory) Store(ctx context.Context, val interface{}) (id.ID, error) {
 		panic(fmt.Errorf("Attemping to store nil in database"))
 	case []byte:
 		data, ty = val, blob
-	case func() ([]byte, error):
-		dat, err := val()
+	case func(ctx context.Context) ([]byte, error):
+		dat, err := val(ctx)
 		if err != nil {
 			return id.ID{}, err
 		}
@@ -288,11 +288,11 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 	}
 
 	if r.ty == blobFunc {
-		if x, ok := r.object.(func() ([]byte, error)); ok {
+		if x, ok := r.object.(func(ctx context.Context) ([]byte, error)); ok {
 			return func() ([]byte, error) {
 				d.mutex.Unlock()
 				defer d.mutex.Lock()
-				return x()
+				return x(ctx)
 			}()
 		}
 		return nil, fmt.Errorf("Resource '%v' of incorrect type", id)
