@@ -921,6 +921,9 @@ func rebuildVkCmdExecuteCommands(
 		if !GetState(s).CommandBuffers().Contains(buf) {
 			return nil, nil, fmt.Errorf("Cannot find CommandBuffer %v", buf)
 		}
+		if GetState(s).CommandBuffers().Get(buf).Recording() != RecordingState_COMPLETED {
+			return nil, nil, fmt.Errorf("vkCmdExecuteCommands: secondary command buffer %v has not completed its recording", buf)
+		}
 	}
 
 	commandBufferData, commandBufferCount := unpackMap(ctx, s, d.CommandBuffers())

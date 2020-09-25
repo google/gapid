@@ -268,14 +268,14 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 		sb.createQueryPool(s.QueryPools().Get(qp))
 	}
 
-	for _, qp := range s.CommandBuffers().Keys() {
-		sb.createCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_SECONDARY)
-		sb.recordCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_SECONDARY, sb.oldState)
+	for _, cb := range s.CommandBuffers().Keys() {
+		sb.createCommandBuffer(s.CommandBuffers().Get(cb), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+		sb.recordCommandBuffer(s.CommandBuffers().Get(cb), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_SECONDARY, sb.oldState)
 	}
 
-	for _, qp := range s.CommandBuffers().Keys() {
-		sb.createCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-		sb.recordCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY, sb.oldState)
+	for _, cb := range s.CommandBuffers().Keys() {
+		sb.createCommandBuffer(s.CommandBuffers().Get(cb), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+		sb.recordCommandBuffer(s.CommandBuffers().Get(cb), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY, sb.oldState)
 	}
 
 	sb.scratchRes.Free(sb)
