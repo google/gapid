@@ -24,55 +24,6 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-func (splitTransform *commandSplitter) MustAllocReadDataForSubmit(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
-	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
-	splitTransform.readMemoriesForSubmit = append(splitTransform.readMemoriesForSubmit, &allocateResult)
-	rng, id := allocateResult.Data()
-	g.Memory.ApplicationPool().Write(rng.Base, memory.Resource(id, rng.Size))
-	return allocateResult
-}
-
-func (splitTransform *commandSplitter) MustAllocReadDataForCmd(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
-	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
-	splitTransform.readMemoriesForCmd = append(splitTransform.readMemoriesForCmd, &allocateResult)
-	rng, id := allocateResult.Data()
-	g.Memory.ApplicationPool().Write(rng.Base, memory.Resource(id, rng.Size))
-	return allocateResult
-}
-
-func (splitTransform *commandSplitter) MustAllocWriteDataForCmd(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
-	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
-	splitTransform.writeMemoriesForCmd = append(splitTransform.writeMemoriesForCmd, &allocateResult)
-	return allocateResult
-}
-
-func (splitter *commandSplitter) writeCommand(cmd api.Cmd) error {
-	return splitter.stateMutator([]api.Cmd{cmd})
-}
-
-func (splitter *commandSplitter) writeCommands(cmds []api.Cmd) error {
-	for _, cmd := range cmds {
-		if err := splitter.writeCommand(cmd); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *commandSplitter) observeAndWriteCommand(cmd api.Cmd) error {
-	for i := range s.readMemoriesForCmd {
-		cmd.Extras().GetOrAppendObservations().AddRead(s.readMemoriesForCmd[i].Data())
-	}
-	for i := range s.writeMemoriesForCmd {
-		cmd.Extras().GetOrAppendObservations().AddWrite(s.writeMemoriesForCmd[i].Data())
-	}
-	s.readMemoriesForCmd = []*api.AllocResult{}
-	s.writeMemoriesForCmd = []*api.AllocResult{}
-
-	return s.writeCommand(cmd)
-}
-
 // commandSplitter is a transform that will re-write command-buffers and insert replacement
 // commands at the correct locations in the stream for downstream transforms to replace.
 // See: https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#renderpass
@@ -115,6 +66,21 @@ func NewCommandSplitter(ctx context.Context) *commandSplitter {
 		pendingCommandBuffers:  make([]VkCommandBuffer, 0),
 		stateMutator:           nil,
 	}
+}
+
+// Add adds the command with identifier id to the set of commands that will be split.
+func (splitTransform *commandSplitter) Split(ctx context.Context, id api.SubCmdIdx) error {
+	splitTransform.requestsSubIndex = append(splitTransform.requestsSubIndex, append(api.SubCmdIdx{}, id...))
+	if splitTransform.lastRequest.LessThan(id) {
+		splitTransform.lastRequest = append(api.SubCmdIdx{}, id...)
+	}
+
+	return nil
+}
+
+// Remove removes a draw call command from a command buffer.
+func (splitTransform *commandSplitter) Remove(ctx context.Context, id api.SubCmdIdx) error {
+	return fmt.Errorf("Drawcall removal not implemented")
 }
 
 func (splitTransform *commandSplitter) RequiresAccurateState() bool {
@@ -325,7 +291,7 @@ func (splitTransform *commandSplitter) rewriteQueueSubmit(ctx context.Context, i
 		}
 	}
 	newSubmit.SetSubmitCount(uint32(len(newSubmitInfos)))
-	newSubmit.SetPSubmits(NewVkSubmitInfoᶜᵖ(splitTransform.MustAllocReadDataForSubmit(ctx, inputState, newSubmitInfos).Ptr()))
+	newSubmit.SetPSubmits(NewVkSubmitInfoᶜᵖ(splitTransform.mustAllocReadDataForSubmit(ctx, inputState, newSubmitInfos).Ptr()))
 
 	for x := range splitTransform.readMemoriesForSubmit {
 		newSubmit.AddRead(splitTransform.readMemoriesForSubmit[x].Data())
@@ -410,7 +376,7 @@ func (splitTransform *commandSplitter) splitSubmit(ctx context.Context, submit V
 		}
 	}
 	splitTransform.pendingCommandBuffers = append(splitTransform.pendingCommandBuffers, newCommandBuffers...)
-	newCbs := splitTransform.MustAllocReadDataForSubmit(ctx, inputState, newCommandBuffers)
+	newCbs := splitTransform.mustAllocReadDataForSubmit(ctx, inputState, newCommandBuffers)
 	newSubmitInfo.SetPCommandBuffers(NewVkCommandBufferᶜᵖ(newCbs.Ptr()))
 	newSubmitInfo.SetCommandBufferCount(uint32(len(newCommandBuffers)))
 	newSubmitInfo.SetSignalSemaphoreCount(submit.SignalSemaphoreCount())
@@ -451,7 +417,7 @@ func (splitTransform *commandSplitter) splitAfterSubmit(ctx context.Context, id 
 		NewVkSemaphoreᶜᵖ(memory.Nullptr),              // pWaitSemaphores
 		NewVkPipelineStageFlagsᶜᵖ(memory.Nullptr), // pWaitDstStageMask
 		1, // commandBufferCount
-		NewVkCommandBufferᶜᵖ(splitTransform.MustAllocReadDataForSubmit(ctx, inputState, commandBuffer).Ptr()),
+		NewVkCommandBufferᶜᵖ(splitTransform.mustAllocReadDataForSubmit(ctx, inputState, commandBuffer).Ptr()),
 		0,                                // signalSemaphoreCount
 		NewVkSemaphoreᶜᵖ(memory.Nullptr), // pSignalSemaphores
 	)
@@ -834,8 +800,8 @@ func (splitTransform *commandSplitter) getStartedCommandBuffer(ctx context.Conte
 
 	allocateCmd := cb.VkAllocateCommandBuffers(
 		queue.Device(),
-		splitTransform.MustAllocReadDataForCmd(ctx, inputState, commandBufferAllocateInfo).Ptr(),
-		splitTransform.MustAllocWriteDataForCmd(ctx, inputState, commandBufferID).Ptr(),
+		splitTransform.mustAllocReadDataForCmd(ctx, inputState, commandBufferAllocateInfo).Ptr(),
+		splitTransform.mustAllocWriteDataForCmd(ctx, inputState, commandBufferID).Ptr(),
 		VkResult_VK_SUCCESS,
 	)
 
@@ -852,7 +818,7 @@ func (splitTransform *commandSplitter) getStartedCommandBuffer(ctx context.Conte
 	)
 	beginCommandBufferCmd := cb.VkBeginCommandBuffer(
 		commandBufferID,
-		splitTransform.MustAllocReadDataForCmd(ctx, inputState, beginInfo).Ptr(),
+		splitTransform.mustAllocReadDataForCmd(ctx, inputState, beginInfo).Ptr(),
 		VkResult_VK_SUCCESS,
 	)
 
@@ -884,9 +850,9 @@ func (splitTransform *commandSplitter) getCommandPool(ctx context.Context, queue
 
 	newCmd := cb.VkCreateCommandPool(
 		queue.Device(),
-		splitTransform.MustAllocReadDataForCmd(ctx, inputState, poolCreateInfo).Ptr(),
+		splitTransform.mustAllocReadDataForCmd(ctx, inputState, poolCreateInfo).Ptr(),
 		memory.Nullptr,
-		splitTransform.MustAllocWriteDataForCmd(ctx, inputState, splitTransform.pool).Ptr(),
+		splitTransform.mustAllocWriteDataForCmd(ctx, inputState, splitTransform.pool).Ptr(),
 		VkResult_VK_SUCCESS,
 	)
 
@@ -897,19 +863,53 @@ func (splitTransform *commandSplitter) getCommandPool(ctx context.Context, queue
 	return splitTransform.pool, nil
 }
 
-// Add adds the command with identifier id to the set of commands that will be split.
-func (splitTransform *commandSplitter) Split(ctx context.Context, id api.SubCmdIdx) error {
-	splitTransform.requestsSubIndex = append(splitTransform.requestsSubIndex, append(api.SubCmdIdx{}, id...))
-	if splitTransform.lastRequest.LessThan(id) {
-		splitTransform.lastRequest = append(api.SubCmdIdx{}, id...)
+func (splitTransform *commandSplitter) mustAllocReadDataForSubmit(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
+	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
+	splitTransform.readMemoriesForSubmit = append(splitTransform.readMemoriesForSubmit, &allocateResult)
+	rng, id := allocateResult.Data()
+	g.Memory.ApplicationPool().Write(rng.Base, memory.Resource(id, rng.Size))
+	return allocateResult
+}
+
+func (splitTransform *commandSplitter) mustAllocReadDataForCmd(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
+	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
+	splitTransform.readMemoriesForCmd = append(splitTransform.readMemoriesForCmd, &allocateResult)
+	rng, id := allocateResult.Data()
+	g.Memory.ApplicationPool().Write(rng.Base, memory.Resource(id, rng.Size))
+	return allocateResult
+}
+
+func (splitTransform *commandSplitter) mustAllocWriteDataForCmd(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
+	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
+	splitTransform.writeMemoriesForCmd = append(splitTransform.writeMemoriesForCmd, &allocateResult)
+	return allocateResult
+}
+
+func (splitter *commandSplitter) writeCommand(cmd api.Cmd) error {
+	return splitter.stateMutator([]api.Cmd{cmd})
+}
+
+func (splitter *commandSplitter) writeCommands(cmds []api.Cmd) error {
+	for _, cmd := range cmds {
+		if err := splitter.writeCommand(cmd); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-// Remove removes a draw call command from a command buffer.
-func (splitTransform *commandSplitter) Remove(ctx context.Context, id api.SubCmdIdx) error {
-	return fmt.Errorf("Drawcall removal not implemented")
+func (s *commandSplitter) observeAndWriteCommand(cmd api.Cmd) error {
+	for i := range s.readMemoriesForCmd {
+		cmd.Extras().GetOrAppendObservations().AddRead(s.readMemoriesForCmd[i].Data())
+	}
+	for i := range s.writeMemoriesForCmd {
+		cmd.Extras().GetOrAppendObservations().AddWrite(s.writeMemoriesForCmd[i].Data())
+	}
+	s.readMemoriesForCmd = []*api.AllocResult{}
+	s.writeMemoriesForCmd = []*api.AllocResult{}
+
+	return s.writeCommand(cmd)
 }
 
 type commandsplitTransformWriter struct {
