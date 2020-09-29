@@ -415,7 +415,7 @@ func (p prioritizedDevices) Less(i, j int) bool {
 
 func (p prioritizedDevices) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
-func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
+func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, []bool, []*stringtable.Msg, error) {
 	ctx = status.Start(ctx, "RPC GetDevicesForReplay")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GetDevicesForReplay")

@@ -98,12 +98,16 @@ type Service interface {
 	GetDevices(ctx context.Context) ([]*path.Device, error)
 
 	// GetDevicesForReplay returns the list of replay devices available to the
-	// server that are capable of replaying the given capture.
+	// server, and two matching lists to indicate the device compatibility to
+	// replay the capture, and a message to clarify device incompatibilites.
+	// The devices are sorted: the ones capable of replaying the given capture
+	// always come first, followed by the ones that are not compatible.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.
-	// If both connected Android and Local replay devices are found,
-	// the local Android devices will be returned first.
-	GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error)
+	// Among the compatible and incompatible devices sub-lists, if both connected
+	// Android and Local replay devices are found, the local Android devices will
+	// be returned first.
+	GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, []bool, []*stringtable.Msg, error)
 
 	// Get resolves and returns the object, value or memory at the path p.
 	Get(ctx context.Context, p *path.Any, c *path.ResolveConfig) (interface{}, error)

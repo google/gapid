@@ -50,6 +50,9 @@ message Commands {
 }
 message Devices {
   repeated path.Device list = 1;
+  // compatibilities and reasons are set only in GetDevicesForReplay responses
+  repeated bool compatibilities = 2;
+  repeated stringtable.Msg reasons = 3;
 }
 message Events {
   repeated Event list = 1;

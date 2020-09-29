@@ -17,19 +17,20 @@ package com.google.gapid.views;
 
 import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.MoreFutures.logFailure;
-import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
+import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
-import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static java.util.logging.Level.WARNING;
 
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Devices.DeviceValidationResult;
+import com.google.gapid.models.Devices.ReplayDeviceInfo;
 import com.google.gapid.models.Models;
+import com.google.gapid.models.Strings;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.rpc.Rpc;
@@ -46,10 +47,9 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -57,12 +57,12 @@ import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -147,11 +147,12 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
     private final Widgets widgets;
 
     private Label noCompatibleDeviceFound;
-    private ComboViewer deviceCombo;
-    private LoadingIndicator.Widget deviceLoader;
     private LoadingIndicator.Widget validationStatusLoader;
     private Link validationStatusText;
     private boolean validationPassed;
+    private TableViewer compatibleDeviceTable;
+    private TableViewer incompatibleDeviceTable;
+    private Button refreshDeviceButton;
 
     private final SingleInFlight rpcController = new SingleInFlight();
 
@@ -173,54 +174,91 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
 
       // Recap capture info
       createLabel(composite, "Capture name: " + models.capture.getName());
-      Instance dev = models.capture.getData().capture.getDevice();
+      Instance captureDevice = models.capture.getData().capture.getDevice();
       createLabel(composite,
-          "Capture device: " + Devices.getLabel(dev) + " (Vulkan driver version: " + Devices.getVulkanDriverVersions(dev) + ")");
+          "Capture device: " + Devices.getLabel(captureDevice) + " (Vulkan driver version: " + Devices.getVulkanDriverVersions(captureDevice) + ")");
 
       // Warning when no compatible device found
       noCompatibleDeviceFound = createLabel(composite, Messages.SELECT_DEVICE_NO_COMPATIBLE_FOUND);
       noCompatibleDeviceFound.setForeground(theme.deviceNotFound());
 
-      // Mirror the device combo from TracerDialog
-      Group mainGroup =
-          withLayoutData(createGroup(composite, "Select replay device", new GridLayout(3, false)),
-              new GridData(GridData.FILL_HORIZONTAL));
-      createLabel(mainGroup, "Device:");
-      deviceCombo = createDropDownViewer(mainGroup);
-      deviceCombo.setContentProvider(ArrayContentProvider.getInstance());
-      deviceCombo.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-      deviceCombo.setLabelProvider(new LabelProvider() {
+      // Replay device tables
+
+      // Put compatible device in a grid layout to help with aligning the validation widgets
+      Group compatibleGroup = withLayoutData(
+          createGroup(composite, "Compatible devices:", new GridLayout(2, false)),
+          new GridData(GridData.FILL_HORIZONTAL));
+
+      compatibleDeviceTable = createTableViewer(compatibleGroup, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
+      GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+      gridData.horizontalSpan = 2;
+      compatibleDeviceTable.getTable().setLayoutData(gridData);
+      compatibleDeviceTable.setContentProvider(ArrayContentProvider.getInstance());
+      compatibleDeviceTable.setLabelProvider(new LabelProvider() {
         @Override
         public String getText(Object element) {
           return Devices.getLabel(((Device.Instance) element));
         }
       });
+      Widgets.createTableColumn(compatibleDeviceTable,
+          "Name", dev -> ((Device.Instance)dev).getName());
+      Widgets.createTableColumn(compatibleDeviceTable,
+          "Serial", dev -> ((Device.Instance)dev).getSerial());
+      Widgets.createTableColumn(compatibleDeviceTable,
+          "GPU", dev -> ((Device.Instance)dev).getConfiguration().getHardware().getGPU().getName());
+      Widgets.createTableColumn(compatibleDeviceTable,
+          "Driver version", dev -> Devices.GetDriverVersion((Device.Instance)dev));
+      Widgets.packColumns(compatibleDeviceTable.getTable());
 
-      deviceLoader = widgets.loading.createWidgetWithRefresh(mainGroup);
-      deviceLoader
-          .setLayoutData(withIndents(new GridData(SWT.RIGHT, SWT.CENTER, false, false), 5, 0));
-      // TODO: Make this a true button to allow keyboard use.
-      deviceLoader.addListener(SWT.MouseDown, e -> {
-        deviceLoader.startLoading();
-        // By waiting a tiny bit, the icon will change to the loading indicator, giving the user
-        // feedback that something is happening, in case the refresh is really quick.
-        logFailure(LOG,
-            Scheduler.EXECUTOR.schedule(
-                () -> models.devices.loadReplayDevices(models.capture.getData().path), 300,
-                TimeUnit.MILLISECONDS));
+      compatibleDeviceTable.getTable().addListener(SWT.Selection, e -> {
+        runValidationCheck(getSelectedDevice());
       });
 
-      validationStatusLoader = widgets.loading.createWidgetWithImage(mainGroup,
+      // Validation widgets
+      validationStatusLoader = widgets.loading.createWidgetWithImage(compatibleGroup,
           widgets.theme.check(), widgets.theme.error());
       validationStatusLoader
-          .setLayoutData(withIndents(new GridData(SWT.LEFT, SWT.BOTTOM, false, false), 0, 0));
-      validationStatusText = createLink(mainGroup, "", e -> {
+          .setLayoutData(new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
+      validationStatusText = createLink(compatibleGroup, "", e -> {
         Program.launch(URLs.DEVICE_COMPATIBILITY_URL);
       });
       validationStatusText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+      validationStatusLoader.setVisible(false);
+      validationStatusText.setVisible(false);
 
-      deviceCombo.getCombo().addListener(SWT.Selection, e -> {
-        runValidationCheck(getSelectedDevice());
+      // Use a group to keep the same look and feel for incompatible devices
+      Group incompatibleGroup = withLayoutData(
+          createGroup(composite, "Incompatible devices:", new GridLayout(1, false)),
+          new GridData(GridData.FILL_HORIZONTAL));
+      incompatibleDeviceTable = createTableViewer(incompatibleGroup, SWT.BORDER | SWT.SINGLE);
+      incompatibleDeviceTable.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      incompatibleDeviceTable.setContentProvider(ArrayContentProvider.getInstance());
+      incompatibleDeviceTable.setLabelProvider(new LabelProvider() {
+        @Override
+        public String getText(Object element) {
+          return Devices.getLabel(((ReplayDeviceInfo) element).instance);
+        }
+      });
+      Widgets.createTableColumn(incompatibleDeviceTable, "Name", dev -> ((ReplayDeviceInfo)dev).instance.getName());
+      Widgets.createTableColumn(incompatibleDeviceTable, "Serial", dev -> ((ReplayDeviceInfo)dev).instance.getSerial());
+      Widgets.createTableColumn(incompatibleDeviceTable, "GPU", dev -> ((ReplayDeviceInfo)dev).instance.getConfiguration().getHardware().getGPU().getName());
+      Widgets.createTableColumn(incompatibleDeviceTable, "Driver version", dev -> Devices.GetDriverVersion(((ReplayDeviceInfo)dev).instance));
+      Widgets.createTableColumn(incompatibleDeviceTable, "Incompatibility", dev -> Strings.getMessage(((ReplayDeviceInfo)dev).reason));
+      Widgets.packColumns(incompatibleDeviceTable.getTable());
+      incompatibleDeviceTable.getTable().setBackground(theme.invalidDeviceBackground());
+
+      // Refresh button
+      refreshDeviceButton = Widgets.createButton(composite, Messages.SELECT_DEVICE_REFRESH_TABLE,
+          e -> {
+            refreshDeviceButton.setText(Messages.SELECT_DEVICE_TABLE_REFRESHING);
+            refreshDeviceButton.setEnabled(false);
+            logFailure(LOG,
+                // Wait a tiny bit to have the button showing the "Refreshing devices" message,
+                // giving the user feedback that something is happening.
+                Scheduler.EXECUTOR.schedule(
+                    () -> models.devices.loadReplayDevices(models.capture.getData().path),
+                    300, TimeUnit.MILLISECONDS));
       });
 
       refresh();
@@ -248,18 +286,17 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       noCompatibleDeviceFound.setVisible(noReplayDevices);
       noCompatibleDeviceFound.requestLayout();
 
-      deviceCombo.setInput(models.devices.getReplayDevices());
-      if (noReplayDevices) {
-        deviceCombo.setSelection(null);
-      } else {
-        deviceCombo.setSelection(new StructuredSelection(models.devices.getReplayDevices().get(0)));
-      }
-      deviceCombo.getCombo().notifyListeners(SWT.Selection, new Event());
-      deviceLoader.stopLoading();
+      List<Device.Instance> compatibleDevices = models.devices.getReplayDevices();
+      compatibleDeviceTable.setInput(compatibleDevices);
+      List<ReplayDeviceInfo> incompatibleDevices = models.devices.getIncompatibleReplayDevices();
+      incompatibleDeviceTable.setInput(incompatibleDevices);
+
+      refreshDeviceButton.setText(Messages.SELECT_DEVICE_REFRESH_TABLE);
+      refreshDeviceButton.setEnabled(true);
     }
 
     private Device.Instance getSelectedDevice() {
-      IStructuredSelection sel = deviceCombo.getStructuredSelection();
+      IStructuredSelection sel = compatibleDeviceTable.getStructuredSelection();
       return sel.isEmpty() ? null : (Device.Instance) sel.getFirstElement();
     }
 

@@ -60,6 +60,7 @@ go_library(
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
+        "//gapis/stringtable:go_default_library",
         "//gapis/trace:go_default_library",
         "//tools/build/third_party/perfetto:config_go_proto",
         "@com_github_golang_protobuf//proto:go_default_library",

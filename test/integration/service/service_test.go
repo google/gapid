@@ -158,7 +158,9 @@ func TestGetDevicesForReplay(t *testing.T) {
 	capture, err := server.ImportCapture(ctx, "test-capture", testCaptureData)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 	assert.For(ctx, "capture").That(capture).IsNotNil()
-	got, err := server.GetDevicesForReplay(ctx, capture)
+	got, compatibilites, reasons, err := server.GetDevicesForReplay(ctx, capture)
+	assert.For(ctx, "compatibilities").ThatInteger(len(got)).Equals(len(compatibilites))
+	assert.For(ctx, "reasons").ThatInteger(len(got)).Equals(len(reasons))
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 	assert.For(ctx, "got").ThatSlice(got).IsNotEmpty()
 }

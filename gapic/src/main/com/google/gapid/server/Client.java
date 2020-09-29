@@ -43,7 +43,6 @@ import com.google.gapid.proto.service.Service.SaveCaptureRequest;
 import com.google.gapid.proto.service.Service.ServerInfo;
 import com.google.gapid.proto.service.Service.SetRequest;
 import com.google.gapid.proto.service.Service.Value;
-import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.rpc.RpcException;
@@ -183,14 +182,13 @@ public class Client {
                 .getListList())));
   }
 
-  public ListenableFuture<List<Path.Device>> getDevicesForReplay(Path.Capture capture) {
+  public ListenableFuture<Service.Devices> getDevicesForReplay(Path.Capture capture) {
     return call(() -> String.format("RPC->getDevicesForReplay(%s)", shortDebugString(capture)),
         stack -> MoreFutures.transformAsync(
             client.getDevicesForReplay(GetDevicesForReplayRequest.newBuilder()
               .setCapture(capture)
               .build()),
-            in -> immediateFuture(throwIfError(in.getDevices(), in.getError(), stack)
-                .getListList())));
+            in -> immediateFuture(throwIfError(in.getDevices(), in.getError(), stack))));
   }
 
   public ListenableFuture<Void> postEvent(Service.ClientInteraction interaction) {

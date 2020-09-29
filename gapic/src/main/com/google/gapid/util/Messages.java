@@ -97,6 +97,7 @@ public interface Messages {
       "Select Replay Device";
   public static final String SELECT_DEVICE_NO_COMPATIBLE_FOUND =
       "No compatible replay device found. Please plug in a compatible device and refresh the list.";
+  public static final String SELECT_DEVICE_REFRESH_TABLE = "Refresh device tables";
+  public static final String SELECT_DEVICE_TABLE_REFRESHING = "Refreshing devices...";
   public static final String VALIDATION_FAILED_LANDING_PAGE = "<a>Why is my device not supported?</a>";
-
 }

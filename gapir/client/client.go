@@ -38,7 +38,7 @@ const (
 	// line arguments when launching GAPIR. The property must be of type []string.
 	LaunchArgsKey = "gapir-launch-args"
 	// gRPCConnectTimeout is the time allowed to establish a gRPC connection.
-	gRPCConnectTimeout = time.Second * 10
+	gRPCConnectTimeout = time.Second * 30
 	// heartbeatInterval is the delay between heartbeat pings.
 	heartbeatInterval = time.Second * 2
 )

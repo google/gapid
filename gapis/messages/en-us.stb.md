@@ -230,3 +230,31 @@ The file was created by an old version of AGI and cannot be read.
 # ERR_FILE_OPEN_GL
 
 GLES traces are not supported in AGI. Please use GAPID instead.
+
+# REPLAY_COMPATIBILITY_COMPATIBLE
+
+Device can replay the capture.
+
+# REPLAY_COMPATIBILITY_INCOMPATIBLE_OS
+
+Device OS ({{device_os}}) is different from the one of the capture device ({{capture_os}}).
+
+# REPLAY_COMPATIBILITY_INCOMPATIBLE_ARCHITECTURE
+
+Device does not support {{trace_arch}} ABI architecture.
+
+# REPLAY_COMPATIBILITY_INCOMPATIBLE_GPU
+
+Device GPU ({{device_gpu}}) is different from the one of the capture device ({{capture_gpu}}).
+
+# REPLAY_COMPATIBILITY_INCOMPATIBLE_DRIVER_VERSION
+
+Device GPU driver version ({{device_driver_version}}) is different from the one of the capture device ({{capture_driver_version}}).
+
+# REPLAY_COMPATIBILITY_INCOMPATIBLE_API_VERSION
+
+Device graphics API version ({{device_api_version}}) is different from the one of the capture device ({{capture_api_version}}).
+
+# REPLAY_COMPATIBILITY_INCOMPATIBLE_API
+
+Device does not support the graphics API of the trace.

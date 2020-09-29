@@ -31,8 +31,8 @@ import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.device.Device.VulkanDriver;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Value;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
@@ -48,6 +48,8 @@ import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -66,6 +68,7 @@ public class Devices {
   private final Client client;
   private final DeviceValidationCache validationCache;
   private List<Device.Instance> replayDevices;
+  private List<ReplayDeviceInfo> incompatibleReplayDevices;
   private Device.Instance selectedReplayDevice;
   private List<DeviceCaptureInfo> devices;
 
@@ -99,21 +102,43 @@ public class Devices {
   protected void resetReplayDevice() {
     replayDevices = null;
     selectedReplayDevice = null;
+    incompatibleReplayDevices = null;
+  }
+
+  public static String GetDriverVersion(Device.Instance device) {
+    Device.VulkanDriver vkDriver = device.getConfiguration().getDrivers().getVulkan();
+    if (vkDriver.getPhysicalDevicesCount() <= 0) {
+      return "no physical device found";
+    }
+    return Integer.toUnsignedString(vkDriver.getPhysicalDevices(0).getDriverVersion());
   }
 
   public void loadReplayDevices(Path.Capture capturePath) {
     rpcController.start().listen(MoreFutures.transformAsync(client.getDevicesForReplay(capturePath),
-        devs -> Futures.allAsList(devs.stream()
-            .map(dev -> client.get(Paths.device(dev), dev))
-            .collect(toList()))),
-        new UiErrorCallback<List<Service.Value>, List<Device.Instance>, Void>(shell, LOG) {
+          devs -> {
+            ListenableFuture<List<Device.Instance>> allDevices = MoreFutures.transform(
+                Futures.allAsList(devs.getListList().stream()
+                .map(d -> client.get(Paths.device(d), d))
+                .collect(toList())),
+            l -> l.stream().map(v -> v.getDevice()).collect(toList()));
+
+            List<Boolean> compatibilities = devs.getCompatibilitiesList();
+            List<Stringtable.Msg> reasons = devs.getReasonsList();
+
+            return MoreFutures.transform(allDevices, instances -> {
+              List<ReplayDeviceInfo> replayDevs = Lists.newArrayList();
+              for (int i = 0; i < instances.size(); ++i) {
+                replayDevs.add(new ReplayDeviceInfo(instances.get(i), compatibilities.get(i), reasons.get(i)));
+              }
+              return replayDevs;
+            });
+          }),
+
+        new UiErrorCallback<List<ReplayDeviceInfo>, List<ReplayDeviceInfo>, Void>(shell, LOG) {
       @Override
-      protected ResultOrError<List<Device.Instance>, Void> onRpcThread(Result<List<Value>> result) {
+      protected ResultOrError<List<ReplayDeviceInfo>, Void> onRpcThread(Result<List<ReplayDeviceInfo>> result) {
         try {
-          List<Device.Instance> devs = result.get().stream()
-              .map(v -> v.getDevice())
-              .collect(toList());
-          return success(devs);
+          return success(result.get());
         } catch (RpcException | ExecutionException e) {
           analytics.reportException(e);
           throttleLogRpcError(LOG, "LoadData error", e);
@@ -122,7 +147,7 @@ public class Devices {
       }
 
       @Override
-      protected void onUiThreadSuccess(List<Instance> devs) {
+      protected void onUiThreadSuccess(List<ReplayDeviceInfo> devs) {
         updateReplayDevices(devs);
       }
 
@@ -133,8 +158,21 @@ public class Devices {
     });
   }
 
-  protected void updateReplayDevices(List<Device.Instance> devs) {
-    replayDevices = devs;
+  protected void updateReplayDevices(List<ReplayDeviceInfo> devs) {
+    if (devs == null) {
+      replayDevices = null;
+      incompatibleReplayDevices = null;
+    } else {
+      replayDevices = Lists.newArrayList();
+      incompatibleReplayDevices = Lists.newArrayList();
+      for (ReplayDeviceInfo d: devs) {
+        if (d.compatible) {
+          replayDevices.add(d.instance);
+        } else {
+          incompatibleReplayDevices.add(d);
+        }
+      }
+    }
     listeners.fire().onReplayDevicesLoaded();
   }
 
@@ -148,6 +186,10 @@ public class Devices {
 
   public Device.Instance getSelectedReplayDevice() {
     return selectedReplayDevice;
+  }
+
+  public List<ReplayDeviceInfo> getIncompatibleReplayDevices() {
+    return incompatibleReplayDevices;
   }
 
   public Path.Device getReplayDevicePath() {
@@ -230,8 +272,10 @@ public class Devices {
   }
 
   public List<Device.Instance> getAllDevices() {
-    return (devices == null) ? null :
-      devices.stream().map(info -> info.device).collect(toList());
+    if (devices != null) {
+      return devices.stream().map(info -> info.device).collect(toList());
+    }
+    return Collections.emptyList();
   }
 
   public List<DeviceCaptureInfo> getCaptureDevices() {
@@ -326,6 +370,20 @@ public class Devices {
     public default void onCaptureDevicesLoaded() { /* empty */ }
   }
 
+  /**
+   * Encapsulates information about a replay device.
+   */
+  public static class ReplayDeviceInfo {
+    public final Device.Instance instance;
+    public final Boolean compatible;
+    public final Stringtable.Msg reason;
+
+    public ReplayDeviceInfo(Instance instance, Boolean compatible, Stringtable.Msg reason) {
+      this.instance = instance;
+      this.compatible = compatible;
+      this.reason = reason;
+    }
+  }
 
   /**
    * Encapsulates information about a Device and what trace options
@@ -372,6 +430,18 @@ public class Devices {
     public DeviceValidationResult(Service.ValidateDeviceResponse r) {
       this(r.getError(), !r.hasError(), false);
     }
+
+    @Override
+    public String toString() {
+      if (this.skipped) {
+        return "Skipped";
+      } else if (this.passed) {
+        return "Passed";
+      } else {
+        return "Failed";
+      }
+    }
+
   }
 
   private static class DeviceValidationCache {

@@ -28,14 +28,19 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/stringtable"
 )
 
-// ForReplay returns a priority-sorted path list of devices that are capable of
-// replaying the capture c.
-func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
+// ForReplay returns three lists of the same size, at each index:
+//  - path.Device references a device
+//  - a bool indicates if that device is compatible (can replay) the capture
+//  - a stringtable.Msg gives the reason for a device to not be compatible
+// These lists are sorted such that compatible devices are returned at the front
+// of the list, in the preferred device order.
+func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, []bool, []*stringtable.Msg, error) {
 	c, err := capture.ResolveGraphicsFromPath(ctx, p)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	apis := make([]replay.Support, 0, len(c.APIs))
@@ -47,7 +52,8 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 	}
 
 	all := Sorted(ctx)
-	filtered := make([]prioritizedDevice, 0, len(all))
+	compatibleDevices := []prioritizedDevice{}
+	incompatibleDevices := []prioritizedDevice{}
 	for _, device := range all {
 		instance := device.Instance()
 		p := uint32(1)
@@ -57,12 +63,14 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 				"api":    fmt.Sprintf("%T", api),
 				"device": instance.Name,
 			}.Bind(ctx)
-			priority := api.GetReplayPriority(ctx, instance, c.Header)
+			priority, reason := api.GetReplayPriority(ctx, instance, c.Header)
 			p = p * priority
+			prioDev := prioritizedDevice{device, p, reason}
 			if priority != 0 {
 				log.D(ctx, "Compatible %d", priority)
+				compatibleDevices = append(compatibleDevices, prioDev)
 			} else {
-				log.D(ctx, "Incompatible")
+				incompatibleDevices = append(incompatibleDevices, prioDev)
 			}
 		}
 		if p > 0 {
@@ -70,17 +78,27 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 				"device": instance,
 			}.Bind(ctx)
 			log.D(ctx, "Priority %d", p)
-			filtered = append(filtered, prioritizedDevice{device, p})
 		}
 	}
 
-	sort.Sort(prioritizedDevices(filtered))
+	devices := []*path.Device{}
+	compatibilities := []bool{}
+	reasons := []*stringtable.Msg{}
 
-	paths := make([]*path.Device, len(filtered))
-	for i, d := range filtered {
-		paths[i] = path.NewDevice(d.device.Instance().ID.ID())
+	// Start with compatible devices, in order
+	sort.Sort(prioritizedDevices(compatibleDevices))
+	for _, dev := range compatibleDevices {
+		devices = append(devices, path.NewDevice(dev.device.Instance().ID.ID()))
+		compatibilities = append(compatibilities, true)
+		reasons = append(reasons, dev.reason)
 	}
-	return paths, nil
+	for _, dev := range incompatibleDevices {
+		devices = append(devices, path.NewDevice(dev.device.Instance().ID.ID()))
+		compatibilities = append(compatibilities, false)
+		reasons = append(reasons, dev.reason)
+	}
+
+	return devices, compatibilities, reasons, nil
 }
 
 // Sorted returns all devices, sorted by Android first, and then Host.
@@ -102,6 +120,7 @@ func Sorted(ctx context.Context) []bind.Device {
 type prioritizedDevice struct {
 	device   bind.Device
 	priority uint32
+	reason   *stringtable.Msg
 }
 
 type prioritizedDevices []prioritizedDevice

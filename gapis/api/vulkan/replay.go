@@ -27,9 +27,11 @@ import (
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/stringtable"
 )
 
 // GetInitialPayload creates a replay that emits instructions for
@@ -83,8 +85,9 @@ func (a API) Replay(
 	device *device.Instance,
 	c *capture.GraphicsCapture,
 	out transform.Writer) error {
-	if a.GetReplayPriority(ctx, device, c.Header) == 0 {
-		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
+	priority, incompatibleReason := a.GetReplayPriority(ctx, device, c.Header)
+	if priority == 0 {
+		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v', reason: %v", device.Name, incompatibleReason)
 	}
 
 	if len(rrs) == 0 {
@@ -356,57 +359,73 @@ func getReplayTypeName(request replay.Request) string {
 	return "Unknown Replay Type"
 }
 
-// GetReplayPriority returns a uint32 representing the preference for
-// replaying this trace on the given device.
-// A lower number represents a higher priority, and Zero represents
-// an inability for the trace to be replayed on the given device.
-func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *capture.Header) uint32 {
+// GetReplayPriority implements the replay.Support interface
+func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *capture.Header) (uint32, *stringtable.Msg) {
 	devConf := i.GetConfiguration()
 	devAbis := devConf.GetABIs()
 	devVkDriver := devConf.GetDrivers().GetVulkan()
 	traceVkDriver := h.GetDevice().GetConfiguration().GetDrivers().GetVulkan()
 
+	// Trace has no Vulkan information
 	if traceVkDriver == nil {
-		log.E(ctx, "Vulkan trace does not contain VulkanDriver info.")
-		return 0
+		log.E(ctx, "Vulkan trace does not contain VulkanDriver info")
+		return 0, messages.ReplayCompatibilityIncompatibleApi()
 	}
 
 	// The device does not support Vulkan
 	if devVkDriver == nil {
-		return 0
+		return 0, messages.ReplayCompatibilityIncompatibleApi()
 	}
 
+	// OSKind must match
+	devOSKind := devConf.GetOS().GetKind()
+	traceOSKind := h.GetABI().GetOS()
+	if devOSKind != traceOSKind {
+		return 0, messages.ReplayCompatibilityIncompatibleOs(devOSKind.String(), traceOSKind.String())
+	}
+
+	var reason *stringtable.Msg
 	for _, abi := range devAbis {
-		// Memory layout must match.
-		if !abi.GetMemoryLayout().SameAs(h.GetABI().GetMemoryLayout()) {
+
+		// Architecture must match
+		if abi.GetArchitecture() != h.GetABI().GetArchitecture() {
 			continue
 		}
+
 		// If there is no physical devices, the trace must not contain
 		// vkCreateInstance, any ABI compatible Vulkan device should be able to
 		// replay.
 		if len(traceVkDriver.GetPhysicalDevices()) == 0 {
-			return 1
+			return 1, messages.ReplayCompatibilityCompatible()
 		}
-		// Requires same vendor, device, driver version and API version.
+		// Requires same GPU vendor, GPU device, Vulkan driver and Vulkan API version.
 		for _, devPhyInfo := range devVkDriver.GetPhysicalDevices() {
 			for _, tracePhyInfo := range traceVkDriver.GetPhysicalDevices() {
-				// TODO: More sophisticated rules
 				if devPhyInfo.GetVendorId() != tracePhyInfo.GetVendorId() {
+					reason = messages.ReplayCompatibilityIncompatibleGpu(devPhyInfo.GetDeviceName(), tracePhyInfo.GetDeviceName())
 					continue
 				}
 				if devPhyInfo.GetDeviceId() != tracePhyInfo.GetDeviceId() {
+					reason = messages.ReplayCompatibilityIncompatibleGpu(devPhyInfo.GetDeviceName(), tracePhyInfo.GetDeviceName())
 					continue
 				}
 				if devPhyInfo.GetDriverVersion() != tracePhyInfo.GetDriverVersion() {
+					reason = messages.ReplayCompatibilityIncompatibleDriverVersion(devPhyInfo.GetDriverVersion(), tracePhyInfo.GetDriverVersion())
 					continue
 				}
 				// Ignore the API patch level (bottom 12 bits) when comparing the API version.
 				if (devPhyInfo.GetApiVersion() & ^uint32(0xfff)) != (tracePhyInfo.GetApiVersion() & ^uint32(0xfff)) {
+					reason = messages.ReplayCompatibilityIncompatibleApiVersion(devPhyInfo.GetApiVersion(), tracePhyInfo.GetApiVersion())
 					continue
 				}
-				return 1
+				return 1, messages.ReplayCompatibilityCompatible()
 			}
 		}
 	}
-	return 0
+
+	if reason == nil {
+		// None of the device ABI architecture has matched
+		reason = messages.ReplayCompatibilityIncompatibleArchitecture(h.GetABI().GetArchitecture().String())
+	}
+	return 0, reason
 }

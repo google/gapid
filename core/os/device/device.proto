@@ -106,7 +106,7 @@ message ABI {
   // and feature set available.
   Architecture architecture = 3;
   // MemoryLayout specifies things like size and alignment of types used
-  // directly buy the ABI.
+  // directly by the ABI.
   MemoryLayout memory_layout = 4;
 }
 
