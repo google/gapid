@@ -150,6 +150,11 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
+	// Early bail out if we cannot get device information
+	if d.To.Configuration.Hardware == nil {
+		return nil, log.Errf(ctx, nil, "Cannot get device information")
+	}
+
 	// Collect the operating system version
 	if version, err := d.SystemProperty(ctx, "ro.build.version.release"); err == nil {
 		var major, minor, point int32
@@ -222,37 +227,38 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		d.To.Configuration.AnglePackage = anglePackage
 	}
 
-	// If the VkRenderStagesProducer layer exist, we assume the render stages producer is
-	// implemented in the layer.
-	for _, l := range d.To.Configuration.GetDrivers().GetVulkan().GetLayers() {
-		if l.Name == "VkRenderStagesProducer" {
-			capability := d.To.Configuration.PerfettoCapability
-			if capability == nil {
-				capability = &device.PerfettoCapability{
-					GpuProfiling: &device.GPUProfiling{},
+	// Query infos related to the Vulkan driver
+	if d.To.Configuration.GetDrivers() != nil && d.To.Configuration.GetDrivers().GetVulkan() != nil {
+
+		// If the VkRenderStagesProducer layer exist, we assume the render stages producer is
+		// implemented in the layer.
+		for _, l := range d.To.Configuration.GetDrivers().GetVulkan().GetLayers() {
+			if l.Name == "VkRenderStagesProducer" {
+				capability := d.To.Configuration.PerfettoCapability
+				if capability == nil {
+					capability = &device.PerfettoCapability{
+						GpuProfiling: &device.GPUProfiling{},
+					}
+					d.To.Configuration.PerfettoCapability = capability
 				}
+				gpu := capability.GpuProfiling
+				gpu.HasRenderStageProducerLayer = true
+				gpu.HasRenderStage = true
+				break
 			}
-			gpu := capability.GpuProfiling
-			gpu.HasRenderStageProducerLayer = true
-			gpu.HasRenderStage = true
-			break
+		}
+
+		if version, err := d.DriverVersionCode(ctx); err == nil {
+			d.To.Configuration.Drivers.Vulkan.Version = strconv.Itoa(version)
 		}
 	}
 
-	if d.To.Configuration == nil ||
-		d.To.Configuration.Hardware == nil {
-		return nil, log.Errf(ctx, nil, "Cannot get device information")
-	}
 	if d.Instance().GetName() == "" {
 		d.Instance().Name = d.To.Configuration.Hardware.Name
 	}
 	if i := d.Instance(); i.ID == nil || allZero(i.ID.Data) {
-		// Generate an identifier for the device based on it's details.
+		// Generate an identifier for the device based on its details.
 		i.GenID()
-	}
-
-	if version, err := d.DriverVersionCode(ctx); err == nil {
-		d.To.Configuration.Drivers.Vulkan.Version = strconv.Itoa(version)
 	}
 
 	return d, nil
