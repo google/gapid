@@ -320,17 +320,17 @@ cmd VkResult vkCreateGraphicsPipelines(
             obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
             seenDescs.Set[(as!u64(d.Set)<<32) | as!u64(d.Binding)] = true
           }
-        } 
+        }
       } else {
         nSets := len(obj.Layout.SetLayouts)
         for ii in (0 .. nSets) {
           set := obj.Layout.SetLayouts[as!u32(ii)]
           for _, k, v in set.Bindings {
             if !seenDescs.Set[(as!u64(ii)<<32) | as!u64(k)] {
-              obj.UsedDescriptors[len(obj.UsedDescriptors)] = 
+              obj.UsedDescriptors[len(obj.UsedDescriptors)] =
                 DescriptorUsage(Set: as!u32(ii),
-                  Binding: k, 
-                  DescriptorCount: v.Count) 
+                  Binding: k,
+                  DescriptorCount: v.Count)
               seenDescs.Set[(as!u64(ii)<<32) | as!u64(k)] = true
             }
           }
@@ -938,7 +938,7 @@ sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
     lci := lastComputeInfo()
     lci.ComputePipeline = ComputePipelines[args.Pipeline]
   } else {
-    ldi := lastDrawInfo()    
+    ldi := lastDrawInfo()
     ldi.GraphicsPipeline = GraphicsPipelines[args.Pipeline]
   }
 }
