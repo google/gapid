@@ -90,6 +90,7 @@ go_library(
         "state.go",
         "state_rebuilder.go",
         "transform_capture_log.go",
+        "transform_command_disabler.go",
         "transform_command_splitter.go",
         "transform_destroy_resources_eos.go",
         "transform_display_to_surface.go",

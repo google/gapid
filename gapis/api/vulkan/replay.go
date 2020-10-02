@@ -280,12 +280,12 @@ func getProfileTransforms(ctx context.Context,
 
 	var err error
 	if len(request.disabledCmds) > 0 {
-		splitterTransform := NewCommandSplitter(ctx)
-		for _, disabledCmdId := range request.disabledCmds {
-			subIdx := append(api.SubCmdIdx{}, disabledCmdId...)
-			err = splitterTransform.Remove(ctx, subIdx)
+		disablerTransform := newCommandDisabler(ctx, uint64(numOfInitialCmds))
+		for _, disabledCmdID := range request.disabledCmds {
+			subIdx := append(api.SubCmdIdx{}, disabledCmdID...)
+			err = disablerTransform.remove(ctx, subIdx)
 		}
-		transforms = append(transforms, splitterTransform)
+		transforms = append(transforms, disablerTransform)
 	}
 
 	transforms = append(transforms, profileTransform)

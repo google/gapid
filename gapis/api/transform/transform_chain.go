@@ -123,7 +123,7 @@ func (chain *TransformChain) transformCommands(ctx context.Context, id CommandID
 		var err error
 		inputCmds, err = chain.transforms[i].TransformCommand(ctx, id, inputCmds, chain.out.State())
 		if err != nil {
-			log.W(ctx, "Error on Transform on cmd [%v:%v] with transform [:v:%v] : %v", id, inputCmds, i, chain.transforms[i], err)
+			log.W(ctx, "Error on Transform on cmd [%v:%v] with transform [:%v:%v] : %v", id, inputCmds, i, chain.transforms[i], err)
 			return err
 		}
 
