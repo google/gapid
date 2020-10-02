@@ -55,6 +55,14 @@
       ϟv := from.{{$proto}}[ϟi]¶
       ϟc.{{$name}}().Set(ϟi, {{Template "Convert.FromProto" "Type" $underlying.ValueType "Value" "ϟv"}})¶
     «}¶
+  {{else if and (IsSlice $underlying) (GetAnnotation $.Field "internal")}}
+    {{$target := Macro "Convert.LiveType" $type}}
+    {{$value := printf "from.%s" $proto}}
+    if {{$value}} == nil {»¶
+      ϟc.Set{{$name}}(New{{$target}}(ϟa, 0, 0, 0, 0, ϟmem.ApplicationPool))¶
+    «} else {»¶
+      ϟc.Set{{$name}}({{Template "Convert.FromProto" "Type" $type "Value" $value}})¶
+    «}¶
   {{else}}
     {{$value := printf "from.%s" $proto}}
     ϟc.Set{{$name}}({{Template "Convert.FromProto" "Type" $type "Value" $value}})¶
