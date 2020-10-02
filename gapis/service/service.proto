@@ -1274,8 +1274,35 @@ message ProfilingData {
     repeated double values = 7;
   }
 
+  // GpuCounters contains aggregated GPU performance result, the aggregation
+  // happens inside each GPU slices groups, and on multiple metrics.
+  message GpuCounters {
+    // Metric contains metadata describing an interested GPU performance
+    // dimension.
+    message Metric {
+      enum AggregationOperator {
+        Summation = 0;
+        TimeWeightedAvg = 1;
+      }
+      int32 id = 1;
+      string name = 2;
+      string unit = 3;
+      AggregationOperator op = 4;
+    }
+
+    // Entry contains performance data for a specific command.
+    message Entry {
+      repeated uint64 command_index = 1;
+      map<int32, double> metric_to_value = 2;  // Metric.id -> perf value.
+    }
+
+    repeated Metric metrics = 1;
+    repeated Entry entries = 2;
+  }
+
   GpuSlices slices = 1;
   repeated Counter counters = 2;
+  GpuCounters gpu_counters = 3;
 }
 
 message VulkanHandleMappingItem {

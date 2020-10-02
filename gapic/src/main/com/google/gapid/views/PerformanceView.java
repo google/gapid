@@ -105,9 +105,10 @@ public class PerformanceView extends Composite
       loading.showMessage(error);
       return;
     }
-    // Create columns for counters after profile get loaded, because we need to know counter numbers.
-    for (Service.ProfilingData.Counter counter : models.profile.getData().getCounters()) {
-      tree.addColumnForCounter(counter);
+    // Create columns for all the performance metrics.
+    for (Service.ProfilingData.GpuCounters.Metric metric :
+        models.profile.getData().getGpuPerformance().getMetricsList()) {
+      tree.addColumnForMetric(metric);
     }
     tree.packColumn();
     tree.refresh();
@@ -132,20 +133,27 @@ public class PerformanceView extends Composite
     }
 
     @Override
+    protected void addGpuPerformanceColumn() {
+      // The performance tab's GPU performances are calculated from server's side.
+      // Don't create columns at initialization, the columns will be created after profile is loaded.
+      setUpStateForColumnAdding();
+    }
+
+    @Override
     protected boolean shouldShowImage(CommandStream.Node node) {
       return false;
     }
 
-    private void addColumnForCounter(Service.ProfilingData.Counter counter) {
-      TreeViewerColumn column = addColumn(counter.getName(), node -> {
+    private void addColumnForMetric(Service.ProfilingData.GpuCounters.Metric metric) {
+      TreeViewerColumn column = addColumn(metric.getName() + "(" + metric.getUnit() + ")", node -> {
         Service.CommandTreeNode data = node.getData();
         if (data == null) {
           return "";
         } else if (!models.profile.isLoaded()) {
           return "Profiling...";
         } else {
-          Double aggregation = models.profile.getData().getCounterAggregation(data.getCommands(), counter);
-          return aggregation.isNaN() ? "" : String.format("%.3f", aggregation);
+          Double value = models.profile.getData().getGpuPerformance(data.getCommands().getFromList(), metric.getId());
+          return value.isNaN() || value.isInfinite() || value < 0 ? "" : value.toString();
         }
       }, DURATION_WIDTH);
       column.getColumn().setAlignment(SWT.RIGHT);

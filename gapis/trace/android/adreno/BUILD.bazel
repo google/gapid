@@ -17,6 +17,7 @@ go_library(
         "//gapis/perfetto/service:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
+        "//gapis/trace/android/profile:go_default_library",
         "//gapis/trace/android/validate:go_default_library",
     ],
 )
