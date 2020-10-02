@@ -37,7 +37,6 @@ go_library(
         "resource.go",
         "slice.go",
         "store.go",
-        "subslice.go",
         "types.go",
         "write.go",
         "writer.go",

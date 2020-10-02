@@ -661,7 +661,7 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 			cb.CmdVoidReadBool(p), // Uses previous observations
 		},
 		expected: expected{
-			resources: []id.ID{id1, id2, id4, id8, id4, id1},
+			resources: []id.ID{id1, id2, id4, id8},
 			opcodes: []interface{}{
 				opcode.Label{Value: 0},
 				opcode.PushI{DataType: protocol.Type_VolatilePointer, Value: 0},
@@ -731,13 +731,13 @@ func TestOperationsOpCall_SinglePointerElementRead(t *testing.T) {
 
 				opcode.Label{Value: 11},
 				opcode.PushI{DataType: protocol.Type_VolatilePointer, Value: 0},
-				opcode.Resource{ID: 4},
+				opcode.Resource{ID: 2},
 				opcode.PushI{DataType: protocol.Type_VolatilePointer, Value: 0},
 				opcode.Call{ApiIndex: funcInfoCmdVoidReadS32.ApiIndex, FunctionID: funcInfoCmdVoidReadS32.ID},
 
 				opcode.Label{Value: 12},
 				opcode.PushI{DataType: protocol.Type_VolatilePointer, Value: 0},
-				opcode.Resource{ID: 5},
+				opcode.Resource{ID: 0},
 				opcode.PushI{DataType: protocol.Type_VolatilePointer, Value: 0},
 				opcode.Call{ApiIndex: funcInfoCmdVoidReadBool.ApiIndex, FunctionID: funcInfoCmdVoidReadBool.ID},
 			},
