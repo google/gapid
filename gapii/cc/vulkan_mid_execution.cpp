@@ -1043,6 +1043,26 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
       }
     }
   }
+
+  for (auto& cache : mState.PipelineCaches) {
+    VkPipelineCache cache_handle = cache.first;
+    auto cache_obj = cache.second;
+
+    auto& device = mState.Devices[cache_obj->mDevice];
+    auto& device_functions = mImports.mVkDeviceFunctions[cache_obj->mDevice];
+
+    size_val size;
+    device_functions.vkGetPipelineCacheData(device->mVulkanHandle, cache_handle,
+                                            &size, nullptr);
+    std::vector<uint8_t> data(size);
+    device_functions.vkGetPipelineCacheData(device->mVulkanHandle, cache_handle,
+                                            &size, data.data());
+
+    serializer->encodeBuffer<uint8_t>(
+        size, &cache_obj->mData, [serializer, &data](memory::Observation* obs) {
+          serializer->sendData(obs, false, data.data(), data.size());
+        });
+  }
 }
 
 }  // namespace gapii

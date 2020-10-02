@@ -1974,10 +1974,10 @@ func (sb *stateBuilder) createPipelineCache(pc PipelineCacheObjectʳ) {
 		pc.Device(),
 		sb.MustAllocReadData(NewVkPipelineCacheCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO, // sType
-			0, // pNext
-			0, // flags
-			0, // initialDataSize
-			0, // pInitialData
+			0,                             // pNext
+			0,                             // flags
+			memory.Size(pc.Data().Size()), // initialDataSize
+			NewVoidᶜᵖ(sb.mustReadSlice(pc.Data()).Ptr()), // pInitialData
 		)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(pc.VulkanHandle()).Ptr(),

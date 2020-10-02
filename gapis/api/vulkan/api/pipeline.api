@@ -848,6 +848,7 @@ cmd void vkDestroyShaderModule(
   @unused VkDevice                  Device
   @unused VkPipelineCache           VulkanHandle
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  @hidden @nobox @internal u8[]     Data
 }
 
 @indirect("VkDevice")
