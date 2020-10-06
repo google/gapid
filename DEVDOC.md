@@ -228,6 +228,24 @@ $ ./bazel-bin/pkg/gapit -fullhelp
 The Error level is recommended when adding debug print, to make sure it is not
 filtered away.
 
+## How to debug a replay crash
+
+The replayer uses [breakpad](https://chromium.googlesource.com/breakpad/breakpad) to catch and optionnaly report crashes.
+
+If you want to analyze a replay crash with a debugger, on **64 bits Android** (for other platforms, adapt as necessary):
+
+1. Start the replayer with the `--wait-for-debugger` flag, e.g. `./gapit screenshot --gapir-args '--wait-for-debugger' mytrace.gfxtrace`.
+
+2. Wait for the replayer to launch on the device.
+
+3. Attach your debugger to the replayer app (`com.google.android.gapid.arm64v8a/com.google.android.gapid.ReplayerActivity`).
+
+4. Once attached, you probably want to add a breakpoint at `CrashHandler::handleMinidump` in order to break upon a crash, before it is reported to the server.
+
+5. When you attach, the replayer is spin-waiting in the loop defined in `core/cc/android/debugger.cpp`. To break this loop, use the debugger to set `gIsDebuggerAttached = true` before continuing execution.
+
+Note that while you attach the debugger and setup the breakpoint, the server might timeout waiting for a gRPC connection. You may increase this timeout by editing the `gapir/client:gRPCConnectTimeout` constant.
+
 ## How to profile AGI internals
 
 ### GAPIS
