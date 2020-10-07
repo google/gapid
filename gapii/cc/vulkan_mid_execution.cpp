@@ -657,6 +657,14 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
     // swapchain ones), we can copy directly from all such images. Note that
     // later this fact soon will be changed.
 
+    if ((image_info.mUsage &
+         VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) != 0) {
+      // TODO(b/148857112): it is invalid to have both TRANSFER_SRC_BIT and
+      // TRANSIENT_ATTACHMENT_BIT set. Properly handle transient image here.
+      // For now, it seems to work in practice.
+      GAPID_WARNING("Serializing a transient image");
+    }
+
     // TODO: Handle multi-planar images
     bool denseBound =
         subGetImagePlaneMemoryInfo(nullptr, nullptr, img, 0) != nullptr &&

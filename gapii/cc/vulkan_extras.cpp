@@ -885,10 +885,15 @@ uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
   }
 }
 
+// SpyOverride_vkCreateImage adds the TRANSFER_SRC_BIT to images such that we
+// can retrieve them when we serialize the initial state.
 uint32_t VulkanSpy::SpyOverride_vkCreateImage(
     VkDevice device, const VkImageCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkImage* pImage) {
   VkImageCreateInfo override_create_info = *pCreateInfo;
+  // TODO(b/148857112): do not set TRANSFER_SRC_BIT on images with
+  // TRANSIENT_ATTACHMENT_BIT set (this is invalid). For now, while this is
+  // invalid, it seems to work fine in practice.
   override_create_info.musage |=
       VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   return mImports.mVkDeviceFunctions[device].vkCreateImage(
