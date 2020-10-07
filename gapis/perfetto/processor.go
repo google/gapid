@@ -33,6 +33,10 @@ type Processor struct {
 }
 
 func NewProcessor(ctx context.Context, data []byte) (*Processor, error) {
+	if len(data) == 0 {
+		log.W(ctx, "[perfetto] Empty profile data.")
+		return nil, log.Errf(ctx, nil, "profile data is empty.")
+	}
 	p := C.new_processor()
 	log.D(ctx, "[perfetto] Parsing %d bytes", len(data))
 	if !C.parse_data(p, unsafe.Pointer(&data[0]), C.size_t(len(data))) {
@@ -60,6 +64,9 @@ func (p *Processor) Query(q string) (*service.QueryResult, error) {
 }
 
 func (p *Processor) Close() {
+	if p == nil {
+		return
+	}
 	C.delete_processor(p.handle)
 	p.handle = nil
 }
