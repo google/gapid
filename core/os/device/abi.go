@@ -14,6 +14,10 @@
 
 package device
 
+import (
+	"strings"
+)
+
 var (
 	UnknownABI = abi("unknown", UnknownOS, UnknownArchitecture, &MemoryLayout{})
 	// Keep this one in, some applications incorrectly advertise arm, when they mean armv7
@@ -95,8 +99,12 @@ func (c *Configuration) PreferredABI(abis []*ABI) *ABI {
 			}
 		}
 	}
-	if len(c.ABIs) == 0 {
-		return UnknownABI
+
+	// Return the first ABI that is not a hardware ASAN ABI.
+	for _, abi := range c.ABIs {
+		if !strings.HasSuffix(abi.Name, "-hwasan") {
+			return abi
+		}
 	}
-	return c.ABIs[0]
+	return UnknownABI
 }
