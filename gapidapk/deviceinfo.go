@@ -105,6 +105,7 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	apk.Stop(ctx)
 
 	var cleanup app.Cleanup
+	instance := d.Instance()
 
 	packages := []string{}
 	supported, packageName, nextCleanup, err := d.PrepareGpuProfiling(ctx, apk.InstalledPackage)
@@ -127,14 +128,14 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		}
 
 		// Start perfetto producer
-		if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
+		if instance.GetConfiguration().GetOS().GetAPIVersion() >= 29 {
 			EnsurePerfettoProducerLaunched(ctx, d)
 		}
 	}
 
 	// Make sure the device is available to query device info, this is to prevent
 	// Vulkan trace from happening at the same time than device info query.
-	m := flock.Lock(d.Instance().GetSerial())
+	m := flock.Lock(instance.GetSerial())
 	defer m.Unlock()
 
 	// Tries to start the device info service.
@@ -154,8 +155,29 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return log.Err(ctx, err, "Reading data")
 	}
 
-	if err := proto.UnmarshalMerge(data, d.Instance()); err != nil {
+	// Reset the ABIs, so we can properly merge them later.
+	abis := instance.GetConfiguration().GetABIs()
+	if len(abis) > 0 {
+		instance.Configuration.ABIs = nil
+	}
+	if err := proto.UnmarshalMerge(data, instance); err != nil {
 		return log.Err(ctx, err, "Unmarshalling device Instance")
+	}
+
+	// Merge ABIs by hand, since proto.Merge appends repeated fields.
+	config := instance.GetConfiguration()
+	for _, old := range abis {
+		found := false
+		for _, new := range config.ABIs {
+			if old.Name == new.Name {
+				proto.Merge(new, old)
+				found = true
+				break
+			}
+		}
+		if !found {
+			config.ABIs = append(config.ABIs, old)
+		}
 	}
 
 	return nil
