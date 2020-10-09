@@ -168,7 +168,7 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 	}
 
 	// Get ActivityAction
-	gapidPackage := gapidapk.PackageName(osConfiguration.PreferredABI(d.Instance().GetConfiguration().GetABIs()))
+	gapidPackage := gapidapk.PackageName(osConfiguration.PreferredABI(nil))
 	packages, _ := d.InstalledPackages(ctx)
 	pkg := packages.FindByName(gapidPackage)
 	if pkg == nil {
