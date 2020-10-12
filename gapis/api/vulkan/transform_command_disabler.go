@@ -358,10 +358,19 @@ func (disablerTransform *commandDisabler) getNewCommandBufferAndBegin(ctx contex
 		return VkCommandBuffer(0), log.Err(ctx, err, "Failed during allocating command buffer")
 	}
 
-	pInheritenceInfo := NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr)
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !existingCommandBuffer.BeginInfo().DeviceGroupBegin().IsNil() {
+		beginInfo := NewVkDeviceGroupCommandBufferBeginInfo(inputState.Arena,
+			VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO, // sType
+			pNext, // pNext
+			existingCommandBuffer.BeginInfo().DeviceGroupBegin().DeviceMask(), // deviceMask
+		)
+		beginInfoData := disablerTransform.mustAllocReadDataForCmd(ctx, inputState, beginInfo)
+		pNext = NewVoidᶜᵖ(beginInfoData.Ptr())
+	}
 
-	if existingCommandBuffer.BeginInfo().Inherited() {
-		existingBeginInfo := existingCommandBuffer.BeginInfo()
+	pInheritenceInfo := NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr)
+	if existingBeginInfo := existingCommandBuffer.BeginInfo(); existingBeginInfo.Inherited() {
 		inheritenceInfo := NewVkCommandBufferInheritanceInfo(inputState.Arena,
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
 			NewVoidᶜᵖ(memory.Nullptr),
@@ -379,16 +388,16 @@ func (disablerTransform *commandDisabler) getNewCommandBufferAndBegin(ctx contex
 
 	beginInfo := NewVkCommandBufferBeginInfo(inputState.Arena,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
-		NewVoidᶜᵖ(memory.Nullptr),                                   // pNext
-		existingCommandBuffer.BeginInfo().Flags(),                   // flags
+		pNext, // pNext
+		existingCommandBuffer.BeginInfo().Flags(), // flags
 		pInheritenceInfo, // pInheritanceInfo
 	)
+
 	beginCommandBufferCmd := cb.VkBeginCommandBuffer(
 		commandBufferID,
 		disablerTransform.mustAllocReadDataForCmd(ctx, inputState, beginInfo).Ptr(),
 		VkResult_VK_SUCCESS,
 	)
-
 	if err = disablerTransform.observeAndWriteCommand(beginCommandBufferCmd); err != nil {
 		return VkCommandBuffer(0), log.Err(ctx, err, "Failed during begin command buffer")
 	}
