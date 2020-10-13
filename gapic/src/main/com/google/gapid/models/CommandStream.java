@@ -25,6 +25,7 @@ import static java.util.logging.Level.FINE;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -42,6 +43,9 @@ import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 
 import com.google.gapid.views.Formatter;
+import java.util.Iterator;
+import java.util.List;
+import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.concurrent.ExecutionException;
@@ -223,6 +227,48 @@ public class CommandStream
         client.get(observationsAfter(index, Application_VALUE), device), v -> {
           return v.getMemory();
         });
+  }
+
+  public ListenableFuture<TreePath> getTreePath(CommandIndex index) {
+    CommandStream.Node root = this.getData();
+    ListenableFuture<TreePath> result = getTreePath(root, Lists.newArrayList(root),
+        index.getNode().getIndicesList().iterator());
+    if (index.isGroup()) {
+      // Find the deepest group/node in the path that is not the last child of its parent.
+      result = MoreFutures.transform(result, path -> {
+        while (path.getSegmentCount() > 0) {
+          CommandStream.Node node = (CommandStream.Node)path.getLastSegment();
+          if (!node.isLastChild()) {
+            break;
+          }
+          path = path.getParentPath();
+        }
+        return path;
+      });
+    }
+    return result;
+  }
+
+  public ListenableFuture<TreePath> getTreePath(
+      CommandStream.Node node, List<Object> path, Iterator<Long> indices) {
+    ListenableFuture<CommandStream.Node> load = this.load(node);
+    if (!indices.hasNext()) {
+      TreePath result = new TreePath(path.toArray());
+      // Ensure the last node in the path is loaded.
+      return (load == null) ? Futures.immediateFuture(result) :
+          MoreFutures.transform(load, ignored -> result);
+    }
+    return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
+        MoreFutures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
+  }
+
+  private ListenableFuture<TreePath> getTreePathForLoadedNode(
+      CommandStream.Node node, List<Object> path, Iterator<Long> indices) {
+    int index = indices.next().intValue();
+
+    CommandStream.Node child = node.getChild(index);
+    path.add(child);
+    return getTreePath(child, path, indices);
   }
 
   /**

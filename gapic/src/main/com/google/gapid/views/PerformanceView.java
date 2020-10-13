@@ -17,13 +17,17 @@ package com.google.gapid.views;
 
 import static com.google.gapid.util.Loadable.MessageType.Error;
 
+import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Profile;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
 import java.util.logging.Logger;
@@ -33,6 +37,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Menu;
 
 public class PerformanceView extends Composite
@@ -42,6 +47,7 @@ public class PerformanceView extends Composite
   private final Models models;
   private final LoadablePanel<PerfTree> loading;
   protected final PerfTree tree;
+  private final SelectionHandler<Control> selectionHandler;
 
   public PerformanceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -70,6 +76,22 @@ public class PerformanceView extends Composite
       models.commands.removeListener(this);
       models.profile.removeListener(this);
     });
+
+    selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
+      @Override
+      protected void updateModel(Event e) {
+        models.analytics.postInteraction(View.Performance, ClientAction.Select);
+        CommandStream.Node node = tree.getSelection();
+        if (node != null) {
+          CommandIndex index = node.getIndex();
+          if (index == null) {
+            models.commands.load(node, () -> models.commands.selectCommands(node.getIndex(), false));
+          } else {
+            models.commands.selectCommands(index, false);
+          }
+        }
+      }
+    };
   }
 
   @Override
@@ -97,6 +119,11 @@ public class PerformanceView extends Composite
   @Override
   public void onCommandsLoaded() {
     updateTree(false);
+  }
+
+  @Override
+  public void onCommandsSelected(CommandIndex index) {
+    selectionHandler.updateSelectionFromModel(() -> models.commands.getTreePath(index).get(), tree::setSelection);
   }
 
   @Override

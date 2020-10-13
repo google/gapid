@@ -26,7 +26,6 @@ import static com.google.gapid.widgets.Widgets.withIndents;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
@@ -73,8 +72,6 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
@@ -191,7 +188,7 @@ public class CommandTree extends Composite
       }
       searchController.start().listen(
           MoreFutures.transformAsync(models.commands.search(parent, text, regex),
-              r -> getTreePath(models.commands.getData(), Lists.newArrayList(),
+              r -> models.commands.getTreePath(models.commands.getData(), Lists.newArrayList(),
                   r.getCommandTreeNode().getIndicesList().iterator())),
           new UiCallback<TreePath, TreePath>(tree, LOG) {
         @Override
@@ -241,7 +238,7 @@ public class CommandTree extends Composite
 
   @Override
   public void onCommandsSelected(CommandIndex index) {
-    selectionHandler.updateSelectionFromModel(() -> getTreePath(index).get(), tree::setSelection);
+    selectionHandler.updateSelectionFromModel(() -> models.commands.getTreePath(index).get(), tree::setSelection);
   }
 
   @Override
@@ -268,48 +265,6 @@ public class CommandTree extends Composite
     if (models.commands.getSelectedCommands() != null) {
       onCommandsSelected(models.commands.getSelectedCommands());
     }
-  }
-
-  private ListenableFuture<TreePath> getTreePath(CommandIndex index) {
-    CommandStream.Node root = models.commands.getData();
-    ListenableFuture<TreePath> result = getTreePath(root, Lists.newArrayList(root),
-        index.getNode().getIndicesList().iterator());
-    if (index.isGroup()) {
-      // Find the deepest group/node in the path that is not the last child of its parent.
-      result = MoreFutures.transform(result, path -> {
-        while (path.getSegmentCount() > 0) {
-          CommandStream.Node node = (CommandStream.Node)path.getLastSegment();
-          if (!node.isLastChild()) {
-            break;
-          }
-          path = path.getParentPath();
-        }
-        return path;
-      });
-    }
-    return result;
-  }
-
-  private ListenableFuture<TreePath> getTreePath(
-      CommandStream.Node node, List<Object> path, Iterator<Long> indices) {
-    ListenableFuture<CommandStream.Node> load = models.commands.load(node);
-    if (!indices.hasNext()) {
-      TreePath result = new TreePath(path.toArray());
-      // Ensure the last node in the path is loaded.
-      return (load == null) ? Futures.immediateFuture(result) :
-          MoreFutures.transform(load, ignored -> result);
-    }
-    return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
-        MoreFutures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
-  }
-
-  private ListenableFuture<TreePath> getTreePathForLoadedNode(
-      CommandStream.Node node, List<Object> path, Iterator<Long> indices) {
-    int index = indices.next().intValue();
-
-    CommandStream.Node child = node.getChild(index);
-    path.add(child);
-    return getTreePath(child, path, indices);
   }
 
   protected static class Tree extends LinkifiedTreeWithImages<CommandStream.Node, String> {
