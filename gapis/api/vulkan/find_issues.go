@@ -29,17 +29,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 )
 
-var validationLayerNames = [...]string{
-	// Meta layers
-	"VK_LAYER_KHRONOS_validation",
-	"VK_LAYER_LUNARG_standard_validation",
-	// Regular layers
-	"VK_LAYER_GOOGLE_threading",
-	"VK_LAYER_LUNARG_parameter_validation",
-	"VK_LAYER_LUNARG_object_tracker",
-	"VK_LAYER_LUNARG_core_validation",
-	"VK_LAYER_GOOGLE_unique_objects",
-}
+var validationLayerNames = [...]string{ "VK_LAYER_KHRONOS_validation" }
 
 const (
 	// Since Android NDK r21, the VK_LAYER_KHRONOS_validation meta layer
