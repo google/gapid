@@ -279,12 +279,13 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 		return nil, err
 	}
 	// Ensure the capture can be read by resolving it now.
-	if _, err = capture.ResolveFromPath(ctx, p); err != nil {
+	c, err := capture.ResolveFromPath(ctx, p)
+	if err != nil {
 		return nil, err
 	}
 
-	// Pre-resolve the dependency graph.
-	if !config.DisableDeadCodeElimination && s.preloadDepGraph {
+	// For graphics capture, pre-resolve the dependency graph.
+	if c.Service(ctx, p).Type == service.TraceType_Graphics && !config.DisableDeadCodeElimination && s.preloadDepGraph {
 		newCtx := keys.Clone(context.Background(), ctx)
 		crash.Go(func() {
 			cctx := status.PutTask(newCtx, nil)
