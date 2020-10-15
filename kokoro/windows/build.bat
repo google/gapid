@@ -50,17 +50,17 @@ REM supports only ".pkg.tar.xz" package archives, it does not support
 REM the more recent ".pkg.tar.zst" packages archives.
 c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm catgets libcatgets"
 REM Use an old version of patch known to work with the msys runtime
-REM version that comes on Kokoro.
-set REPO_MSYS2=https://sourceforge.net/projects/msys2/files/REPOS/MSYS2/x86_64
-set REPO_MINGW=https://sourceforge.net/projects/msys2/files/REPOS/MINGW/x86_64
-wget -q %REPO_MSYS2%/patch-2.7.5-1-x86_64.pkg.tar.xz
+REM version that comes on Kokoro. Temporarily getting it from an
+REM alternate mirror, since they msys host no longer carries this
+REM version.
+wget -q http://ftp.oregonstate.edu/pub/xbmc/build-deps/win32/msys2/repos/msys2/x86_64/patch-2.7.5-1-x86_64.pkg.tar.xz
 c:\tools\msys64\usr\bin\bash --login -c "pacman -v -U --noconfirm  /t/src/patch-2.7.5-1-x86_64.pkg.tar.xz"
-wget -q %REPO_MINGW%/mingw-w64-x86_64-binutils-2.33.1-1-any.pkg.tar.xz
+wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-binutils-2.33.1-1-any.pkg.tar.xz
 c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-binutils-2.33.1-1-any.pkg.tar.xz"
-wget -q %REPO_MINGW%/mingw-w64-x86_64-gcc-9.2.0-2-any.pkg.tar.xz
-wget -q %REPO_MINGW%/mingw-w64-x86_64-gcc-libs-9.2.0-2-any.pkg.tar.xz
+wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-9.2.0-2-any.pkg.tar.xz
+wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-libs-9.2.0-2-any.pkg.tar.xz
 c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-gcc-9.2.0-2-any.pkg.tar.xz /t/src/mingw-w64-x86_64-gcc-libs-9.2.0-2-any.pkg.tar.xz"
-wget -q %REPO_MINGW%/mingw-w64-x86_64-crt-git-8.0.0.5647.1fe2e62e-1-any.pkg.tar.xz
+wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-crt-git-8.0.0.5647.1fe2e62e-1-any.pkg.tar.xz
 c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-crt-git-8.0.0.5647.1fe2e62e-1-any.pkg.tar.xz"
 set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
 set BAZEL_SH=c:\tools\msys64\usr\bin\bash
