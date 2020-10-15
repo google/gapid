@@ -42,7 +42,8 @@ const (
 	// Frequency at which to print scan errors.
 	printScanErrorsEveryNSeconds = 120
 	// Global settings for opting to use prerelease driver.
-	prereleaseDriverSettingVariable = "game_driver_prerelease_opt_in_apps"
+	oldDeveloperDriverSettingVariable = "game_driver_prerelease_opt_in_apps"
+	developerDriverSettingVariable    = "updatable_driver_prerelease_opt_in_apps"
 )
 
 var (
@@ -115,7 +116,12 @@ func Devices(ctx context.Context) (DeviceList, error) {
 }
 
 func SetupPrereleaseDriver(ctx context.Context, d Device, p *android.InstalledPackage) (app.Cleanup, error) {
-	oldOptinApps, err := d.SystemSetting(ctx, "global", prereleaseDriverSettingVariable)
+	settingVariable := developerDriverSettingVariable
+	if d.Instance().GetConfiguration().GetOS().GetAPIVersion() <= 30 {
+		settingVariable = oldDeveloperDriverSettingVariable
+	}
+
+	oldOptinApps, err := d.SystemSetting(ctx, "global", settingVariable)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to get prerelease driver opt in apps.")
 	}
@@ -124,11 +130,11 @@ func SetupPrereleaseDriver(ctx context.Context, d Device, p *android.InstalledPa
 	}
 	newOptinApps := oldOptinApps + "," + p.Name
 	// TODO(b/145893290) Check whether application has developer driver enabled once b/145893290 is fixed.
-	if err := d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, newOptinApps); err != nil {
+	if err := d.SetSystemSetting(ctx, "global", settingVariable, newOptinApps); err != nil {
 		return nil, log.Errf(ctx, err, "Failed to set up prerelease driver for app: %v.", p.Name)
 	}
 	return func(ctx context.Context) {
-		d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, oldOptinApps)
+		d.SetSystemSetting(ctx, "global", settingVariable, oldOptinApps)
 	}, nil
 }
 
