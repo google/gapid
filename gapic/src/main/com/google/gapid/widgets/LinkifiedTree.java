@@ -276,7 +276,7 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
     @Override
     public Object[] getChildren(Object parent) {
-      return getChildNodes(cast(parent));
+      return !hasChildren(parent) ? null : getChildNodes(cast(parent));
     }
 
     @Override
