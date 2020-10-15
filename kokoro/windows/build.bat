@@ -33,6 +33,7 @@ REM Install Android SDK platform, build tools and NDK
 setlocal
 call %ANDROID_HOME%\tools\bin\sdkmanager.bat platforms;android-26 build-tools;29.0.2
 endlocal
+echo on
 
 wget -q https://dl.google.com/android/repository/android-ndk-r21d-windows-x86_64.zip
 unzip -q android-ndk-r21d-windows-x86_64.zip
