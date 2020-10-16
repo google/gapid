@@ -25,8 +25,10 @@ import (
 )
 
 type commandDisabler struct {
+	// This should be presorted before mutation starts
 	disabledCommands []api.SubCmdIdx
 	cmdsOffset       uint64
+	mutationStarted  bool
 
 	stateMutator transform.StateMutator
 	allocations  *allocationTracker
@@ -41,17 +43,21 @@ type commandDisabler struct {
 func newCommandDisabler(ctx context.Context, cmdsOffset uint64) *commandDisabler {
 	return &commandDisabler{
 		disabledCommands:      make([]api.SubCmdIdx, 0, 0),
-		readMemoriesForSubmit: make([]*api.AllocResult, 0),
+		cmdsOffset:            cmdsOffset,
+		mutationStarted:       false,
 		stateMutator:          nil,
 		allocations:           nil,
-		cmdsOffset:            cmdsOffset,
+		readMemoriesForSubmit: make([]*api.AllocResult, 0),
+		readMemoriesForCmd:    make([]*api.AllocResult, 0),
+		writeMemoriesForCmd:   make([]*api.AllocResult, 0),
+		pool:                  VkCommandPool(0),
 	}
 }
 
 // Remove removes a draw call command from a command buffer.
 func (disablerTransform *commandDisabler) remove(ctx context.Context, id api.SubCmdIdx) error {
-	if len(disablerTransform.disabledCommands) > 0 {
-		return log.Err(ctx, nil, "Multiple Drawcall removal not implemented")
+	if disablerTransform.mutationStarted {
+		return log.Err(ctx, nil, "Commands cannot be requested to disable after mutation started")
 	}
 
 	if len(id) == 0 {
@@ -79,6 +85,8 @@ func (disablerTransform *commandDisabler) SetInnerStateMutationFunction(mutator 
 
 func (disablerTransform *commandDisabler) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
 	disablerTransform.allocations = NewAllocationTracker(inputState)
+	disablerTransform.sortAndMergeDisabledCmds(ctx)
+	disablerTransform.mutationStarted = true
 	return nil
 }
 
@@ -476,35 +484,69 @@ func (disablerTransform *commandDisabler) observeAndWriteCommand(cmd api.Cmd) er
 	return disablerTransform.writeCommand(cmd)
 }
 
-func (disablerTransform *commandDisabler) doesContainDisabledCmd(id api.SubCmdIdx) bool {
-	for _, r := range disablerTransform.disabledCommands {
-		if id.Contains(r) {
-			return true
+func (disablerTransform *commandDisabler) sortAndMergeDisabledCmds(ctx context.Context) {
+	/*
+		This function ensures these conditions:
+			- To guarantee the command indices to be valid, all operations has to be done to the
+			original command buffers in order and one pass. In that way, we can guarantee
+			that the command order in command buffers are untouched and as it is in the trace.
+
+			- For this input set: "[3893.0.6.3.0.13], [3893.0.6.3.0.17], [3893.0.6.3.0.22], [3893.0.6.3]"
+			All the subcommands of [3893.0.6.3] are eliminated as they are not necessary.
+
+			- Removes all duplicates.
+	*/
+
+	api.SortSubCmdIDs(disablerTransform.disabledCommands)
+
+	size := len(disablerTransform.disabledCommands)
+	ids := make([]api.SubCmdIdx, 0, size)
+	ids = append(ids, disablerTransform.disabledCommands[size-1])
+
+	// Remove the duplicates and clean the subcommands of deleted subcommands
+	for i := int64(size - 2); i >= 0; i-- {
+		if ids[len(ids)-1].Contains(disablerTransform.disabledCommands[i]) {
+			continue
 		}
+		ids = append(ids, disablerTransform.disabledCommands[i])
 	}
 
-	return false
+	api.ReverseSubCmdIDs(ids)
+	disablerTransform.disabledCommands = ids
+}
+
+func (disablerTransform *commandDisabler) doesContainDisabledCmd(id api.SubCmdIdx) bool {
+	if len(disablerTransform.disabledCommands) == 0 {
+		return false
+	}
+
+	// Disabled commands are sorted and as we traverse in our command tree in order,
+	// if we cannot find it in first element, it will not be there after
+	return id.Contains(disablerTransform.disabledCommands[0])
 }
 
 func (disablerTransform *commandDisabler) shouldBeDisabled(id api.SubCmdIdx) bool {
-	for _, r := range disablerTransform.disabledCommands {
-		if id.Equals(r) {
-			return true
-		}
+	if len(disablerTransform.disabledCommands) == 0 {
+		return false
 	}
 
-	return false
+	// Disabled commands are sorted and as we traverse in our command tree in order,
+	// if we cannot find it in first element, it will not be there after
+	return id.Equals(disablerTransform.disabledCommands[0])
 }
 
 func (disablerTransform *commandDisabler) removeFromDisabledList(id api.SubCmdIdx) {
-	for i, r := range disablerTransform.disabledCommands {
-		if id.Equals(r) {
-			disablerTransform.disabledCommands[i] =
-				disablerTransform.disabledCommands[len(disablerTransform.disabledCommands)-1]
-			disablerTransform.disabledCommands =
-				disablerTransform.disabledCommands[:len(disablerTransform.disabledCommands)-1]
-		}
+	if len(disablerTransform.disabledCommands) == 0 {
+		panic("Disabled Command list is empty, this should not happen")
 	}
+
+	// Disabled commands are sorted and as we traverse in our command tree in order,
+	// if we cannot find it in first element, it will not be there after
+	if !id.Equals(disablerTransform.disabledCommands[0]) {
+		panic("Disabled command is not the first element, this should not happen")
+	}
+
+	disablerTransform.disabledCommands = disablerTransform.disabledCommands[1:len(disablerTransform.disabledCommands)]
 }
 
 func isCmdAllowedToDisable(commandArgs interface{}) bool {

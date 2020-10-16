@@ -14,6 +14,10 @@
 
 package api
 
+import (
+	"sort"
+)
+
 // SubCmdIdx is a qualified path from a particular index to a given subcommand.
 type SubCmdIdx []uint64
 
@@ -86,4 +90,20 @@ func (s *SubCmdIdx) Decrement() {
 // Contains returns true if s is one of the parent nodes of s2 or equals to s2.
 func (s SubCmdIdx) Contains(s2 SubCmdIdx) bool {
 	return len(s2) >= len(s) && len(s) != 0 && s.Equals(s2[:len(s)])
+}
+
+// SortSubCmdIDs sorts the slice of subcommand ids
+func SortSubCmdIDs(ids []SubCmdIdx) {
+	lessFunc := func(i, j int) bool {
+		return ids[i].LessThan(ids[j])
+	}
+	sort.Slice(ids, lessFunc)
+}
+
+// ReverseSubCmdIDs reverses the slice of subcommand ids
+func ReverseSubCmdIDs(ids []SubCmdIdx) {
+	size := len(ids)
+	for i := 0; i < size/2; i++ {
+		ids[i], ids[size-1-i] = ids[size-1-i], ids[i]
+	}
 }
