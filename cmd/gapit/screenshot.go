@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
@@ -74,6 +75,11 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if len(verb.At) > 0 {
 		for _, at := range verb.At {
 			commands = append(commands, capture.Command(at[0], at[1:]...))
+		}
+	} else if verb.ExecutedDraws > 0 {
+		commands, err = verb.executedDrawCommands(ctx, capture, client, verb.ExecutedDraws)
+		if err != nil {
+			return err
 		}
 	} else {
 		commands, err = verb.frameCommands(ctx, capture, client)
@@ -246,6 +252,46 @@ func (verb *screenshotVerb) frameCommands(ctx context.Context, capture *path.Cap
 		}
 	}
 	return commands, nil
+}
+
+func (verb *screenshotVerb) executedDrawCommands(ctx context.Context, capture *path.Capture, client client.Client, maxAmount int) ([]*path.Command, error) {
+	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Couldn't get filter")
+	}
+	filter.OnlyExecutedDraws = true
+
+	treePath := capture.CommandTree(filter)
+
+	boxedTree, err := client.Get(ctx, treePath.Path(), nil)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to load the command tree")
+	}
+
+	tree := boxedTree.(*service.CommandTree)
+
+	var allDrawCommands []*path.Command
+	traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
+		if n.Group != "" || n.NumChildren > 0 {
+			return nil
+		}
+		allDrawCommands = append(allDrawCommands, n.Commands.First())
+		return nil
+	}, "", true)
+
+	if len(allDrawCommands) > maxAmount {
+		commands := make([]*path.Command, maxAmount)
+		// We use a float step so that we have a fairly even distribution when ratio < 2 (e.g. 5/3)
+		step := float32(len(allDrawCommands)) / float32(maxAmount)
+
+		for i := 0; i < len(commands); i++ {
+			commands[i] = allDrawCommands[int32(float32(i)*step)]
+		}
+
+		return commands, nil
+	} else {
+		return allDrawCommands, nil
+	}
 }
 
 // rescaleBytes scales the values in `data` from [0, `max`] to [0, 255].  If

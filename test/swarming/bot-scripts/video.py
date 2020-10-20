@@ -85,6 +85,18 @@ def main():
         gfxtrace
     ]
     p = botutil.runcmd(cmd)
+    if p.returncode != 0:
+        return p.returncode
+    
+    #### Screenshot test to retrieve mid-frame resources
+    screenshotfile = os.path.join(out_dir, test_params['package'] + '.png')
+    cmd = [
+        gapit, 'screenshot',
+        '-executeddraws', '5',
+        '-out', screenshotfile,
+        gfxtrace
+    ]
+    p = botutil.runcmd(cmd)
     return p.returncode
 
 

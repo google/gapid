@@ -366,16 +366,17 @@ type (
 		ADB         string         `help:"Path to the adb executable; leave empty to search the environment"`
 	}
 	ScreenshotFlags struct {
-		Gapis      GapisFlags
-		Gapir      GapirFlags
-		At         []flags.U64Slice `help:"command/subcommand index (e.g. '[123, 0, 0, 4]') for the screenshot (repeatable)"`
-		Frame      []int            `help:"frame index for the screenshot (repeatable). Empty for last"`
-		Draws      bool             `help:"create a screenshot of every draw call in the requested frame(s) (only honored if using -frame)"`
-		Out        string           `help:"output image file (default 'screenshot.png')"`
-		NoOpt      bool             `help:"disables optimization of the replay stream"`
-		Attachment string           `help:"the attachment to show (0-3 for color, d for depth, s for stencil)"`
-		Overdraw   bool             `help:"renders the overdraw instead of the color framebuffer"`
-		Max        struct {
+		Gapis         GapisFlags
+		Gapir         GapirFlags
+		At            []flags.U64Slice `help:"command/subcommand index (e.g. '[123, 0, 0, 4]') for the screenshot (repeatable)"`
+		Frame         []int            `help:"frame index for the screenshot (repeatable). Empty for last"`
+		Draws         bool             `help:"create a screenshot of every draw call in the requested frame(s) (only honored if using -frame)"`
+		ExecutedDraws int              `help:"create a screenshot at every (total-draw-calls / this-flag-value) drawcall, e.g. for 100 draw calls, '-executeddraws 4' takes a screenshot at every 25th call"`
+		Out           string           `help:"output image file (default 'screenshot.png')"`
+		NoOpt         bool             `help:"disables optimization of the replay stream"`
+		Attachment    string           `help:"the attachment to show (0-3 for color, d for depth, s for stencil)"`
+		Overdraw      bool             `help:"renders the overdraw instead of the color framebuffer"`
+		Max           struct {
 			Overdraw int `help:"the amount of overdraw to map to white in the output"`
 		}
 		DisplayToSurface bool `help:"display the frames rendered in the replay back to the surface"`
