@@ -232,7 +232,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
-		if filter(id, cmd, s) {
+		if filter(id, cmd, s, api.SubCmdIdx([]uint64{uint64(id)})) {
 			for _, g := range groupers {
 				g.Process(ctx, id, cmd, s)
 			}
@@ -299,12 +299,12 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
 
-		if !filter(id, cmd, s) {
+		if !filter(id, cmd, s, api.SubCmdIdx([]uint64{uint64(id)})) {
 			return nil
 		}
 
 		if v, ok := snc.SubcommandGroups[id]; ok {
-			r := out.root.AddRoot([]uint64{uint64(id)}, snc.SubcommandNames)
+			subr := out.root.AddRoot([]uint64{uint64(id)}, snc.SubcommandNames)
 			// subcommands are added before nesting SubCmdRoots.
 			cv := append([]api.SubCmdIdx{}, v...)
 			sort.SliceStable(cv, func(i, j int) bool { return len(cv[i]) < len(cv[j]) })
@@ -313,11 +313,22 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 				// shorter indices are added before groups with longer indices.
 				// SubCmdRoot will be created when necessary.
 				parentIdx := append([]uint64{uint64(id)}, x[0:len(x)-1]...)
+				// if snc.SubCommandMarkerGroups.Value(parentIdx) != nil && !p.OnlyExecutedDraws {
 				if snc.SubCommandMarkerGroups.Value(parentIdx) != nil {
 					markers := snc.SubCommandMarkerGroups.Value(parentIdx).([]*api.CmdIDGroup)
-					r.AddSubCmdMarkerGroups(x[0:len(x)-1], markers, snc.SubcommandNames)
+					subr.AddSubCmdMarkerGroups(x[0:len(x)-1], markers, snc.SubcommandNames)
 				}
-				r.Insert(append([]uint64{}, x...), snc.SubcommandNames)
+				subr.InsertWithFilter(append([]uint64{}, x...), snc.SubcommandNames, func(id api.CmdID) bool {
+					subCmd, err := Cmd(ctx, &path.Command{
+						Capture: p.Capture,
+						Indices: append(parentIdx, uint64(id)),
+					}, r.Config)
+					if err == nil {
+						return filter(id, subCmd, s, api.SubCmdIdx(append(parentIdx, uint64(id))))
+					}
+
+					return false
+				})
 			}
 			return nil
 		}

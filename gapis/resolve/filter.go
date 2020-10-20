@@ -25,15 +25,15 @@ import (
 // CommandFilter is a predicate used for filtering commands.
 // If the function returns true then the command is considered, otherwise it is
 // ignored.
-type CommandFilter func(api.CmdID, api.Cmd, *api.GlobalState) bool
+type CommandFilter func(api.CmdID, api.Cmd, *api.GlobalState, api.SubCmdIdx) bool
 
 // CommandFilters is a list of CommandFilters.
 type CommandFilters []CommandFilter
 
 // All is a CommandFilter that needs all the contained filters to pass.
-func (l CommandFilters) All(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
+func (l CommandFilters) All(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
 	for _, f := range l {
-		if !f(id, cmd, s) {
+		if !f(id, cmd, s, idx) {
 			return false
 		}
 	}
@@ -48,19 +48,26 @@ func buildFilter(
 	r *path.ResolveConfig) (CommandFilter, error) {
 
 	filters := CommandFilters{
-		func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
+		func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
 			return !sd.Hidden.Contains(id)
 		},
 	}
 	if len(f.GetThreads()) > 0 {
-		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
-			thread := cmd.Thread()
-			for _, t := range f.Threads {
-				if t == thread {
-					return true
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+			if len(idx) == 1 {
+				thread := cmd.Thread()
+				for _, t := range f.Threads {
+					if t == thread {
+						return true
+					}
 				}
 			}
 			return false
+		})
+	}
+	if f.GetOnlyExecutedDraws() {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+			return (cmd.CmdFlags().IsExecutedDraw() && len(idx) > 1) || cmd.CmdFlags().IsSubmission()
 		})
 	}
 	return filters.All, nil

@@ -300,6 +300,8 @@ message Field {
 message CommandFilter {
   // thread filters the commands to those with the specified threads.
   repeated uint64 threads = 2;
+  // If true, only shows draw calls from inside a command buffer
+  bool only_executed_draws = 3;
 }
 
 // CommandTree is a path to a hierarchy of command tree nodes.

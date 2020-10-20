@@ -438,6 +438,21 @@ func (c *SubCmdRoot) Insert(r []uint64, nameLookUp *SubCmdIdxTrie) {
 	}
 }
 
+func (c *SubCmdRoot) InsertWithFilter(r []uint64, nameLookUp *SubCmdIdxTrie, filter func(CmdID) bool) {
+	childRoot := c.newChildSubCmdRoots(r[0:len(r)-1], nameLookUp)
+	// Add subcommands one-by-one to the SubCmdRoot and its subgroups/child
+	// SubCmdRoots
+	id := r[len(r)-1]
+	if CmdID(id) > childRoot.SubGroup.Range.End {
+		childRoot.SubGroup.Range.End = CmdID(id + 1)
+	}
+	for i := CmdID(0); i < CmdID(id); i++ {
+		if filter(i) {
+			childRoot.SubGroup.AddCommand(i)
+		}
+	}
+}
+
 // AddSubCmdMarkerGroups adds the given groups to the target SubCmdRoot
 // with the relative hierarchy specified in r. If the groups are not added as
 // immediate children of the target SubCmdRoot (r is not empty), child

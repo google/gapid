@@ -59,6 +59,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build the CommandFilter")
 	}
+	filter.OnlyExecutedDraws = verb.OnlyExecutedDraws
 
 	treePath := capture.CommandTree(filter)
 	treePath.GroupByApi = verb.GroupByAPI
@@ -102,10 +103,16 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	return traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
-		fmt.Fprintf(os.Stdout, prefix)
-		if n.Group != "" {
-			fmt.Fprintln(os.Stdout, n.Group)
-			return nil
+		if verb.OnlyExecutedDraws {
+			if n.Group != "" || n.NumChildren > 0 {
+				return nil
+			}
+		} else {
+			fmt.Fprintf(os.Stdout, prefix)
+			if n.Group != "" {
+				fmt.Fprintln(os.Stdout, n.Group)
+				return nil
+			}
 		}
 		return getAndPrintCommand(ctx, client, n.Commands.First(), verb.Observations)
 	}, "", true)
