@@ -453,6 +453,7 @@ type (
 	}
 
 	PerfettoFlags struct {
+		Gapis      GapisFlags
 		Mode       PerfettoMode         `help:"Run mode: {metrics|interactive}. Default: metrics."`
 		In         string               `help:"Input file. Refer to documentation for file format."`
 		Categories string               `help:"Comma separated list of metric categories from the input file. Only valid if 'metrics' mode is selected."`

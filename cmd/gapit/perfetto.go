@@ -104,9 +104,9 @@ func (verb *perfettoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if verb.Mode == ModeMetrics {
-		return RunMetrics(ctx, trace, input, categories, output, outputFormat)
+		return RunMetrics(ctx, verb.Gapis, trace, input, categories, output, outputFormat)
 	} else if verb.Mode == ModeInteractive {
-		return RunInteractive(ctx, trace, input, output, outputFormat)
+		return RunInteractive(ctx, verb.Gapis, trace, input, output, outputFormat)
 	} else {
 		return ListMetrics(ctx, input, categories)
 	}
@@ -198,7 +198,7 @@ type MetricsInfo struct {
 	MetricCategories []MetricCategory `json:"metrics"`
 }
 
-func RunMetrics(ctx context.Context, trace string, inputPath string, categories map[string]struct{}, outputPath string, format PerfettoOutputFormat) error {
+func RunMetrics(ctx context.Context, gapisFlags GapisFlags, trace string, inputPath string, categories map[string]struct{}, outputPath string, format PerfettoOutputFormat) error {
 	var byteValue []byte
 	if inputPath != "" {
 		metricsFile, err := os.Open(inputPath)
@@ -217,7 +217,7 @@ func RunMetrics(ctx context.Context, trace string, inputPath string, categories 
 	}
 
 	// Load the trace
-	client, capture, err := getGapisAndLoadCapture(ctx, GapisFlags{}, GapirFlags{}, trace, CaptureFileFlags{})
+	client, capture, err := getGapisAndLoadCapture(ctx, gapisFlags, GapirFlags{}, trace, CaptureFileFlags{})
 	if err != nil {
 		return fmt.Errorf("Error while loading the trace file %s: %v.", trace, err)
 	}
@@ -285,7 +285,7 @@ func RunMetrics(ctx context.Context, trace string, inputPath string, categories 
 	return nil
 }
 
-func RunInteractive(ctx context.Context, trace string, inputPath string, outputPath string, format PerfettoOutputFormat) error {
+func RunInteractive(ctx context.Context, gapisFlags GapisFlags, trace string, inputPath string, outputPath string, format PerfettoOutputFormat) error {
 	// Load the preparation queries from input file. For these queries we do not report the output.
 	var prepQueries []string
 	if inputPath != "" {
@@ -313,7 +313,7 @@ func RunInteractive(ctx context.Context, trace string, inputPath string, outputP
 	}
 
 	// Load the trace
-	client, capture, err := getGapisAndLoadCapture(ctx, GapisFlags{}, GapirFlags{}, trace, CaptureFileFlags{})
+	client, capture, err := getGapisAndLoadCapture(ctx, gapisFlags, GapirFlags{}, trace, CaptureFileFlags{})
 	if err != nil {
 		return fmt.Errorf("Error while loading the trace file %s: %v.", trace, err)
 	}
