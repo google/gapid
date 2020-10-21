@@ -91,7 +91,7 @@ func Convert(dst, src *Format, data []byte) ([]byte, error) {
 	min, max := float64(math.MaxFloat64), -float64(math.MaxFloat64)
 	for _, m := range mappings {
 		if m.dst.component.DataType.IsInteger() && m.src.component.DataType.IsFloat() && !m.dst.component.DataType.Signed {
-			ftouMinMax(count, m.dst, m.src, &min, &max)
+			readMinMax(count, m.src, &min, &max)
 		}
 	}
 
@@ -186,6 +186,7 @@ func (m *mapping) conv(count int, min, max float64) error {
 			}
 			return intCollapse(count, m.dst, m.src)
 		}
+		return fmt.Errorf("Cannot convert from Int %v to Int %v", s, d)
 	case dstIsFloat && srcIsInt:
 		if s.DataType.Signed {
 			return stof(count, m.dst, m.src)
@@ -196,8 +197,9 @@ func (m *mapping) conv(count int, min, max float64) error {
 			return ftos(count, m.dst, m.src)
 		}
 		return ftou(count, m.dst, m.src, min, max)
+	default:
+		return fmt.Errorf("Cannot convert from Unknown %v to Unknown %v", s, d)
 	}
-	return fmt.Errorf("Cannot convert from %v to %v", s, d)
 }
 
 // straight up copy.
@@ -396,7 +398,7 @@ func writeUintClamped(bs *binary.BitStream, bits uint64, count uint32) {
 	bs.Write(u64.Min(bits, limit), count)
 }
 
-func ftouMinMax(count int, dst, src buf, min, max *float64) error {
+func readMinMax(count int, src buf, min, max *float64) error {
 	srcTy := src.component.DataType
 	srcIsF16, srcIsF32, srcIsF64 := srcTy.Is(F16), srcTy.Is(F32), srcTy.Is(F64)
 	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
@@ -441,8 +443,10 @@ func ftouMinMax(count int, dst, src buf, min, max *float64) error {
 			sourceStream.ReadPos += src.stride - 64
 		}
 	default:
+		srcExpBits, srcManBits := srcTy.GetFloat().ExponentBits, srcTy.GetFloat().MantissaBits
+		srcBits := srcTy.Bits()
 		for i := 0; i < count; i++ {
-			f := math.Float64frombits(sourceStream.Read(64))
+			f := float64(f64.FromBits(sourceStream.Read(srcBits), srcExpBits, srcManBits))
 			if !math.IsInf(f, 0) {
 				if f < *min {
 					*min = f
@@ -451,7 +455,7 @@ func ftouMinMax(count int, dst, src buf, min, max *float64) error {
 					*max = f
 				}
 			}
-			sourceStream.ReadPos += src.stride - 64
+			sourceStream.ReadPos += src.stride - srcBits
 		}
 	}
 	return nil
