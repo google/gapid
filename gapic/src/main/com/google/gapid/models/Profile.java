@@ -204,10 +204,8 @@ public class Profile
 
     public Double getGpuPerformance(List<Long> commandIndex, int metricId) {
       CommandIndex indexStr = new CommandIndex(commandIndex);
-      if (!perfLookup.containsKey(indexStr)) {
-        return Double.NaN;
-      }
-      return perfLookup.get(indexStr).get(metricId);
+      Map<Integer, Double> metrics = perfLookup.get(indexStr);
+      return (metrics == null) ? Double.NaN : metrics.getOrDefault(metricId, Double.NaN);
     }
 
     public Duration getDuration(Path.Commands range) {
