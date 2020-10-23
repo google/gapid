@@ -291,12 +291,16 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 			return 0, log.Err(ctx, nil, "Timed out in waiting for trace session ready")
 		}
 	}
+
+	// TODO(b/147388497): Find a way to reliably know when Perfetto/producers are ready.
+	delayedReady := task.Delay(ready, 250*time.Millisecond)
+
 	atomic.StoreInt64(written, 1)
 	if p.deferred && !start.Wait(ctx) {
 		ts.Stop(ctx)
 		return 0, log.Err(ctx, nil, "Cancelled")
 	}
-	ready(ctx)
+	delayedReady(ctx)
 	ts.Start(ctx)
 	wait := make(chan error, 1)
 	crash.Go(func() {
