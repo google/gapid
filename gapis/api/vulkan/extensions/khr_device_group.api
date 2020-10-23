@@ -210,7 +210,7 @@ sub void dovkCmdDispatchBaseKHR(ref!vkCmdDispatchBaseKHRArgs args) {
 @extension("VK_KHR_device_group")
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
-@executed_draw
+@executed_dispatch
 @threadsafe
 cmd void vkCmdDispatchBaseKHR(
     VkCommandBuffer                             commandBuffer,
@@ -259,7 +259,7 @@ sub void dovkCmdDispatchBase(ref!vkCmdDispatchBaseArgs args) {
 // Vulkan 1.1
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
-@executed_draw
+@executed_dispatch
 @threadsafe
 cmd void vkCmdDispatchBase(
     VkCommandBuffer                             commandBuffer,

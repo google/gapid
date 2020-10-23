@@ -1801,8 +1801,8 @@ import (
   }
 
   func (ϟc *{{$name}}) CmdFlags() ϟapi.CmdFlags {
-    {{$names := Strings "draw_call" "transform_feedback" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker" "executed_draw" "submission"}}
-    {{$flags := Strings "DrawCall"  "TransformFeedback"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker" "ExecutedDraw" "Submission"}}
+    {{$names := Strings "draw_call" "transform_feedback" "clear" "frame_start"  "frame_end"  "user_marker" "push_user_marker" "pop_user_marker" "executed_draw" "executed_dispatch" "submission"}}
+    {{$flags := Strings "DrawCall"  "TransformFeedback"  "Clear" "StartOfFrame" "EndOfFrame" "UserMarker"  "PushUserMarker"   "PopUserMarker" "ExecutedDraw" "ExecutedDispatch" "Submission"}}
 
     var out ϟapi.CmdFlags
     {{range $i, $name := $names}}

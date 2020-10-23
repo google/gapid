@@ -187,7 +187,7 @@ func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (i
 		return nil, err
 	}
 
-	if !cmd.CmdFlags().IsExecutedDraw() || len(p.After.Indices) == 1 {
+	if !(cmd.CmdFlags().IsExecutedDraw() || cmd.CmdFlags().IsExecutedDispatch()) || len(p.After.Indices) == 1 {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNotADrawCall()}
 	}
 

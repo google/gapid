@@ -402,7 +402,7 @@ sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
-@executed_draw
+@executed_dispatch
 @threadsafe
 cmd void vkCmdDispatch(
     VkCommandBuffer commandBuffer,
@@ -446,7 +446,7 @@ sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
-@executed_draw
+@executed_dispatch
 @threadsafe
 cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
