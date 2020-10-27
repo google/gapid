@@ -23,6 +23,8 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Profile;
+import com.google.gapid.perfetto.Unit;
+import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Loadable;
@@ -172,7 +174,8 @@ public class PerformanceView extends Composite
     }
 
     private void addColumnForMetric(Service.ProfilingData.GpuCounters.Metric metric) {
-      TreeViewerColumn column = addColumn(metric.getName() + "(" + metric.getUnit() + ")", node -> {
+      Unit unit = CounterInfo.unitFromString(metric.getUnit());
+      TreeViewerColumn column = addColumn(metric.getName() + "(" + unit.name + ")", node -> {
         Service.CommandTreeNode data = node.getData();
         if (data == null) {
           return "";
@@ -180,7 +183,7 @@ public class PerformanceView extends Composite
           return "Profiling...";
         } else {
           Double value = models.profile.getData().getGpuPerformance(data.getCommands().getFromList(), metric.getId());
-          return value.isNaN() || value.isInfinite() || value < 0 ? "" : value.toString();
+          return value.isNaN() || value.isInfinite() || value < 0 ? "" : unit.format(value);
         }
       }, DURATION_WIDTH);
       column.getColumn().setAlignment(SWT.RIGHT);

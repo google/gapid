@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//core/log:go_default_library",
         "//core/math/u64:go_default_library",
+        "//core/os/device:go_default_library",
         "//gapis/service:go_default_library",
     ],
 )

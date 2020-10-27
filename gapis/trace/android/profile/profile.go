@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/u64"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -82,13 +83,13 @@ func setTimeMetrics(groupToSlices map[int32][]*service.ProfilingData_GpuSlices_S
 	*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
 		Id:   gpuTimeMetricId,
 		Name: "GPU Time",
-		Unit: "ns",
+		Unit: strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
 		Op:   service.ProfilingData_GpuCounters_Metric_Summation,
 	})
 	*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
 		Id:   gpuWallTimeMetricId,
 		Name: "GPU Wall Time",
-		Unit: "ns",
+		Unit: strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
 		Op:   service.ProfilingData_GpuCounters_Metric_Summation,
 	})
 	for groupId, slices := range groupToSlices {
