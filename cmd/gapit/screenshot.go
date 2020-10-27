@@ -149,7 +149,7 @@ func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Comman
 		settings.DrawMode = path.DrawMode_OVERDRAW
 	}
 
-	attachment, err := verb.getAttachment(ctx)
+	attachment, err := verb.getAttachment(ctx, cmd, device, client)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get color attachment failed")
 	}
@@ -318,9 +318,21 @@ func rescaleBytes(ctx context.Context, data []byte, max int) {
 	}
 }
 
-func (verb *screenshotVerb) getAttachment(ctx context.Context) (uint32, error) {
+func (verb *screenshotVerb) getAttachment(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service) (uint32, error) {
 	if verb.Attachment == "" {
-		return 0, nil
+		fbsPath := &path.FramebufferAttachments{
+			After: cmd,
+		}
+		fbs, err := client.Get(ctx, fbsPath.Path(), &path.ResolveConfig{ReplayDevice: device})
+		if err != nil {
+			return 0, log.Errf(ctx, err, "GetFramebufferAttachments failed")
+		}
+		attachments := fbs.(*service.FramebufferAttachments).GetAttachments()
+		if len(attachments) == 0 {
+			return 0, log.Errf(ctx, err, "No Framebuffer Attachments")
+		}
+
+		return attachments[0].GetIndex(), nil
 	}
 
 	// TODO: Add-back ability to type "depth" to get the depth attachment
