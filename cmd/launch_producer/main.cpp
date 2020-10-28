@@ -26,7 +26,7 @@
 
 #define _LOG(lvl, name, msg, ...)                        \
   do {                                                   \
-    fprintf(stdout, name ": " msg "\n", ##__VA_ARGS__);  \
+    fprintf(stderr, name ": " msg "\n", ##__VA_ARGS__);  \
     __android_log_print(lvl, "AGI", msg, ##__VA_ARGS__); \
   } while (false)
 
