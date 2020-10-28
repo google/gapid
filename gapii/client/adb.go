@@ -76,9 +76,9 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		return nil, nil, log.Err(ctx, nil, "Invalid activity information.")
 	}
 
-	supported, _, cleanup, err := d.PrepareGpuProfiling(ctx, a.Package)
-	if err != nil || !supported {
-		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "GPU profiling is not supported.")
+	_, _, cleanup, err := d.PrepareGpuProfiling(ctx, a.Package)
+	if err != nil {
+		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to prepare GPU profiling")
 	}
 
 	// TODO: Need to clean this up and get it working

@@ -133,10 +133,10 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 
 		packages := []string{}
-		supported, packageName, nextCleanup, err := d.PrepareGpuProfiling(ctx, a.Package)
+		_, packageName, nextCleanup, err := d.PrepareGpuProfiling(ctx, a.Package)
 		cleanup = cleanup.Then(nextCleanup)
-		if err != nil || !supported {
-			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "GPU profiling is not supported")
+		if err != nil {
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to prepare GPU profiling")
 		}
 		if packageName != "" {
 			packages = append(packages, packageName)
