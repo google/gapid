@@ -44,6 +44,7 @@
 #include <thread>
 
 #if TARGET_OS == GAPID_OS_ANDROID
+#include <android/window.h>
 #include <sys/stat.h>
 #include "android_native_app_glue.h"
 #include "gapir/cc/android/asset_replay_service.h"
@@ -688,6 +689,8 @@ void android_main(struct android_app* app) {
   GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
 
   CrashHandler crashHandler(getCacheDir(app));
+
+  ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
 
   std::thread waiting_thread;
   std::atomic<bool> thread_is_done(false);
