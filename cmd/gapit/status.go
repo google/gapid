@@ -96,6 +96,18 @@ type tsk struct {
 	children   map[uint64]*tsk
 }
 
+type u64List []uint64
+
+// Len is the number of elements in the collection.
+func (s u64List) Len() int { return len(s) }
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+func (s u64List) Less(i, j int) bool { return s[i] < s[j] }
+
+// Swap swaps the elements with indexes i and j.
+func (s u64List) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
 func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
 	if err != nil {

@@ -336,17 +336,16 @@ type (
 		WaitForDebugger bool   `help:"Make GAPII wait for a debugger to attach"`
 	}
 	BenchmarkFlags struct {
-		DeviceFlags
-		Gapis          GapisFlags
-		Gapir          GapirFlags
-		NumFrames      int    `help:"how many frames to capture"`
-		AdditionalArgs string `help:"additional arguments to pass to the application"`
-		WorkingDir     string `help:"working directory for the application"`
-		URI            string `help:"uri of the application to trace"`
-		DumpTrace      string `help:"dump a systrace of gapis"`
-		StartFrame     int    `help:"perform a MEC trace starting at this frame"`
-		NoOpt          bool   `help:"disables optimization of the replay stream"`
-		OutputCSV      bool   `help:"outputs data in CSV-friendly format"`
+		Gapis      GapisFlags
+		Gapir      GapirFlags
+		NumDraws   int              `help:"the number of draw calls to select"`
+		Paths      []flags.U64Slice `help:"the (partial) paths to the draw calls to use"`
+		Secondary  bool             `help:"whether to expect secondary command buffers inside the renderpasses"`
+		Seed       int64            `help:"seed to use when making RNG decisions"`
+		DumpTrace  string           `help:"dump a combined systrace of gapit and gapis"`
+		SummaryOut string           `help:"filename to write summary to, default is stdout"`
+		CsvOut     string           `help:"dump a csv file with the detailed stats"`
+		DotOut     string           `help:"dump a dot file with the detailed stats"`
 	}
 
 	StatusFlags struct {

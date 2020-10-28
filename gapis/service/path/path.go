@@ -618,6 +618,21 @@ func (n *CommandTreeNode) Child(i uint64) *CommandTreeNode {
 	return &CommandTreeNode{Tree: n.Tree, Indices: newIndices}
 }
 
+// Mesh returns the path node to the mesh of this command tree node.
+func (n *CommandTreeNode) Mesh(options *MeshOptions) *Mesh {
+	return &Mesh{
+		Options: options,
+		Object:  &Mesh_CommandTreeNode{n},
+	}
+}
+
+// Pipelines returns the path node to the piplines after this command tree node.
+func (n *CommandTreeNode) Pipelines() *Pipelines {
+	return &Pipelines{
+		After: n,
+	}
+}
+
 // Command returns the path node to a single command in the capture.
 func (n *Capture) Command(i uint64, subidx ...uint64) *Command {
 	indices := append([]uint64{i}, subidx...)
@@ -688,6 +703,32 @@ func (n *Command) Mesh(options *MeshOptions) *Mesh {
 	}
 }
 
+// IsAfter returns whether the receiver is after o.
+func (n *Command) IsAfter(o *Command) bool {
+	nLen := len(n.GetIndices())
+	if nLen == 0 {
+		return false
+	}
+	oLen := len(o.GetIndices())
+	if oLen == 0 {
+		return true
+	}
+
+	for i := 0; i < nLen; i++ {
+		if i >= oLen {
+			return true
+		}
+
+		switch {
+		case n.Indices[i] < o.Indices[i]:
+			return false
+		case n.Indices[i] > o.Indices[i]:
+			return true
+		}
+	}
+	return false
+}
+
 // NewMeshOptions returns a new MeshOptions object.
 func NewMeshOptions(faceted bool) *MeshOptions {
 	return &MeshOptions{
@@ -716,6 +757,14 @@ func (n *Command) GlobalStateAfter() *GlobalState {
 // StateAfter returns the path node to the state after this command.
 func (n *Command) StateAfter() *State {
 	return &State{After: n}
+}
+
+// StateTreeAfter returns the path node to the state tree after this command.
+func (n *Command) StateTreeAfter(arrayGroupSize int32) *StateTree {
+	return &StateTree{
+		State:          n.StateAfter(),
+		ArrayGroupSize: arrayGroupSize,
+	}
 }
 
 // First returns the path to the first command.
@@ -784,6 +833,14 @@ func (n *ImageInfo) As(f *image.Format) *As {
 	return &As{
 		To:   &As_ImageFormat{f},
 		From: &As_ImageInfo{n},
+	}
+}
+
+// As requests the Mesh converted to the specified format.
+func (n *Mesh) As(f *vertex.BufferFormat) *As {
+	return &As{
+		To:   &As_VertexBufferFormat{f},
+		From: &As_Mesh{n},
 	}
 }
 

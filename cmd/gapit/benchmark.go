@@ -17,921 +17,1233 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/csv"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"io"
+	"math/rand"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 	"sync"
-	"text/tabwriter"
 	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/status"
-	"github.com/google/gapid/core/event/task"
-	img "github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
-	"github.com/google/gapid/gapis/stringtable"
+	"github.com/google/gapid/gapis/vertex"
 )
 
-type benchmarkVerb struct {
-	BenchmarkFlags
-	startTime            time.Time
-	beforeStartTraceTime time.Time
-	traceInitializedTime time.Time
-	traceDoneTime        time.Time
-	traceSizeInBytes     int64
-	traceFrames          int
-	gapisInteractiveTime time.Time
-	gapisCachingDoneTime time.Time
-	interactionStartTime time.Time
-	interactionDoneTime  time.Time
-}
+var (
+	actionKey               = struct{}{}
+	thumbSize        uint32 = 192
+	fbRenderSettings        = &path.RenderSettings{
+		MaxWidth:  0xffff,
+		MaxHeight: 0xffff,
+		DrawMode:  path.DrawMode_NORMAL,
+	}
+	fbHints    = &path.UsageHints{Primary: true}
+	meshFormat = &vertex.BufferFormat{
+		Streams: []*vertex.StreamFormat{
+			&vertex.StreamFormat{
+				Semantic: &vertex.Semantic{
+					Type:  vertex.Semantic_Position,
+					Index: 0,
+				},
+				Format: fmts.XYZ_F32,
+			},
+			&vertex.StreamFormat{
+				Semantic: &vertex.Semantic{
+					Type:  vertex.Semantic_Normal,
+					Index: 0,
+				},
+				Format: fmts.XYZ_F32,
+			},
+		},
+	}
+	defaultNumDraws = 2
+)
 
-var BenchmarkName = "benchmark.gfxtrace"
+type benchmarkVerb struct{ BenchmarkFlags }
 
 func init() {
 	verb := &benchmarkVerb{}
 
 	app.AddVerb(&app.Verb{
 		Name:      "benchmark",
-		ShortHelp: "Runs a set of benchmarking tests on an application",
+		ShortHelp: "Runs a set of benchmarking tests on a trace",
 		Action:    verb,
 	})
 }
 
-// We wnat to write our some of our own tracing data
-type profileTask struct {
-	Name      string `json:"name,omitempty"`
-	Pid       uint64 `json:"pid"`
-	Tid       uint64 `json:"tid"`
-	EventType string `json:"ph"`
-	Ts        int64  `json:"ts"`
-	S         string `json:"s,omitempty"`
+func printIndices(index []uint64) string {
+	parts := make([]string, len(index))
+	for i, v := range index {
+		parts[i] = fmt.Sprint(v)
+	}
+	return strings.Join(parts, ".")
 }
 
-type u64List []uint64
-
-// Len is the number of elements in the collection.
-func (s u64List) Len() int { return len(s) }
-
-// Less reports whether the element with
-// index i should sort before the element with index j.
-func (s u64List) Less(i, j int) bool { return s[i] < s[j] }
-
-// Swap swaps the elements with indexes i and j.
-func (s u64List) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-
-func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	oldCtx := ctx
-	ctx = status.Start(ctx, "Initializing GAPIS")
-
-	if verb.NumFrames == 0 {
-		verb.NumFrames = 100
+func ignoreDataUnavailable(val interface{}, err error) (interface{}, error) {
+	if _, ok := err.(*service.ErrDataUnavailable); ok {
+		return val, nil
 	}
+	return val, err
+}
 
-	verb.startTime = time.Now()
+func newRandom(seed string, offset int64) *rand.Rand {
+	h := fnv.New64()
+	h.Write([]byte(seed))
+	return rand.New(rand.NewSource(int64(h.Sum64()) + offset))
+}
 
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
-	}
-	defer func() {
-		if err := client.Close(); err != nil {
-			log.E(ctx, "Error closing client: %v", err)
+type cmdTree struct {
+	path     *path.CommandTreeNode
+	node     *service.CommandTreeNode
+	cmd      *api.Command
+	children []cmdTree
+}
+
+type chooser func(n int) (int, error)
+
+func (t *cmdTree) choose(choose chooser, pred func(t *cmdTree) bool) (*cmdTree, error) {
+	var candidates []*cmdTree
+	for i := range t.children {
+		if pred(&t.children[i]) {
+			candidates = append(candidates, &t.children[i])
 		}
-	}()
+	}
 
-	var writeTrace func(path string, gapisTrace, gapitTrace *bytes.Buffer) error
+	if len(candidates) == 0 {
+		return nil, nil
+	}
 
-	if verb.DumpTrace != "" {
-		gapitTrace := &bytes.Buffer{}
-		gapisTrace := &bytes.Buffer{}
-		stopGapitTrace := status.RegisterTracer(gapitTrace)
-		stopGapisTrace, err := client.Profile(ctx, nil, gapisTrace, 1)
+	idx, err := choose(len(candidates))
+	if err != nil {
+		return nil, err
+	}
+
+	return candidates[idx], nil
+}
+
+func (t *cmdTree) chooseQueueSubmit(choose chooser) (*cmdTree, error) {
+	submit, err := t.choose(choose, func(t *cmdTree) bool {
+		return t.cmd.GetName() == "vkQueueSubmit"
+	})
+
+	if err != nil {
+		return nil, err
+	} else if submit == nil {
+		return nil, fmt.Errorf("No submits found at node<%s>", printIndices(t.path.GetIndices()))
+	}
+
+	return submit, nil
+}
+
+func (t *cmdTree) chooseSubmitInfo(choose chooser) (*cmdTree, error) {
+	info, err := t.choose(choose, func(t *cmdTree) bool {
+		return strings.HasPrefix(t.node.GetGroup(), "pSubmits[")
+	})
+
+	if err != nil {
+		return nil, err
+	} else if info == nil {
+		return nil, fmt.Errorf("No submit infos found at node<%s>", printIndices(t.path.GetIndices()))
+	}
+
+	return info, nil
+}
+
+func (t *cmdTree) chooseCommandBuffer(choose chooser) (*cmdTree, error) {
+	cb, err := t.choose(choose, func(t *cmdTree) bool {
+		return strings.HasPrefix(t.node.GetGroup(), "Command Buffer: ")
+	})
+
+	if err != nil {
+		return nil, err
+	} else if cb == nil {
+		return nil, fmt.Errorf("No command buffers found at node<%s>", printIndices(t.path.GetIndices()))
+	}
+
+	return cb, nil
+}
+
+func (t *cmdTree) chooseRenderPass(choose chooser) (*cmdTree, error) {
+	rp, err := t.choose(choose, func(t *cmdTree) bool {
+		return strings.HasPrefix(t.node.GetGroup(), "RenderPass: ")
+	})
+
+	if err != nil {
+		return nil, err
+	} else if rp == nil {
+		return nil, fmt.Errorf("No renderpass found at node<%s>", printIndices(t.path.GetIndices()))
+	}
+
+	return rp, nil
+}
+
+func (t *cmdTree) chooseExecute(choose chooser) (*cmdTree, error) {
+	e, err := t.choose(choose, func(t *cmdTree) bool {
+		return t.cmd.GetName() == "vkCmdExecuteCommands"
+	})
+
+	if err != nil {
+		return nil, err
+	} else if e == nil {
+		return nil, fmt.Errorf("No vkCmdExecuteCommands found at node<%s>", printIndices(t.path.GetIndices()))
+	}
+
+	return e, nil
+}
+
+func (t *cmdTree) chooseDrawCall(choose chooser) (*cmdTree, error) {
+	dc, err := t.choose(choose, func(t *cmdTree) bool {
+		return strings.HasPrefix(t.node.GetGroup(), "Draw")
+	})
+
+	if err != nil {
+		return nil, err
+	} else if dc == nil {
+		return nil, fmt.Errorf("No draw calls found at node<%s>", printIndices(t.path.GetIndices()))
+	}
+
+	return dc, nil
+}
+
+type stateTree struct {
+	path     *path.StateTreeNode
+	node     *service.StateTreeNode
+	children []stateTree
+}
+
+type measurement struct {
+	name     string
+	duration time.Duration
+	children []*measurement
+}
+
+type drawSummary struct {
+	find        time.Duration
+	selection   time.Duration
+	framebuffer time.Duration
+}
+
+type summary struct {
+	init            time.Duration
+	initStart       time.Duration
+	initLoad        time.Duration
+	initLoadProfile time.Duration
+	draws           []drawSummary
+}
+
+func (s *summary) print(w io.Writer) error {
+	if _, err := fmt.Fprint(w, "Init,Init.Start,Init.Load,Init.Load.Profile"); err != nil {
+		return err
+	}
+	for i := range s.draws {
+		if _, err := fmt.Fprintf(w, ",Draw%d.Find,Draw%d.Select,Draw%d.Select.Framebuffer", i, i, i); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintf(w, "%0.3f,%0.3f,%0.3f,%0.3f", s.init.Seconds(), s.initStart.Seconds(), s.initLoad.Seconds(), s.initLoadProfile.Seconds()); err != nil {
+		return err
+	}
+	for _, draw := range s.draws {
+		if _, err := fmt.Fprintf(w, ",%0.3f,%0.3f,%0.3f", draw.find.Seconds(), draw.selection.Seconds(), draw.framebuffer.Seconds()); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *measurement) getDuration() time.Duration {
+	if m == nil {
+		return time.Duration(0)
+	}
+	return m.duration
+}
+
+func (m *measurement) computeSummary() summary {
+	r := summary{
+		init:            m.find("init").getDuration(),
+		initStart:       m.find("init", "start_gapis").getDuration(),
+		initLoad:        m.find("init", "load").getDuration(),
+		initLoadProfile: m.find("init", "load", "profile").getDuration(),
+	}
+
+	for _, child := range m.children {
+		if child.name == "find_and_select_command" {
+			r.draws = append(r.draws, drawSummary{
+				find:        child.find("find_draw").getDuration(),
+				selection:   child.find("select_command").getDuration(),
+				framebuffer: child.find("select_command", "framebuffer").getDuration(),
+			})
+		}
+	}
+
+	return r
+}
+
+func (m *measurement) find(path ...string) *measurement {
+	if len(path) == 0 {
+		return m
+	}
+
+	for _, child := range m.children {
+		if child.name == path[0] || strings.HasPrefix(child.name, path[0]+"<") {
+			if r := child.find(path[1:]...); r != nil {
+				return r
+			}
+		}
+	}
+	return nil
+}
+
+func (m *measurement) writeCsv(w io.Writer) error {
+	for _, child := range m.children {
+		if err := child.writeCsvNode(w, ""); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *measurement) writeCsvNode(w io.Writer, parent string) error {
+	name := parent + m.name
+	if _, err := fmt.Fprintf(w, "\"%s\",%v\n", name, m.duration); err != nil {
+		return err
+	}
+	for _, child := range m.children {
+		if err := child.writeCsvNode(w, name+"."); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *measurement) writeGraph(w io.Writer) error {
+	if _, err := fmt.Fprintln(w, "digraph Profile {"); err != nil {
+		return err
+	}
+
+	id := 1
+	var err error
+	for _, child := range m.children {
+		id, err = child.writeGraphNode(w, id)
 		if err != nil {
 			return err
 		}
+	}
+	_, err = fmt.Fprintln(w, "}")
+	return err
+}
+
+func (m *measurement) writeGraphNode(w io.Writer, id int) (int, error) {
+	if _, err := fmt.Fprintf(w, "%d [label=\"%s|%v\"];\n", id, m.name, m.duration); err != nil {
+		return 0, err
+	}
+
+	cur := id + 1
+	for _, child := range m.children {
+		next, err := child.writeGraphNode(w, cur)
+		if err != nil {
+			return 0, err
+		}
+		if _, err := fmt.Fprintf(w, "%d -> %d;\n", id, cur); err != nil {
+			return 0, err
+		}
+		cur = next
+	}
+	return cur, nil
+}
+
+type benchmark struct {
+	rnd *rand.Rand
+
+	client    client.Client
+	capture   *path.Capture
+	device    *path.Device
+	cmdTree   *cmdTree
+	resources *service.Resources
+
+	measurement measurement
+	mutex       sync.Mutex
+
+	gapitTrace     bytes.Buffer
+	gapisTrace     bytes.Buffer
+	stopGapitTrace status.Unregister
+	stopGapisTrace func() error
+}
+
+type action interface {
+	name() string
+	exec(ctx context.Context, b *benchmark) (interface{}, error)
+	cleanup(ctx context.Context, b *benchmark, err error)
+}
+
+func (b *benchmark) measure(ctx context.Context, a action) (interface{}, error) {
+	return b.measureFun(ctx, a.name(), func(ctx context.Context) (interface{}, error) {
+		return a.exec(ctx, b)
+	})
+}
+
+func (b *benchmark) measureFun(ctx context.Context, name string, f func(ctx context.Context) (interface{}, error)) (interface{}, error) {
+	me := &measurement{name: name}
+
+	var parent *measurement
+	parentValue := ctx.Value(actionKey)
+	if parentValue == nil {
+		parent = &b.measurement
+	} else {
+		parent = parentValue.(*measurement)
+	}
+
+	b.mutex.Lock()
+	parent.children = append(parent.children, me)
+	b.mutex.Unlock()
+
+	ctx = context.WithValue(ctx, actionKey, me)
+
+	ctx = status.Start(ctx, name)
+	defer status.Finish(ctx)
+
+	start := time.Now()
+	defer func() {
+		me.duration = time.Since(start)
+	}()
+
+	return f(ctx)
+}
+
+func (b *benchmark) resolveConfig() *path.ResolveConfig {
+	return &path.ResolveConfig{
+		ReplayDevice: b.device,
+	}
+}
+
+func (b *benchmark) resourcesByType(after *path.Command, ty api.ResourceType) []*service.Resource {
+	var res []*service.Resource
+	for _, byType := range b.resources.GetTypes() {
+		if byType.GetType() == ty {
+			for _, resource := range byType.GetResources() {
+				count := len(resource.Accesses)
+				if count == 0 || !resource.Accesses[0].IsAfter(after) {
+					res = append(res, resource)
+				}
+			}
+		}
+	}
+	return res
+}
+
+func (b *benchmark) textures(after *path.Command) []*service.Resource {
+	return b.resourcesByType(after, api.ResourceType_TextureResource)
+}
+
+func (b *benchmark) shaders(after *path.Command) []*service.Resource {
+	return b.resourcesByType(after, api.ResourceType_ShaderResource)
+}
+
+type parallel struct {
+	label   string
+	actions []action
+}
+
+func (p *parallel) name() string {
+	return p.label
+}
+
+func (p *parallel) exec(ctx context.Context, b *benchmark) (interface{}, error) {
+	var wg sync.WaitGroup
+	errors := make([]error, len(p.actions))
+
+	for i := range p.actions {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			ctx := status.PutTask(ctx, nil) // Clear the parent, since we're parallel
+			_, err := b.measure(ctx, p.actions[i])
+			errors[i] = err
+		}(i)
+	}
+
+	wg.Wait()
+
+	// TODO: combine errors, rather than returning the first non-nil error.
+	for _, err := range errors {
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+func (p *parallel) cleanup(ctx context.Context, b *benchmark, err error) {
+	for _, a := range p.actions {
+		a.cleanup(ctx, b, err)
+	}
+}
+
+type sequential struct {
+	label   string
+	actions []action
+}
+
+func (s *sequential) name() string {
+	return s.label
+}
+
+func (s *sequential) exec(ctx context.Context, b *benchmark) (interface{}, error) {
+	for _, a := range s.actions {
+		if _, err := b.measure(ctx, a); err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+func (s *sequential) cleanup(ctx context.Context, b *benchmark, err error) {
+	for i := len(s.actions) - 1; i >= 0; i-- {
+		s.actions[i].cleanup(ctx, b, err)
+	}
+}
+
+type actionFun func(ctx context.Context, b *benchmark) (interface{}, error)
+
+type simple struct {
+	label string
+	fun   actionFun
+}
+
+func (s *simple) name() string {
+	return s.label
+}
+
+func (s *simple) exec(ctx context.Context, b *benchmark) (interface{}, error) {
+	return s.fun(ctx, b)
+}
+
+func (s *simple) cleanup(ctx context.Context, b *benchmark, err error) {
+}
+
+type startGapis struct {
+	gapisFlags *GapisFlags
+	gapirFlags *GapirFlags
+	dumpTrace  bool
+}
+
+func (a *startGapis) name() string {
+	return "start_gapis"
+}
+
+func (a *startGapis) exec(ctx context.Context, b *benchmark) (interface{}, error) {
+	var err error
+	if b.client, err = getGapis(ctx, *a.gapisFlags, *a.gapirFlags); err != nil {
+		return nil, err
+	}
+
+	if a.dumpTrace {
+		b.stopGapisTrace, err = b.client.Profile(ctx, nil, &b.gapisTrace, 1)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = b.measureFun(ctx, "server_info", func(ctx context.Context) (interface{}, error) {
+		return b.client.GetServerInfo(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = b.measureFun(ctx, "string_table", func(ctx context.Context) (interface{}, error) {
+		tables, err := b.client.GetAvailableStringTables(ctx)
+		if len(tables) > 0 {
+			_, err = b.client.GetStringTable(ctx, tables[0])
+		}
+		return nil, err
+	})
+
+	return nil, err
+}
+
+func (a *startGapis) cleanup(ctx context.Context, b *benchmark, err error) {
+	if b.stopGapisTrace != nil {
+		b.stopGapisTrace()
+	}
+	if b.client != nil {
+		b.client.Close()
+	}
+}
+
+func loadCapture(file string) action {
+	return &simple{
+		"load_capture",
+		func(ctx context.Context, b *benchmark) (ignored interface{}, err error) {
+			b.capture, err = b.client.LoadCapture(ctx, file)
+			if err == nil {
+				var c interface{}
+				c, err = b.client.Get(ctx, b.capture.Path(), &path.ResolveConfig{})
+				if err == nil && c.(*service.Capture).GetType() != service.TraceType_Graphics {
+					err = errors.New("Not a graphics capture")
+				}
+			}
+			return
+		},
+	}
+}
+
+func loadReplaydevice() action {
+	return &simple{
+		"load_replay_device",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			devices, compat, _, err := b.client.GetDevicesForReplay(ctx, b.capture)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(devices) == 0 || !compat[0] {
+				return nil, errors.New("No compatible replay device attached")
+			}
+			b.device = devices[0]
+			return devices[0], nil
+		},
+	}
+}
+
+func loadResources() action {
+	return &simple{
+		"resources",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			res, err := b.client.Get(ctx, b.capture.Resources().Path(), b.resolveConfig())
+			if err != nil {
+				return nil, err
+			}
+			b.resources = res.(*service.Resources)
+			return res, err
+		},
+	}
+}
+
+func loadCommandTree() action {
+	return &simple{
+		"cmd_tree",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			tree, err := b.client.Get(ctx, (&path.CommandTree{
+				Capture:                  b.capture,
+				GroupByFrame:             true,
+				GroupByDrawCall:          true,
+				GroupByTransformFeedback: true,
+				GroupByUserMarkers:       true,
+				GroupBySubmission:        true,
+				AllowIncompleteFrame:     true,
+				MaxChildren:              2000,
+				MaxNeighbours:            20,
+			}).Path(), b.resolveConfig())
+			if err != nil {
+				return nil, err
+			}
+			b.cmdTree = &cmdTree{
+				path: tree.(*service.CommandTree).GetRoot(),
+			}
+
+			if _, err := b.measure(ctx, loadCommandTreeNode(b.cmdTree)); err != nil {
+				return nil, err
+			}
+
+			return b.measure(ctx, expandCommandTreeNode(b.cmdTree))
+		},
+	}
+}
+
+func loadCommandTreeThumbnail(node *path.CommandTreeNode) action {
+	return &simple{
+		"cmd_tree_thumbnail",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			info, err := ignoreDataUnavailable(b.client.Get(ctx, (&path.Thumbnail{
+				Object:           &path.Thumbnail_CommandTreeNode{CommandTreeNode: node},
+				DesiredFormat:    image.RGBA_U8_NORM,
+				DesiredMaxWidth:  thumbSize,
+				DesiredMaxHeight: thumbSize,
+			}).Path(), b.resolveConfig()))
+			if err != nil || info == nil {
+				return nil, err
+			}
+
+			return ignoreDataUnavailable(
+				b.client.Get(ctx, path.NewBlob(info.(*image.Info).GetBytes().ID()).Path(), b.resolveConfig()))
+		},
+	}
+}
+
+func loadCommand(cmd *path.Command) action {
+	return &simple{
+		"command<" + printIndices(cmd.GetIndices()) + ">",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.Get(ctx, cmd.Path(), b.resolveConfig())
+		},
+	}
+}
+
+func loadCommandTreeNode(tree *cmdTree) action {
+	return &simple{
+		"cmd_tree_node<" + printIndices(tree.path.GetIndices()) + ">",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			node, err := b.client.Get(ctx, tree.path.Path(), b.resolveConfig())
+			if err != nil {
+				return nil, err
+			}
+			tree.node = node.(*service.CommandTreeNode)
+
+			if tree.node.GetGroup() != "" {
+				_, err = b.measure(ctx, loadCommandTreeThumbnail(tree.path))
+			} else if tree.node.GetCommands() != nil { // group is empty
+				cmd, err := b.measure(ctx, loadCommand(tree.node.GetCommands().Last()))
+				if err != nil {
+					return nil, err
+				}
+				tree.cmd = cmd.(*api.Command)
+			}
+
+			return node, err
+		},
+	}
+}
+
+func expandCommandTreeNode(tree *cmdTree) action {
+	actions := make([]action, tree.node.GetNumChildren())
+	tree.children = make([]cmdTree, tree.node.GetNumChildren())
+	for i := range actions {
+		tree.children[i].path = tree.path.Child(uint64(i))
+		actions[i] = loadCommandTreeNode(&tree.children[i])
+	}
+	return &parallel{
+		"cmd_tree_expand<" + printIndices(tree.path.GetIndices()) + ">",
+		actions,
+	}
+}
+
+func loadProfilingData() action {
+	return &simple{
+		"profile",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.GpuProfile(ctx, &service.GpuProfileRequest{
+				Capture: b.capture,
+				Device:  b.device,
+			})
+		},
+	}
+}
+
+func findDrawCall(path []uint64, secondary bool) action {
+	return &simple{
+		"find_draw",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			choose := func(name string, idx int) chooser {
+				if idx < len(path) {
+					return func(count int) (int, error) {
+						v := int(path[idx])
+						if v >= count {
+							return 0, fmt.Errorf("Invalid %s index provided in path %v: %d >= %d", name, path, v, count)
+						}
+						return v, nil
+					}
+				} else {
+					return func(count int) (int, error) {
+						return b.rnd.Intn(count), nil
+					}
+				}
+			}
+
+			submit, err := b.cmdTree.chooseQueueSubmit(choose("queue submit", 0))
+			if err != nil {
+				return nil, err
+			}
+			if submit.children == nil {
+				if _, err := b.measure(ctx, expandCommandTreeNode(submit)); err != nil {
+					return nil, err
+				}
+			}
+
+			info, err := submit.chooseSubmitInfo(choose("submit info", 1))
+			if err != nil {
+				return nil, err
+			}
+			if info.children == nil {
+				if _, err := b.measure(ctx, expandCommandTreeNode(info)); err != nil {
+					return nil, err
+				}
+			}
+
+			cb, err := info.chooseCommandBuffer(choose("command buffer", 2))
+			if err != nil {
+				return nil, err
+			}
+			if cb.children == nil {
+				if _, err := b.measure(ctx, expandCommandTreeNode(cb)); err != nil {
+					return nil, err
+				}
+			}
+
+			rp, err := cb.chooseRenderPass(choose("renderpass", 3))
+			if err != nil {
+				return nil, err
+			}
+			if rp.children == nil {
+				if _, err := b.measure(ctx, expandCommandTreeNode(rp)); err != nil {
+					return nil, err
+				}
+			}
+
+			level := 4
+			parent := rp
+			if secondary {
+				level = 6
+				exec, err := rp.chooseExecute(choose("execute", 4))
+				if err != nil {
+					return nil, err
+				}
+				if exec.children == nil {
+					if _, err := b.measure(ctx, expandCommandTreeNode(exec)); err != nil {
+						return nil, err
+					}
+				}
+
+				parent, err = exec.chooseCommandBuffer(choose("secondary command buffer", 5))
+				if err != nil {
+					return nil, err
+				}
+				if parent.children == nil {
+					if _, err := b.measure(ctx, expandCommandTreeNode(parent)); err != nil {
+						return nil, err
+					}
+				}
+			}
+
+			return parent.chooseDrawCall(choose("draw call", level))
+		},
+	}
+}
+
+func loadAttachments(after *path.Command) action {
+	return &simple{
+		"attachments",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.Get(ctx, (&path.FramebufferAttachments{
+				After: after,
+			}).Path(), b.resolveConfig())
+		},
+	}
+}
+
+func loadAttachment(after *path.Command, index uint32) action {
+	return &simple{
+		fmt.Sprintf("attachment<%d>", index),
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.Get(ctx, (&path.FramebufferAttachment{
+				After:          after,
+				Index:          index,
+				RenderSettings: fbRenderSettings,
+				Hints:          fbHints,
+			}).Path(), b.resolveConfig())
+		},
+	}
+}
+
+func loadFrameBuffer(after *path.Command) action {
+	return &simple{
+		"framebuffer",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			attsBoxed, err := b.measure(ctx, loadAttachments(after))
+			if err != nil {
+				return nil, err
+			}
+
+			atts := attsBoxed.(*service.FramebufferAttachments).GetAttachments()
+			if len(atts) == 0 {
+				return nil, nil
+			}
+
+			attBoxed, err := b.measure(ctx, loadAttachment(after, atts[0].GetIndex()))
+			if err != nil {
+				return nil, err
+			}
+			infoPath := attBoxed.(*service.FramebufferAttachment).GetImageInfo()
+
+			infoBoxed, err := b.client.Get(ctx, infoPath.Path(), b.resolveConfig())
+			if err != nil {
+				return nil, err
+			}
+
+			return b.client.Get(ctx, path.NewBlob(infoBoxed.(*image.Info).GetBytes().ID()).Path(), b.resolveConfig())
+		},
+	}
+}
+
+func loadTextureThumbnail(data *path.ResourceData) action {
+	return &simple{
+		"texture_thumbnail",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			info, err := ignoreDataUnavailable(b.client.Get(ctx, (&path.Thumbnail{
+				Object:           &path.Thumbnail_Resource{Resource: data},
+				DesiredFormat:    image.RGBA_U8_NORM,
+				DesiredMaxWidth:  thumbSize,
+				DesiredMaxHeight: thumbSize,
+			}).Path(), b.resolveConfig()))
+			if err != nil || info == nil {
+				return nil, err
+			}
+
+			return ignoreDataUnavailable(
+				b.client.Get(ctx, path.NewBlob(info.(*image.Info).GetBytes().ID()).Path(), b.resolveConfig()))
+		},
+	}
+}
+
+func loadTexture(after *path.Command, texture *service.Resource) action {
+	data := after.ResourceAfter(texture.ID)
+	return &simple{
+		texture.Handle,
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			text, err := b.client.Get(ctx, data.Path(), b.resolveConfig())
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = b.measure(ctx, loadTextureThumbnail(data))
+			return text, err
+		},
+	}
+}
+
+func loadTextures(after *path.Command) action {
+	return &simple{
+		"textures",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			textures := b.textures(after)
+			actions := make([]action, len(textures))
+
+			for i := range textures {
+				actions[i] = loadTexture(after, textures[i])
+			}
+
+			return b.measure(ctx, &parallel{
+				label:   "load",
+				actions: actions,
+			})
+		},
+	}
+}
+
+func loadShader(after *path.Command, shader *service.Resource) action {
+	return &simple{
+		shader.Handle,
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.Get(ctx, after.ResourceAfter(shader.ID).Path(), b.resolveConfig())
+		},
+	}
+}
+
+func loadShaders(after *path.Command) action {
+	return &simple{
+		"shaders",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			shaders := b.shaders(after)
+			actions := make([]action, len(shaders))
+
+			for i := range shaders {
+				actions[i] = loadShader(after, shaders[i])
+			}
+
+			return b.measure(ctx, &parallel{
+				label:   "load",
+				actions: actions,
+			})
+		},
+	}
+}
+
+func loadStateTree(after *path.Command) action {
+	return &simple{
+		"state_tree",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			treeBoxed, err := b.client.Get(ctx, after.StateTreeAfter(2000).Path(), b.resolveConfig())
+			if err != nil {
+				return nil, err
+			}
+			tree := &stateTree{
+				path: treeBoxed.(*service.StateTree).GetRoot(),
+			}
+			if _, err := b.measure(ctx, loadStateTreeNode(tree)); err != nil {
+				return nil, err
+			}
+
+			if _, err := b.measure(ctx, expandStateTreeNode(tree)); err != nil {
+				return nil, err
+			}
+
+			return tree, nil
+		},
+	}
+}
+
+func loadStateTreeNode(tree *stateTree) action {
+	return &simple{
+		"state_tree_node<" + printIndices(tree.path.GetIndices()) + ">",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			node, err := b.client.Get(ctx, tree.path.Path(), b.resolveConfig())
+			if err != nil {
+				return nil, err
+			}
+			tree.node = node.(*service.StateTreeNode)
+			return node, nil
+		},
+	}
+}
+
+func expandStateTreeNode(tree *stateTree) action {
+	actions := make([]action, tree.node.GetNumChildren())
+	tree.children = make([]stateTree, tree.node.GetNumChildren())
+	for i := range actions {
+		tree.children[i].path = tree.path.Index(uint64(i))
+		actions[i] = loadStateTreeNode(&tree.children[i])
+	}
+	return &parallel{
+		"state_tree_expand<" + printIndices(tree.path.GetIndices()) + ">",
+		actions,
+	}
+}
+
+func loadGeometryMetadata(tree *cmdTree) action {
+	return &simple{
+		"mesh_metadata",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.Get(ctx, tree.path.Mesh(&path.MeshOptions{ExcludeData: true}).Path(), b.resolveConfig())
+		},
+	}
+}
+
+func loadGeometryMesh(tree *cmdTree, faceted bool) action {
+	name := "mesh"
+	if faceted {
+		name = "mesh_faceted"
+	}
+
+	return &simple{
+		name,
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return ignoreDataUnavailable(
+				b.client.Get(ctx, tree.path.Mesh(path.NewMeshOptions(faceted)).As(meshFormat).Path(), b.resolveConfig()))
+		},
+	}
+}
+
+func loadGeometry(tree *cmdTree) action {
+	return &sequential{
+		label: "geometry",
+		actions: []action{
+			loadGeometryMetadata(tree),
+			&parallel{
+				label: "meshes",
+				actions: []action{
+					loadGeometryMesh(tree, false),
+					loadGeometryMesh(tree, true),
+				},
+			},
+		},
+	}
+}
+
+func loadPipeline(tree *cmdTree) action {
+	return &simple{
+		"pipeline",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.Get(ctx, tree.path.Pipelines().Path(), b.resolveConfig())
+		},
+	}
+}
+
+func selectCommand(tree *cmdTree, isDraw bool) action {
+	after := tree.node.GetCommands().Last()
+	actions := []action{
+		loadFrameBuffer(after),
+		loadTextures(after),
+		loadStateTree(after),
+	}
+	if isDraw {
+		actions = append(actions,
+			loadGeometry(tree),
+			loadPipeline(tree),
+		)
+	}
+	return &parallel{
+		label:   "select_command<" + printIndices(after.GetIndices()) + ">",
+		actions: actions,
+	}
+}
+
+func selectCommandByAction(selCommand action, isDraw bool) action {
+	return &simple{
+		"find_and_select_command",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			node, err := b.measure(ctx, selCommand)
+			if err != nil {
+				return nil, err
+			}
+
+			return b.measure(ctx, selectCommand(node.(*cmdTree), isDraw))
+		},
+	}
+}
+
+func writeOutput(ctx context.Context, path string, f func(w io.Writer) error) error {
+	out, err := os.Create(path)
+	if err != nil {
+		return log.Errf(ctx, err, "Failed to create output file: %s", path)
+	}
+	defer out.Close()
+
+	if err := f(out); err != nil {
+		return log.Errf(ctx, err, "Failed to write output file: %s", path)
+	}
+	return nil
+}
+
+func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	if flags.NArg() != 1 {
+		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
+		return nil
+	}
+
+	b := &benchmark{
+		rnd: newRandom(flags.Arg(0), verb.Seed),
+	}
+
+	if verb.DumpTrace != "" {
+		b.stopGapitTrace = status.RegisterTracer(&b.gapitTrace)
 
 		defer func() {
-			stopGapitTrace()
-			stopGapisTrace()
-			// writeTrace may not be initialized yet
-			if writeTrace != nil {
-				if err := writeTrace(verb.DumpTrace, gapisTrace, gapitTrace); err != nil {
-					log.E(ctx, "Failed to write trace: %v", err)
+			b.stopGapitTrace()
+
+			f, err := os.Create(verb.DumpTrace)
+			if err != nil {
+				log.E(ctx, "Failed to create trace file: %v", err)
+				return
+			}
+			defer f.Close()
+
+			_, err = f.Write(b.gapitTrace.Bytes())
+			if err != nil {
+				log.E(ctx, "Failed to write gapit trace data: %v", err)
+				return
+			}
+			if b.gapisTrace.Len() > 1 {
+				// Skip the leading [
+				_, err = f.Write(b.gapisTrace.Bytes()[1:])
+				if err != nil {
+					log.E(ctx, "Failed to write gapis trace data: %v", err)
+					return
 				}
 			}
 		}()
 	}
 
-	stringTables, err := client.GetAvailableStringTables(ctx)
-	if err != nil {
-		return log.Err(ctx, err, "Failed get list of string tables")
+	actions := []action{
+		&sequential{
+			label: "init",
+			actions: []action{
+				&startGapis{&verb.Gapis, &verb.Gapir, verb.DumpTrace != ""},
+				loadCapture(flags.Arg(0)),
+				loadReplaydevice(),
+				&parallel{
+					label: "load",
+					actions: []action{
+						loadResources(),
+						loadCommandTree(),
+						loadProfilingData(),
+					},
+				},
+			},
+		},
 	}
 
-	var stringTable *stringtable.StringTable
-	if len(stringTables) > 0 {
-		// TODO: Let the user pick the string table.
-		stringTable, err = client.GetStringTable(ctx, stringTables[0])
-		if err != nil {
-			return log.Err(ctx, err, "Failed get string table")
+	if len(verb.Paths) == 0 {
+		draws := verb.NumDraws
+		if draws == 0 {
+			draws = defaultNumDraws
 		}
-	}
-	_ = stringTable
-
-	status.Finish(ctx)
-
-	if flags.NArg() > 0 {
-		traceURI := flags.Arg(0)
-		verb.doTrace(ctx, client, traceURI)
-		verb.traceDoneTime = time.Now()
-	}
-
-	s, err := os.Stat(BenchmarkName)
-	if err != nil {
-		return err
-	}
-
-	verb.traceSizeInBytes = s.Size()
-	status.Event(ctx, status.GlobalScope, "Trace Size %+v", verb.traceSizeInBytes)
-
-	ctx = status.Start(oldCtx, "Initializing Capture")
-	c, err := client.LoadCapture(ctx, BenchmarkName)
-	if err != nil {
-		return err
-	}
-
-	devices, compatibilites, _, err := client.GetDevicesForReplay(ctx, c)
-	if err != nil {
-		panic(err)
-	}
-	if len(compatibilites) == 0 || !compatibilites[0] {
-		panic("No compatible devices")
-	}
-
-	device := devices[0]
-	resolveConfig := &path.ResolveConfig{
-		ReplayDevice: device,
-	}
-
-	wg := sync.WaitGroup{}
-
-	var resources *service.Resources
-	wg.Add(1)
-	go func() {
-		ctx := status.Start(oldCtx, "Resolving Resources")
-		defer status.Finish(ctx)
-		boxedResources, err := client.Get(ctx, c.Resources().Path(), resolveConfig)
-		if err != nil {
-			panic(err)
+		for i := 0; i < draws; i++ {
+			actions = append(actions, selectCommandByAction(findDrawCall(nil, verb.Secondary), true))
 		}
-		resources = boxedResources.(*service.Resources)
-
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		ctx := status.Start(oldCtx, "Getting Report")
-		defer status.Finish(ctx)
-
-		_, err := client.Get(ctx, c.Commands().Path(), resolveConfig)
-		if err != nil {
-			panic(err)
+	} else {
+		maxPathElements := 5
+		if verb.Secondary {
+			maxPathElements = 7
 		}
+		for _, path := range verb.Paths {
+			draws := verb.NumDraws
+			if len(path) > maxPathElements {
+				return fmt.Errorf("Invalid path: %v - too long", path)
+			} else if len(path) == maxPathElements {
+				draws = 1
+			} else if draws == 0 {
+				draws = defaultNumDraws
+			}
 
-		_, err = client.Get(ctx, c.Report(device, false).Path(), resolveConfig)
-		wg.Done()
-	}()
-
-	var commandToClick *path.Command
-
-	wg.Add(1)
-
-	var events []*service.Event
-	go func() {
-		ctx := status.Start(oldCtx, "Getting Thumbnails")
-		defer status.Finish(ctx)
-		var e error
-		events, e = getEvents(ctx, client, &path.Events{
-			Capture:                 c,
-			AllCommands:             false,
-			FirstInFrame:            false,
-			LastInFrame:             true,
-			FramebufferObservations: false,
-			IncludeTiming:           true,
-		})
-		if e != nil {
-			panic(e)
-		}
-		verb.traceFrames = len(events)
-
-		gotThumbnails := sync.WaitGroup{}
-		//Get thumbnails
-		settings := &path.RenderSettings{
-			MaxWidth:                  uint32(256),
-			MaxHeight:                 uint32(256),
-			DisableReplayOptimization: verb.NoOpt,
-			DisplayToSurface:          false,
-		}
-		numThumbnails := 10
-		if len(events) < 10 {
-			numThumbnails = len(events)
-		}
-		commandToClick = events[len(events)-1].Command
-		for i := len(events) - numThumbnails; i < len(events); i++ {
-			gotThumbnails.Add(1)
-			hints := &path.UsageHints{Preview: true}
-			go func(i int) {
-				fbPath := &path.FramebufferAttachment{
-					After:          events[i].Command,
-					Index:          0,
-					RenderSettings: settings,
-					Hints:          hints,
-				}
-				iip, err := client.Get(ctx, fbPath.Path(), resolveConfig)
-
-				iio, err := client.Get(ctx, iip.(*service.FramebufferAttachment).GetImageInfo().Path(), resolveConfig)
-				if err != nil {
-					panic(log.Errf(ctx, err, "Get frame image.Info failed"))
-				}
-				ii := iio.(*img.Info)
-				dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path(), resolveConfig)
-				if err != nil {
-					panic(log.Errf(ctx, err, "Get frame image data failed"))
-				}
-				_, _, _ = int(ii.Width), int(ii.Height), dataO.([]byte)
-				gotThumbnails.Done()
-			}(i)
-		}
-		gotThumbnails.Wait()
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		ctx := status.Start(oldCtx, "Resolving Command Tree")
-
-		filter := &path.CommandFilter{}
-
-		treePath := c.CommandTree(filter)
-		treePath.GroupByApi = true
-		treePath.GroupByDrawCall = true
-		treePath.GroupByFrame = true
-		treePath.GroupByUserMarkers = true
-		treePath.GroupBySubmission = true
-		treePath.AllowIncompleteFrame = true
-		treePath.MaxChildren = int32(2000)
-
-		boxedTree, err := client.Get(ctx, treePath.Path(), resolveConfig)
-		if err != nil {
-			panic(log.Err(ctx, err, "Failed to load the command tree"))
-		}
-		tree := boxedTree.(*service.CommandTree)
-
-		boxedNode, err := client.Get(ctx, tree.Root.Path(), resolveConfig)
-		if err != nil {
-			panic(log.Errf(ctx, err, "Failed to load the node at: %v", tree.Root.Path()))
-		}
-
-		n := boxedNode.(*service.CommandTreeNode)
-		numChildren := 30
-		if n.NumChildren < 30 {
-			numChildren = int(n.NumChildren)
-		}
-		gotThumbnails := sync.WaitGroup{}
-		gotNodes := sync.WaitGroup{}
-		settings := &path.RenderSettings{
-			MaxWidth:                  uint32(64),
-			MaxHeight:                 uint32(64),
-			DisableReplayOptimization: verb.NoOpt,
-			DisplayToSurface:          false,
-		}
-		hints := &path.UsageHints{Background: true}
-		tnCtx := status.Start(oldCtx, "Resolving Command Thumbnails")
-		for i := 0; i < numChildren; i++ {
-			gotThumbnails.Add(1)
-			gotNodes.Add(1)
-			go func(i int) {
-				defer gotThumbnails.Done()
-				boxedChild, err := client.Get(ctx, tree.Root.Child(uint64(i)).Path(), resolveConfig)
-				if err != nil {
-					panic(err)
-				}
-				child := boxedChild.(*service.CommandTreeNode)
-				gotNodes.Done()
-				fbPath := &path.FramebufferAttachment{
-					After:          child.Representation,
-					Index:          0,
-					RenderSettings: settings,
-					Hints:          hints,
-				}
-				iip, err := client.Get(tnCtx, fbPath.Path(), resolveConfig)
-
-				iio, err := client.Get(tnCtx, iip.(*service.FramebufferAttachment).GetImageInfo().Path(), resolveConfig)
-				if err != nil {
-					return
-				}
-				ii := iio.(*img.Info)
-				dataO, err := client.Get(tnCtx, path.NewBlob(ii.Bytes.ID()).Path(), resolveConfig)
-				if err != nil {
-					panic(log.Errf(tnCtx, err, "Get frame image data failed"))
-				}
-				_, _, _ = int(ii.Width), int(ii.Height), dataO.([]byte)
-			}(i)
-		}
-
-		gotNodes.Wait()
-		status.Finish(ctx)
-		verb.gapisInteractiveTime = time.Now()
-
-		gotThumbnails.Wait()
-		status.Finish(tnCtx)
-		wg.Done()
-	}()
-	// Done initializing capture
-	wg.Wait()
-	verb.gapisCachingDoneTime = time.Now()
-
-	// At this point we are Interactive. All pre-loading is done:
-	// Next we have to actually handle an interaction
-	status.Finish(ctx)
-
-	status.Event(ctx, status.GlobalScope, "Load done, interaction starting %+v", verb.traceSizeInBytes)
-
-	// Sleep for 20 seconds so that the server is idle before we do
-	// the last part of the benchmark. When we open a trace we, in the
-	// background, generate the Dependency Graph. If we start making
-	// requests before that is done, we will skew the benchmarking
-	// results for 2 reasons:
-	//
-	//  1. Because the CPU will be under load for building the Dep
-	//  graph
-	//
-	//  2. Because requests that normally use the dep graph (getting
-	//  the framebuffer observations in this case) won't take
-	//  advantage of it.
-	time.Sleep(20 * time.Second)
-
-	ctx = status.Start(oldCtx, "Interacting with frame")
-	// One interaction done
-	verb.interactionStartTime = time.Now()
-
-	interactionWG := sync.WaitGroup{}
-	// Get the framebuffer
-	interactionWG.Add(1)
-	go func() {
-		ctx = status.Start(oldCtx, "Getting Framebuffer")
-		defer status.Finish(ctx)
-		defer interactionWG.Done()
-		hints := &path.UsageHints{Primary: true}
-		settings := &path.RenderSettings{
-			MaxWidth:                  uint32(0xFFFFFFFF),
-			MaxHeight:                 uint32(0xFFFFFFFF),
-			DisableReplayOptimization: verb.NoOpt,
-			DisplayToSurface:          false,
-		}
-		fbPath := &path.FramebufferAttachment{
-			After:          commandToClick,
-			Index:          0,
-			RenderSettings: settings,
-			Hints:          hints,
-		}
-		iip, err := client.Get(ctx, fbPath.Path(), resolveConfig)
-
-		iio, err := client.Get(ctx, iip.(*service.FramebufferAttachment).GetImageInfo().Path(), resolveConfig)
-		if err != nil {
-			return
-		}
-		ii := iio.(*img.Info)
-		dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path(), resolveConfig)
-		if err != nil {
-			panic(log.Errf(ctx, err, "Get frame image data failed"))
-		}
-		_, _, _ = int(ii.Width), int(ii.Height), dataO.([]byte)
-	}()
-
-	// Get state tree
-	interactionWG.Add(1)
-	go func() {
-		ctx = status.Start(oldCtx, "Resolving State Tree")
-		defer status.Finish(ctx)
-		defer interactionWG.Done()
-		//commandToClick
-		boxedTree, err := client.Get(ctx, commandToClick.StateAfter().Tree().Path(), resolveConfig)
-		if err != nil {
-			panic(log.Err(ctx, err, "Failed to load the state tree"))
-		}
-		tree := boxedTree.(*service.StateTree)
-
-		boxedRoot, err := client.Get(ctx, tree.Root.Path(), resolveConfig)
-		if err != nil {
-			panic(log.Err(ctx, err, "Failed to load the state tree"))
-		}
-		root := boxedRoot.(*service.StateTreeNode)
-
-		gotNodes := sync.WaitGroup{}
-		numChildren := 30
-		if root.NumChildren < 30 {
-			numChildren = int(root.NumChildren)
-		}
-		for i := 0; i < numChildren; i++ {
-			gotNodes.Add(1)
-			go func(i int) {
-				defer gotNodes.Done()
-				boxedChild, err := client.Get(ctx, tree.Root.Index(uint64(i)).Path(), resolveConfig)
-				if err != nil {
-					panic(err)
-				}
-				child := boxedChild.(*service.StateTreeNode)
-
-				if child.Preview != nil {
-					if child.Constants != nil {
-						_, _ = getConstantSet(ctx, client, child.Constants)
-					}
-				}
-			}(i)
-		}
-		gotNodes.Wait()
-	}()
-
-	// Get the mesh
-	interactionWG.Add(1)
-	go func() {
-		ctx = status.Start(oldCtx, "Getting Mesh")
-		defer status.Finish(ctx)
-		defer interactionWG.Done()
-		meshOptions := path.NewMeshOptions(false)
-		_, _ = client.Get(ctx, commandToClick.Mesh(meshOptions).Path(), resolveConfig)
-	}()
-
-	// GetMemory
-	interactionWG.Add(1)
-	go func() {
-		ctx = status.Start(oldCtx, "Getting Memory")
-		defer status.Finish(ctx)
-		defer interactionWG.Done()
-		observationsPath := &path.Memory{
-			Address:         0,
-			Size:            uint64(0xFFFFFFFFFFFFFFFF),
-			Pool:            0,
-			After:           commandToClick,
-			ExcludeData:     true,
-			ExcludeObserved: true,
-		}
-		allMemory, err := client.Get(ctx, observationsPath.Path(), resolveConfig)
-		if err != nil {
-			panic(err)
-		}
-		memory := allMemory.(*service.Memory)
-		var mem *service.MemoryRange
-		if len(memory.Reads) > 0 {
-			mem = memory.Reads[0]
-		} else if len(memory.Writes) > 0 {
-			mem = memory.Writes[0]
-		} else {
-			log.I(ctx, "No memory observations.")
-			return
-		}
-		client.Get(ctx, commandToClick.MemoryAfter(0, mem.Base, 64*1024).Path(), resolveConfig)
-	}()
-
-	// Get Resource Data (For each texture, and shader)
-	interactionWG.Add(1)
-	go func() {
-		ctx = status.Start(oldCtx, "Getting Resources")
-		defer status.Finish(ctx)
-		defer interactionWG.Done()
-		gotResources := sync.WaitGroup{}
-		for _, types := range resources.GetTypes() {
-			for ii, v := range types.GetResources() {
-				if (types.Type == api.ResourceType_TextureResource ||
-					types.Type == api.ResourceType_ShaderResource ||
-					types.Type == api.ResourceType_ProgramResource) &&
-					ii < 30 {
-					gotResources.Add(1)
-					go func(id *path.ID) {
-						defer gotResources.Done()
-						resourcePath := commandToClick.ResourceAfter(id)
-						_, _ = client.Get(ctx, resourcePath.Path(), resolveConfig)
-					}(v.ID)
-				}
+			for i := 0; i < draws; i++ {
+				actions = append(actions, selectCommandByAction(findDrawCall(path, verb.Secondary), true))
 			}
 		}
-		gotResources.Wait()
-	}()
+	}
 
-	interactionWG.Wait()
-	verb.interactionDoneTime = time.Now()
-	status.Finish(ctx)
+	group := &sequential{
+		label:   "root",
+		actions: actions,
+	}
 
-	m, err := client.Get(ctx, c.Messages().Path(), nil)
+	_, err := group.exec(ctx, b)
+	group.cleanup(ctx, b, err)
 	if err != nil {
 		return err
 	}
-	messages := m.(*service.Messages)
 
-	boxedVal, err := client.Get(ctx, (&path.Stats{
-		Capture:  c,
-		DrawCall: false,
-	}).Path(), nil)
-	if err != nil {
-		return err
-	}
-	traceStartTimestamp := boxedVal.(*service.Stats).TraceStart
-
-	frameTimes := []uint64{}
-
-	stateBuildTime := int64(0)
-	stateBuildStartTime := traceStartTimestamp
-	stateBuildEndTime := traceStartTimestamp
-	hasStateSerialization := false
-	frameRe := regexp.MustCompile("Frame Number: [\\d]*")
-	for _, m := range messages.List {
-		if m.Message == "State serialization started" {
-			hasStateSerialization = true
-			stateBuildStartTime = m.Timestamp
-		} else if m.Message == "State serialization finished" {
-			stateBuildEndTime = m.Timestamp
-			stateBuildTime = int64(stateBuildEndTime - stateBuildStartTime)
-		} else if !hasStateSerialization && frameRe.MatchString(m.Message) {
-			frameTimes = append(frameTimes, m.Timestamp)
-		}
-	}
-
-	if len(events) < 1 {
-		panic("No events")
-	}
-	lastFrameEvent := events[len(events)-1]
-	frameCaptureTime := lastFrameEvent.Timestamp - stateBuildEndTime
-	// Convert nanoseconds to milliseconds
-	frameTime := float64(frameCaptureTime / uint64(len(events)))
-	stateTime := float64(stateBuildTime)
-	traceMaxMemory := int64(0)
-
-	nonLoadingFrameTime := uint64(0)
-	// We assume that the last 20% of frames come from a non-loading screen
-	if hasStateSerialization {
-		nFrames := len(frameTimes) / 5
-		stableStart := frameTimes[len(frameTimes)-nFrames-1]
-		stableEnd := frameTimes[len(frameTimes)-1]
-		nonLoadingFrameTime = (stableEnd - stableStart) / uint64(nFrames)
-	}
-
-	ctx = oldCtx
-	writeOutput := func() {
-		preMecFramerate := float64(stateBuildStartTime - traceStartTimestamp)
-		if verb.StartFrame > 0 {
-			preMecFramerate = preMecFramerate / float64(verb.StartFrame)
-		}
-		if verb.OutputCSV {
-			csvWriter := csv.NewWriter(os.Stdout)
-			header := []string{
-				"Trace Time (ms)", "Trace Size", "Trace Frames", "State Serialization (ms)", "Trace Frame Time (ms)", "Interactive (ms)",
-				"Caching Done (ms)", "Interaction (ms)", "Max Memory", "Before MEC Frame Time (ms)", "Trailing Frame Time (ms)"}
-			csvWriter.Write(header)
-			record := []string{
-				fmt.Sprint(float64(verb.traceDoneTime.Sub(verb.beforeStartTraceTime).Nanoseconds()) / float64(time.Millisecond)),
-				fmt.Sprint(verb.traceSizeInBytes),
-				fmt.Sprint(verb.traceFrames),
-				fmt.Sprint(stateTime / float64(time.Millisecond)),
-				fmt.Sprint(frameTime / float64(time.Millisecond)),
-				fmt.Sprint(float64(verb.gapisInteractiveTime.Sub(verb.traceDoneTime).Nanoseconds()) / float64(time.Millisecond)),
-				fmt.Sprint(float64(verb.gapisCachingDoneTime.Sub(verb.traceDoneTime).Nanoseconds()) / float64(time.Millisecond)),
-				fmt.Sprint(float64(verb.interactionDoneTime.Sub(verb.interactionStartTime).Nanoseconds()) / float64(time.Millisecond)),
-				fmt.Sprint(traceMaxMemory),
-				fmt.Sprint(preMecFramerate / float64(time.Millisecond)),
-				fmt.Sprint(float64(nonLoadingFrameTime) / float64(time.Millisecond)),
-			}
-			csvWriter.Write(record)
-			csvWriter.Flush()
-		} else {
-			w := tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
-			fmt.Fprintln(w, "Trace Time\tTrace Size\tTrace Frames\tState Serialization\tTrace Frame Time\tInteractive")
-			fmt.Fprintln(w, "----------\t----------\t------------\t-------------------\t----------------\t-----------")
-			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
-				verb.traceDoneTime.Sub(verb.beforeStartTraceTime),
-				verb.traceSizeInBytes,
-				verb.traceFrames,
-				time.Duration(stateTime)*time.Nanosecond,
-				time.Duration(frameTime)*time.Nanosecond,
-				verb.gapisInteractiveTime.Sub(verb.traceDoneTime),
-			)
-			w.Flush()
-			fmt.Fprintln(os.Stdout, "")
-			w = tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
-			fmt.Fprintln(w, "Caching Done\tInteraction\tMax Memory\tBefore MEC Frame Time\tTrailing Frame Time")
-			fmt.Fprintln(w, "------------\t-----------\t----------\t---------------------\t-----------------")
-			fmt.Fprintf(w, "%+v\t%+v\t%+v\t%+v\t%+v\n",
-				verb.gapisCachingDoneTime.Sub(verb.traceDoneTime),
-				verb.interactionDoneTime.Sub(verb.interactionStartTime),
-				traceMaxMemory,
-				time.Duration(preMecFramerate)*time.Nanosecond,
-				time.Duration(nonLoadingFrameTime)*time.Nanosecond,
-			)
-			w.Flush()
-		}
-	}
-
-	writeTrace = func(path string, gapisTrace, gapitTrace *bytes.Buffer) error {
-		f, err := os.Create(path)
-		if err != nil {
+	if verb.CsvOut != "" {
+		if err := writeOutput(ctx, verb.CsvOut, b.measurement.writeCsv); err != nil {
 			return err
 		}
-		defer f.Close()
-
-		_, err = f.Write(gapisTrace.Bytes())
-		if err != nil {
-			return err
-		}
-		// Skip the leading [
-		_, err = f.Write(gapitTrace.Bytes()[1:])
-		if err != nil {
-			return err
-		}
-		// This is the entire profile except for what happened on the trace device.
-		// This is now stored in the trace file.
-		// We have all of the timing information for the trace file,
-		// the last thing we have to do is sync the existing traces with our trace.
-		// We need to find the point in the GAPIS trace where the trace was connected.
-		timeOffsetInMicroseconds := int64(0)
-		var prof interface{}
-		err = json.Unmarshal([]byte(string(gapisTrace.Bytes()[:len(gapisTrace.Bytes())-1])+"]"), &prof)
-		if prof, ok := prof.([]interface{}); ok {
-			for _, d := range prof {
-				if d, ok := d.(map[string]interface{}); ok {
-					if n, ok := d["name"]; ok {
-						if s, ok := n.(string); ok {
-							if s == "Trace Connected" {
-								if n, ok := d["ts"]; ok {
-									if n, ok := n.(float64); ok {
-										timeOffsetInMicroseconds = int64(n)
-									}
-								}
-							} else if s == "periodic_interval" {
-								d := d["args"].(map[string]interface{})
-								d = d["dumps"].(map[string]interface{})
-								d = d["process_totals"].(map[string]interface{})
-								m := d["heap_in_use"].(string)
-								b, _ := strconv.ParseInt("0x"+m, 0, 64)
-								if b > traceMaxMemory {
-									traceMaxMemory = b
-								}
-							}
-						}
-					}
-				}
-			}
-		} else {
-			panic(fmt.Sprintf("Could not read profile data: %+v", err))
-		}
-		traceStartTimestampInMicroseconds := (traceStartTimestamp / 1000)
-		timeOffsetInMicroseconds = int64(traceStartTimestampInMicroseconds) - timeOffsetInMicroseconds
-		// Manually write out some profiling data for the trace
-		tsk := profileTask{
-			Name:      "Tracing",
-			Tid:       0,
-			Pid:       1,
-			Ts:        int64(traceStartTimestampInMicroseconds) - timeOffsetInMicroseconds,
-			EventType: "B",
-		}
-		b, _ := json.Marshal(tsk)
-		f.Write([]byte("\n"))
-		f.Write(b)
-		f.Write([]byte(","))
-
-		startTime := traceStartTimestampInMicroseconds
-		for i, m := range frameTimes {
-			if m >= stateBuildStartTime {
-				break
-			}
-			tsk.Name = fmt.Sprintf("Untracked Frame %+v", i)
-			tsk.Ts = int64(startTime) - timeOffsetInMicroseconds
-			tsk.EventType = "B"
-			b, _ = json.Marshal(tsk)
-			f.Write([]byte("\n"))
-			f.Write(b)
-			f.Write([]byte(","))
-
-			tsk.Name = ""
-			tsk.Ts = int64(m/1000) - timeOffsetInMicroseconds
-			tsk.EventType = "E"
-			b, _ = json.Marshal(tsk)
-			f.Write([]byte("\n"))
-			f.Write(b)
-			f.Write([]byte(","))
-
-			startTime = (m / 1000)
-		}
-
-		if stateBuildStartTime != stateBuildEndTime {
-			tsk.Name = "State Serialization"
-			tsk.Ts = int64(stateBuildStartTime/1000) - timeOffsetInMicroseconds
-			tsk.EventType = "B"
-			b, _ = json.Marshal(tsk)
-			f.Write([]byte("\n"))
-			f.Write(b)
-			f.Write([]byte(","))
-
-			tsk.Name = ""
-			tsk.Ts = int64(stateBuildEndTime/1000) - timeOffsetInMicroseconds
-			tsk.EventType = "E"
-			b, _ = json.Marshal(tsk)
-			f.Write([]byte("\n"))
-			f.Write(b)
-			f.Write([]byte(","))
-		}
-
-		startTime = (stateBuildEndTime / 1000)
-		for i, e := range events {
-			tsk.Name = fmt.Sprintf("Frame %+v", i)
-			tsk.Ts = int64(startTime) - timeOffsetInMicroseconds
-			tsk.EventType = "B"
-			b, _ = json.Marshal(tsk)
-			f.Write([]byte("\n"))
-			f.Write(b)
-			f.Write([]byte(","))
-
-			tsk.Name = ""
-			tsk.Ts = int64(e.Timestamp/1000) - timeOffsetInMicroseconds
-			tsk.EventType = "E"
-			b, _ = json.Marshal(tsk)
-			f.Write([]byte("\n"))
-			f.Write(b)
-			f.Write([]byte(","))
-
-			startTime = (e.Timestamp / 1000)
-		}
-
-		tsk.Name = ""
-		tsk.Ts = int64(startTime) - timeOffsetInMicroseconds
-		tsk.EventType = "E"
-		b, _ = json.Marshal(tsk)
-		f.Write([]byte("\n"))
-		f.Write(b)
-		f.Write([]byte("]"))
-
-		writeOutput()
-		return nil
 	}
 
-	if verb.DumpTrace == "" {
-		writeOutput()
+	if verb.DotOut != "" {
+		if err := writeOutput(ctx, verb.DotOut, b.measurement.writeGraph); err != nil {
+			return err
+		}
 	}
+
+	summary := b.measurement.computeSummary()
+	if verb.SummaryOut != "" {
+		if err := writeOutput(ctx, verb.SummaryOut, summary.print); err != nil {
+			return err
+		}
+	} else {
+		log.I(ctx, "-----------------------------------")
+		if err := summary.print(log.From(ctx).Writer(log.Info)); err != nil {
+			return err
+		}
+		log.I(ctx, "-----------------------------------")
+	}
+
 	return nil
-}
-
-// This intentionally duplicates a lot of the gapit trace logic
-// so that we can independently change what we do to benchmark
-// everything.
-func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, traceURI string) error {
-	ctx = status.Start(ctx, "Record Trace for %+v frames", verb.NumFrames)
-	defer status.Finish(ctx)
-
-	// Find the actual trace URI from all of the devices
-	_, err := client.GetServerInfo(ctx)
-	if err != nil {
-		return err
-	}
-
-	devices, err := client.GetDevices(ctx)
-	if err != nil {
-		return err
-	}
-
-	devices, err = filterDevices(ctx, &verb.DeviceFlags, client)
-	if err != nil {
-		return err
-	}
-	if len(devices) == 0 {
-		return fmt.Errorf("Could not find matching device")
-	}
-
-	type info struct {
-		uri        string
-		device     *path.Device
-		deviceName string
-		name       string
-	}
-	var found []info
-
-	for _, dev := range devices {
-		targets, err := client.FindTraceTargets(ctx, &service.FindTraceTargetsRequest{
-			Device: dev,
-			Uri:    traceURI,
-		})
-		if err != nil {
-			continue
-		}
-
-		dd, err := client.Get(ctx, dev.Path(), nil)
-		if err != nil {
-			return err
-		}
-		d := dd.(*device.Instance)
-
-		for _, target := range targets {
-			name := target.Name
-			switch {
-			case target.FriendlyApplication != "":
-				name = target.FriendlyApplication
-			case target.FriendlyExecutable != "":
-				name = target.FriendlyExecutable
-			}
-
-			found = append(found, info{
-				uri:        target.Uri,
-				deviceName: d.Name,
-				device:     dev,
-				name:       name,
-			})
-		}
-	}
-
-	if len(found) == 0 {
-		return fmt.Errorf("Could not find %+v to trace on any device", traceURI)
-	}
-
-	if len(found) > 1 {
-		sb := strings.Builder{}
-		fmt.Fprintf(&sb, "Found %v candidates: \n", traceURI)
-		for i, f := range found {
-			if i == 0 || found[i-1].deviceName != f.deviceName {
-				fmt.Fprintf(&sb, "  %v:\n", f.deviceName)
-			}
-			fmt.Fprintf(&sb, "    %v\n", f.uri)
-		}
-		return log.Errf(ctx, nil, "%v", sb.String())
-	}
-
-	out := BenchmarkName
-	uri := found[0].uri
-	traceDevice := found[0].device
-
-	options := &service.TraceOptions{
-		Device:                    traceDevice,
-		Apis:                      []string{"Vulkan"},
-		AdditionalCommandLineArgs: verb.AdditionalArgs,
-		Cwd:                       verb.WorkingDir,
-		Environment:               verb.Env,
-		Duration:                  0,
-		ObserveFrameFrequency:     0,
-		ObserveDrawFrequency:      0,
-		StartFrame:                uint32(verb.StartFrame),
-		FramesToCapture:           uint32(verb.NumFrames),
-		DeferStart:                false,
-		NoBuffer:                  false,
-		HideUnknownExtensions:     true,
-		RecordTraceTimes:          true,
-		ClearCache:                false,
-		ServerLocalSavePath:       out,
-	}
-	options.App = &service.TraceOptions_Uri{
-		uri,
-	}
-	verb.beforeStartTraceTime = time.Now()
-	handler, err := client.Trace(ctx)
-	if err != nil {
-		return err
-	}
-	defer handler.Dispose(ctx)
-
-	defer app.AddInterruptHandler(func() {
-		handler.Dispose(ctx)
-	})()
-
-	status, err := handler.Initialize(ctx, options)
-	if err != nil {
-		return err
-	}
-	verb.traceInitializedTime = time.Now()
-
-	return task.Retry(ctx, 0, time.Second*3, func(ctx context.Context) (retry bool, err error) {
-		status, err = handler.Event(ctx, service.TraceEvent_Status)
-		if err == io.EOF {
-			return true, nil
-		}
-		if err != nil {
-			log.I(ctx, "Error %+v", err)
-			return true, err
-		}
-		if status == nil {
-			return true, nil
-		}
-
-		if status.Status == service.TraceStatus_Done {
-			return true, nil
-		}
-		return false, nil
-	})
 }
