@@ -176,8 +176,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 	// since the producer was last started (e.g. at device discovery time). This should
 	// be a very rare circumstance and can be fixed by restarting AGI.
 	if err := gapidapk.EnsurePerfettoProducerLaunched(ctx, d); err != nil {
-		log.E(ctx, "Failed to start perfetto data producer: %v", err)
-		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to startperfetto data producer.")
+		return nil, cleanup.Invoke(ctx), err
 	}
 
 	// With the comsumer protocol, in Android 10 it causes a stall when

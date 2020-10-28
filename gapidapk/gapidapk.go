@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/layout"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
@@ -41,7 +42,6 @@ const (
 
 	perfettoProducerLauncher = "agi_launch_producer"
 	launcherPath             = "/data/local/tmp/agi_launch_producer"
-	launcherScript           = "nohup %[1]s &"
 )
 
 var ensureInstalledMutex sync.Mutex
@@ -227,17 +227,22 @@ func EnsurePerfettoProducerLaunched(ctx context.Context, d adb.Device) error {
 		log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
 	}
 
-	launchErr := make(chan error)
+	signal, launched := task.NewSignal()
+	launched = task.Once(launched)
 	crash.Go(func() {
-		err := launchPerfettoProducer(ctx, d, driver, launchErr)
+		err := launchPerfettoProducer(ctx, d, driver, launched)
 		if err != nil {
 			log.E(ctx, "[EnsurePerfettoProducerLaunched] error: %v", err)
+			launched(ctx)
 		}
 	})
-	err = <-launchErr
+	if !signal.Wait(ctx) {
+		return task.StopReason(ctx)
+	}
+
 	// TODO(b/148420473): Data sources are queried before gpu.counters is registered.
 	time.Sleep(1 * time.Second)
-	return err
+	return nil
 }
 
 func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) error {
@@ -257,20 +262,19 @@ func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) e
 	return nil
 }
 
-func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver, launchErr chan<- error) error {
+func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver, launched task.Task) error {
 	// Extract the producer launcher from the APK.
 	if err := preparePerfettoProducerLauncherFromApk(ctx, d); err != nil {
-		launchErr <- err
 		return err
 	}
 
 	// Construct the shell command to launch producer. If developer driver is
 	// found, then construct against it. Otherwise, directly run the command to
 	// launch the data producers in the system image.
-	script := fmt.Sprintf(launcherScript, launcherPath)
+	script := launcherPath
 	if driver.Package != "" {
 		abi := d.Instance().GetConfiguration().PreferredABI(nil)
-		script = "export LD_LIBRARY_PATH=\"" + driver.Path + "!/lib/" + abi.Name + "/\";" + script
+		script = "LD_LIBRARY_PATH=\"" + driver.Path + "!/lib/" + abi.Name + "/\" " + script
 	}
 
 	// Construct IO pipe, shell command outputs to stdout, GAPID reads from
@@ -279,7 +283,6 @@ func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver
 	fail := make(chan error, 1)
 	crash.Go(func() {
 		buf := bufio.NewReader(reader)
-		start := false
 		for {
 			line, e := buf.ReadString('\n')
 			switch e {
@@ -291,11 +294,8 @@ func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver
 				fail <- nil
 				return
 			case nil:
-				// As long as there's output, consider the binary starting running.
-				if !start {
-					launchErr <- nil
-					start = true
-				}
+				// As soon as there's output, consider the binary running.
+				launched(ctx)
 				log.I(ctx, "[launch producer] %s", strings.TrimSuffix(adb.AnsiRegex.ReplaceAllString(line, ""), "\n"))
 			}
 		}
@@ -307,7 +307,6 @@ func launchPerfettoProducer(ctx context.Context, d adb.Device, driver adb.Driver
 		Start(ctx)
 	if err != nil {
 		stdout.Close()
-		launchErr <- err
 		return err
 	}
 
