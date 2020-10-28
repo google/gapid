@@ -75,7 +75,7 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		attachments: make([]framebufferAttachmentChanges, 0),
 	}
 
-	postCmdAndSubCmd := func(s *api.GlobalState, subcommandIndex api.SubCmdIdx, cmd api.Cmd) {
+	postCmd := func(s *api.GlobalState, subcommandIndex api.SubCmdIdx, cmd api.Cmd) {
 		api := cmd.API()
 		fbaInfos, _ := api.GetFramebufferAttachmentInfos(ctx, s)
 		idx := append([]uint64(nil), subcommandIndex...)
@@ -113,6 +113,10 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		}
 	}
 
-	sync.MutateWithSubcommands(ctx, r.Capture, c.Commands, postCmdAndSubCmd, nil, postCmdAndSubCmd)
+	postSubCmd := func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{}) {
+		postCmd(s, idx, cmd)
+	}
+
+	sync.MutateWithSubcommands(ctx, r.Capture, c.Commands, postCmd, nil, postSubCmd)
 	return out, nil
 }

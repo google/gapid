@@ -58,9 +58,13 @@ type SynchronizedAPI interface {
 	// MutateSubcommands mutates the given Cmd and calls callbacks for subcommands
 	// attached to that Cmd. preSubCmdCallback and postSubCmdCallback will be
 	// called before and after executing each subcommand callback.
+	// Both preSubCmdCallback() and postSubCmdCallback() receive the parent command
+	// as an api.Cmd, the complete subcommand index, and an interface that allows
+	// to retrieve the actual subcommand via API-specific primitives. In Vulkan,
+	// this interface{} is a CommandReferenceʳ that can be used in GetCommandArgs().
 	MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd, s *api.GlobalState,
-		preSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
-		postSubCmdCallback func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error
+		preSubCmdCallback func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{}),
+		postSubCmdCallback func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{})) error
 
 	// FlattenSubcommandIdx returns the flatten command id for the subcommand
 	// specified by the given SubCmdIdx. If flattening succeeded, the flatten
@@ -174,8 +178,8 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 // before and after calling each subcommand callback function.
 func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	postCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
-	preSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
-	postSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error {
+	preSubCmdCb func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{}),
+	postSubCmdCb func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{})) error {
 
 	ctx = status.Start(ctx, "Sync.MutateWithSubcommands")
 	defer status.Finish(ctx)

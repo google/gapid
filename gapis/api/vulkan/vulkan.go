@@ -463,17 +463,17 @@ func (API) GetTerminator(ctx context.Context, c *path.Capture) (terminator.Termi
 }
 
 func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
-	s *api.GlobalState, preSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
-	postSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error {
+	s *api.GlobalState, preSubCmdCb func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{}),
+	postSubCmdCb func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{})) error {
 	c := GetState(s)
 	if postSubCmdCb != nil {
-		c.PostSubcommand = func(interface{}) {
-			postSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
+		c.PostSubcommand = func(subCmdRef interface{}) {
+			postSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd, subCmdRef)
 		}
 	}
 	if preSubCmdCb != nil {
-		c.PreSubcommand = func(interface{}) {
-			preSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd)
+		c.PreSubcommand = func(subCmdRef interface{}) {
+			preSubCmdCb(s, append(api.SubCmdIdx{uint64(id)}, c.SubCmdIdx...), cmd, subCmdRef)
 		}
 	}
 	if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
