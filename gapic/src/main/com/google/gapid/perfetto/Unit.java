@@ -195,13 +195,19 @@ public class Unit {
     }
 
     public static class Percent extends Simple {
+      private static final double CUT_OFF = 0.05;
+
       public Percent() {
         super("%");
       }
 
       @Override
       public String format(double value) {
-        return (value == 100) ? super.format(100) : super.format(value);
+        if (value == 100) {
+          return super.format(100);
+        } else {
+          return value < CUT_OFF ? String.format("%,g%%", value) : String.format("%,.2f%%", value);
+        }
       }
     }
 
