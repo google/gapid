@@ -104,7 +104,8 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	return traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
 		if verb.OnlyExecutedDraws {
-			if n.Group != "" || n.NumChildren > 0 {
+			// Filter out queue submits, which either have children or singular command indices
+			if n.Group != "" || n.NumChildren > 0 || len(n.Commands.First().Indices) == 1 {
 				return nil
 			}
 		} else {

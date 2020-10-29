@@ -272,7 +272,8 @@ func (verb *screenshotVerb) executedDrawCommands(ctx context.Context, capture *p
 
 	var allDrawCommands []*path.Command
 	traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
-		if n.Group != "" || n.NumChildren > 0 {
+		// Filter out queue submits, which either have children or singular command indices
+		if n.Group != "" || n.NumChildren > 0 || len(n.Commands.First().Indices) == 1 {
 			return nil
 		}
 		allDrawCommands = append(allDrawCommands, n.Commands.First())
@@ -325,7 +326,7 @@ func (verb *screenshotVerb) getAttachment(ctx context.Context, cmd *path.Command
 		}
 		fbs, err := client.Get(ctx, fbsPath.Path(), &path.ResolveConfig{ReplayDevice: device})
 		if err != nil {
-			return 0, log.Errf(ctx, err, "GetFramebufferAttachments failed")
+			return 0, log.Errf(ctx, err, "GetFramebufferAttachments failed at cmd %v", cmd)
 		}
 		attachments := fbs.(*service.FramebufferAttachments).GetAttachments()
 		if len(attachments) == 0 {
