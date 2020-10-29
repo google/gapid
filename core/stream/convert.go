@@ -90,6 +90,10 @@ func Convert(dst, src *Format, data []byte) ([]byte, error) {
 	// Calculate min/max if floats
 	min, max := float64(math.MaxFloat64), -float64(math.MaxFloat64)
 	for _, m := range mappings {
+		if m.src.component == nil {
+			return nil, fmt.Errorf("Channel %v not found in source format: %v",
+				m.dst.component.Channel, src)
+		}
 		if m.dst.component.DataType.IsInteger() && m.src.component.DataType.IsFloat() && !m.dst.component.DataType.Signed {
 			readMinMax(count, m.src, &min, &max)
 		}
@@ -97,10 +101,6 @@ func Convert(dst, src *Format, data []byte) ([]byte, error) {
 
 	// Do the conversion work.
 	for _, m := range mappings {
-		if m.src.component == nil {
-			return nil, fmt.Errorf("Channel %v not found in source format: %v",
-				m.dst.component.Channel, src)
-		}
 		if err := m.conv(count, min, max); err != nil {
 			return nil, err
 		}
