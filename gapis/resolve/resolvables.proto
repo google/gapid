@@ -146,3 +146,7 @@ message DeleteResolvable {
   path.Any path = 1;
   path.ResolveConfig config = 2;
 }
+
+message FramegraphResolvable {
+  path.Capture capture = 1;
+}

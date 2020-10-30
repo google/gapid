@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 // API is the common interface to a graphics programming api.
@@ -57,6 +58,9 @@ type API interface {
 	// The segments of memory that were used to create these commands are
 	// returned in the rangeList.
 	RebuildState(ctx context.Context, s *GlobalState) ([]Cmd, interval.U64RangeList)
+
+	// GetFramegraph returns the framegraph of the capture.
+	GetFramegraph(ctx context.Context, p *path.Capture) (*Framegraph, error)
 }
 
 // FramebufferAttachmentInfo describes a framebuffer at a given point in the trace

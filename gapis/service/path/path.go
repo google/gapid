@@ -75,6 +75,7 @@ func (n *FramebufferObservation) Path() *Any    { return &Any{Path: &Any_FBO{n}}
 func (n *FramebufferAttachments) Path() *Any    { return &Any{Path: &Any_FramebufferAttachments{n}} }
 func (n *FramebufferAttachment) Path() *Any     { return &Any{Path: &Any_FramebufferAttachment{n}} }
 func (n *Field) Path() *Any                     { return &Any{Path: &Any_Field{n}} }
+func (n *Framegraph) Path() *Any                { return &Any{Path: &Any_Framegraph{n}} }
 func (n *GlobalState) Path() *Any               { return &Any{Path: &Any_GlobalState{n}} }
 func (n *ImageInfo) Path() *Any                 { return &Any{Path: &Any_ImageInfo{n}} }
 func (n *MapIndex) Path() *Any                  { return &Any{Path: &Any_MapIndex{n}} }
@@ -117,6 +118,7 @@ func (n FramebufferObservation) Parent() Node    { return n.Command }
 func (n FramebufferAttachments) Parent() Node    { return n.After }
 func (n FramebufferAttachment) Parent() Node     { return n.After }
 func (n Field) Parent() Node                     { return oneOfNode(n.Struct) }
+func (n Framegraph) Parent() Node                { return n.Capture }
 func (n GlobalState) Parent() Node               { return n.After }
 func (n ImageInfo) Parent() Node                 { return nil }
 func (n MapIndex) Parent() Node                  { return oneOfNode(n.Map) }
@@ -156,6 +158,7 @@ func (n *Events) SetParent(p Node)                    { n.Capture, _ = p.(*Captu
 func (n *FramebufferObservation) SetParent(p Node)    { n.Command, _ = p.(*Command) }
 func (n *FramebufferAttachments) SetParent(p Node)    { n.After, _ = p.(*Command) }
 func (n *FramebufferAttachment) SetParent(p Node)     { n.After, _ = p.(*Command) }
+func (n *Framegraph) SetParent(p Node)                { n.Capture, _ = p.(*Capture) }
 func (n *GlobalState) SetParent(p Node)               { n.After, _ = p.(*Command) }
 func (n *ImageInfo) SetParent(p Node)                 {}
 func (n *Memory) SetParent(p Node)                    { n.After, _ = p.(*Command) }
@@ -237,9 +240,13 @@ func (n FramebufferAttachments) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.framebuffer-attachments", n.Parent())
 }
 
+// Format implements fmt.Formatter to print the path.
 func (n FramebufferAttachment) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.framevuffer-attachment<%x>", n.Parent(), n.Index)
 }
+
+// Format implements fmt.Formatter to print the path.
+func (n Framegraph) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.framegraph", n.Parent()) }
 
 // Format implements fmt.Formatter to print the path.
 func (n GlobalState) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.global-state", n.Parent()) }
@@ -666,6 +673,11 @@ func (n *Command) FramebufferAttachmentAfter(index uint32) *FramebufferAttachmen
 // after this command.
 func (n *Command) FramebufferObservation() *FramebufferObservation {
 	return &FramebufferObservation{Command: n}
+}
+
+// Framegraph returns the path node to the capture framegraph.
+func (n *Capture) Framegraph() *Framegraph {
+	return &Framegraph{Capture: n}
 }
 
 // Mesh returns the path node to the mesh of this command.

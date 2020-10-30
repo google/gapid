@@ -434,6 +434,11 @@ type (
 		Format string `help:"output format of the graph: 'pbtxt' (Tensorboard) or 'dot' (Graphviz)"`
 	}
 
+	FramegraphFlags struct {
+		Gapis GapisFlags
+		Out   string `help:"path to save framegraph DOT file (default: framegraph.dot)"`
+	}
+
 	SmokeTestsFlags struct {
 	}
 

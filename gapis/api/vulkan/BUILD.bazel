@@ -69,6 +69,7 @@ go_library(
         "externs.go",
         "extras.go",
         "frame_loop.go",
+        "framegraph.go",
         "graph_visualization.go",
         "image_primer.go",
         "image_primer_device_copy.go",

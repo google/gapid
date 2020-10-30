@@ -198,6 +198,11 @@ func (n *Field) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *Framegraph) Validate() error {
+	return checkNotNilAndValidate(n, n.Capture, "capture")
+}
+
+// Validate checks the path is valid.
 func (n *GlobalState) Validate() error {
 	return checkNotNilAndValidate(n, n.After, "after")
 }

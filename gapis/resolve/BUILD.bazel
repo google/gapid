@@ -34,6 +34,7 @@ go_library(
         "framebuffer_attachment_data.go",
         "framebuffer_changes.go",
         "framebuffer_observation.go",
+        "framegraph.go",
         "get.go",
         "index_limits.go",
         "memory.go",

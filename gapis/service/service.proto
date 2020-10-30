@@ -94,6 +94,7 @@ message Value {
     api.MultiResourceData multi_resource_data = 34;
     FramebufferAttachments framebuffer_attachments = 35;
     FramebufferAttachment framebuffer_attachment = 36;
+    api.Framegraph framegraph = 37;
 
     image.Info image_info = 40;
 

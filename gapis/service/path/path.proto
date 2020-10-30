@@ -67,6 +67,7 @@ message Any {
     Stats stats = 41;
     Thumbnail thumbnail = 42;
     Type type = 43;
+    Framegraph framegraph = 44;
   }
 }
 
@@ -294,6 +295,10 @@ message Field {
     GlobalState global_state = 7;
     Parameter parameter = 8;
   }
+}
+
+message Framegraph {
+  Capture capture = 1;
 }
 
 // CommandFilter are the optional filters applied to CommandTrees and Events.

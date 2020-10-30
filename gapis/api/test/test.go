@@ -31,6 +31,11 @@ func (API) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, int
 	return nil, nil
 }
 
+// GetFramegraph is a no-op to conform to the api.API interface.
+func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph, error) {
+	return nil, nil
+}
+
 func (API) GetFramebufferAttachmentInfos(
 	ctx context.Context,
 	state *api.GlobalState) ([]api.FramebufferAttachmentInfo, error) {

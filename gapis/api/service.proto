@@ -507,3 +507,22 @@ message SparseBinding {
   // The offset into the buffer of the binding
   uint64 offset = 1;
 }
+
+// Framegraph
+// Minimal "scaffolding" version: nodes and edges are untyped, in the sense that
+// all of a node info is conveyed in a string, and an edge has no more info than
+// the two nodes it connects. In the future, both FramegraphNode and
+// FramegraphEdge messages are meant to gain more fields to describe their info
+// in more details.
+message FramegraphNode {
+  uint64 id = 1;
+  string text = 2;
+}
+message FramegraphEdge {
+  uint64 origin = 1;
+  uint64 destination = 2;
+}
+message Framegraph {
+  repeated FramegraphNode nodes = 1;
+  repeated FramegraphEdge edges = 2;
+}

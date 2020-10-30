@@ -31,6 +31,7 @@ go_library(
         "dump_shaders.go",
         "export_replay.go",
         "flags.go",
+        "framegraph.go",
         "inputs.go",
         "main.go",
         "make_doc.go",

@@ -293,6 +293,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_FramebufferAttachments{v}}
 	case *FramebufferAttachment:
 		return &Value{Val: &Value_FramebufferAttachment{v}}
+	case *api.Framegraph:
+		return &Value{Val: &Value_Framegraph{v}}
 	case *DeviceTraceConfiguration:
 		return &Value{Val: &Value_TraceConfig{v}}
 	case *types.Type:
