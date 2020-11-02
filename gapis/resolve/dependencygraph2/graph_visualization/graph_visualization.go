@@ -17,6 +17,7 @@ package graph_visualization
 import (
 	"context"
 	"fmt"
+
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/service"

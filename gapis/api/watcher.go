@@ -30,8 +30,10 @@ type StateWatcher interface {
 	// OnEndCmd is called at the end of each API call
 	OnEndCmd(ctx context.Context, cmdID CmdID, cmd Cmd)
 
+	// OnBeginSubCmd is called at the beginning of each subcommand execution
 	OnBeginSubCmd(ctx context.Context, subCmdIdx SubCmdIdx, recordIdx RecordIdx)
 
+	// OnEndSubCmd is called at the end of each subcommand execution
 	OnEndSubCmd(ctx context.Context)
 
 	// OnGet is called when a fragment of state (field, map key, array index) is read
@@ -72,6 +74,7 @@ type StateWatcher interface {
 	// See `OpenForwardDependency` for an explanation of forward dependencies.
 	DropForwardDependency(ctx context.Context, dependencyID interface{})
 
+	// OnRecordSubCmd is called when a subcommand is recorded.
 	OnRecordSubCmd(ctx context.Context, recordIdx RecordIdx)
 }
 

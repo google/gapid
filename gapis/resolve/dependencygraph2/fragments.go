@@ -240,9 +240,14 @@ func (b *fragWatcher) OnWriteFrag(ctx context.Context, cmdCtx CmdContext,
 	b.pendingFragments[ownerID] = append(b.pendingFragments[ownerID], frag)
 }
 
+// Flush commits the pending fragment accesses accumulated so far.
 func (b *fragWatcher) Flush(ctx context.Context, cmdCtx CmdContext) {
 	nodeID := cmdCtx.nodeID
 	fragAccesses := b.nodeAccesses[nodeID]
+
+	// DO NOT REMOVE! Optimization: manually set the final slice capacity,
+	// to avoid numerous realloc. This has a perceptible impact on big
+	// captures where it can save several seconds of computation.
 
 	// Compute the maximum possible of size of fragAccesses at the end of `Flush`.
 	fragAccessesCap := len(fragAccesses)

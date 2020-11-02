@@ -81,6 +81,7 @@ func NewGraphBuilder(ctx context.Context, config DependencyGraphConfig,
 	}
 }
 
+// AddDependencies adds the dependencies for all pendingNodes.
 func (b *graphBuilder) AddDependencies(
 	ctx context.Context,
 	fragAcc map[NodeID][]FragmentAccess,
@@ -100,6 +101,8 @@ func (b *graphBuilder) AddDependencies(
 	b.initCmdNodeIDs = make(map[NodeID][]NodeID)
 	b.pendingNodes = b.pendingNodes[:0]
 }
+
+// AddNodeDependencies adds the dependencies of a single node.
 func (b *graphBuilder) AddNodeDependencies(
 	ctx context.Context, cmdCtx CmdContext,
 	fragAccesses []FragmentAccess,

@@ -99,9 +99,14 @@ func (b *memWatcher) OnReadObs(ctx context.Context, cmdCtx CmdContext, obs []api
 	}
 }
 
+// Flush commits the pending memory accesses accumulated so far.
 func (b *memWatcher) Flush(ctx context.Context, cmdCtx CmdContext) {
 	nodeID := cmdCtx.nodeID
 	memAccesses := b.nodeAccesses[nodeID]
+
+	// DO NOT REMOVE! Optimization: manually set the final slice capacity,
+	// to avoid numerous realloc. This has a perceptible impact on big
+	// captures where it can save several seconds of computation.
 
 	// Compute the maximum possible of size of memAccesses at the end of `Flush`.
 	memAccessesCap := len(memAccesses)
@@ -109,7 +114,7 @@ func (b *memWatcher) Flush(ctx context.Context, cmdCtx CmdContext) {
 		memAccessesCap += len(*acc)
 	}
 
-	// Ensure that fragAccesses has sufficient capacity
+	// Ensure that memAccesses has sufficient capacity
 	if memAccessesCap > cap(memAccesses) {
 		// round up to next power of 2
 		memAccessesCap = 1 << uint(bits.Len(uint(memAccessesCap-1)))
@@ -197,6 +202,9 @@ func observationSlice(obs api.CmdObservation) memory.Slice {
 	return memory.NewSlice(obs.Range.Base, obs.Range.Base, obs.Range.Size, obs.Range.Size, obs.Pool, reflect.TypeOf(memory.Char(0)))
 }
 
+// applyMemWrite marks or creates the memoryWrites of wmap ("writeMap") affected
+// by (p, s) as being writes of node n. It returns true if this is a new write
+// by n.
 func applyMemWrite(wmap map[memory.PoolID]*memoryWriteList,
 	p memory.PoolID, n NodeID, s interval.U64Span) bool {
 	if writes, ok := wmap[p]; ok {
@@ -218,6 +226,8 @@ func applyMemWrite(wmap map[memory.PoolID]*memoryWriteList,
 	return false
 }
 
+// applyMemRead returns the list of nodes for which there is a memoryWrite in
+// wmap ("writeMap") that interesects with (p, s)
 func applyMemRead(wmap map[memory.PoolID]*memoryWriteList,
 	p memory.PoolID, s interval.U64Span) []NodeID {
 	writeNodes := []NodeID{}
