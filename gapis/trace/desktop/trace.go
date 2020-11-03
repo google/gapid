@@ -230,7 +230,6 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 		cleanup, portFile, err = loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
 		if err != nil {
 			cleanup.Invoke(ctx)
-			panic(err)
 			return nil, nil, err
 		}
 		ignorePort = false
@@ -269,7 +268,6 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 
 	if err != nil {
 		cleanup.Invoke(ctx)
-		panic(err)
 		return nil, nil, err
 	}
 	if p != nil {
