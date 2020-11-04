@@ -927,7 +927,7 @@ func (s *server) GpuProfile(ctx context.Context, req *service.GpuProfileRequest)
 	ctx = status.Start(ctx, "RPC GpuProfile")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GpuProfile")
-	res, err := replay.GpuProfile(ctx, req.Capture, req.Device, req.DisabledCommands)
+	res, err := replay.GpuProfile(ctx, req.Capture, req.Device, req.Experiments)
 	if err != nil {
 		return nil, err
 	}

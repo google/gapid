@@ -74,7 +74,7 @@ func getPerfettoConfig(ctx context.Context, device *path.Device) (*perfetto_pb.T
 }
 
 // GpuProfile replays the trace and writes a Perfetto trace of the replay
-func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device, disabledCmds []*path.Command) (*service.ProfilingData, error) {
+func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device, experiments *service.ProfileExperiments) (*service.ProfilingData, error) {
 	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return nil, err
@@ -98,18 +98,23 @@ func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Dev
 		}
 
 		var disabledCmdsIndices [][]uint64
-		if disabledCmds != nil {
-			disabledCmdsIndices = make([][]uint64, 0, len(disabledCmds))
-			for _, cmd := range disabledCmds {
+		if experiments.DisabledCommands != nil {
+			disabledCmdsIndices = make([][]uint64, 0, len(experiments.DisabledCommands))
+			for _, cmd := range experiments.DisabledCommands {
 				disabledCmdsIndices = append(disabledCmdsIndices, cmd.Indices)
 			}
+		}
+
+		profilingExperiments := ProfileExperiments{
+			DisabledCmds:                disabledCmdsIndices,
+			DisableAnisotropicFiltering: experiments.DisableAnisotropicFiltering,
 		}
 
 		mgr := GetManager(ctx)
 		hints := &path.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if pf, ok := a.(Profiler); ok {
-				data, err := pf.QueryProfile(ctx, intent, mgr, hints, opts, disabledCmdsIndices)
+				data, err := pf.QueryProfile(ctx, intent, mgr, hints, opts, profilingExperiments)
 				if err != nil {
 					log.E(ctx, "Replay profiling failed.")
 					return nil, err

@@ -278,10 +278,14 @@ func getProfileTransforms(ctx context.Context,
 	transforms = append(transforms, newProfilingLayers(layerName))
 	transforms = append(transforms, newMappingExporter(ctx, request.handleMappings))
 
+	if request.experiments.DisableAnisotropicFiltering {
+		transforms = append(transforms, newAfDisablerTransform())
+	}
+
 	var err error
-	if len(request.disabledCmds) > 0 {
+	if len(request.experiments.DisabledCmds) > 0 {
 		disablerTransform := newCommandDisabler(ctx, uint64(numOfInitialCmds))
-		for _, disabledCmdID := range request.disabledCmds {
+		for _, disabledCmdID := range request.experiments.DisabledCmds {
 			subIdx := append(api.SubCmdIdx{}, disabledCmdID...)
 			err = disablerTransform.remove(ctx, subIdx)
 		}

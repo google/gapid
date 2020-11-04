@@ -92,7 +92,7 @@ type Profiler interface {
 		mgr Manager,
 		hints *path.UsageHints,
 		traceOptions *service.TraceOptions,
-		disabledCmds [][]uint64) (*service.ProfilingData, error)
+		experiments ProfileExperiments) (*service.ProfilingData, error)
 }
 
 // Issue represents a single replay issue reported by QueryIssues.
@@ -100,4 +100,10 @@ type Issue struct {
 	Command  api.CmdID        // The command that reported the issue.
 	Severity service.Severity // The severity of the issue.
 	Error    error            // The issue's error.
+}
+
+// ProfileExperiments represents the experiment settings for the profiling
+type ProfileExperiments struct {
+	DisabledCmds                [][]uint64
+	DisableAnisotropicFiltering bool
 }

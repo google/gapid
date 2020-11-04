@@ -94,7 +94,7 @@ type profileRequest struct {
 	handler        *replay.SignalHandler
 	buffer         *bytes.Buffer
 	handleMappings *map[uint64][]service.VulkanHandleMappingItem
-	disabledCmds   [][]uint64
+	experiments    replay.ProfileExperiments
 }
 
 func (a API) QueryFramebufferAttachment(
@@ -188,13 +188,13 @@ func (a API) QueryProfile(
 	mgr replay.Manager,
 	hints *path.UsageHints,
 	traceOptions *service.TraceOptions,
-	disabledCmds [][]uint64) (*service.ProfilingData, error) {
+	experiments replay.ProfileExperiments) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
 	handleMappings := make(map[uint64][]service.VulkanHandleMappingItem)
-	r := profileRequest{traceOptions, handler, &buffer, &handleMappings, disabledCmds}
+	r := profileRequest{traceOptions, handler, &buffer, &handleMappings, experiments}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err

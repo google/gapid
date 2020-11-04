@@ -35,6 +35,7 @@ type profileVerb struct{ GpuProfileFlags }
 func init() {
 	verb := &profileVerb{GpuProfileFlags{
 		DisabledCmds: []flags.U64Slice{},
+		DisableAF:    false,
 	}}
 	app.AddVerb(&app.Verb{
 		Name:      "profile",
@@ -77,9 +78,12 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	req := &service.GpuProfileRequest{
-		Capture:          capturePath,
-		Device:           device,
-		DisabledCommands: commands,
+		Capture: capturePath,
+		Device:  device,
+		Experiments: &service.ProfileExperiments{
+			DisabledCommands:            commands,
+			DisableAnisotropicFiltering: verb.DisableAF,
+		},
 	}
 
 	res, err := client.GpuProfile(ctx, req)

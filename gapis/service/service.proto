@@ -1312,6 +1312,11 @@ message VulkanHandleMappingItem {
   uint64 replay_value = 3;
 }
 
+message ProfileExperiments {
+  repeated path.Command disabledCommands = 1;
+  bool disableAnisotropicFiltering = 2;
+}
+
 message GpuProfileResponse {
   oneof res {
     ProfilingData profiling_data = 1;
@@ -1322,7 +1327,7 @@ message GpuProfileResponse {
 message GpuProfileRequest {
   path.Capture capture = 1;
   path.Device device = 2;
-  repeated path.Command disabledCommands = 3;
+  ProfileExperiments experiments = 3;
 }
 
 message SplitCaptureRequest {
