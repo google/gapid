@@ -38,7 +38,7 @@ typedef size_t VkInstance;
 struct MesaLLVMOpener {
   MesaLLVMOpener() {
     char name[512];
-    for (int i = 3; i <= 9; i++) {
+    for (int i = 3; i <= 20; i++) {
       snprintf(name, sizeof(name), "libLLVM-%d.0.so.1", i);
       dlopen(name, RTLD_LAZY | RTLD_DEEPBIND);
       snprintf(name, sizeof(name), "libLLVM-%d.so.1", i);
