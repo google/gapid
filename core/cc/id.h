@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <cstring>
 #include <functional>
+#include <string>
 
 namespace core {
 

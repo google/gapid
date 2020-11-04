@@ -71,18 +71,18 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "grpc",
         commit = "c599e6a922a80e40e24a2d3c994a6dd51046796b",  # 1.22.1
         sha256 = "d17ead923510b3c8a03eec623fffe4cba64d43e10b3695f027a1c8f10c03756a",
-	# This patch works around a naming conflict in grpc which leads to
-	# compilation issues in recent gcc/glibc. This issue is fixed on recent
-	# grpc versions (since
-	# https://github.com/grpc/grpc/commit/de6255941a5e1c2fb2d50e57f84e38c09f45023d),
-	# but updating our grpc version leads to errors in compiling the abseil
-	# dependency of grpc
-	# (https://github.com/abseil/abseil-cpp/issues/326). We tried to pull
-	# abseil ourselves and patch it, but abseil also fails to compile with
-	# gcc on windows, so we choose to patch grpc directly. Once grpc has a
-	# version that builds fine on all our targets, we can update grpc and
-	# drop this patch.
-	patch_file = "@gapid//tools/build/third_party/com_github_grpc_grpc:com_github_grpc_grpc_fix.patch",
+        # This patch works around a naming conflict in grpc which leads to
+        # compilation issues in recent gcc/glibc. This issue is fixed on recent
+        # grpc versions (since
+        # https://github.com/grpc/grpc/commit/de6255941a5e1c2fb2d50e57f84e38c09f45023d),
+        # but updating our grpc version leads to errors in compiling the abseil
+        # dependency of grpc
+        # (https://github.com/abseil/abseil-cpp/issues/326). We tried to pull
+        # abseil ourselves and patch it, but abseil also fails to compile with
+        # gcc on windows, so we choose to patch grpc directly. Once grpc has a
+        # version that builds fine on all our targets, we can update grpc and
+        # drop this patch.
+        patch_file = "@gapid//tools/build/third_party/com_github_grpc_grpc:com_github_grpc_grpc_fix.patch",
     )
     _grpc_deps(locals)
 
@@ -158,6 +158,11 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         commit = "e562960fe303c0ffab6f3458fcdb1544b56fd81e",
         build_file = "@gapid//tools/build/third_party:llvm.BUILD",
         sha256 = "3ef3d905849d547b6481b16d8e7b473a84efafbe90131e7bc90a0c6aae4cd8e6",
+        # This patch fixes missing standard library includes which leads to compilation
+        # issues in recent gcc. This issue is fixed on recent llvm versions (since
+        # https://github.com/llvm-mirror/llvm/commit/e0402b5c9813a2458b8dd3f640883110db280395),
+        # but updating our llvm version leads to other errors.
+        patch_file = "@gapid//tools/build/third_party:llvm_fix.patch",
     )
 
     maybe_repository(

@@ -90,6 +90,7 @@ cc_library(
         "@gapid//tools/build:linux": [
             "-Wno-maybe-uninitialized",
             "-Wno-deprecated",
+            "-Wno-array-bounds",
         ],
         "@gapid//tools/build:darwin": [],
         "@gapid//tools/build:windows": [

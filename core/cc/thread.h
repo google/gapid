@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include <functional>
+#include <string>
 
 namespace core {
 
