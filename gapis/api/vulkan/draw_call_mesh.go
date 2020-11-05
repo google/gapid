@@ -254,6 +254,16 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, thread uint64, boun
 	return []uint32{}, nil
 }
 
+func findBinding(lastDrawInfo DrawInfoʳ, attribute VkVertexInputAttributeDescription) (VkVertexInputBindingDescription, bool) {
+	bindings := lastDrawInfo.GraphicsPipeline().VertexInputState().BindingDescriptions()
+	for _, b := range bindings.All() {
+		if b.Binding() == attribute.Binding() {
+			return b, true
+		}
+	}
+	return VkVertexInputBindingDescription{}, false
+}
+
 func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 	vertexCount, firstVertex uint32, noData bool) (*vertex.Buffer, error) {
 
@@ -275,16 +285,15 @@ func getVertexBuffers(ctx context.Context, s *api.GlobalState, thread uint64,
 
 	vb := &vertex.Buffer{}
 	attributes := lastDrawInfo.GraphicsPipeline().VertexInputState().AttributeDescriptions()
-	bindings := lastDrawInfo.GraphicsPipeline().VertexInputState().BindingDescriptions()
 	var err error
 	// For each attribute, get the vertex buffer data
 	for _, attributeIndex := range attributes.Keys() {
 		attribute := attributes.Get(attributeIndex)
-		if !bindings.Contains(attribute.Binding()) {
+		binding, ok := findBinding(lastDrawInfo, attribute)
+		if !ok {
 			// TODO(qining): This is an error, should emit error message here.
 			continue
 		}
-		binding := bindings.Get(attribute.Binding())
 		if !lastDrawInfo.BoundVertexBuffers().Contains(binding.Binding()) {
 			// TODO(qining): This is an error, should emit error message here.
 			continue
