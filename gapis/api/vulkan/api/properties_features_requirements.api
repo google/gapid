@@ -560,6 +560,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
             _ = as!VkPhysicalDeviceMaintenance3Properties*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+            _ = as!VkPhysicalDeviceSubgroupProperties*(next.Ptr)[0]
+          }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
             _ = as!VkPhysicalDeviceIDProperties*(next.Ptr)[0]
           }
@@ -607,6 +610,15 @@ sub void GetPhysicalDeviceProperties2(
               phyDev.Maintenance3Properties = new!Maintenance3Properties(
                 MaxPerSetDescriptors: ext.maxPerSetDescriptors,
                 MaxMemoryAllocationSize: ext.maxMemoryAllocationSize,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+              ext := as!VkPhysicalDeviceSubgroupProperties*(next.Ptr)[0]
+              phyDev.SubgroupProperties = new!SubgroupProperties(
+                SubgroupSize:              ext.subgroupSize,
+                SupportedStages:           ext.supportedStages,
+                SupportedOperations:       ext.supportedOperations,
+                QuadOperationsInAllStages: ext.quadOperationsInAllStages,
               )
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {

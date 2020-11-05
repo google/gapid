@@ -50,6 +50,7 @@
   // Vulkan 1.1 core
   @unused ref!PointClippingProperties PointClippingProperties
   @unused ref!Maintenance3Properties  Maintenance3Properties
+  @unused ref!SubgroupProperties      SubgroupProperties
 
   // Extensions
   @unused ref!PhysicalDevicePCIBusInfoPropertiesEXT PhysicalDevicePCIBusInfoPropertiesEXT
@@ -133,4 +134,11 @@ cmd VkResult vkEnumeratePhysicalDevices(
 @internal class Maintenance3Properties {
   u32          MaxPerSetDescriptors
   VkDeviceSize MaxMemoryAllocationSize
+}
+
+@internal class SubgroupProperties {
+  u32                    SubgroupSize
+  VkShaderStageFlags     SupportedStages
+  VkSubgroupFeatureFlags SupportedOperations
+  VkBool32               QuadOperationsInAllStages
 }
