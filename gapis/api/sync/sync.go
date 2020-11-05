@@ -203,7 +203,9 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 				return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 			}
 		}
-		postCmdCb(s, api.SubCmdIdx{uint64(id)}, cmd)
+		if postCmdCb != nil {
+			postCmdCb(s, api.SubCmdIdx{uint64(id)}, cmd)
+		}
 		return nil
 	})
 }

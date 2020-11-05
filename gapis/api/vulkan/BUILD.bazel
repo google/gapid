@@ -154,6 +154,7 @@ go_library(
         "//gapis/replay/protocol:go_default_library",
         "//gapis/replay/value:go_default_library",
         "//gapis/resolve:go_default_library",
+        "//gapis/resolve/dependencygraph2:go_default_library",
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/memory_box:go_default_library",  #keep
