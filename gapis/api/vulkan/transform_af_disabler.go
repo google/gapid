@@ -87,5 +87,5 @@ func (afDisabler *afDisablerTransform) disableAFInSamplerCreation(ctx context.Co
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 
-	return cmd
+	return newCmd
 }
