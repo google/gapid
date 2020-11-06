@@ -118,7 +118,7 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 		srcChannels := srcFmt.Channels()
 		switch m.dst.component.Channel {
 		case Channel_Alpha:
-			if srcChannels.ContainsColor() || srcChannels.ContainsDepth() {
+			if srcChannels.ContainsColor() || srcChannels.ContainsDepth() || srcChannels.ContainsStencil() {
 				m.src = buf1Norm
 			}
 		case Channel_W:
@@ -135,6 +135,9 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
 			} else if c, _ := srcFmt.Component(Channel_Depth); c != nil {
 				// Convert depth to RGB.
+				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
+			} else if c, _ := srcFmt.Component(Channel_Stencil); c != nil {
+				// Convert stencil to RGB.
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
 			} else if srcChannels.ContainsColor() {
 				m.src = buf0
