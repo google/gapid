@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -25,13 +26,138 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+type attachmentInfo struct {
+	isSwapchainImage bool
+	format           VkFormat
+	imgType          VkImageViewType
+	loadOp           VkAttachmentLoadOp
+	storeOp          VkAttachmentStoreOp
+	usage            VkImageUsageFlags
+	handle           VkImageView
+	width            uint32
+	height           uint32
+	depth            uint32
+}
+
+func (a *attachmentInfo) String() string {
+	if a == nil {
+		return "unused"
+	}
+	isSwapChain := ""
+	if a.isSwapchainImage {
+		isSwapChain = " [swapchain]"
+	}
+	transient := ""
+	if (a.usage & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)) != 0 {
+		transient = " [transient]"
+	}
+	load := strings.TrimPrefix(fmt.Sprintf("%v", a.loadOp), "VK_ATTACHMENT_LOAD_OP_")
+	store := strings.TrimPrefix(fmt.Sprintf("%v", a.storeOp), "VK_ATTACHMENT_STORE_OP_")
+	imgType := strings.TrimPrefix(fmt.Sprintf("%v", a.imgType), "VK_IMAGE_VIEW_TYPE_")
+	format := strings.TrimPrefix(fmt.Sprintf("%v", a.format), "VK_FORMAT_")
+	return fmt.Sprintf("0x%X%s%s %vx%vx%v load:%s store:%s %v %v", a.handle, isSwapChain, transient, a.width, a.height, a.depth, load, store, imgType, format)
+}
+
+func newAttachmentInfo(desc VkAttachmentDescription, imgView ImageViewObjectʳ, isDepthStencil bool) *attachmentInfo {
+	imgInfo := imgView.Image().Info()
+	var loadOp VkAttachmentLoadOp
+	var storeOp VkAttachmentStoreOp
+	if isDepthStencil {
+		loadOp = desc.StencilLoadOp()
+		storeOp = desc.StencilStoreOp()
+	} else {
+		loadOp = desc.LoadOp()
+		storeOp = desc.StoreOp()
+	}
+	return &attachmentInfo{
+		isSwapchainImage: imgView.Image().IsSwapchainImage(),
+		format:           desc.Fmt(),
+		imgType:          imgView.Type(),
+		loadOp:           loadOp,
+		storeOp:          storeOp,
+		usage:            imgInfo.Usage(),
+		handle:           imgView.VulkanHandle(),
+		width:            imgInfo.Extent().Width(),
+		height:           imgInfo.Extent().Height(),
+		depth:            imgInfo.Extent().Depth(),
+	}
+}
+
+type subpassInfo struct {
+	inputAttachments       []*attachmentInfo
+	colorAttachments       []*attachmentInfo
+	resolveAttachments     []*attachmentInfo
+	depthStencilAttachment *attachmentInfo
+}
+
+func newSubpassInfo(subpassDesc SubpassDescription, framebuffer FramebufferObjectʳ, renderpass RenderPassObjectʳ) *subpassInfo {
+	inputAtts := subpassDesc.InputAttachments()
+	colorAtts := subpassDesc.ColorAttachments()
+	resolveAtts := subpassDesc.ResolveAttachments()
+	spInfo := &subpassInfo{
+		inputAttachments:   make([]*attachmentInfo, inputAtts.Len()),
+		colorAttachments:   make([]*attachmentInfo, colorAtts.Len()),
+		resolveAttachments: make([]*attachmentInfo, resolveAtts.Len()),
+	}
+
+	// Input attachments
+	for i := 0; i < inputAtts.Len(); i++ {
+		idx := inputAtts.Get(uint32(i)).Attachment()
+		if idx == VK_ATTACHMENT_UNUSED {
+			continue
+		}
+		desc := renderpass.AttachmentDescriptions().Get(idx)
+		imgView := framebuffer.ImageAttachments().Get(idx)
+		spInfo.inputAttachments[i] = newAttachmentInfo(desc, imgView, false)
+	}
+
+	// Color attachments
+	for i := 0; i < colorAtts.Len(); i++ {
+		idx := colorAtts.Get(uint32(i)).Attachment()
+		if idx == VK_ATTACHMENT_UNUSED {
+			continue
+		}
+		desc := renderpass.AttachmentDescriptions().Get(idx)
+		imgView := framebuffer.ImageAttachments().Get(idx)
+		spInfo.colorAttachments[i] = newAttachmentInfo(desc, imgView, false)
+	}
+
+	// Resolve attachments
+	for i := 0; i < resolveAtts.Len(); i++ {
+		idx := resolveAtts.Get(uint32(i)).Attachment()
+		if idx == VK_ATTACHMENT_UNUSED {
+			continue
+		}
+		desc := renderpass.AttachmentDescriptions().Get(idx)
+		imgView := framebuffer.ImageAttachments().Get(idx)
+		spInfo.resolveAttachments[i] = newAttachmentInfo(desc, imgView, false)
+	}
+
+	// DepthStencil attachment
+	depthStencilAtt := subpassDesc.DepthStencilAttachment()
+	if !depthStencilAtt.IsNil() {
+		idx := depthStencilAtt.Attachment()
+		if idx != VK_ATTACHMENT_UNUSED {
+			desc := renderpass.AttachmentDescriptions().Get(idx)
+			imgView := framebuffer.ImageAttachments().Get(idx)
+			spInfo.depthStencilAttachment = newAttachmentInfo(desc, imgView, true)
+		}
+	}
+
+	return spInfo
+}
+
 // renderpassInfo stores a renderpass' info relevant for the framegraph.
 type renderpassInfo struct {
-	id       uint64
-	beginIdx api.SubCmdIdx
-	endIdx   api.SubCmdIdx
-	nodes    []dependencygraph2.NodeID
-	deps     map[uint64]struct{} // set of renderpasses this renderpass depends on
+	id             uint64
+	beginIdx       api.SubCmdIdx
+	endIdx         api.SubCmdIdx
+	nodes          []dependencygraph2.NodeID
+	deps           map[uint64]struct{} // set of renderpasses this renderpass depends on
+	subpasses      []*subpassInfo
+	framebufWidth  uint32
+	framebufHeight uint32
+	framebufLayers uint32
 }
 
 // framegraphInfoHelpers contains variables that stores information while
@@ -43,7 +169,7 @@ type framegraphInfoHelpers struct {
 }
 
 // processSubCommand records framegraph information upon each subcommand.
-func processSubCommand(ctx context.Context, helpers *framegraphInfoHelpers, dependencyGraph dependencygraph2.DependencyGraph, state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
+func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dependencyGraph dependencygraph2.DependencyGraph, state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
 	vkState := GetState(state)
 	cmdRef, ok := i.(CommandReferenceʳ)
 	if !ok {
@@ -52,15 +178,29 @@ func processSubCommand(ctx context.Context, helpers *framegraphInfoHelpers, depe
 	cmdArgs := GetCommandArgs(ctx, cmdRef, vkState)
 
 	// Beginning of renderpass
-	if _, ok := cmdArgs.(VkCmdBeginRenderPassArgsʳ); ok {
+	if args, ok := cmdArgs.(VkCmdBeginRenderPassArgsʳ); ok {
 		if helpers.rpInfo != nil {
 			panic("Renderpass starts without having ended")
 		}
+
+		framebuffer := vkState.Framebuffers().Get(args.Framebuffer())
+		renderpass := vkState.RenderPasses().Get(args.RenderPass())
+		subpassesDesc := renderpass.SubpassDescriptions()
+		subpasses := make([]*subpassInfo, subpassesDesc.Len())
+		for i := 0; i < len(subpasses); i++ {
+			subpassDesc := subpassesDesc.Get(uint32(i))
+			subpasses[i] = newSubpassInfo(subpassDesc, framebuffer, renderpass)
+		}
+
 		helpers.rpInfo = &renderpassInfo{
-			id:       helpers.currRpId,
-			beginIdx: subCmdIdx,
-			nodes:    []dependencygraph2.NodeID{},
-			deps:     make(map[uint64]struct{}),
+			id:             helpers.currRpId,
+			beginIdx:       subCmdIdx,
+			nodes:          []dependencygraph2.NodeID{},
+			deps:           make(map[uint64]struct{}),
+			subpasses:      subpasses,
+			framebufWidth:  framebuffer.Width(),
+			framebufHeight: framebuffer.Height(),
+			framebufLayers: framebuffer.Layers(),
 		}
 		helpers.currRpId++
 	}
@@ -101,7 +241,7 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 		currRpId: uint64(0),
 	}
 	postSubCmdCb := func(state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
-		processSubCommand(ctx, helpers, dependencyGraph, state, subCmdIdx, cmd, i)
+		helpers.processSubCommand(ctx, dependencyGraph, state, subCmdIdx, cmd, i)
 	}
 
 	// Iterate on the capture commands to collect information
@@ -119,7 +259,20 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 	nodes := make([]*api.FramegraphNode, len(helpers.rpInfos))
 	for i, rpInfo := range helpers.rpInfos {
 		// Graphviz DOT: use "\l" as a newline to obtain left-aligned text.
-		text := fmt.Sprintf("Renderpass %v\\lbegin:%v\\lend:%v\\l", rpInfo.id, rpInfo.beginIdx, rpInfo.endIdx)
+		text := fmt.Sprintf("Renderpass %v\\lbegin:%v\\lend:  %v\\lFramebuffer: %vx%vx%v\\l", rpInfo.id, rpInfo.beginIdx, rpInfo.endIdx, rpInfo.framebufWidth, rpInfo.framebufHeight, rpInfo.framebufLayers)
+		for i, subpass := range rpInfo.subpasses {
+			text += fmt.Sprintf("\\lSubpass %v\\l", i)
+			for j, a := range subpass.inputAttachments {
+				text += fmt.Sprintf("input(%v): %v\\l", j, a)
+			}
+			for j, a := range subpass.colorAttachments {
+				text += fmt.Sprintf("color(%v): %v\\l", j, a)
+			}
+			for j, a := range subpass.resolveAttachments {
+				text += fmt.Sprintf("resolve(%v): %v\\l", j, a)
+			}
+			text += fmt.Sprintf("depth/stencil: %v\\l", subpass.depthStencilAttachment)
+		}
 		nodes[i] = &api.FramegraphNode{
 			Id:   rpInfo.id,
 			Text: text,
