@@ -17,49 +17,79 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type attachmentInfo struct {
-	isSwapchainImage bool
-	format           VkFormat
-	imgType          VkImageViewType
-	loadOp           VkAttachmentLoadOp
-	storeOp          VkAttachmentStoreOp
-	usage            VkImageUsageFlags
-	handle           VkImageView
+type imageInfo struct {
+	handle           VkImage
 	width            uint32
 	height           uint32
 	depth            uint32
+	usage            VkImageUsageFlags
+	imgType          VkImageType
+	format           VkFormat
+	isSwapchainImage bool
+}
+
+func (img *imageInfo) String() string {
+	swapchain := ""
+	if img.isSwapchainImage {
+		swapchain = " swapchain"
+	}
+	transient := ""
+	if (img.usage & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)) != 0 {
+		transient = " transient"
+	}
+	imgType := strings.TrimPrefix(fmt.Sprintf("%v", img.imgType), "VK_IMAGE_TYPE_")
+	imgFormat := strings.TrimPrefix(fmt.Sprintf("%v", img.format), "VK_FORMAT_")
+	return fmt.Sprintf("[Img %v%s%s %s %s %vx%vx%v]", img.handle, swapchain, transient, imgType, imgFormat, img.width, img.height, img.depth)
+}
+
+func newImageInfo(image *ImageObjectʳ) *imageInfo {
+	return &imageInfo{
+		handle:           image.VulkanHandle(),
+		width:            image.Info().Extent().Width(),
+		height:           image.Info().Extent().Height(),
+		depth:            image.Info().Extent().Depth(),
+		usage:            image.Info().Usage(),
+		imgType:          image.Info().ImageType(),
+		format:           image.Info().Fmt(),
+		isSwapchainImage: image.IsSwapchainImage(),
+	}
+}
+
+type attachmentInfo struct {
+	loadOp        VkAttachmentLoadOp
+	storeOp       VkAttachmentStoreOp
+	imgViewHandle VkImageView
+	imgViewType   VkImageViewType
+	imgViewFormat VkFormat
+	img           *imageInfo
 }
 
 func (a *attachmentInfo) String() string {
 	if a == nil {
 		return "unused"
 	}
-	isSwapChain := ""
-	if a.isSwapchainImage {
-		isSwapChain = " [swapchain]"
-	}
-	transient := ""
-	if (a.usage & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)) != 0 {
-		transient = " [transient]"
-	}
+
 	load := strings.TrimPrefix(fmt.Sprintf("%v", a.loadOp), "VK_ATTACHMENT_LOAD_OP_")
 	store := strings.TrimPrefix(fmt.Sprintf("%v", a.storeOp), "VK_ATTACHMENT_STORE_OP_")
-	imgType := strings.TrimPrefix(fmt.Sprintf("%v", a.imgType), "VK_IMAGE_VIEW_TYPE_")
-	format := strings.TrimPrefix(fmt.Sprintf("%v", a.format), "VK_FORMAT_")
-	return fmt.Sprintf("0x%X%s%s %vx%vx%v load:%s store:%s %v %v", a.handle, isSwapChain, transient, a.width, a.height, a.depth, load, store, imgType, format)
+	imgViewType := strings.TrimPrefix(fmt.Sprintf("%v", a.imgViewType), "VK_IMAGE_VIEW_TYPE_")
+	imgViewFormat := strings.TrimPrefix(fmt.Sprintf("%v", a.imgViewFormat), "VK_FORMAT_")
+	att := fmt.Sprintf("load:%s store:%s [View %v %s %s]", load, store, a.imgViewHandle, imgViewType, imgViewFormat)
+
+	return fmt.Sprintf("%s %v", att, a.img)
 }
 
 func newAttachmentInfo(desc VkAttachmentDescription, imgView ImageViewObjectʳ, isDepthStencil bool) *attachmentInfo {
-	imgInfo := imgView.Image().Info()
 	var loadOp VkAttachmentLoadOp
 	var storeOp VkAttachmentStoreOp
 	if isDepthStencil {
@@ -69,17 +99,14 @@ func newAttachmentInfo(desc VkAttachmentDescription, imgView ImageViewObjectʳ, 
 		loadOp = desc.LoadOp()
 		storeOp = desc.StoreOp()
 	}
+	imgObj := imgView.Image()
 	return &attachmentInfo{
-		isSwapchainImage: imgView.Image().IsSwapchainImage(),
-		format:           desc.Fmt(),
-		imgType:          imgView.Type(),
-		loadOp:           loadOp,
-		storeOp:          storeOp,
-		usage:            imgInfo.Usage(),
-		handle:           imgView.VulkanHandle(),
-		width:            imgInfo.Extent().Width(),
-		height:           imgInfo.Extent().Height(),
-		depth:            imgInfo.Extent().Depth(),
+		loadOp:        loadOp,
+		storeOp:       storeOp,
+		imgViewHandle: imgView.VulkanHandle(),
+		imgViewType:   imgView.Type(),
+		imgViewFormat: imgView.Fmt(),
+		img:           newImageInfo(&imgObj),
 	}
 }
 
@@ -147,6 +174,24 @@ func newSubpassInfo(subpassDesc SubpassDescription, framebuffer FramebufferObjec
 	return spInfo
 }
 
+type imageAccessInfo struct {
+	read  bool
+	write bool
+	img   *imageInfo
+}
+
+func (i *imageAccessInfo) String() string {
+	r := "-"
+	if i.read {
+		r = "r"
+	}
+	w := "-"
+	if i.write {
+		w = "w"
+	}
+	return fmt.Sprintf("%s%s %v", r, w, i.img)
+}
+
 // renderpassInfo stores a renderpass' info relevant for the framegraph.
 type renderpassInfo struct {
 	id             uint64
@@ -158,6 +203,7 @@ type renderpassInfo struct {
 	framebufWidth  uint32
 	framebufHeight uint32
 	framebufLayers uint32
+	imageAccesses  map[VkImage]*imageAccessInfo
 }
 
 // framegraphInfoHelpers contains variables that stores information while
@@ -166,6 +212,45 @@ type framegraphInfoHelpers struct {
 	rpInfos  []*renderpassInfo
 	rpInfo   *renderpassInfo
 	currRpId uint64
+	// imageLookup is a lookup table to quickly find images that match a memory
+	// access. Scanning the whole state to look for an image matching a memory
+	// access is slow, this lookup table saves seconds of computation. It is
+	// updated when a new renderpass is started under a new top-level parent
+	// command: images can only be created/destroyed between top-level commands,
+	// not during the execution of subcommands.
+	imageLookup  map[memory.PoolID]map[memory.Range][]*ImageObjectʳ
+	parentCmdIdx uint64 // used to know when to update imageLookup
+}
+
+// updateImageLookup updates the lookup table to quickly find an image matching a memory observation.
+func (helpers *framegraphInfoHelpers) updateImageLookup(state *State) {
+	helpers.imageLookup = make(map[memory.PoolID]map[memory.Range][]*ImageObjectʳ)
+	for _, image := range state.Images().All() {
+		for _, aspect := range image.Aspects().All() {
+			for _, layer := range aspect.Layers().All() {
+				for _, level := range layer.Levels().All() {
+					pool := level.Data().Pool()
+					memRange := level.Data().Range()
+					if _, ok := helpers.imageLookup[pool]; !ok {
+						helpers.imageLookup[pool] = make(map[memory.Range][]*ImageObjectʳ)
+					}
+					imgObj := image
+					helpers.imageLookup[pool][memRange] = append(helpers.imageLookup[pool][memRange], &imgObj)
+				}
+			}
+		}
+	}
+}
+
+// lookupImages returns all the images that contain (pool, memRange).
+func (helpers *framegraphInfoHelpers) lookupImages(pool memory.PoolID, memRange memory.Range) []*ImageObjectʳ {
+	images := []*ImageObjectʳ{}
+	for imgRange := range helpers.imageLookup[pool] {
+		if imgRange.Includes(memRange) {
+			images = append(images, helpers.imageLookup[pool][imgRange]...)
+		}
+	}
+	return images
 }
 
 // processSubCommand records framegraph information upon each subcommand.
@@ -181,6 +266,13 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 	if args, ok := cmdArgs.(VkCmdBeginRenderPassArgsʳ); ok {
 		if helpers.rpInfo != nil {
 			panic("Renderpass starts without having ended")
+		}
+		// Update image lookup table if we change of top-level parent command
+		// index: images can only be created/destroyed between submits.
+		parentCmdIdx := subCmdIdx[0]
+		if parentCmdIdx == 0 || parentCmdIdx > helpers.parentCmdIdx {
+			helpers.parentCmdIdx = parentCmdIdx
+			helpers.updateImageLookup(vkState)
 		}
 
 		framebuffer := vkState.Framebuffers().Get(args.Framebuffer())
@@ -201,6 +293,7 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 			framebufWidth:  framebuffer.Width(),
 			framebufHeight: framebuffer.Height(),
 			framebufLayers: framebuffer.Layers(),
+			imageAccesses:  make(map[VkImage]*imageAccessInfo),
 		}
 		helpers.currRpId++
 	}
@@ -209,6 +302,28 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 	if helpers.rpInfo != nil {
 		nodeID := dependencyGraph.GetCmdNodeID(api.CmdID(subCmdIdx[0]), subCmdIdx[1:])
 		helpers.rpInfo.nodes = append(helpers.rpInfo.nodes, nodeID)
+
+		for _, memAccess := range dependencyGraph.GetNodeAccesses(nodeID).MemoryAccesses {
+			memRange := memory.Range{
+				Base: memAccess.Span.Start,
+				Size: memAccess.Span.End - memAccess.Span.Start,
+			}
+			for _, image := range helpers.lookupImages(memAccess.Pool, memRange) {
+				imgAcc, ok := helpers.rpInfo.imageAccesses[image.VulkanHandle()]
+				if !ok {
+					imgAcc = &imageAccessInfo{
+						img: newImageInfo(image),
+					}
+					helpers.rpInfo.imageAccesses[image.VulkanHandle()] = imgAcc
+				}
+				switch memAccess.Mode {
+				case dependencygraph2.ACCESS_READ:
+					imgAcc.read = true
+				case dependencygraph2.ACCESS_WRITE:
+					imgAcc.write = true
+				}
+			}
+		}
 	}
 
 	// Ending of renderpass
@@ -236,9 +351,11 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 	// postSubCmdCb effectively processes each subcommand to extract renderpass
 	// info, while recording information into the helpers.
 	helpers := &framegraphInfoHelpers{
-		rpInfos:  []*renderpassInfo{},
-		rpInfo:   nil,
-		currRpId: uint64(0),
+		rpInfos:      []*renderpassInfo{},
+		rpInfo:       nil,
+		currRpId:     uint64(0),
+		parentCmdIdx: uint64(0),
+		imageLookup:  make(map[memory.PoolID]map[memory.Range][]*ImageObjectʳ),
 	}
 	postSubCmdCb := func(state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
 		helpers.processSubCommand(ctx, dependencyGraph, state, subCmdIdx, cmd, i)
@@ -273,6 +390,19 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 			}
 			text += fmt.Sprintf("depth/stencil: %v\\l", subpass.depthStencilAttachment)
 		}
+
+		if len(rpInfo.imageAccesses) > 0 {
+			text += "\\lImage accesses:\\l"
+			handles := make([]VkImage, 0, len(rpInfo.imageAccesses))
+			for h := range rpInfo.imageAccesses {
+				handles = append(handles, h)
+			}
+			sort.Slice(handles, func(i, j int) bool { return handles[i] < handles[j] })
+			for _, h := range handles {
+				text += fmt.Sprintf("%v\\l", rpInfo.imageAccesses[h])
+			}
+		}
+
 		nodes[i] = &api.FramegraphNode{
 			Id:   rpInfo.id,
 			Text: text,

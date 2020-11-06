@@ -58,6 +58,11 @@ func (i Range) Contains(addr uint64) bool {
 	return i.First() <= addr && addr <= i.Last()
 }
 
+// Includes returns true if the Range r is included within the Range i.
+func (i Range) Includes(r Range) bool {
+	return i.First() <= r.First() && r.Last() <= i.Last()
+}
+
 // Overlaps returns true if other overlaps this memory range.
 func (i Range) Overlaps(other Range) bool {
 	a, b := i.Span(), other.Span()
