@@ -125,10 +125,18 @@ func SetupPrereleaseDriver(ctx context.Context, d Device, p *android.InstalledPa
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to get prerelease driver opt in apps.")
 	}
+	// When key is not in the settings global database, a null will be returned.
+	// Avoid using it.
+	if oldOptinApps == "null" {
+		oldOptinApps = ""
+	}
 	if strings.Contains(oldOptinApps, p.Name) {
 		return nil, nil
 	}
-	newOptinApps := oldOptinApps + "," + p.Name
+	newOptinApps := p.Name
+	if oldOptinApps != "" {
+		newOptinApps = oldOptinApps + "," + newOptinApps
+	}
 	// TODO(b/145893290) Check whether application has developer driver enabled once b/145893290 is fixed.
 	if err := d.SetSystemSetting(ctx, "global", settingVariable, newOptinApps); err != nil {
 		return nil, log.Errf(ctx, err, "Failed to set up prerelease driver for app: %v.", p.Name)
