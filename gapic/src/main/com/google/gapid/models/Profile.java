@@ -135,7 +135,7 @@ public class Profile
     public final Service.ProfilingData profile;
     private final Map<Integer, List<TimeSpan>> spansByGroup;
     private final List<Service.ProfilingData.GpuSlices.Group> groups;
-    private final Map<CommandIndex, Map<Integer, Double>> perfLookup; // commandIndex -> {metricId -> performanceValue}
+    private final Map<CommandIndex, Map<Integer, Service.ProfilingData.GpuCounters.Perf>> perfLookup; // commandIndex -> {metricId -> performanceValue}
 
     public Data(Path.Device device, Service.ProfilingData profile) {
       super(device);
@@ -164,8 +164,8 @@ public class Profile
           .collect(toList());
     }
 
-    private Map<CommandIndex, Map<Integer, Double>> organizeGpuPerformances(Service.ProfilingData.GpuCounters perf) {
-      Map<CommandIndex, Map<Integer, Double>> organized = Maps.newHashMap();
+    private Map<CommandIndex, Map<Integer, Service.ProfilingData.GpuCounters.Perf>> organizeGpuPerformances(Service.ProfilingData.GpuCounters perf) {
+      Map<CommandIndex, Map<Integer, Service.ProfilingData.GpuCounters.Perf>> organized = Maps.newHashMap();
       for (Service.ProfilingData.GpuCounters.Entry entry : perf.getEntriesList()) {
         organized.put(new CommandIndex(entry.getCommandIndexList()), entry.getMetricToValueMap());
       }
@@ -202,10 +202,10 @@ public class Profile
       return new TimeSpan(start, end);
     }
 
-    public Double getGpuPerformance(List<Long> commandIndex, int metricId) {
+    public Service.ProfilingData.GpuCounters.Perf getGpuPerformance(List<Long> commandIndex, int metricId) {
       CommandIndex indexStr = new CommandIndex(commandIndex);
-      Map<Integer, Double> metrics = perfLookup.get(indexStr);
-      return (metrics == null) ? Double.NaN : metrics.getOrDefault(metricId, Double.NaN);
+      Map<Integer, Service.ProfilingData.GpuCounters.Perf> perfs = perfLookup.get(indexStr);
+      return (perfs == null) ? null : perfs.get(metricId);
     }
 
     public Duration getDuration(Path.Commands range) {

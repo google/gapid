@@ -1291,10 +1291,17 @@ message ProfilingData {
       AggregationOperator op = 4;
     }
 
+    // Perf includes a best-guessing performance value and a confidence range.
+    message Perf {
+      double estimate = 1;
+      double min = 2;
+      double max = 3;
+    }
+
     // Entry contains performance data for a specific command.
     message Entry {
       repeated uint64 command_index = 1;
-      map<int32, double> metric_to_value = 2;  // Metric.id -> perf value.
+      map<int32, Perf> metric_to_value = 2;  // Metric.id -> perf value.
     }
 
     repeated Metric metrics = 1;

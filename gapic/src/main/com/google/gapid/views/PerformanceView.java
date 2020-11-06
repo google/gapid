@@ -37,6 +37,7 @@ import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
@@ -47,7 +48,8 @@ public class PerformanceView extends Composite
   protected static final Logger LOG = Logger.getLogger(PerformanceView.class.getName());
 
   private final Models models;
-  private final LoadablePanel<PerfTree> loading;
+  private final LoadablePanel<Composite> loading;
+  private final Button button;
   protected final PerfTree tree;
   private final SelectionHandler<Control> selectionHandler;
 
@@ -56,8 +58,18 @@ public class PerformanceView extends Composite
     this.models = models;
 
     setLayout(new GridLayout(1, false));
-    loading = LoadablePanel.create(this, widgets, p -> new PerfTree(p, models, widgets));
-    tree = loading.getContents();
+    loading = LoadablePanel.create(this, widgets, p -> new Composite(p, SWT.NONE));
+    Composite composite = loading.getContents();
+    composite.setLayout(new GridLayout(1, false));
+    composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    button = new Button(composite, SWT.PUSH);
+    button.setText("Estimate / Confidence Range");
+    button.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+    tree = new PerfTree(composite, models, widgets);
+    tree.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    button.addListener(SWT.Selection, e -> tree.toggleEstimateOrRange());
 
     Menu popup = new Menu(tree.getControl());
     Widgets.createMenuItem(popup, "Select in Command Tab", e -> {
@@ -156,6 +168,7 @@ public class PerformanceView extends Composite
 
   private static class PerfTree extends CommandTree.Tree {
     private static final int DURATION_WIDTH = 95;
+    private boolean showEstimate = true;
 
     public PerfTree(Composite parent, Models models, Widgets widgets) {
       super(parent, models, widgets);
@@ -173,6 +186,11 @@ public class PerformanceView extends Composite
       return false;
     }
 
+    public void toggleEstimateOrRange() {
+      showEstimate = !showEstimate;
+      refresh();
+    }
+
     private void addColumnForMetric(Service.ProfilingData.GpuCounters.Metric metric) {
       Unit unit = CounterInfo.unitFromString(metric.getUnit());
       TreeViewerColumn column = addColumn(metric.getName() + "(" + unit.name + ")", node -> {
@@ -182,8 +200,17 @@ public class PerformanceView extends Composite
         } else if (!models.profile.isLoaded()) {
           return "Profiling...";
         } else {
-          Double value = models.profile.getData().getGpuPerformance(data.getCommands().getFromList(), metric.getId());
-          return value.isNaN() || value.isInfinite() || value < 0 ? "" : unit.format(value);
+          Service.ProfilingData.GpuCounters.Perf perf = models.profile.getData().getGpuPerformance(data.getCommands().getFromList(), metric.getId());
+          if (perf == null) {
+            return "";
+          }
+          if (showEstimate) {
+            return perf.getEstimate() < 0 ? "" : unit.format(perf.getEstimate());
+          } else {
+            String minStr = perf.getMin() < 0 ? "?" : unit.format(perf.getMin());
+            String maxStr = perf.getMax() < 0 ? "?" : unit.format(perf.getMax());
+            return minStr + " ~ " + maxStr;
+          }
         }
       }, DURATION_WIDTH);
       column.getColumn().setAlignment(SWT.RIGHT);

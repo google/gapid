@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/f64"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/service"
@@ -42,7 +43,7 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	for _, group := range slices.Groups {
 		groupToEntry[group.Id] = &service.ProfilingData_GpuCounters_Entry{
 			CommandIndex:  group.Link.Indices,
-			MetricToValue: map[int32]float64{},
+			MetricToValue: map[int32]*service.ProfilingData_GpuCounters_Perf{},
 		}
 	}
 	filteredSlices := []*service.ProfilingData_GpuSlices_Slice{}
@@ -66,10 +67,10 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	setTimeMetrics(groupToSlices, &metrics, groupToEntry)
 
 	// Calculate GPU Counter Performances for all leaf groups/commands.
-	setGpuCounterMetrics(ctx, groupToSlices, counters, &metrics, groupToEntry)
+	setGpuCounterMetrics(ctx, groupToSlices, counters, filteredSlices, &metrics, groupToEntry)
 
 	// Merge and organize the leaf entries.
-	entries := mergeLeafEntries(metrics, groupToEntry)
+	entries := mergeLeafEntries(ctx, metrics, groupToEntry)
 
 	return &service.ProfilingData_GpuCounters{
 		Metrics: metrics,
@@ -95,8 +96,16 @@ func setTimeMetrics(groupToSlices map[int32][]*service.ProfilingData_GpuSlices_S
 	for groupId, slices := range groupToSlices {
 		gpuTime, wallTime := gpuTimeForGroup(slices)
 		entry := groupToEntry[groupId]
-		entry.MetricToValue[gpuTimeMetricId] = float64(gpuTime)
-		entry.MetricToValue[gpuWallTimeMetricId] = float64(wallTime)
+		entry.MetricToValue[gpuTimeMetricId] = &service.ProfilingData_GpuCounters_Perf{
+			Estimate: float64(gpuTime),
+			Min:      float64(gpuTime),
+			Max:      float64(gpuTime),
+		}
+		entry.MetricToValue[gpuWallTimeMetricId] = &service.ProfilingData_GpuCounters_Perf{
+			Estimate: float64(wallTime),
+			Min:      float64(wallTime),
+			Max:      float64(wallTime),
+		}
 	}
 }
 
@@ -121,7 +130,7 @@ func gpuTimeForGroup(slices []*service.ProfilingData_GpuSlices_Slice) (uint64, u
 
 // Create GPU counter metric metadata, calculate counter performance for each
 // GPU slice group, and append the result to corresponding entries.
-func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*service.ProfilingData_GpuSlices_Slice, counters []*service.ProfilingData_Counter, metrics *[]*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) {
+func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*service.ProfilingData_GpuSlices_Slice, counters []*service.ProfilingData_Counter, globalSlices []*service.ProfilingData_GpuSlices_Slice, metrics *[]*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) {
 	for i, counter := range counters {
 		metricId := counterMetricIdOffset + int32(i)
 		op := getCounterAggregationMethod(counter)
@@ -135,77 +144,121 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 			log.E(ctx, "Counter aggregation method not implemented yet. Operation: %v", op)
 			continue
 		}
+		concurrentSlicesCount := scanConcurrency(globalSlices, counter)
 		for groupId, slices := range groupToSlices {
-			counterPerf := counterPerfForGroup(slices, counter)
-			entry := groupToEntry[groupId]
-			entry.MetricToValue[metricId] = counterPerf
+			estimateSet, minSet, maxSet := mapCounterSamples(slices, counter, concurrentSlicesCount)
+			estimate := aggregateCounterSamples(estimateSet, counter)
+			// Extra comparison here because minSet/maxSet only denote minimal/maximal
+			// number of counter samples inclusion strategy, the aggregation result
+			// may not be the smallest/largest actually.
+			min, max := estimate, estimate
+			if minSetRes := aggregateCounterSamples(minSet, counter); minSetRes != -1 {
+				min = f64.MinOf(min, minSetRes)
+				max = f64.MaxOf(max, minSetRes)
+			}
+			if maxSetRes := aggregateCounterSamples(maxSet, counter); maxSetRes != -1 {
+				min = f64.MinOf(min, maxSetRes)
+				max = f64.MaxOf(max, maxSetRes)
+			}
+			groupToEntry[groupId].MetricToValue[metricId] = &service.ProfilingData_GpuCounters_Perf{
+				Estimate: estimate,
+				Min:      min,
+				Max:      max,
+			}
 		}
 	}
 }
 
-// Calculate GPU counter performance for a specific GPU slice group, and a
-// specific GPU counter.
-func counterPerfForGroup(slices []*service.ProfilingData_GpuSlices_Slice, counter *service.ProfilingData_Counter) float64 {
-	// Reduce overlapped counter samples size.
-	// Filter out the counter samples whose implicit range collides with `slices`'s gpu time.
-	rangeStart, rangeEnd := ^uint64(0), uint64(0)
-	ts, vs := []uint64{}, []float64{}
-	for _, slice := range slices {
-		rangeStart = u64.Min(rangeStart, slice.Ts)
-		rangeEnd = u64.Max(rangeEnd, slice.Ts+slice.Dur)
-	}
-	for i := range counter.Timestamps {
-		if i > 0 && counter.Timestamps[i-1] > rangeEnd {
-			break
-		}
-		if counter.Timestamps[i] > rangeStart {
-			ts = append(ts, counter.Timestamps[i])
-			vs = append(vs, counter.Values[i])
-		}
-	}
-	if len(ts) == 0 {
-		return float64(-1)
-	}
-
-	// Aggregate counter samples.
-	// Contribution time is the overlapped time between a counter sample's implicit range and a gpu slice.
-	ctSum := uint64(0)        // Accumulation of contribution time.
-	weightedSum := float64(0) // Accumulation of (counter value * counter's contribution time).
-	for _, slice := range slices {
+// Scan global slices and count concurrent slices for each counter sample.
+func scanConcurrency(globalSlices []*service.ProfilingData_GpuSlices_Slice, counter *service.ProfilingData_Counter) []int {
+	slicesCount := make([]int, len(counter.Timestamps))
+	for _, slice := range globalSlices {
 		sStart, sEnd := slice.Ts, slice.Ts+slice.Dur
-		if ts[0] > sStart {
-			ct := u64.Min(ts[0], sEnd) - sStart
-			ctSum += ct
-			weightedSum += float64(ct) * vs[0]
-		}
-		for i := 1; i < len(ts); i++ {
-			cStart, cEnd := ts[i-1], ts[i]
+		for i := 1; i < len(counter.Timestamps); i++ {
+			cStart, cEnd := counter.Timestamps[i-1], counter.Timestamps[i]
 			if cEnd < sStart { // Sample earlier than GPU slice's span.
 				continue
-			} else if cEnd < sEnd { // Sample inside GPU slice's span, or sample's latter part overlaps with slice.
-				ct := cEnd - u64.Max(cStart, sStart)
-				ctSum += ct
-				weightedSum += float64(ct) * vs[i]
-			} else if cStart < sEnd { // Sample wraps GPU slice's span, or sample's earlier part overlaps with slice.
-				ct := sEnd - u64.Max(sStart, cStart)
-				ctSum += ct
-				weightedSum += float64(ct) * vs[i]
+			} else if cStart > sEnd { // Sample later than GPU slice's span.
 				break
+			} else { // Sample overlaps with GPU slice's span.
+				slicesCount[i]++
 			}
 		}
 	}
+	return slicesCount
+}
 
-	// Return result.
-	if ctSum == 0 {
-		return float64(0)
-	} else {
-		return weightedSum / float64(ctSum)
+// Map counter samples to GPU slice. When collecting samples, three sets will
+// be maintained based on attribution strategy: the minimum set,
+// the best guess set, and the maximum set.
+// The returned results map {sample index} to {sample weight}.
+func mapCounterSamples(slices []*service.ProfilingData_GpuSlices_Slice, counter *service.ProfilingData_Counter, concurrentSlicesCount []int) (map[int]float64, map[int]float64, map[int]float64) {
+	estimateSet, minSet, maxSet := map[int]float64{}, map[int]float64{}, map[int]float64{}
+	for _, slice := range slices {
+		sStart, sEnd := slice.Ts, slice.Ts+slice.Dur
+		for i := 1; i < len(counter.Timestamps); i++ {
+			cStart, cEnd := counter.Timestamps[i-1], counter.Timestamps[i]
+			concurrencyWeight := 1.0
+			if concurrentSlicesCount[i] > 1 {
+				concurrencyWeight = 1 / float64(concurrentSlicesCount[i])
+			}
+			if cEnd < sStart { // Sample earlier than GPU slice's span.
+				continue
+			} else if cStart > sEnd { // Sample later than GPU slice's span.
+				break
+			} else if cStart > sStart && cEnd < sEnd { // Sample is contained inside GPU slice's span.
+				estimateSet[i] = 1 * concurrencyWeight
+				// Only add to minSet when there's no concurrent slices, because of the
+				// possibility that the sample belongs entirely to one of the slices.
+				if concurrencyWeight == 1.0 {
+					minSet[i] = 1
+				}
+				maxSet[i] = 1
+			} else { // Sample contains, or partially overlap with GPU slice's span.
+				percent := float64(0)
+				if cEnd != cStart {
+					percent = float64(u64.Min(cEnd, sEnd)-u64.Max(cStart, sStart)) / float64(cEnd-cStart) // Time overlap weight.
+					percent *= concurrencyWeight
+				}
+				if _, ok := estimateSet[i]; !ok {
+					estimateSet[i] = 0
+				}
+				estimateSet[i] += percent
+				maxSet[i] = 1
+			}
+		}
+	}
+	return estimateSet, minSet, maxSet
+}
+
+// Aggregate counter samples to a single value based on counter weight.
+func aggregateCounterSamples(sampleWeight map[int]float64, counter *service.ProfilingData_Counter) float64 {
+	switch getCounterAggregationMethod(counter) {
+	case service.ProfilingData_GpuCounters_Metric_Summation:
+		ValueSum := float64(0)
+		for idx, weight := range sampleWeight {
+			ValueSum += counter.Values[idx] * weight
+		}
+		return ValueSum
+	case service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg:
+		ValueSum, timeSum := float64(0), float64(0)
+		for idx, weight := range sampleWeight {
+			ValueSum += counter.Values[idx] * float64(counter.Timestamps[idx]-counter.Timestamps[idx-1]) * weight
+			timeSum += float64(counter.Timestamps[idx]-counter.Timestamps[idx-1]) * weight
+		}
+		if timeSum != 0 {
+			return ValueSum / timeSum
+		} else {
+			return -1
+		}
+	default:
+		return -1
 	}
 }
 
 // Merge leaf group entries if they belong to the same command, and also derive
 // the parent command nodes' GPU performances based on the leaf entries.
-func mergeLeafEntries(metrics []*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) []*service.ProfilingData_GpuCounters_Entry {
+func mergeLeafEntries(ctx context.Context, metrics []*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) []*service.ProfilingData_GpuCounters_Entry {
 	mergedEntries := []*service.ProfilingData_GpuCounters_Entry{}
 
 	// Find out all the self/parent command nodes that may need performance merging.
@@ -222,25 +275,40 @@ func mergeLeafEntries(metrics []*service.ProfilingData_GpuCounters_Metric, group
 	for commandIndex, leafGroupIds := range indexToGroups {
 		mergedEntry := &service.ProfilingData_GpuCounters_Entry{
 			CommandIndex:  decodeIndex(commandIndex),
-			MetricToValue: map[int32]float64{},
+			MetricToValue: map[int32]*service.ProfilingData_GpuCounters_Perf{},
 		}
 		for _, metric := range metrics {
-			perf := float64(0)
-			if metric.Op == service.ProfilingData_GpuCounters_Metric_Summation {
+			estimate, min, max := float64(-1), float64(-1), float64(-1)
+			switch op := metric.Op; op {
+			case service.ProfilingData_GpuCounters_Metric_Summation:
+				estimate, min, max = float64(0), float64(0), float64(0)
 				for _, id := range leafGroupIds {
-					perf += groupToEntry[id].MetricToValue[metric.Id]
+					entry := groupToEntry[id]
+					estimate += entry.MetricToValue[metric.Id].Estimate
+					min += entry.MetricToValue[metric.Id].Min
+					max += entry.MetricToValue[metric.Id].Max
 				}
-			} else if metric.Op == service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg {
-				timeSum, valueSum := float64(0), float64(0)
+			case service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg:
+				timeSum, estimateValueSum, minValueSum, maxValueSum := float64(0), float64(0), float64(0), float64(0)
 				for _, id := range leafGroupIds {
-					timeSum += groupToEntry[id].MetricToValue[gpuTimeMetricId]
-					valueSum += groupToEntry[id].MetricToValue[gpuTimeMetricId] * groupToEntry[id].MetricToValue[metric.Id]
+					entry := groupToEntry[id]
+					gpuTime := entry.MetricToValue[gpuTimeMetricId].Estimate
+					timeSum += gpuTime
+					estimateValueSum += gpuTime * entry.MetricToValue[metric.Id].Estimate
+					minValueSum += gpuTime * entry.MetricToValue[metric.Id].Min
+					maxValueSum += gpuTime * entry.MetricToValue[metric.Id].Max
 				}
 				if timeSum != 0 {
-					perf = valueSum / timeSum
+					estimate, min, max = estimateValueSum/timeSum, minValueSum/timeSum, maxValueSum/timeSum
 				}
+			default:
+				log.E(ctx, "Counter aggregation method not implemented yet. Operation: %v", op)
 			}
-			mergedEntry.MetricToValue[metric.Id] = perf
+			mergedEntry.MetricToValue[metric.Id] = &service.ProfilingData_GpuCounters_Perf{
+				Estimate: estimate,
+				Min:      min,
+				Max:      max,
+			}
 		}
 		mergedEntries = append(mergedEntries, mergedEntry)
 	}
