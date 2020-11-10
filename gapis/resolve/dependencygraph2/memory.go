@@ -192,6 +192,10 @@ func (b *memWatcher) addObs(ctx context.Context, cmdCtx CmdContext, obs api.CmdO
 			Node: nodeID,
 			Pool: obs.Pool,
 			Span: span,
+			// An observation is always a *write* memory access in the
+			// dependency graph context, in particular: a read observation
+			// reflects a write by the application to some memory, which the
+			// driver consumes with a readObs.
 			Mode: ACCESS_WRITE,
 		}}
 }
