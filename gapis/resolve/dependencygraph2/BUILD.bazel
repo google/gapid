@@ -22,7 +22,6 @@ go_library(
         "dce.go",
         "dependency_graph.go",
         "dependency_graph_builder.go",
-        "effect.go",
         "forward.go",
         "fragments.go",
         "graph_builder.go",
