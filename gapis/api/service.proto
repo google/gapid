@@ -509,19 +509,72 @@ message SparseBinding {
 }
 
 // Framegraph
-// Minimal "scaffolding" version: nodes and edges are untyped, in the sense that
-// all of a node info is conveyed in a string, and an edge has no more info than
-// the two nodes it connects. In the future, both FramegraphNode and
-// FramegraphEdge messages are meant to gain more fields to describe their info
-// in more details.
+
+enum FramegraphImageNature {
+  NONE = 0;
+  SWAPCHAIN = 1;
+  TRANSIENT = 2;
+}
+
+message FramegraphImage {
+  uint64 handle = 1;
+  // We reuse image.Info here, but note that its Info.bytes field won't be set.
+  image.Info info = 2;
+  string imageType = 3;
+  uint32 usage = 4;
+  FramegraphImageNature nature = 5;
+}
+
+enum LoadStoreOp {
+  DISCARD = 0;  // Used for Vulkan DONT_CARE
+  CLEAR = 1;
+  LOAD = 2;
+  STORE = 3;
+}
+
+message FramegraphAttachment {
+  LoadStoreOp loadOp = 1;
+  LoadStoreOp storeOp = 2;
+  uint64 imageViewHandle = 3;
+  FramegraphImage image = 4;
+}
+
+message FramegraphSubpass {
+  repeated FramegraphAttachment input = 1;
+  repeated FramegraphAttachment color = 2;
+  repeated FramegraphAttachment resolve = 3;
+  FramegraphAttachment depthStencil = 4;
+}
+
+message FramegraphImageAccess {
+  bool read = 1;
+  bool write = 2;
+  FramegraphImage image = 3;
+}
+
+message FramegraphRenderpass {
+  uint64 handle = 1;
+  repeated uint64 beginSubCmdIdx = 2;
+  repeated uint64 endSubCmdIdx = 3;
+  repeated FramegraphSubpass subpass = 4;
+  uint32 framebufferWidth = 5;
+  uint32 framebufferHeight = 6;
+  uint32 framebufferLayers = 7;
+  repeated FramegraphImageAccess imageAccess = 8;
+}
+
 message FramegraphNode {
   uint64 id = 1;
-  string text = 2;
+  oneof workload {
+    FramegraphRenderpass renderpass = 2;
+  }
 }
+
 message FramegraphEdge {
   uint64 origin = 1;
   uint64 destination = 2;
 }
+
 message Framegraph {
   repeated FramegraphNode nodes = 1;
   repeated FramegraphEdge edges = 2;

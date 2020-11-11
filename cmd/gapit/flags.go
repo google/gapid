@@ -437,7 +437,8 @@ type (
 
 	FramegraphFlags struct {
 		Gapis GapisFlags
-		Out   string `help:"path to save framegraph DOT file (default: framegraph.dot)"`
+		Dot   string `help:"Store the framegraph in Graphviz dot format in this file"`
+		Json  string `help:"Store the framegraph in JSON format in this file"`
 	}
 
 	SmokeTestsFlags struct {

@@ -19,14 +19,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 )
-
-// Default output file name.
-const defaultOutFilename = "framegraph.dot"
 
 type framegraphVerb struct{ FramegraphFlags }
 
@@ -34,7 +33,7 @@ func init() {
 	verb := &framegraphVerb{}
 	app.AddVerb(&app.Verb{
 		Name:      "framegraph",
-		ShortHelp: "Create frame graph (in DOT format) from capture",
+		ShortHelp: "Get the frame graph of a capture",
 		Action:    verb,
 	})
 }
@@ -43,6 +42,11 @@ func init() {
 func (verb *framegraphVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 1 {
 		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
+		return nil
+	}
+
+	if verb.Dot == "" && verb.Json == "" {
+		app.Usage(ctx, "At least one of -dot or -json flag is expected")
 		return nil
 	}
 
@@ -60,44 +64,115 @@ func (verb *framegraphVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	framegraph := boxedFramegraph.(*api.Framegraph)
 
-	dot := framegraph2dot(framegraph, captureFilename)
-
-	// Write the DOT representation of the framegraph into a file
-	filePath := verb.Out
-	if filePath == "" {
-		filePath = defaultOutFilename
+	if verb.Json != "" {
+		err = exportJSON(ctx, framegraph, verb.Json)
 	}
-	file, err := os.Create(filePath)
 	if err != nil {
-		return log.Errf(ctx, err, "Creating file (%v)", filePath)
+		return err
+	}
+
+	if verb.Dot != "" {
+		err = exportDot(ctx, framegraph, captureFilename, verb.Dot)
+	}
+
+	return err
+}
+
+func exportJSON(ctx context.Context, framegraph *api.Framegraph, outFile string) error {
+	file, err := os.Create(outFile)
+	if err != nil {
+		return log.Errf(ctx, err, "Creating file (%v)", outFile)
 	}
 	defer file.Close()
-	bytesWritten, err := fmt.Fprint(file, dot)
-	if err != nil {
-		return log.Errf(ctx, err, "Error after writing %d bytes to file", bytesWritten)
-	}
 
+	m := &jsonpb.Marshaler{
+		EmitDefaults: true,
+		Indent:       " ",
+	}
+	return m.Marshal(file, framegraph)
+}
+
+// exportDot exports the framegraph in the Graphviz DOT format.
+// https://graphviz.org/doc/info/lang.html
+// In node labels we use "\l" as a newline to obtain left-aligned text.
+func exportDot(ctx context.Context, framegraph *api.Framegraph, captureFilename string, outFile string) error {
+	file, err := os.Create(outFile)
+	if err != nil {
+		return log.Errf(ctx, err, "Creating file (%v)", outFile)
+	}
+	defer file.Close()
+
+	fmt.Fprintf(file, "digraph agiFramegraph {\n")
+
+	// Graph title: use capture filename, on top
+	fmt.Fprintf(file, "label = \"%s\";\n", captureFilename)
+	fmt.Fprintf(file, "labelloc = \"t\";\n")
+	// Use monospace font everywhere
+	fmt.Fprintf(file, "node [fontname = \"Monospace\"];\n")
+	fmt.Fprintf(file, "\n")
+	// Node IDs cannot start with a digit, so use "n<node.Id>", e.g. n0 n1 n2
+	for _, node := range framegraph.Nodes {
+		fmt.Fprintf(file, fmt.Sprintf("n%v [label=\"%s\"];\n", node.Id, renderpass2dot(node.GetRenderpass())))
+	}
+	fmt.Fprintf(file, "\n")
+	for _, edge := range framegraph.Edges {
+		fmt.Fprintf(file, fmt.Sprintf("n%v -> n%v;\n", edge.Origin, edge.Destination))
+	}
+	fmt.Fprintf(file, "}\n")
 	return nil
 }
 
-// framegraph2dot formats a framegraph in the Graphviz DOT format.
-// https://graphviz.org/doc/info/lang.html
-func framegraph2dot(framegraph *api.Framegraph, captureFilename string) string {
-	s := "digraph agiFramegraph {\n"
-	// Graph title: use capture filename, on top
-	s += "label = \"" + captureFilename + "\";\n"
-	s += "labelloc = \"t\";\n"
-	// Use monospace font everywhere
-	s += "node [fontname = \"Monospace\"];\n"
-	s += "\n"
-	// Node IDs cannot start with a digit, so use "n<node.Id>", e.g. n0 n1 n2
-	for _, node := range framegraph.Nodes {
-		s += fmt.Sprintf("n%v [label=\"%s\"];\n", node.Id, node.Text)
+func image2dot(img *api.FramegraphImage) string {
+	nature := ""
+	if img.Nature != api.FramegraphImageNature_NONE {
+		nature = fmt.Sprintf(" %v", img.Nature)
 	}
-	s += "\n"
-	for _, edge := range framegraph.Edges {
-		s += fmt.Sprintf("n%v -> n%v;\n", edge.Origin, edge.Destination)
+	imgType := strings.TrimPrefix(fmt.Sprintf("%v", img.ImageType), "VK_IMAGE_TYPE_")
+	imgFormat := strings.TrimPrefix(fmt.Sprintf("%v", img.Info.Format.Name), "VK_FORMAT_")
+	return fmt.Sprintf("[Img %v%s %s %s %vx%vx%v]", img.Handle, nature, imgType, imgFormat, img.Info.Width, img.Info.Height, img.Info.Depth)
+}
+
+func attachment2dot(att *api.FramegraphAttachment) string {
+	if att == nil {
+		return "unused"
 	}
-	s += "}\n"
+	return fmt.Sprintf("load:%v store:%v %s", att.LoadOp, att.StoreOp, image2dot(att.Image))
+}
+
+func imageAccess2dot(acc *api.FramegraphImageAccess) string {
+	r := "-"
+	if acc.Read {
+		r = "r"
+	}
+	w := "-"
+	if acc.Write {
+		w = "w"
+	}
+	return fmt.Sprintf("%s%s %s", r, w, image2dot(acc.Image))
+}
+
+func renderpass2dot(rp *api.FramegraphRenderpass) string {
+	s := fmt.Sprintf("Renderpass %v\\lbegin:%v\\lend:  %v\\lFramebuffer: %vx%vx%v\\l", rp.Handle, rp.BeginSubCmdIdx, rp.EndSubCmdIdx, rp.FramebufferWidth, rp.FramebufferHeight, rp.FramebufferLayers)
+	for i, subpass := range rp.Subpass {
+		s += fmt.Sprintf("\\lSubpass %v\\l", i)
+		for j, a := range subpass.Input {
+			s += fmt.Sprintf("input(%v): %v\\l", j, attachment2dot(a))
+		}
+		for j, a := range subpass.Color {
+			s += fmt.Sprintf("color(%v): %v\\l", j, attachment2dot(a))
+		}
+		for j, a := range subpass.Resolve {
+			s += fmt.Sprintf("resolve(%v): %v\\l", j, attachment2dot(a))
+		}
+		s += fmt.Sprintf("depth/stencil: %v\\l", attachment2dot(subpass.DepthStencil))
+	}
+
+	if len(rp.ImageAccess) > 0 {
+		s += "\\lImage accesses:\\l"
+		for _, acc := range rp.ImageAccess {
+			s += fmt.Sprintf("%s\\l", imageAccess2dot(acc))
+		}
+	}
+
 	return s
 }
