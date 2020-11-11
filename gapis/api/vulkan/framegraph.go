@@ -29,6 +29,23 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+func newFramegraphBuffer(buf *BufferObjectʳ) *api.FramegraphBuffer {
+	return &api.FramegraphBuffer{
+		Handle:       uint64(buf.VulkanHandle()),
+		Size:         uint64(buf.Info().Size()),
+		Usage:        uint32(buf.Info().Usage()),
+		TransferSrc:  buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0,
+		TransferDst:  buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0,
+		UniformTexel: buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) != 0,
+		StorageTexel: buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) != 0,
+		Uniform:      buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0,
+		Storage:      buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0,
+		Index:        buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0,
+		Vertex:       buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0,
+		Indirect:     buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) != 0,
+	}
+}
+
 func newFramegraphImage(img *ImageObjectʳ) *api.FramegraphImage {
 	format, err := getImageFormatFromVulkanFormat(img.Info().Fmt())
 	if err != nil {
@@ -158,6 +175,12 @@ type imageAccessInfo struct {
 	image *api.FramegraphImage
 }
 
+type bufferAccessInfo struct {
+	read   bool
+	write  bool
+	buffer *api.FramegraphBuffer
+}
+
 // renderpassInfo stores a renderpass' info relevant for the framegraph.
 type renderpassInfo struct {
 	renderpass *api.FramegraphRenderpass
@@ -170,6 +193,8 @@ type renderpassInfo struct {
 	// imageAccesses is a temporary set that is eventually sorted and stored in
 	// renderpass.ImageAccess list.
 	imageAccesses map[VkImage]*api.FramegraphImageAccess
+	// idem imageAccesses, but for buffers
+	bufferAccesses map[VkBuffer]*api.FramegraphBufferAccess
 }
 
 // framegraphInfoHelpers contains variables that stores information while
@@ -184,8 +209,10 @@ type framegraphInfoHelpers struct {
 	// updated when a new renderpass is started under a new top-level parent
 	// command: images can only be created/destroyed between top-level commands,
 	// not during the execution of subcommands.
-	imageLookup  map[memory.PoolID]map[memory.Range][]*ImageObjectʳ
-	parentCmdIdx uint64 // used to know when to update imageLookup
+	imageLookup map[memory.PoolID]map[memory.Range][]*ImageObjectʳ
+	// idem for buffers
+	bufferLookup map[memory.PoolID]map[memory.Range][]*BufferObjectʳ
+	parentCmdIdx uint64 // used to know when to update the lookup tables
 }
 
 // updateImageLookup updates the lookup table to quickly find an image matching a memory observation.
@@ -219,6 +246,34 @@ func (helpers *framegraphInfoHelpers) lookupImages(pool memory.PoolID, memRange 
 	return images
 }
 
+// updateBufferLookup updates the lookup table to quickly find a buffer matching a memory observation.
+func (helpers *framegraphInfoHelpers) updateBufferLookup(state *State) {
+	helpers.bufferLookup = make(map[memory.PoolID]map[memory.Range][]*BufferObjectʳ)
+	for _, buffer := range state.Buffers().All() {
+		pool := buffer.Memory().Data().Pool()
+		memRange := memory.Range{
+			Base: uint64(buffer.MemoryOffset()),
+			Size: uint64(buffer.Info().Size()),
+		}
+		if _, ok := helpers.bufferLookup[pool]; !ok {
+			helpers.bufferLookup[pool] = make(map[memory.Range][]*BufferObjectʳ)
+		}
+		bufObj := buffer
+		helpers.bufferLookup[pool][memRange] = append(helpers.bufferLookup[pool][memRange], &bufObj)
+	}
+}
+
+// lookupBuffers returns all the buffers that contain (pool, memRange).
+func (helpers *framegraphInfoHelpers) lookupBuffers(pool memory.PoolID, memRange memory.Range) []*BufferObjectʳ {
+	buffers := []*BufferObjectʳ{}
+	for bufRange := range helpers.bufferLookup[pool] {
+		if bufRange.Includes(memRange) {
+			buffers = append(buffers, helpers.bufferLookup[pool][bufRange]...)
+		}
+	}
+	return buffers
+}
+
 // processSubCommand records framegraph information upon each subcommand.
 func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dependencyGraph dependencygraph2.DependencyGraph, state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
 	vkState := GetState(state)
@@ -233,12 +288,13 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 		if helpers.rpInfo != nil {
 			panic("Renderpass starts without having ended")
 		}
-		// Update image lookup table if we change of top-level parent command
-		// index: images can only be created/destroyed between submits.
+		// Update image/buffer lookup tables if we change of top-level parent
+		// command index: these cannot be created/destroyed during subcommands.
 		parentCmdIdx := subCmdIdx[0]
 		if parentCmdIdx == 0 || parentCmdIdx > helpers.parentCmdIdx {
 			helpers.parentCmdIdx = parentCmdIdx
 			helpers.updateImageLookup(vkState)
+			helpers.updateBufferLookup(vkState)
 		}
 
 		framebuffer := vkState.Framebuffers().Get(args.Framebuffer())
@@ -262,7 +318,8 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 				FramebufferLayers: framebuffer.Layers(),
 				Subpass:           subpasses,
 			},
-			imageAccesses: make(map[VkImage]*api.FramegraphImageAccess),
+			imageAccesses:  make(map[VkImage]*api.FramegraphImageAccess),
+			bufferAccesses: make(map[VkBuffer]*api.FramegraphBufferAccess),
 		}
 		helpers.currRpId++
 	}
@@ -290,6 +347,22 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 					imgAcc.Read = true
 				case dependencygraph2.ACCESS_WRITE:
 					imgAcc.Write = true
+				}
+			}
+			buffers := helpers.lookupBuffers(memAccess.Pool, memRange)
+			for _, buffer := range buffers {
+				bufAcc, ok := helpers.rpInfo.bufferAccesses[buffer.VulkanHandle()]
+				if !ok {
+					bufAcc = &api.FramegraphBufferAccess{
+						Buffer: newFramegraphBuffer(buffer),
+					}
+					helpers.rpInfo.bufferAccesses[buffer.VulkanHandle()] = bufAcc
+				}
+				switch memAccess.Mode {
+				case dependencygraph2.ACCESS_READ:
+					bufAcc.Read = true
+				case dependencygraph2.ACCESS_WRITE:
+					bufAcc.Write = true
 				}
 			}
 		}
@@ -345,14 +418,23 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 	nodes := make([]*api.FramegraphNode, len(helpers.rpInfos))
 	for i, rpInfo := range helpers.rpInfos {
 		rpInfo.renderpass.ImageAccess = make([]*api.FramegraphImageAccess, len(rpInfo.imageAccesses))
-		handles := make([]VkImage, 0, len(rpInfo.imageAccesses))
+		imgHandles := make([]VkImage, 0, len(rpInfo.imageAccesses))
 		for h := range rpInfo.imageAccesses {
-			handles = append(handles, h)
+			imgHandles = append(imgHandles, h)
 		}
-		sort.Slice(handles, func(i, j int) bool { return handles[i] < handles[j] })
-		for i, h := range handles {
-			// text += fmt.Sprintf("%v\\l", rpInfo.imageAccesses[h])
-			rpInfo.renderpass.ImageAccess[i] = rpInfo.imageAccesses[h]
+		sort.Slice(imgHandles, func(i, j int) bool { return imgHandles[i] < imgHandles[j] })
+		for j, h := range imgHandles {
+			rpInfo.renderpass.ImageAccess[j] = rpInfo.imageAccesses[h]
+		}
+
+		rpInfo.renderpass.BufferAccess = make([]*api.FramegraphBufferAccess, len(rpInfo.bufferAccesses))
+		bufHandles := make([]VkBuffer, 0, len(rpInfo.bufferAccesses))
+		for h := range rpInfo.bufferAccesses {
+			bufHandles = append(bufHandles, h)
+		}
+		sort.Slice(bufHandles, func(i, j int) bool { return bufHandles[i] < bufHandles[j] })
+		for j, h := range bufHandles {
+			rpInfo.renderpass.BufferAccess[j] = rpInfo.bufferAccesses[h]
 		}
 
 		nodes[i] = &api.FramegraphNode{

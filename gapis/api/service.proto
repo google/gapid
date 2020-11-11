@@ -510,6 +510,21 @@ message SparseBinding {
 
 // Framegraph
 
+message FramegraphBuffer {
+  uint64 handle = 1;
+  uint64 size = 2;
+  uint32 usage = 3;
+  bool transferSrc = 4;
+  bool transferDst = 5;
+  bool uniformTexel = 6;
+  bool storageTexel = 7;
+  bool uniform = 8;
+  bool storage = 9;
+  bool index = 10;
+  bool vertex = 11;
+  bool indirect = 12;
+}
+
 enum FramegraphImageNature {
   NONE = 0;
   SWAPCHAIN = 1;
@@ -546,6 +561,12 @@ message FramegraphSubpass {
   FramegraphAttachment depthStencil = 4;
 }
 
+message FramegraphBufferAccess {
+  bool read = 1;
+  bool write = 2;
+  FramegraphBuffer buffer = 3;
+}
+
 message FramegraphImageAccess {
   bool read = 1;
   bool write = 2;
@@ -561,6 +582,7 @@ message FramegraphRenderpass {
   uint32 framebufferHeight = 6;
   uint32 framebufferLayers = 7;
   repeated FramegraphImageAccess imageAccess = 8;
+  repeated FramegraphBufferAccess bufferAccess = 9;
 }
 
 message FramegraphNode {
