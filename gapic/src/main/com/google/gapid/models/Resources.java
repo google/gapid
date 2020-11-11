@@ -16,11 +16,12 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.util.Paths.compare;
+import static com.google.gapid.util.Paths.framebufferAttachmentsAfter;
 import static com.google.gapid.util.Paths.isNull;
 import static com.google.gapid.util.Paths.pipelinesAfter;
 import static com.google.gapid.util.Paths.resourceAfter;
-import static com.google.gapid.util.Paths.framebufferAttachmentsAfter;
 import static java.util.Collections.emptyList;
+import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -40,6 +41,7 @@ import com.google.gapid.util.MoreFutures;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -47,17 +49,22 @@ import java.util.stream.Stream;
 /**
  * Model containing the capture resources (textures, shaders, etc.) metadata.
  */
-public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Resources.Listener> {
+public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Resources.Listener>
+    implements Follower.Listener {
   private static final Logger LOG = Logger.getLogger(Resources.class.getName());
 
   protected final Capture capture;
   private final CommandStream commands;
 
+  protected Service.Resource selectedTexture = null;
+
   public Resources(Shell shell, Analytics analytics, Client client, Capture capture,
-      Devices devices, CommandStream commands) {
+      Devices devices, CommandStream commands, Follower follower) {
     super(LOG, shell, analytics, client, Listener.class, capture, devices);
     this.capture = capture;
     this.commands = commands;
+
+    follower.addListener(this);
   }
 
   @Override
@@ -80,12 +87,29 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
 
   @Override
   protected void fireLoadStartEvent() {
-    // Do nothing.
+    selectTexture(null);
   }
 
   @Override
   protected void fireLoadedEvent() {
     listeners.fire().onResourcesLoaded();
+  }
+
+  @Override
+  public void onResourceFollowed(Path.ResourceData path) {
+    Resources.Resource r = getResource(path);
+
+    if (r != null) {
+      switch (r.resource.getType()) {
+        case TextureResource:
+          selectTexture(r.resource);
+          break;
+        default:
+          LOG.log(WARNING, "Unknown follow path result: " + path);
+      }
+    } else {
+      LOG.log(WARNING, "Path resolved to null resource: " + path);
+    }
   }
 
   public List<Service.ResourcesByType> getResources() {
@@ -177,6 +201,17 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     });
   }
 
+  public Service.Resource getSelectedTexture() {
+    return selectedTexture;
+  }
+
+  public void selectTexture(Service.Resource texture) {
+    if (!Objects.equals(selectedTexture, texture)) {
+      selectedTexture = texture;
+      listeners.fire().onTextureSelected(selectedTexture);
+    }
+  }
+
   public static class Data extends DeviceDependentModel.Data {
     public final Service.Resources resources;
 
@@ -253,10 +288,16 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     }
   }
 
+  @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
     /**
      * Event indicating that the resources metadata has been loaded.
      */
     public default void onResourcesLoaded() { /* empty */ }
+
+    /**
+     * Event indicating that a texture resource has been selected.
+     */
+    public default void onTextureSelected(Service.Resource texture) { /* empty */ }
   }
 }

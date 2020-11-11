@@ -25,7 +25,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.proto.service.Service;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
@@ -62,13 +61,11 @@ public class Follower {
 
   private final Shell shell;
   private final Client client;
-  private final Resources resources;
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
-  public Follower(Shell shell, Client client, Resources resources) {
+  public Follower(Shell shell, Client client) {
     this.shell = shell;
     this.client = client;
-    this.resources = resources;
   }
 
   /**
@@ -235,29 +232,13 @@ public class Follower {
         listeners.fire().onStateFollowed(path);
         break;
       case RESOURCE_DATA:
-        onFollowResource(path.getResourceData());
+        listeners.fire().onResourceFollowed(path.getResourceData());
         break;
       case FRAMEBUFFER_ATTACHMENT:
         listeners.fire().onFramebufferAttachmentFollowed(path.getFramebufferAttachment());
         break;
       default:
         LOG.log(WARNING, "Unknown follow path result: " + path);
-    }
-  }
-
-  private void onFollowResource(Path.ResourceData path) {
-    Resources.Resource r = resources.getResource(path);
-
-    if (r != null) {
-      switch (r.resource.getType()) {
-        case TextureResource:
-          listeners.fire().onTextureFollowed(r.resource);
-          break;
-        default:
-          LOG.log(WARNING, "Unknown follow path result: " + path);
-      }
-    } else {
-      LOG.log(WARNING, "Path resolved to null resource: " + path);
     }
   }
 
@@ -288,7 +269,7 @@ public class Follower {
     /**
      * Event indicating that a link to the given resource was followed.
      */
-    public default void onTextureFollowed(Service.Resource resource) {}
+    public default void onResourceFollowed(Path.ResourceData path) { /* empty */ }
 
     /**
      * Event indicating that a link with the given path to a framebuffer attachment was followed.

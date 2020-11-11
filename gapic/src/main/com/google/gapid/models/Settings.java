@@ -371,7 +371,6 @@ public class Settings {
   }
 
   public static enum SplitterWeights {
-    Textures(new int[] { 20, 80 }),
     Report(new int[] { 75, 25 }),
     Shaders(new int[] { 20, 80 }),
     Programs(new int[] { 20, 80 }),

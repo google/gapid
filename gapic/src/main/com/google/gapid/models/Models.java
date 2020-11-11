@@ -71,8 +71,9 @@ public class Models {
     ConstantSets constants = new ConstantSets(client, devices);
     CommandStream commands = new CommandStream(
         shell, analytics, client, capture, devices, constants);
-    Resources resources = new Resources(shell, analytics, client, capture, devices, commands);
-    Follower follower = new Follower(shell, client, resources);
+    Follower follower = new Follower(shell, client);
+    Resources resources = new Resources(
+        shell, analytics, client, capture, devices, commands, follower);
     ApiState state = new ApiState(
         shell, analytics, client, devices, follower, commands, constants);
     Reports reports = new Reports(shell, analytics, client, capture, devices);
