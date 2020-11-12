@@ -18,6 +18,7 @@ package com.google.gapid.models;
 import static com.google.gapid.proto.service.memory.Memory.PoolNames.Application_VALUE;
 import static com.google.gapid.util.Paths.command;
 import static com.google.gapid.util.Paths.commandTree;
+import static com.google.gapid.util.Paths.commandTreeNodeForCommand;
 import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.util.Paths.observationsAfter;
 import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
@@ -205,7 +206,7 @@ public class CommandStream
 
   private void resolve(Path.Command command, Consumer<Path.CommandTreeNode> cb) {
     RootNode root = (RootNode)getData();
-    Rpc.listen(client.get(commandTree(root.tree, command), root.device),
+    Rpc.listen(client.get(commandTreeNodeForCommand(root.tree, command, false), root.device),
         new UiCallback<Service.Value, Path.CommandTreeNode>(shell, LOG) {
       @Override
       protected Path.CommandTreeNode onRpcThread(Rpc.Result<Service.Value> result)
@@ -229,23 +230,10 @@ public class CommandStream
         });
   }
 
-  public ListenableFuture<TreePath> getTreePath(CommandIndex index) {
+  public ListenableFuture<TreePath> getTreePath(Path.CommandTreeNode nodePath) {
     CommandStream.Node root = this.getData();
     ListenableFuture<TreePath> result = getTreePath(root, Lists.newArrayList(root),
-        index.getNode().getIndicesList().iterator());
-    if (index.isGroup()) {
-      // Find the deepest group/node in the path that is not the last child of its parent.
-      result = MoreFutures.transform(result, path -> {
-        while (path.getSegmentCount() > 0) {
-          CommandStream.Node node = (CommandStream.Node)path.getLastSegment();
-          if (!node.isLastChild()) {
-            break;
-          }
-          path = path.getParentPath();
-        }
-        return path;
-      });
-    }
+        nodePath.getIndicesList().iterator());
     return result;
   }
 
@@ -271,25 +259,43 @@ public class CommandStream
     return getTreePath(child, path, indices);
   }
 
+  public ListenableFuture<Path.CommandTreeNode> getGroupingNodePath(Path.Command command) {
+    RootNode root = (RootNode)getData();
+    return MoreFutures.transform(
+        client.get(commandTreeNodeForCommand(root.tree, command, true), root.device),
+        v -> v.getPath().getCommandTreeNode());
+  }
+
+  public ListenableFuture<Node> findNode(Path.CommandTreeNode nodePath) {
+    return MoreFutures.transform(getTreePath(nodePath), $ -> { // Load the nodes along the path.
+      CommandStream.Node node = this.getData();  // root.
+      for (long index : nodePath.getIndicesList()) {
+        if (index >= node.getChildCount()) {
+          return null;
+        }
+        node = node.children[(int)index];
+      }
+      return node;
+    });
+  }
+
   /**
    * An index into the command stream, representing a specific "point in time" in the trace.
    */
   public static class CommandIndex implements Comparable<CommandIndex> {
     private final Path.Command command;
     private final Path.CommandTreeNode node;
-    private final boolean group;
 
-    private CommandIndex(Path.Command command, Path.CommandTreeNode node, boolean group) {
+    private CommandIndex(Path.Command command, Path.CommandTreeNode node) {
       this.command = command;
       this.node = node;
-      this.group = group;
     }
 
     /**
      * Create an index pointing to the given command and node.
      */
     public static CommandIndex forNode(Path.Command command, Path.CommandTreeNode node) {
-      return new CommandIndex(command, node, false);
+      return new CommandIndex(command, node);
     }
 
     /**
@@ -297,23 +303,15 @@ public class CommandStream
      * The tree nodes is then resolved when it is needed.
      */
     public static CommandIndex forCommand(Path.Command command) {
-      return new CommandIndex(command, null, false);
-    }
-
-    /**
-     * Same as {@link #forCommand}, except that group selection is to be preferred when
-     * resolving to a tree node.
-     */
-    public static CommandIndex forGroup(Path.Command command) {
-      return new CommandIndex(command, null, true);
+      return new CommandIndex(command, null);
     }
 
     public CommandIndex withNode(Path.CommandTreeNode newNode) {
-      return new CommandIndex(command, newNode, group);
+      return new CommandIndex(command, newNode);
     }
 
     public CommandIndex withCapture(Path.Capture capture) {
-      return new CommandIndex(command.toBuilder().setCapture(capture).build(), null, group);
+      return new CommandIndex(command.toBuilder().setCapture(capture).build(), null);
     }
 
     public Path.Command getCommand() {
@@ -322,10 +320,6 @@ public class CommandStream
 
     public Path.CommandTreeNode getNode() {
       return node;
-    }
-
-    public boolean isGroup() {
-      return group;
     }
 
     @Override

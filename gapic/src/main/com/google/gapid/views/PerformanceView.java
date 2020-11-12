@@ -137,7 +137,7 @@ public class PerformanceView extends Composite
 
   @Override
   public void onCommandsSelected(CommandIndex index) {
-    selectionHandler.updateSelectionFromModel(() -> models.commands.getTreePath(index).get(), tree::setSelection);
+    selectionHandler.updateSelectionFromModel(() -> models.commands.getTreePath(index.getNode()).get(), tree::setSelection);
   }
 
   @Override

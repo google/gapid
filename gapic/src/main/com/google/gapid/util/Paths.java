@@ -118,11 +118,12 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any commandTree(Path.ID tree, Path.Command command) {
+  public static Path.Any commandTreeNodeForCommand(Path.ID tree, Path.Command command, boolean preferGroup) {
     return Path.Any.newBuilder()
         .setCommandTreeNodeForCommand(Path.CommandTreeNodeForCommand.newBuilder()
             .setTree(tree)
-            .setCommand(command))
+            .setCommand(command)
+            .setPreferGroup(preferGroup))
         .build();
   }
 

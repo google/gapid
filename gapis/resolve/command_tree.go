@@ -74,7 +74,7 @@ func (t *commandTree) index(indices []uint64) (api.SpanItem, api.SubCmdIdx) {
 	return group, subCmdRootID
 }
 
-func (t *commandTree) indices(idx []uint64) []uint64 {
+func (t *commandTree) indices(idx []uint64, preferGroup bool) []uint64 {
 	out := []uint64{}
 	group := t.root
 
@@ -89,6 +89,9 @@ func (t *commandTree) indices(idx []uint64) []uint64 {
 			switch item := group.Index(i).(type) {
 			case api.CmdIDGroup:
 				group = item
+				if preferGroup {
+					brk = true
+				}
 			case api.SubCmdRoot:
 				group = item.SubGroup
 				brk = true
@@ -177,7 +180,7 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 
 	return &path.CommandTreeNode{
 		Tree:    p.Tree,
-		Indices: cmdTree.indices(p.Command.Indices),
+		Indices: cmdTree.indices(p.Command.Indices, p.PreferGroup),
 	}, nil
 }
 

@@ -360,6 +360,7 @@ message CommandTreeNodeForCommand {
   ID tree = 1;
   // The command path.
   Command command = 2;
+  bool preferGroup = 3;
 }
 
 // ImageInfo is a path that refers to a image.Info.
