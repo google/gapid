@@ -334,6 +334,7 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 				Base: memAccess.Span.Start,
 				Size: memAccess.Span.End - memAccess.Span.Start,
 			}
+
 			for _, image := range helpers.lookupImages(memAccess.Pool, memRange) {
 				imgAcc, ok := helpers.rpInfo.imageAccesses[image.VulkanHandle()]
 				if !ok {
@@ -342,15 +343,15 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 					}
 					helpers.rpInfo.imageAccesses[image.VulkanHandle()] = imgAcc
 				}
-				switch memAccess.Mode {
-				case dependencygraph2.ACCESS_READ:
+				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_READ != 0 {
 					imgAcc.Read = true
-				case dependencygraph2.ACCESS_WRITE:
+				}
+				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_WRITE != 0 {
 					imgAcc.Write = true
 				}
 			}
-			buffers := helpers.lookupBuffers(memAccess.Pool, memRange)
-			for _, buffer := range buffers {
+
+			for _, buffer := range helpers.lookupBuffers(memAccess.Pool, memRange) {
 				bufAcc, ok := helpers.rpInfo.bufferAccesses[buffer.VulkanHandle()]
 				if !ok {
 					bufAcc = &api.FramegraphBufferAccess{
@@ -358,10 +359,10 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 					}
 					helpers.rpInfo.bufferAccesses[buffer.VulkanHandle()] = bufAcc
 				}
-				switch memAccess.Mode {
-				case dependencygraph2.ACCESS_READ:
+				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_READ != 0 {
 					bufAcc.Read = true
-				case dependencygraph2.ACCESS_WRITE:
+				}
+				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_WRITE != 0 {
 					bufAcc.Write = true
 				}
 			}
