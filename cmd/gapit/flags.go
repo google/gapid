@@ -424,6 +424,7 @@ type (
 	GpuProfileFlags struct {
 		Gapis        GapisFlags
 		Gapir        GapirFlags
+		Out          string           `help:"Output file (optional, if none then output goes to stdout)"`
 		Json         bool             `help:"Return replay profiling data as JSON instead of text"`
 		DisabledCmds []flags.U64Slice `help:"command/subcommand index (e.g. '[123, 0, 0, 4]') for disabling a draw call (repeatable)"`
 		DisableAF    bool             `help:"Disable Anisotropic Filtering for all samplers"`

@@ -91,14 +91,23 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
+	out := os.Stdout
+	if verb.Out != "" {
+		out, err = os.Create(verb.Out)
+		if err != nil {
+			return log.Errf(ctx, err, "Creating file (%v)", out)
+		}
+		defer out.Close()
+	}
+
 	if verb.Json {
 		jsonBytes, err := json.MarshalIndent(res, "", "  ")
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't marshal trace to JSON")
 		}
-		fmt.Fprintln(os.Stdout, string(jsonBytes))
+		fmt.Fprintln(out, string(jsonBytes))
 	} else {
-		err = proto.MarshalText(os.Stdout, res)
+		err = proto.MarshalText(out, res)
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't marshal trace to text")
 		}
