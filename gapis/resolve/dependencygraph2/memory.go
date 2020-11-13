@@ -123,33 +123,39 @@ func (b *memWatcher) Flush(ctx context.Context, cmdCtx CmdContext) {
 		memAccesses = newMemAccesses
 	}
 
+	// Iterate over this command's node pending memory accesses, and create the
+	// list of nodes it depends on, i.e. the nodes that are the latest to have
+	// written in the memory locations that this node reads. Also, update
+	// b.memoryWrites with the writes that this node performs.
 	for poolID, accessList := range b.pendingAccesses {
 		for _, access := range *accessList {
 			writeNodes := []NodeID{}
-			mode := AccessMode(0)
-			if access.mode&ACCESS_READ != 0 {
+			mode := access.mode & (ACCESS_PLAIN_READ | ACCESS_PLAIN_WRITE)
+			if access.mode&ACCESS_DEP_READ != 0 {
 				writeNodes = applyMemRead(b.memoryWrites, poolID, access.span)
 				b.stats.RelevantWriteDist.Add(uint64(len(writeNodes)))
+				// There is a relevant dependency read only if this node reads
+				// the write of at least one other node.
 				if len(writeNodes) > 0 {
-					mode |= ACCESS_READ
+					mode |= ACCESS_DEP_READ
 				}
 			}
 
-			if access.mode&ACCESS_WRITE != 0 && poolID != 0 {
+			if access.mode&ACCESS_DEP_WRITE != 0 && poolID != 0 {
+				// There is a dependency write only if this node writes to a
+				// memory location that was latest written to by an other node.
 				if applyMemWrite(b.memoryWrites, poolID, nodeID, access.span) {
-					mode |= ACCESS_WRITE
+					mode |= ACCESS_DEP_WRITE
 				}
 			}
 
-			if mode != 0 {
-				memAccesses = append(memAccesses, MemoryAccess{
-					Node: nodeID,
-					Pool: poolID,
-					Span: access.span,
-					Mode: mode,
-					Deps: writeNodes,
-				})
-			}
+			memAccesses = append(memAccesses, MemoryAccess{
+				Node: nodeID,
+				Pool: poolID,
+				Span: access.span,
+				Mode: mode,
+				Deps: writeNodes,
+			})
 		}
 	}
 	b.nodeAccesses[nodeID] = memAccesses
@@ -200,6 +206,10 @@ func (b *memWatcher) addObs(ctx context.Context, cmdCtx CmdContext, obs api.CmdO
 		}}
 }
 
+// applyMemWrite updates the write map with the write (p, s) of node n, and
+// returns true if this write overwrites a write made by one or more other
+// nodes: if false is returned, then the node n is just re-writing on places
+// that it has already been writing to.
 func applyMemWrite(wmap map[memory.PoolID]*memoryWriteList,
 	p memory.PoolID, n NodeID, s interval.U64Span) bool {
 	if writes, ok := wmap[p]; ok {
@@ -222,7 +232,8 @@ func applyMemWrite(wmap map[memory.PoolID]*memoryWriteList,
 }
 
 // applyMemRead returns the list of nodes for which there is a memoryWrite in
-// wmap ("writeMap") that interesects with (p, s)
+// wmap ("writeMap") that interesects with (p, s): these nodes are the ones on
+// which this read at (p, s) depends.
 func applyMemRead(wmap map[memory.PoolID]*memoryWriteList,
 	p memory.PoolID, s interval.U64Span) []NodeID {
 	writeNodes := []NodeID{}
@@ -233,7 +244,7 @@ func applyMemRead(wmap map[memory.PoolID]*memoryWriteList,
 			depSet[w.node] = struct{}{}
 		}
 		writeNodes = make([]NodeID, 0, len(depSet))
-		for d, _ := range depSet {
+		for d := range depSet {
 			writeNodes = append(writeNodes, d)
 		}
 	}

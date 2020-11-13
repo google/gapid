@@ -159,9 +159,14 @@ func (l *memoryAccessList) AddRead(s interval.U64Span) {
 		if x == nil {
 			return ACCESS_READ
 		}
+		// There is already an access. Always mark the plain read, but be
+		// careful about the dependency read: if the same node already accessed
+		// before with a write, then the read is not relevant for dependency
+		// since it will be reading what the very same node just wrote.
 		m := x.(AccessMode)
-		if m&ACCESS_WRITE == 0 {
-			m |= ACCESS_READ
+		m |= ACCESS_PLAIN_READ
+		if m&ACCESS_DEP_WRITE == 0 {
+			m |= ACCESS_DEP_READ
 		}
 		return m
 	}

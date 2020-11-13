@@ -52,12 +52,24 @@ type NodeStats struct {
 	UniqueDeps          uint64
 }
 
+// AccessMode is a bitfield that records read/write accesses
 type AccessMode uint
 
 const (
-	ACCESS_READ       AccessMode = 1 << 0
-	ACCESS_WRITE      AccessMode = 1 << 1
-	ACCESS_READ_WRITE AccessMode = ACCESS_READ | ACCESS_WRITE
+	// For memory accesses, we need to distinguish "PLAIN" memory accesses that
+	// are just recording read/write accesses (relevant for e.g. the framegraph)
+	// and "DEP" accesses that are more subtely managed for the tracking of
+	// dependencies to properly handle e.g. read-after-write by the same command.
+
+	// PLAIN: just plain read/write accesses
+	ACCESS_PLAIN_READ AccessMode = 1 << iota
+	ACCESS_PLAIN_WRITE
+	// DEP: read/write relevant for dependencies
+	ACCESS_DEP_READ
+	ACCESS_DEP_WRITE
+	// Combined values
+	ACCESS_READ  AccessMode = ACCESS_DEP_READ | ACCESS_PLAIN_READ
+	ACCESS_WRITE AccessMode = ACCESS_DEP_WRITE | ACCESS_PLAIN_WRITE
 )
 
 // The data needed to build a dependency graph by iterating through the commands in a trace
