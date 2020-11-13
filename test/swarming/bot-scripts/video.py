@@ -97,6 +97,18 @@ def main():
         gfxtrace
     ]
     p = botutil.runcmd(cmd)
+    if p.returncode != 0:
+        return p.returncode
+
+    #### Frame profiler: check that at least it terminates properly
+    profile_json = os.path.join(out_dir, test_params['package'] + '.profiling.json')
+    cmd = [
+        gapit, 'profile',
+        '-json',
+        '-out', profile_json,
+        gfxtrace
+    ]
+    p = botutil.runcmd(cmd)
     return p.returncode
 
 
