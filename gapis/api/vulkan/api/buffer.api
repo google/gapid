@@ -113,6 +113,7 @@ cmd VkResult vkCreateBuffer(
             DedicatedAllocation: ext.dedicatedAllocation
           )
         }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {}
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
