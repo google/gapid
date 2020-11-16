@@ -77,30 +77,31 @@ def main():
     with open(isolate_file, 'w') as f:
         f.write(isolate_body)
 
-    #### Upload to isolate
-    isolated_file = swarming_params['test_name'] + '.isolated'
+    #### Upload to isolate / RBE-CAS (go/rbe, go/rbe/dev/architecture/cas)
+    digest_file = swarming_params['test_name'] + '.digest.json'
     # Make sure isolated file does not exist
-    if os.path.exists(isolated_file):
-        os.remove(isolated_file)
+    if os.path.exists(digest_file):
+        os.remove(digest_file)
     cmd = [
         os.path.join(os.environ['LUCI_ROOT'], 'isolate'),
         'archive',
-        '--isolate-server=https://chrome-isolated.appspot.com',
+        '-cas-instance', 'chrome-swarming',
         '--isolate', isolate_file,
-        '--isolated', isolated_file
+        '--dump-json', digest_file,
     ]
     if ('SWARMING_AUTH_FLAG' in os.environ.keys()) and (os.environ['SWARMING_AUTH_FLAG'] != ''):
         cmd += [ os.environ['SWARMING_AUTH_FLAG'] ]
     # We expect this command to always succeed
     subprocess.run(cmd, check=True)
     # The isolated file must be produced
-    assert os.path.isfile(isolated_file)
+    assert os.path.isfile(digest_file)
 
-    #### Get the isolated SHA
-    isolated_sha = ''
-    with open(isolated_file, 'rb') as f:
-        isolated_sha = hashlib.sha1(f.read()).hexdigest()
-    assert isolated_sha != ''
+    #### Retrieve the CAS digest
+    digest = ''
+    with open(digest_file, 'r') as f:
+        j = json.load(f)
+        digest = j[swarming_params['test_name']]
+    assert digest != ''
 
     #### Trigger the Swarming task
     for device in swarming_params['devices']:
@@ -114,8 +115,7 @@ def main():
             os.path.join(os.environ['LUCI_ROOT'], 'swarming'),
             'trigger',
             '--server=https://chrome-swarming.appspot.com',
-            '--isolate-server=https://chrome-isolated.appspot.com',
-            '--isolated', isolated_sha,
+            '--digest', digest,
             '--task-name', swarming_params['task_name'],
             '--dump-json', task_json,
             '--dimension', 'pool=SkiaInternal',
