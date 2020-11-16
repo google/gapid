@@ -23,7 +23,7 @@ import json
 import os
 import subprocess
 import sys
-
+from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
@@ -87,7 +87,7 @@ def main():
     p = botutil.runcmd(cmd)
     if p.returncode != 0:
         return p.returncode
-    
+
     #### Screenshot test to retrieve mid-frame resources
     screenshotfile = os.path.join(out_dir, test_params['package'] + '.png')
     cmd = [
@@ -100,7 +100,8 @@ def main():
     if p.returncode != 0:
         return p.returncode
 
-    #### Frame profiler: check that at least it terminates properly
+    #### Frame profiler
+    # Check that frame profiling generates valid JSON
     profile_json = os.path.join(out_dir, test_params['package'] + '.profiling.json')
     cmd = [
         gapit, 'profile',
@@ -109,8 +110,25 @@ def main():
         gfxtrace
     ]
     p = botutil.runcmd(cmd)
-    return p.returncode
+    if p.returncode != 0:
+        return p.returncode
+    assert botutil.is_valid_json(profile_json)
 
+    #### Frame graph
+    # Check that framegraph generates valid JSON
+    framegraph_json = os.path.join(out_dir, test_params['package'] + '.framegraph.json')
+    cmd = [
+        gapit, 'framegraph',
+        '-json', framegraph_json,
+        gfxtrace
+    ]
+    p = botutil.runcmd(cmd)
+    if p.returncode != 0:
+        return p.returncode
+    assert botutil.is_valid_json(framegraph_json)
+
+    #### All tests have passed, return success
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main())

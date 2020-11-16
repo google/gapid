@@ -103,3 +103,14 @@ def install_apk(test_params):
         time.sleep(1)
     else:
         log('Skip install of {} because package {} is already installed.'.format(test_params['apk'], test_params['package']))
+
+
+def is_valid_json(filename):
+    '''Return true if filename contains valid JSON, false otherwise'''
+    with open(filename, 'r') as f:
+        try:
+            j = json.load(f)
+        except JSONDecodeError as err:
+            log('Invalid JSON: {}'.format(err))
+            return False
+    return True
