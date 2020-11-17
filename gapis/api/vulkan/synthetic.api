@@ -38,7 +38,9 @@ cmd void replayDestroyVkInstance(
   // vkDestroyInstance() in vulkan.api. Change both together
   delete(Instances, instance)
   for _, device, _ in PhysicalDevices {
-    delete(PhysicalDevices, device)
+    if (PhysicalDevices[device].Instance == instance) {
+      delete(PhysicalDevices, device)
+    }
   }
 }
 
