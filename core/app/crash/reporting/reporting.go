@@ -107,8 +107,11 @@ func (r Reporter) sendReport(body io.Reader, contentType, endpoint string) (stri
 	if err == nil {
 		defer res.Body.Close()
 	}
-	if err != nil || res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Failed to upload report request: %v (%v)", err, res.StatusCode)
+	if err != nil {
+		return "", fmt.Errorf("Failed to upload report request: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Failed to upload report request: got HTTP status code %v", res.StatusCode)
 	}
 
 	buf := new(bytes.Buffer)
