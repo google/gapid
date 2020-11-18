@@ -16,6 +16,7 @@ package replay
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
@@ -25,6 +26,7 @@ import (
 	gapirClient "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/service/severity"
 )
 
 type executor struct {
@@ -112,6 +114,11 @@ func (e executor) HandlePostData(ctx context.Context, postData *gapir.PostData) 
 // HandleNotification implements gapir.ReplayResponseHandler interface.
 func (e executor) HandleNotification(ctx context.Context, notification *gapir.Notification) error {
 	e.handleNotification(notification)
+	// However notifications are handled, never survive a fatal error
+	errMsg := notification.GetErrorMsg()
+	if errMsg != nil && errMsg.Severity == severity.Severity_FatalLevel {
+		return fmt.Errorf("Replay failed with a fatal error notification: %v", errMsg.Msg)
+	}
 	return nil
 }
 
