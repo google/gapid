@@ -480,5 +480,5 @@
 {{define "Print"}}
   {{AssertType $ "Print"}}
 
-  GAPID_DEBUG({{Macro "C++.ReadListAsCallArgument" $.Arguments}});
+  GAPID_INFO({{Macro "C++.ReadListAsCallArgument" $.Arguments}});
 {{end}}
