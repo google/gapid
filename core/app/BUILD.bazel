@@ -28,6 +28,7 @@ go_library(
         "oncrash.go",
         "profile.go",
         "run.go",
+        "stack.go",
         "verbs.go",
     ],
     importpath = "github.com/google/gapid/core/app",
