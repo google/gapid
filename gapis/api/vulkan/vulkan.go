@@ -205,7 +205,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 	walkCommandBuffer = func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order uint64) ([]sync.SubcommandReference, []api.SubCmdIdx) {
 		refs := make([]sync.SubcommandReference, 0)
 		subgroups := make([]api.SubCmdIdx, 0)
-		lastSubpass := 0
+		nextSubpass := 0
 		nCommands := uint64(cb.CommandReferences().Len())
 		canStartDrawGrouping := true
 
@@ -306,9 +306,9 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 						end:    uint64(i),
 						parent: append(api.SubCmdIdx{}, idx...),
 					})
-				lastSubpass = 0
+				nextSubpass = 0
 				if rp.SubpassDescriptions().Len() > 1 {
-					name = fmt.Sprintf("Subpass: %v", lastSubpass)
+					name = fmt.Sprintf("Subpass: %v", nextSubpass)
 					markerStack = append(markerStack,
 						&markerInfo{
 							name:   name,
@@ -317,15 +317,18 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 							end:    uint64(i),
 							parent: append(api.SubCmdIdx{}, idx...),
 						})
+					nextSubpass++
 				}
 				break
 			case VkCmdEndRenderPassArgsʳ:
+				if nextSubpass > 0 { // Pop one more time since there were one extra marker pushed.
+					popMarker(RenderPassMarker, uint64(i), nCommands)
+				}
 				popMarker(RenderPassMarker, uint64(i), nCommands)
 				break
 			case VkCmdNextSubpassArgsʳ:
-				lastSubpass++
-				popMarker(RenderPassMarker, uint64(i), nCommands)
-				name := fmt.Sprintf("Subpass: %v", lastSubpass)
+				popMarker(RenderPassMarker, uint64(i-1), nCommands)
+				name := fmt.Sprintf("Subpass: %v", nextSubpass)
 				markerStack = append(markerStack,
 					&markerInfo{
 						name:   name,
@@ -334,6 +337,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 						end:    uint64(i),
 						parent: append(api.SubCmdIdx{}, idx...),
 					})
+				nextSubpass++
 			case VkCmdDebugMarkerBeginEXTArgsʳ:
 				markerStack = append(markerStack,
 					&markerInfo{
