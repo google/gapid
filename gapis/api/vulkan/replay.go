@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"strings"
 
@@ -32,6 +33,10 @@ import (
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
+)
+
+var (
+	lenientDeviceMatching = flag.Bool("lenient-device-matching", false, "_Makes replay device matching more lenient")
 )
 
 // GetInitialPayload creates a replay that emits instructions for
@@ -413,14 +418,16 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 					reason = messages.ReplayCompatibilityIncompatibleGpu(devPhyInfo.GetDeviceName(), tracePhyInfo.GetDeviceName())
 					continue
 				}
-				if devPhyInfo.GetDriverVersion() != tracePhyInfo.GetDriverVersion() {
-					reason = messages.ReplayCompatibilityIncompatibleDriverVersion(devPhyInfo.GetDriverVersion(), tracePhyInfo.GetDriverVersion())
-					continue
-				}
-				// Ignore the API patch level (bottom 12 bits) when comparing the API version.
-				if (devPhyInfo.GetApiVersion() & ^uint32(0xfff)) != (tracePhyInfo.GetApiVersion() & ^uint32(0xfff)) {
-					reason = messages.ReplayCompatibilityIncompatibleApiVersion(devPhyInfo.GetApiVersion(), tracePhyInfo.GetApiVersion())
-					continue
+				if !*lenientDeviceMatching {
+					if devPhyInfo.GetDriverVersion() != tracePhyInfo.GetDriverVersion() {
+						reason = messages.ReplayCompatibilityIncompatibleDriverVersion(devPhyInfo.GetDriverVersion(), tracePhyInfo.GetDriverVersion())
+						continue
+					}
+					// Ignore the API patch level (bottom 12 bits) when comparing the API version.
+					if (devPhyInfo.GetApiVersion() & ^uint32(0xfff)) != (tracePhyInfo.GetApiVersion() & ^uint32(0xfff)) {
+						reason = messages.ReplayCompatibilityIncompatibleApiVersion(devPhyInfo.GetApiVersion(), tracePhyInfo.GetApiVersion())
+						continue
+					}
 				}
 				return 1, messages.ReplayCompatibilityCompatible()
 			}
