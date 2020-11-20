@@ -154,5 +154,5 @@ static bool replayDebugReportCallback(uint32_t flags, uint32_t objectType,
 static bool hasValidationLayers(const char* const* layers, uint32_t count);
 
 // Returns true if any of the extensions specified by the given extension names
-// is debug report extension, other wise returns false.
-static bool hasDebugReportExtension(const char* const* extensions, uint32_t count);
+// is a debug extension, other wise returns false.
+static bool hasDebugExtension(const char* const* extensions, uint32_t count);

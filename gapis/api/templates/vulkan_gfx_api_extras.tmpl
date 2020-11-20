@@ -66,7 +66,10 @@
     "VK_LAYER_LUNARG_core_validation",
     "VK_LAYER_GOOGLE_unique_objects",
   };
-  const char kDebugReportExtensionName[] = "VK_EXT_debug_report";
+  const char* kDebugExtensionNames[] = {
+    "VK_EXT_debug_report",
+    "VK_EXT_debug_utils",
+  };
 
 ¶
   bool isValidationLayerName(const char* layer) {
@@ -76,6 +79,14 @@
                          return std::strcmp(layer, val) == 0;
                        });
   }
+¶
+bool isDebugExtensionName(const char* extension) {
+  return std::any_of(
+    std::begin(kDebugExtensionNames), std::end(kDebugExtensionNames),
+    [extension](const char* e) -> bool {
+      return std::strcmp(extension, e) == 0;
+    });
+}
 ¶
   std::vector<Vulkan::VkPhysicalDevice> getVkPhysicalDevices(§
       LazyResolved<Vulkan::PFNVKENUMERATEPHYSICALDEVICES> vkEnumeratePhysicalDevices, Vulkan::VkInstance instance) {
@@ -107,7 +118,7 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
                                         const VkInstanceCreateInfo* pCreateInfo,
                                         VkAllocationCallbacks* pAllocator,
                                         VkInstance* pInstance,
-                                        bool dropValidationLayersAndDebugReport,
+                                        bool dropValidationAndDebug,
                                         uint32_t* result) {
   std::vector<const char*> layers(
       pCreateInfo->ppEnabledLayerNames,
@@ -122,14 +133,14 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
   layers.erase(
       std::remove_if(
           layers.begin(), layers.end(),
-          [dropValidationLayersAndDebugReport](const char* layer) -> bool {
+          [dropValidationAndDebug](const char* layer) -> bool {
             if (strcmp(kGraphicsSpyLayerName, layer) == 0) {
               return true;
             }
             if (strcmp(kVirtualSwapchainLayerName, layer) == 0) {
               return true;
             }
-            if (dropValidationLayersAndDebugReport) {
+            if (dropValidationAndDebug) {
               return isValidationLayerName(layer);
             }
             return false;
@@ -138,11 +149,10 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
   // Add VirtualSwapchain layer
   layers.push_back(kVirtualSwapchainLayerName);
   // Drop the debug report extension if requested.
-  if (dropValidationLayersAndDebugReport) {
+  if (dropValidationAndDebug) {
     extensions.erase(std::remove_if(extensions.begin(), extensions.end(),
                                     [](const char* e) -> bool {
-                                      return strcmp(kDebugReportExtensionName,
-                                                    e) == 0;
+                                      return isDebugExtensionName(e);
                                     }),
                      extensions.end());
   }
@@ -769,10 +779,11 @@ bool Vulkan::hasValidationLayers(const char* const* layers, uint32_t count) {
   });
 }
 ¶
-bool Vulkan::hasDebugReportExtension(const char* const* extensions, uint32_t count) {
+bool Vulkan::hasDebugExtension(const char* const* extensions, uint32_t count) {
   return std::any_of(
-    extensions, extensions + count, [](const char* ext) -> bool {
-      return strcmp(ext, kDebugReportExtensionName) == 0;
+    extensions, extensions + count,
+    [](const char* ext) -> bool {
+      return isDebugExtensionName(ext);
     });
 }
 ¶
