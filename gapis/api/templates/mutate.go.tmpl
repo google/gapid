@@ -60,7 +60,7 @@
     if state, ok := s.APIs[ID].(*State); ok {
       return state
     } else {
-      state = NewState(s.Arena)
+      state = NewState()
       state.Init()
       s.APIs[ID] = state
       return state
@@ -113,7 +113,7 @@
       // @server_disabled
       return nil
     {{else}}
-      ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
+      ϟl := ϟg.MemoryLayout; _ = ϟl
       {{Global "CurrentFunction" $}}
       {{Template "Block" $.Block}}
     {{end}}
@@ -162,7 +162,7 @@
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
       ϟs, ϟt := GetState(ϟg), ϟc.Thread()
-      ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
+      ϟl := ϟg.MemoryLayout; _ = ϟl
       ϟo := ϟc.Extras().Observations()
       _, _, _ = ϟs, ϟl, ϟt
 
@@ -188,7 +188,7 @@
       // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟg.{{if not (IsVoid $.Return.Type)}}
       // The {{$.Name}}() return value will be stored on the stack.{{end}}
       func (ϟc *{{$name}}) Call(ϟctx context.Context, ϟg *api.GlobalState, ϟb *builder.Builder) {
-        ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
+        ϟl := ϟg.MemoryLayout; _ = ϟl
 
         {{/* Push all the parameters on the stack */}}
         {{range $p := $.CallParameters}}

@@ -27,7 +27,6 @@ import (
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -57,7 +56,6 @@ type GraphicsCapture struct {
 	APIs         []api.API
 	Observed     interval.U64RangeList
 	InitialState *InitialState
-	Arena        arena.Arena
 	Messages     []*TraceMessage
 }
 
@@ -87,10 +85,9 @@ func init() {
 	)
 }
 
-// NewGraphicsCapture returns a new to a new graphics capture with the given name,
-// header and commands, using the arena a for allocations.
-func NewGraphicsCapture(ctx context.Context, a arena.Arena, name string, header *Header, initialState *InitialState, cmds []api.Cmd) (*GraphicsCapture, error) {
-	b := newBuilder(a)
+// NewGraphicsCapture returns a new graphics capture with the given values.
+func NewGraphicsCapture(ctx context.Context, name string, header *Header, initialState *InitialState, cmds []api.Cmd) (*GraphicsCapture, error) {
+	b := newBuilder()
 	if initialState != nil {
 		for _, state := range initialState.APIs {
 			b.addInitialState(ctx, state)
@@ -149,7 +146,7 @@ func (c *GraphicsCapture) NewState(ctx context.Context) *api.GlobalState {
 		}
 		// Clone serialized state, and initialize it for use.
 		for k, v := range c.InitialState.APIs {
-			s := v.Clone(out.Arena)
+			s := v.Clone()
 			s.SetupInitialState(ctx, out)
 			out.APIs[k.ID()] = s
 		}
@@ -158,7 +155,7 @@ func (c *GraphicsCapture) NewState(ctx context.Context) *api.GlobalState {
 }
 
 // CloneInitialState clones this capture's initial state and returns it.
-func (c *GraphicsCapture) CloneInitialState(a arena.Arena) *InitialState {
+func (c *GraphicsCapture) CloneInitialState() *InitialState {
 	if c.InitialState == nil {
 		return nil
 	}
@@ -168,7 +165,7 @@ func (c *GraphicsCapture) CloneInitialState(a arena.Arena) *InitialState {
 		APIs:   make(map[api.API]api.State, len(c.InitialState.APIs)),
 	}
 	for api, s := range c.InitialState.APIs {
-		is.APIs[api] = s.Clone(a)
+		is.APIs[api] = s.Clone()
 	}
 
 	return is
@@ -229,12 +226,7 @@ func deserializeGFXTrace(ctx context.Context, r *Record, in io.Reader) (out *Gra
 		stopTiming(analytics.Size(size), analytics.Count(count))
 	}()
 
-	a := arena.New()
-
-	// Bind the arena used to for all allocations for this capture.
-	ctx = arena.Put(ctx, a)
-
-	d := newDecoder(a)
+	d := newDecoder()
 
 	// The decoder implements the ID Remapper interface,
 	// which protoconv functions need to handle resources.
@@ -300,18 +292,16 @@ type builder struct {
 	cmds         []api.Cmd
 	resIDs       []id.ID
 	initialState *InitialState
-	arena        arena.Arena
 	messages     []*TraceMessage
 }
 
-func newBuilder(a arena.Arena) *builder {
+func newBuilder() *builder {
 	return &builder{
 		apis:         []api.API{},
 		seenAPIs:     map[api.ID]struct{}{},
 		observed:     interval.U64RangeList{},
 		cmds:         []api.Cmd{},
 		resIDs:       []id.ID{id.ID{}},
-		arena:        a,
 		initialState: &InitialState{APIs: map[api.API]api.State{}},
 	}
 }
@@ -382,7 +372,6 @@ func (b *builder) build(name string, header *Header) *GraphicsCapture {
 	for _, api := range b.apis {
 		analytics.SendEvent("capture", "uses-api", api.Name())
 	}
-	// TODO: Mark the arena as read-only.
 	return &GraphicsCapture{
 		name:         name,
 		Header:       header,
@@ -390,7 +379,6 @@ func (b *builder) build(name string, header *Header) *GraphicsCapture {
 		Observed:     b.observed,
 		APIs:         b.apis,
 		InitialState: b.initialState,
-		Arena:        b.arena,
 		Messages:     b.messages,
 	}
 }

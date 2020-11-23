@@ -885,7 +885,7 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 
 func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.GraphicsCapture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: c.Arena} // TODO: We probably should have a new arena passed in here!
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	state := c.NewState(ctx)
 	cmd.Mutate(ctx, api.CmdNoID, state, nil, nil)
 
@@ -926,18 +926,17 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Graphic
 	newCmd := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
 	descriptors, err := shadertools.ParseAllDescriptorSets(codeSlice)
-	u := MakeDescriptorInfo(c.Arena)
+	u := MakeDescriptorInfo()
 	dsc := u.Descriptors()
 	if err != nil {
 		log.E(ctx, "Could not parse SPIR-V")
 	} else {
 		for name, desc := range descriptors {
-			d := NewU32ːDescriptorUsageᵐ(c.Arena)
+			d := NewU32ːDescriptorUsageᵐ()
 			for _, set := range desc {
 				for _, binding := range set {
 					d.Add(uint32(d.Len()),
 						NewDescriptorUsage(
-							c.Arena,
 							binding.Set,
 							binding.Binding,
 							binding.DescriptorCount))

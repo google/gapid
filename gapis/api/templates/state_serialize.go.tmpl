@@ -29,14 +29,12 @@
     "fmt"¶
 ¶
     "github.com/google/gapid/core/data/protoconv"¶
-    "github.com/google/gapid/core/memory/arena"¶
     "github.com/google/gapid/gapis/api/{{Global "OutputDir"}}/{{Global "Store"}}"¶
     "github.com/google/gapid/gapis/memory"¶
     "github.com/google/gapid/gapis/memory/memory_pb"¶
   «)¶
   ¶
   // Just in case it is not used¶
-  var _ arena.Arena¶
   var _ fmt.Stringer¶
   var _ memory.PoolID¶
   var _ memory_pb.Slice¶
@@ -69,8 +67,7 @@
   ¶
   // StateFrom builds a State from the storage form.¶
   func StateFrom(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *State {»¶
-    ϟc := NewState(arena.Get(ctx))¶
-    ϟa := ϟc.Arena(); _ = ϟa¶
+    ϟc := NewState()¶
     {{range $g := $.Globals}}
       {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
         ϟc.Set{{$g.Name | GoPublicName}}({{$init}})¶

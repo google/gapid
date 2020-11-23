@@ -39,7 +39,6 @@ import (
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
@@ -364,7 +363,7 @@ func (s *server) SplitCapture(ctx context.Context, rng *path.Commands) (*path.Ca
 	}
 
 	name := fmt.Sprintf("%s [%d,%d)", c.Name(), from, to)
-	if gc, err := capture.NewGraphicsCapture(ctx, arena.New(), name, c.Header, c.InitialState, c.Commands[from:to]); err != nil {
+	if gc, err := capture.NewGraphicsCapture(ctx, name, c.Header, c.InitialState, c.Commands[from:to]); err != nil {
 		return nil, err
 	} else {
 		return capture.New(ctx, gc)

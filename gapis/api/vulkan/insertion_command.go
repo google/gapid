@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -71,12 +70,12 @@ func (s *InsertionCommand) Extras() *api.CmdExtras {
 	return nil
 }
 
-func (s *InsertionCommand) Clone(a arena.Arena) api.Cmd {
+func (s *InsertionCommand) Clone() api.Cmd {
 	return &InsertionCommand{
 		s.cmdBuffer,
 		append([]VkCommandBuffer{}, s.pendingCommandBuffers...),
 		s.idx,
-		s.callee.Clone(a),
+		s.callee.Clone(),
 	}
 }
 

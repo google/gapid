@@ -50,7 +50,7 @@ func (dropTransform *destroyResourcesAtEOS) BeginTransform(ctx context.Context, 
 func (dropTransform *destroyResourcesAtEOS) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	vulkanState := GetState(inputState)
 
-	cb := CommandBuilder{Thread: 0, Arena: inputState.Arena} // TODO: Check that using any old thread is okay.
+	cb := CommandBuilder{Thread: 0} // TODO: Check that using any old thread is okay.
 	// TODO: use the correct pAllocator once we handle it.
 	p := memory.Nullptr
 

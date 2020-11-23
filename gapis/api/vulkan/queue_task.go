@@ -77,7 +77,7 @@ func (h *queueCommandHandler) RecordCommands(sb *stateBuilder, name debugMarkerN
 	if cmdBufObj.Recording() != RecordingState_RECORDING {
 		sb.write(sb.cb.VkBeginCommandBuffer(
 			h.commandBuffer,
-			sb.MustAllocReadData(NewVkCommandBufferBeginInfo(sb.ta,
+			sb.MustAllocReadData(NewVkCommandBufferBeginInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
 				0, // pNext
 				VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT), // flags
@@ -93,11 +93,11 @@ func (h *queueCommandHandler) RecordCommands(sb *stateBuilder, name debugMarkerN
 		calls = append(calls, func(cb VkCommandBuffer) {
 			sb.write(sb.cb.VkCmdDebugMarkerBeginEXT(
 				cb,
-				sb.MustAllocReadData(NewVkDebugMarkerMarkerInfoEXT(sb.ta,
+				sb.MustAllocReadData(NewVkDebugMarkerMarkerInfoEXT(
 					VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT, // sType
 					0, // pNext
 					NewCharᶜᵖ(sb.MustAllocReadData(name.String()).Ptr()), // pMarkerName
-					NewF32ː4ᵃ(sb.ta), // color[4]
+					NewF32ː4ᵃ(), // color[4]
 				)).Ptr(),
 			))
 		})
@@ -131,7 +131,7 @@ func (h *queueCommandHandler) Submit(sb *stateBuilder) error {
 		sb.write(sb.cb.VkQueueSubmit(
 			h.queue,
 			1,
-			sb.MustAllocReadData(NewVkSubmitInfo(sb.ta,
+			sb.MustAllocReadData(NewVkSubmitInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
 				0, // pNext
 				0, // waitSemaphoreCount
@@ -265,7 +265,7 @@ func (qcb *queueCommandBatch) NewScratchBuffer(sb *stateBuilder, name debugMarke
 	sb.write(sb.cb.VkCreateBuffer(
 		dev,
 		sb.MustAllocReadData(
-			NewVkBufferCreateInfo(sb.ta,
+			NewVkBufferCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
 				0,                                       // pNext
 				0,                                       // flags
@@ -283,7 +283,7 @@ func (qcb *queueCommandBatch) NewScratchBuffer(sb *stateBuilder, name debugMarke
 		sb.write(sb.cb.VkDebugMarkerSetObjectNameEXT(
 			dev,
 			NewVkDebugMarkerObjectNameInfoEXTᵖ(sb.MustAllocReadData(
-				NewVkDebugMarkerObjectNameInfoEXT(sb.ta,
+				NewVkDebugMarkerObjectNameInfoEXT(
 					VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, // sType
 					0, // pNext
 					VkDebugReportObjectTypeEXT_VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, // objectType
@@ -351,7 +351,7 @@ func (qcb *queueCommandBatch) Commit(sb *stateBuilder, handler *queueCommandHand
 			sb.write(sb.cb.VkGetBufferMemoryRequirements(
 				bufObj.Device(),
 				info.buffer,
-				sb.MustAllocWriteData(MakeVkMemoryRequirements(sb.ta)).Ptr(),
+				sb.MustAllocWriteData(MakeVkMemoryRequirements()).Ptr(),
 			))
 			sb.write(sb.cb.VkBindBufferMemory(
 				bufObj.Device(),

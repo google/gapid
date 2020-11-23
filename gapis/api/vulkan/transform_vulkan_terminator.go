@@ -178,7 +178,7 @@ func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id ap
 	submitInfo := cmd.PSubmits().Slice(0, uint64(cmd.SubmitCount()), layout)
 	skipAll := len(idx) == 0
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 
 	// Notes:
 	// - We should walk/finish all unfinished render passes
@@ -224,9 +224,9 @@ func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id ap
 		numSubpasses := uint32(lrp.SubpassDescriptions().Len())
 		for i := 0; uint32(i) < numSubpasses-lsp-1; i++ {
 			extraCommands = append(extraCommands,
-				NewVkCmdNextSubpassArgsʳ(inputState.Arena, VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE))
+				NewVkCmdNextSubpassArgsʳ(VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE))
 		}
-		extraCommands = append(extraCommands, NewVkCmdEndRenderPassArgsʳ(inputState.Arena))
+		extraCommands = append(extraCommands, NewVkCmdEndRenderPassArgsʳ())
 	}
 	cmdBuffer := stateObject.CommandBuffers().Get(newCommandBuffers[lastCommandBuffer])
 	subIdx := make(api.SubCmdIdx, 0)
@@ -375,8 +375,6 @@ func rebuildCommandBuffer2(ctx context.Context,
 	idx api.SubCmdIdx,
 	additionalCommands []interface{}) (VkCommandBuffer, []api.Cmd, []func()) {
 
-	a := s.Arena // TODO: Use a temporary arena?
-
 	// DestroyResourcesAtEndOfFrame will handle this actually removing the
 	// command buffer. We have no way to handle WHEN this will be done
 	commandBufferID, x, cleanup := allocateNewCmdBufFromExistingOneAndBegin(ctx, cb, commandBuffer.VulkanHandle(), s)
@@ -412,8 +410,8 @@ func rebuildCommandBuffer2(ctx context.Context,
 	}
 
 	if numSecondaryCommandsToCopy != 0 || numSecondaryCmdBuffersToCopy != 0 {
-		newCmdExecuteCommandsData := NewVkCmdExecuteCommandsArgs(a,
-			NewU32ːVkCommandBufferDense_ᵐ(a), // CommandBuffers
+		newCmdExecuteCommandsData := NewVkCmdExecuteCommandsArgs(
+			NewU32ːVkCommandBufferDense_ᵐ(), // CommandBuffers
 		)
 		pcmd := commandBuffer.CommandReferences().Get(uint32(idx[0]))
 		execCmdData, ok := GetCommandArgs(ctx, pcmd, GetState(s)).(VkCmdExecuteCommandsArgsʳ)

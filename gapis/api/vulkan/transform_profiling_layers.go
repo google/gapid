@@ -93,7 +93,7 @@ func (profilingLayerTransform *profilingLayers) addProfilingLayersToCreateInstan
 	info.SetPpEnabledLayerNames(NewCharᶜᵖᶜᵖ(layersData.Ptr()))
 	infoData := profilingLayerTransform.allocations.AllocDataOrPanic(ctx, info)
 
-	cb := CommandBuilder{Thread: createInstanceCommand.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: createInstanceCommand.Thread()}
 	newCmd := cb.VkCreateInstance(infoData.Ptr(), createInstanceCommand.PAllocator(), createInstanceCommand.PInstance(), createInstanceCommand.Result())
 
 	if profilingLayerTransform.layerName != "" {

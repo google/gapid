@@ -120,7 +120,7 @@ func (res *scratchResources) GetCommandPool(sb *stateBuilder, dev VkDevice, queu
 		}))
 		sb.write(sb.cb.VkCreateCommandPool(
 			dev,
-			sb.MustAllocReadData(NewVkCommandPoolCreateInfo(sb.ta,
+			sb.MustAllocReadData(NewVkCommandPoolCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // sType
 				0, // pNext
 				VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT), // flags
@@ -143,7 +143,7 @@ func (res *scratchResources) AllocateCommandBuffer(sb *stateBuilder, dev VkDevic
 	}))
 	sb.write(sb.cb.VkAllocateCommandBuffers(
 		dev,
-		sb.MustAllocReadData(NewVkCommandBufferAllocateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkCommandBufferAllocateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 			0, // pNext
 			res.GetCommandPool(sb, dev, queueFamilyIndex),        // commandPool
@@ -290,7 +290,7 @@ func flushDataToMemory(sb *stateBuilder, deviceMemory VkDeviceMemory, alignment 
 	}
 	sb.write(sb.cb.VkFlushMappedMemoryRanges(
 		dev, 1,
-		sb.MustAllocReadData(NewVkMappedMemoryRange(sb.ta,
+		sb.MustAllocReadData(NewVkMappedMemoryRange(
 			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
 			0,                       // pNext
 			deviceMemory,            // memory
@@ -363,7 +363,7 @@ func newFlushingMemory(sb *stateBuilder, dev VkDevice, initialSize uint64, align
 		sb.write(sb.cb.VkAllocateMemory(
 			dev,
 			NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
-				NewVkMemoryAllocateInfo(sb.ta,
+				NewVkMemoryAllocateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
 					0,                  // pNext
 					VkDeviceSize(size), // allocationSize

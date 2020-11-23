@@ -83,30 +83,30 @@ func (kit ipDeviceCopyKit) BuildDeviceCopyCommands(sb *stateBuilder) *queueComma
 	copies := []VkImageCopy{}
 	if isSparseResidency(srcObj) {
 		walkSparseImageMemoryBindings(sb, srcObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
-			copies = append(copies, NewVkImageCopy(sb.ta,
-				NewVkImageSubresourceLayers(sb.ta,
+			copies = append(copies, NewVkImageCopy(
+				NewVkImageSubresourceLayers(
 					VkImageAspectFlags(aspect),
 					level,
 					layer,
 					uint32(1),
 				), // srcSubresource
-				NewVkOffset3D(sb.ta,
+				NewVkOffset3D(
 					blockData.Offset().X(),
 					blockData.Offset().Y(),
 					blockData.Offset().Z(),
 				), // srcOffset
-				NewVkImageSubresourceLayers(sb.ta,
+				NewVkImageSubresourceLayers(
 					VkImageAspectFlags(aspect),
 					level,
 					layer,
 					uint32(1),
 				), // dstSubresource
-				NewVkOffset3D(sb.ta,
+				NewVkOffset3D(
 					blockData.Offset().X(),
 					blockData.Offset().Y(),
 					blockData.Offset().Z(),
 				), // dstOffset
-				NewVkExtent3D(sb.ta,
+				NewVkExtent3D(
 					blockData.Extent().Width(),
 					blockData.Extent().Height(),
 					blockData.Extent().Depth(),
@@ -116,22 +116,22 @@ func (kit ipDeviceCopyKit) BuildDeviceCopyCommands(sb *stateBuilder) *queueComma
 	} else {
 		walkImageSubresourceRange(sb, srcObj, sb.imageWholeSubresourceRange(srcObj),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
-				copies = append(copies, NewVkImageCopy(sb.ta,
-					NewVkImageSubresourceLayers(sb.ta,
+				copies = append(copies, NewVkImageCopy(
+					NewVkImageSubresourceLayers(
 						VkImageAspectFlags(aspect),
 						level,
 						layer,
 						uint32(1),
 					), // srcSubresource
-					MakeVkOffset3D(sb.ta), // srcOffset
-					NewVkImageSubresourceLayers(sb.ta,
+					MakeVkOffset3D(), // srcOffset
+					NewVkImageSubresourceLayers(
 						VkImageAspectFlags(aspect),
 						level,
 						layer,
 						uint32(1),
 					), // dstSubresource
-					MakeVkOffset3D(sb.ta), // dstOffset
-					NewVkExtent3D(sb.ta,
+					MakeVkOffset3D(), // dstOffset
+					NewVkExtent3D(
 						uint32(levelSize.width),
 						uint32(levelSize.height),
 						uint32(levelSize.depth),

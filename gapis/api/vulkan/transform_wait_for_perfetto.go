@@ -137,7 +137,7 @@ func (perfettoTransform *waitForPerfetto) endOfTransformCallback(ctx context.Con
 }
 
 func createVkDeviceWaitIdleCommandsForDevices(ctx context.Context, inputState *api.GlobalState) []api.Cmd {
-	cb := CommandBuilder{Thread: 0, Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: 0}
 	allDevices := GetState(inputState).Devices().All()
 
 	waitCmds := make([]api.Cmd, 0, len(allDevices))

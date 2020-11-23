@@ -139,7 +139,7 @@ func (dss *homoDescriptorSetPool) createDescriptorPool(sb *stateBuilder, setCoun
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 	for _, t := range keys {
 		c := countPerType[t]
-		poolSizes = append(poolSizes, NewVkDescriptorPoolSize(sb.ta, t, c))
+		poolSizes = append(poolSizes, NewVkDescriptorPoolSize(t, c))
 	}
 
 	handle := VkDescriptorPool(newUnusedID(true, func(x uint64) bool {
@@ -147,7 +147,7 @@ func (dss *homoDescriptorSetPool) createDescriptorPool(sb *stateBuilder, setCoun
 	}))
 	sb.write(sb.cb.VkCreateDescriptorPool(
 		dss.dev,
-		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, // sType
 			0, // pNext
 			VkDescriptorPoolCreateFlags(
@@ -187,7 +187,7 @@ func (dss *homoDescriptorSetPool) allocateDescriptorSets(sb *stateBuilder, pool 
 	}
 	sb.write(sb.cb.VkAllocateDescriptorSets(
 		dss.dev,
-		sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, // sType
 			0,     // pNext
 			pool,  // descriptorPool

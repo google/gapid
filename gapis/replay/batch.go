@@ -178,7 +178,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	generatedState.Memory = out.state.Memory.Clone()
 	// Clone serialized state, and initialize it for use.
 	for k, v := range out.state.APIs {
-		s := v.Clone(generatedState.Arena)
+		s := v.Clone()
 		s.SetupInitialState(ctx, out.state)
 		generatedState.APIs[k] = s
 	}
@@ -327,7 +327,7 @@ func (m *manager) execute(
 		initState.Memory = depState.Memory.Clone()
 		// Clone serialized state, and initialize it for use.
 		for k, v := range depState.APIs {
-			s := v.Clone(initState.Arena)
+			s := v.Clone()
 			s.SetupInitialState(ctx, initState)
 			initState.APIs[k] = s
 		}

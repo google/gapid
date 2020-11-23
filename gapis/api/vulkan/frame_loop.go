@@ -411,7 +411,6 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 			// Some things we're going to need for the next work...
 			apiState := GetState(out.State())
 			stateBuilder := apiState.newStateBuilder(ctx, newTransformerOutput(out))
-			defer stateBuilder.ta.Dispose()
 
 			// Do start loop stuff.
 			{
@@ -543,7 +542,7 @@ func (f *frameLoop) cloneState(ctx context.Context, startState *api.GlobalState)
 
 	for apiState, graphicsApi := range startState.APIs {
 
-		clonedState := graphicsApi.Clone(clone.Arena)
+		clonedState := graphicsApi.Clone()
 		clonedState.SetupInitialState(ctx, clone)
 
 		clone.APIs[apiState] = clonedState
@@ -1450,7 +1449,7 @@ func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *st
 
 func (f *frameLoop) createStagingBuffer(ctx context.Context, stateBuilder *stateBuilder, src BufferObjectʳ) (VkBuffer, error) {
 
-	bufferObj := src.Clone(GetState(stateBuilder.newState).Arena(), api.CloneContext{})
+	bufferObj := src.Clone(api.CloneContext{})
 	usage := VkBufferUsageFlags(uint32(bufferObj.Info().Usage()) | uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
 	bufferObj.Info().SetUsage(usage)
 
@@ -1495,7 +1494,7 @@ func (f *frameLoop) allocateMemoryForStagingbuffer(ctx context.Context, stateBui
 			return GetState(stateBuilder.newState).DeviceMemories().Contains(VkDeviceMemory(x))
 		}))
 
-		memObj := MakeDeviceMemoryObjectʳ(GetState(stateBuilder.newState).Arena())
+		memObj := MakeDeviceMemoryObjectʳ()
 		memObj.SetDevice(dev)
 		memObj.SetVulkanHandle(memInfo.memory)
 		memObj.SetAllocationSize(memInfo.size)
@@ -1562,7 +1561,7 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 
 		// Create staging Image which is used to backup the changed images
 		imgObj := apiState.Images().Get(img)
-		clonedImgObj := imgObj.Clone(apiState.Arena(), api.CloneContext{})
+		clonedImgObj := imgObj.Clone(api.CloneContext{})
 		usage := VkImageUsageFlags(uint32(clonedImgObj.Info().Usage()) | uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT|VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
 		clonedImgObj.Info().SetUsage(usage)
 
@@ -2605,7 +2604,7 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 			id := dstBufferObj.Memory().Data().ResourceID(ctx, f.loopStartState)
 			stateBuilder.write(stateBuilder.cb.VkFlushMappedMemoryRanges(
 				dstBufferObj.Device(), 1,
-				stateBuilder.MustAllocReadData(NewVkMappedMemoryRange(stateBuilder.ta,
+				stateBuilder.MustAllocReadData(NewVkMappedMemoryRange(
 					VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
 					0,                                    // pNext
 					dstBufferObj.Memory().VulkanHandle(), // memory
@@ -2991,7 +2990,7 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuil
 			stateBuilder.write(stateBuilder.cb.VkQueueSubmit(
 				queue.VulkanHandle(),
 				1,
-				stateBuilder.MustAllocReadData(NewVkSubmitInfo(stateBuilder.ta,
+				stateBuilder.MustAllocReadData(NewVkSubmitInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
 					0, // pNext
 					0, // waitSemaphoreCount

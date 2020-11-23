@@ -45,7 +45,6 @@ go_library(
         "//core/event/task:go_default_library",
         "//core/image:go_default_library",
         "//core/log:go_default_library",
-        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//gapir:go_default_library",

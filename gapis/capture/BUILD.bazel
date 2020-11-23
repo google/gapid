@@ -39,7 +39,6 @@ go_library(
         "//core/data/protoconv:go_default_library",
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
-        "//core/memory/arena:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",
@@ -81,7 +80,6 @@ go_test(
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
-        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/test:go_default_library",

@@ -86,9 +86,9 @@
   {{     if IsPointer       $}}{{Template "Go.Type" $}}(0)
   {{else if IsSlice         $}}{{Template "Go.Type" $}}{}
   {{else if IsReference     $}}Nil{{Template "Go.Type" $}}
-  {{else if IsMap           $}}New{{Template "Go.Type" $}}(ϟa)
-  {{else if IsClass         $}}Make{{Template "Go.Type" $}}(ϟa)
-  {{else if IsStaticArray   $}}New{{Template "Go.Type" $}}(ϟa)
+  {{else if IsMap           $}}New{{Template "Go.Type" $}}()
+  {{else if IsClass         $}}Make{{Template "Go.Type" $}}()
+  {{else if IsStaticArray   $}}New{{Template "Go.Type" $}}()
   {{else if IsBool          $}}false
   {{else if IsChar          $}}ϟmem.Char(0)
   {{else if IsInt           $}}ϟmem.Int(0)
@@ -108,7 +108,7 @@
   {{else if IsString        $}}""
   {{else if IsPseudonym     $}}
     {{$u := $ | Underlying}}
-    {{if IsStaticArray $u}}New{{Template "Go.Type" $}}(ϟa)
+    {{if IsStaticArray $u}}New{{Template "Go.Type" $}}()
     {{else               }}{{Template "Go.Type" $}}({{Template "Go.Null" $.To}})
     {{end}}
   {{else}}{{Error "macro Go.Null called with unsupported type: %s (%T)" $.Name $}}
@@ -159,10 +159,10 @@
 {{define "Go.Decode"}}
   {{AssertType $ "Type"}}
 
-  {{     if IsStaticArray $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd, ϟa)
+  {{     if IsStaticArray $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
   {{else if IsPseudonym   $}}{{Template "Go.Type" $}}({{Template "Go.Decode" ($ | Underlying)}})
   {{else if IsEnum        $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
-  {{else if IsClass       $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd, ϟa)
+  {{else if IsClass       $}}Decode{{Macro "Go.Type" $ | Title}}(ϟd)
   {{else if IsBool        $}}ϟd.Bool()
   {{else if IsU8          $}}ϟd.U8()
   {{else if IsS8          $}}ϟd.I8()
@@ -491,10 +491,10 @@
   {{AssertType $ "Type"}}
 
   {{if IsMap $}}
-    New{{Template "Go.Type" $}}(ϟa)
+    New{{Template "Go.Type" $}}()
   {{else if IsClass $}}
     {{if $fields := Macro "Go.DefaultClassFields" $}}
-      Make{{Template "Go.Type" $}}(ϟa)
+      Make{{Template "Go.Type" $}}()
     {{end}}
   {{end}}
 {{end}}
@@ -617,7 +617,7 @@
   {{/* T* -> number */}}{{if and (IsPointer $src_ty) (IsNumericType $dst_ty)}}
     {{Template "Go.Type" $.Type}}({{$src}})
   {{/* A[] -> B[] */}}{{else if and (IsSlice $src_ty) (IsSlice $dst_ty)}}
-    As{{Template "Go.Type" $.Type}}(ϟa, {{$src}}, ϟl)
+    As{{Template "Go.Type" $.Type}}({{$src}}, ϟl)
   {{/* T[] -> T* */}}{{else if and (IsSlice $src_ty) (IsPointer $dst_ty)}}
     {{Template "Go.Type" $.Type}}({{$src}}.Index(0))
   {{/* char* -> string */}}{{else if and (IsPointer $src_ty) (IsString $dst_ty)}}
@@ -651,7 +651,7 @@
   {{AssertType $ "ArrayInitializer"}}
 
   {{$a := $.Array | Underlying | Unpack}}
-  New{{Template "Go.Type" $}}(ϟa, {{ForEach $.Values "Go.Read" | JoinWith ", "}})
+  New{{Template "Go.Type" $}}({{ForEach $.Values "Go.Read" | JoinWith ", "}})
 {{end}}
 
 
@@ -663,7 +663,7 @@
 {{define "Go.ClassInitializer"}}
   {{AssertType $ "ClassInitializer"}}
 
-  (ϟa, §
+  (§
     {{range $i, $v := $.InitialValues}}
       {{$f := index $.Class.Fields $i}}
       {{if IsNil $v}}

@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -54,7 +53,7 @@ type Cmd interface {
 	Mutate(context.Context, CmdID, *GlobalState, *builder.Builder, StateWatcher) error
 
 	// Clone makes a shallow copy of this command.
-	Clone(arena.Arena) Cmd
+	Clone() Cmd
 
 	// Alive returns true if this command should be marked alive for DCE
 	Alive() bool

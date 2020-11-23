@@ -30,7 +30,6 @@
 ¶
     "github.com/golang/protobuf/proto"¶
 ¶
-    "github.com/google/gapid/core/memory/arena"¶
     "github.com/google/gapid/core/data/protoconv"¶
     "github.com/google/gapid/gapis/api/{{Global "OutputDir"}}/{{Global "Store"}}"¶
     "github.com/google/gapid/gapis/api"¶
@@ -143,13 +142,12 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *{{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
-    cb := CommandBuilder{uint64(from.GetThread()), ϟa}¶
+    cb := CommandBuilder{uint64(from.GetThread())}¶
     {{range $p := $.CallParameters}}
       {{$proto := $p.Name | ProtoGoName}}
       {{$underlying := Underlying $p.Type}}
       {{if IsStaticArray $underlying}}
-        pϟ{{$p.Name}} := New{{Template "Go.Type" $p}}(ϟa)¶
+        pϟ{{$p.Name}} := New{{Template "Go.Type" $p}}()¶
         for ϟi, ϟc := 0, {{$underlying.Size}}; ϟi < ϟc; ϟi++ {»¶
           {{$value := print "from." $proto "[ϟi]"}}
           pϟ{{$p.Name}}.Set(ϟi, {{Template "Convert.FromProto" "Type" $underlying.ValueType "Value" $value}})¶
@@ -214,8 +212,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
-    ϟc := Make{{$name}}(ϟa)¶
+    ϟc := Make{{$name}}()¶
     {{range $v := $.Fields}}
       {{Template "Convert.From" "Field" $v}}
     {{end}}
@@ -250,8 +247,7 @@
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
     return ϟrefs.GetReferencedObject(from.GetReferenceID(), Nil{{$name}}, func() (interface{}, func()) {»¶
-      ϟa := arena.Get(ctx)¶
-      ϟobj := Make{{$name}}(ϟa)¶
+      ϟobj := Make{{$name}}()¶
       return ϟobj, func() {
         ϟobj.Set({{Template "Convert.FromProto" "Type" $.To "Value" "from.Value"}})¶
       }¶
@@ -293,8 +289,7 @@
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
   func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
-    ϟobj := New{{$name}}(ϟa)¶
+    ϟobj := New{{$name}}()¶
     if from.GetReferenceID() == 0 {»¶
       return ϟobj¶
     «}¶
@@ -313,4 +308,3 @@
     «}).({{$name}})¶
   «}¶
 {{end}}
-

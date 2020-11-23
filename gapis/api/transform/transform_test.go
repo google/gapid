@@ -61,7 +61,7 @@ func TestMultipleTransformTransformChain(t *testing.T) {
 }
 
 func createNewCmd(id api.CmdID, tag uint64) api.Cmd {
-	cb := test.CommandBuilder{Arena: test.Cmds.Arena}
+	cb := test.CommandBuilder{}
 	newCmd := func(id api.CmdID, tag uint64) api.Cmd {
 		return cb.CmdTypeMix(uint64(id), 10, 20, 30, 40, 50, 60, tag, 80, 90, 100, true, test.Voidᵖ(0x12345678), 100)
 	}

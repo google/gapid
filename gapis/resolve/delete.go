@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -42,7 +41,7 @@ func Delete(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any,
 func (r *DeleteResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, path.FindCapture(r.Path.Node()), r.Config)
 
-	p, err := deleteCommand(ctx, arena.New(), r.Path.Node())
+	p, err := deleteCommand(ctx, r.Path.Node())
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func (r *DeleteResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	return p.Path(), nil
 }
 
-func deleteCommand(ctx context.Context, a arena.Arena, p path.Node) (*path.Capture, error) {
+func deleteCommand(ctx context.Context, p path.Node) (*path.Capture, error) {
 	switch p := p.(type) {
 	case *path.Command:
 		if len(p.Indices) > 1 {
@@ -65,7 +64,7 @@ func deleteCommand(ctx context.Context, a arena.Arena, p path.Node) (*path.Captu
 			return nil, err
 		}
 
-		cmds := removeCommandFromList(cmdIdx, oldCmds, a)
+		cmds := removeCommandFromList(cmdIdx, oldCmds)
 
 		// Create the new capture
 		old, err := capture.ResolveGraphicsFromPath(ctx, p.Capture)
@@ -73,7 +72,7 @@ func deleteCommand(ctx context.Context, a arena.Arena, p path.Node) (*path.Captu
 			return nil, err
 		}
 
-		c, err := capture.NewGraphicsCapture(ctx, a, old.Name()+"*", old.Header, old.InitialState, cmds)
+		c, err := capture.NewGraphicsCapture(ctx, old.Name()+"*", old.Header, old.InitialState, cmds)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +87,7 @@ func deleteCommand(ctx context.Context, a arena.Arena, p path.Node) (*path.Captu
 	return nil, fmt.Errorf("Incorrect path type %T", p)
 }
 
-func removeCommandFromList(cmdIdx uint64, oldCmds []api.Cmd, a arena.Arena) []api.Cmd {
+func removeCommandFromList(cmdIdx uint64, oldCmds []api.Cmd) []api.Cmd {
 	const MAXID = math.MaxUint64
 
 	cmds := make([]api.Cmd, 0, uint64(len(oldCmds))-1)

@@ -104,7 +104,7 @@ func (attachmentTransform *makeAttachmentReadable) makeImageReadable(ctx context
 
 	info.SetUsage(newUsage)
 	newInfo := attachmentTransform.allocations.AllocDataOrPanic(ctx, info)
-	cb := CommandBuilder{Thread: createImageCmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: createImageCmd.Thread()}
 	newCmd := cb.VkCreateImage(device, newInfo.Ptr(), palloc, pimage, result)
 
 	// Carry all non-observation extras through.
@@ -148,7 +148,7 @@ func (attachmentTransform *makeAttachmentReadable) makeSwapchainReadable(ctx con
 
 	info.SetImageUsage(newUsage)
 	newInfo := attachmentTransform.allocations.AllocDataOrPanic(ctx, info)
-	cb := CommandBuilder{Thread: createSwapchainCmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: createSwapchainCmd.Thread()}
 	newCmd := cb.VkCreateSwapchainKHR(device, newInfo.Ptr(), palloc, pswapchain, result)
 	for _, e := range createSwapchainCmd.Extras().All() {
 		if _, ok := e.(*api.CmdObservations); !ok {
@@ -193,7 +193,7 @@ func (attachmentTransform *makeAttachmentReadable) makeRenderPassReadable(ctx co
 	newAttachments := attachmentTransform.allocations.AllocDataOrPanic(ctx, attachments)
 	info.SetPAttachments(NewVkAttachmentDescriptionᶜᵖ(newAttachments.Ptr()))
 	newInfo := attachmentTransform.allocations.AllocDataOrPanic(ctx, info)
-	cb := CommandBuilder{Thread: createRenderPassCmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: createRenderPassCmd.Thread()}
 	newCmd := cb.VkCreateRenderPass(createRenderPassCmd.Device(),
 		newInfo.Ptr(),
 		memory.Pointer(createRenderPassCmd.PAllocator()),
@@ -253,10 +253,10 @@ func (attachmentTransform *makeAttachmentReadable) makePhysicalDevicesReadable(c
 
 	propList := []VkPhysicalDeviceProperties{}
 	for _, dev := range devs {
-		propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone(inputState.Arena, api.CloneContext{}))
+		propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone(api.CloneContext{}))
 	}
 
-	cb := CommandBuilder{Thread: enumeratePhysicalDeviceCmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: enumeratePhysicalDeviceCmd.Thread()}
 	newCmd := buildReplayEnumeratePhysicalDevices2(ctx, inputState, cb, enumeratePhysicalDeviceCmd.Instance(), numDev, devs, propList)
 	for _, extra := range enumeratePhysicalDeviceCmd.Extras().All() {
 		newCmd.Extras().Add(extra)
@@ -275,7 +275,7 @@ func (attachmentTransform *makeAttachmentReadable) makeBufferReadable(ctx contex
 
 	info.SetUsage(newUsage)
 	newInfo := attachmentTransform.allocations.AllocDataOrPanic(ctx, info)
-	cb := CommandBuilder{Thread: createBufferCmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: createBufferCmd.Thread()}
 	newCmd := cb.VkCreateBuffer(
 		createBufferCmd.Device(),
 		newInfo.Ptr(),

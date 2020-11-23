@@ -89,7 +89,7 @@ func (wireframe *wireframeTransform) updateGraphicsPipelines(ctx context.Context
 	}
 	newInfosData := wireframe.allocations.AllocDataOrPanic(ctx, newInfos)
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := cb.VkCreateGraphicsPipelines(cmd.Device(),
 		cmd.PipelineCache(), cmd.CreateInfoCount(), newInfosData.Ptr(),
 		cmd.PAllocator(), cmd.PPipelines(), cmd.Result()).AddRead(newInfosData.Data())

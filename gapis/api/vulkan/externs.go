@@ -189,7 +189,7 @@ func (e externs) numberOfPNext(pNext Voidᶜᵖ) uint32 {
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndProperties); ok {
-			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakePhysicalDevicesAndPropertiesʳ().Set(p).Clone(api.CloneContext{})
 		}
 	}
 	return NilPhysicalDevicesAndPropertiesʳ
@@ -198,7 +198,7 @@ func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalD
 func (e externs) fetchPhysicalDeviceMemoryProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesMemoryPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesMemoryProperties); ok {
-			return MakePhysicalDevicesMemoryPropertiesʳ(e.s.Arena).Set(p)
+			return MakePhysicalDevicesMemoryPropertiesʳ().Set(p)
 		}
 	}
 	return NilPhysicalDevicesMemoryPropertiesʳ
@@ -207,7 +207,7 @@ func (e externs) fetchPhysicalDeviceMemoryProperties(inst VkInstance, devs VkPhy
 func (e externs) fetchPhysicalDeviceQueueFamilyProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndQueueFamilyPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndQueueFamilyProperties); ok {
-			return MakePhysicalDevicesAndQueueFamilyPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakePhysicalDevicesAndQueueFamilyPropertiesʳ().Set(p).Clone(api.CloneContext{})
 		}
 	}
 	return NilPhysicalDevicesAndQueueFamilyPropertiesʳ
@@ -216,7 +216,7 @@ func (e externs) fetchPhysicalDeviceQueueFamilyProperties(inst VkInstance, devs 
 func (e externs) fetchPhysicalDeviceFormatProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesFormatPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesFormatProperties); ok {
-			return MakePhysicalDevicesFormatPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakePhysicalDevicesFormatPropertiesʳ().Set(p).Clone(api.CloneContext{})
 		}
 	}
 	return NilPhysicalDevicesFormatPropertiesʳ
@@ -230,7 +230,7 @@ func (e externs) fetchImageMemoryRequirements(dev VkDevice, img ImageObjectʳ, h
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(FetchedImageMemoryRequirements); ok {
-			return MakeFetchedImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
+			return MakeFetchedImageMemoryRequirementsʳ().Set(r).Clone(api.CloneContext{})
 		}
 	}
 	return NilFetchedImageMemoryRequirementsʳ
@@ -239,7 +239,7 @@ func (e externs) fetchImageMemoryRequirements(dev VkDevice, img ImageObjectʳ, h
 func (e externs) fetchUsedDescriptors(ShaderModuleObjectʳ) DescriptorInfoʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(DescriptorInfo); ok {
-			return MakeDescriptorInfoʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakeDescriptorInfoʳ().Set(p).Clone(api.CloneContext{})
 		}
 	}
 	return NilDescriptorInfoʳ
@@ -249,14 +249,14 @@ func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMem
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID
 	if e.cmdID == api.CmdNoID {
-		return MakeVkMemoryRequirements(e.s.Arena)
+		return MakeVkMemoryRequirements()
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(VkMemoryRequirements); ok {
-			return r.Clone(e.s.Arena, api.CloneContext{})
+			return r.Clone(api.CloneContext{})
 		}
 	}
-	return MakeVkMemoryRequirements(e.s.Arena)
+	return MakeVkMemoryRequirements()
 }
 
 func (e externs) fetchLinearImageSubresourceLayouts(dev VkDevice, img ImageObjectʳ, rng VkImageSubresourceRange) LinearImageLayoutsʳ {
@@ -267,7 +267,7 @@ func (e externs) fetchLinearImageSubresourceLayouts(dev VkDevice, img ImageObjec
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(LinearImageLayouts); ok {
-			return MakeLinearImageLayoutsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
+			return MakeLinearImageLayoutsʳ().Set(r).Clone(api.CloneContext{})
 		}
 	}
 	return NilLinearImageLayoutsʳ

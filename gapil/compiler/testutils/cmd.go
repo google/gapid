@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
@@ -92,7 +91,7 @@ func (c Cmd) Encode(out []byte) bool {
 }
 
 // Clone makes a shallow copy of this command.
-func (c *Cmd) Clone(arena.Arena) api.Cmd {
+func (c *Cmd) Clone() api.Cmd {
 	clone := *c
 	return &clone
 }

@@ -80,7 +80,7 @@ func (afDisabler *afDisablerTransform) disableAFInSamplerCreation(ctx context.Co
 	info.SetAnisotropyEnable(VkBool32(0))
 	newInfo := afDisabler.allocations.AllocDataOrPanic(ctx, info)
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := cb.VkCreateSampler(cmd.Device(), newInfo.Ptr(), pAlloc, pSampler, cmd.Result())
 	newCmd.AddRead(newInfo.Data())
 	for _, w := range cmd.Extras().Observations().Writes {

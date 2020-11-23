@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/service/types"
@@ -69,12 +68,12 @@ func CmdToService(c Cmd) (*Command, error) {
 }
 
 // ServiceToCmd returns the command built from c.
-func ServiceToCmd(a arena.Arena, c *Command) (Cmd, error) {
+func ServiceToCmd(c *Command) (Cmd, error) {
 	api := Find(ID(c.GetAPI().GetID().ID()))
 	if api == nil {
 		return nil, fmt.Errorf("Unknown api '%v'", c.GetAPI())
 	}
-	cmd := api.CreateCmd(a, c.Name)
+	cmd := api.CreateCmd(c.Name)
 	if cmd == nil {
 		return nil, fmt.Errorf("Unknown command '%v.%v'", api.Name(), c.Name)
 	}

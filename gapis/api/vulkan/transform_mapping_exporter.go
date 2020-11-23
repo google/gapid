@@ -88,7 +88,7 @@ func (mappingTransform *mappingExporter) BeginTransform(ctx context.Context, inp
 }
 
 func (mappingTransform *mappingExporter) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
-	cb := CommandBuilder{Thread: mappingTransform.thread, Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: mappingTransform.thread}
 	newCmd := cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		return mappingTransform.extractRemappings(ctx, s, b)
 	})

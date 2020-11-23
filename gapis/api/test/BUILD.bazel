@@ -56,7 +56,6 @@ go_library(
         "//core/event/task:go_default_library",  # keep
         "//core/log:go_default_library",  # keep
         "//core/math/interval:go_default_library",
-        "//core/memory/arena:go_default_library",  # keep
         "//gapil/constset:go_default_library",  # keep
         "//gapis/api:go_default_library",
         "//gapis/api/test/test_pb:go_default_library",  # keep
@@ -88,7 +87,6 @@ go_test(
         "//core/data/protoconv:go_default_library",
         "//core/event/task:go_default_library",  # keep
         "//core/log:go_default_library",
-        "//core/memory/arena:go_default_library",  # keep
         "//core/os/device:go_default_library",
         "//gapil/constset:go_default_library",  # keep
         "//gapir:go_default_library",

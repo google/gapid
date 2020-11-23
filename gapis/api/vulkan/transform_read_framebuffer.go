@@ -180,7 +180,7 @@ func (t *readFramebuffer) Depth(ctx context.Context, requestId api.SubCmdIdx, re
 			// first one.
 			// TODO: support multi-layer rendering.
 			layer := imageViewDepth.SubresourceRange().BaseArrayLayer()
-			cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+			cb := CommandBuilder{Thread: cmd.Thread()}
 			return t.postImageData(ctx, cb, inputState, cmd.cmdBuffer, cmd.pendingCommandBuffers, depthImageObject, imageViewDepth.Fmt(), VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT, layer, level, w, h, requestWidth, requestHeight, res)
 		}})
 }
@@ -188,7 +188,7 @@ func (t *readFramebuffer) Depth(ctx context.Context, requestId api.SubCmdIdx, re
 func (t *readFramebuffer) Color(ctx context.Context, requestId api.SubCmdIdx, width, height, bufferIdx uint32, res replay.Result) {
 	t.injections[keyFromIndex(requestId)] = append(t.injections[keyFromIndex(requestId)], injection{res,
 		func(ctx context.Context, cmdID api.CmdID, cmd *InsertionCommand, res replay.Result, inputState *api.GlobalState) error {
-			cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+			cb := CommandBuilder{Thread: cmd.Thread()}
 			isPresent := cmd.callee != nil && cmd.callee.CmdFlags().IsEndOfFrame()
 
 			// TODO: Figure out a better way to select the framebuffer here.
@@ -450,7 +450,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	// Data and info for destination buffer creation
 	bufferID := VkBuffer(newUnusedID(false, func(x uint64) bool { ok := st.Buffers().Contains(VkBuffer(x)); return ok }))
 	bufferMemoryID := VkDeviceMemory(newUnusedID(false, func(x uint64) bool { ok := st.DeviceMemories().Contains(VkDeviceMemory(x)); return ok }))
-	bufferMemoryAllocInfo := NewVkMemoryAllocateInfo(inputState.Arena,
+	bufferMemoryAllocInfo := NewVkMemoryAllocateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
 		0,                          // pNext
 		VkDeviceSize(bufferSize*2), // allocationSize
@@ -458,7 +458,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	)
 	bufferMemoryAllocateInfoData := t.allocations.AllocDataOrPanic(ctx, bufferMemoryAllocInfo)
 	bufferMemoryData := t.allocations.AllocDataOrPanic(ctx, bufferMemoryID)
-	bufferCreateInfo := NewVkBufferCreateInfo(inputState.Arena,
+	bufferCreateInfo := NewVkBufferCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,                       // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                                  // pNext
 		VkBufferCreateFlags(0),                                                     // flags
@@ -473,13 +473,13 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 
 	// Data and info for staging image creation
 	stagingImageID := VkImage(newUnusedID(false, func(x uint64) bool { ok := st.Images().Contains(VkImage(x)); return ok }))
-	stagingImageCreateInfo := NewVkImageCreateInfo(inputState.Arena,
+	stagingImageCreateInfo := NewVkImageCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
 		0,                            // pNext
 		0,                            // flags
 		VkImageType_VK_IMAGE_TYPE_2D, // imageType
 		vkFormat,                     // format
-		NewVkExtent3D(inputState.Arena, // extent
+		NewVkExtent3D( // extent
 			requestWidth,
 			requestHeight,
 			1,
@@ -506,13 +506,13 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 
 	// Data and info for resolve image creation. Resolve image is used when the attachment image is multi-sampled
 	resolveImageID := VkImage(newUnusedID(false, func(x uint64) bool { ok := st.Images().Contains(VkImage(x)); return ok }))
-	resolveImageCreateInfo := NewVkImageCreateInfo(inputState.Arena,
+	resolveImageCreateInfo := NewVkImageCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
 		0,                            // pNext
 		0,                            // flags
 		VkImageType_VK_IMAGE_TYPE_2D, // imageType
 		vkFormat,                     // format
-		NewVkExtent3D(inputState.Arena, // extent
+		NewVkExtent3D( // extent
 			imgWidth,  // same width as the attachment image, not the request
 			imgHeight, // same height as the attachment image, not the request
 			1),
@@ -541,7 +541,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	if cmdBuff == VkCommandBuffer(0) {
 		// Command pool and command buffer
 		commandPoolID = VkCommandPool(newUnusedID(false, func(x uint64) bool { ok := st.CommandPools().Contains(VkCommandPool(x)); return ok }))
-		commandPoolCreateInfo := NewVkCommandPoolCreateInfo(inputState.Arena,
+		commandPoolCreateInfo := NewVkCommandPoolCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,                                 // sType
 			NewVoidᶜᵖ(memory.Nullptr),                                                                  // pNext
 			VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_TRANSIENT_BIT), // flags
@@ -549,7 +549,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		)
 		commandPoolCreateInfoData := t.allocations.AllocDataOrPanic(ctx, commandPoolCreateInfo)
 		commandPoolData := t.allocations.AllocDataOrPanic(ctx, commandPoolID)
-		commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(inputState.Arena,
+		commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 			NewVoidᶜᵖ(memory.Nullptr),                                      // pNext
 			commandPoolID,                                                  // commandPool
@@ -562,7 +562,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		commandBufferData := t.allocations.AllocDataOrPanic(ctx, commandBufferID)
 
 		// Data and info for Vulkan commands in command buffers
-		beginCommandBufferInfo := NewVkCommandBufferBeginInfo(inputState.Arena,
+		beginCommandBufferInfo := NewVkCommandBufferBeginInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
 			0, // pNext
 			VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT), // flags
@@ -605,18 +605,18 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		}
 	}
 
-	bufferImageCopy := NewVkBufferImageCopy(inputState.Arena,
+	bufferImageCopy := NewVkBufferImageCopy(
 		0, // bufferOffset
 		0, // bufferRowLength
 		0, // bufferImageHeight
-		NewVkImageSubresourceLayers(inputState.Arena, // imageSubresource
+		NewVkImageSubresourceLayers( // imageSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			level,                      // mipLevel
 			copySrcLayer,               // baseArrayLayer
 			1,                          // layerCount
 		),
-		NewVkOffset3D(inputState.Arena, int32(0), int32(0), copySrcDepth), // imageOffset
-		NewVkExtent3D(inputState.Arena, requestWidth, requestHeight, 1),   // imageExtent
+		NewVkOffset3D(int32(0), int32(0), copySrcDepth), // imageOffset
+		NewVkExtent3D(requestWidth, requestHeight, 1),   // imageExtent
 	)
 	bufferImageCopyData := t.allocations.AllocDataOrPanic(ctx, bufferImageCopy)
 
@@ -627,7 +627,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		barrierAspectMask |= VkImageAspectFlags(depthStencilMask)
 	}
 	// Barrier data for layout transitions of staging image
-	stagingImageToDstBarrier := NewVkImageMemoryBarrier(inputState.Arena,
+	stagingImageToDstBarrier := NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT|
@@ -640,7 +640,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		0xFFFFFFFF,     // srcQueueFamilyIndex
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		stagingImageID, // image
-		NewVkImageSubresourceRange(inputState.Arena, // subresourceRange
+		NewVkImageSubresourceRange( // subresourceRange
 			barrierAspectMask, // aspectMask
 			0,                 // baseMipLevel
 			1,                 // levelCount
@@ -650,7 +650,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	)
 	stagingImageToDstBarrierData := t.allocations.AllocDataOrPanic(ctx, stagingImageToDstBarrier)
 
-	stagingImageToSrcBarrier := NewVkImageMemoryBarrier(inputState.Arena,
+	stagingImageToSrcBarrier := NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
@@ -660,7 +660,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		0xFFFFFFFF,     // srcQueueFamilyIndex
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		stagingImageID, // image
-		NewVkImageSubresourceRange(inputState.Arena, // subresourceRange
+		NewVkImageSubresourceRange( // subresourceRange
 			barrierAspectMask, // aspectMask
 			0,                 // baseMipLevel
 			1,                 // levelCount
@@ -672,7 +672,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 
 	// Barrier data for layout transitions of resolve image. This only used when the attachment image is
 	// multi-sampled.
-	resolveImageToDstBarrier := NewVkImageMemoryBarrier(inputState.Arena,
+	resolveImageToDstBarrier := NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT|
@@ -685,7 +685,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		0xFFFFFFFF,     // srcQueueFamilyIndex
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		resolveImageID, // image
-		NewVkImageSubresourceRange(inputState.Arena, // subresourceRange
+		NewVkImageSubresourceRange( // subresourceRange
 			barrierAspectMask, // aspectMask
 			0,                 // baseMipLevel
 			1,                 // levelCount
@@ -695,7 +695,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	)
 	resolveImageToDstBarrierData := t.allocations.AllocDataOrPanic(ctx, resolveImageToDstBarrier)
 
-	resolveImageToSrcBarrier := NewVkImageMemoryBarrier(inputState.Arena,
+	resolveImageToSrcBarrier := NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
@@ -705,7 +705,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		0xFFFFFFFF,     // srcQueueFamilyIndex
 		0xFFFFFFFF,     // dstQueueFamilyIndex
 		resolveImageID, // image
-		NewVkImageSubresourceRange(inputState.Arena, // subresourceRange
+		NewVkImageSubresourceRange( // subresourceRange
 			barrierAspectMask, // aspectMask
 			0,                 // baseMipLevel
 			1,                 // levelCount
@@ -716,7 +716,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	resolveImageToSrcBarrierData := t.allocations.AllocDataOrPanic(ctx, resolveImageToSrcBarrier)
 
 	// Barrier data for layout transitions of attachment image
-	attachmentImageToSrcBarrier := NewVkImageMemoryBarrier(inputState.Arena,
+	attachmentImageToSrcBarrier := NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags( // srcAccessMask
@@ -732,7 +732,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		0xFFFFFFFF,                 // srcQueueFamilyIndex
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
-		NewVkImageSubresourceRange(inputState.Arena, // subresourceRange
+		NewVkImageSubresourceRange( // subresourceRange
 			barrierAspectMask, // aspectMask
 			0,                 // baseMipLevel
 			1,                 // levelCount
@@ -742,7 +742,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	)
 	attachmentImageToSrcBarrierData := t.allocations.AllocDataOrPanic(ctx, attachmentImageToSrcBarrier)
 
-	attachmentImageResetLayoutBarrier := NewVkImageMemoryBarrier(inputState.Arena,
+	attachmentImageResetLayoutBarrier := NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT), // srcAccessMask
@@ -757,7 +757,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		0xFFFFFFFF,                 // srcQueueFamilyIndex
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
-		NewVkImageSubresourceRange(inputState.Arena, // subresourceRange
+		NewVkImageSubresourceRange( // subresourceRange
 			barrierAspectMask, // aspectMask
 			0,                 // baseMipLevel
 			1,                 // levelCount
@@ -767,47 +767,47 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	)
 	attachmentImageResetLayoutBarrierData := t.allocations.AllocDataOrPanic(ctx, attachmentImageResetLayoutBarrier)
 	// Observation data for vkCmdBlitImage
-	imageBlit := NewVkImageBlit(inputState.Arena,
-		NewVkImageSubresourceLayers(inputState.Arena, // srcSubresource
+	imageBlit := NewVkImageBlit(
+		NewVkImageSubresourceLayers( // srcSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			0,                          // mipLevel
 			blitSrcLayer,               // baseArrayLayer
 			1,                          // layerCount
 		),
-		NewVkOffset3Dː2ᵃ(inputState.Arena, // srcOffsets
-			NewVkOffset3D(inputState.Arena, int32(0), int32(0), blitSrcDepth),
-			NewVkOffset3D(inputState.Arena, int32(imgWidth), int32(imgHeight), blitSrcDepth+int32(1)),
+		NewVkOffset3Dː2ᵃ( // srcOffsets
+			NewVkOffset3D(int32(0), int32(0), blitSrcDepth),
+			NewVkOffset3D(int32(imgWidth), int32(imgHeight), blitSrcDepth+int32(1)),
 		),
-		NewVkImageSubresourceLayers(inputState.Arena, // dstSubresource
+		NewVkImageSubresourceLayers( // dstSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			0,                          // mipLevel
 			0,                          // baseArrayLayer
 			1,                          // layerCount
 		),
-		NewVkOffset3Dː2ᵃ(inputState.Arena, // dstOffsets
-			MakeVkOffset3D(inputState.Arena),
-			NewVkOffset3D(inputState.Arena, int32(requestWidth), int32(requestHeight), 1),
+		NewVkOffset3Dː2ᵃ( // dstOffsets
+			MakeVkOffset3D(),
+			NewVkOffset3D(int32(requestWidth), int32(requestHeight), 1),
 		),
 	)
 	imageBlitData := t.allocations.AllocDataOrPanic(ctx, imageBlit)
 
 	// Observation data for vkCmdResolveImage
-	imageResolve := NewVkImageResolve(inputState.Arena,
-		NewVkImageSubresourceLayers(inputState.Arena, // srcSubresource
+	imageResolve := NewVkImageResolve(
+		NewVkImageSubresourceLayers( // srcSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			0,                          // mipLevel
 			resolveSrcLayer,            // baseArrayLayer
 			1,                          // layerCount
 		),
-		NewVkOffset3D(inputState.Arena, int32(0), int32(0), resolveSrcDepth), // srcOffset
-		NewVkImageSubresourceLayers(inputState.Arena, // dstSubresource
+		NewVkOffset3D(int32(0), int32(0), resolveSrcDepth), // srcOffset
+		NewVkImageSubresourceLayers( // dstSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			0,                          // mipLevel
 			0,                          // baseArrayLayer
 			1,                          // layerCount
 		),
-		MakeVkOffset3D(inputState.Arena),                                        // dstOffset
-		NewVkExtent3D(inputState.Arena, uint32(imgWidth), uint32(imgHeight), 1), // extent
+		MakeVkOffset3D(), // dstOffset
+		NewVkExtent3D(uint32(imgWidth), uint32(imgHeight), 1), // extent
 	)
 	imageResolveData := t.allocations.AllocDataOrPanic(ctx, imageResolve)
 
@@ -1100,7 +1100,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	// If we had to allocate this command buff ourselves, that means we need to submit it ourselves.
 	if cmdBuff == VkCommandBuffer(0) {
 		commandBuffers := t.allocations.AllocDataOrPanic(ctx, commandBufferID)
-		submitInfo := NewVkSubmitInfo(inputState.Arena,
+		submitInfo := NewVkSubmitInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
 			0, // pNext
 			0, // waitSemaphoreCount
@@ -1213,7 +1213,7 @@ func (w *pendingReadWrapper) customPost(ctx context.Context, s *api.GlobalState,
 }
 
 func (t *readFramebuffer) FlushPending(ctx context.Context, inputState *api.GlobalState) error {
-	cb := CommandBuilder{Thread: 0, Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: 0}
 
 	for i := range t.pendingReads {
 		// DO NOT BE TEMPTED TO TURN THIS INTO
@@ -1227,7 +1227,7 @@ func (t *readFramebuffer) FlushPending(ctx context.Context, inputState *api.Glob
 			return err
 		}
 
-		mappedMemoryRange := NewVkMappedMemoryRange(inputState.Arena,
+		mappedMemoryRange := NewVkMappedMemoryRange(
 			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
 			0,                                // pNext
 			r.bufferMemory,                   // memory

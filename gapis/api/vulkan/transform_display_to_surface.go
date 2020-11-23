@@ -71,7 +71,7 @@ func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, 
 
 func (surfaceTransform *displayToSurface) modifySurface(ctx context.Context, cmd api.Cmd, inputState *api.GlobalState) api.Cmd {
 	if swapchainCmd, ok := cmd.(*VkCreateSwapchainKHR); ok {
-		newCmd := swapchainCmd.clone(inputState.Arena)
+		newCmd := swapchainCmd.clone()
 		newCmd.extras = api.CmdExtras{}
 		// Add an extra to indicate to custom_replay to add a flag to
 		// the virtual swapchain pNext

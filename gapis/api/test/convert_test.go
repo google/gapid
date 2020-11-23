@@ -24,19 +24,13 @@ import (
 	"github.com/google/gapid/core/data/generic"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 )
 
 func TestReferences(t *testing.T) {
 	ctx := log.Testing(t)
 	assert := assert.To(t)
-
-	a := arena.New()
-	defer a.Dispose()
-
-	ctx = arena.Put(ctx, a)
-	complex := BuildComplex(a)
+	complex := BuildComplex()
 
 	// complex -> protoA -> decoded -> protoB
 
@@ -65,8 +59,8 @@ func TestReferences(t *testing.T) {
 	assert.For("Protos").TestDeepEqual(protoA, protoB)
 
 	// Test that all decoded references see changes to their referenced objects.
-	decoded.RefObject().SetValue(55)               // was 42
-	decoded.Entries().Add(4, NewTestObject(a, 33)) // was 50
+	decoded.RefObject().SetValue(55)            // was 42
+	decoded.Entries().Add(4, NewTestObject(33)) // was 50
 	assert.For("Object ref").That(decoded.RefObjectAlias()).Equals(decoded.RefObject())
 	assert.For("Map ref").That(decoded.EntriesAlias()).Equals(decoded.Entries())
 	assert.For("RefEntries").That(decoded.RefEntries().Get(0)).Equals(decoded.RefObject())
@@ -76,12 +70,7 @@ func TestReferences(t *testing.T) {
 
 func TestEquals(t *testing.T) {
 	ctx := log.Testing(t)
-
-	a := arena.New()
-	defer a.Dispose()
-
-	ctx = arena.Put(ctx, a)
-	complex := BuildComplex(a)
+	complex := BuildComplex()
 
 	check(ctx, complex, complex, "equals")
 }
@@ -89,14 +78,9 @@ func TestEquals(t *testing.T) {
 func TestCloneReferences(t *testing.T) {
 	ctx := log.Testing(t)
 	assert := assert.To(t)
+	complex := BuildComplex()
 
-	a := arena.New()
-	defer a.Dispose()
-
-	ctx = arena.Put(ctx, a)
-	complex := BuildComplex(a)
-
-	cloned := complex.Clone(a, api.CloneContext{})
+	cloned := complex.Clone(api.CloneContext{})
 	check(ctx, cloned.Data(), complex.Data(), "Data")
 	check(ctx, cloned.Object(), complex.Object(), "Object")
 	check(ctx, cloned.ObjectArray(), complex.ObjectArray(), "ObjectArray")
@@ -147,8 +131,8 @@ func TestCloneReferences(t *testing.T) {
 	}
 
 	// Test that all cloned references see changes to their referenced objects.
-	cloned.RefObject().SetValue(55)               // was 42
-	cloned.Entries().Add(4, NewTestObject(a, 33)) // was 50
+	cloned.RefObject().SetValue(55)            // was 42
+	cloned.Entries().Add(4, NewTestObject(33)) // was 50
 	check(ctx, cloned.RefObjectAlias(), cloned.RefObject(), "Object ref")
 	check(ctx, cloned.EntriesAlias(), cloned.Entries(), "Map ref")
 	check(ctx, cloned.RefEntries().Get(0), cloned.RefObject(), "RefEntries")

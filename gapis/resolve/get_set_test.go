@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
@@ -35,14 +34,13 @@ import (
 
 func newPathTest(ctx context.Context) *path.Capture {
 	h := &capture.Header{ABI: device.WindowsX86_64}
-	a := arena.New()
-	cb := test.CommandBuilder{Arena: a}
+	cb := test.CommandBuilder{}
 	cmds := []api.Cmd{
 		cb.CmdTypeMix(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, test.Voidᵖ(0x12345678), 2),
 		cb.CmdTypeMix(1, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, false, test.Voidᵖ(0x87654321), 3),
 		cb.PrimeState(test.U8ᵖ(0x89abcdef)),
 	}
-	p, err := capture.NewGraphicsCapture(ctx, a, "test", h, nil, cmds)
+	p, err := capture.NewGraphicsCapture(ctx, "test", h, nil, cmds)
 	if err != nil {
 		log.F(ctx, true, "Couldn't create capture: %v", err)
 	}
@@ -62,7 +60,6 @@ func TestGet(t *testing.T) {
 	ctx = capture.Put(ctx, p)
 	cA, cB := p.Command(0), p.Command(1)
 	sA, sB := p.Command(0).StateAfter(), p.Command(2).StateAfter()
-	a := arena.New()
 
 	// Get tests
 	for _, test := range []struct {
@@ -101,15 +98,15 @@ func TestGet(t *testing.T) {
 		{cB.Result(), uint32(3), nil},
 
 		{sA.Field("Str"), "", nil},
-		{sA.Field("Sli"), test.NewBoolˢ(a, 0, 0, 0, 0, 0), nil},
+		{sA.Field("Sli"), test.NewBoolˢ(0, 0, 0, 0, 0), nil},
 		{sA.Field("Ref"), test.NilComplexʳ, nil},
 		{sA.Field("Ptr"), test.U8ᵖ(0), nil},
 
 		{sB.Field("Str"), "aaa", nil},
-		{sB.Field("Sli"), test.NewBoolˢ(a, 0, 0, 3, 3, 1), nil},
-		{sB.Field("Sli").ArrayIndex(0), test.NewBoolˢ(a, 0, 0, 1, 1, 1), nil},
-		{sB.Field("Sli").ArrayIndex(1), test.NewBoolˢ(a, 0, 1, 1, 1, 1), nil},
-		{sB.Field("Sli").ArrayIndex(2), test.NewBoolˢ(a, 0, 2, 1, 1, 1), nil},
+		{sB.Field("Sli"), test.NewBoolˢ(0, 0, 3, 3, 1), nil},
+		{sB.Field("Sli").ArrayIndex(0), test.NewBoolˢ(0, 0, 1, 1, 1), nil},
+		{sB.Field("Sli").ArrayIndex(1), test.NewBoolˢ(0, 1, 1, 1, 1), nil},
+		{sB.Field("Sli").ArrayIndex(2), test.NewBoolˢ(0, 2, 1, 1, 1), nil},
 		{sB.Field("Ref").Field("Strings").MapIndex("123"), uint32(123), nil},
 		{sB.Field("Ref").Field("RefObject").Field("value"), uint32(555), nil},
 		{sB.Field("Ptr"), test.U8ᵖ(0x89abcdef), nil},
@@ -177,9 +174,8 @@ func TestSet(t *testing.T) {
 	ctx = capture.Put(ctx, p)
 	cA, cB := p.Command(0), p.Command(1)
 	sA, sB := p.Command(0).StateAfter(), p.Command(2).StateAfter()
-	a := arena.New()
 
-	_, _, _, _, _ = cA, cB, sA, sB, a
+	_, _, _, _ = cA, cB, sA, sB
 	// Set tests
 	for _, test := range []struct {
 		path path.Node

@@ -19,7 +19,6 @@ import (
 	"os"
 
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -77,15 +76,12 @@ func (logTransform *captureLog) TransformCommand(ctx context.Context, id transfo
 }
 
 func (logTransform *captureLog) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
-	a := arena.New()
-	defer a.Dispose()
-
 	for idx := range logTransform.cmds {
-		cmd := logTransform.cmds[idx].Clone(a)
+		cmd := logTransform.cmds[idx].Clone()
 		logTransform.cmds[idx] = cmd
 	}
 
-	c, err := capture.NewGraphicsCapture(ctx, a, "capturelog", logTransform.header, nil, logTransform.cmds)
+	c, err := capture.NewGraphicsCapture(ctx, "capturelog", logTransform.header, nil, logTransform.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)
 		return nil, err

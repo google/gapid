@@ -90,7 +90,7 @@ func (timestampTransform *queryTimestamps) BeginTransform(ctx context.Context, i
 
 func (timestampTransform *queryTimestamps) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	cmds := make([]api.Cmd, 0)
-	cb := CommandBuilder{Thread: 0, Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: 0}
 
 	for _, queryPoolInfo := range timestampTransform.queryPools {
 		queryCommands := timestampTransform.getQueryResults(ctx, cb, inputState, queryPoolInfo)
@@ -160,7 +160,7 @@ func (timestampTransform *queryTimestamps) modifyQueueSubmit(ctx context.Context
 
 	numSlotAvailable := queryPoolInfo.queryPoolSize - queryPoolInfo.queryCount
 	if numSlotAvailable < queryCount {
-		cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+		cb := CommandBuilder{Thread: cmd.Thread()}
 		queryCmds := timestampTransform.getQueryResults(ctx, cb, inputState, queryPoolInfo)
 		outputCmds = append(outputCmds, queryCmds...)
 	}
@@ -208,7 +208,7 @@ func (timestampTransform *queryTimestamps) getQueryPoolInfo(ctx context.Context,
 }
 
 func (timestampTransform *queryTimestamps) recreateQueryPool(ctx context.Context, cmd *VkQueueSubmit, inputState *api.GlobalState, info *queryPoolInfo, poolSize uint32) ([]api.Cmd, *queryPoolInfo) {
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	recreateCommands := make([]api.Cmd, 0)
 
 	// Get the results back before destroy the old querypool
@@ -231,7 +231,7 @@ func (timestampTransform *queryTimestamps) createQueryPool(ctx context.Context, 
 
 	queryPoolHandleData := timestampTransform.allocations.AllocDataOrPanic(ctx, queryPool)
 	queryPoolCreateInfo := timestampTransform.allocations.AllocDataOrPanic(ctx, NewVkQueryPoolCreateInfo(
-		inputState.Arena,
+
 		VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, // sType
 		0,                                   // pNext
 		0,                                   // flags
@@ -242,7 +242,7 @@ func (timestampTransform *queryTimestamps) createQueryPool(ctx context.Context, 
 
 	queue := cmd.Queue()
 	device := GetState(inputState).Queues().Get(queue).Device()
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := cb.VkCreateQueryPool(
 		device,
 		queryPoolCreateInfo.Ptr(),
@@ -282,7 +282,7 @@ func (timestampTransform *queryTimestamps) createCommandPool(ctx context.Context
 			ok := GetState(inputState).CommandPools().Contains(VkCommandPool(x))
 			return ok
 		}))
-	commandPoolCreateInfo := NewVkCommandPoolCreateInfo(inputState.Arena,
+	commandPoolCreateInfo := NewVkCommandPoolCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,                                 // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                                                  // pNext
 		VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_TRANSIENT_BIT), // flags
@@ -292,7 +292,7 @@ func (timestampTransform *queryTimestamps) createCommandPool(ctx context.Context
 	commandPoolCreateInfoData := timestampTransform.allocations.AllocDataOrPanic(ctx, commandPoolCreateInfo)
 	commandPoolData := timestampTransform.allocations.AllocDataOrPanic(ctx, commandPoolID)
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := cb.VkCreateCommandPool(
 		device,
 		commandPoolCreateInfoData.Ptr(),
@@ -387,7 +387,7 @@ func (timestampTransform *queryTimestamps) rewriteQueueSubmit(ctx context.Contex
 	submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), layout).MustRead(ctx, cmd, inputState, nil)
 	newSubmitInfos := make([]VkSubmitInfo, submitCount)
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	outputCmds := make([]api.Cmd, 0)
 
 	for i := uint32(0); i < submitCount; i++ {
@@ -463,7 +463,7 @@ func (timestampTransform *queryTimestamps) rewriteQueueSubmit(ctx context.Contex
 
 			cmdBufferPtr = allocAndRead(newCmdBuffers).Ptr()
 		}
-		newSubmitInfos[i] = NewVkSubmitInfo(inputState.Arena,
+		newSubmitInfos[i] = NewVkSubmitInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
 			0,                            // pNext
 			si.WaitSemaphoreCount(),      // waitSemaphoreCount
@@ -501,7 +501,7 @@ func (timestampTransform *queryTimestamps) generateQueryCommand(ctx context.Cont
 	info *queryPoolInfo,
 	commandPool VkCommandPool) ([]api.Cmd, VkCommandBuffer) {
 
-	commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(inputState.Arena,
+	commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                      // pNext
 		commandPool,                                                    // commandPool
@@ -517,7 +517,7 @@ func (timestampTransform *queryTimestamps) generateQueryCommand(ctx context.Cont
 		}))
 	commandBufferData := timestampTransform.allocations.AllocDataOrPanic(ctx, commandBufferID)
 
-	beginCommandBufferInfo := NewVkCommandBufferBeginInfo(inputState.Arena,
+	beginCommandBufferInfo := NewVkCommandBufferBeginInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
 		0, // pNext
 		VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT), // flags
@@ -598,7 +598,7 @@ func (timestampTransform *queryTimestamps) processNotification(ctx context.Conte
 }
 
 func (timestampTransform *queryTimestamps) cleanup(ctx context.Context, inputState *api.GlobalState) []api.Cmd {
-	cb := CommandBuilder{Thread: 0, Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: 0}
 	outputCmds := make([]api.Cmd, 0, len(timestampTransform.queryPools)+len(timestampTransform.commandPools))
 
 	for _, info := range timestampTransform.queryPools {

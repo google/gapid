@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service/path"
@@ -51,7 +50,7 @@ type API interface {
 		state *GlobalState) (info []FramebufferAttachmentInfo, err error)
 
 	// CreateCmd constructs and returns a new command with the specified name.
-	CreateCmd(a arena.Arena, name string) Cmd
+	CreateCmd(name string) Cmd
 
 	// RebuildState returns a set of commands which, if executed on a new clean
 	// state, will reproduce the API's state in s.

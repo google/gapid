@@ -31,7 +31,7 @@ func TestClone(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	cb := CommandBuilder{Thread: 0}
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdClone(p(0x1234), 10).
@@ -48,7 +48,7 @@ func TestMake(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	cb := CommandBuilder{Thread: 0}
 	idOfFirstPool, _ := s.Memory.New()
 	assert.For(ctx, "initial NextPoolID").That(idOfFirstPool).Equals(memory.PoolID(1))
 	err := api.MutateCmds(ctx, s, nil, nil,
@@ -65,7 +65,7 @@ func TestCopy(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	cb := CommandBuilder{Thread: 0}
 	expected := []byte{0x54, 0x33, 0x42, 0x43, 0x46, 0x34, 0x63, 0x24, 0x14, 0x24}
 	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdMake(10),
@@ -83,7 +83,7 @@ func TestCharsliceToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	cb := CommandBuilder{Thread: 0}
 	expected := "ħęľĺő ŵōřŀď"
 	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdCharsliceToString(p(0x1234), uint32(len(expected))).
@@ -97,7 +97,7 @@ func TestCharptrToString(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	cb := CommandBuilder{Thread: 0}
 	expected := "ħęľĺő ŵōřŀď"
 	err := api.MutateCmds(ctx, s, nil, nil,
 		cb.CmdCharptrToString(p(0x1234)).
@@ -111,7 +111,7 @@ func TestSliceCasts(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	cb := CommandBuilder{Thread: 0}
 	l := s.MemoryLayout.Clone()
 	l.Integer.Size = 6 // non-multiple of u16
 	s.MemoryLayout = l

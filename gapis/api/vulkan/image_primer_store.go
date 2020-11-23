@@ -164,7 +164,7 @@ func (kb *ipStoreKitBuilder) BuildStoreKits(sb *stateBuilder, recipes ...ipStore
 		writeDescriptorSet(sb, kb.dev, des, ipStoreInputImageBinding, 0,
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 			[]VkDescriptorImageInfo{
-				NewVkDescriptorImageInfo(sb.ta,
+				NewVkDescriptorImageInfo(
 					0,                  // sampler
 					inputView,          // imageView
 					ipStoreImageLayout, // layout
@@ -174,7 +174,7 @@ func (kb *ipStoreKitBuilder) BuildStoreKits(sb *stateBuilder, recipes ...ipStore
 		writeDescriptorSet(sb, kb.dev, des, ipStoreOutputImageBinding, 0,
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 			[]VkDescriptorImageInfo{
-				NewVkDescriptorImageInfo(sb.ta,
+				NewVkDescriptorImageInfo(
 					0,                  // sampler
 					outputView,         // imageView
 					ipStoreImageLayout, // layout
@@ -297,11 +297,11 @@ func (kb *ipStoreKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipStoreP
 		outputType:   info.outputType,
 	})
 
-	createInfo := NewVkComputePipelineCreateInfo(sb.ta,
+	createInfo := NewVkComputePipelineCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, // sType
 		0, // pNext
 		0, // flags
-		NewVkPipelineShaderStageCreateInfo(sb.ta, // stage
+		NewVkPipelineShaderStageCreateInfo( // stage
 			VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
 			0, // pNext
 			0, // flags

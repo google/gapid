@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/database"
@@ -44,7 +43,6 @@ type stateBuilder struct {
 	writeMemories         []*api.AllocResult
 	extraReadIDsAndRanges []idAndRng
 	memoryIntervals       interval.U64RangeList
-	ta                    arena.Arena // temporary arena
 	scratchRes            *scratchResources
 }
 
@@ -119,9 +117,8 @@ func (s *State) newStateBuilder(ctx context.Context, out stateBuilderOutput) *st
 		oldState:        out.getOldState(),
 		newState:        newState,
 		out:             out,
-		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
+		cb:              CommandBuilder{Thread: 0},
 		memoryIntervals: interval.U64RangeList{},
-		ta:              arena.New(),
 		scratchRes:      newScratchResources(),
 	}
 }
@@ -143,7 +140,6 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	// TODO: Debug Info
 	out := newInitialStateOutput(oldState)
 	sb := s.newStateBuilder(ctx, out)
-	defer sb.ta.Dispose()
 
 	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID())
 
@@ -413,7 +409,7 @@ func (sb *stateBuilder) endSubmitAndDestroyCommandBuffer(queue QueueObjectʳ, co
 	sb.write(sb.cb.VkQueueSubmit(
 		queue.VulkanHandle(),
 		1,
-		sb.MustAllocReadData(NewVkSubmitInfo(sb.ta,
+		sb.MustAllocReadData(NewVkSubmitInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
 			0, // pNext
 			0, // waitSemaphoreCount
@@ -482,7 +478,7 @@ func (sb *stateBuilder) createInstance(vk VkInstance, inst InstanceObjectʳ) {
 			engineName = NewCharᶜᵖ(sb.MustAllocReadData(inst.ApplicationInfo().EngineName()).Ptr())
 		}
 		appInfo = sb.MustAllocReadData(
-			NewVkApplicationInfo(sb.ta,
+			NewVkApplicationInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_APPLICATION_INFO, // sType
 				0,                  // pNext
 				NewCharᶜᵖ(appName), // applicationName
@@ -494,7 +490,7 @@ func (sb *stateBuilder) createInstance(vk VkInstance, inst InstanceObjectʳ) {
 	}
 
 	sb.write(sb.cb.VkCreateInstance(
-		sb.MustAllocReadData(NewVkInstanceCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkInstanceCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, // sType
 			0,                                  // pNext
 			0,                                  // flags
@@ -529,8 +525,8 @@ func (sb *stateBuilder) createPhysicalDevices(Map VkPhysicalDeviceːPhysicalDevi
 			NewVkPhysicalDeviceᵖ(memory.Nullptr),
 			VkResult_VK_SUCCESS,
 		))
-		props := MakePhysicalDevicesAndProperties(sb.newState.Arena)
-		formatProps := MakePhysicalDevicesFormatProperties(sb.newState.Arena)
+		props := MakePhysicalDevicesAndProperties()
+		formatProps := MakePhysicalDevicesFormatProperties()
 		for _, dev := range devs {
 			v := Map.Get(dev)
 			props.PhyDevToProperties().Add(dev, v.PhysicalDeviceProperties())
@@ -575,7 +571,7 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 	case SurfaceType_SURFACE_TYPE_XCB:
 		sb.write(sb.cb.VkCreateXcbSurfaceKHR(
 			s.Instance(),
-			sb.MustAllocReadData(NewVkXcbSurfaceCreateInfoKHR(sb.ta,
+			sb.MustAllocReadData(NewVkXcbSurfaceCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR, // sType
 				0, // pNext
 				0, // flags
@@ -589,7 +585,7 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 	case SurfaceType_SURFACE_TYPE_ANDROID:
 		sb.write(sb.cb.VkCreateAndroidSurfaceKHR(
 			s.Instance(),
-			sb.MustAllocReadData(NewVkAndroidSurfaceCreateInfoKHR(sb.ta,
+			sb.MustAllocReadData(NewVkAndroidSurfaceCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR, // sType
 				0, // pNext
 				0, // flags
@@ -602,7 +598,7 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 	case SurfaceType_SURFACE_TYPE_WIN32:
 		sb.write(sb.cb.VkCreateWin32SurfaceKHR(
 			s.Instance(),
-			sb.MustAllocReadData(NewVkWin32SurfaceCreateInfoKHR(sb.ta,
+			sb.MustAllocReadData(NewVkWin32SurfaceCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, // sType
 				0, // pNext
 				0, // flags
@@ -616,7 +612,7 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 	case SurfaceType_SURFACE_TYPE_WAYLAND:
 		sb.write(sb.cb.VkCreateWaylandSurfaceKHR(
 			s.Instance(),
-			sb.MustAllocReadData(NewVkWaylandSurfaceCreateInfoKHR(sb.ta,
+			sb.MustAllocReadData(NewVkWaylandSurfaceCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR, // sType
 				0, // pNext
 				0, // flags
@@ -630,7 +626,7 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 	case SurfaceType_SURFACE_TYPE_XLIB:
 		sb.write(sb.cb.VkCreateXlibSurfaceKHR(
 			s.Instance(),
-			sb.MustAllocReadData(NewVkXlibSurfaceCreateInfoKHR(sb.ta,
+			sb.MustAllocReadData(NewVkXlibSurfaceCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR, // sType
 				0, // pNext
 				0, // flags
@@ -644,7 +640,7 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 	case SurfaceType_SURFACE_TYPE_GGP:
 		sb.write(sb.cb.VkCreateStreamDescriptorSurfaceGGP(
 			s.Instance(),
-			sb.MustAllocReadData(NewVkStreamDescriptorSurfaceCreateInfoGGP(sb.ta,
+			sb.MustAllocReadData(NewVkStreamDescriptorSurfaceCreateInfoGGP(
 				VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP,
 				0, // pNext
 				0, // flags
@@ -657,7 +653,7 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 	case SurfaceType_SURFACE_TYPE_MACOS_MVK:
 		sb.write(sb.cb.VkCreateMacOSSurfaceMVK(
 			s.Instance(),
-			sb.MustAllocReadData(NewVkMacOSSurfaceCreateInfoMVK(sb.ta,
+			sb.MustAllocReadData(NewVkMacOSSurfaceCreateInfoMVK(
 				VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK, // sType
 				0, // pNext
 				0, // flags
@@ -701,7 +697,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	for _, k := range d.Queues().Keys() {
 		q := d.Queues().Get(k)
 		if _, ok := queueCreate[q.QueueFamilyIndex()]; !ok {
-			queueCreate[q.QueueFamilyIndex()] = NewVkDeviceQueueCreateInfo(sb.ta,
+			queueCreate[q.QueueFamilyIndex()] = NewVkDeviceQueueCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, // sType
 				0,                    // pNext
 				0,                    // flags
@@ -740,7 +736,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	pNext := NewVoidᵖ(memory.Nullptr)
 	if !d.VariablePointerFeatures().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceVariablePointerFeatures(sb.ta,
+			NewVkPhysicalDeviceVariablePointerFeatures(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES, // sType
 				pNext, // pNext
 				d.VariablePointerFeatures().VariablePointersStorageBuffer(), // variablePointersStorageBuffer
@@ -750,7 +746,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.HalfPrecisionStorageFeatures().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDevice16BitStorageFeatures(sb.ta,
+			NewVkPhysicalDevice16BitStorageFeatures(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES, // sType
 				pNext, // pNext
 				d.HalfPrecisionStorageFeatures().StorageBuffer16BitAccess(),           // storageBuffer16BitAccess
@@ -762,7 +758,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.Vk8BitStorageFeatures().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDevice8BitStorageFeaturesKHR(sb.ta,
+			NewVkPhysicalDevice8BitStorageFeaturesKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR, // sType
 				pNext, // pNext
 				d.Vk8BitStorageFeatures().StorageBuffer8BitAccess(),           // storageBuffer8BitAccess
@@ -773,7 +769,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.SamplerYcbcrConversionFeatures().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceSamplerYcbcrConversionFeatures(sb.ta,
+			NewVkPhysicalDeviceSamplerYcbcrConversionFeatures(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES, // sType
 				pNext, // pNext
 				d.SamplerYcbcrConversionFeatures().SamplerYcbcrConversion(), // samplerYcbcrConversion
@@ -782,7 +778,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceScalarBlockLayoutFeaturesEXT(sb.ta,
+			NewVkPhysicalDeviceScalarBlockLayoutFeaturesEXT(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT, // sType
 				pNext, // pNext
 				d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().ScalarBlockLayout(), // samplerYcbcrConversion
@@ -791,7 +787,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if d.HostQueryReset() != 0 {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceHostQueryResetFeaturesEXT(sb.ta,
+			NewVkPhysicalDeviceHostQueryResetFeaturesEXT(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT, // sType
 				pNext,              // pNext
 				d.HostQueryReset(), // hostQueryReset
@@ -800,7 +796,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(sb.ta,
+			NewVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR, // sType
 				pNext, // pNext
 				d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().UniformBufferStandardLayout(), // uniformBufferStandardLayout
@@ -809,7 +805,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR(sb.ta,
+			NewVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR, // sType
 				pNext, // pNext
 				d.PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR().ShaderSubgroupExtendedTypes(), // shaderSubgroupExtendedTypes
@@ -818,7 +814,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.PhysicalDeviceShaderClockFeaturesKHR().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceShaderClockFeaturesKHR(sb.ta,
+			NewVkPhysicalDeviceShaderClockFeaturesKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR, // sType
 				pNext, // pNext
 				d.PhysicalDeviceShaderClockFeaturesKHR().ShaderSubgroupClock(), // shaderSubgroupClock
@@ -828,7 +824,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceVulkanMemoryModelFeaturesKHR(sb.ta,
+			NewVkPhysicalDeviceVulkanMemoryModelFeaturesKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR, // sType
 				pNext, // pNext
 				d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().VulkanMemoryModel(),                             // vulkanMemoryModel
@@ -839,7 +835,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 	if !d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceShaderFloat16Int8FeaturesKHR(sb.ta,
+			NewVkPhysicalDeviceShaderFloat16Int8FeaturesKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR, // sType
 				pNext, // pNext
 				d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().ShaderFloat16(), // shaderFloat16
@@ -850,7 +846,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
-		sb.MustAllocReadData(NewVkDeviceCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDeviceCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, // sType
 			NewVoidᶜᵖ(pNext),                   // pNext
 			0,                                  // flags
@@ -894,7 +890,7 @@ func (sb *stateBuilder) transferImageQueueFamilyOwnership(infos ...imageQueueFam
 		if info.oldQueue != VkQueue(0) {
 			oldFamily = sb.s.Queues().Get(info.oldQueue).Family()
 		}
-		return NewVkImageMemoryBarrier(sb.ta,
+		return NewVkImageMemoryBarrier(
 			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 			0, // pNext
 			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
@@ -904,7 +900,7 @@ func (sb *stateBuilder) transferImageQueueFamilyOwnership(infos ...imageQueueFam
 			oldFamily,   // srcQueueFamilyIndex
 			newFamily,   // dstQueueFamilyIndex
 			info.image,  // image
-			NewVkImageSubresourceRange(sb.ta,
+			NewVkImageSubresourceRange(
 				info.aspectMask,
 				info.level,
 				1,
@@ -973,7 +969,7 @@ type imageSubRangeInfo struct {
 }
 
 func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
-	extent := NewVkExtent2D(sb.ta,
+	extent := NewVkExtent2D(
 		swp.Info().Extent().Width(),
 		swp.Info().Extent().Height(),
 	)
@@ -981,7 +977,7 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 	if !swp.Info().ViewFormatList().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkImageFormatListCreateInfoKHR(sb.ta,
+			NewVkImageFormatListCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR, // sType
 				pNext, // pNext
 				uint32(swp.Info().ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
@@ -992,7 +988,7 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 
 	sb.write(sb.cb.VkCreateSwapchainKHR(
 		swp.Device(),
-		sb.MustAllocReadData(NewVkSwapchainCreateInfoKHR(sb.ta,
+		sb.MustAllocReadData(NewVkSwapchainCreateInfoKHR(
 			VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // sType
 			0,                                   // pNext
 			swp.Flags(),                         // flags
@@ -1022,7 +1018,7 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 			swp.Device(),
 			1,
 			sb.MustAllocReadData(swp.VulkanHandle()).Ptr(),
-			sb.MustAllocReadData(NewVkHdrMetadataEXT(sb.ta,
+			sb.MustAllocReadData(NewVkHdrMetadataEXT(
 				VkStructureType_VK_STRUCTURE_TYPE_HDR_METADATA_EXT,
 				0, // pNext
 				swp.HDRMetadata().DisplayPrimaryRed(),
@@ -1097,7 +1093,7 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 
 	if !mem.DedicatedAllocationNV().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkDedicatedAllocationMemoryAllocateInfoNV(sb.ta,
+			NewVkDedicatedAllocationMemoryAllocateInfoNV(
 				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV, // sType
 				0,                                    // pNext
 				mem.DedicatedAllocationNV().Image(),  // image
@@ -1109,7 +1105,7 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 	if !mem.MemoryAllocateFlagsInfo().IsNil() {
 		flags := mem.MemoryAllocateFlagsInfo()
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkMemoryAllocateFlagsInfo(sb.ta,
+			NewVkMemoryAllocateFlagsInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
 				pNext,              // pNext
 				flags.Flags(),      // flags
@@ -1121,7 +1117,7 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 	sb.write(sb.cb.VkAllocateMemory(
 		mem.Device(),
 		NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkMemoryAllocateInfo(sb.ta,
+			NewVkMemoryAllocateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
 				pNext,                 // pNext
 				mem.AllocationSize(),  // allocationSize
@@ -1361,7 +1357,7 @@ func (sb *stateBuilder) imageAspectFlagBits(img ImageObjectʳ, flag VkImageAspec
 // imageWholeSubresourceRange creates a VkImageSubresourceRange that covers the
 // whole given image.
 func (sb *stateBuilder) imageWholeSubresourceRange(img ImageObjectʳ) VkImageSubresourceRange {
-	return NewVkImageSubresourceRange(sb.ta,
+	return NewVkImageSubresourceRange(
 		img.ImageAspect(),        // aspectMask
 		0,                        // baseMipLevel
 		img.Info().MipLevels(),   // levelCount
@@ -1501,7 +1497,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 		if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
 			return
 		}
-		opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(sb.ta,
+		opaqueRanges = append(opaqueRanges, NewVkImageSubresourceRange(
 			VkImageAspectFlags(aspect), // aspectMask
 			level,                      // baseMipLevel
 			1,                          // levelCount
@@ -1540,8 +1536,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 								memories[block.Memory()] = true
 								sb.createDeviceMemory(sb.s.DeviceMemories().Get(block.Memory()), true)
 							}
-							nonSparseInfos = append(nonSparseInfos, NewVkSparseImageMemoryBind(sb.ta,
-								NewVkImageSubresource(sb.ta, // subresource
+							nonSparseInfos = append(nonSparseInfos, NewVkSparseImageMemoryBind(
+								NewVkImageSubresource( // subresource
 									VkImageAspectFlags(aspect), // aspectMask
 									level,                      // mipLevel
 									layer,                      // arrayLayer
@@ -1568,7 +1564,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 			sparseQueue.VulkanHandle(),
 			1,
 			sb.MustAllocReadData(
-				NewVkBindSparseInfo(sb.ta,
+				NewVkBindSparseInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // sType
 					0, // pNext
 					0, // waitSemaphoreCount
@@ -1577,7 +1573,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 					0, // pBufferBinds
 					1, // imageOpaqueBindCount
 					NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(sb.MustAllocReadData( // pImageOpaqueBinds
-						NewVkSparseImageOpaqueMemoryBindInfo(sb.ta,
+						NewVkSparseImageOpaqueMemoryBindInfo(
 							vkImage, // image
 							uint32(img.OpaqueSparseMemoryBindings().Len()), // bindCount
 							NewVkSparseMemoryBindᶜᵖ( // pBinds
@@ -1586,7 +1582,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 						)).Ptr()),
 					0, // imageBindCount
 					NewVkSparseImageMemoryBindInfoᶜᵖ(sb.MustAllocReadData( // pImageBinds
-						NewVkSparseImageMemoryBindInfo(sb.ta,
+						NewVkSparseImageMemoryBindInfo(
 							vkImage,                     // image
 							uint32(len(nonSparseInfos)), // bindCount
 							NewVkSparseImageMemoryBindᶜᵖ( // pBinds
@@ -1620,7 +1616,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 						if !IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings()) {
 							continue
 						}
-						subRng := NewVkImageSubresourceRange(sb.ta,
+						subRng := NewVkImageSubresourceRange(
 							img.ImageAspect(),                                 // aspectMask
 							req.ImageMipTailFirstLod(),                        // baseMipLevel
 							img.Info().MipLevels()-req.ImageMipTailFirstLod(), // levelCount
@@ -1634,7 +1630,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 							if !IsFullyBound(offset, req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings()) {
 								continue
 							}
-							subRng := NewVkImageSubresourceRange(sb.ta,
+							subRng := NewVkImageSubresourceRange(
 								img.ImageAspect(),                                 // aspectMask
 								req.ImageMipTailFirstLod(),                        // baseMipLevel
 								img.Info().MipLevels()-req.ImageMipTailFirstLod(), // levelCount
@@ -1669,10 +1665,10 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 				img.Device(),
 				1,
 				sb.MustAllocReadData(
-					NewVkBindImageMemoryInfo(sb.ta,
+					NewVkBindImageMemoryInfo(
 						VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO, // sType
 						NewVoidᶜᵖ(sb.MustAllocReadData(
-							NewVkBindImageMemoryDeviceGroupInfo(sb.ta,
+							NewVkBindImageMemoryDeviceGroupInfo(
 								VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO, // sType
 								NewVoidᶜᵖ(memory.Nullptr),
 								uint32(dg.Bindings().Len()),
@@ -1789,7 +1785,7 @@ func (sb *stateBuilder) createSamplerYcbcrConversion(conv SamplerYcbcrConversion
 	if conv.IsFromExtension() {
 		sb.write(sb.cb.VkCreateSamplerYcbcrConversionKHR(
 			conv.Device(),
-			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(sb.ta,
+			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR, // sType
 				0,                                  // pNext
 				conv.Fmt(),                         // format
@@ -1808,7 +1804,7 @@ func (sb *stateBuilder) createSamplerYcbcrConversion(conv SamplerYcbcrConversion
 	} else {
 		sb.write(sb.cb.VkCreateSamplerYcbcrConversion(
 			conv.Device(),
-			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(sb.ta,
+			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO, // sType
 				0,                                  // pNext
 				conv.Fmt(),                         // format
@@ -1831,7 +1827,7 @@ func (sb *stateBuilder) createSampler(smp SamplerObjectʳ) {
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 	if !smp.YcbcrConversion().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkSamplerYcbcrConversionInfo(sb.ta,
+			NewVkSamplerYcbcrConversionInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO, // sType
 				pNext,                                // pNext
 				smp.YcbcrConversion().VulkanHandle(), // conversion
@@ -1841,7 +1837,7 @@ func (sb *stateBuilder) createSampler(smp SamplerObjectʳ) {
 
 	sb.write(sb.cb.VkCreateSampler(
 		smp.Device(),
-		sb.MustAllocReadData(NewVkSamplerCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkSamplerCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO, // sType
 			pNext,                         // pNext
 			0,                             // flags
@@ -1874,7 +1870,7 @@ func (sb *stateBuilder) createFence(fnc FenceObjectʳ) {
 	}
 	sb.write(sb.cb.VkCreateFence(
 		fnc.Device(),
-		sb.MustAllocReadData(NewVkFenceCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkFenceCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, // sType
 			0,     // pNext
 			flags, // flags
@@ -1888,7 +1884,7 @@ func (sb *stateBuilder) createFence(fnc FenceObjectʳ) {
 func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
 	sb.write(sb.cb.VkCreateSemaphore(
 		sem.Device(),
-		sb.MustAllocReadData(NewVkSemaphoreCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkSemaphoreCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, // sType
 			0, // pNext
 			0, // flags
@@ -1916,7 +1912,7 @@ func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
 	sb.write(sb.cb.VkQueueSubmit(
 		queue,
 		1,
-		sb.MustAllocReadData(NewVkSubmitInfo(sb.ta,
+		sb.MustAllocReadData(NewVkSubmitInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
 			0, // pNext
 			0, // waitSemaphoreCount
@@ -1935,7 +1931,7 @@ func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
 func (sb *stateBuilder) createEvent(evt EventObjectʳ) {
 	sb.write(sb.cb.VkCreateEvent(
 		evt.Device(),
-		sb.MustAllocReadData(NewVkEventCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkEventCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_EVENT_CREATE_INFO, // sType
 			0, // pNext
 			0, // flags
@@ -1957,7 +1953,7 @@ func (sb *stateBuilder) createEvent(evt EventObjectʳ) {
 func (sb *stateBuilder) createCommandPool(cp CommandPoolObjectʳ) {
 	sb.write(sb.cb.VkCreateCommandPool(
 		cp.Device(),
-		sb.MustAllocReadData(NewVkCommandPoolCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkCommandPoolCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // sType
 			0,                     // pNext
 			cp.Flags(),            // flags
@@ -1972,7 +1968,7 @@ func (sb *stateBuilder) createCommandPool(cp CommandPoolObjectʳ) {
 func (sb *stateBuilder) createPipelineCache(pc PipelineCacheObjectʳ) {
 	sb.write(sb.cb.VkCreatePipelineCache(
 		pc.Device(),
-		sb.MustAllocReadData(NewVkPipelineCacheCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkPipelineCacheCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO, // sType
 			0,                             // pNext
 			0,                             // flags
@@ -1999,7 +1995,7 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 			smp = NewVkSamplerᶜᵖ(allocateResult.Ptr())
 		}
 
-		bindings = append(bindings, NewVkDescriptorSetLayoutBinding(sb.ta,
+		bindings = append(bindings, NewVkDescriptorSetLayoutBinding(
 			k,          // binding
 			b.Type(),   // descriptorType
 			b.Count(),  // descriptorCount
@@ -2010,7 +2006,7 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 
 	sb.write(sb.cb.VkCreateDescriptorSetLayout(
 		dsl.Device(),
-		sb.MustAllocReadData(NewVkDescriptorSetLayoutCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDescriptorSetLayoutCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // sType
 			0,                     // pNext
 			0,                     // flags
@@ -2032,7 +2028,7 @@ func (sb *stateBuilder) createDescriptorUpdateTemplate(dut DescriptorUpdateTempl
 		entries = append(entries, entry)
 	}
 
-	createInfo := sb.MustAllocReadData(NewVkDescriptorUpdateTemplateCreateInfo(sb.ta,
+	createInfo := sb.MustAllocReadData(NewVkDescriptorUpdateTemplateCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO, //sType
 		0,                    // pNext
 		0,                    // flags
@@ -2074,7 +2070,7 @@ func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
 		if isDescriptorSetLayoutInState(pl.SetLayouts().Get(k), sb.oldState) {
 			descriptorSets = append(descriptorSets, pl.SetLayouts().Get(k).VulkanHandle())
 		} else {
-			temporaryDescriptorSetLayout := pl.SetLayouts().Get(k).Clone(sb.newState.Arena, api.CloneContext{})
+			temporaryDescriptorSetLayout := pl.SetLayouts().Get(k).Clone(api.CloneContext{})
 			temporaryDescriptorSetLayout.SetVulkanHandle(
 				VkDescriptorSetLayout(newUnusedID(true, func(x uint64) bool {
 					return GetState(sb.newState).DescriptorSetLayouts().Contains(VkDescriptorSetLayout(x))
@@ -2087,7 +2083,7 @@ func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
 
 	sb.write(sb.cb.VkCreatePipelineLayout(
 		pl.Device(),
-		sb.MustAllocReadData(NewVkPipelineLayoutCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkPipelineLayoutCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, // sType
 			0,                           // pNext
 			0,                           // flags
@@ -2125,7 +2121,7 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 			resolveAttachments = NewVkAttachmentReferenceᶜᵖ(sb.MustUnpackReadMap(sd.ResolveAttachments().All()).Ptr())
 		}
 
-		subpassDescriptions = append(subpassDescriptions, NewVkSubpassDescription(sb.ta,
+		subpassDescriptions = append(subpassDescriptions, NewVkSubpassDescription(
 			sd.Flags(),                          // flags
 			sd.PipelineBindPoint(),              // pipelineBindPoint
 			uint32(sd.InputAttachments().Len()), // inputAttachmentCount
@@ -2142,7 +2138,7 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 	if !rp.InputAttachmentAspectInfo().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkRenderPassInputAttachmentAspectCreateInfo(sb.ta,
+			NewVkRenderPassInputAttachmentAspectCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR, // sType
 				pNext, // pNext
 				uint32(rp.InputAttachmentAspectInfo().AspectReferences().Len()), // aspectReferenceCount
@@ -2157,7 +2153,7 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 
 	sb.write(sb.cb.VkCreateRenderPass(
 		rp.Device(),
-		sb.MustAllocReadData(NewVkRenderPassCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkRenderPassCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
 			pNext, // pNext
 			0,     // flags
@@ -2177,7 +2173,7 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
 	csm := sb.cb.VkCreateShaderModule(
 		sm.Device(),
-		sb.MustAllocReadData(NewVkShaderModuleCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkShaderModuleCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // sType
 			0,                                 // pNext
 			0,                                 // flags
@@ -2189,7 +2185,7 @@ func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
 		VkResult_VK_SUCCESS,
 	)
 	if !sm.Descriptors().IsNil() {
-		sbExtra := sm.Descriptors().Get().Clone(sb.newState.Arena, api.CloneContext{})
+		sbExtra := sm.Descriptors().Get().Clone(api.CloneContext{})
 		csm.Extras().Add(sbExtra)
 	}
 	sb.write(csm)
@@ -2254,7 +2250,7 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 	var temporaryShaderModule ShaderModuleObjectʳ
 	if !isShaderModuleInState(cp.Stage().Module(), sb.oldState) {
 		// This is a previously deleted shader module, recreate it, then clear it
-		temporaryShaderModule = cp.Stage().Module().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryShaderModule = cp.Stage().Module().Clone(api.CloneContext{})
 		temporaryShaderModule.SetVulkanHandle(
 			VkShaderModule(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).ShaderModules().Contains(VkShaderModule(x))
@@ -2268,7 +2264,7 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 	var temporaryPipelineLayout PipelineLayoutObjectʳ
 	if !isPipelineLayoutInState(cp.PipelineLayout(), sb.oldState) {
 		// create temporary pipeline layout for the pipeline to be created.
-		temporaryPipelineLayout = cp.PipelineLayout().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryPipelineLayout = cp.PipelineLayout().Clone(api.CloneContext{})
 		temporaryPipelineLayout.SetVulkanHandle(
 			VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
@@ -2280,7 +2276,7 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 	specializationInfo := NewVkSpecializationInfoᶜᵖ(memory.Nullptr)
 	if !cp.Stage().Specialization().IsNil() {
 		data := cp.Stage().Specialization().Data()
-		specializationInfo = NewVkSpecializationInfoᶜᵖ(sb.MustAllocReadData(NewVkSpecializationInfo(sb.ta,
+		specializationInfo = NewVkSpecializationInfoᶜᵖ(sb.MustAllocReadData(NewVkSpecializationInfo(
 			uint32(cp.Stage().Specialization().Specializations().Len()),                                                    // mapEntryCount
 			NewVkSpecializationMapEntryᶜᵖ(sb.MustUnpackReadMap(cp.Stage().Specialization().Specializations().All()).Ptr()), // pMapEntries
 			memory.Size(data.Size()),                // dataSize
@@ -2292,11 +2288,11 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 		cp.Device(),
 		cache,
 		1,
-		sb.MustAllocReadData(NewVkComputePipelineCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkComputePipelineCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, // sType
 			0,          // pNext
 			cp.Flags(), // flags
-			NewVkPipelineShaderStageCreateInfo(sb.ta, // stage
+			NewVkPipelineShaderStageCreateInfo( // stage
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
 				0,                                  // pNext
 				0,                                  // flags
@@ -2353,7 +2349,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		s := gp.Stages().Get(ss)
 		if !isShaderModuleInState(s.Module(), sb.oldState) {
 			// create temporary shader module the pipeline to be created.
-			temporaryShaderModule := s.Module().Clone(sb.newState.Arena, api.CloneContext{})
+			temporaryShaderModule := s.Module().Clone(api.CloneContext{})
 			temporaryShaderModule.SetVulkanHandle(
 				VkShaderModule(newUnusedID(true, func(x uint64) bool {
 					return GetState(sb.newState).ShaderModules().Contains(VkShaderModule(x))
@@ -2368,7 +2364,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 	var temporaryPipelineLayout PipelineLayoutObjectʳ
 	if !isPipelineLayoutInState(gp.Layout(), sb.oldState) {
 		// create temporary pipeline layout for the pipeline to be created.
-		temporaryPipelineLayout = gp.Layout().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryPipelineLayout = gp.Layout().Clone(api.CloneContext{})
 		temporaryPipelineLayout.SetVulkanHandle(
 			VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
@@ -2381,7 +2377,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 	var temporaryRenderPass RenderPassObjectʳ
 	if !isRenderPassInState(gp.RenderPass(), sb.oldState) {
 		// create temporary renderpass for the pipeline to be created.
-		temporaryRenderPass = gp.RenderPass().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryRenderPass = gp.RenderPass().Clone(api.CloneContext{})
 		temporaryRenderPass.SetVulkanHandle(
 			VkRenderPass(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).RenderPasses().Contains(VkRenderPass(x))
@@ -2400,14 +2396,14 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		if !s.Specialization().IsNil() {
 			data := s.Specialization().Data()
 			specializationInfo = NewVkSpecializationInfoᶜᵖ(sb.MustAllocReadData(
-				NewVkSpecializationInfo(sb.ta,
+				NewVkSpecializationInfo(
 					uint32(s.Specialization().Specializations().Len()),                                                    // mapEntryCount
 					NewVkSpecializationMapEntryᶜᵖ(sb.MustUnpackReadMap(s.Specialization().Specializations().All()).Ptr()), // pMapEntries
 					memory.Size(data.Size()),                // dataSize
 					NewVoidᶜᵖ(sb.mustReadSlice(data).Ptr()), // pData
 				)).Ptr())
 		}
-		stages = append(stages, NewVkPipelineShaderStageCreateInfo(sb.ta,
+		stages = append(stages, NewVkPipelineShaderStageCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
 			0,                         // pNext
 			0,                         // flags
@@ -2423,7 +2419,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		pNext := NewVoidᶜᵖ(memory.Nullptr)
 		if !gp.TessellationState().TessellationDomainOriginState().IsNil() {
 			pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-				NewVkPipelineTessellationDomainOriginStateCreateInfo(sb.ta,
+				NewVkPipelineTessellationDomainOriginStateCreateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO, // sType
 					pNext, // pNext
 					gp.TessellationState().TessellationDomainOriginState().DomainOrigin(), // usage
@@ -2431,7 +2427,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 			).Ptr())
 		}
 		tessellationState = NewVkPipelineTessellationStateCreateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkPipelineTessellationStateCreateInfo(sb.ta,
+			NewVkPipelineTessellationStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO, // sType
 				pNext, // pNext
 				0,     // flags
@@ -2451,7 +2447,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		}
 
 		viewportState = NewVkPipelineViewportStateCreateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkPipelineViewportStateCreateInfo(sb.ta,
+			NewVkPipelineViewportStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO, // sType
 				0,                                  // pNext
 				0,                                  // flags
@@ -2469,7 +2465,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 			sampleMask = NewVkSampleMaskᶜᵖ(sb.MustUnpackReadMap(gp.MultisampleState().SampleMask().All()).Ptr())
 		}
 		multisampleState = NewVkPipelineMultisampleStateCreateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkPipelineMultisampleStateCreateInfo(sb.ta,
+			NewVkPipelineMultisampleStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, // sType
 				0, // pNext
 				0, // flags
@@ -2485,7 +2481,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 	depthState := NewVkPipelineDepthStencilStateCreateInfoᶜᵖ(memory.Nullptr)
 	if !gp.DepthState().IsNil() {
 		depthState = NewVkPipelineDepthStencilStateCreateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkPipelineDepthStencilStateCreateInfo(sb.ta,
+			NewVkPipelineDepthStencilStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO, // sType
 				0,                                       // pNext
 				0,                                       // flags
@@ -2508,7 +2504,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 			colorblendAttachments = NewVkPipelineColorBlendAttachmentStateᶜᵖ(sb.MustUnpackReadMap(gp.ColorBlendState().Attachments().All()).Ptr())
 		}
 		colorBlendState = NewVkPipelineColorBlendStateCreateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkPipelineColorBlendStateCreateInfo(sb.ta,
+			NewVkPipelineColorBlendStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, // sType
 				0,                                    // pNext
 				0,                                    // flags
@@ -2527,7 +2523,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 			dynamicStates = NewVkDynamicStateᶜᵖ(sb.MustUnpackReadMap(gp.DynamicState().DynamicStates().All()).Ptr())
 		}
 		dynamicState = NewVkPipelineDynamicStateCreateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkPipelineDynamicStateCreateInfo(sb.ta,
+			NewVkPipelineDynamicStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, // sType
 				0, // pNext
 				0, // flags
@@ -2540,14 +2536,14 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		gp.Device(),
 		cache,
 		1,
-		sb.MustAllocReadData(NewVkGraphicsPipelineCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkGraphicsPipelineCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // sType
 			0,                   // pNext
 			gp.Flags(),          // flags
 			uint32(len(stages)), // stageCount
 			NewVkPipelineShaderStageCreateInfoᶜᵖ(sb.MustAllocReadData(stages).Ptr()), // pStages
 			NewVkPipelineVertexInputStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pVertexInputState
-				NewVkPipelineVertexInputStateCreateInfo(sb.ta,
+				NewVkPipelineVertexInputStateCreateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // sType
 					0, // pNext
 					0, // flags
@@ -2557,7 +2553,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 					NewVkVertexInputAttributeDescriptionᶜᵖ(sb.MustUnpackReadMap(gp.VertexInputState().AttributeDescriptions().All()).Ptr()), // pVertexAttributeDescriptions
 				)).Ptr()),
 			NewVkPipelineInputAssemblyStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pInputAssemblyState
-				NewVkPipelineInputAssemblyStateCreateInfo(sb.ta,
+				NewVkPipelineInputAssemblyStateCreateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, // sType
 					0,                                  // pNext
 					0,                                  // flags
@@ -2567,7 +2563,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 			tessellationState, // pTessellationState
 			viewportState,     // pViewportState
 			NewVkPipelineRasterizationStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pRasterizationState
-				NewVkPipelineRasterizationStateCreateInfo(sb.ta,
+				NewVkPipelineRasterizationStateCreateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, // sType
 					0, // pNext
 					0, // flags
@@ -2634,7 +2630,7 @@ func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 	if !iv.UsageInfo().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkImageViewUsageCreateInfo(sb.ta,
+			NewVkImageViewUsageCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO, // sType
 				pNext,                  // pNext
 				iv.UsageInfo().Usage(), // usage
@@ -2643,7 +2639,7 @@ func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
 	}
 	if !iv.YcbcrConversion().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkSamplerYcbcrConversionInfo(sb.ta,
+			NewVkSamplerYcbcrConversionInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO, // sType
 				pNext,                               // pNext
 				iv.YcbcrConversion().VulkanHandle(), // conversion
@@ -2653,7 +2649,7 @@ func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
 
 	sb.write(sb.cb.VkCreateImageView(
 		iv.Device(),
-		sb.MustAllocReadData(NewVkImageViewCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkImageViewCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
 			NewVoidᶜᵖ(pNext),          // pNext
 			0,                         // flags
@@ -2679,7 +2675,7 @@ func (sb *stateBuilder) createBufferView(bv BufferViewObjectʳ) {
 
 	sb.write(sb.cb.VkCreateBufferView(
 		bv.Device(),
-		sb.MustAllocReadData(NewVkBufferViewCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkBufferViewCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, // sType
 			0,                          // pNext
 			0,                          // flags
@@ -2697,7 +2693,7 @@ func (sb *stateBuilder) createBufferView(bv BufferViewObjectʳ) {
 func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp DescriptorPoolObjectʳ) {
 	sb.write(sb.cb.VkCreateDescriptorPool(
 		dp.Device(),
-		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, // sType
 			0,                        // pNext
 			dp.Flags(),               // flags
@@ -2727,7 +2723,7 @@ func (sb *stateBuilder) allocateDescriptorSets(dp DescriptorPoolObjectʳ, descSe
 	if len(descSetHandles) != 0 && len(descSetLayoutHandles) != 0 {
 		sb.write(sb.cb.VkAllocateDescriptorSets(
 			dp.Device(),
-			sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(sb.ta,
+			sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, // sType
 				0,                           // pNext
 				dp.VulkanHandle(),           // descriptorPool
@@ -2762,7 +2758,7 @@ func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 
 	sb.write(sb.cb.VkCreateFramebuffer(
 		fb.Device(),
-		sb.MustAllocReadData(NewVkFramebufferCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkFramebufferCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, // sType
 			0,                              // pNext
 			0,                              // flags
@@ -2812,7 +2808,7 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 					continue
 				}
 
-				writes = append(writes, NewVkWriteDescriptorSet(sb.ta,
+				writes = append(writes, NewVkWriteDescriptorSet(
 					VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
 					0,                     // pNext
 					ds.VulkanHandle(),     // dstSet
@@ -2854,7 +2850,7 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 					continue
 				}
 
-				writes = append(writes, NewVkWriteDescriptorSet(sb.ta,
+				writes = append(writes, NewVkWriteDescriptorSet(
 					VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
 					0,                     // pNext
 					ds.VulkanHandle(),     // dstSet
@@ -2881,7 +2877,7 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 				if buff.Buffer() != 0 && !ns.Buffers().Contains(buff.Buffer()) {
 					continue
 				}
-				writes = append(writes, NewVkWriteDescriptorSet(sb.ta,
+				writes = append(writes, NewVkWriteDescriptorSet(
 					VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
 					0,                     // pNext
 					ds.VulkanHandle(),     // dstSet
@@ -2906,7 +2902,7 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 				if bv != 0 && !ns.BufferViews().Contains(bv) {
 					continue
 				}
-				writes = append(writes, NewVkWriteDescriptorSet(sb.ta,
+				writes = append(writes, NewVkWriteDescriptorSet(
 					VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
 					0,                     // pNext
 					ds.VulkanHandle(),     // dstSet
@@ -2935,7 +2931,7 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 	sb.write(sb.cb.VkCreateQueryPool(
 		qp.Device(),
-		sb.MustAllocReadData(NewVkQueryPoolCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkQueryPoolCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, // sType
 			0,                       // pNext
 			0,                       // flags
@@ -2999,7 +2995,7 @@ func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 
 	sb.write(sb.cb.VkAllocateCommandBuffers(
 		cb.Device(),
-		sb.MustAllocReadData(NewVkCommandBufferAllocateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkCommandBufferAllocateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 			0,          // pNext
 			cb.Pool(),  // commandPool
@@ -3024,7 +3020,7 @@ func (sb *stateBuilder) recordCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 	if !cb.BeginInfo().DeviceGroupBegin().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkDeviceGroupCommandBufferBeginInfo(sb.ta,
+			NewVkDeviceGroupCommandBufferBeginInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO, // sType
 				pNext, // pNext
 				cb.BeginInfo().DeviceGroupBegin().DeviceMask(), // deviceMask
@@ -3032,7 +3028,7 @@ func (sb *stateBuilder) recordCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 		).Ptr())
 	}
 
-	beginInfo := NewVkCommandBufferBeginInfo(sb.ta,
+	beginInfo := NewVkCommandBufferBeginInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
 		pNext, // pNext
 		VkCommandBufferUsageFlags(cb.BeginInfo().Flags()), // flags
@@ -3045,7 +3041,7 @@ func (sb *stateBuilder) recordCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 			return
 		}
 
-		inheritanceInfo := sb.MustAllocReadData(NewVkCommandBufferInheritanceInfo(sb.ta,
+		inheritanceInfo := sb.MustAllocReadData(NewVkCommandBufferInheritanceInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO, // sType
 			0,                                            // pNext
 			cb.BeginInfo().InheritedRenderPass(),         // renderPass
@@ -3103,7 +3099,7 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 
 	if !src.Info().DedicatedAllocationNV().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkDedicatedAllocationBufferCreateInfoNV(sb.ta,
+			NewVkDedicatedAllocationBufferCreateInfoNV(
 				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV, // sType
 				0, // pNext
 				src.Info().DedicatedAllocationNV().DedicatedAllocation(), // dedicatedAllocation
@@ -3111,13 +3107,13 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 		).Ptr())
 	}
 
-	memReq := NewVkMemoryRequirements(sb.ta,
+	memReq := NewVkMemoryRequirements(
 		src.MemoryRequirements().Size(), src.MemoryRequirements().Alignment(), src.MemoryRequirements().MemoryTypeBits())
 
 	createWithMemReq := sb.cb.VkCreateBuffer(
 		src.Device(),
 		sb.MustAllocReadData(
-			NewVkBufferCreateInfo(sb.ta,
+			NewVkBufferCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
 				pNext,                    // pNext
 				src.Info().CreateFlags(), // flags
@@ -3197,14 +3193,14 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 			sparseQueue.VulkanHandle(),
 			1,
 			sb.MustAllocReadData(
-				NewVkBindSparseInfo(sb.ta,
+				NewVkBindSparseInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // sType
 					0, // pNext
 					0, // waitSemaphoreCount
 					0, // pWaitSemaphores
 					1, // bufferBindCount
 					NewVkSparseBufferMemoryBindInfoᶜᵖ(sb.MustAllocReadData( // pBufferBinds
-						NewVkSparseBufferMemoryBindInfo(sb.ta,
+						NewVkSparseBufferMemoryBindInfo(
 							src.VulkanHandle(),                       // buffer
 							uint32(src.SparseMemoryBindings().Len()), // bindCount
 							NewVkSparseMemoryBindᶜᵖ( // pBinds
@@ -3234,10 +3230,10 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 				dst.Device(),
 				1,
 				sb.MustAllocReadData(
-					NewVkBindBufferMemoryInfo(sb.ta,
+					NewVkBindBufferMemoryInfo(
 						VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO, // sType
 						NewVoidᶜᵖ(sb.MustAllocReadData(
-							NewVkBindBufferMemoryDeviceGroupInfo(sb.ta,
+							NewVkBindBufferMemoryDeviceGroupInfo(
 								VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO, // sType
 								0, // pNext
 								uint32(dg.Bindings().Len()),
@@ -3335,7 +3331,7 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 			for _, k := range dstObj.SparseMemoryBindings().Keys() {
 				bind := dstObj.SparseMemoryBindings().Get(k)
 				size := bind.Size()
-				copies = append(copies, NewVkBufferCopy(sb.ta,
+				copies = append(copies, NewVkBufferCopy(
 					offset,                // srcOffset
 					bind.ResourceOffset(), // dstOffset
 					size,                  // size
@@ -3346,7 +3342,7 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 		}
 	} else {
 		size := dstObj.Info().Size()
-		copies = append(copies, NewVkBufferCopy(sb.ta,
+		copies = append(copies, NewVkBufferCopy(
 			offset, // srcOffset
 			0,      // dstOffset
 			size,   // size
@@ -3368,7 +3364,7 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 			memory.Nullptr,
 			1,
 			sb.MustAllocReadData(
-				NewVkBufferMemoryBarrier(sb.ta,
+				NewVkBufferMemoryBarrier(
 					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
 					0, // pNext
 					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
@@ -3399,7 +3395,7 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 			memory.Nullptr,
 			1,
 			sb.MustAllocReadData(
-				NewVkBufferMemoryBarrier(sb.ta,
+				NewVkBufferMemoryBarrier(
 					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
 					0, // pNext
 					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask

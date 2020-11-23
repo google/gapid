@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/test"
@@ -33,7 +32,7 @@ func TestCaptureExportImport(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	header := &capture.Header{ABI: device.WindowsX86_64}
 	cmds := []api.Cmd{test.Cmds.A, test.Cmds.B}
-	c, err := capture.NewGraphicsCapture(ctx, arena.New(), "test", header, nil, cmds)
+	c, err := capture.NewGraphicsCapture(ctx, "test", header, nil, cmds)
 	if !assert.For(ctx, "capture.New").ThatError(err).Succeeded() {
 		return
 	}

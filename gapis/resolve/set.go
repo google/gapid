@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/dictionary"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -45,21 +44,19 @@ func Set(ctx context.Context, p *path.Any, v interface{}, r *path.ResolveConfig)
 func (r *SetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, path.FindCapture(r.Path.Node()), r.Config)
 
-	a := arena.New()
-
-	v, err := serviceToInternal(a, r.Value.Get())
+	v, err := serviceToInternal(r.Value.Get())
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := change(ctx, a, r.Path.Node(), v, r.Config)
+	p, err := change(ctx, r.Path.Node(), v, r.Config)
 	if err != nil {
 		return nil, err
 	}
 	return p.Path(), nil
 }
 
-func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r *path.ResolveConfig) (path.Node, error) {
+func change(ctx context.Context, p path.Node, val interface{}, r *path.ResolveConfig) (path.Node, error) {
 	switch p := p.(type) {
 	case *path.Report:
 		return nil, fmt.Errorf("Reports are immutable")
@@ -70,7 +67,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
-		c, err := changeResources(ctx, a, p.After, p.IDs, data.Resources, r)
+		c, err := changeResources(ctx, p.After, p.IDs, data.Resources, r)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +86,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
-		c, err := changeResources(ctx, a, p.After, []*path.ID{p.ID}, []*api.ResourceData{data}, r)
+		c, err := changeResources(ctx, p.After, []*path.ID{p.ID}, []*api.ResourceData{data}, r)
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +134,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 		cmds[cmdIdx] = cmd
 
 		// Store the new command list
-		c, err := changeCommands(ctx, a, p.Capture, cmds)
+		c, err := changeCommands(ctx, p.Capture, cmds)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +177,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 				return nil, err
 			}
 
-			parent, err := change(ctx, a, p.Parent(), obj.Interface(), r)
+			parent, err := change(ctx, p.Parent(), obj.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
@@ -201,14 +198,14 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 				return nil, err
 			}
 
-			parent, err := change(ctx, a, p.Parent(), obj.Interface(), r)
+			parent, err := change(ctx, p.Parent(), obj.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
 			return parent.(*path.Command).Result(), nil
 
 		case *path.Field:
-			parent, err := setField(ctx, a, obj, reflect.ValueOf(val), p.Name, p, r)
+			parent, err := setField(ctx, obj, reflect.ValueOf(val), p.Name, p, r)
 			if err != nil {
 				return nil, err
 			}
@@ -239,7 +236,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 			if err := assign(arr.Index(int(p.Index)), val); err != nil {
 				return nil, err
 			}
-			parent, err := change(ctx, a, p.Parent(), arr.Interface(), r)
+			parent, err := change(ctx, p.Parent(), arr.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +273,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 
 			d.Add(key.Interface(), val.Interface())
 
-			parent, err := change(ctx, a, p.Parent(), obj.Interface(), r)
+			parent, err := change(ctx, p.Parent(), obj.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
@@ -288,7 +285,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 	return nil, fmt.Errorf("Unknown path type %T", p)
 }
 
-func changeResources(ctx context.Context, a arena.Arena, after *path.Command, ids []*path.ID, data []*api.ResourceData, r *path.ResolveConfig) (*path.Capture, error) {
+func changeResources(ctx context.Context, after *path.Command, ids []*path.ID, data []*api.ResourceData, r *path.ResolveConfig) (*path.Capture, error) {
 	meta, err := ResourceMeta(ctx, ids, after, r)
 	if err != nil {
 		return nil, err
@@ -320,7 +317,7 @@ func changeResources(ctx context.Context, a arena.Arena, after *path.Command, id
 	var initialState *capture.InitialState
 	mutateInitialState := func(API api.API) api.State {
 		if initialState == nil {
-			if initialState = oldCapt.CloneInitialState(a); initialState == nil {
+			if initialState = oldCapt.CloneInitialState(); initialState == nil {
 				return nil
 			}
 		}
@@ -344,7 +341,7 @@ func changeResources(ctx context.Context, a arena.Arena, after *path.Command, id
 		initialState = oldCapt.InitialState
 	}
 
-	gc, err := capture.NewGraphicsCapture(ctx, a, oldCapt.Name()+"*", oldCapt.Header, initialState, cmds)
+	gc, err := capture.NewGraphicsCapture(ctx, oldCapt.Name()+"*", oldCapt.Header, initialState, cmds)
 	if err != nil {
 		return nil, err
 	} else {
@@ -352,12 +349,12 @@ func changeResources(ctx context.Context, a arena.Arena, after *path.Command, id
 	}
 }
 
-func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {
+func changeCommands(ctx context.Context, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {
 	old, err := capture.ResolveGraphicsFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	c, err := capture.NewGraphicsCapture(ctx, a, old.Name()+"*", old.Header, old.InitialState, newCmds)
+	c, err := capture.NewGraphicsCapture(ctx, old.Name()+"*", old.Header, old.InitialState, newCmds)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +363,6 @@ func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds
 
 func setField(
 	ctx context.Context,
-	a arena.Arena,
 	str,
 	val reflect.Value,
 	name string,
@@ -380,7 +376,7 @@ func setField(
 	if err := assign(dst, val); err != nil {
 		return nil, err
 	}
-	return change(ctx, a, p.Parent(), str.Interface(), r)
+	return change(ctx, p.Parent(), str.Interface(), r)
 }
 
 func clone(v reflect.Value) (reflect.Value, error) {

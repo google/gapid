@@ -127,7 +127,7 @@ func (p *imagePrimer) createImageAndBindMemory(dev VkDevice, info ImageInfo, mem
 	vkCreateImage(p.sb, dev, info, imgHandle)
 	img := GetState(p.sb.newState).Images().Get(imgHandle)
 	// Query the memory requirements so validation layers are happy
-	vkGetImageMemoryRequirements(p.sb, dev, imgHandle, MakeVkMemoryRequirements(p.sb.ta))
+	vkGetImageMemoryRequirements(p.sb, dev, imgHandle, MakeVkMemoryRequirements())
 
 	imgSize, err := subInferImageSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.newState, GetState(p.sb.newState), 0, nil, nil, img)
 	if err != nil {
@@ -228,7 +228,7 @@ func (p *imagePrimer) Create32BitUintColorStagingImagesForAspect(img ImageObject
 	stagingElementInfo, _ := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, stagingImgFormat)
 	stagingElementSize := stagingElementInfo.ElementSize()
 
-	stagingInfo := img.Info().Clone(p.sb.newState.Arena, api.CloneContext{})
+	stagingInfo := img.Info().Clone(api.CloneContext{})
 	stagingInfo.SetDedicatedAllocationNV(NilDedicatedAllocationBufferImageCreateInfoNVʳ)
 	stagingInfo.SetFmt(stagingImgFormat)
 	stagingInfo.SetUsage(usages)
@@ -315,7 +315,7 @@ func useSpecifiedLayout(layout VkImageLayout) ipLayoutInfo {
 // built for layout transition of the subresource of the given image object
 // specified with aspect bit, layer and level.
 func ipImageSubresourceLayoutTransitionBarrier(sb *stateBuilder, imgObj ImageObjectʳ, aspect VkImageAspectFlagBits, layer, level uint32, oldLayout, newLayout VkImageLayout) VkImageMemoryBarrier {
-	return NewVkImageMemoryBarrier(sb.ta,
+	return NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
@@ -325,7 +325,7 @@ func ipImageSubresourceLayoutTransitionBarrier(sb *stateBuilder, imgObj ImageObj
 		^uint32(0),            // srcQueueFamilyIndex
 		^uint32(0),            // dstQueueFamilyIndex
 		imgObj.VulkanHandle(), // image
-		NewVkImageSubresourceRange(sb.ta,
+		NewVkImageSubresourceRange(
 			ipImageBarrierAspectFlags(aspect, imgObj.Info().Fmt()),
 			level,
 			1,
@@ -551,7 +551,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 	if !info.DedicatedAllocationNV().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkDedicatedAllocationImageCreateInfoNV(sb.ta,
+			NewVkDedicatedAllocationImageCreateInfoNV(
 				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV, // sType
 				0, // pNext
 				info.DedicatedAllocationNV().DedicatedAllocation(), // dedicatedAllocation
@@ -561,7 +561,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 
 	if !info.ViewFormatList().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkImageFormatListCreateInfoKHR(sb.ta,
+			NewVkImageFormatListCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR, // sType
 				pNext, // pNext
 				uint32(info.ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
@@ -572,7 +572,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 
 	create := sb.cb.VkCreateImage(
 		dev, sb.MustAllocReadData(
-			NewVkImageCreateInfo(sb.ta,
+			NewVkImageCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
 				pNext,                                   // pNext
 				info.Flags(),                            // flags
@@ -596,7 +596,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 
 	if sb.s.Images().Contains(handle) {
 		obj := sb.s.Images().Get(handle)
-		fetchedReq := MakeFetchedImageMemoryRequirements(sb.newState.Arena)
+		fetchedReq := MakeFetchedImageMemoryRequirements()
 		for p, pmi := range obj.PlaneMemoryInfo().All() {
 			fetchedReq.PlaneBitsToMemoryRequirements().Add(p, pmi.MemoryRequirements())
 		}
@@ -619,7 +619,7 @@ func vkAllocateMemory(sb *stateBuilder, dev VkDevice, size VkDeviceSize, memType
 	sb.write(sb.cb.VkAllocateMemory(
 		dev,
 		NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkMemoryAllocateInfo(sb.ta,
+			NewVkMemoryAllocateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
 				0,            // pNext
 				size,         // allocationSize
@@ -640,7 +640,7 @@ func vkBindImageMemory(sb *stateBuilder, dev VkDevice, img VkImage, mem VkDevice
 func vkCreateDescriptorSetLayout(sb *stateBuilder, dev VkDevice, bindings []VkDescriptorSetLayoutBinding, handle VkDescriptorSetLayout) {
 	sb.write(sb.cb.VkCreateDescriptorSetLayout(
 		dev,
-		sb.MustAllocReadData(NewVkDescriptorSetLayoutCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDescriptorSetLayoutCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // sType
 			0,                     // pNext
 			0,                     // flags
@@ -656,7 +656,7 @@ func vkCreateDescriptorSetLayout(sb *stateBuilder, dev VkDevice, bindings []VkDe
 func vkAllocateDescriptorSet(sb *stateBuilder, dev VkDevice, pool VkDescriptorPool, layout VkDescriptorSetLayout, handle VkDescriptorSet) {
 	sb.write(sb.cb.VkAllocateDescriptorSets(
 		dev,
-		sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, // sType
 			0,    // pNext
 			pool, // descriptorPool
@@ -669,7 +669,7 @@ func vkAllocateDescriptorSet(sb *stateBuilder, dev VkDevice, pool VkDescriptorPo
 }
 
 func vkCreatePipelineLayout(sb *stateBuilder, dev VkDevice, setLayouts []VkDescriptorSetLayout, pushConstantRanges []VkPushConstantRange, handle VkPipelineLayout) {
-	createInfo := NewVkPipelineLayoutCreateInfo(sb.ta,
+	createInfo := NewVkPipelineLayoutCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, // sType
 		0,                       // pNext
 		0,                       // flags
@@ -688,7 +688,7 @@ func vkCreatePipelineLayout(sb *stateBuilder, dev VkDevice, setLayouts []VkDescr
 }
 
 func vkCreateShaderModule(sb *stateBuilder, dev VkDevice, code []uint32, handle VkShaderModule) {
-	createInfo := NewVkShaderModuleCreateInfo(sb.ta,
+	createInfo := NewVkShaderModuleCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // sType
 		0,                        // pNext
 		0,                        // flags
@@ -697,18 +697,18 @@ func vkCreateShaderModule(sb *stateBuilder, dev VkDevice, code []uint32, handle 
 	)
 
 	descriptors, err := shadertools.ParseAllDescriptorSets(code)
-	u := MakeDescriptorInfo(sb.ta)
+	u := MakeDescriptorInfo()
 	dsc := u.Descriptors()
 	if err != nil {
 		log.E(sb.ctx, "Could not parse SPIR-V")
 	} else {
 		for name, desc := range descriptors {
-			d := NewU32ːDescriptorUsageᵐ(sb.ta)
+			d := NewU32ːDescriptorUsageᵐ()
 			for _, set := range desc {
 				for _, binding := range set {
 					d.Add(uint32(d.Len()),
 						NewDescriptorUsage(
-							sb.ta,
+
 							binding.Set,
 							binding.Binding,
 							binding.DescriptorCount))
@@ -731,7 +731,7 @@ func vkCreateShaderModule(sb *stateBuilder, dev VkDevice, code []uint32, handle 
 func vkCreateDescriptorPool(sb *stateBuilder, dev VkDevice, flags VkDescriptorPoolCreateFlags, maxSet uint32, poolSizes []VkDescriptorPoolSize, handle VkDescriptorPool) {
 	sb.write(sb.cb.VkCreateDescriptorPool(
 		dev,
-		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(sb.ta,
+		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, // sType
 			0,                      // pNext
 			flags,                  // flags
@@ -746,7 +746,7 @@ func vkCreateDescriptorPool(sb *stateBuilder, dev VkDevice, flags VkDescriptorPo
 }
 
 func writeDescriptorSet(sb *stateBuilder, dev VkDevice, descSet VkDescriptorSet, dstBinding, dstArrayElement uint32, descType VkDescriptorType, imgInfoList []VkDescriptorImageInfo, bufInfoList []VkDescriptorBufferInfo, texelBufInfoList []VkBufferView) {
-	write := NewVkWriteDescriptorSet(sb.ta,
+	write := NewVkWriteDescriptorSet(
 		VkStructureType_VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, // sType
 		0,               // pNext
 		descSet,         // dstSet
@@ -884,7 +884,7 @@ func attachDebugMarkerName(sb *stateBuilder, nm debugMarkerName, dev VkDevice, o
 	sb.write(sb.cb.VkDebugMarkerSetObjectNameEXT(
 		dev,
 		NewVkDebugMarkerObjectNameInfoEXTᵖ(sb.MustAllocReadData(
-			NewVkDebugMarkerObjectNameInfoEXT(sb.ta,
+			NewVkDebugMarkerObjectNameInfoEXT(
 				VkStructureType_VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT, // sType
 				0,           // pNext
 				objectType,  // objectType
@@ -915,7 +915,7 @@ func ipCreateDescriptorSetLayout(sb *stateBuilder, nm debugMarkerName, dev VkDev
 	bindings := []VkDescriptorSetLayoutBinding{}
 	for b, bInfo := range info.bindings {
 		bindings = append(bindings,
-			NewVkDescriptorSetLayoutBinding(sb.ta,
+			NewVkDescriptorSetLayoutBinding(
 				b,                              // binding
 				bInfo.descriptorType,           // descriptorType
 				bInfo.count,                    // descriptorCount
@@ -943,7 +943,7 @@ func ipCreatePipelineLayout(sb *stateBuilder, nm debugMarkerName, dev VkDevice,
 	}))
 	vkCreatePipelineLayout(sb, dev,
 		descSetLayouts,
-		[]VkPushConstantRange{NewVkPushConstantRange(sb.ta,
+		[]VkPushConstantRange{NewVkPushConstantRange(
 			pushConstantStages, // stageFlags
 			0,                  // offset
 			pushConstantSize,   // size
@@ -1036,20 +1036,20 @@ func ipCreateImageView(sb *stateBuilder, nm debugMarkerName, dev VkDevice, info 
 	sb.write(sb.cb.VkCreateImageView(
 		dev,
 		NewVkImageViewCreateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkImageViewCreateInfo(sb.ta,
+			NewVkImageViewCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
 				0,          // pNext
 				0,          // flags
 				info.image, // image
 				viewType,   // viewType
 				GetState(sb.newState).Images().Get(info.image).Info().Fmt(), // format
-				NewVkComponentMapping(sb.ta, // components
+				NewVkComponentMapping( // components
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY, // r
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY, // g
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY, // b
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY, // a
 				),
-				NewVkImageSubresourceRange(sb.ta, // subresourceRange
+				NewVkImageSubresourceRange( // subresourceRange
 					VkImageAspectFlags(info.aspect), // aspectMask
 					info.level,                      // baseMipLevel
 					1,                               // levelCount

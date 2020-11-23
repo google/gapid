@@ -59,7 +59,7 @@
     {{$target := Macro "Convert.LiveType" $type}}
     {{$value := printf "from.%s" $proto}}
     if {{$value}} == nil {»¶
-      ϟc.Set{{$name}}(New{{$target}}(ϟa, 0, 0, 0, 0, ϟmem.ApplicationPool))¶
+      ϟc.Set{{$name}}(New{{$target}}(0, 0, 0, 0, ϟmem.ApplicationPool))¶
     «} else {»¶
       ϟc.Set{{$name}}({{Template "Convert.FromProto" "Type" $type "Value" $value}})¶
     «}¶
@@ -186,7 +186,7 @@
     {{else if IsReference $underlying}}{{Template "Go.Type" $.Type}}From(ctx, {{$.Value}}, ϟrefs)
     {{else if IsPointer   $underlying}}{{$target}}({{$.Value}})
     {{else if IsBool      $underlying}}({{$.Value}} != 0)
-    {{else if IsSlice     $underlying}}New{{$target}}(ϟa, {{$.Value}}.Root, {{$.Value}}.Base, {{$.Value}}.Size, {{$.Value}}.Count, ϟmem.PoolID({{$.Value}}.Pool))
+    {{else if IsSlice     $underlying}}New{{$target}}({{$.Value}}.Root, {{$.Value}}.Base, {{$.Value}}.Size, {{$.Value}}.Count, ϟmem.PoolID({{$.Value}}.Pool))
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
     {{end}}

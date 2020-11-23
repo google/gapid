@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
@@ -33,12 +32,11 @@ import (
 
 func createSingleCommandTrace(ctx context.Context) *path.Capture {
 	h := &capture.Header{ABI: device.WindowsX86_64}
-	a := arena.New()
-	cb := test.CommandBuilder{Arena: a}
+	cb := test.CommandBuilder{}
 	cmds := []api.Cmd{
 		cb.CmdTypeMix(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, test.Voidᵖ(0x12345678), 2),
 	}
-	p, err := capture.NewGraphicsCapture(ctx, a, "test", h, nil, cmds)
+	p, err := capture.NewGraphicsCapture(ctx, "test", h, nil, cmds)
 	if err != nil {
 		log.F(ctx, true, "Couldn't create capture: %v", err)
 	}
@@ -51,14 +49,13 @@ func createSingleCommandTrace(ctx context.Context) *path.Capture {
 
 func createMultipleCommandTrace(ctx context.Context) *path.Capture {
 	h := &capture.Header{ABI: device.WindowsX86_64}
-	a := arena.New()
-	cb := test.CommandBuilder{Arena: a}
+	cb := test.CommandBuilder{}
 	cmds := []api.Cmd{
 		cb.CmdTypeMix(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, test.Voidᵖ(0x12345678), 2),
 		cb.CmdTypeMix(1, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, false, test.Voidᵖ(0x87654321), 3),
 		cb.CmdTypeMix(2, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, true, test.Voidᵖ(0xdeadfeed), 3),
 	}
-	p, err := capture.NewGraphicsCapture(ctx, a, "test", h, nil, cmds)
+	p, err := capture.NewGraphicsCapture(ctx, "test", h, nil, cmds)
 	if err != nil {
 		log.F(ctx, true, "Couldn't create capture: %v", err)
 	}

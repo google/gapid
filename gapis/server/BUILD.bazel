@@ -37,7 +37,6 @@ go_library(
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/log/log_pb:go_default_library",
-        "//core/memory/arena:go_default_library",
         "//core/net/grpcutil:go_default_library",
         "//core/os/android/adb:go_default_library",
         "//core/os/device/bind:go_default_library",

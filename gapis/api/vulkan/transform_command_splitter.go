@@ -241,7 +241,7 @@ func (splitTransform *commandSplitter) modifyVkQueueSubmit(
 
 func (splitTransform *commandSplitter) rewriteQueueSubmit(ctx context.Context, id api.CmdID, cuts []api.SubCmdIdx, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (*VkQueueSubmit, error) {
 	layout := inputState.MemoryLayout
-	cb := CommandBuilder{Thread: queueSubmit.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: queueSubmit.Thread()}
 	queueSubmit.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	submitInfos := queueSubmit.PSubmits().Slice(0, uint64(queueSubmit.SubmitCount()), layout).MustRead(ctx, queueSubmit, inputState, nil)
@@ -296,7 +296,7 @@ func (splitTransform *commandSplitter) rewriteQueueSubmit(ctx context.Context, i
 }
 
 func (splitTransform *commandSplitter) splitSubmit(ctx context.Context, submit VkSubmitInfo, idx api.SubCmdIdx, cuts []api.SubCmdIdx, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkSubmitInfo, error) {
-	newSubmitInfo := MakeVkSubmitInfo(inputState.Arena)
+	newSubmitInfo := MakeVkSubmitInfo()
 	newSubmitInfo.SetSType(submit.SType())
 	newSubmitInfo.SetPNext(submit.PNext())
 	newSubmitInfo.SetWaitSemaphoreCount(submit.WaitSemaphoreCount())
@@ -309,7 +309,7 @@ func (splitTransform *commandSplitter) splitSubmit(ctx context.Context, submit V
 	commandBuffers := submit.PCommandBuffers().Slice(0, uint64(submit.CommandBufferCount()), layout).MustRead(ctx, queueSubmit, inputState, nil)
 	newCommandBuffers := make([]VkCommandBuffer, 0)
 
-	cb := CommandBuilder{Thread: queueSubmit.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: queueSubmit.Thread()}
 
 	for i := range commandBuffers {
 		splitAfterCommandBuffer := false
@@ -381,7 +381,7 @@ func (splitTransform *commandSplitter) splitSubmit(ctx context.Context, submit V
 }
 
 func (splitTransform *commandSplitter) splitAfterSubmit(ctx context.Context, id api.SubCmdIdx, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkSubmitInfo, error) {
-	cb := CommandBuilder{Thread: queueSubmit.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: queueSubmit.Thread()}
 	commandBuffer, err := splitTransform.getStartedCommandBuffer(ctx, queueSubmit, inputState)
 	if err != nil {
 		log.E(ctx, "Failed during getting started command buffer : %v", err)
@@ -405,7 +405,7 @@ func (splitTransform *commandSplitter) splitAfterSubmit(ctx context.Context, id 
 		return VkSubmitInfo{}, err
 	}
 
-	info := NewVkSubmitInfo(inputState.Arena,
+	info := NewVkSubmitInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
 		NewVoidᶜᵖ(memory.Nullptr),                     // pNext
 		0,                                             // waitSemaphoreCount,
@@ -481,7 +481,7 @@ func (splitTransform *commandSplitter) splitRenderPass(ctx context.Context, rp R
 		}
 
 		{
-			rp1 := rp.Clone(inputState.Arena, api.CloneContext{})
+			rp1 := rp.Clone(api.CloneContext{})
 			rp1.SetVulkanHandle(
 				VkRenderPass(newUnusedID(true, func(x uint64) bool {
 					return st.RenderPasses().Contains(VkRenderPass(x))
@@ -515,7 +515,7 @@ func (splitTransform *commandSplitter) splitRenderPass(ctx context.Context, rp R
 		}
 
 		{
-			rp2 := rp.Clone(inputState.Arena, api.CloneContext{})
+			rp2 := rp.Clone(api.CloneContext{})
 			rp2.SetVulkanHandle(
 				VkRenderPass(newUnusedID(true, func(x uint64) bool {
 					return st.RenderPasses().Contains(VkRenderPass(x))
@@ -543,7 +543,7 @@ func (splitTransform *commandSplitter) splitRenderPass(ctx context.Context, rp R
 		}
 
 		{
-			rp3 := rp.Clone(inputState.Arena, api.CloneContext{})
+			rp3 := rp.Clone(api.CloneContext{})
 			rp3.SetVulkanHandle(
 				VkRenderPass(newUnusedID(true, func(x uint64) bool {
 					return st.RenderPasses().Contains(VkRenderPass(x))
@@ -590,7 +590,7 @@ func (splitTransform *commandSplitter) rewriteGraphicsPipeline(ctx context.Conte
 	st := GetState(inputState)
 	tempTransformWriter := newCommandsplitTransformWriter(inputState, splitTransform)
 	sb := st.newStateBuilder(ctx, newTransformerOutput(tempTransformWriter))
-	newGp := st.GraphicsPipelines().Get(graphicsPipeline).Clone(inputState.Arena, api.CloneContext{})
+	newGp := st.GraphicsPipelines().Get(graphicsPipeline).Clone(api.CloneContext{})
 	newGp.SetRenderPass(st.RenderPasses().Get(splitTransform.currentRenderPass[splitTransform.thisSubpass][0]))
 	newGp.SetSubpass(0)
 	newGp.SetVulkanHandle(
@@ -604,7 +604,7 @@ func (splitTransform *commandSplitter) rewriteGraphicsPipeline(ctx context.Conte
 }
 
 func (splitTransform *commandSplitter) splitCommandBuffer(ctx context.Context, embedBuffer VkCommandBuffer, commandBuffer CommandBufferObjectʳ, queueSubmit *VkQueueSubmit, id api.SubCmdIdx, cuts []api.SubCmdIdx, inputState *api.GlobalState) (VkCommandBuffer, error) {
-	cb := CommandBuilder{Thread: queueSubmit.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: queueSubmit.Thread()}
 	st := GetState(inputState)
 
 	for i := 0; i < commandBuffer.CommandReferences().Len(); i++ {
@@ -635,32 +635,32 @@ func (splitTransform *commandSplitter) splitCommandBuffer(ctx context.Context, e
 				return VkCommandBuffer(0), err
 			}
 			splitTransform.thisSubpass = 0
-			args = NewVkCmdBeginRenderPassArgsʳ(inputState.Arena, VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+			args = NewVkCmdBeginRenderPassArgsʳ(VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
 				splitTransform.currentRenderPass[splitTransform.thisSubpass][0], ar.Framebuffer(), ar.RenderArea(), ar.ClearValues(),
 				ar.DeviceGroupBeginInfo())
 			splitTransform.thisRenderPass = ar
 		case VkCmdNextSubpassArgsʳ:
-			args = NewVkCmdEndRenderPassArgsʳ(inputState.Arena)
+			args = NewVkCmdEndRenderPassArgsʳ()
 			extraArgs = append(extraArgs,
 				NewVkCmdBeginRenderPassArgsʳ(
-					inputState.Arena, VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
 					splitTransform.currentRenderPass[splitTransform.thisSubpass][2], splitTransform.thisRenderPass.Framebuffer(), splitTransform.thisRenderPass.RenderArea(), splitTransform.thisRenderPass.ClearValues(),
 					splitTransform.thisRenderPass.DeviceGroupBeginInfo()))
-			extraArgs = append(extraArgs, NewVkCmdEndRenderPassArgsʳ(inputState.Arena))
+			extraArgs = append(extraArgs, NewVkCmdEndRenderPassArgsʳ())
 
 			splitTransform.thisSubpass++
 			extraArgs = append(extraArgs,
 				NewVkCmdBeginRenderPassArgsʳ(
-					inputState.Arena, VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
 					splitTransform.currentRenderPass[splitTransform.thisSubpass][0], splitTransform.thisRenderPass.Framebuffer(), splitTransform.thisRenderPass.RenderArea(), splitTransform.thisRenderPass.ClearValues(),
 					splitTransform.thisRenderPass.DeviceGroupBeginInfo()))
 		case VkCmdEndRenderPassArgsʳ:
 			extraArgs = append(extraArgs,
 				NewVkCmdBeginRenderPassArgsʳ(
-					inputState.Arena, VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
 					splitTransform.currentRenderPass[splitTransform.thisSubpass][2], splitTransform.thisRenderPass.Framebuffer(), splitTransform.thisRenderPass.RenderArea(), splitTransform.thisRenderPass.ClearValues(),
 					splitTransform.thisRenderPass.DeviceGroupBeginInfo()))
-			extraArgs = append(extraArgs, NewVkCmdEndRenderPassArgsʳ(inputState.Arena))
+			extraArgs = append(extraArgs, NewVkCmdEndRenderPassArgsʳ())
 			splitTransform.thisRenderPass = NilVkCmdBeginRenderPassArgsʳ
 			splitTransform.thisSubpass = 0
 		case VkCmdBindPipelineArgsʳ:
@@ -673,7 +673,7 @@ func (splitTransform *commandSplitter) splitCommandBuffer(ctx context.Context, e
 						log.E(ctx, "Failed during rewriting graphics pipeline : %v", err)
 						return VkCommandBuffer(0), err
 					}
-					np := ar.Clone(inputState.Arena, api.CloneContext{})
+					np := ar.Clone(api.CloneContext{})
 					np.SetPipeline(newPipeline)
 					args = np
 				}
@@ -720,7 +720,7 @@ func (splitTransform *commandSplitter) splitCommandBuffer(ctx context.Context, e
 			// If we were not in a renderpass then we do not need to drop out
 			// of it.
 			if splitTransform.thisRenderPass != NilVkCmdBeginRenderPassArgsʳ {
-				extraArgs = append(extraArgs, NewVkCmdEndRenderPassArgsʳ(inputState.Arena))
+				extraArgs = append(extraArgs, NewVkCmdEndRenderPassArgsʳ())
 			}
 			extraArgs = append(extraArgs, &InsertionCommand{
 				embedBuffer,
@@ -733,7 +733,7 @@ func (splitTransform *commandSplitter) splitCommandBuffer(ctx context.Context, e
 			if splitTransform.thisRenderPass != NilVkCmdBeginRenderPassArgsʳ {
 				extraArgs = append(extraArgs,
 					NewVkCmdBeginRenderPassArgsʳ(
-						inputState.Arena, VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+						VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
 						splitTransform.currentRenderPass[splitTransform.thisSubpass][1], splitTransform.thisRenderPass.Framebuffer(), splitTransform.thisRenderPass.RenderArea(), splitTransform.thisRenderPass.ClearValues(),
 						splitTransform.thisRenderPass.DeviceGroupBeginInfo()))
 			}
@@ -773,7 +773,7 @@ func (splitTransform *commandSplitter) splitCommandBuffer(ctx context.Context, e
 }
 
 func (splitTransform *commandSplitter) getStartedCommandBuffer(ctx context.Context, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkCommandBuffer, error) {
-	cb := CommandBuilder{Thread: queueSubmit.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: queueSubmit.Thread()}
 	queue := GetState(inputState).Queues().Get(queueSubmit.Queue())
 
 	commandPoolID, err := splitTransform.getCommandPool(ctx, queueSubmit, inputState)
@@ -782,7 +782,7 @@ func (splitTransform *commandSplitter) getStartedCommandBuffer(ctx context.Conte
 		return VkCommandBuffer(0), err
 	}
 
-	commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(inputState.Arena,
+	commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                      // pNext
 		commandPoolID,                                                  // commandPool
@@ -805,7 +805,7 @@ func (splitTransform *commandSplitter) getStartedCommandBuffer(ctx context.Conte
 		return VkCommandBuffer(0), err
 	}
 
-	beginInfo := NewVkCommandBufferBeginInfo(inputState.Arena,
+	beginInfo := NewVkCommandBufferBeginInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                   // pNext
 		0,                                                           // flags
@@ -829,14 +829,14 @@ func (splitTransform *commandSplitter) getCommandPool(ctx context.Context, queue
 		return splitTransform.pool, nil
 	}
 
-	cb := CommandBuilder{Thread: queueSubmit.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: queueSubmit.Thread()}
 	queue := GetState(inputState).Queues().Get(queueSubmit.Queue())
 
 	splitTransform.pool = VkCommandPool(newUnusedID(false, func(x uint64) bool {
 		return GetState(inputState).CommandPools().Contains(VkCommandPool(x))
 	}))
 
-	poolCreateInfo := NewVkCommandPoolCreateInfo(inputState.Arena,
+	poolCreateInfo := NewVkCommandPoolCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,                                 // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                                                  // pNext
 		VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_TRANSIENT_BIT), // flags

@@ -138,7 +138,7 @@ func (issueTransform *findIssues) ClearTransformResources(ctx context.Context) {
 func (issueTransform *findIssues) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
 	cmds := make([]api.Cmd, 0)
 
-	commandBuilder := CommandBuilder{Thread: 0, Arena: inputState.Arena}
+	commandBuilder := CommandBuilder{Thread: 0}
 	for instance, callback := range issueTransform.reportCallbacks {
 		newCmd := commandBuilder.ReplayDestroyVkDebugReportCallback(instance, callback)
 		if newCmd != nil {
@@ -223,7 +223,7 @@ func (issueTransform *findIssues) modifyVkCreateInstance(ctx context.Context, cm
 	info.SetPpEnabledExtensionNames(NewCharᶜᵖᶜᵖ(extsData.Ptr()))
 	infoData := issueTransform.allocations.AllocDataOrPanic(ctx, info)
 
-	commandBuilder := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	commandBuilder := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := commandBuilder.VkCreateInstance(infoData.Ptr(), cmd.PAllocator(), cmd.PInstance(), cmd.Result())
 	newCmd.AddRead(
 		validationMetaLayerData.Data(),
@@ -262,7 +262,6 @@ func (issueTransform *findIssues) createDebugReportCallback(ctx context.Context,
 	callbackHandleData := issueTransform.allocations.AllocDataOrPanic(ctx, callbackHandle)
 	callbackCreateInfo := issueTransform.allocations.AllocDataOrPanic(
 		ctx, NewVkDebugReportCallbackCreateInfoEXT(
-			inputState.Arena,
 			VkStructureType_VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT, // sType
 			0, // pNext
 			VkDebugReportFlagsEXT((VkDebugReportFlagBitsEXT_VK_DEBUG_REPORT_DEBUG_BIT_EXT<<1)-1), // flags
@@ -270,7 +269,7 @@ func (issueTransform *findIssues) createDebugReportCallback(ctx context.Context,
 			0, // pUserData
 		))
 
-	commandBuilder := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	commandBuilder := CommandBuilder{Thread: cmd.Thread()}
 	return commandBuilder.ReplayCreateVkDebugReportCallback(
 		instance,
 		callbackCreateInfo.Ptr(),
@@ -290,7 +289,7 @@ func (issueTransform *findIssues) destroyDebugReportCallback(cmd *VkDestroyInsta
 		return nil
 	}
 
-	commandBuilder := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	commandBuilder := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := commandBuilder.ReplayDestroyVkDebugReportCallback(instance, callbackHandle)
 	delete(issueTransform.reportCallbacks, instance)
 	return newCmd

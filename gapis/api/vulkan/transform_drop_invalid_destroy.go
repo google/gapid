@@ -243,7 +243,7 @@ func (dropTransform *dropInvalidDestroy) dropOrModifyFreeDescriptorSets(ctx cont
 
 	newDescSetsData := dropTransform.allocations.AllocDataOrPanic(ctx, newDescSets)
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := cb.VkFreeDescriptorSets(
 		cmd.Device(), cmd.DescriptorPool(), uint32(len(newDescSets)),
 		newDescSetsData.Ptr(), VkResult_VK_SUCCESS).AddRead(newDescSetsData.Data())
@@ -286,7 +286,7 @@ func (dropTransform *dropInvalidDestroy) dropOrModifyFreeCommandBuffers(ctx cont
 
 	newCmdBufsData := dropTransform.allocations.AllocDataOrPanic(ctx, newCmdBufs)
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := cb.VkFreeCommandBuffers(cmd.Device(), cmd.CommandPool(), uint32(len(newCmdBufs)), newCmdBufsData.Ptr()).AddRead(newCmdBufsData.Data())
 
 	return newCmd

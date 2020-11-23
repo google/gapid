@@ -451,7 +451,7 @@ func (API) RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, dat 
 	}
 	s := GetState(st)
 
-	cb := CommandBuilder{Thread: 0, Arena: st.Arena}
+	cb := CommandBuilder{Thread: 0}
 	_, a, err := AddCommand(ctx, cb, cr.Buffer(), st, st, GetCommandArgs(ctx, cr, s))
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Invalid Command")

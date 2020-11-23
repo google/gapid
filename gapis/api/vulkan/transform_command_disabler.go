@@ -152,7 +152,7 @@ func (disablerTransform *commandDisabler) TransformCommand(ctx context.Context, 
 func (disablerTransform *commandDisabler) removeCommandFromVkQueueSubmit(ctx context.Context,
 	idx api.SubCmdIdx, cmd *VkQueueSubmit, inputState *api.GlobalState) error {
 	layout := inputState.MemoryLayout
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	submitInfos := cmd.PSubmits().Slice(0, uint64(cmd.SubmitCount()), layout).MustRead(ctx, cmd, inputState, nil)
@@ -223,7 +223,7 @@ func (disablerTransform *commandDisabler) removeCommandFromSubmit(ctx context.Co
 
 	newCbs := disablerTransform.mustAllocReadDataForSubmit(ctx, inputState, newCommandBuffers)
 
-	newSubmitInfo := MakeVkSubmitInfo(inputState.Arena)
+	newSubmitInfo := MakeVkSubmitInfo()
 	newSubmitInfo.SetSType(submitInfo.SType())
 	newSubmitInfo.SetPNext(submitInfo.PNext())
 	newSubmitInfo.SetWaitSemaphoreCount(submitInfo.WaitSemaphoreCount())
@@ -238,7 +238,7 @@ func (disablerTransform *commandDisabler) removeCommandFromSubmit(ctx context.Co
 
 func (disablerTransform *commandDisabler) rewriteCommandBuffer(ctx context.Context, idx api.SubCmdIdx,
 	existingCommandBuffer CommandBufferObjectʳ, cmd *VkQueueSubmit, inputState *api.GlobalState) (VkCommandBuffer, error) {
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	st := GetState(inputState)
 
 	newCmdBuffer, err := disablerTransform.getNewCommandBufferAndBegin(ctx, existingCommandBuffer, cmd, inputState)
@@ -329,14 +329,14 @@ func (disablerTransform *commandDisabler) rewriteExecuteSecondaryCommandBuffer(c
 		return nil, log.Err(ctx, nil, "Number of command buffers changed")
 	}
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	commandBuffersMemory := disablerTransform.mustAllocReadDataForCmd(ctx, inputState, newCommandBuffers)
 	newCmd := cb.VkCmdExecuteCommands(primaryCommandBuffer, existingCmdBufferCount, commandBuffersMemory.Ptr())
 	return newCmd, nil
 }
 
 func (disablerTransform *commandDisabler) getNewCommandBufferAndBegin(ctx context.Context, existingCommandBuffer CommandBufferObjectʳ, cmd *VkQueueSubmit, inputState *api.GlobalState) (VkCommandBuffer, error) {
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	queue := GetState(inputState).Queues().Get(cmd.Queue())
 
 	commandPoolID, err := disablerTransform.getNewCommandPool(ctx, cmd, inputState)
@@ -344,7 +344,7 @@ func (disablerTransform *commandDisabler) getNewCommandBufferAndBegin(ctx contex
 		return VkCommandBuffer(0), log.Err(ctx, err, "Failed during getting command pool")
 	}
 
-	commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(inputState.Arena,
+	commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                      // pNext
 		commandPoolID,                                                  // commandPool
@@ -368,7 +368,7 @@ func (disablerTransform *commandDisabler) getNewCommandBufferAndBegin(ctx contex
 
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 	if !existingCommandBuffer.BeginInfo().DeviceGroupBegin().IsNil() {
-		beginInfo := NewVkDeviceGroupCommandBufferBeginInfo(inputState.Arena,
+		beginInfo := NewVkDeviceGroupCommandBufferBeginInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO, // sType
 			pNext, // pNext
 			existingCommandBuffer.BeginInfo().DeviceGroupBegin().DeviceMask(), // deviceMask
@@ -379,7 +379,7 @@ func (disablerTransform *commandDisabler) getNewCommandBufferAndBegin(ctx contex
 
 	pInheritenceInfo := NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr)
 	if existingBeginInfo := existingCommandBuffer.BeginInfo(); existingBeginInfo.Inherited() {
-		inheritenceInfo := NewVkCommandBufferInheritanceInfo(inputState.Arena,
+		inheritenceInfo := NewVkCommandBufferInheritanceInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
 			NewVoidᶜᵖ(memory.Nullptr),
 			existingBeginInfo.InheritedRenderPass(),
@@ -394,7 +394,7 @@ func (disablerTransform *commandDisabler) getNewCommandBufferAndBegin(ctx contex
 		pInheritenceInfo = NewVkCommandBufferInheritanceInfoᶜᵖ(inheritanceInfoData.Ptr())
 	}
 
-	beginInfo := NewVkCommandBufferBeginInfo(inputState.Arena,
+	beginInfo := NewVkCommandBufferBeginInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
 		pNext, // pNext
 		existingCommandBuffer.BeginInfo().Flags(), // flags
@@ -417,14 +417,14 @@ func (disablerTransform *commandDisabler) getNewCommandPool(ctx context.Context,
 		return disablerTransform.pool, nil
 	}
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: inputState.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread()}
 	queue := GetState(inputState).Queues().Get(cmd.Queue())
 
 	disablerTransform.pool = VkCommandPool(newUnusedID(false, func(x uint64) bool {
 		return GetState(inputState).CommandPools().Contains(VkCommandPool(x))
 	}))
 
-	poolCreateInfo := NewVkCommandPoolCreateInfo(inputState.Arena,
+	poolCreateInfo := NewVkCommandPoolCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,                                 // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                                                  // pNext
 		VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_TRANSIENT_BIT), // flags

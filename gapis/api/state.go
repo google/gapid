@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -39,9 +38,6 @@ type GlobalState struct {
 	// MemoryLayout holds information about the device memory layout that was
 	// used to create the capture.
 	MemoryLayout *device.MemoryLayout
-
-	// Arena is the memory arena used for state allocations.
-	Arena arena.Arena
 
 	// Memory holds the memory state of the application.
 	Memory memory.Pools
@@ -77,7 +73,7 @@ type State interface {
 	APIObject
 
 	// Clone returns a deep copy of the state object.
-	Clone(arena.Arena) State
+	Clone() State
 
 	// Root returns the path to the root of the state to display. It can vary
 	// based on filtering mode. Returning nil, nil indicates there is no state
@@ -104,7 +100,6 @@ func NewStateWithEmptyAllocator(memoryLayout *device.MemoryLayout) *GlobalState 
 func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.MemoryLayout) *GlobalState {
 	return &GlobalState{
 		MemoryLayout: memoryLayout,
-		Arena:        arena.New(),
 		Memory:       memory.NewPools(),
 		APIs:         map[ID]State{},
 		Allocator:    allocator,

@@ -14,19 +14,17 @@
 
 package encodertest
 
+//#include "core/memory/arena/cc/arena.h"
 //#include "test.h"
 import "C"
 
 import (
 	"unsafe"
 
-	"github.com/google/gapid/core/memory/arena"
-	"github.com/google/gapid/gapis/memory/memory_pb"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
-
 	pb "github.com/google/gapid/gapil/compiler/plugins/encoder/test/encoder_pb"
+	"github.com/google/gapid/gapis/memory/memory_pb"
 )
 
 type callbacks []interface{}
@@ -110,11 +108,11 @@ type cbBackref struct {
 }
 
 func withEncoder(f func(ctx *C.context)) callbacks {
-	a := arena.New()
-	ctx := C.create_context((*C.arena)(a.Pointer))
+	a := C.arena_create()
+	ctx := C.create_context(a)
 	defer func() {
 		C.destroy_context(ctx)
-		a.Dispose()
+		C.arena_destroy(a)
 	}()
 
 	e := encoder{
@@ -202,9 +200,9 @@ func encodeCmdPointers(cmd *pb.CmdPointers, isGroup bool) callbacks {
 }
 
 func convBasicTypes(class *pb.BasicTypes, out *C.basic_types) (dispose func()) {
-	arena := arena.New()
+	arena := C.arena_create()
 
-	n := C.gapil_make_string((*C.arena)(arena.Pointer), (C.uint64_t)(len(class.N)), (unsafe.Pointer)(C.CString(class.N)))
+	n := C.gapil_make_string(arena, (C.uint64_t)(len(class.N)), (unsafe.Pointer)(C.CString(class.N)))
 	*out = C.basic_types{
 		a: (C.uint8_t)(class.A),
 		b: (C.int8_t)(class.B),
@@ -221,7 +219,9 @@ func convBasicTypes(class *pb.BasicTypes, out *C.basic_types) (dispose func()) {
 		m: (*C.uint32_t)((unsafe.Pointer)(uintptr(class.M))),
 		n: n,
 	}
-	return arena.Dispose
+	return func() {
+		C.arena_destroy(arena)
+	}
 }
 
 func convInnerClass(class *pb.InnerClass, out *C.inner_class) (dispose func()) {
@@ -255,12 +255,12 @@ func encodeNestedClasses(class *pb.NestedClasses, isGroup bool) callbacks {
 }
 
 func encodeMapTypes(maps *pb.MapTypes, isGroup bool) callbacks {
-	arena := arena.New()
-	defer arena.Dispose()
+	arena := C.arena_create()
+	defer C.arena_destroy(arena)
 
 	s := C.map_types{}
-	C.create_map_u32((*C.arena)(arena.Pointer), &s.a)
-	C.create_map_string((*C.arena)(arena.Pointer), &s.b)
+	C.create_map_u32(arena, &s.a)
+	C.create_map_string(arena, &s.b)
 
 	for i := range maps.A.Keys {
 		C.insert_map_u32(s.a, (C.uint32_t)(maps.A.Keys[i]), (C.uint32_t)(maps.A.Values[i]))
@@ -278,13 +278,13 @@ func encodeMapTypes(maps *pb.MapTypes, isGroup bool) callbacks {
 }
 
 func encodeRefTypes(refs *pb.RefTypes, isGroup bool) callbacks {
-	arena := arena.New()
-	defer arena.Dispose()
+	arena := C.arena_create()
+	defer C.arena_destroy(arena)
 
 	s := C.ref_types{}
 
-	a := C.create_basic_types_ref((*C.arena)(arena.Pointer), &s.a)
-	b := C.create_inner_class_ref((*C.arena)(arena.Pointer), &s.b)
+	a := C.create_basic_types_ref(arena, &s.a)
+	b := C.create_inner_class_ref(arena, &s.b)
 
 	disposeA := convBasicTypes(refs.A.Value, a)
 	defer disposeA()

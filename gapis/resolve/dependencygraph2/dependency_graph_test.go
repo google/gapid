@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
@@ -40,7 +39,7 @@ func (TestCmd) Extras() *api.CmdExtras { return &api.CmdExtras{} }
 func (TestCmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder, api.StateWatcher) error {
 	return nil
 }
-func (TestCmd) Clone(arena.Arena) api.Cmd     { return TestCmd{} }
+func (TestCmd) Clone() api.Cmd                { return TestCmd{} }
 func (TestCmd) Alive() bool                   { return false }
 func (TestCmd) CmdParams() api.Properties     { return api.Properties{} }
 func (TestCmd) CmdResult() *api.Property      { return nil }
@@ -70,7 +69,7 @@ func (TestRef) API() api.API {
 	return nil
 }
 
-func (r TestRef) Clone(arena.Arena) api.State { return TestRef{r.refID} }
+func (r TestRef) Clone() api.State { return TestRef{r.refID} }
 
 func (TestRef) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (path.Node, error) {
 	return nil, nil
@@ -111,7 +110,7 @@ func TestBuilder(t *testing.T) {
 	// cmds := make([]api.Cmd, 6)
 	header := &capture.Header{ABI: device.LinuxX86_64}
 	cmds := []api.Cmd{TestCmd{}, TestCmd{}, TestCmd{}, TestCmd{}, TestCmd{}, TestCmd{}}
-	c, err := capture.NewGraphicsCapture(ctx, arena.New(), "test", header, &capture.InitialState{}, cmds)
+	c, err := capture.NewGraphicsCapture(ctx, "test", header, &capture.InitialState{}, cmds)
 	if !assert.For(ctx, "capture.NewGraphicsCapture").ThatError(err).Succeeded() {
 		return
 	}

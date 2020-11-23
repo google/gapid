@@ -21,7 +21,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 )
 
@@ -37,9 +36,9 @@ type decoder struct {
 	groups  map[uint64]interface{}
 }
 
-func newDecoder(a arena.Arena) *decoder {
+func newDecoder() *decoder {
 	return &decoder{
-		builder: newBuilder(a),
+		builder: newBuilder(),
 		groups:  map[uint64]interface{}{},
 	}
 }

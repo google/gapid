@@ -175,7 +175,7 @@ func (kb *ipRenderKitBuilder) BuildRenderKits(sb *stateBuilder, recipes ...ipRen
 		writeDescriptorSet(sb, kb.dev, des, ipRenderInputAttachmentBinding, 0,
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
 			[]VkDescriptorImageInfo{
-				NewVkDescriptorImageInfo(sb.ta,
+				NewVkDescriptorImageInfo(
 					0,                             // sampler
 					inputView,                     // image view
 					ipRenderInputAttachmentLayout, // layout
@@ -255,14 +255,14 @@ func (kit ipRenderKit) BuildRenderCommands(sb *stateBuilder) *queueCommandBatch 
 		sb.write(sb.cb.VkCmdBeginRenderPass(
 			commandBuffer,
 			sb.MustAllocReadData(
-				NewVkRenderPassBeginInfo(sb.ta,
+				NewVkRenderPassBeginInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // sType
 					NewVoidᶜᵖ(memory.Nullptr),                                // pNext
 					kit.renderPass,                                           // renderPass
 					kit.framebuffer,                                          // framebuffer
-					NewVkRect2D(sb.ta, // renderArea
-						NewVkOffset2D(sb.ta, kit.renderRectX, kit.renderRectY),
-						NewVkExtent2D(sb.ta, kit.renderRectWidth, kit.renderRectHeight),
+					NewVkRect2D( // renderArea
+						NewVkOffset2D(kit.renderRectX, kit.renderRectY),
+						NewVkExtent2D(kit.renderRectWidth, kit.renderRectHeight),
 					),
 					0, // clearValueCount
 					0, // pClearValues
@@ -276,18 +276,18 @@ func (kit ipRenderKit) BuildRenderCommands(sb *stateBuilder) *queueCommandBatch 
 				commandBuffer,
 				uint32(1),
 				sb.MustAllocReadData([]VkClearAttachment{
-					NewVkClearAttachment(sb.ta,
+					NewVkClearAttachment(
 						VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT), // aspectMask
-						0,                       // colorAttachment
-						MakeVkClearValue(sb.ta), // clearValue
+						0,                  // colorAttachment
+						MakeVkClearValue(), // clearValue
 					),
 				}).Ptr(),
 				uint32(1),
 				sb.MustAllocReadData([]VkClearRect{
-					NewVkClearRect(sb.ta,
-						NewVkRect2D(sb.ta,
-							NewVkOffset2D(sb.ta, kit.renderRectX, kit.renderRectY),
-							NewVkExtent2D(sb.ta, kit.renderRectWidth, kit.renderRectHeight),
+					NewVkClearRect(
+						NewVkRect2D(
+							NewVkOffset2D(kit.renderRectX, kit.renderRectY),
+							NewVkExtent2D(kit.renderRectWidth, kit.renderRectHeight),
 						), // rect
 						// the baseArrayLayer counts from the base layer of the
 						// attachment image view.
@@ -308,7 +308,7 @@ func (kit ipRenderKit) BuildRenderCommands(sb *stateBuilder) *queueCommandBatch 
 			commandBuffer,
 			uint32(0),
 			uint32(1),
-			NewVkViewportᶜᵖ(sb.MustAllocReadData(NewVkViewport(sb.ta,
+			NewVkViewportᶜᵖ(sb.MustAllocReadData(NewVkViewport(
 				0, 0, // x, y
 				float32(kit.framebufferWidth), float32(kit.framebufferHeight), // width, height
 				0, 1, // minDepth, maxDepth
@@ -316,9 +316,9 @@ func (kit ipRenderKit) BuildRenderCommands(sb *stateBuilder) *queueCommandBatch 
 		))
 		sb.write(sb.cb.VkCmdSetScissor(
 			commandBuffer,
-			0, 1, NewVkRect2Dᶜᵖ(sb.MustAllocReadData(NewVkRect2D(sb.ta,
-				NewVkOffset2D(sb.ta, kit.renderRectX, kit.renderRectY),
-				NewVkExtent2D(sb.ta, kit.renderRectWidth, kit.renderRectHeight),
+			0, 1, NewVkRect2Dᶜᵖ(sb.MustAllocReadData(NewVkRect2D(
+				NewVkOffset2D(kit.renderRectX, kit.renderRectY),
+				NewVkExtent2D(kit.renderRectWidth, kit.renderRectHeight),
 			)).Ptr()),
 		))
 		sb.write(sb.cb.VkCmdBindDescriptorSets(
@@ -390,12 +390,12 @@ func (kb *ipRenderKitBuilder) getOrCreateRenderPass(sb *stateBuilder, info ipRen
 		return kb.renderPassPool[i]
 	}
 
-	inputRef := NewVkAttachmentReference(sb.ta, ipRenderInputAttachmentIndex,
+	inputRef := NewVkAttachmentReference(ipRenderInputAttachmentIndex,
 		ipRenderInputAttachmentLayout)
-	outputRef := NewVkAttachmentReference(sb.ta, ipRenderOutputAttachmentIndex,
+	outputRef := NewVkAttachmentReference(ipRenderOutputAttachmentIndex,
 		ipRenderColorOutputLayout)
 
-	inputDesc := NewVkAttachmentDescription(sb.ta,
+	inputDesc := NewVkAttachmentDescription(
 		0,                          // flags
 		info.inputAttachmentFormat, // format
 		VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT,          // samples
@@ -406,7 +406,7 @@ func (kb *ipRenderKitBuilder) getOrCreateRenderPass(sb *stateBuilder, info ipRen
 		ipRenderInputAttachmentLayout,                        // initialLayout
 		ipRenderInputAttachmentLayout,                        // finalLayout
 	)
-	outputDesc := NewVkAttachmentDescription(sb.ta,
+	outputDesc := NewVkAttachmentDescription(
 		0,                 // flags
 		info.outputFormat, // format
 		VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT,        // samples
@@ -419,7 +419,7 @@ func (kb *ipRenderKitBuilder) getOrCreateRenderPass(sb *stateBuilder, info ipRen
 		ipRenderColorOutputLayout,                        // initialLayout
 		ipRenderColorOutputLayout,                        // finalLayout
 	)
-	subpassDesc := NewVkSubpassDescription(sb.ta,
+	subpassDesc := NewVkSubpassDescription(
 		0, // flags
 		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS, // pipelineBindPoint
 		uint32(1), // inputAttachmentCount
@@ -450,7 +450,7 @@ func (kb *ipRenderKitBuilder) getOrCreateRenderPass(sb *stateBuilder, info ipRen
 		}
 	}
 
-	createInfo := NewVkRenderPassCreateInfo(sb.ta,
+	createInfo := NewVkRenderPassCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
 		0,         // pNext
 		0,         // flags
@@ -540,7 +540,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 	default:
 	}
 
-	depethStencilState := NewVkPipelineDepthStencilStateCreateInfo(sb.ta,
+	depethStencilState := NewVkPipelineDepthStencilStateCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO, // sType
 		0,                                // pNext
 		0,                                // flags
@@ -549,7 +549,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 		VkCompareOp_VK_COMPARE_OP_ALWAYS, // depthCompareOp
 		0,                                // depthBoundsTestEnable
 		stencilTestEnable,
-		NewVkStencilOpState(sb.ta, // front
+		NewVkStencilOpState( // front
 			VkStencilOp_VK_STENCIL_OP_KEEP,    // failOp
 			VkStencilOp_VK_STENCIL_OP_REPLACE, // passOp
 			VkStencilOp_VK_STENCIL_OP_REPLACE, // depthFailOp
@@ -559,7 +559,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 			0, // writeMask
 			0, // reference
 		),
-		NewVkStencilOpState(sb.ta,
+		NewVkStencilOpState(
 			0, // failOp
 			0, // passOp
 			0, // depthFailOp
@@ -571,14 +571,14 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 		0.0, // minDepthBounds
 		0.0, // maxDepthBounds
 	)
-	createInfo := NewVkGraphicsPipelineCreateInfo(sb.ta,
+	createInfo := NewVkGraphicsPipelineCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // sType
 		0, // pNext
 		0, // flags
 		2, // stageCount
 		NewVkPipelineShaderStageCreateInfoᶜᵖ(sb.MustAllocReadData( // pStages
 			[]VkPipelineShaderStageCreateInfo{
-				NewVkPipelineShaderStageCreateInfo(sb.ta,
+				NewVkPipelineShaderStageCreateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
 					0, // pNext
 					0, // flags
@@ -587,7 +587,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 					NewCharᶜᵖ(sb.MustAllocReadData("main").Ptr()), // pName
 					NewVkSpecializationInfoᶜᵖ(memory.Nullptr),     // pSpecializationInfo
 				),
-				NewVkPipelineShaderStageCreateInfo(sb.ta,
+				NewVkPipelineShaderStageCreateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
 					0, // pNext
 					0, // flags
@@ -598,7 +598,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 				),
 			}).Ptr()),
 		NewVkPipelineVertexInputStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pVertexInputState
-			NewVkPipelineVertexInputStateCreateInfo(sb.ta,
+			NewVkPipelineVertexInputStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // sType
 				0, // pNext
 				0, // flags
@@ -608,7 +608,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 				NewVkVertexInputAttributeDescriptionᶜᵖ(memory.Nullptr),
 			)).Ptr()),
 		NewVkPipelineInputAssemblyStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pInputAssemblyState
-			NewVkPipelineInputAssemblyStateCreateInfo(sb.ta,
+			NewVkPipelineInputAssemblyStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, // sType
 				0, // pNext
 				0, // flags
@@ -617,7 +617,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 			)).Ptr()),
 		0, // pTessellationState
 		NewVkPipelineViewportStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pViewportState
-			NewVkPipelineViewportStateCreateInfo(sb.ta,
+			NewVkPipelineViewportStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO, // sType
 				0, // pNext
 				0, // flags
@@ -629,7 +629,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 				0, // pScissors
 			)).Ptr()),
 		NewVkPipelineRasterizationStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pRasterizationState
-			NewVkPipelineRasterizationStateCreateInfo(sb.ta,
+			NewVkPipelineRasterizationStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, // sType
 				0,                                  // pNext
 				0,                                  // flags
@@ -645,7 +645,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 				1, // lineWidth
 			)).Ptr()),
 		NewVkPipelineMultisampleStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pMultisampleState
-			NewVkPipelineMultisampleStateCreateInfo(sb.ta,
+			NewVkPipelineMultisampleStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, // sType
 				0, // pNext
 				0, // flags
@@ -658,7 +658,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 			)).Ptr()),
 		NewVkPipelineDepthStencilStateCreateInfoᶜᵖ(sb.MustAllocReadData(depethStencilState).Ptr()), // pDepthStencilState
 		NewVkPipelineColorBlendStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pColorBlendState
-			NewVkPipelineColorBlendStateCreateInfo(sb.ta,
+			NewVkPipelineColorBlendStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, // sType
 				0,                           // pNext
 				0,                           // flags
@@ -667,7 +667,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 				numColorAttachments,         // attachmentCount
 				// there is at most one color attachment
 				NewVkPipelineColorBlendAttachmentStateᶜᵖ(sb.MustAllocReadData( // pAttachments
-					NewVkPipelineColorBlendAttachmentState(sb.ta,
+					NewVkPipelineColorBlendAttachmentState(
 						0,                                  // blendEnable
 						VkBlendFactor_VK_BLEND_FACTOR_ZERO, // srcColorBlendFactor
 						VkBlendFactor_VK_BLEND_FACTOR_ONE,  // dstColorBlendFactor
@@ -680,7 +680,7 @@ func (kb *ipRenderKitBuilder) getOrCreatePipeline(sb *stateBuilder, info ipRende
 				NilF32ː4ᵃ, // blendConstants
 			)).Ptr()),
 		NewVkPipelineDynamicStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pDynamicState
-			NewVkPipelineDynamicStateCreateInfo(sb.ta,
+			NewVkPipelineDynamicStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, // sType
 				0,                          // pNext
 				0,                          // flags
@@ -743,7 +743,7 @@ func (kb *ipRenderKitBuilder) getOrCreateFramebuffer(sb *stateBuilder, info ipRe
 		outputAspect:          info.outputAspect,
 		outputFormat:          GetState(sb.newState).Images().Get(info.outputImage).Info().Fmt(),
 	})
-	createInfo := NewVkFramebufferCreateInfo(sb.ta,
+	createInfo := NewVkFramebufferCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, // sType
 		0,                  // pNext
 		0,                  // flags

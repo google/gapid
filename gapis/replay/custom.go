@@ -17,7 +17,6 @@ package replay
 import (
 	"context"
 
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -41,15 +40,15 @@ func (c Custom) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState,
 }
 
 // api.Cmd compliance
-func (cmd Custom) Thread() uint64            { return cmd.T }
-func (cmd Custom) SetThread(t uint64)        { cmd.T = t }
-func (Custom) CmdName() string               { return "<Custom>" }
-func (Custom) API() api.API                  { return nil }
-func (Custom) CmdParams() api.Properties     { return nil }
-func (Custom) CmdResult() *api.Property      { return nil }
-func (Custom) CmdFlags() api.CmdFlags        { return 0 }
-func (Custom) Extras() *api.CmdExtras        { return nil }
-func (cmd Custom) Clone(arena.Arena) api.Cmd { return Custom{cmd.T, cmd.F} }
-func (Custom) Alive() bool                   { return false }
-func (Custom) Terminated() bool              { return false }
-func (Custom) SetTerminated(bool)            {}
+func (cmd Custom) Thread() uint64        { return cmd.T }
+func (cmd Custom) SetThread(t uint64)    { cmd.T = t }
+func (Custom) CmdName() string           { return "<Custom>" }
+func (Custom) API() api.API              { return nil }
+func (Custom) CmdParams() api.Properties { return nil }
+func (Custom) CmdResult() *api.Property  { return nil }
+func (Custom) CmdFlags() api.CmdFlags    { return 0 }
+func (Custom) Extras() *api.CmdExtras    { return nil }
+func (cmd Custom) Clone() api.Cmd        { return Custom{cmd.T, cmd.F} }
+func (Custom) Alive() bool               { return false }
+func (Custom) Terminated() bool          { return false }
+func (Custom) SetTerminated(bool)        {}

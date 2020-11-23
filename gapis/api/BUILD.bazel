@@ -71,7 +71,6 @@ go_library(
         "//core/math/f32:go_default_library",
         "//core/math/interval:go_default_library",
         "//core/math/sint:go_default_library",
-        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",

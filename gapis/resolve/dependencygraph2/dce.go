@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -65,7 +64,7 @@ func DCECapture(ctx context.Context, name string, p *path.Capture, requestedCmds
 	}
 	builder.Build(ctx)
 
-	if gc, err := capture.NewGraphicsCapture(ctx, arena.New(), name, c.Header, c.InitialState, builder.LiveCmds()); err != nil {
+	if gc, err := capture.NewGraphicsCapture(ctx, name, c.Header, c.InitialState, builder.LiveCmds()); err != nil {
 		return nil, err
 	} else {
 		return capture.New(ctx, gc)
@@ -245,7 +244,7 @@ func (b *DCEBuilder) buildLiveCmds(ctx context.Context) {
 			cmd := b.graph.GetCommand(cmdID)
 			if alive {
 				b.numLive++
-				b.processLiveCmd(ctx, b.graph.Capture().Arena, cmdID, cmd)
+				b.processLiveCmd(ctx, cmdID, cmd)
 			} else {
 				b.numDead++
 			}
@@ -263,7 +262,7 @@ func (b *DCEBuilder) buildLiveCmds(ctx context.Context) {
 
 // Process a live command.
 // This involves possibly cloning and modifying the command, and then adding it to liveCmds.
-func (b *DCEBuilder) processLiveCmd(ctx context.Context, a arena.Arena, id api.CmdID, cmd api.Cmd) {
+func (b *DCEBuilder) processLiveCmd(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	// Helper to clone the command if we need to modify it.
 	// Cloning is necessary before any modification because this command is
 	// still used by another capture.
@@ -272,7 +271,7 @@ func (b *DCEBuilder) processLiveCmd(ctx context.Context, a arena.Arena, id api.C
 	cloneCmd := func() {
 		if !isCloned {
 			isCloned = true
-			cmd = cmd.Clone(a)
+			cmd = cmd.Clone()
 		}
 	}
 

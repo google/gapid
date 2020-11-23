@@ -118,12 +118,12 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 	}
 	srcImgLevel := srcImgObj.Aspects().Get(srcAspect).Layers().Get(
 		subAspect.layer).Levels().Get(subAspect.level)
-	srcDataOffset := uint64(sb.levelSize(NewVkExtent3D(sb.ta,
+	srcDataOffset := uint64(sb.levelSize(NewVkExtent3D(
 		uint32(subAspect.offsetX),
 		uint32(subAspect.offsetY),
 		uint32(subAspect.offsetZ),
 	), srcVkFmt, 0, srcAspect).levelSize)
-	srcDataSize := uint64(sb.levelSize(NewVkExtent3D(sb.ta,
+	srcDataSize := uint64(sb.levelSize(NewVkExtent3D(
 		uint32(subAspect.extentWidth),
 		uint32(subAspect.extentHeight),
 		uint32(subAspect.extentDepth),
@@ -136,7 +136,7 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 		data := srcDataSlice.MustRead(sb.ctx, nil, sb.oldState, nil)
 		if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 			data, srcVkFmt, err = ebgrDataToRGB32SFloat(data,
-				NewVkExtent3D(sb.ta,
+				NewVkExtent3D(
 					subAspect.extentWidth,
 					subAspect.extentHeight,
 					subAspect.extentDepth,
@@ -200,7 +200,7 @@ type ipHostCopyKitPiece struct {
 }
 
 func checkHostCopyPieceDataSize(sb *stateBuilder, format VkFormat, aspect VkImageAspectFlagBits, p ipHostCopyKitPiece) error {
-	extent := NewVkExtent3D(sb.ta, p.extentWidth, p.extentHeight, p.extentDepth)
+	extent := NewVkExtent3D(p.extentWidth, p.extentHeight, p.extentDepth)
 	levelSize := sb.levelSize(extent, format, 0, aspect)
 	if p.data.size != levelSize.alignedLevelSizeInBuf {
 		return fmt.Errorf("size of data does not match with expectation, actual: %v, expected: %v, format: %v, aspect: %v, extent: %v", p.data.size,
@@ -229,16 +229,16 @@ func (kit ipHostCopyKit) BuildHostCopyCommands(sb *stateBuilder) *queueCommandBa
 	copies := []VkBufferImageCopy{}
 	bufferOffset := uint64(0)
 	for _, p := range kit.pieces {
-		copy := NewVkBufferImageCopy(sb.ta,
+		copy := NewVkBufferImageCopy(
 			VkDeviceSize(bufferOffset), // bufferOffset
 			0,                          // bufferRowLength
 			0,                          // bufferImageHeight
-			NewVkImageSubresourceLayers(sb.ta, // imageSubresourceLayers
+			NewVkImageSubresourceLayers( // imageSubresourceLayers
 				VkImageAspectFlags(p.aspect),
 				p.level, p.layer, 1,
 			),
-			NewVkOffset3D(sb.ta, int32(p.offsetX), int32(p.offsetY), int32(p.offsetZ)),
-			NewVkExtent3D(sb.ta, p.extentWidth, p.extentHeight, p.extentDepth),
+			NewVkOffset3D(int32(p.offsetX), int32(p.offsetY), int32(p.offsetZ)),
+			NewVkExtent3D(p.extentWidth, p.extentHeight, p.extentDepth),
 		)
 		copies = append(copies, copy)
 		dataWithOffset := newHashedDataAndOffset(p.data, bufferOffset)
@@ -262,7 +262,7 @@ func (kit ipHostCopyKit) BuildHostCopyCommands(sb *stateBuilder) *queueCommandBa
 			memory.Nullptr,
 			uint32(1),
 			sb.MustAllocReadData(
-				NewVkBufferMemoryBarrier(sb.ta,
+				NewVkBufferMemoryBarrier(
 					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
 					0, // pNext
 					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
