@@ -17,6 +17,8 @@ package com.google.gapid.server;
 
 import static io.grpc.ClientInterceptors.intercept;
 import static io.grpc.stub.MetadataUtils.newAttachHeadersInterceptor;
+import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.WARNING;
 
 import com.google.gapid.proto.service.GapidGrpc;
 
@@ -25,6 +27,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
@@ -86,6 +89,7 @@ public abstract class GapisConnection implements Closeable {
     private final ManagedChannel baseChannel;
     private final Channel channel;
     private final int heartbeatRateMS;
+    private Thread heartbeat;
 
     public GRpcGapisConnection(
         CloseListener listener, String target, String authToken, int heartbeatRateMS) {
@@ -122,7 +126,11 @@ public abstract class GapisConnection implements Closeable {
       GapidClient client = caching ? new GapidClientCache(futureStub, stub) :
           new GapidClientGrpc(futureStub, stub);
       if (heartbeatRateMS > 0) {
-        new Heartbeat(client, heartbeatRateMS).start();
+        if (heartbeat != null) {
+          heartbeat.interrupt();
+        }
+        heartbeat = new Heartbeat(client, heartbeatRateMS);
+        heartbeat.start();
       }
       return client;
     }
@@ -130,6 +138,10 @@ public abstract class GapisConnection implements Closeable {
     @Override
     public void close() {
       baseChannel.shutdown();
+      if (heartbeat != null) {
+        heartbeat.interrupt();
+        heartbeat = null;
+      }
       super.close();
     }
 
@@ -138,6 +150,8 @@ public abstract class GapisConnection implements Closeable {
      * the server from exiting due to the --idle-timeout.
      */
     protected static class Heartbeat extends Thread {
+      private static final Logger LOG = Logger.getLogger(Heartbeat.class.getName());
+
       private final GapidClient client;
       private final int rateMS;
 
@@ -152,8 +166,12 @@ public abstract class GapisConnection implements Closeable {
           try {
             client.ping().get(rateMS, TimeUnit.MILLISECONDS);
             Thread.sleep(rateMS);
-          } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            return; // If the connection failed, the error will appear on another thread.
+          } catch (InterruptedException e) {
+            LOG.log(INFO, "Heartbeat exiting due to interruption: " + e);
+            return;
+          } catch (ExecutionException | TimeoutException e) {
+            LOG.log(WARNING, "Heartbeat exiting due to failure", e);
+            return;
           }
         }
       }
