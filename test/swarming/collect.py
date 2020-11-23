@@ -131,6 +131,17 @@ def main():
         'status': status
     }
 
+    #### Limit results logs to 90 runs
+    # This corresponds to ~3 months for nightly runs, and helps keeping the
+    # result file size under control
+    num_runs = 90
+    # Reverse-sort to get highest (more recent) timestamps at the list head
+    timestamps = sorted(results.keys(), reverse=True)[:num_runs]
+    new_results = {}
+    for t in timestamps:
+        new_results[t] = results[t]
+    results = new_results
+
     #### Write back result file
     os.makedirs(os.path.dirname(args.results_json), exist_ok=True)
     with open(args.results_json, 'w') as f:
