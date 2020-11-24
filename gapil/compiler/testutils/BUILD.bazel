@@ -20,12 +20,10 @@ go_library(
         "cmd.go",
         "data.go",
         "doc.go",
-        "externs.go",
     ],
     cdeps = [
         "//gapil/runtime/cc:arena",
     ],
-    cgo = True,
     clinkopts = [],  # keep
     importpath = "github.com/google/gapid/gapil/compiler/testutils",
     visibility = ["//visibility:public"],
@@ -35,7 +33,6 @@ go_library(
         "//core/data/id:go_default_library",
         "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
-        "//gapil/executor:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/memory:go_default_library",
         "//gapis/replay/builder:go_default_library",

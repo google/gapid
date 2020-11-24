@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -56,27 +56,5 @@ go_library(
         "//gapil/compiler/mangling:go_default_library",
         "//gapil/compiler/mangling/c:go_default_library",
         "//gapil/semantic:go_default_library",
-    ],
-)
-
-go_test(
-    name = "go_default_test",
-    size = "small",
-    srcs = ["compiler_test.go"],
-    embed = [":go_default_library"],
-    deps = [
-        "//core/assert:go_default_library",
-        "//core/log:go_default_library",
-        "//core/math/interval:go_default_library",
-        "//core/os/device:go_default_library",
-        "//core/text/parse:go_default_library",
-        "//gapil:go_default_library",
-        "//gapil/compiler/testutils:go_default_library",
-        "//gapil/executor:go_default_library",
-        "//gapil/semantic:go_default_library",
-        "//gapis/api:go_default_library",
-        "//gapis/capture:go_default_library",
-        "//gapis/database:go_default_library",
-        "//gapis/memory:go_default_library",
     ],
 )
