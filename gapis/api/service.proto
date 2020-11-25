@@ -525,19 +525,21 @@ message FramegraphBuffer {
   bool indirect = 12;
 }
 
-enum FramegraphImageNature {
-  NONE = 0;
-  SWAPCHAIN = 1;
-  TRANSIENT = 2;
-}
-
 message FramegraphImage {
   uint64 handle = 1;
   // We reuse image.Info here, but note that its Info.bytes field won't be set.
   image.Info info = 2;
   string imageType = 3;
   uint32 usage = 4;
-  FramegraphImageNature nature = 5;
+  bool transferSrc = 5;
+  bool transferDst = 6;
+  bool sampled = 7;
+  bool storage = 8;
+  bool colorAttachment = 9;
+  bool depthStencilAttachment = 10;
+  bool transientAttachment = 11;
+  bool inputAttachment = 12;
+  bool swapchain = 13;
 }
 
 enum LoadStoreOp {
@@ -585,10 +587,25 @@ message FramegraphRenderpass {
   repeated FramegraphBufferAccess bufferAccess = 9;
 }
 
+message FramegraphCompute {
+  repeated uint64 subCmdIdx = 1;
+  uint64 pipelineHandle = 2;
+  repeated FramegraphImageAccess imageAccess = 3;
+  repeated FramegraphBufferAccess bufferAccess = 4;
+  uint32 baseGroupX = 5;
+  uint32 baseGroupY = 6;
+  uint32 baseGroupZ = 7;
+  uint32 groupCountX = 8;
+  uint32 groupCountY = 9;
+  uint32 groupCountZ = 10;
+  bool indirect = 11;
+}
+
 message FramegraphNode {
   uint64 id = 1;
   oneof workload {
     FramegraphRenderpass renderpass = 2;
+    FramegraphCompute compute = 3;
   }
 }
 

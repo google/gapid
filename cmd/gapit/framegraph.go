@@ -107,12 +107,12 @@ func exportDot(ctx context.Context, framegraph *api.Framegraph, captureFilename 
 	// Graph title: use capture filename, on top
 	fmt.Fprintf(file, "label = \"%s\";\n", captureFilename)
 	fmt.Fprintf(file, "labelloc = \"t\";\n")
-	// Use monospace font everywhere
-	fmt.Fprintf(file, "node [fontname = \"Monospace\"];\n")
+	// Node style
+	fmt.Fprintf(file, "node [fontname=Monospace shape=rectangle];\n")
 	fmt.Fprintf(file, "\n")
 	// Node IDs cannot start with a digit, so use "n<node.Id>", e.g. n0 n1 n2
 	for _, node := range framegraph.Nodes {
-		fmt.Fprintf(file, fmt.Sprintf("n%v [label=\"%s\"];\n", node.Id, renderpass2dot(node.GetRenderpass())))
+		fmt.Fprintf(file, fmt.Sprintf("n%v [label=\"%s\"];\n", node.Id, node2dot(node)))
 	}
 	fmt.Fprintf(file, "\n")
 	for _, edge := range framegraph.Edges {
@@ -123,13 +123,39 @@ func exportDot(ctx context.Context, framegraph *api.Framegraph, captureFilename 
 }
 
 func image2dot(img *api.FramegraphImage) string {
-	nature := ""
-	if img.Nature != api.FramegraphImageNature_NONE {
-		nature = fmt.Sprintf(" %v", img.Nature)
+	usage := ""
+
+	if img.TransferSrc {
+		usage += " TransferSrc"
 	}
+	if img.TransferDst {
+		usage += " TransferDst"
+	}
+	if img.Sampled {
+		usage += " Sampled"
+	}
+	if img.Storage {
+		usage += " Storage"
+	}
+	if img.ColorAttachment {
+		usage += " ColorAttachment"
+	}
+	if img.DepthStencilAttachment {
+		usage += " DepthStencilAttachment"
+	}
+	if img.TransientAttachment {
+		usage += " TransientAttachment"
+	}
+	if img.InputAttachment {
+		usage += " InputAttachment"
+	}
+	if img.Swapchain {
+		usage += " Swapchain"
+	}
+
 	imgType := strings.TrimPrefix(fmt.Sprintf("%v", img.ImageType), "VK_IMAGE_TYPE_")
 	imgFormat := strings.TrimPrefix(fmt.Sprintf("%v", img.Info.Format.Name), "VK_FORMAT_")
-	return fmt.Sprintf("[Img %v%s %s %s %vx%vx%v]", img.Handle, nature, imgType, imgFormat, img.Info.Width, img.Info.Height, img.Info.Depth)
+	return fmt.Sprintf("[Img:%v %s %s %vx%vx%v usage:%v%s]", img.Handle, imgType, imgFormat, img.Info.Width, img.Info.Height, img.Info.Depth, img.Usage, usage)
 }
 
 func attachment2dot(att *api.FramegraphAttachment) string {
@@ -182,7 +208,7 @@ func buffer2dot(buf *api.FramegraphBuffer) string {
 		usage += " Indirect"
 	}
 
-	return fmt.Sprintf("[Buf %v size:%v usage:%v%s]", buf.Handle, buf.Size, buf.Usage, usage)
+	return fmt.Sprintf("[Buf:%v size:%v usage:%v%s]", buf.Handle, buf.Size, buf.Usage, usage)
 }
 
 func bufferAccess2dot(acc *api.FramegraphBufferAccess) string {
@@ -228,4 +254,39 @@ func renderpass2dot(rp *api.FramegraphRenderpass) string {
 	}
 
 	return s
+}
+
+func compute2dot(compute *api.FramegraphCompute) string {
+	s := fmt.Sprintf("Compute\\lcmd:%v\\l", compute.SubCmdIdx)
+	if compute.Indirect {
+		s += "Indirect\\l"
+	} else {
+		s += fmt.Sprintf("BaseGroupX:%v\\lBaseGroupY:%v\\lBaseGroupZ:%v\\lGroupCountX:%v\\lGroupCountY:%v\\lGroupCountZ:%v\\l", compute.BaseGroupX, compute.BaseGroupY, compute.BaseGroupZ, compute.GroupCountX, compute.GroupCountY, compute.GroupCountZ)
+	}
+
+	if len(compute.ImageAccess) > 0 {
+		s += "\\lImage accesses:\\l"
+		for _, acc := range compute.ImageAccess {
+			s += fmt.Sprintf("%s\\l", imageAccess2dot(acc))
+		}
+	}
+
+	if len(compute.BufferAccess) > 0 {
+		s += "\\lBuffer accesses:\\l"
+		for _, acc := range compute.BufferAccess {
+			s += fmt.Sprintf("%s\\l", bufferAccess2dot(acc))
+		}
+	}
+
+	return s
+}
+
+func node2dot(node *api.FramegraphNode) string {
+	if renderpass := node.GetRenderpass(); renderpass != nil {
+		return renderpass2dot(renderpass)
+	}
+	if compute := node.GetCompute(); compute != nil {
+		return compute2dot(compute)
+	}
+	return "INVALID NODE: neither renderpass nor compute"
 }

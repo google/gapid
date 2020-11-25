@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -30,19 +31,20 @@ import (
 )
 
 func newFramegraphBuffer(buf *BufferObjectʳ) *api.FramegraphBuffer {
+	usage := uint32(buf.Info().Usage())
 	return &api.FramegraphBuffer{
 		Handle:       uint64(buf.VulkanHandle()),
 		Size:         uint64(buf.Info().Size()),
-		Usage:        uint32(buf.Info().Usage()),
-		TransferSrc:  buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0,
-		TransferDst:  buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0,
-		UniformTexel: buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) != 0,
-		StorageTexel: buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) != 0,
-		Uniform:      buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0,
-		Storage:      buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0,
-		Index:        buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0,
-		Vertex:       buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0,
-		Indirect:     buf.Info().Usage()&VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) != 0,
+		Usage:        usage,
+		TransferSrc:  usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0,
+		TransferDst:  usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0,
+		UniformTexel: usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) != 0,
+		StorageTexel: usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) != 0,
+		Uniform:      usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0,
+		Storage:      usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0,
+		Index:        usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0,
+		Vertex:       usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0,
+		Indirect:     usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) != 0,
 	}
 }
 
@@ -51,23 +53,26 @@ func newFramegraphImage(img *ImageObjectʳ) *api.FramegraphImage {
 	if err != nil {
 		panic("Unrecognized Vulkan image format")
 	}
-	nature := api.FramegraphImageNature_NONE
-	if img.IsSwapchainImage() {
-		nature = api.FramegraphImageNature_SWAPCHAIN
-	} else if img.Info().Usage()&VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) != 0 {
-		nature = api.FramegraphImageNature_TRANSIENT
-	}
+	usage := uint32(img.Info().Usage())
 	return &api.FramegraphImage{
 		Handle:    uint64(img.VulkanHandle()),
-		Usage:     uint32(img.Info().Usage()),
+		Usage:     usage,
 		ImageType: strings.TrimPrefix(fmt.Sprintf("%v", img.Info().ImageType()), "VK_IMAGE_TYPE_"),
-		Nature:    nature,
 		Info: &image.Info{
 			Format: format,
 			Width:  img.Info().Extent().Width(),
 			Height: img.Info().Extent().Height(),
 			Depth:  img.Info().Extent().Depth(),
 		},
+		TransferSrc:            usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0,
+		TransferDst:            usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0,
+		Sampled:                usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT) != 0,
+		Storage:                usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT) != 0,
+		ColorAttachment:        usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0,
+		DepthStencilAttachment: usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0,
+		TransientAttachment:    usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) != 0,
+		InputAttachment:        usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) != 0,
+		Swapchain:              img.IsSwapchainImage(),
 	}
 }
 
@@ -181,17 +186,27 @@ type bufferAccessInfo struct {
 	buffer *api.FramegraphBuffer
 }
 
-// renderpassInfo stores a renderpass' info relevant for the framegraph.
-type renderpassInfo struct {
+// workloadInfo stores the workload details that are relevant for the framegraph.
+type workloadInfo struct {
+	// Exactly one of the following pointers should be non-nil.
+	// See api/service.proto for the possible values of workload.
+	// Note: it might be tempting to use the api.isFramegraphNode_Workload
+	// interface here, but down the line functions like GetRenderpass() returns
+	// either a value or nil, so you will have to check for nil anyway.
 	renderpass *api.FramegraphRenderpass
-	id         uint64
-	nodes      []dependencygraph2.NodeID
+	compute    *api.FramegraphCompute
 
-	// deps stores the set of renderpasses this renderpass depends on
+	// This workload ID, used in the framegraph edges
+	id uint64
+
+	// nodes stores the dependency graph nodes of commands of this workload
+	nodes []dependencygraph2.NodeID
+
+	// deps stores the set of IDs of workloads this workload depends on
 	deps map[uint64]struct{}
 
 	// imageAccesses is a temporary set that is eventually sorted and stored in
-	// renderpass.ImageAccess list.
+	// workload.ImageAccess list.
 	imageAccesses map[VkImage]*api.FramegraphImageAccess
 	// idem imageAccesses, but for buffers
 	bufferAccesses map[VkBuffer]*api.FramegraphBufferAccess
@@ -200,9 +215,9 @@ type renderpassInfo struct {
 // framegraphInfoHelpers contains variables that stores information while
 // processing subCommands.
 type framegraphInfoHelpers struct {
-	rpInfos  []*renderpassInfo
-	rpInfo   *renderpassInfo
-	currRpId uint64
+	workloadInfos  []*workloadInfo
+	wlInfo         *workloadInfo
+	currWorkloadId uint64
 	// imageLookup is a lookup table to quickly find images that match a memory
 	// access. Scanning the whole state to look for an image matching a memory
 	// access is slow, this lookup table saves seconds of computation. It is
@@ -213,6 +228,35 @@ type framegraphInfoHelpers struct {
 	// idem for buffers
 	bufferLookup map[memory.PoolID]map[memory.Range][]*BufferObjectʳ
 	parentCmdIdx uint64 // used to know when to update the lookup tables
+	// lookupInitialized is true if there has been at least one update of the
+	// lookup tables.
+	lookupInitialized bool
+}
+
+// newWorkloadInfo creates a new workload
+func (helpers *framegraphInfoHelpers) newWorkloadInfo(renderpass *api.FramegraphRenderpass, compute *api.FramegraphCompute) {
+	if helpers.wlInfo != nil {
+		panic("Creating a new workloadInfo while there is already one active")
+	}
+	helpers.wlInfo = &workloadInfo{
+		id:             helpers.currWorkloadId,
+		renderpass:     renderpass,
+		compute:        compute,
+		nodes:          []dependencygraph2.NodeID{},
+		deps:           make(map[uint64]struct{}),
+		imageAccesses:  make(map[VkImage]*api.FramegraphImageAccess),
+		bufferAccesses: make(map[VkBuffer]*api.FramegraphBufferAccess),
+	}
+	helpers.currWorkloadId++
+}
+
+// endWorkload terminates a workload
+func (helpers *framegraphInfoHelpers) endWorkload() {
+	if helpers.wlInfo == nil {
+		panic("Ending a workload while none is active")
+	}
+	helpers.workloadInfos = append(helpers.workloadInfos, helpers.wlInfo)
+	helpers.wlInfo = nil
 }
 
 // updateImageLookup updates the lookup table to quickly find an image matching a memory observation.
@@ -283,51 +327,102 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 	}
 	cmdArgs := GetCommandArgs(ctx, cmdRef, vkState)
 
+	// Detect beginning of workload
+	switch args := cmdArgs.(type) {
+
 	// Beginning of renderpass
-	if args, ok := cmdArgs.(VkCmdBeginRenderPassArgsʳ); ok {
-		if helpers.rpInfo != nil {
-			panic("Renderpass starts without having ended")
-		}
-		// Update image/buffer lookup tables if we change of top-level parent
-		// command index: these cannot be created/destroyed during subcommands.
-		parentCmdIdx := subCmdIdx[0]
-		if parentCmdIdx == 0 || parentCmdIdx > helpers.parentCmdIdx {
-			helpers.parentCmdIdx = parentCmdIdx
-			helpers.updateImageLookup(vkState)
-			helpers.updateBufferLookup(vkState)
+	case VkCmdBeginRenderPassArgsʳ:
+		if helpers.wlInfo != nil {
+			panic("Renderpass starts within another workload")
 		}
 
 		framebuffer := vkState.Framebuffers().Get(args.Framebuffer())
-		renderpass := vkState.RenderPasses().Get(args.RenderPass())
-		subpassesDesc := renderpass.SubpassDescriptions()
+		renderpassObj := vkState.RenderPasses().Get(args.RenderPass())
+		subpassesDesc := renderpassObj.SubpassDescriptions()
 		subpasses := make([]*api.FramegraphSubpass, subpassesDesc.Len())
 		for i := 0; i < len(subpasses); i++ {
 			subpassDesc := subpassesDesc.Get(uint32(i))
-			subpasses[i] = newFramegraphSubpass(subpassDesc, framebuffer, renderpass)
+			subpasses[i] = newFramegraphSubpass(subpassDesc, framebuffer, renderpassObj)
 		}
 
-		helpers.rpInfo = &renderpassInfo{
-			id:    helpers.currRpId,
-			nodes: []dependencygraph2.NodeID{},
-			deps:  make(map[uint64]struct{}),
-			renderpass: &api.FramegraphRenderpass{
-				Handle:            uint64(renderpass.VulkanHandle()),
-				BeginSubCmdIdx:    []uint64(subCmdIdx),
-				FramebufferWidth:  framebuffer.Width(),
-				FramebufferHeight: framebuffer.Height(),
-				FramebufferLayers: framebuffer.Layers(),
-				Subpass:           subpasses,
-			},
-			imageAccesses:  make(map[VkImage]*api.FramegraphImageAccess),
-			bufferAccesses: make(map[VkBuffer]*api.FramegraphBufferAccess),
+		renderpass := &api.FramegraphRenderpass{
+			Handle:            uint64(renderpassObj.VulkanHandle()),
+			BeginSubCmdIdx:    []uint64(subCmdIdx),
+			FramebufferWidth:  framebuffer.Width(),
+			FramebufferHeight: framebuffer.Height(),
+			FramebufferLayers: framebuffer.Layers(),
+			Subpass:           subpasses,
 		}
-		helpers.currRpId++
+		helpers.newWorkloadInfo(renderpass, nil)
+
+	// Begin of compute: vkCmdDispatch
+	case VkCmdDispatchArgsʳ:
+		compute := &api.FramegraphCompute{
+			SubCmdIdx:   []uint64(subCmdIdx),
+			BaseGroupX:  0,
+			BaseGroupY:  0,
+			BaseGroupZ:  0,
+			GroupCountX: args.GroupCountX(),
+			GroupCountY: args.GroupCountY(),
+			GroupCountZ: args.GroupCountZ(),
+			Indirect:    false,
+		}
+		helpers.newWorkloadInfo(nil, compute)
+
+	// Begin of compute: vkCmdDispatchBase
+	case VkCmdDispatchBaseArgsʳ:
+		compute := &api.FramegraphCompute{
+			SubCmdIdx:   []uint64(subCmdIdx),
+			BaseGroupX:  args.BaseGroupX(),
+			BaseGroupY:  args.BaseGroupY(),
+			BaseGroupZ:  args.BaseGroupZ(),
+			GroupCountX: args.GroupCountX(),
+			GroupCountY: args.GroupCountY(),
+			GroupCountZ: args.GroupCountZ(),
+			Indirect:    false,
+		}
+		helpers.newWorkloadInfo(nil, compute)
+
+		// Begin of compute: vkCmdDispatchBaseKHR (duplicate from vkCmdDispatchBase
+		// as we cannot 'fallthrough' in a type switch)
+	case VkCmdDispatchBaseKHRArgsʳ:
+		compute := &api.FramegraphCompute{
+			SubCmdIdx:   []uint64(subCmdIdx),
+			BaseGroupX:  args.BaseGroupX(),
+			BaseGroupY:  args.BaseGroupY(),
+			BaseGroupZ:  args.BaseGroupZ(),
+			GroupCountX: args.GroupCountX(),
+			GroupCountY: args.GroupCountY(),
+			GroupCountZ: args.GroupCountZ(),
+			Indirect:    false,
+		}
+		helpers.newWorkloadInfo(nil, compute)
+
+	// Begin of compute: vkCmdDispatchIndirect
+	case VkCmdDispatchIndirectArgsʳ:
+		compute := &api.FramegraphCompute{
+			SubCmdIdx: []uint64(subCmdIdx),
+			Indirect:  true,
+		}
+		helpers.newWorkloadInfo(nil, compute)
+
 	}
 
-	// Process commands that are inside a renderpass
-	if helpers.rpInfo != nil {
+	// Process commands that are inside a workload
+	if helpers.wlInfo != nil {
+
+		// Update image/buffer lookup tables if we change of top-level parent
+		// command index: these cannot be created/destroyed during subcommands.
+		parentCmdIdx := subCmdIdx[0]
+		if !helpers.lookupInitialized || parentCmdIdx > helpers.parentCmdIdx {
+			helpers.parentCmdIdx = parentCmdIdx
+			helpers.updateImageLookup(vkState)
+			helpers.updateBufferLookup(vkState)
+			helpers.lookupInitialized = true
+		}
+
 		nodeID := dependencyGraph.GetCmdNodeID(api.CmdID(subCmdIdx[0]), subCmdIdx[1:])
-		helpers.rpInfo.nodes = append(helpers.rpInfo.nodes, nodeID)
+		helpers.wlInfo.nodes = append(helpers.wlInfo.nodes, nodeID)
 
 		for _, memAccess := range dependencyGraph.GetNodeAccesses(nodeID).MemoryAccesses {
 			memRange := memory.Range{
@@ -336,12 +431,12 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 			}
 
 			for _, image := range helpers.lookupImages(memAccess.Pool, memRange) {
-				imgAcc, ok := helpers.rpInfo.imageAccesses[image.VulkanHandle()]
+				imgAcc, ok := helpers.wlInfo.imageAccesses[image.VulkanHandle()]
 				if !ok {
 					imgAcc = &api.FramegraphImageAccess{
 						Image: newFramegraphImage(image),
 					}
-					helpers.rpInfo.imageAccesses[image.VulkanHandle()] = imgAcc
+					helpers.wlInfo.imageAccesses[image.VulkanHandle()] = imgAcc
 				}
 				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_READ != 0 {
 					imgAcc.Read = true
@@ -352,12 +447,12 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 			}
 
 			for _, buffer := range helpers.lookupBuffers(memAccess.Pool, memRange) {
-				bufAcc, ok := helpers.rpInfo.bufferAccesses[buffer.VulkanHandle()]
+				bufAcc, ok := helpers.wlInfo.bufferAccesses[buffer.VulkanHandle()]
 				if !ok {
 					bufAcc = &api.FramegraphBufferAccess{
 						Buffer: newFramegraphBuffer(buffer),
 					}
-					helpers.rpInfo.bufferAccesses[buffer.VulkanHandle()] = bufAcc
+					helpers.wlInfo.bufferAccesses[buffer.VulkanHandle()] = bufAcc
 				}
 				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_READ != 0 {
 					bufAcc.Read = true
@@ -369,14 +464,39 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 		}
 	}
 
-	// Ending of renderpass
-	if _, ok := cmdArgs.(VkCmdEndRenderPassArgsʳ); ok {
-		if helpers.rpInfo == nil {
+	// Ending of a workload
+	switch cmdArgs.(type) {
+
+	// End of renderpass
+	case VkCmdEndRenderPassArgsʳ:
+		if helpers.wlInfo == nil || helpers.wlInfo.renderpass == nil {
 			panic("Renderpass ends without having started")
 		}
-		helpers.rpInfo.renderpass.EndSubCmdIdx = []uint64(subCmdIdx)
-		helpers.rpInfos = append(helpers.rpInfos, helpers.rpInfo)
-		helpers.rpInfo = nil
+		helpers.wlInfo.renderpass.EndSubCmdIdx = []uint64(subCmdIdx)
+		helpers.endWorkload()
+
+	// End of compute (duplicate code since we cannot 'fallthrough' in a type switch)
+	case VkCmdDispatchArgsʳ:
+		if helpers.wlInfo == nil || helpers.wlInfo.compute == nil {
+			panic("Compute ends without having started")
+		}
+		helpers.endWorkload()
+	case VkCmdDispatchBaseArgsʳ:
+		if helpers.wlInfo == nil || helpers.wlInfo.compute == nil {
+			panic("Compute ends without having started")
+		}
+		helpers.endWorkload()
+	case VkCmdDispatchBaseKHRArgsʳ:
+		if helpers.wlInfo == nil || helpers.wlInfo.compute == nil {
+			panic("Compute ends without having started")
+		}
+		helpers.endWorkload()
+	case VkCmdDispatchIndirectArgsʳ:
+		if helpers.wlInfo == nil || helpers.wlInfo.compute == nil {
+			panic("Compute ends without having started")
+		}
+		helpers.endWorkload()
+
 	}
 }
 
@@ -394,11 +514,11 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 	// postSubCmdCb effectively processes each subcommand to extract renderpass
 	// info, while recording information into the helpers.
 	helpers := &framegraphInfoHelpers{
-		rpInfos:      []*renderpassInfo{},
-		rpInfo:       nil,
-		currRpId:     uint64(0),
-		parentCmdIdx: uint64(0),
-		imageLookup:  make(map[memory.PoolID]map[memory.Range][]*ImageObjectʳ),
+		workloadInfos:     []*workloadInfo{},
+		wlInfo:            nil,
+		currWorkloadId:    uint64(0),
+		parentCmdIdx:      uint64(0),
+		lookupInitialized: false,
 	}
 	postSubCmdCb := func(state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
 		helpers.processSubCommand(ctx, dependencyGraph, state, subCmdIdx, cmd, i)
@@ -413,46 +533,58 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 		return nil, err
 	}
 
-	updateDependencies(helpers.rpInfos, dependencyGraph)
+	updateDependencies(helpers.workloadInfos, dependencyGraph)
 
 	// Build the framegraph nodes and edges from collected data.
-	nodes := make([]*api.FramegraphNode, len(helpers.rpInfos))
-	for i, rpInfo := range helpers.rpInfos {
-		rpInfo.renderpass.ImageAccess = make([]*api.FramegraphImageAccess, len(rpInfo.imageAccesses))
-		imgHandles := make([]VkImage, 0, len(rpInfo.imageAccesses))
-		for h := range rpInfo.imageAccesses {
+	nodes := make([]*api.FramegraphNode, len(helpers.workloadInfos))
+	for i, wlInfo := range helpers.workloadInfos {
+		imgAcc := make([]*api.FramegraphImageAccess, len(wlInfo.imageAccesses))
+		imgHandles := make([]VkImage, 0, len(wlInfo.imageAccesses))
+		for h := range wlInfo.imageAccesses {
 			imgHandles = append(imgHandles, h)
 		}
 		sort.Slice(imgHandles, func(i, j int) bool { return imgHandles[i] < imgHandles[j] })
 		for j, h := range imgHandles {
-			rpInfo.renderpass.ImageAccess[j] = rpInfo.imageAccesses[h]
+			imgAcc[j] = wlInfo.imageAccesses[h]
 		}
 
-		rpInfo.renderpass.BufferAccess = make([]*api.FramegraphBufferAccess, len(rpInfo.bufferAccesses))
-		bufHandles := make([]VkBuffer, 0, len(rpInfo.bufferAccesses))
-		for h := range rpInfo.bufferAccesses {
+		bufAcc := make([]*api.FramegraphBufferAccess, len(wlInfo.bufferAccesses))
+		bufHandles := make([]VkBuffer, 0, len(wlInfo.bufferAccesses))
+		for h := range wlInfo.bufferAccesses {
 			bufHandles = append(bufHandles, h)
 		}
 		sort.Slice(bufHandles, func(i, j int) bool { return bufHandles[i] < bufHandles[j] })
 		for j, h := range bufHandles {
-			rpInfo.renderpass.BufferAccess[j] = rpInfo.bufferAccesses[h]
+			bufAcc[j] = wlInfo.bufferAccesses[h]
 		}
 
 		nodes[i] = &api.FramegraphNode{
-			Id:       rpInfo.id,
-			Workload: &api.FramegraphNode_Renderpass{Renderpass: rpInfo.renderpass},
+			Id: wlInfo.id,
 		}
+		switch {
+		case wlInfo.renderpass != nil:
+			wlInfo.renderpass.ImageAccess = imgAcc
+			wlInfo.renderpass.BufferAccess = bufAcc
+			nodes[i].Workload = &api.FramegraphNode_Renderpass{Renderpass: wlInfo.renderpass}
+		case wlInfo.compute != nil:
+			wlInfo.compute.ImageAccess = imgAcc
+			wlInfo.compute.BufferAccess = bufAcc
+			nodes[i].Workload = &api.FramegraphNode_Compute{Compute: wlInfo.compute}
+		default:
+			return nil, log.Errf(ctx, nil, "Invalid framegraph workload")
+		}
+
 	}
 
 	edges := []*api.FramegraphEdge{}
-	for _, rpInfo := range helpers.rpInfos {
-		for deps := range rpInfo.deps {
+	for _, wlInfo := range helpers.workloadInfos {
+		for deps := range wlInfo.deps {
 			edges = append(edges, &api.FramegraphEdge{
 				// We want the graph to show the flow of how the frame is
 				// created (rather than the flow of dependencies), so use the
-				// dependency as the edge origin and rpInfo as the destination.
+				// dependency as the edge origin and wlInfo as the destination.
 				Origin:      deps,
-				Destination: rpInfo.id,
+				Destination: wlInfo.id,
 			})
 		}
 	}
@@ -460,44 +592,44 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 	return &api.Framegraph{Nodes: nodes, Edges: edges}, nil
 }
 
-// updateDependencies establishes dependencies between renderpasses.
-func updateDependencies(rpInfos []*renderpassInfo, dependencyGraph dependencygraph2.DependencyGraph) {
-	// isInsideRenderpass: node -> renderpass it belongs to.
-	isInsideRenderpass := map[dependencygraph2.NodeID]uint64{}
-	for _, rpInfo := range rpInfos {
-		for _, n := range rpInfo.nodes {
-			isInsideRenderpass[n] = rpInfo.id
+// updateDependencies establishes dependencies between workloads.
+func updateDependencies(workloadInfos []*workloadInfo, dependencyGraph dependencygraph2.DependencyGraph) {
+	// isInWorkload: node -> workload it belongs to.
+	isInWorkload := map[dependencygraph2.NodeID]uint64{}
+	for _, wlInfo := range workloadInfos {
+		for _, n := range wlInfo.nodes {
+			isInWorkload[n] = wlInfo.id
 		}
 	}
-	// node2renderpasses: node -> set of renderpasses it depends on.
-	node2renderpasses := map[dependencygraph2.NodeID]map[uint64]struct{}{}
+	// node2workloads: node -> set of workloads it depends on.
+	node2workloads := map[dependencygraph2.NodeID]map[uint64]struct{}{}
 
-	// For a given renderpass RP, for each of its node, explore the dependency
-	// graph in reverse order to mark all the nodes dependending on RP until we
-	// hit the node of another renderpass, which then depends on RP.
-	for _, rpInfo := range rpInfos {
+	// For a given workload WL, for each of its node, explore the dependency
+	// graph in reverse order to mark all the nodes dependending on WL until we
+	// hit the node of another workload, which then depends on WL.
+	for _, wlInfo := range workloadInfos {
 		// markNode is recursive, so declare it before initializing it.
 		var markNode func(dependencygraph2.NodeID) error
 		markNode = func(node dependencygraph2.NodeID) error {
-			if id, ok := isInsideRenderpass[node]; ok {
-				if id != rpInfo.id {
-					// Reached a node that is inside another renderpass, so this
-					// renderpass depends on rpInfo.
-					rpInfos[id].deps[rpInfo.id] = struct{}{}
+			if id, ok := isInWorkload[node]; ok {
+				if id != wlInfo.id {
+					// Reached a node that is inside another workload, so this
+					// workload depends on wlInfo.
+					workloadInfos[id].deps[wlInfo.id] = struct{}{}
 				}
 				return nil
 			}
-			if _, ok := node2renderpasses[node]; !ok {
-				node2renderpasses[node] = map[uint64]struct{}{}
+			if _, ok := node2workloads[node]; !ok {
+				node2workloads[node] = map[uint64]struct{}{}
 			}
-			if _, ok := node2renderpasses[node][rpInfo.id]; ok {
+			if _, ok := node2workloads[node][wlInfo.id]; ok {
 				// Node already visited, stop recursion
 				return nil
 			}
-			node2renderpasses[node][rpInfo.id] = struct{}{}
+			node2workloads[node][wlInfo.id] = struct{}{}
 			return dependencyGraph.ForeachDependencyTo(node, markNode)
 		}
-		for _, node := range rpInfo.nodes {
+		for _, node := range wlInfo.nodes {
 			dependencyGraph.ForeachDependencyTo(node, markNode)
 		}
 	}
