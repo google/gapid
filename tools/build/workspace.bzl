@@ -145,8 +145,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "glslang",
-        commit = "8db9eccc0baf30c9d22c496ab28db0fe1e4e97c5",  # 8.13.3559
-        sha256 = "5c11a228d41ec011918b9c8beb60b6556745d30c8c856ec622beab5c5469152d",
+        commit = "740ae9f60b009196662bad811924788cee56133a",  # 10-11.0.0
+        sha256 = "c015e7d81c0a248562c25a1e484fb8528eb6a765312cf5de3bdb658b03562b3f",
     )
 
     maybe_repository(
@@ -182,7 +182,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         remote = "https://chromium.googlesource.com/linux-syscall-support",
         commit = "fd00dbbd0c06a309c657d89e9430143b179ff6db",
         build_file = "@gapid//tools/build/third_party:lss.BUILD",
-       shallow_since = "1583885669 +0000",
+        shallow_since = "1583885669 +0000",
     )
 
     maybe_repository(
