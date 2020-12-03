@@ -17,7 +17,7 @@ package shadertools
 
 //#include "cc/libmanager.h"
 //#include <stdlib.h>
-//#include <third_party/SPIRV-Reflect/spirv_reflect.h>
+//#include "spirv_reflect.h"
 import "C"
 
 import (

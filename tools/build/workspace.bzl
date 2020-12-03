@@ -257,11 +257,10 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         github_repository,
         name = "spirv_reflect",
         locals = locals,
-        organization = "chaoticbob",
+        organization = "KhronosGroup",
         project = "SPIRV-Reflect",
-        commit = "3c77a11472a1da7830d055306b4299c5e2398e7c",
-        build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
-        sha256 = "1af7c64657db1af191d7b8f12928d63159e1c1eafdbedac0b4add905d0430e8c",
+        commit = "974d7c97be3329732da3aa6b770fbe87805148cb",
+        sha256 = "1b2852cffd75ac401f54e21c2786f6c0da9c7199111d8fc55cce17e4ff2b66ce",
     )
 
     maybe_repository(

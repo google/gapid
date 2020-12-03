@@ -18,7 +18,7 @@
 #include "gapii/cc/vulkan_spy.h"
 #include "gapis/api/vulkan/vulkan_pb/extras.pb.h"
 
-#include <third_party/SPIRV-Reflect/spirv_reflect.h>
+#include "spirv_reflect.h"
 
 namespace gapii {
 
