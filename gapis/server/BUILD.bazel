@@ -20,6 +20,7 @@ go_library(
         "export_replay.go",
         "grpc.go",
         "server.go",
+        "update.go",
     ],
     importpath = "github.com/google/gapid/gapis/server",
     visibility = ["//visibility:public"],

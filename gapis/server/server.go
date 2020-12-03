@@ -44,7 +44,6 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
-	"github.com/google/gapid/gapis/messages"
 	perfetto "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
@@ -55,8 +54,6 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
 	"github.com/google/gapid/gapis/trace"
-
-	"github.com/google/go-github/github"
 
 	// Register all the apis
 	_ "github.com/google/gapid/gapis/api/all"
@@ -116,75 +113,10 @@ func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error)
 }
 
 func (s *server) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Release, error) {
-	const (
-		githubOrg     = "google"
-		githubRepo    = "agi"
-		devGithubRepo = "agi-dev-releases"
-	)
 	ctx = status.Start(ctx, "RPC CheckForUpdates")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "CheckForUpdates")
-
-	client := github.NewClient(nil)
-	options := &github.ListOptions{}
-	releases, _, err := client.Repositories.ListReleases(ctx, githubOrg, githubRepo, options)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Failed to list releases")
-	}
-
-	if includeDevReleases {
-		devReleases, _, err := client.Repositories.ListReleases(ctx, githubOrg, devGithubRepo, options)
-		if err != nil {
-			return nil, log.Err(ctx, err, "Failed to list dev-releases")
-		}
-		releases = append(releases, devReleases...)
-	}
-
-	var mostRecent *service.Release
-	mostRecentVersion := app.Version
-	mostRecentDevVersion := app.Version.GetDevVersion()
-
-	for _, release := range releases {
-		// Filter out pre-releases
-		if release.GetPrerelease() {
-			continue
-		}
-
-		// tagName is either:
-		// Regular release: v<major>.<minor>.<point>
-		// Dev pre-release: v<major>.<minor>.<point>-dev-<dev>
-		var version app.VersionSpec
-		tagName := release.GetTagName()
-		devVersion := -1
-		numFields, err := fmt.Sscanf(tagName, "v%d.%d.%d-dev-%d", &version.Major, &version.Minor, &version.Point, &devVersion)
-		if err != nil && numFields < 3 {
-			// some non-release tags have other format, e.g. libinterceptor-v1.0
-			log.I(ctx, "Ignoring tag %s", tagName)
-			continue
-		}
-
-		// dev-releases are previews of the next release, so e.g. 1.2.3 is more recent than 1.2.3-dev-456
-		if version.GreaterThan(mostRecentVersion) ||
-			(version.Equal(mostRecentVersion) && mostRecentDevVersion != -1 && mostRecentDevVersion < devVersion) {
-			mostRecent = &service.Release{
-				Name:         release.GetName(),
-				VersionMajor: uint32(version.Major),
-				VersionMinor: uint32(version.Minor),
-				VersionPoint: uint32(version.Point),
-				Prerelease:   release.GetPrerelease(),
-				BrowserUrl:   release.GetHTMLURL(),
-			}
-			mostRecentVersion = version
-			mostRecentDevVersion = devVersion
-		}
-	}
-	if mostRecent == nil {
-		return nil, &service.ErrDataUnavailable{
-			Reason:    messages.NoNewBuildsAvailable(),
-			Transient: true,
-		}
-	}
-	return mostRecent, nil
+	return checkForUpdates(ctx, includeDevReleases)
 }
 
 func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {
