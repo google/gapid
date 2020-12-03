@@ -16,7 +16,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -48,49 +47,42 @@ func checkForUpdates(ctx context.Context, includeDevReleases bool) (*service.Rel
 		releases = append(releases, devReleases...)
 	}
 
-	var mostRecent *service.Release
-	mostRecentVersion := app.Version
-	mostRecentDevVersion := app.Version.GetDevVersion()
+	version, release := getLastestRelease(ctx, releases)
+	if release != nil && version.GreaterThanDevVersion(app.Version) {
+		return &service.Release{
+			Name:         release.GetName(),
+			VersionMajor: uint32(version.Major),
+			VersionMinor: uint32(version.Minor),
+			VersionPoint: uint32(version.Point),
+			Prerelease:   release.GetPrerelease(),
+			BrowserUrl:   release.GetHTMLURL(),
+		}, nil
+	}
+	return nil, &service.ErrDataUnavailable{
+		Reason:    messages.NoNewBuildsAvailable(),
+		Transient: true,
+	}
+}
 
+func getLastestRelease(ctx context.Context, releases []*github.RepositoryRelease) (app.VersionSpec, *github.RepositoryRelease) {
+	var maxVersion app.VersionSpec
+	var maxRelease *github.RepositoryRelease
 	for _, release := range releases {
 		// Filter out pre-releases
 		if release.GetPrerelease() {
 			continue
 		}
 
-		// tagName is either:
-		// Regular release: v<major>.<minor>.<point>
-		// Dev pre-release: v<major>.<minor>.<point>-dev-<dev>
-		var version app.VersionSpec
-		tagName := release.GetTagName()
-		devVersion := -1
-		numFields, err := fmt.Sscanf(tagName, "v%d.%d.%d-dev-%d", &version.Major, &version.Minor, &version.Point, &devVersion)
-		if err != nil && numFields < 3 {
-			// some non-release tags have other format, e.g. libinterceptor-v1.0
-			log.I(ctx, "Ignoring tag %s", tagName)
+		version, err := app.VersionSpecFromTag(release.GetTagName())
+		if err != nil {
+			log.I(ctx, "Ignoring tag %s", release.GetTagName())
 			continue
 		}
 
-		// dev-releases are previews of the next release, so e.g. 1.2.3 is more recent than 1.2.3-dev-456
-		if version.GreaterThan(mostRecentVersion) ||
-			(version.Equal(mostRecentVersion) && mostRecentDevVersion != -1 && mostRecentDevVersion < devVersion) {
-			mostRecent = &service.Release{
-				Name:         release.GetName(),
-				VersionMajor: uint32(version.Major),
-				VersionMinor: uint32(version.Minor),
-				VersionPoint: uint32(version.Point),
-				Prerelease:   release.GetPrerelease(),
-				BrowserUrl:   release.GetHTMLURL(),
-			}
-			mostRecentVersion = version
-			mostRecentDevVersion = devVersion
+		if version.GreaterThanDevVersion(maxVersion) {
+			maxVersion = version
+			maxRelease = release
 		}
 	}
-	if mostRecent == nil {
-		return nil, &service.ErrDataUnavailable{
-			Reason:    messages.NoNewBuildsAvailable(),
-			Transient: true,
-		}
-	}
-	return mostRecent, nil
+	return maxVersion, maxRelease
 }

@@ -76,6 +76,16 @@ type VersionSpec struct {
 	Build string
 }
 
+// VersionSpecFromTag parses the version from a git tag name.
+func VersionSpecFromTag(tag string) (VersionSpec, error) {
+	var version VersionSpec
+	numFields, _ := fmt.Sscanf(tag, "v%d.%d.%d-%s", &version.Major, &version.Minor, &version.Point, &version.Build)
+	if numFields < 3 {
+		return version, fmt.Errorf("Failed to parse version tag: %s", tag)
+	}
+	return version, nil
+}
+
 // IsValid reports true if the VersionSpec is valid, ie it has a Major version.
 func (v VersionSpec) IsValid() bool {
 	return v.Major >= 0
@@ -97,6 +107,20 @@ func (v VersionSpec) GreaterThan(o VersionSpec) bool {
 	default:
 		return false
 	}
+}
+
+// GreaterThanDevVersion returns true if v is greater than o, respecting dev versions.
+func (v VersionSpec) GreaterThanDevVersion(o VersionSpec) bool {
+	if v.GreaterThan(o) {
+		return true
+	}
+	if !v.Equal(o) {
+		return false
+	}
+
+	// dev-releases are previews of the next release, so e.g. 1.2.3 is more recent than 1.2.3-dev-456
+	vDev, oDev := v.GetDevVersion(), o.GetDevVersion()
+	return oDev >= 0 && (vDev < 0 || vDev > oDev)
 }
 
 // Equal returns true if v is equal to o, ignoring the Build field.
