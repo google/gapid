@@ -524,6 +524,12 @@ public class TracerDialog {
 
         traceTarget.addBoxListener(SWT.Modify, e -> {
           userHasChangedTarget = true;
+          if (traceTarget.getText().isEmpty() && !userHasChangedOutputFile) {
+            // The user may clear the target name do a system profiling with no app in particular,
+            // in this case avoid to keep an old app-based output file name.
+            file.setText(formatTraceName(DEFAULT_TRACE_FILE));
+            userHasChangedOutputFile = false; // cancel the modify event from set call.
+          }
         });
         file.addListener(SWT.Modify, e -> {
           userHasChangedOutputFile = true;
