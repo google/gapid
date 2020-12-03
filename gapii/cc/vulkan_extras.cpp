@@ -652,6 +652,8 @@ gapil::Ref<DescriptorInfo> VulkanSpy::fetchUsedDescriptors(
 
   spv_reflect::ShaderModule smod(module->mWords.size(), &module->mWords[0]);
   if (smod.GetResult() != SPV_REFLECT_RESULT_SUCCESS) {
+    GAPID_INFO("spirv reflect failed on shader module %" PRIu64,
+               module->mVulkanHandle);
     return nullptr;
   }
 

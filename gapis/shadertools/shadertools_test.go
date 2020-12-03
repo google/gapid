@@ -167,10 +167,9 @@ void main() {
 
 func TestParseDescriptorSets(t *testing.T) {
 	for _, test := range []struct {
-		desc       string
-		spirvDis   string
-		entryPoint string
-		expected   shadertools.DescriptorSets
+		desc     string
+		spirvDis string
+		expected map[string]shadertools.DescriptorSets
 	}{
 		{
 			"Test shadertools parses simple uniform",
@@ -273,58 +272,55 @@ func TestParseDescriptorSets(t *testing.T) {
                OpReturn
                OpFunctionEnd
 			`,
-			"main",
-			shadertools.DescriptorSets{
-				0: shadertools.DescriptorSet{
-					shadertools.DescriptorBinding{
-						Set:             0,
-						Binding:         0,
-						SpirvId:         11,
-						DescriptorType:  6, // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-						DescriptorCount: 1,
-						ShaderStage:     1, // VK_SHADER_STAGE_VERTEX_BIT
+			map[string]shadertools.DescriptorSets{
+				"main": shadertools.DescriptorSets{
+					0: shadertools.DescriptorSet{
+						shadertools.DescriptorBinding{
+							Set:             0,
+							Binding:         0,
+							SpirvId:         11,
+							DescriptorType:  6, // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+							DescriptorCount: 1,
+							ShaderStage:     1, // VK_SHADER_STAGE_VERTEX_BIT
+						},
 					},
 				},
 			},
 		},
 		{
-			"Test shadertools handles multiple entrypoints (entry_vert)",
+			"Test shadertools handles multiple entrypoints",
 			multientrypoint_spv,
-			"entry_vert",
-			shadertools.DescriptorSets{
-				0: shadertools.DescriptorSet{
-					shadertools.DescriptorBinding{
-						Set:             0,
-						Binding:         1,
-						SpirvId:         11,
-						DescriptorType:  6, // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-						DescriptorCount: 1,
-						ShaderStage:     1, // VK_SHADER_STAGE_VERTEX_BIT
+			map[string]shadertools.DescriptorSets{
+				"entry_vert": shadertools.DescriptorSets{
+					0: shadertools.DescriptorSet{
+						shadertools.DescriptorBinding{
+							Set:             0,
+							Binding:         1,
+							SpirvId:         11,
+							DescriptorType:  6, // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+							DescriptorCount: 1,
+							ShaderStage:     1, // VK_SHADER_STAGE_VERTEX_BIT
+						},
 					},
 				},
-			},
-		},
-		{
-			"Test shadertools handles multiple entrypoints (entry_frag)",
-			multientrypoint_spv,
-			"entry_frag",
-			shadertools.DescriptorSets{
-				0: shadertools.DescriptorSet{
-					shadertools.DescriptorBinding{
-						Set:             0,
-						Binding:         0,
-						SpirvId:         17,
-						DescriptorType:  1, // VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-						DescriptorCount: 1,
-						ShaderStage:     16, // VK_SHADER_STAGE_FRAGMENT_BIT
-					},
-					shadertools.DescriptorBinding{
-						Set:             0,
-						Binding:         1,
-						SpirvId:         11,
-						DescriptorType:  6, // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-						DescriptorCount: 1,
-						ShaderStage:     16, // VK_SHADER_STAGE_FRAGMENT_BIT
+				"entry_frag": shadertools.DescriptorSets{
+					0: shadertools.DescriptorSet{
+						shadertools.DescriptorBinding{
+							Set:             0,
+							Binding:         0,
+							SpirvId:         17,
+							DescriptorType:  1, // VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+							DescriptorCount: 1,
+							ShaderStage:     16, // VK_SHADER_STAGE_FRAGMENT_BIT
+						},
+						shadertools.DescriptorBinding{
+							Set:             0,
+							Binding:         1,
+							SpirvId:         11,
+							DescriptorType:  6, // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+							DescriptorCount: 1,
+							ShaderStage:     16, // VK_SHADER_STAGE_FRAGMENT_BIT
+						},
 					},
 				},
 			},
@@ -406,16 +402,17 @@ func TestParseDescriptorSets(t *testing.T) {
                OpReturn
                OpFunctionEnd
 			`,
-			"main",
-			shadertools.DescriptorSets{
-				0: shadertools.DescriptorSet{
-					shadertools.DescriptorBinding{
-						Set:             0,
-						Binding:         0,
-						SpirvId:         5,
-						DescriptorType:  1, // VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
-						DescriptorCount: 20,
-						ShaderStage:     16, // VK_SHADER_STAGE_FRAGMENT_BIT
+			map[string]shadertools.DescriptorSets{
+				"main": shadertools.DescriptorSets{
+					0: shadertools.DescriptorSet{
+						shadertools.DescriptorBinding{
+							Set:             0,
+							Binding:         0,
+							SpirvId:         5,
+							DescriptorType:  1, // VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+							DescriptorCount: 20,
+							ShaderStage:     16, // VK_SHADER_STAGE_FRAGMENT_BIT
+						},
 					},
 				},
 			},
@@ -467,14 +464,15 @@ func TestParseDescriptorSets(t *testing.T) {
                OpReturn
                OpFunctionEnd
 		`,
-			"main",
-			shadertools.DescriptorSets{},
+			map[string]shadertools.DescriptorSets{
+				"main": shadertools.DescriptorSets{},
+			},
 		},
 	} {
 		t.Run(test.desc, func(t *testing.T) {
 			ctx := log.Testing(t)
 			spv := shadertools.AssembleSpirvText(test.spirvDis)
-			sets, err := shadertools.ParseDescriptorSets(spv, test.entryPoint)
+			sets, err := shadertools.ParseAllDescriptorSets(spv)
 			assert.For(ctx, "err").ThatError(err).Succeeded()
 			assert.For(ctx, "sets").ThatMap(sets).DeepEquals(test.expected)
 		})
