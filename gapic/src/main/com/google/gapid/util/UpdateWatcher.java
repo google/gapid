@@ -70,7 +70,7 @@ public class UpdateWatcher {
       prefs.setUpdateAvailable(false);
       try {
         Release release = future.get();
-        if (release != null) {
+        if (GapidVersion.GAPID_VERSION.isOlderThan(release)) {
           prefs.setUpdateAvailable(true);
           listener.onNewReleaseAvailable(release);
         }

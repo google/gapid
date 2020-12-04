@@ -36,8 +36,44 @@ public class Version {
     return new Version(info.getVersionMajor(), info.getVersionMinor(), info.getVersionPoint(), "");
   }
 
+  public int getDevVersion() {
+    // For the dev builds, the build has format dev-YYYYMMDD.
+    if (build.startsWith("dev-") && build.length() >= 12) {
+      try {
+        return Integer.parseInt(build.substring(4, 12));
+      } catch (NumberFormatException e) {
+        // Ignore.
+      }
+    }
+    return -1;
+  }
+
+  public boolean isDeveloper() {
+    return "developer".equals(build);
+  }
+
   public boolean isCompatible(Version version) {
     return major == version.major && minor == version.minor;
+  }
+
+  public boolean isOlderThan(Service.Release release) {
+    if (isDeveloper()) {
+      return false;
+    } else if (major < release.getVersionMajor()) {
+      return true;
+    } else if (major > release.getVersionMajor()) {
+      return false;
+    } else if (minor < release.getVersionMinor()) {
+      return true;
+    } else if (minor > release.getVersionMinor()) {
+      return false;
+    } else if (point < release.getVersionPoint()) {
+      return true;
+    } else if (point > release.getVersionPoint()) {
+      return false;
+    }
+    int devVersion = getDevVersion();
+    return devVersion >= 0 && devVersion < release.getVersionDev();
   }
 
   @Override

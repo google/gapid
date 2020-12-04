@@ -135,7 +135,7 @@ message Release {
   uint32 version_major = 2;
   uint32 version_minor = 3;
   uint32 version_point = 4;
-  bool prerelease = 5;
+  uint32 version_dev = 5;
   string browser_url = 6;
 }
 

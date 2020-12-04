@@ -48,13 +48,13 @@ func checkForUpdates(ctx context.Context, includeDevReleases bool) (*service.Rel
 	}
 
 	version, release := getLastestRelease(ctx, releases)
-	if release != nil && version.GreaterThanDevVersion(app.Version) {
+	if release != nil {
 		return &service.Release{
 			Name:         release.GetName(),
 			VersionMajor: uint32(version.Major),
 			VersionMinor: uint32(version.Minor),
 			VersionPoint: uint32(version.Point),
-			Prerelease:   release.GetPrerelease(),
+			VersionDev:   uint32(version.GetDevVersion()),
 			BrowserUrl:   release.GetHTMLURL(),
 		}, nil
 	}
