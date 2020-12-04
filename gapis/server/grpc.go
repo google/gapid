@@ -214,11 +214,11 @@ func (s *grpcServer) GetServerInfo(ctx xctx.Context, req *service.GetServerInfoR
 
 func (s *grpcServer) CheckForUpdates(ctx xctx.Context, req *service.CheckForUpdatesRequest) (*service.CheckForUpdatesResponse, error) {
 	defer s.inRPC()()
-	release, err := s.handler.CheckForUpdates(s.bindCtx(ctx), req.IncludeDevReleases)
+	releases, err := s.handler.CheckForUpdates(s.bindCtx(ctx), req.IncludeDevReleases)
 	if err := service.NewError(err); err != nil {
 		return &service.CheckForUpdatesResponse{Res: &service.CheckForUpdatesResponse_Error{Error: err}}, nil
 	}
-	return &service.CheckForUpdatesResponse{Res: &service.CheckForUpdatesResponse_Release{Release: release}}, nil
+	return &service.CheckForUpdatesResponse{Res: &service.CheckForUpdatesResponse_Releases{Releases: releases}}, nil
 }
 
 func (s *grpcServer) Get(ctx xctx.Context, req *service.GetRequest) (*service.GetResponse, error) {

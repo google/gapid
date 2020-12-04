@@ -38,7 +38,7 @@ import com.google.gapid.proto.service.Service.GetServerInfoRequest;
 import com.google.gapid.proto.service.Service.GetStringTableRequest;
 import com.google.gapid.proto.service.Service.ImportCaptureRequest;
 import com.google.gapid.proto.service.Service.LoadCaptureRequest;
-import com.google.gapid.proto.service.Service.Release;
+import com.google.gapid.proto.service.Service.Releases;
 import com.google.gapid.proto.service.Service.SaveCaptureRequest;
 import com.google.gapid.proto.service.Service.ServerInfo;
 import com.google.gapid.proto.service.Service.SetRequest;
@@ -82,13 +82,13 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getInfo(), in.getError(), stack))));
   }
 
-  public ListenableFuture<Release> checkForUpdates(boolean includeDevReleases) {
+  public ListenableFuture<Releases> checkForUpdates(boolean includeDevReleases) {
     return call(() -> String.format("RPC->checkForUpdates(%b)", includeDevReleases),
         stack -> MoreFutures.transformAsync(
             client.checkForUpdates(CheckForUpdatesRequest.newBuilder()
                 .setIncludeDevReleases(includeDevReleases)
                 .build()),
-            in -> immediateFuture(throwIfError(in.getRelease(), in.getError(), stack))));
+            in -> immediateFuture(throwIfError(in.getReleases(), in.getError(), stack))));
   }
 
   public ListenableFuture<Value> get(Path.Any path, Path.Device device) {

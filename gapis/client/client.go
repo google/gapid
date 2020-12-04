@@ -73,7 +73,7 @@ func (c *client) GetServerInfo(ctx context.Context) (*service.ServerInfo, error)
 	return res.GetInfo(), nil
 }
 
-func (c *client) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Release, error) {
+func (c *client) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Releases, error) {
 	res, err := c.client.CheckForUpdates(ctx, &service.CheckForUpdatesRequest{
 		IncludeDevReleases: includeDevReleases,
 	})
@@ -83,7 +83,7 @@ func (c *client) CheckForUpdates(ctx context.Context, includeDevReleases bool) (
 	if err := res.GetError(); err != nil {
 		return nil, err.Get()
 	}
-	return res.GetRelease(), nil
+	return res.GetReleases(), nil
 }
 
 func (c *client) Get(ctx context.Context, p *path.Any, r *path.ResolveConfig) (interface{}, error) {

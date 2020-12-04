@@ -112,7 +112,7 @@ func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error)
 	return s.info, nil
 }
 
-func (s *server) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Release, error) {
+func (s *server) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Releases, error) {
 	ctx = status.Start(ctx, "RPC CheckForUpdates")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "CheckForUpdates")

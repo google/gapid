@@ -125,18 +125,30 @@ message CheckForUpdatesRequest {
 }
 message CheckForUpdatesResponse {
   oneof res {
-    Release release = 1;
+    Releases releases = 1;
     Error error = 2;
   }
 }
 
-message Release {
-  string name = 1;
-  uint32 version_major = 2;
-  uint32 version_minor = 3;
-  uint32 version_point = 4;
-  uint32 version_dev = 5;
-  string browser_url = 6;
+message Releases {
+  message AGIRelease {
+    string name = 1;
+    uint32 version_major = 2;
+    uint32 version_minor = 3;
+    uint32 version_point = 4;
+    uint32 version_dev = 5;
+    string browser_url = 6;
+  }
+
+  message ANGLERelease {
+    uint32 version = 1;
+    string arm_32 = 2;
+    string arm_64 = 3;
+    string x86 = 4;
+  }
+
+  AGIRelease AGI = 1;
+  ANGLERelease ANGLE = 2;
 }
 
 message GetRequest {

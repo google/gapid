@@ -56,10 +56,10 @@ type Service interface {
 	// GetServerInfo returns information about the running server.
 	GetServerInfo(ctx context.Context) (*ServerInfo, error)
 
-	// CheckForUpdates checks for a new build of GAPID on the hosting server.
+	// CheckForUpdates checks for a new build of AGI and ANGLE on the hosting servers.
 	// Care should be taken to call this infrequently to avoid reaching the
 	// server's maximum unauthenticated request limits.
-	CheckForUpdates(ctx context.Context, includeDevReleases bool) (*Release, error)
+	CheckForUpdates(ctx context.Context, includeDevReleases bool) (*Releases, error)
 
 	// GetAvailableStringTables returns list of available string table descriptions.
 	GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error)

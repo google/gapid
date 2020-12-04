@@ -20,7 +20,7 @@ import static com.google.gapid.util.MoreFutures.logFailure;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
-import com.google.gapid.proto.service.Service.Release;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.server.Client;
 
 import java.util.concurrent.ExecutionException;
@@ -42,7 +42,7 @@ public class UpdateWatcher {
   /** Callback interface */
   public interface Listener {
     /** Called whenever a new release is found. */
-    void onNewReleaseAvailable(Release release);
+    void onNewReleaseAvailable(Service.Releases.AGIRelease release);
   }
 
   public UpdateWatcher(Settings settings, Client client, Listener listener) {
@@ -66,13 +66,14 @@ public class UpdateWatcher {
   private void doCheck() {
     SettingsProto.Preferences.Builder prefs = settings.writePreferences();
     if (prefs.getCheckForUpdates()) {
-      ListenableFuture<Release> future = client.checkForUpdates(prefs.getIncludeDevReleases());
+      ListenableFuture<Service.Releases> future =
+          client.checkForUpdates(prefs.getIncludeDevReleases());
       prefs.setUpdateAvailable(false);
       try {
-        Release release = future.get();
-        if (GapidVersion.GAPID_VERSION.isOlderThan(release)) {
+        Service.Releases releases = future.get();
+        if (GapidVersion.GAPID_VERSION.isOlderThan(releases.getAGI())) {
           prefs.setUpdateAvailable(true);
-          listener.onNewReleaseAvailable(release);
+          listener.onNewReleaseAvailable(releases.getAGI());
         }
       } catch (InterruptedException | ExecutionException e) {
         /* never mind */

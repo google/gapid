@@ -56,7 +56,7 @@ public class Version {
     return major == version.major && minor == version.minor;
   }
 
-  public boolean isOlderThan(Service.Release release) {
+  public boolean isOlderThan(Service.Releases.AGIRelease release) {
     if (isDeveloper()) {
       return false;
     } else if (major < release.getVersionMajor()) {
