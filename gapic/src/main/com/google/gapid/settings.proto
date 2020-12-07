@@ -20,6 +20,7 @@ option java_package = "com.google.gapid.proto";
 option java_outer_classname = "SettingsProto";
 
 import "core/os/device/device.proto";
+import "gapis/service/service.proto";
 
 message Point {
   int32 x = 1;
@@ -51,6 +52,7 @@ message Preferences {
   bool update_available = 5;
   // milliseconds since midnight, January 1, 1970 UTC.
   int64 last_check_for_updates = 6;
+  service.Releases.ANGLERelease latest_angle_release = 11;
   string analytics_client_id = 7;  // Empty (default) means do not track.
   bool disable_replay_optimization = 8;
   bool report_crashes = 9;

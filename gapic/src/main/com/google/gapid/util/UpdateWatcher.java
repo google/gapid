@@ -75,6 +75,7 @@ public class UpdateWatcher {
           prefs.setUpdateAvailable(true);
           listener.onNewReleaseAvailable(releases.getAGI());
         }
+        prefs.setLatestAngleRelease(releases.getANGLE());
       } catch (InterruptedException | ExecutionException e) {
         /* never mind */
       }
