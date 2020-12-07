@@ -322,6 +322,7 @@ public class TracerDialog {
       private final Label fileLabel;
       private final Label requiredFieldMessage;
       private final Label emptyAppWarning;
+      private final Link newAngleAvailableMessage;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
@@ -487,13 +488,19 @@ public class TracerDialog {
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(!models.settings.isAdbValid());
 
+        newAngleAvailableMessage = createLink(this, "A new ANGLE version is available for this " +
+            "device. Please <a>download</a> and install the APK.",
+            e -> openAngleDownloadPage(models.settings));
+        newAngleAvailableMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
+        newAngleAvailableMessage.setVisible(false);
+
 
         device.getCombo().addListener(SWT.Selection, e -> {
           updateOnDeviceChange(models.settings, getSelectedDevice());
           runValidationCheck(getSelectedDevice());
         });
         api.getCombo().addListener(SWT.Selection, e -> {
-          updateOnApiChange(trace, getSelectedApi());
+          updateOnApiChange(models.settings, trace, getSelectedApi());
         });
 
         emptyAppWarning = withLayoutData(
@@ -657,7 +664,7 @@ public class TracerDialog {
       }
 
       private void updateOnApiChange(
-          SettingsProto.TraceOrBuilder trace, TraceTypeCapabilities config) {
+          Settings settings, SettingsProto.TraceOrBuilder trace, TraceTypeCapabilities config) {
 
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
         hideUnknownExtensions.setEnabled(ext);
@@ -711,6 +718,16 @@ public class TracerDialog {
           file.setText(formatTraceName(friendlyName));
           userHasChangedOutputFile = false; // cancel the modify event from set call.
         }
+
+        boolean showAngleWarning = false;
+        if (isAngle(config)) {
+          DeviceCaptureInfo dev = devices.get(device.getCombo().getSelectionIndex());
+          if (dev.device.getConfiguration().getAngle().getVersion() <
+              settings.preferences().getLatestAngleRelease().getVersion()) {
+            showAngleWarning = true;
+          }
+        }
+        newAngleAvailableMessage.setVisible(showAngleWarning);
       }
 
       private void updateDevicesDropDown(SettingsProto.TraceOrBuilder trace) {
@@ -854,6 +871,37 @@ public class TracerDialog {
         // For ANGLE captures include "_angle" in trace name
         String angle = isAngle(config) ? ANGLE_STRING : "";
         return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + angle + date + ext;
+      }
+
+      private void openAngleDownloadPage(Settings settings) {
+        DeviceCaptureInfo dev = devices.get(device.getCombo().getSelectionIndex());
+        Service.Releases.ANGLERelease release = settings.preferences().getLatestAngleRelease();
+        if (dev.device.getConfiguration().getABIsCount() > 0) {
+          switch (dev.device.getConfiguration().getABIs(0).getArchitecture()) {
+            case ARMv8a:
+              if (release.getArm64().startsWith("https://")) {
+                Program.launch(release.getArm64());
+                return;
+              }
+              break;
+            case ARMv7a:
+              if (release.getArm32().startsWith("https://")) {
+                Program.launch(release.getArm32());
+                return;
+              }
+              break;
+            case X86:
+              if (release.getX86().startsWith("https://")) {
+                Program.launch(release.getX86());
+                return;
+              }
+              break;
+            default: // Ignore unknown ABIs.
+          }
+        }
+
+        // Open the main page if no ABI direct link was found.
+        Program.launch(URLs.ANGLE_DOWNLOAD);
       }
 
       public boolean isReady() {
