@@ -41,6 +41,16 @@ public class TabArea extends TabComposite {
 
     TabComposite.Listener listener = new TabComposite.Listener() {
       @Override
+      public void onTabCreated(TabInfo tab) {
+        analytics.postInteraction(tab.view, ClientAction.Enable);
+      }
+
+      @Override
+      public void onTabClosed(TabInfo tab) {
+        analytics.postInteraction(tab.view, ClientAction.Disable);
+      }
+
+      @Override
       public void onTabShown(TabInfo tab) {
         analytics.postInteraction(tab.view, ClientAction.Show);
       }

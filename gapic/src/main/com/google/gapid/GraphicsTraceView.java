@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
 import com.google.gapid.models.Analytics.View;
@@ -29,7 +30,6 @@ import com.google.gapid.models.Resources;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Experimental;
 import com.google.gapid.views.CommandTree;
@@ -50,6 +50,7 @@ import com.google.gapid.views.TextureView;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;
 import com.google.gapid.widgets.TabArea.Persistance;
+import com.google.gapid.widgets.TabComposite;
 import com.google.gapid.widgets.TabComposite.TabInfo;
 import com.google.gapid.widgets.Widgets;
 
@@ -65,6 +66,7 @@ import org.eclipse.swt.widgets.Control;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -76,6 +78,7 @@ public class GraphicsTraceView extends Composite
     implements MainWindow.MainView, Resources.Listener, Follower.Listener {
   private final Models models;
   private final Widgets widgets;
+  private final Map<MainTab.Type, Action> typeActions;
   protected final Set<MainTab.Type> hiddenTabs;
 
   protected final TabArea tabs;
@@ -84,6 +87,7 @@ public class GraphicsTraceView extends Composite
     super(parent, SWT.NONE);
     this.models = models;
     this.widgets = widgets;
+    this.typeActions = Maps.newHashMap();
     this.hiddenTabs = getHiddenTabs(models.settings);
 
     new DeviceDialog(this, models, widgets);
@@ -104,9 +108,27 @@ public class GraphicsTraceView extends Composite
 
     tabs.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
+    TabComposite.Listener listener = new TabComposite.Listener() {
+      @Override
+      public void onTabCreated(TabInfo tab) {
+        if (tab.id instanceof MainTab.Type) {
+          syncTabMenuItem((MainTab.Type)tab.id, true);
+        }
+      }
+
+      @Override
+      public void onTabClosed(TabInfo tab) {
+        if (tab.id instanceof MainTab.Type) {
+          syncTabMenuItem((MainTab.Type)tab.id, false);
+        }
+      }
+    };
+    tabs.addListener(listener);
+
     models.resources.addListener(this);
     models.follower.addListener(this);
     addListener(SWT.Dispose, e -> {
+      tabs.removeListener(listener);
       models.resources.removeListener(this);
       models.follower.removeListener(this);
     });
@@ -133,7 +155,7 @@ public class GraphicsTraceView extends Composite
   @Override
   public void onTextureSelected(Service.Resource texture) {
     if (texture != null) {
-      tabs.showTab(MainTab.Type.TextureView);
+      showTab(MainTab.Type.TextureView);
     }
   }
 
@@ -152,6 +174,22 @@ public class GraphicsTraceView extends Composite
     tabs.showTab(MainTab.Type.Framebuffer);
   }
 
+  private void showTab(MainTab.Type type) {
+    if (!tabs.showTab(type)) {
+      TabInfo tabInfo = new MainTab(type, parent -> {
+        Tab tab = type.factory.create(parent, models, widgets);
+        tab.reinitialize();
+        return tab.getControl();
+      });
+      if (type.position == MainTab.DefaultPosition.Top) {
+        tabs.addTabToFirstFolder(tabInfo);
+      } else {
+        tabs.addTabToLargestFolder(tabInfo);
+      }
+      tabs.showTab(type);
+    }
+  }
+
   private MenuManager createViewTabsMenu() {
     MenuManager manager = new MenuManager("&Tabs");
     for (MainTab.Type type : MainTab.Type.values()) {
@@ -159,33 +197,32 @@ public class GraphicsTraceView extends Composite
         continue;
       }
       Action action = type.createAction(shown -> {
-        models.analytics.postInteraction(
-            type.view, shown ? ClientAction.Enable : ClientAction.Disable);
         if (shown) {
-          TabInfo tabInfo = new MainTab(type, parent -> {
-            Tab tab = type.factory.create(parent, models, widgets);
-            tab.reinitialize();
-            return tab.getControl();
-          });
-          if (type.position == MainTab.DefaultPosition.Top) {
-            tabs.addTabToFirstFolder(tabInfo);
-          } else {
-            tabs.addTabToLargestFolder(tabInfo);
-          }
-          tabs.showTab(type);
-          hiddenTabs.remove(type);
+          showTab(type);
         } else {
           tabs.disposeTab(type);
-          hiddenTabs.add(type);
         }
-        models.settings.writeTabs()
-            .clearHidden()
-            .addAllHidden(hiddenTabs.stream().map(MainTab.Type::name).collect(toList()));
       });
       action.setChecked(!hiddenTabs.contains(type));
       manager.add(action);
+      typeActions.put(type, action);
     }
     return manager;
+  }
+
+  protected void syncTabMenuItem(MainTab.Type type, boolean shown) {
+    Action action = typeActions.get(type);
+    if (action != null && action.isChecked() != shown) {
+      action.setChecked(shown);
+      if (shown) {
+        hiddenTabs.remove(type);
+      } else {
+        hiddenTabs.add(type);
+      }
+      models.settings.writeTabs()
+          .clearHidden()
+          .addAllHidden(hiddenTabs.stream().map(MainTab.Type::name).collect(toList()));
+    }
   }
 
   /**
@@ -350,7 +387,7 @@ public class GraphicsTraceView extends Composite
     }
 
     private static List<TabInfo> getTabs(
-       Iterator<String> names, int count, Set<Type> left, Models models, Widgets widgets) {
+        Iterator<String> names, int count, Set<Type> left, Models models, Widgets widgets) {
 
       List<TabInfo> result = Lists.newArrayList();
       for (int i = 0; i < count && names.hasNext(); i++) {

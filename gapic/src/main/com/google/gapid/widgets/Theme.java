@@ -63,6 +63,7 @@ public interface Theme {
   @Icon(file = "arrow_drop_right.png", color = 0xFFFFFF) public Image arrowDropRightDark();
   @Icon(file = "check_circle.png") public Image check();
   @Icon(file = "clipboard.png") public Image clipboard();
+  @Icon(file = "close.png") public Image close();
   @Icon(file = "color_buffer0.png") public Image colorBuffer0();
   @Icon(file = "color_buffer1.png") public Image colorBuffer1();
   @Icon(file = "color_buffer2.png") public Image colorBuffer2();
@@ -71,6 +72,7 @@ public interface Theme {
   @Icon(file = "culling_enabled.png") public Image cullingEnabled();
   @Icon(file = "depth_buffer.png") public Image depthBuffer();
   @Icon(file = "error.png") public Image error();
+  @Icon(file = "expand.png") public Image expand();
   @Icon(file = "expand_less.png") public Image expandLess();
   @Icon(file = "expand_more.png") public Image expandMore();
   @Icon(file = "faceted.png") public Image faceted();
