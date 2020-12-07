@@ -95,8 +95,8 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 			}
 		} else {
 			// We shouldn't be able to get here. EnableAngle flag should only be set
-			//  when there's an Angle package on the device to enable.
-			log.W(ctx, "ANGLE enabled but no package found")
+			// when there's an Angle package on the device to enable.
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, nil, "ANGLE requested but no ANGLE package found")
 		}
 	}
 
