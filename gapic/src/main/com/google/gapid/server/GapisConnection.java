@@ -151,9 +151,12 @@ public abstract class GapisConnection implements Closeable {
      */
     protected static class Heartbeat extends Thread {
       private static final Logger LOG = Logger.getLogger(Heartbeat.class.getName());
+      private static final long ERROR_LOG_INTERVAL = TimeUnit.SECONDS.toMillis(10);
 
       private final GapidClient client;
       private final int rateMS;
+      private int errorCount;
+      private long timeLastErrorLogged;
 
       Heartbeat(GapidClient client, int rateMS) {
         this.client = client;
@@ -164,13 +167,21 @@ public abstract class GapisConnection implements Closeable {
       public void run() {
         while (true) {
           try {
-            client.ping().get(rateMS, TimeUnit.MILLISECONDS);
+            try {
+              client.ping().get(rateMS, TimeUnit.MILLISECONDS);
+            } catch (ExecutionException | TimeoutException e) {
+              errorCount++;
+              if (System.currentTimeMillis() - timeLastErrorLogged > ERROR_LOG_INTERVAL) {
+                LOG.log(WARNING, "Heartbeat ping has failed " + errorCount + "x since startup", e);
+                timeLastErrorLogged = System.currentTimeMillis();
+              }
+              // Continue sending pings, since this a "I'm still here!" kind of heartbeat, and not an
+              // "are you still there?" kind.
+            }
+
             Thread.sleep(rateMS);
           } catch (InterruptedException e) {
             LOG.log(INFO, "Heartbeat exiting due to interruption: " + e);
-            return;
-          } catch (ExecutionException | TimeoutException e) {
-            LOG.log(WARNING, "Heartbeat exiting due to failure", e);
             return;
           }
         }
