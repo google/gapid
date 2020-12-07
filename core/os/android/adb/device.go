@@ -237,8 +237,8 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 	}
 
 	// Query device ANGLE support
-	if anglePackage, err := d.QueryAnglePackageName(ctx); err == nil {
-		d.To.Configuration.AnglePackage = anglePackage
+	if angle, err := d.QueryAngle(ctx); err == nil {
+		d.To.Configuration.Angle = angle
 	}
 
 	// Query infos related to the Vulkan driver

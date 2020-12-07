@@ -401,9 +401,9 @@ func (b *binding) SupportsAngle(ctx context.Context) bool {
 	return os.GetAPIVersion() >= 29
 }
 
-func (b *binding) QueryAnglePackageName(ctx context.Context) (string, error) {
+func (b *binding) QueryAngle(ctx context.Context) (*device.ANGLE, error) {
 	if !b.SupportsAngle(ctx) {
-		return "", fmt.Errorf("ANGLE not supported on this device")
+		return nil, fmt.Errorf("ANGLE not supported on this device")
 	}
 	// ANGLE supported, so check for installed ANGLE package
 	// Favor custom installed package first, followed by default system package
@@ -412,12 +412,18 @@ func (b *binding) QueryAnglePackageName(ctx context.Context) (string, error) {
 	// Check installed packages for ANGLE package
 	packages, _ := b.InstalledPackages(ctx)
 	if pkg := packages.FindByName(custom); pkg != nil {
-		return custom, nil
+		return &device.ANGLE{
+			Package: custom,
+			Version: int32(pkg.VersionCode),
+		}, nil
 	}
 	if pkg := packages.FindByName(system); pkg != nil {
-		return system, nil
+		return &device.ANGLE{
+			Package: system,
+			Version: int32(pkg.VersionCode),
+		}, nil
 	}
-	return "", fmt.Errorf("No ANGLE packages installed on this device")
+	return nil, fmt.Errorf("No ANGLE packages installed on this device")
 }
 
 func SetupAngle(ctx context.Context, d Device, p *android.InstalledPackage) (app.Cleanup, error) {
@@ -437,7 +443,7 @@ func SetupAngle(ctx context.Context, d Device, p *android.InstalledPackage) (app
 	log.I(ctx, "Saved original ANGLE pkg %s for app %s to restore during cleanup.", anglePackage, angleDriverPkgs)
 	// We successfully saved old settings, now set new ANGLE values for tracing
 	d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_values", "angle")
-	d.SetSystemSetting(ctx, "global", "angle_debug_package", d.Instance().GetConfiguration().GetAnglePackage())
+	d.SetSystemSetting(ctx, "global", "angle_debug_package", d.Instance().GetConfiguration().GetAngle().GetPackage())
 	d.SetSystemSetting(ctx, "global", "angle_gl_driver_selection_pkgs", p.Name)
 	// Enable ANGLE debug markers.
 	d.SetSystemProperty(ctx, "debug.angle.markers", "1")

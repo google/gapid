@@ -86,7 +86,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	log.I(ctx, "Checking if ANGLE requested")
 	if o.EnableAngle {
 		log.I(ctx, "ANGLE is enabled")
-		if anglePackage := p.Device.Instance().GetConfiguration().AnglePackage; anglePackage != "" {
+		if anglePackage := p.Device.Instance().GetConfiguration().GetAngle().GetPackage(); anglePackage != "" {
 			log.I(ctx, "Found ANGLE package %s, enabling it for %s", anglePackage, p.Name)
 			nextCleanup, err := adb.SetupAngle(ctx, d, a.Package)
 			cleanup = cleanup.Then(nextCleanup)

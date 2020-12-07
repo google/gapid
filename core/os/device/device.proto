@@ -173,8 +173,8 @@ message Configuration {
   Drivers drivers = 4;
   // Perfetto capability.
   PerfettoCapability perfetto_capability = 5;
-  // Angle package name
-  string angle_package = 6;
+  // ANGLE info.
+  ANGLE angle = 6;
 }
 
 message VulkanProfilingLayers {
@@ -196,6 +196,11 @@ message GPUProfiling {
   reserved 3;
   bool has_render_stage_producer_layer = 4;
   bool has_gpu_mem_total = 5;
+}
+
+message ANGLE {
+  string package = 1;
+  int32 version = 2;
 }
 
 // Instance represents a physical device.
