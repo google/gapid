@@ -239,7 +239,7 @@ public class Paths {
     }
     return Path.Any.newBuilder()
         .setPipelines(Path.Pipelines.newBuilder()
-            .setAfter(command.getCommand()))
+            .setAfter(command.getNode()))
         .build();
   }
 

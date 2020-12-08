@@ -95,7 +95,7 @@ message ResourceDataResolvable {
 }
 
 message PipelinesResolvable {
-  path.Pipelines path = 1;
+  path.Command after = 1;
   path.ResolveConfig config = 2;
 }
 

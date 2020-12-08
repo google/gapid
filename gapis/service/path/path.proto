@@ -459,7 +459,7 @@ message Metrics {
 // Pipelines requests the currently bound piplines for a given command.
 message Pipelines {
   // The command after which to get the currently bound piplines.
-  Command after = 1;
+  CommandTreeNode after = 2;
 }
 
 // Report is a path to a list of report items for a capture.
