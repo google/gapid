@@ -158,6 +158,10 @@ func (e externs) unmapMemory(handle VkDeviceMemory, slice memory.Slice) {
 }
 
 func (e externs) trackMappedCoherentMemory(start uint64, size memory.Size) {}
+
+// readMappedCoherentMemory copies data from memoryHandle's mapped memory into
+// its corresponding non-mapped memory. Note that despite the "read" in this
+// function's name, this copying effectively results in a read-write operation.
 func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInMapped uint64, readSize memory.Size) {
 	l := e.s.MemoryLayout
 	mem := GetState(e.s).DeviceMemoriesʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, memoryHandle)

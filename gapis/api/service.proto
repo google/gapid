@@ -523,6 +523,11 @@ message FramegraphBuffer {
   bool index = 10;
   bool vertex = 11;
   bool indirect = 12;
+  // coherentMemory is true if any of the backing memory is coherent
+  bool coherentMemory = 13;
+  // memoryMapped is true if any of the backing memory is mapped when
+  // the buffer is used
+  bool memoryMapped = 14;
 }
 
 message FramegraphImage {
@@ -540,6 +545,11 @@ message FramegraphImage {
   bool transientAttachment = 11;
   bool inputAttachment = 12;
   bool swapchain = 13;
+  // coherentMemory is true if any of the backing memory is coherent
+  bool coherentMemory = 14;
+  // memoryMapped is true if any of the backing memory is mapped when
+  // the image is used
+  bool memoryMapped = 15;
 }
 
 enum LoadStoreOp {

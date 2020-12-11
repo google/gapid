@@ -30,29 +30,83 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-func newFramegraphBuffer(buf *BufferObjectʳ) *api.FramegraphBuffer {
+// backedByCoherentMemory returns true if the device memory object is backed by
+// memory where the VK_MEMORY_PROPERTY_HOST_COHERENT_BIT is set.
+// Note that there exists a generated subIsMemoryCoherent(), but it needs all
+// the arguments of generated functions, which are not easily retrievable here.
+func backedByCoherentMemory(state *State, mem DeviceMemoryObjectʳ) bool {
+	phyDevHandle := state.Devices().Get(mem.Device()).PhysicalDevice()
+	phyDevObj := state.PhysicalDevices().Get(phyDevHandle)
+	propFlags := phyDevObj.MemoryProperties().MemoryTypes().Get(int(mem.MemoryTypeIndex())).PropertyFlags()
+	return uint32(propFlags)&uint32(VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0
+}
+
+func newFramegraphBuffer(state *State, buf *BufferObjectʳ) *api.FramegraphBuffer {
 	usage := uint32(buf.Info().Usage())
+	coherentMemory := backedByCoherentMemory(state, buf.Memory())
+	memoryMapped := !(buf.Memory().MappedLocation().IsNullptr())
+	// No need to scan sparse memory if both coherent/mapped are already true
+	if !coherentMemory || !memoryMapped {
+		for _, sparseMemBinding := range buf.SparseMemoryBindings().All() {
+			mem := state.DeviceMemories().Get(sparseMemBinding.Memory())
+			coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
+			memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+		}
+	}
+
 	return &api.FramegraphBuffer{
-		Handle:       uint64(buf.VulkanHandle()),
-		Size:         uint64(buf.Info().Size()),
-		Usage:        usage,
-		TransferSrc:  usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0,
-		TransferDst:  usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0,
-		UniformTexel: usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) != 0,
-		StorageTexel: usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) != 0,
-		Uniform:      usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0,
-		Storage:      usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0,
-		Index:        usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0,
-		Vertex:       usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0,
-		Indirect:     usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) != 0,
+		Handle:         uint64(buf.VulkanHandle()),
+		Size:           uint64(buf.Info().Size()),
+		Usage:          usage,
+		TransferSrc:    usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0,
+		TransferDst:    usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0,
+		UniformTexel:   usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) != 0,
+		StorageTexel:   usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) != 0,
+		Uniform:        usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0,
+		Storage:        usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0,
+		Index:          usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0,
+		Vertex:         usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0,
+		Indirect:       usage&uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) != 0,
+		CoherentMemory: coherentMemory,
+		MemoryMapped:   memoryMapped,
 	}
 }
 
-func newFramegraphImage(img *ImageObjectʳ) *api.FramegraphImage {
+func newFramegraphImage(state *State, img *ImageObjectʳ) *api.FramegraphImage {
 	format, err := getImageFormatFromVulkanFormat(img.Info().Fmt())
 	if err != nil {
 		panic("Unrecognized Vulkan image format")
 	}
+
+	coherentMemory := false
+	memoryMapped := false
+	for _, planeMemInfo := range img.PlaneMemoryInfo().All() {
+		mem := planeMemInfo.BoundMemory()
+		coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
+		memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+	}
+	// No need to scan sparse memory if both coherent/mapped are already true
+	if !coherentMemory || !memoryMapped {
+		for _, sparseMemBinding := range img.OpaqueSparseMemoryBindings().All() {
+			mem := state.DeviceMemories().Get(sparseMemBinding.Memory())
+			coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
+			memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+		}
+	}
+	if !coherentMemory || !memoryMapped {
+		for _, sparseImgMem := range img.SparseImageMemoryBindings().All() {
+			for _, layers := range sparseImgMem.Layers().All() {
+				for _, level := range layers.Levels().All() {
+					for _, blocks := range level.Blocks().All() {
+						mem := state.DeviceMemories().Get(blocks.Memory())
+						coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
+						memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+					}
+				}
+			}
+		}
+	}
+
 	usage := uint32(img.Info().Usage())
 	return &api.FramegraphImage{
 		Handle:    uint64(img.VulkanHandle()),
@@ -73,6 +127,8 @@ func newFramegraphImage(img *ImageObjectʳ) *api.FramegraphImage {
 		TransientAttachment:    usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) != 0,
 		InputAttachment:        usage&uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) != 0,
 		Swapchain:              img.IsSwapchainImage(),
+		CoherentMemory:         coherentMemory,
+		MemoryMapped:           memoryMapped,
 	}
 }
 
@@ -98,7 +154,7 @@ func storeOp2LoadStoreOp(storeOp VkAttachmentStoreOp) api.LoadStoreOp {
 	panic("Unknown storeOp")
 }
 
-func newFramegraphAttachment(desc VkAttachmentDescription, imgView ImageViewObjectʳ, isDepthStencil bool) *api.FramegraphAttachment {
+func newFramegraphAttachment(desc VkAttachmentDescription, state *State, imgView ImageViewObjectʳ, isDepthStencil bool) *api.FramegraphAttachment {
 	var loadOp VkAttachmentLoadOp
 	var storeOp VkAttachmentStoreOp
 	if isDepthStencil {
@@ -113,11 +169,11 @@ func newFramegraphAttachment(desc VkAttachmentDescription, imgView ImageViewObje
 		LoadOp:          loadOp2LoadStoreOp(loadOp),
 		StoreOp:         storeOp2LoadStoreOp(storeOp),
 		ImageViewHandle: uint64(imgView.VulkanHandle()),
-		Image:           newFramegraphImage(&imgObj),
+		Image:           newFramegraphImage(state, &imgObj),
 	}
 }
 
-func newFramegraphSubpass(subpassDesc SubpassDescription, framebuffer FramebufferObjectʳ, renderpass RenderPassObjectʳ) *api.FramegraphSubpass {
+func newFramegraphSubpass(subpassDesc SubpassDescription, state *State, framebuffer FramebufferObjectʳ, renderpass RenderPassObjectʳ) *api.FramegraphSubpass {
 	inputAtts := subpassDesc.InputAttachments()
 	colorAtts := subpassDesc.ColorAttachments()
 	resolveAtts := subpassDesc.ResolveAttachments()
@@ -135,7 +191,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, framebuffer Framebuffe
 		}
 		desc := renderpass.AttachmentDescriptions().Get(idx)
 		imgView := framebuffer.ImageAttachments().Get(idx)
-		sp.Input[i] = newFramegraphAttachment(desc, imgView, false)
+		sp.Input[i] = newFramegraphAttachment(desc, state, imgView, false)
 	}
 
 	// Color attachments
@@ -146,7 +202,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, framebuffer Framebuffe
 		}
 		desc := renderpass.AttachmentDescriptions().Get(idx)
 		imgView := framebuffer.ImageAttachments().Get(idx)
-		sp.Color[i] = newFramegraphAttachment(desc, imgView, false)
+		sp.Color[i] = newFramegraphAttachment(desc, state, imgView, false)
 	}
 
 	// Resolve attachments
@@ -157,7 +213,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, framebuffer Framebuffe
 		}
 		desc := renderpass.AttachmentDescriptions().Get(idx)
 		imgView := framebuffer.ImageAttachments().Get(idx)
-		sp.Resolve[i] = newFramegraphAttachment(desc, imgView, false)
+		sp.Resolve[i] = newFramegraphAttachment(desc, state, imgView, false)
 	}
 
 	// DepthStencil attachment
@@ -167,7 +223,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, framebuffer Framebuffe
 		if idx != VK_ATTACHMENT_UNUSED {
 			desc := renderpass.AttachmentDescriptions().Get(idx)
 			imgView := framebuffer.ImageAttachments().Get(idx)
-			sp.DepthStencil = newFramegraphAttachment(desc, imgView, true)
+			sp.DepthStencil = newFramegraphAttachment(desc, state, imgView, true)
 		}
 	}
 
@@ -207,9 +263,9 @@ type workloadInfo struct {
 
 	// imageAccesses is a temporary set that is eventually sorted and stored in
 	// workload.ImageAccess list.
-	imageAccesses map[VkImage]*api.FramegraphImageAccess
+	imageAccesses map[uint64]*api.FramegraphImageAccess
 	// idem imageAccesses, but for buffers
-	bufferAccesses map[VkBuffer]*api.FramegraphBufferAccess
+	bufferAccesses map[uint64]*api.FramegraphBufferAccess
 }
 
 // framegraphInfoHelpers contains variables that stores information while
@@ -221,12 +277,12 @@ type framegraphInfoHelpers struct {
 	// imageLookup is a lookup table to quickly find images that match a memory
 	// access. Scanning the whole state to look for an image matching a memory
 	// access is slow, this lookup table saves seconds of computation. It is
-	// updated when a new renderpass is started under a new top-level parent
+	// updated when a subcommand is processed under a new top-level parent
 	// command: images can only be created/destroyed between top-level commands,
 	// not during the execution of subcommands.
-	imageLookup map[memory.PoolID]map[memory.Range][]*ImageObjectʳ
+	imageLookup map[memory.PoolID]map[memory.Range][]*api.FramegraphImage
 	// idem for buffers
-	bufferLookup map[memory.PoolID]map[memory.Range][]*BufferObjectʳ
+	bufferLookup map[memory.PoolID]map[memory.Range][]*api.FramegraphBuffer
 	parentCmdIdx uint64 // used to know when to update the lookup tables
 	// lookupInitialized is true if there has been at least one update of the
 	// lookup tables.
@@ -244,8 +300,8 @@ func (helpers *framegraphInfoHelpers) newWorkloadInfo(renderpass *api.Framegraph
 		compute:        compute,
 		nodes:          []dependencygraph2.NodeID{},
 		deps:           make(map[uint64]struct{}),
-		imageAccesses:  make(map[VkImage]*api.FramegraphImageAccess),
-		bufferAccesses: make(map[VkBuffer]*api.FramegraphBufferAccess),
+		imageAccesses:  make(map[uint64]*api.FramegraphImageAccess),
+		bufferAccesses: make(map[uint64]*api.FramegraphBufferAccess),
 	}
 	helpers.currWorkloadId++
 }
@@ -261,7 +317,7 @@ func (helpers *framegraphInfoHelpers) endWorkload() {
 
 // updateImageLookup updates the lookup table to quickly find an image matching a memory observation.
 func (helpers *framegraphInfoHelpers) updateImageLookup(state *State) {
-	helpers.imageLookup = make(map[memory.PoolID]map[memory.Range][]*ImageObjectʳ)
+	helpers.imageLookup = make(map[memory.PoolID]map[memory.Range][]*api.FramegraphImage)
 	for _, image := range state.Images().All() {
 		for _, aspect := range image.Aspects().All() {
 			for _, layer := range aspect.Layers().All() {
@@ -269,10 +325,9 @@ func (helpers *framegraphInfoHelpers) updateImageLookup(state *State) {
 					pool := level.Data().Pool()
 					memRange := level.Data().Range()
 					if _, ok := helpers.imageLookup[pool]; !ok {
-						helpers.imageLookup[pool] = make(map[memory.Range][]*ImageObjectʳ)
+						helpers.imageLookup[pool] = make(map[memory.Range][]*api.FramegraphImage)
 					}
-					imgObj := image
-					helpers.imageLookup[pool][memRange] = append(helpers.imageLookup[pool][memRange], &imgObj)
+					helpers.imageLookup[pool][memRange] = append(helpers.imageLookup[pool][memRange], newFramegraphImage(state, &image))
 				}
 			}
 		}
@@ -280,8 +335,8 @@ func (helpers *framegraphInfoHelpers) updateImageLookup(state *State) {
 }
 
 // lookupImages returns all the images that contain (pool, memRange).
-func (helpers *framegraphInfoHelpers) lookupImages(pool memory.PoolID, memRange memory.Range) []*ImageObjectʳ {
-	images := []*ImageObjectʳ{}
+func (helpers *framegraphInfoHelpers) lookupImages(pool memory.PoolID, memRange memory.Range) []*api.FramegraphImage {
+	images := []*api.FramegraphImage{}
 	for imgRange := range helpers.imageLookup[pool] {
 		if imgRange.Includes(memRange) {
 			images = append(images, helpers.imageLookup[pool][imgRange]...)
@@ -292,7 +347,7 @@ func (helpers *framegraphInfoHelpers) lookupImages(pool memory.PoolID, memRange 
 
 // updateBufferLookup updates the lookup table to quickly find a buffer matching a memory observation.
 func (helpers *framegraphInfoHelpers) updateBufferLookup(state *State) {
-	helpers.bufferLookup = make(map[memory.PoolID]map[memory.Range][]*BufferObjectʳ)
+	helpers.bufferLookup = make(map[memory.PoolID]map[memory.Range][]*api.FramegraphBuffer)
 	for _, buffer := range state.Buffers().All() {
 		pool := buffer.Memory().Data().Pool()
 		memRange := memory.Range{
@@ -300,16 +355,15 @@ func (helpers *framegraphInfoHelpers) updateBufferLookup(state *State) {
 			Size: uint64(buffer.Info().Size()),
 		}
 		if _, ok := helpers.bufferLookup[pool]; !ok {
-			helpers.bufferLookup[pool] = make(map[memory.Range][]*BufferObjectʳ)
+			helpers.bufferLookup[pool] = make(map[memory.Range][]*api.FramegraphBuffer)
 		}
-		bufObj := buffer
-		helpers.bufferLookup[pool][memRange] = append(helpers.bufferLookup[pool][memRange], &bufObj)
+		helpers.bufferLookup[pool][memRange] = append(helpers.bufferLookup[pool][memRange], newFramegraphBuffer(state, &buffer))
 	}
 }
 
 // lookupBuffers returns all the buffers that contain (pool, memRange).
-func (helpers *framegraphInfoHelpers) lookupBuffers(pool memory.PoolID, memRange memory.Range) []*BufferObjectʳ {
-	buffers := []*BufferObjectʳ{}
+func (helpers *framegraphInfoHelpers) lookupBuffers(pool memory.PoolID, memRange memory.Range) []*api.FramegraphBuffer {
+	buffers := []*api.FramegraphBuffer{}
 	for bufRange := range helpers.bufferLookup[pool] {
 		if bufRange.Includes(memRange) {
 			buffers = append(buffers, helpers.bufferLookup[pool][bufRange]...)
@@ -342,7 +396,7 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 		subpasses := make([]*api.FramegraphSubpass, subpassesDesc.Len())
 		for i := 0; i < len(subpasses); i++ {
 			subpassDesc := subpassesDesc.Get(uint32(i))
-			subpasses[i] = newFramegraphSubpass(subpassDesc, framebuffer, renderpassObj)
+			subpasses[i] = newFramegraphSubpass(subpassDesc, vkState, framebuffer, renderpassObj)
 		}
 
 		renderpass := &api.FramegraphRenderpass{
@@ -431,12 +485,12 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 			}
 
 			for _, image := range helpers.lookupImages(memAccess.Pool, memRange) {
-				imgAcc, ok := helpers.wlInfo.imageAccesses[image.VulkanHandle()]
+				imgAcc, ok := helpers.wlInfo.imageAccesses[image.Handle]
 				if !ok {
 					imgAcc = &api.FramegraphImageAccess{
-						Image: newFramegraphImage(image),
+						Image: image,
 					}
-					helpers.wlInfo.imageAccesses[image.VulkanHandle()] = imgAcc
+					helpers.wlInfo.imageAccesses[image.Handle] = imgAcc
 				}
 				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_READ != 0 {
 					imgAcc.Read = true
@@ -447,12 +501,12 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 			}
 
 			for _, buffer := range helpers.lookupBuffers(memAccess.Pool, memRange) {
-				bufAcc, ok := helpers.wlInfo.bufferAccesses[buffer.VulkanHandle()]
+				bufAcc, ok := helpers.wlInfo.bufferAccesses[buffer.Handle]
 				if !ok {
 					bufAcc = &api.FramegraphBufferAccess{
-						Buffer: newFramegraphBuffer(buffer),
+						Buffer: buffer,
 					}
-					helpers.wlInfo.bufferAccesses[buffer.VulkanHandle()] = bufAcc
+					helpers.wlInfo.bufferAccesses[buffer.Handle] = bufAcc
 				}
 				if memAccess.Mode&dependencygraph2.ACCESS_PLAIN_READ != 0 {
 					bufAcc.Read = true
@@ -539,7 +593,7 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 	nodes := make([]*api.FramegraphNode, len(helpers.workloadInfos))
 	for i, wlInfo := range helpers.workloadInfos {
 		imgAcc := make([]*api.FramegraphImageAccess, len(wlInfo.imageAccesses))
-		imgHandles := make([]VkImage, 0, len(wlInfo.imageAccesses))
+		imgHandles := make([]uint64, 0, len(wlInfo.imageAccesses))
 		for h := range wlInfo.imageAccesses {
 			imgHandles = append(imgHandles, h)
 		}
@@ -549,7 +603,7 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 		}
 
 		bufAcc := make([]*api.FramegraphBufferAccess, len(wlInfo.bufferAccesses))
-		bufHandles := make([]VkBuffer, 0, len(wlInfo.bufferAccesses))
+		bufHandles := make([]uint64, 0, len(wlInfo.bufferAccesses))
 		for h := range wlInfo.bufferAccesses {
 			bufHandles = append(bufHandles, h)
 		}

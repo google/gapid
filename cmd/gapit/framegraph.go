@@ -122,6 +122,20 @@ func exportDot(ctx context.Context, framegraph *api.Framegraph, captureFilename 
 	return nil
 }
 
+func memInfo2dot(coherent bool, mapped bool) string {
+	memInfo := ""
+	if coherent || mapped {
+		memInfo = " memory:"
+	}
+	if coherent {
+		memInfo += " coherent"
+	}
+	if mapped {
+		memInfo += " mapped"
+	}
+	return memInfo
+}
+
 func image2dot(img *api.FramegraphImage) string {
 	usage := ""
 
@@ -155,7 +169,8 @@ func image2dot(img *api.FramegraphImage) string {
 
 	imgType := strings.TrimPrefix(fmt.Sprintf("%v", img.ImageType), "VK_IMAGE_TYPE_")
 	imgFormat := strings.TrimPrefix(fmt.Sprintf("%v", img.Info.Format.Name), "VK_FORMAT_")
-	return fmt.Sprintf("[Img:%v %s %s %vx%vx%v usage:%v%s]", img.Handle, imgType, imgFormat, img.Info.Width, img.Info.Height, img.Info.Depth, img.Usage, usage)
+	memInfo := memInfo2dot(img.CoherentMemory, img.MemoryMapped)
+	return fmt.Sprintf("[Img:%v %s %s %vx%vx%v usage:%v%s%s]", img.Handle, imgType, imgFormat, img.Info.Width, img.Info.Height, img.Info.Depth, img.Usage, usage, memInfo)
 }
 
 func attachment2dot(att *api.FramegraphAttachment) string {
@@ -208,7 +223,9 @@ func buffer2dot(buf *api.FramegraphBuffer) string {
 		usage += " Indirect"
 	}
 
-	return fmt.Sprintf("[Buf:%v size:%v usage:%v%s]", buf.Handle, buf.Size, buf.Usage, usage)
+	memInfo := memInfo2dot(buf.CoherentMemory, buf.MemoryMapped)
+
+	return fmt.Sprintf("[Buf:%v size:%v usage:%v%s%s]", buf.Handle, buf.Size, buf.Usage, usage, memInfo)
 }
 
 func bufferAccess2dot(acc *api.FramegraphBufferAccess) string {
