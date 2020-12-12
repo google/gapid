@@ -150,7 +150,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
         Service.Value::getResourceData);
   }
 
-  public ListenableFuture<API.MultiResourceData> loadBoundPipelines() {
+  public ListenableFuture<Service.MultiResourceData> loadBoundPipelines() {
     CommandIndex after = commands.getSelectedCommands();
     if (after == null) {
       return Futures.immediateFailedFuture(new RuntimeException("No command selected"));

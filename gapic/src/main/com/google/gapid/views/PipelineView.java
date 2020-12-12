@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.server.Client.throwIfError;
 import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
@@ -25,8 +26,6 @@ import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createScrolledComposite;
-import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
-import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
@@ -41,6 +40,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
@@ -63,32 +63,28 @@ import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.custom.StackLayout;
-import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Link;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
-import org.eclipse.swt.widgets.Button;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
-import java.util.logging.Level;
 
 /**
  * View the displays the information for each stage of the pipeline.
@@ -176,15 +172,18 @@ public class PipelineView extends Composite
       loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
     } else if (models.resources.isLoaded()) {
       Rpc.listen(models.resources.loadBoundPipelines(),
-          new UiErrorCallback<API.MultiResourceData, List<API.Pipeline>, Loadable.Message>(this, LOG) {
+          new UiErrorCallback<Service.MultiResourceData, List<API.Pipeline>, Loadable.Message>(this, LOG) {
         @Override
         protected ResultOrError<List<API.Pipeline>, Loadable.Message> onRpcThread(
-            Rpc.Result<API.MultiResourceData> result) {
+            Rpc.Result<Service.MultiResourceData> result) {
           try {
             List<API.Pipeline> pipelines = Lists.newArrayList();
-            for (API.ResourceData resource : result.get().getResourcesList()) {
-              if (resource.hasPipeline()) {
-                pipelines.add(resource.getPipeline());
+            for (Service.MultiResourceData.ResourceOrError resource :
+                result.get().getResourcesMap().values()) {
+              // TODO: Don't globally fail on the first error.
+              API.ResourceData data = throwIfError(resource.getResource(), resource.getError(), null);
+              if (data.hasPipeline()) {
+                pipelines.add(data.getPipeline());
               }
             }
             return success(pipelines);
@@ -304,7 +303,7 @@ public class PipelineView extends Composite
               int lineLength = (int)(areaSize.width * 0.8);
               int triangleBaseLength = (int)(areaSize.height * 0.2);
 
-              e.gc.setBackground(getDisplay().getSystemColor(SWT.COLOR_LIST_FOREGROUND));              
+              e.gc.setBackground(getDisplay().getSystemColor(SWT.COLOR_LIST_FOREGROUND));
               e.gc.setLineWidth((int)(areaSize.height * 0.1));
               e.gc.drawLine(0, areaSize.height / 2, lineLength, areaSize.height / 2);
 
@@ -366,7 +365,7 @@ public class PipelineView extends Composite
           Composite contentComposite = createComposite(scrollComposite, gridLayout);
 
           List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
-          
+
           boolean dynamicExists = false;
 
           for (API.KeyValuePair kvp : kvpList) {
@@ -378,7 +377,7 @@ public class PipelineView extends Composite
 
             Label keyLabel = withLayoutData( createBoldLabel(keyComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
                 new GridData(SWT.RIGHT, SWT.CENTER, true, true));
-            
+
             if (!kvp.getDependee().equals("")) {
               if (kvp.getActive()) {
                 keyLabel.setToolTipText("Activated by " + kvp.getDependee());
@@ -421,7 +420,7 @@ public class PipelineView extends Composite
           scrollComposite.setExpandHorizontal(true);
           scrollComposite.addListener(SWT.Resize, event -> {
             Rectangle scrollArea = scrollComposite.getClientArea();
-            
+
             int currentNumColumns = gridLayout.numColumns;
             int numChildren = contentComposite.getChildren().length;
             Point tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
@@ -493,7 +492,7 @@ public class PipelineView extends Composite
                 DataValue dv = convertDataValue(((API.Row)element).getRowValues(col));
                 if (dv != null) {
                   if (dv.tooltipValue == null && !dataTable.getDependee().equals("")) {
-                    return ((dataTable.getActive() ? "Activated by "  : "Deactivated by ") + dataTable.getDependee());   
+                    return ((dataTable.getActive() ? "Activated by "  : "Deactivated by ") + dataTable.getDependee());
                   } else {
                     return dv.tooltipValue;
                   }

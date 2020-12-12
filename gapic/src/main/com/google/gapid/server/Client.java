@@ -305,7 +305,7 @@ public class Client {
     return result;
   }
 
-  private static <V> V throwIfError(V value, Service.Error err, Stack stack) throws RpcException {
+  public static <V> V throwIfError(V value, Service.Error err, Stack stack) throws RpcException {
     switch (err.getErrCase()) {
       case ERR_NOT_SET:
         return value;

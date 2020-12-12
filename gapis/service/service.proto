@@ -91,7 +91,7 @@ message Value {
     api.ResourceData resource_data = 31;
     api.Mesh mesh = 32;
     api.Metrics metrics = 33;
-    api.MultiResourceData multi_resource_data = 34;
+    MultiResourceData multi_resource_data = 34;
     FramebufferAttachments framebuffer_attachments = 35;
     FramebufferAttachment framebuffer_attachment = 36;
     api.Framegraph framegraph = 37;
@@ -974,6 +974,18 @@ message Resource {
   path.Command created = 7;
   // The type of the resource
   path.ResourceType type = 9;
+}
+
+// MultiResourceData represents the state of resources at a single point in a
+// capture.
+message MultiResourceData {
+  message ResourceOrError {
+    oneof val {
+      api.ResourceData resource = 1;
+      Error error = 2;
+    }
+  }
+  map<string, ResourceOrError> resources = 1;
 }
 
 // CommandTree represents a command tree hierarchy.

@@ -67,6 +67,10 @@ func change(ctx context.Context, p path.Node, val interface{}, r *path.ResolveCo
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
+		if len(p.IDs) != len(data.Resources) {
+			return nil, fmt.Errorf("Number of resource ids does not match the number of resource values")
+		}
+
 		c, err := changeResources(ctx, p.After, p.IDs, data.Resources, r)
 		if err != nil {
 			return nil, err

@@ -227,16 +227,24 @@ func (r *PipelinesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.After)
 	}
 
-	pipelines := []*api.ResourceData{}
-	for _, val := range res.resourceData {
+	pipelines := map[string]*service.MultiResourceData_ResourceOrError{}
+	for id, val := range res.resourceData {
 		switch v := val.(type) {
 		case error:
-			return nil, v
+			pipelines[id.String()] = &service.MultiResourceData_ResourceOrError{
+				Val: &service.MultiResourceData_ResourceOrError_Error{
+					Error: service.NewError(v),
+				},
+			}
 		case *api.ResourceData:
 			if p := v.GetPipeline(); p.GetBound() {
-				pipelines = append(pipelines, v)
+				pipelines[id.String()] = &service.MultiResourceData_ResourceOrError{
+					Val: &service.MultiResourceData_ResourceOrError_Resource{
+						Resource: v,
+					},
+				}
 			}
 		}
 	}
-	return api.NewMultiResourceData(pipelines), nil
+	return &service.MultiResourceData{Resources: pipelines}, nil
 }
