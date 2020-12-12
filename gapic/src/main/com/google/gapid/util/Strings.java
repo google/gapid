@@ -15,6 +15,8 @@
  */
 package com.google.gapid.util;
 
+import com.google.gapid.proto.service.path.Path;
+
 /**
  * String utilities.
  */
@@ -25,5 +27,9 @@ public class Strings {
   public static String stripQuotes(String s) {
     return (s == null || s.length() < 2 || s.charAt(0) != '"' || s.charAt(s.length() - 1) != '"') ?
       s : s.substring(1, s.length() - 1);
+  }
+
+  public static String toString(Path.ID id) {
+    return new String(ProtoDebugTextFormat.escapeBytes(id.getData()));
   }
 }

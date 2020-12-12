@@ -233,6 +233,18 @@ public class Paths {
         .build();
   }
 
+  public static Path.Any resourcesAfter(CommandIndex command, Path.ResourceType type) {
+    if (command == null || type == null) {
+      return null;
+    }
+    return Path.Any.newBuilder()
+        .setMultiResourceData(Path.MultiResourceData.newBuilder()
+            .setAfter(command.getCommand())
+            .setAll(true)
+            .setType(type))
+        .build();
+  }
+
   public static Path.Any pipelinesAfter(CommandIndex command) {
     if (command == null) {
       return null;

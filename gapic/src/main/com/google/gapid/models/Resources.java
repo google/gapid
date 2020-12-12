@@ -20,6 +20,7 @@ import static com.google.gapid.util.Paths.framebufferAttachmentsAfter;
 import static com.google.gapid.util.Paths.isNull;
 import static com.google.gapid.util.Paths.pipelinesAfter;
 import static com.google.gapid.util.Paths.resourceAfter;
+import static com.google.gapid.util.Paths.resourcesAfter;
 import static java.util.Collections.emptyList;
 import static java.util.logging.Level.WARNING;
 
@@ -148,6 +149,17 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     return MoreFutures.transform(
         client.get(resourceAfter(after, resource.getID()), getData().device),
         Service.Value::getResourceData);
+  }
+
+  public ListenableFuture<Service.MultiResourceData> loadResources(Path.ResourceType type) {
+    CommandIndex after = commands.getSelectedCommands();
+    if (after == null) {
+      return Futures.immediateFailedFuture(new RuntimeException("No command selected"));
+    }
+
+    return MoreFutures.transform(
+        client.get(resourcesAfter(after, type), getData().device),
+        Service.Value::getMultiResourceData);
   }
 
   public ListenableFuture<Service.MultiResourceData> loadBoundPipelines() {

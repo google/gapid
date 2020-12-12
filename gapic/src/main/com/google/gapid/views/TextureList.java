@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.common.base.Functions.identity;
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
@@ -27,9 +28,9 @@ import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
-import static java.util.logging.Level.FINE;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -43,11 +44,12 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.Strings;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.LoadingIndicator;
@@ -72,7 +74,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.swt.widgets.Widget;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -239,14 +240,11 @@ public class TextureList extends Composite
 
       imageProvider.reset();
 
-      Widgets.Refresher refresher = withAsyncRefresh(textureTable);
-      List<Data> textures = Lists.newArrayList();
-      models.resources.getResources(Path.ResourceType.Texture).stream()
+      List<Data> textures = models.resources.getResources(Path.ResourceType.Texture).stream()
           .map(r -> new Data(r.resource, r.deleted))
-          .forEach(data -> {
-            textures.add(data);
-            data.load(models.resources, textureTable.getTable(), refresher);
-          });
+          .collect(toList());
+      Map<String, Data> mapped = textures.stream()
+          .collect(toMap(Data::getResourceId, identity()));
 
       textureTable.setInput(textures);
       packColumns(textureTable.getTable());
@@ -257,6 +255,37 @@ public class TextureList extends Composite
       } else {
         loading.stopLoading();
         onTextureSelected(models.resources.getSelectedTexture());
+
+        Widgets.Refresher refresher = withAsyncRefresh(textureTable);
+        Rpc.listen(models.resources.loadResources(Path.ResourceType.Texture),
+            new UiCallback<Service.MultiResourceData, Map<String, Data.AdditionalInfo>>(
+                textureTable.getTable(), LOG) {
+          @Override
+          protected Map<String, Data.AdditionalInfo> onRpcThread(
+              Result<Service.MultiResourceData> result) throws RpcException, ExecutionException {
+            Map<String, Data.AdditionalInfo> infos = Maps.newHashMap();
+            for (Map.Entry<String, Service.MultiResourceData.ResourceOrError> e :
+                result.get().getResourcesMap().entrySet()) {
+              if (e.getValue().hasError()) {
+                infos.put(e.getKey(), Data.AdditionalInfo.NULL);
+              } else {
+                infos.put(e.getKey(), Data.AdditionalInfo.from(e.getValue().getResource()));
+              }
+            }
+            return infos;
+          }
+
+          @Override
+          protected void onUiThread(Map<String, Data.AdditionalInfo> result) {
+            for (Map.Entry<String, Data.AdditionalInfo> e : result.entrySet()) {
+              Data data = mapped.get(e.getKey());
+              if (data != null) {
+                data.imageInfo = e.getValue();
+              }
+            }
+            refresher.refresh();
+          }
+        });
       }
     }
   }
@@ -293,6 +322,10 @@ public class TextureList extends Composite
 
     public String getType() {
       return imageInfo.getType();
+    }
+
+    public String getResourceId() {
+      return Strings.toString(info.getID());
     }
 
     public String getId() {
@@ -349,28 +382,6 @@ public class TextureList extends Composite
 
     public String getFormat() {
       return imageInfo.getFormat();
-    }
-
-    public void load(Resources resources, Widget widget, Widgets.Refresher refresher) {
-      Rpc.listen(resources.loadResource(info),
-          new UiCallback<API.ResourceData, AdditionalInfo>(widget, LOG) {
-        @Override
-        protected AdditionalInfo onRpcThread(Rpc.Result<API.ResourceData> result)
-            throws RpcException, ExecutionException {
-          try {
-            return AdditionalInfo.from(result.get());
-          } catch (DataUnavailableException e) {
-            LOG.log(FINE, "Texture info unavailable: {0}", e.getMessage());
-            return AdditionalInfo.NULL;
-          }
-        }
-
-        @Override
-        protected void onUiThread(AdditionalInfo result) {
-          imageInfo = result;
-          refresher.refresh();
-        }
-      });
     }
 
     private static class AdditionalInfo {
