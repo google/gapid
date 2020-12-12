@@ -89,11 +89,6 @@ message ResourcesResolvable {
   path.ResolveConfig config = 2;
 }
 
-message ResourceDataResolvable {
-  path.ResourceData path = 1;
-  path.ResolveConfig config = 2;
-}
-
 message PipelinesResolvable {
   path.Command after = 1;
   path.ResolveConfig config = 2;

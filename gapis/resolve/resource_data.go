@@ -138,21 +138,12 @@ func buildResources(ctx context.Context, p *path.Command, t path.ResourceType, r
 // ResourceData resolves the data of the specified resource at the specified
 // point in the capture.
 func ResourceData(ctx context.Context, p *path.ResourceData, r *path.ResolveConfig) (interface{}, error) {
-	obj, err := database.Build(ctx, &ResourceDataResolvable{Path: p, Config: r})
-	if err != nil {
-		return nil, err
-	}
-	return obj, nil
-}
-
-// Resolve implements the database.Resolver interface.
-func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	resTypes, err := Resources(ctx, r.Path.After.Capture, r.Config)
+	resTypes, err := Resources(ctx, p.After.Capture, r)
 	if err != nil {
 		return nil, err
 	}
 
-	id := r.Path.ID.ID()
+	id := p.ID.ID()
 
 	t, ok := resTypes.ResourcesToTypes[id.String()]
 
@@ -160,13 +151,13 @@ func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, erro
 		return nil, log.Errf(ctx, nil, "Could not find resource %v", id)
 	}
 
-	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: r.Path.After, Type: t, Config: r.Config})
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: p.After, Type: t, Config: r})
 	if err != nil {
 		return nil, err
 	}
 	res, ok := resources.(*ResolvedResources)
 	if !ok {
-		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.Path.After)
+		return nil, fmt.Errorf("Cannot resolve resources at command: %v", p.After)
 	}
 
 	if val, ok := res.resourceData[id]; ok {

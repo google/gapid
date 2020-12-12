@@ -27,7 +27,6 @@ var _ = []database.Resolvable{
 	(*GlobalStateResolvable)(nil),
 	(*IndexLimitsResolvable)(nil),
 	(*ReportResolvable)(nil),
-	(*ResourceDataResolvable)(nil),
 	(*ResourcesResolvable)(nil),
 	(*SetResolvable)(nil),
 	(*StateResolvable)(nil),
