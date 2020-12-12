@@ -473,16 +473,16 @@ message Report {
 
 // ResourceType is an enumerator of resource types.
 enum ResourceType {
-  // UnknownResource represents an unknown resource type
-  UnknownResource = 0;
+  // Unknown represents an unknown resource type
+  Unknown = 0;
   // Texture represents the Texture resource type
-  TextureResource = 1;
-  // ShaderResource represents the Shader resource type
-  ShaderResource = 2;
-  // ProgramResource represents the Program resource type
-  ProgramResource = 3;
-  // PipelineResource respresents the Pipeline resource type
-  PipelineResource = 4;
+  Texture = 1;
+  // Shader represents the Shader resource type
+  Shader = 2;
+  // Program represents the Program resource type
+  Program = 3;
+  // Pipeline respresents the Pipeline resource type
+  Pipeline = 4;
 }
 
 // Resources is a path to a list of resources used in a capture.

@@ -70,7 +70,7 @@ func (t ImageObjectʳ) Order() uint64 {
 
 // ResourceType returns the type of this resource.
 func (t ImageObjectʳ) ResourceType(ctx context.Context) path.ResourceType {
-	return path.ResourceType_TextureResource
+	return path.ResourceType_Texture
 }
 
 type unsupportedVulkanFormatError struct {
@@ -825,7 +825,7 @@ func (s ShaderModuleObjectʳ) Order() uint64 {
 
 // ResourceType returns the type of this resource.
 func (s ShaderModuleObjectʳ) ResourceType(ctx context.Context) path.ResourceType {
-	return path.ResourceType_ShaderResource
+	return path.ResourceType_Shader
 }
 
 // ResourceData returns the resource data given the current state.
@@ -996,7 +996,7 @@ func (p GraphicsPipelineObjectʳ) Order() uint64 {
 
 // ResourceType returns the type of this resource.
 func (p GraphicsPipelineObjectʳ) ResourceType(ctx context.Context) path.ResourceType {
-	return path.ResourceType_PipelineResource
+	return path.ResourceType_Pipeline
 }
 
 // ResourceData returns the resource data given the current state.
@@ -2012,7 +2012,7 @@ func (p ComputePipelineObjectʳ) Order() uint64 {
 
 // ResourceType returns the type of this resource.
 func (p ComputePipelineObjectʳ) ResourceType(ctx context.Context) path.ResourceType {
-	return path.ResourceType_PipelineResource
+	return path.ResourceType_Pipeline
 }
 
 // ResourceData returns the resource data given the current state.

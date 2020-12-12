@@ -274,7 +274,7 @@ public class ShaderView extends Composite
     boolean hasPrograms = true;
     if (models.resources.isLoaded()) {
       hasPrograms = models.resources.getResources().stream()
-          .filter(r -> r.getType() == Path.ResourceType.ProgramResource)
+          .filter(r -> r.getType() == Path.ResourceType.Program)
           .findAny()
           .isPresent();
     } else if (!force) {
@@ -326,11 +326,11 @@ public class ShaderView extends Composite
       Composite treeViewerContainer= createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
       Composite sourcesContainer = createComposite(splitter, new GridLayout(1, false));
 
-      if (type.type == Path.ResourceType.ShaderResource) {
+      if (type.type == Path.ResourceType.Shader) {
         splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Shaders));
         splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
             Settings.SplitterWeights.Shaders, splitter.getWeights()));
-      } else if (type.type == Path.ResourceType.ProgramResource) {
+      } else if (type.type == Path.ResourceType.Program) {
         splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Programs));
         splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
             Settings.SplitterWeights.Programs, splitter.getWeights()));
@@ -690,11 +690,11 @@ public class ShaderView extends Composite
     }
 
     public static Type shader(ShaderPanel.UpdateShader onSourceEdited) {
-      return new Type(Path.ResourceType.ShaderResource, onSourceEdited);
+      return new Type(Path.ResourceType.Shader, onSourceEdited);
     }
 
     public static Type program() {
-      return new Type(Path.ResourceType.ProgramResource, null);
+      return new Type(Path.ResourceType.Program, null);
     }
 
     @Override

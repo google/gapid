@@ -241,7 +241,7 @@ public class TextureList extends Composite
 
       Widgets.Refresher refresher = withAsyncRefresh(textureTable);
       List<Data> textures = Lists.newArrayList();
-      models.resources.getResources(Path.ResourceType.TextureResource).stream()
+      models.resources.getResources(Path.ResourceType.Texture).stream()
           .map(r -> new Data(r.resource, r.deleted))
           .forEach(data -> {
             textures.add(data);

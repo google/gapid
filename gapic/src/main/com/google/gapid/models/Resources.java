@@ -101,7 +101,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
 
     if (r != null) {
       switch (r.resource.getType()) {
-        case TextureResource:
+        case Texture:
           selectTexture(r.resource);
           break;
         default:

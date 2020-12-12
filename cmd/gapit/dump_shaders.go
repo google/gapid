@@ -76,7 +76,7 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 	}
 
 	for _, types := range resources.GetTypes() {
-		if types.Type == path.ResourceType_ShaderResource {
+		if types.Type == path.ResourceType_Shader {
 			for _, v := range types.GetResources() {
 				if !v.ID.IsValid() {
 					log.E(ctx, "Got resource with invalid ID!\n%+v", v)

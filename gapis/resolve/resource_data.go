@@ -224,7 +224,7 @@ func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (i
 func (r *PipelinesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	resources, err := database.Build(ctx, &AllResourceDataResolvable{
 		After:  r.After,
-		Type:   path.ResourceType_PipelineResource,
+		Type:   path.ResourceType_Pipeline,
 		Config: r.Config,
 	})
 	if err != nil {

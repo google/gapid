@@ -450,11 +450,11 @@ func (b *benchmark) resourcesByType(after *path.Command, ty path.ResourceType) [
 }
 
 func (b *benchmark) textures(after *path.Command) []*service.Resource {
-	return b.resourcesByType(after, path.ResourceType_TextureResource)
+	return b.resourcesByType(after, path.ResourceType_Texture)
 }
 
 func (b *benchmark) shaders(after *path.Command) []*service.Resource {
-	return b.resourcesByType(after, path.ResourceType_ShaderResource)
+	return b.resourcesByType(after, path.ResourceType_Shader)
 }
 
 type parallel struct {
