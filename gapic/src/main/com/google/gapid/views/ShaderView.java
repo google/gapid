@@ -51,6 +51,7 @@ import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
@@ -273,7 +274,7 @@ public class ShaderView extends Composite
     boolean hasPrograms = true;
     if (models.resources.isLoaded()) {
       hasPrograms = models.resources.getResources().stream()
-          .filter(r -> r.getType() == API.ResourceType.ProgramResource)
+          .filter(r -> r.getType() == Path.ResourceType.ProgramResource)
           .findAny()
           .isPresent();
     } else if (!force) {
@@ -325,11 +326,11 @@ public class ShaderView extends Composite
       Composite treeViewerContainer= createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
       Composite sourcesContainer = createComposite(splitter, new GridLayout(1, false));
 
-      if (type.type == API.ResourceType.ShaderResource) {
+      if (type.type == Path.ResourceType.ShaderResource) {
         splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Shaders));
         splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
             Settings.SplitterWeights.Shaders, splitter.getWeights()));
-      } else if (type.type == API.ResourceType.ProgramResource) {
+      } else if (type.type == Path.ResourceType.ProgramResource) {
         splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Programs));
         splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
             Settings.SplitterWeights.Programs, splitter.getWeights()));
@@ -680,20 +681,20 @@ public class ShaderView extends Composite
    * Distinguishes between shaders and programs.
    */
   private static class Type implements ShaderPanel.UpdateShader {
-    public final API.ResourceType type;
+    public final Path.ResourceType type;
     public final ShaderPanel.UpdateShader onSourceEdited;
 
-    public Type(API.ResourceType type, ShaderPanel.UpdateShader onSourceEdited) {
+    public Type(Path.ResourceType type, ShaderPanel.UpdateShader onSourceEdited) {
       this.type = type;
       this.onSourceEdited = onSourceEdited;
     }
 
     public static Type shader(ShaderPanel.UpdateShader onSourceEdited) {
-      return new Type(API.ResourceType.ShaderResource, onSourceEdited);
+      return new Type(Path.ResourceType.ShaderResource, onSourceEdited);
     }
 
     public static Type program() {
-      return new Type(API.ResourceType.ProgramResource, null);
+      return new Type(Path.ResourceType.ProgramResource, null);
     }
 
     @Override

@@ -947,12 +947,12 @@ message TypedMemoryRange {
 // Resources contains the full list of resources used by a capture.
 message Resources {
   repeated ResourcesByType types = 1;
-  map<string, api.ResourceType> resourcesToTypes = 2;
+  map<string, path.ResourceType> resourcesToTypes = 2;
 }
 
 // ResourcesByType contains all resources of a specific type.
 message ResourcesByType {
-  api.ResourceType type = 1;
+  path.ResourceType type = 1;
   repeated Resource resources = 2;
 }
 
@@ -973,7 +973,7 @@ message Resource {
   // The command at which this resource was created.
   path.Command created = 7;
   // The type of the resource
-  api.ResourceType type = 9;
+  path.ResourceType type = 9;
 }
 
 // CommandTree represents a command tree hierarchy.

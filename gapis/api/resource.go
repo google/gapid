@@ -42,7 +42,7 @@ type Resource interface {
 	Order() uint64
 
 	// ResourceType returns the type of this resource.
-	ResourceType(ctx context.Context) ResourceType
+	ResourceType(ctx context.Context) path.ResourceType
 
 	// ResourceData returns the resource data given the current state.
 	ResourceData(ctx context.Context, s *GlobalState, cmd *path.Command, r *path.ResolveConfig) (*ResourceData, error)

@@ -16,7 +16,6 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
-import static com.google.gapid.proto.service.api.API.ResourceType.TextureResource;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
@@ -42,6 +41,7 @@ import com.google.gapid.models.Resources;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
@@ -241,7 +241,7 @@ public class TextureList extends Composite
 
       Widgets.Refresher refresher = withAsyncRefresh(textureTable);
       List<Data> textures = Lists.newArrayList();
-      models.resources.getResources(TextureResource).stream()
+      models.resources.getResources(Path.ResourceType.TextureResource).stream()
           .map(r -> new Data(r.resource, r.deleted))
           .forEach(data -> {
             textures.add(data);

@@ -86,7 +86,7 @@ func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Cli
 
 	resources := boxedResources.(*service.Resources)
 	for _, typ := range resources.Types {
-		if typ.Type != api.ResourceType_PipelineResource {
+		if typ.Type != path.ResourceType_PipelineResource {
 			continue
 		}
 

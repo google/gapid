@@ -52,7 +52,7 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 	return resources, nil
 }
 
-func buildResources(ctx context.Context, p *path.Command, t api.ResourceType, r *path.ResolveConfig) (*ResolvedResources, error) {
+func buildResources(ctx context.Context, p *path.Command, t path.ResourceType, r *path.ResolveConfig) (*ResolvedResources, error) {
 	cmdIdx := p.Indices[0]
 
 	capture, err := capture.ResolveGraphics(ctx)
@@ -224,7 +224,7 @@ func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (i
 func (r *PipelinesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	resources, err := database.Build(ctx, &AllResourceDataResolvable{
 		After:  r.After,
-		Type:   api.ResourceType_PipelineResource,
+		Type:   path.ResourceType_PipelineResource,
 		Config: r.Config,
 	})
 	if err != nil {

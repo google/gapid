@@ -339,7 +339,7 @@ func NewMemoryRanges(l memory.RangeList) []*MemoryRange {
 }
 
 // FindAll returns all the resources that match the predicate f.
-func (r *Resources) FindAll(f func(api.ResourceType, Resource) bool) []*Resource {
+func (r *Resources) FindAll(f func(path.ResourceType, Resource) bool) []*Resource {
 	var resources []*Resource
 	for _, t := range r.Types {
 		for _, r := range t.Resources {
@@ -353,7 +353,7 @@ func (r *Resources) FindAll(f func(api.ResourceType, Resource) bool) []*Resource
 
 // FindSingle returns the single resource that matches the predicate f.
 // If there are 0 or multiple resources found, FindSingle returns an error.
-func (r *Resources) FindSingle(f func(api.ResourceType, Resource) bool) (*Resource, error) {
+func (r *Resources) FindSingle(f func(path.ResourceType, Resource) bool) (*Resource, error) {
 	resources := r.FindAll(f)
 	if len(resources) != 1 {
 		return nil, fmt.Errorf("One resource expected, found %d", len(resources))
@@ -363,8 +363,8 @@ func (r *Resources) FindSingle(f func(api.ResourceType, Resource) bool) (*Resour
 
 // Find looks up a resource by type and identifier.
 // Returns an error if 0 or multiple resources are found.
-func (r *Resources) Find(ty api.ResourceType, id id.ID) (*Resource, error) {
-	return r.FindSingle(func(t api.ResourceType, r Resource) bool {
+func (r *Resources) Find(ty path.ResourceType, id id.ID) (*Resource, error) {
+	return r.FindSingle(func(t path.ResourceType, r Resource) bool {
 		return t == ty && r.ID.ID() == id
 	})
 }

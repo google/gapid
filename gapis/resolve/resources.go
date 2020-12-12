@@ -47,7 +47,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 
 	resources := []trackedResource{}
-	resourceTypes := map[string]api.ResourceType{}
+	resourceTypes := map[string]path.ResourceType{}
 	seen := map[api.Resource]int{}
 
 	var currentCmdIndex uint64
@@ -115,7 +115,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil, err
 	}
 
-	types := map[api.ResourceType]*service.ResourcesByType{}
+	types := map[path.ResourceType]*service.ResourcesByType{}
 	for _, tr := range resources {
 		if _, ok := seen[tr.resource]; !ok {
 			continue
@@ -145,7 +145,7 @@ type trackedResource struct {
 	accesses     []uint64
 	deleted      uint64
 	created      uint64
-	resourceType api.ResourceType
+	resourceType path.ResourceType
 }
 
 func (r trackedResource) asService(p *path.Capture) *service.Resource {

@@ -88,8 +88,8 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 
 	switch {
 	case verb.Handle != "":
-		matchedResource, err := resources.FindSingle(func(t api.ResourceType, r service.Resource) bool {
-			return t == api.ResourceType_ShaderResource &&
+		matchedResource, err := resources.FindSingle(func(t path.ResourceType, r service.Resource) bool {
+			return t == path.ResourceType_ShaderResource &&
 				(strings.Contains(r.GetHandle(), verb.Handle) || strings.Contains(r.GetID().ID().String(), verb.Handle))
 		})
 		if err != nil {
@@ -111,8 +111,8 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 			Source: string(newResourceBytes),
 		})
 	case verb.UpdateResourceBinary != "":
-		shaderResources := resources.FindAll(func(t api.ResourceType, r service.Resource) bool {
-			return t == api.ResourceType_ShaderResource
+		shaderResources := resources.FindAll(func(t path.ResourceType, r service.Resource) bool {
+			return t == path.ResourceType_ShaderResource
 		})
 		ids := make([]*path.ID, len(shaderResources))
 		resourcesSource := make([]*api.ResourceData, len(shaderResources))

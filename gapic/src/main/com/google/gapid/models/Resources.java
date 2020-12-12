@@ -116,7 +116,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     return getData().resources.getTypesList();
   }
 
-  public ResourceList getResources(API.ResourceType type) {
+  public ResourceList getResources(Path.ResourceType type) {
     if (!isLoaded() || commands.getSelectedCommands() == null) {
       return new ResourceList(type, emptyList(), false);
     }
@@ -220,7 +220,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
       this.resources = resources;
     }
 
-    public ResourceList getResources(Path.Command after, API.ResourceType type) {
+    public ResourceList getResources(Path.Command after, Path.ResourceType type) {
       List<Resource> list = Lists.newArrayList();
       boolean complete = true;
       for (Service.ResourcesByType rs : resources.getTypesList()) {
@@ -259,11 +259,11 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
   }
 
   public static class ResourceList {
-    public final API.ResourceType type;
+    public final Path.ResourceType type;
     public final List<Resource> resources;
     public final boolean complete;
 
-    public ResourceList(API.ResourceType type, List<Resource> resources, boolean complete) {
+    public ResourceList(Path.ResourceType type, List<Resource> resources, boolean complete) {
       this.type = type;
       this.resources = resources;
       this.complete = complete;

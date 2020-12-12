@@ -65,20 +65,6 @@ enum DrawPrimitive {
   TriangleFan = 6;
 }
 
-// ResourceType is an enumerator of resource types.
-enum ResourceType {
-  // UnknownResource represents an unknown resource type
-  UnknownResource = 0;
-  // Texture represents the Texture resource type
-  TextureResource = 1;
-  // ShaderResource represents the Shader resource type
-  ShaderResource = 2;
-  // ProgramResource represents the Program resource type
-  ProgramResource = 3;
-  // PipelineResource respresents the Pipeline resource type
-  PipelineResource = 4;
-}
-
 // FramebufferAttachment values indicate the type of frame buffer attachment.
 enum FramebufferAttachmentType {
   OutputColor = 0;

@@ -434,7 +434,7 @@ func (b *benchmark) resolveConfig() *path.ResolveConfig {
 	}
 }
 
-func (b *benchmark) resourcesByType(after *path.Command, ty api.ResourceType) []*service.Resource {
+func (b *benchmark) resourcesByType(after *path.Command, ty path.ResourceType) []*service.Resource {
 	var res []*service.Resource
 	for _, byType := range b.resources.GetTypes() {
 		if byType.GetType() == ty {
@@ -450,11 +450,11 @@ func (b *benchmark) resourcesByType(after *path.Command, ty api.ResourceType) []
 }
 
 func (b *benchmark) textures(after *path.Command) []*service.Resource {
-	return b.resourcesByType(after, api.ResourceType_TextureResource)
+	return b.resourcesByType(after, path.ResourceType_TextureResource)
 }
 
 func (b *benchmark) shaders(after *path.Command) []*service.Resource {
-	return b.resourcesByType(after, api.ResourceType_ShaderResource)
+	return b.resourcesByType(after, path.ResourceType_ShaderResource)
 }
 
 type parallel struct {
