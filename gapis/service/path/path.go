@@ -284,7 +284,13 @@ func (n ResourceData) Format(f fmt.State, c rune) {
 
 // Format implements fmt.Formatter to print the path.
 func (n MultiResourceData) Format(f fmt.State, c rune) {
-	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.IDs)
+	ids := ""
+	if len(n.IDs) == 0 && n.All {
+		ids = fmt.Sprintf("ALL[%v]", n.Type)
+	} else {
+		ids = fmt.Sprint(n.IDs)
+	}
+	fmt.Fprintf(f, "%v.resource-data<%s>", n.Parent(), ids)
 }
 
 // Format implements fmt.Formatter to print the path.
@@ -664,6 +670,15 @@ func (n *Command) ResourcesAfter(ids []*ID) *MultiResourceData {
 	return &MultiResourceData{
 		IDs:   ids,
 		After: n,
+	}
+}
+
+// AllResourcesAfter returns the path node to all the resources after this command.
+func (n *Command) AllResourcesAfter(t ResourceType) *MultiResourceData {
+	return &MultiResourceData{
+		After: n,
+		All:   true,
+		Type:  t,
 	}
 }
 

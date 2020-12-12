@@ -67,6 +67,10 @@ func change(ctx context.Context, p path.Node, val interface{}, r *path.ResolveCo
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
+		if len(p.IDs) == 0 && p.All {
+			return nil, fmt.Errorf("Set does not support MultiResources with the all flag set")
+		}
+
 		if len(p.IDs) != len(data.Resources) {
 			return nil, fmt.Errorf("Number of resource ids does not match the number of resource values")
 		}

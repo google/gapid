@@ -170,6 +170,41 @@ func ResourceData(ctx context.Context, p *path.ResourceData, r *path.ResolveConf
 	return nil, fmt.Errorf("Cannot find resource with id: %v", id)
 }
 
+// ResourceDatas resolves the data of multiple resources at the specified point in the capture.
+func ResourceDatas(ctx context.Context, p *path.MultiResourceData, r *path.ResolveConfig) (interface{}, error) {
+	if len(p.IDs) != 0 || !p.All {
+		return nil, fmt.Errorf("Get(MultiResourceData) not supported with a list of IDs")
+	}
+
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: p.After, Type: p.Type, Config: r})
+	if err != nil {
+		return nil, err
+	}
+	res, ok := resources.(*ResolvedResources)
+	if !ok {
+		return nil, fmt.Errorf("Cannot resolve resources at command: %v", p.After)
+	}
+
+	m := map[string]*service.MultiResourceData_ResourceOrError{}
+	for id, val := range res.resourceData {
+		switch v := val.(type) {
+		case error:
+			m[id.String()] = &service.MultiResourceData_ResourceOrError{
+				Val: &service.MultiResourceData_ResourceOrError_Error{
+					Error: service.NewError(v),
+				},
+			}
+		case *api.ResourceData:
+			m[id.String()] = &service.MultiResourceData_ResourceOrError{
+				Val: &service.MultiResourceData_ResourceOrError_Resource{
+					Resource: v,
+				},
+			}
+		}
+	}
+	return &service.MultiResourceData{Resources: m}, nil
+}
+
 // Pipelines resolves the data of the currently bound pipelines at the specified
 // point in the capture.
 func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (interface{}, error) {

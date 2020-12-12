@@ -502,6 +502,10 @@ message ResourceData {
 message MultiResourceData {
   Command after = 1;
   repeated ID IDs = 2;
+  // Whether an empty list of IDs means all resources of a given type.
+  // Only supported by Get().
+  bool all = 3;
+  ResourceType type = 4;
 }
 
 // Slice is a path to a subslice of a slice or array.
