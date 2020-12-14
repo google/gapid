@@ -50,6 +50,8 @@ const (
 
 	driverProperty = "ro.gfx.driver.1"
 
+	gpuDebugProperty = "debug.graphics.gpu.profiler.perfetto"
+
 	systemImageGpuProfilerSupportProperty = "graphics.gpu.profiler.support"
 	gpuProfilerVulkanLayerApkProperty     = "graphics.gpu.profiler.vulkan_layer_apk"
 )
@@ -513,11 +515,22 @@ func (b *binding) PrepareGpuProfiling(ctx context.Context, installedPackage *and
 		log.W(ctx, "Failed to query developer driver: %v, assuming no developer driver found.", err)
 	}
 
+	// Setup debug property.  The GPU driver must enable profiling and have proper
+	// instrumentation if the debug property is set to 1.
+	err = b.SetSystemProperty(ctx, gpuDebugProperty, "1")
+	if err != nil {
+		return false, "", nil, err
+	}
+	var cleanup app.Cleanup = func(ctx context.Context) {
+		b.SetSystemProperty(ctx, gpuDebugProperty, "")
+	}
+
 	if driver.Package != "" {
 		log.I(ctx, "Using GPU profiling libraries from developer driver package: %v.", driver.Package)
 
 		// Set up device info service to use prerelease driver.
-		cleanup, err := SetupPrereleaseDriver(ctx, b, installedPackage)
+		nextCleanup, err := SetupPrereleaseDriver(ctx, b, installedPackage)
+		cleanup.Then(nextCleanup)
 		if err != nil {
 			return false, "", cleanup, err
 		}
@@ -532,15 +545,15 @@ func (b *binding) PrepareGpuProfiling(ctx context.Context, installedPackage *and
 
 	supported, err := b.SystemProperty(ctx, systemImageGpuProfilerSupportProperty)
 	if err != nil {
-		return false, "", nil, err
+		return false, "", cleanup, err
 	}
 	if supported != "true" {
-		return false, "", nil, nil
+		return false, "", cleanup, nil
 	}
 
 	packageName, err := b.SystemProperty(ctx, gpuProfilerVulkanLayerApkProperty)
 	if err != nil {
-		return false, "", nil, err
+		return false, "", cleanup, err
 	}
-	return true, packageName, nil, nil
+	return true, packageName, cleanup, nil
 }
