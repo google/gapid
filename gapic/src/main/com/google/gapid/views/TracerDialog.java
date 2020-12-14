@@ -281,8 +281,7 @@ public class TracerDialog {
       private static final int DURATION_PERFETTO_MAX = maxPerfetto.get();
       private static final String DURATION_FRAMES_UNIT = "Frames";
       private static final String DURATION_PERFETTO_UNIT = "Seconds";
-      private static final String MEC_LABEL_WARNING =
-          "NOTE: Mid-Execution capture for %s is experimental";
+      private static final String START_AT_TIME_UNIT = "Seconds";
       private static final String PERFETTO_LABEL = "Profile Config: ";
       // Quote 'GPU activity' in the warning message to match the config panel tickbox title.
       private static final String EMPTY_APP_WITH_RENDER_STAGE =
@@ -311,7 +310,7 @@ public class TracerDialog {
       private final Label durationLabel;
       private final Spinner duration;
       private final Label durationUnit;
-      private Label mecWarningLabel;
+      private final Label startUnit;
       private final Button withoutBuffering;
       private final Button hideUnknownExtensions;
       private final Button clearCache;
@@ -422,7 +421,8 @@ public class TracerDialog {
         startFrame = withLayoutData(createSpinner(durGroup, 100, 1, 999999),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         startFrame.setVisible(false);
-        mecWarningLabel = createLabel(durGroup, "");
+        startUnit = createLabel(durGroup, START_AT_TIME_UNIT);
+        startUnit.setVisible(false);
 
         durationLabel = createLabel(durGroup, DURATION_FRAMES_MAX == 1 ? ONE_FRAME_LABEL : FRAMES_LABEL);
         duration = withLayoutData(createSpinner(durGroup, 1, 1, DURATION_FRAMES_MAX),
@@ -506,18 +506,9 @@ public class TracerDialog {
         traceTarget.addBoxListener(SWT.Modify, e -> updateEmptyAppWithRenderStageWarning(models.settings));
 
         Listener mecListener = e -> {
-          TraceTypeCapabilities config = getSelectedApi();
-          boolean beginning = startType.getSelectionIndex() == StartType.Beginning.ordinal();
-          if (!beginning && config != null &&
-              config.getMidExecutionCaptureSupport() == Service.FeatureStatus.Experimental) {
-            mecWarningLabel.setText(String.format(MEC_LABEL_WARNING, config.getApi()));
-          } else {
-            mecWarningLabel.setText("");
-          }
-          mecWarningLabel.requestLayout();
-
           StartType start = StartType.values()[startType.getSelectionIndex()];
           startFrame.setVisible(start == StartType.Frame || start == StartType.Time);
+          startUnit.setVisible(start == StartType.Time);
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
         startType.addListener(SWT.Selection, mecListener);
@@ -937,20 +928,18 @@ public class TracerDialog {
           options.addAllEnvironment(splitEnv(envVars.getText()));
         }
         int delay = 0;
-        if (config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported) {
-          switch (start) {
-            case Time:
-              delay = startFrame.getSelection();
-              // $FALL-THROUGH$
-            case Manual:
-              options.setDeferStart(true);
-              break;
-            case Frame:
-              options.setStartFrame(startFrame.getSelection());
-              break;
-            default:
-              // Do nothing.
-          }
+        switch (start) {
+          case Time:
+            delay = startFrame.getSelection();
+            // $FALL-THROUGH$
+          case Manual:
+            options.setDeferStart(true);
+            break;
+          case Frame:
+            options.setStartFrame(startFrame.getSelection());
+            break;
+          default:
+            // Do nothing.
         }
         if (dev.config.getHasCache()) {
           trace.setClearCache(clearCache.getSelection());

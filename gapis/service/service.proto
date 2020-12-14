@@ -1206,20 +1206,16 @@ message DeviceTraceConfiguration {
   bool has_cache = 7;
 }
 
-enum FeatureStatus {
-  NotSupported = 0;
-  Supported = 1;
-  Experimental = 2;
-}
-
 message TraceTypeCapabilities {
   // The type of trace this describes.
   TraceType type = 5;
   // What is the API this is for.
   string api = 1;
   reserved 2;
-  // Does this API support MEC.
-  FeatureStatus mid_execution_capture_support = 3;
+  // [deprecated] Does this API support MEC.
+  // This was used only for GLES.
+  // FeatureStatus mid_execution_capture_support = 3;
+  reserved 3;
   // Whether unsupported extensions can be enabled.
   bool can_enable_unsupported_extensions = 4;
   // Does this trace require starting an application.

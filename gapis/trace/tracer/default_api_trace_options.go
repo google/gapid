@@ -23,7 +23,6 @@ func VulkanTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
 		Type:                           service.TraceType_Graphics,
 		Api:                            "Vulkan",
-		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: true,
 		RequiresApplication:            true,
 	}
@@ -34,7 +33,6 @@ func AngleTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
 		Type:                           service.TraceType_Graphics,
 		Api:                            "OpenGL on ANGLE",
-		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: true,
 		RequiresApplication:            true,
 	}
@@ -44,7 +42,6 @@ func AngleTraceOptions() *service.TraceTypeCapabilities {
 func PerfettoTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
 		Type:                           service.TraceType_Perfetto,
-		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: false,
 		RequiresApplication:            false,
 	}
