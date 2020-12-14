@@ -275,6 +275,7 @@ public class TracerDialog {
       private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
       private static final String TARGET_LABEL = "Application";
       private static final String FRAMES_LABEL = "Stop After:";
+      private static final String ONE_FRAME_LABEL = "Duration: 1 Frame";
       private static final String DURATION_LABEL = "Duration:";
       private static final int DURATION_FRAMES_MAX = maxFrames.get();
       private static final int DURATION_PERFETTO_MAX = maxPerfetto.get();
@@ -423,8 +424,7 @@ public class TracerDialog {
         startFrame.setVisible(false);
         mecWarningLabel = createLabel(durGroup, "");
 
-        durationLabel = createLabel(durGroup, FRAMES_LABEL);
-        durationLabel.setVisible(DURATION_FRAMES_MAX > 1);
+        durationLabel = createLabel(durGroup, DURATION_FRAMES_MAX == 1 ? ONE_FRAME_LABEL : FRAMES_LABEL);
         duration = withLayoutData(createSpinner(durGroup, 1, 1, DURATION_FRAMES_MAX),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         duration.setVisible(DURATION_FRAMES_MAX > 1);
@@ -706,8 +706,7 @@ public class TracerDialog {
         }
 
         int maxDuration = isPerfetto ? DURATION_PERFETTO_MAX : DURATION_FRAMES_MAX;
-        durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
-        durationLabel.setVisible(maxDuration > 1);
+        durationLabel.setText(isPerfetto ? DURATION_LABEL : (maxDuration == 1 ? ONE_FRAME_LABEL : FRAMES_LABEL));
         duration.setMaximum(maxDuration);
         duration.setSelection(Math.min(dur.getDuration(), maxDuration));
         duration.setVisible(maxDuration > 1);
@@ -1059,6 +1058,7 @@ public class TracerDialog {
     private Text errorText;
     private Button errorButton;
     private Label autoStartLabel;
+    private final String capturingStatusLabel;
 
     private Tracer.Trace trace;
 
@@ -1072,6 +1072,14 @@ public class TracerDialog {
       super(shell, theme);
       this.analytics = analytics;
       this.request = request;
+
+      if (request.options.getType() == Service.TraceType.Perfetto) {
+        int durationSec = request.options.getPerfettoConfig().getDurationMs() / 1000;
+        capturingStatusLabel = "Capturing " + durationSec + " second" + (durationSec > 1 ? "s" : "") + "...";
+      } else {
+        int framesToCapture = request.options.getFramesToCapture();
+        capturingStatusLabel = "Capturing " + framesToCapture + " frame" + (framesToCapture > 1 ? "s" : "") + "...";
+      }
     }
 
     public void setTrace(Tracer.Trace trace) {
@@ -1201,7 +1209,7 @@ public class TracerDialog {
       updateButton();
     }
 
-    private static String getStatusLabel(Service.TraceStatus status) {
+    private String getStatusLabel(Service.TraceStatus status) {
       switch (status) {
         case Uninitialized:
           return "Sending request...";
@@ -1210,7 +1218,7 @@ public class TracerDialog {
         case WaitingToStart:
           return "Press 'Start' to begin capture";
         case Capturing:
-          return "Capturing...";
+          return capturingStatusLabel;
         case Done:
           return "Done.";
         default:
