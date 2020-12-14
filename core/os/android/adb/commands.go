@@ -530,7 +530,7 @@ func (b *binding) PrepareGpuProfiling(ctx context.Context, installedPackage *and
 
 		// Set up device info service to use prerelease driver.
 		nextCleanup, err := SetupPrereleaseDriver(ctx, b, installedPackage)
-		cleanup.Then(nextCleanup)
+		cleanup = cleanup.Then(nextCleanup)
 		if err != nil {
 			return false, "", cleanup, err
 		}
