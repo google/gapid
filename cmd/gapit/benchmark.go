@@ -893,57 +893,81 @@ func loadFrameBuffer(after *path.Command) action {
 	}
 }
 
-func loadTextureThumbnail(data *path.ResourceData) action {
+func loadTextureThumbnail(texture *service.Resource, info *image.Info) action {
 	return &simple{
-		"texture_thumbnail",
+		fmt.Sprintf("texture_thumbnail<%v>", texture.Handle),
 		func(ctx context.Context, b *benchmark) (interface{}, error) {
-			info, err := ignoreDataUnavailable(b.client.Get(ctx, (&path.Thumbnail{
-				Object:           &path.Thumbnail_Resource{Resource: data},
-				DesiredFormat:    image.RGBA_U8_NORM,
-				DesiredMaxWidth:  thumbSize,
-				DesiredMaxHeight: thumbSize,
-			}).Path(), b.resolveConfig()))
-			if err != nil || info == nil {
-				return nil, err
-			}
-
 			return ignoreDataUnavailable(
-				b.client.Get(ctx, path.NewBlob(info.(*image.Info).GetBytes().ID()).Path(), b.resolveConfig()))
+				b.client.Get(ctx, path.NewBlob(info.GetBytes().ID()).Path(), b.resolveConfig()))
 		},
 	}
 }
 
-func loadTexture(after *path.Command, texture *service.Resource) action {
-	data := after.ResourceAfter(texture.ID)
+func loadTextureThumbnailInfos(after *path.Command) action {
+	data := after.AllResourcesAfter(path.ResourceType_Texture)
 	return &simple{
-		texture.Handle,
+		"tumbnail_infos",
 		func(ctx context.Context, b *benchmark) (interface{}, error) {
-			text, err := b.client.Get(ctx, data.Path(), b.resolveConfig())
+			return b.client.Get(ctx, (&path.Thumbnail{
+				Object:           &path.Thumbnail_Resources{Resources: data},
+				DesiredFormat:    image.RGBA_U8_NORM,
+				DesiredMaxWidth:  thumbSize,
+				DesiredMaxHeight: thumbSize,
+			}).Path(), b.resolveConfig())
+		},
+	}
+}
+
+func loadTextureThumbnails(after *path.Command) action {
+	return &simple{
+		"texture_thumbnails",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			infosBoxed, err := b.measure(ctx, loadTextureThumbnailInfos(after))
 			if err != nil {
 				return nil, err
 			}
+			infos := infosBoxed.(*service.MultiResourceThumbnail)
 
-			_, err = b.measure(ctx, loadTextureThumbnail(data))
-			return text, err
+			textures := b.textures(after)
+			textureCount := len(textures)
+			// The UI only loads the thumbnails of the visible textures, which is typically
+			// around 20 images. We are conservative and pretend the view is huge and load 50.
+			if textureCount > 50 {
+				textureCount = 50
+			}
+
+			thumbs := make([]action, 0, textureCount)
+			for i := 0; i < textureCount; i++ {
+				if info, ok := infos.Images[textures[i].ID.ID().String()]; ok {
+					if info := info.GetImage(); info != nil {
+						thumbs = append(thumbs, loadTextureThumbnail(textures[i], info))
+					}
+				}
+			}
+			return b.measure(ctx, &parallel{
+				label:   "images",
+				actions: thumbs,
+			})
+		},
+	}
+}
+
+func loadTextureDatas(after *path.Command) action {
+	data := after.AllResourcesAfter(path.ResourceType_Texture)
+	return &simple{
+		"texture_resource_datas",
+		func(ctx context.Context, b *benchmark) (interface{}, error) {
+			return b.client.Get(ctx, data.Path(), b.resolveConfig())
 		},
 	}
 }
 
 func loadTextures(after *path.Command) action {
-	return &simple{
-		"textures",
-		func(ctx context.Context, b *benchmark) (interface{}, error) {
-			textures := b.textures(after)
-			actions := make([]action, len(textures))
-
-			for i := range textures {
-				actions[i] = loadTexture(after, textures[i])
-			}
-
-			return b.measure(ctx, &parallel{
-				label:   "load",
-				actions: actions,
-			})
+	return &parallel{
+		label: "textures",
+		actions: []action{
+			loadTextureDatas(after),
+			loadTextureThumbnails(after),
 		},
 	}
 }
