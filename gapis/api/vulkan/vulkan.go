@@ -285,6 +285,11 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			case VkCmdBeginRenderPassArgsʳ:
 				rp := st.RenderPasses().Get(args.RenderPass())
 				if id.IsReal() {
+					submissionKey := api.CmdSubmissionKey{order, 0, 0, 0}
+					commandBufferKey := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), 0, 0}
+					d.SubmissionIndices[submissionKey] = []api.SubCmdIdx{idx[:len(idx)-1]}
+					d.SubmissionIndices[commandBufferKey] = []api.SubCmdIdx{idx}
+
 					key := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), uint64(rp.VulkanHandle()), uint64(args.Framebuffer())}
 					if _, ok := d.SubmissionIndices[key]; ok {
 						d.SubmissionIndices[key] = append(d.SubmissionIndices[key], append(idx, uint64(i)))

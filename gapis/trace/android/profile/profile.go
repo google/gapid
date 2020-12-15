@@ -18,7 +18,6 @@ import (
 	"context"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/f64"
@@ -42,7 +41,7 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	groupToEntry := map[int32]*service.ProfilingData_GpuCounters_Entry{}
 	for _, group := range slices.Groups {
 		groupToEntry[group.Id] = &service.ProfilingData_GpuCounters_Entry{
-			CommandIndex:  group.Link.Indices,
+			Group:         group,
 			MetricToValue: map[int32]*service.ProfilingData_GpuCounters_Perf{},
 		}
 	}
@@ -59,8 +58,12 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	// Group slices based on their group id.
 	groupToSlices := map[int32][]*service.ProfilingData_GpuSlices_Slice{}
 	for i := 0; i < len(filteredSlices); i++ {
-		groupId := filteredSlices[i].GroupId
-		groupToSlices[groupId] = append(groupToSlices[groupId], filteredSlices[i])
+		group := groupToEntry[filteredSlices[i].GroupId].Group
+		// Attribute a slice to its direct group and all ancestor groups.
+		for group != nil {
+			groupToSlices[group.Id] = append(groupToSlices[group.Id], filteredSlices[i])
+			group = group.Parent
+		}
 	}
 
 	// Calculate GPU Time Performance and GPU Wall Time Performance for all leaf groups/commands.
@@ -69,8 +72,11 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	// Calculate GPU Counter Performances for all leaf groups/commands.
 	setGpuCounterMetrics(ctx, groupToSlices, counters, filteredSlices, &metrics, groupToEntry)
 
-	// Merge and organize the leaf entries.
-	entries := mergeLeafEntries(ctx, metrics, groupToEntry)
+	// Collect the entries.
+	entries := []*service.ProfilingData_GpuCounters_Entry{}
+	for _, entry := range groupToEntry {
+		entries = append(entries, entry)
+	}
 
 	return &service.ProfilingData_GpuCounters{
 		Metrics: metrics,
@@ -256,87 +262,8 @@ func aggregateCounterSamples(sampleWeight map[int]float64, counter *service.Prof
 	}
 }
 
-// Merge leaf group entries if they belong to the same command, and also derive
-// the parent command nodes' GPU performances based on the leaf entries.
-func mergeLeafEntries(ctx context.Context, metrics []*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) []*service.ProfilingData_GpuCounters_Entry {
-	mergedEntries := []*service.ProfilingData_GpuCounters_Entry{}
-
-	// Find out all the self/parent command nodes that may need performance merging.
-	indexToGroups := map[string][]int32{} // string formatted command index -> a list of contained groups referenced by group id.
-	for groupId, entry := range groupToEntry {
-		// The performance of one leaf group/command contributes to itself and all the ancestors up to the root command node.
-		leafIdx := entry.CommandIndex
-		for end := len(leafIdx); end > 0; end-- {
-			mergedIdxStr := encodeIndex(leafIdx[0:end])
-			indexToGroups[mergedIdxStr] = append(indexToGroups[mergedIdxStr], groupId)
-		}
-	}
-
-	for commandIndex, leafGroupIds := range indexToGroups {
-		mergedEntry := &service.ProfilingData_GpuCounters_Entry{
-			CommandIndex:  decodeIndex(commandIndex),
-			MetricToValue: map[int32]*service.ProfilingData_GpuCounters_Perf{},
-		}
-		for _, metric := range metrics {
-			estimate, min, max := float64(-1), float64(-1), float64(-1)
-			switch op := metric.Op; op {
-			case service.ProfilingData_GpuCounters_Metric_Summation:
-				estimate, min, max = float64(0), float64(0), float64(0)
-				for _, id := range leafGroupIds {
-					entry := groupToEntry[id]
-					estimate += entry.MetricToValue[metric.Id].Estimate
-					min += entry.MetricToValue[metric.Id].Min
-					max += entry.MetricToValue[metric.Id].Max
-				}
-			case service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg:
-				timeSum, estimateValueSum, minValueSum, maxValueSum := float64(0), float64(0), float64(0), float64(0)
-				for _, id := range leafGroupIds {
-					entry := groupToEntry[id]
-					gpuTime := entry.MetricToValue[gpuTimeMetricId].Estimate
-					timeSum += gpuTime
-					estimateValueSum += gpuTime * entry.MetricToValue[metric.Id].Estimate
-					minValueSum += gpuTime * entry.MetricToValue[metric.Id].Min
-					maxValueSum += gpuTime * entry.MetricToValue[metric.Id].Max
-				}
-				if timeSum != 0 {
-					estimate, min, max = estimateValueSum/timeSum, minValueSum/timeSum, maxValueSum/timeSum
-				}
-			default:
-				log.E(ctx, "Counter aggregation method not implemented yet. Operation: %v", op)
-			}
-			mergedEntry.MetricToValue[metric.Id] = &service.ProfilingData_GpuCounters_Perf{
-				Estimate: estimate,
-				Min:      min,
-				Max:      max,
-			}
-		}
-		mergedEntries = append(mergedEntries, mergedEntry)
-	}
-
-	return mergedEntries
-}
-
 // Evaluate and return the appropriate aggregation method for a GPU counter.
 func getCounterAggregationMethod(counter *service.ProfilingData_Counter) service.ProfilingData_GpuCounters_Metric_AggregationOperator {
 	// TODO: Use time-weighted average to aggregate all counters for now. May need vendor's support. Bug tracked with b/158057709.
 	return service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg
-}
-
-// Encode a command index, transform from array format to string format.
-func encodeIndex(array_index []uint64) string {
-	str := make([]string, len(array_index))
-	for i, v := range array_index {
-		str[i] = strconv.FormatUint(v, 10)
-	}
-	return strings.Join(str, ",")
-}
-
-// Decode a command index, transform from string format to array format.
-func decodeIndex(str_index string) []uint64 {
-	indexes := strings.Split(str_index, ",")
-	array := make([]uint64, len(indexes))
-	for i := range array {
-		array[i], _ = strconv.ParseUint(indexes[i], 10, 0)
-	}
-	return array
 }

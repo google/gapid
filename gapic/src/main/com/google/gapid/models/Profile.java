@@ -29,19 +29,22 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.CommandStream.Node;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.UiErrorCallback.ResultOrError;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
 
-import java.util.Arrays;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.Collections;
@@ -56,11 +59,13 @@ public class Profile
   private static final Logger LOG = Logger.getLogger(Profile.class.getName());
 
   private final Capture capture;
+  private final CommandStream commands;
 
   public Profile(
-      Shell shell, Analytics analytics, Client client, Capture capture, Devices devices) {
+      Shell shell, Analytics analytics, Client client, Capture capture, Devices devices, CommandStream commands) {
     super(LOG, shell, analytics, client, Listener.class, capture, devices);
     this.capture = capture;
+    this.commands = commands;
   }
 
   @Override
@@ -108,6 +113,49 @@ public class Profile
     listeners.fire().onProfileLoaded(null);
   }
 
+  public void selectGroup(Service.ProfilingData.GpuSlices.Group group) {
+    listeners.fire().onGroupSelected(group);
+  }
+
+  public void linkCommandToGpuGroup(List<Long> commandIndex) {
+    if (getData() == null || commandIndex == null) {
+      return;
+    }
+    for (Service.ProfilingData.GpuSlices.Group group : getData().getSlices().getGroupsList()) {
+      if (group.getLink().getIndicesList().toString().equals(commandIndex.toString())) {
+        selectGroup(group);
+      }
+    }
+  }
+
+  public void linkGpuGroupToCommand(Service.ProfilingData.GpuSlices.Group group) {
+    // Use a real CommandStream.Node's CommandIndex to trigger the command selection, rather
+    // than using a CommandIndex stitched together on the spot. In this way the selection
+    // behavior aligns to what happens when selection is from the UI side, where the resource
+    // tabs' loading result is based on a "representation" command in the grouping node.
+    ListenableFuture<CommandStream.Node> node = MoreFutures.transformAsync(
+        commands.getGroupingNodePath(group.getLink()),
+        commands::findNode);
+    Rpc.listen(node, new UiCallback<Node, Node>(shell, LOG) {
+      @Override
+      protected CommandStream.Node onRpcThread(Rpc.Result<CommandStream.Node> result)
+          throws RpcException, ExecutionException {
+        return result.get();
+      }
+
+      @Override
+      protected void onUiThread(CommandStream.Node node) {
+        if (node == null) {
+          // A fallback.
+          LOG.log(WARNING, "Profile: failed to find the CommandStream.Node for command index: %s", group.getLink());
+          commands.selectCommands(CommandIndex.forCommand(group.getLink()), false);
+        } else {
+          commands.selectCommands(node.getIndex(), false);
+        }
+      }
+    });
+  }
+
   public static class Source {
     public final Path.Capture capture;
 
@@ -135,14 +183,14 @@ public class Profile
     public final Service.ProfilingData profile;
     private final Map<Integer, List<TimeSpan>> spansByGroup;
     private final List<Service.ProfilingData.GpuSlices.Group> groups;
-    private final Map<CommandIndex, Map<Integer, Service.ProfilingData.GpuCounters.Perf>> perfLookup; // commandIndex -> {metricId -> performanceValue}
+    private final List<PerfNode> perfNodes;
 
     public Data(Path.Device device, Service.ProfilingData profile) {
       super(device);
       this.profile = profile;
       this.spansByGroup = aggregateSliceTimeByGroup(profile);
       this.groups = getSortedGroups(profile, spansByGroup.keySet());
-      this.perfLookup = organizeGpuPerformances(profile.getGpuCounters());
+      this.perfNodes = createPerfNodes(profile);
     }
 
     private static Map<Integer, List<TimeSpan>>
@@ -164,12 +212,26 @@ public class Profile
           .collect(toList());
     }
 
-    private Map<CommandIndex, Map<Integer, Service.ProfilingData.GpuCounters.Perf>> organizeGpuPerformances(Service.ProfilingData.GpuCounters perf) {
-      Map<CommandIndex, Map<Integer, Service.ProfilingData.GpuCounters.Perf>> organized = Maps.newHashMap();
-      for (Service.ProfilingData.GpuCounters.Entry entry : perf.getEntriesList()) {
-        organized.put(new CommandIndex(entry.getCommandIndexList()), entry.getMetricToValueMap());
+    private static List<PerfNode> createPerfNodes(Service.ProfilingData profile) {
+      Map<Integer, PerfNode> nodes = Maps.newHashMap(); // groupId -> node.
+      // Create the nodes.
+      for (Service.ProfilingData.GpuCounters.Entry entry : profile.getGpuCounters().getEntriesList()) {
+        nodes.put(entry.getGroup().getId(), new PerfNode(entry));
       }
-      return organized;
+      // Link the nodes.
+      for (PerfNode node : nodes.values()) {
+        if (node.group.hasParent()) {
+          nodes.get(node.group.getParent().getId()).children.add(node);
+        }
+      }
+      // Return the root nodes.
+      List<PerfNode> rootNodes = Lists.newArrayList();
+      for (PerfNode node : nodes.values()) {
+        if (!node.group.hasParent()) {
+          rootNodes.add(node);
+        }
+      }
+      return rootNodes;
     }
 
     public boolean hasSlices() {
@@ -189,6 +251,10 @@ public class Profile
       return profile.getGpuCounters();
     }
 
+    public List<PerfNode> getPerfNodes() {
+      return perfNodes;
+    }
+
     public TimeSpan getSlicesTimeSpan() {
       if (!hasSlices()) {
         return TimeSpan.ZERO;
@@ -200,12 +266,6 @@ public class Profile
         end = Math.max(slice.getTs() + slice.getDur(), end);
       }
       return new TimeSpan(start, end);
-    }
-
-    public Service.ProfilingData.GpuCounters.Perf getGpuPerformance(List<Long> commandIndex, int metricId) {
-      CommandIndex indexStr = new CommandIndex(commandIndex);
-      Map<Integer, Service.ProfilingData.GpuCounters.Perf> perfs = perfLookup.get(indexStr);
-      return (perfs == null) ? null : perfs.get(metricId);
     }
 
     public Duration getDuration(Path.Commands range) {
@@ -284,6 +344,34 @@ public class Profile
     }
   }
 
+  public static class PerfNode {
+    private final Service.ProfilingData.GpuSlices.Group group;
+    private final Map<Integer, Service.ProfilingData.GpuCounters.Perf> perfs;
+    private final List<PerfNode> children;
+
+    public PerfNode(Service.ProfilingData.GpuCounters.Entry entry) {
+      this.group = entry.getGroup();
+      this.perfs = entry.getMetricToValueMap();
+      this.children = Lists.newArrayList();
+    }
+
+    public Service.ProfilingData.GpuSlices.Group getGroup() {
+      return group;
+    }
+
+    public Map<Integer, Service.ProfilingData.GpuCounters.Perf> getPerfs() {
+      return perfs;
+    }
+
+    public boolean hasChildren() {
+      return children.size() > 0;
+    }
+
+    public List<PerfNode> getChildren() {
+      return children;
+    }
+  }
+
   public static interface Listener extends Events.Listener {
     /**
      * Event indicating that profiling data is being loaded.
@@ -296,29 +384,10 @@ public class Profile
      * @param error the loading error or {@code null} if loading was successful.
      */
     public default void onProfileLoaded(Loadable.Message error) { /* empty */ }
-  }
 
-  private static class CommandIndex {
-    private final Long[] index;
-
-    public CommandIndex(List<Long> index) {
-      this.index = index.toArray(new Long[0]);
-    }
-
-    @Override
-    public int hashCode() {
-      return Arrays.hashCode(index);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == this) {
-        return true;
-      } else if (!(obj instanceof CommandIndex)) {
-        return false;
-      }
-      CommandIndex that = (CommandIndex)obj;
-      return Arrays.equals(this.index, that.index);
-    }
+    /**
+     * Event indicating that the currently selected group has changed.
+     */
+    public default void onGroupSelected(Service.ProfilingData.GpuSlices.Group group) { /* empty */ }
   }
 }

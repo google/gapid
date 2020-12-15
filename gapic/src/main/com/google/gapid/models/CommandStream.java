@@ -412,6 +412,14 @@ public class CommandStream
       return parent.getPath(path).addIndices(index);
     }
 
+    public List<Long> getCommandStart() {
+      return data == null ? null : data.getCommands().getFromList();
+    }
+
+    public List<Long> getCommandEnd() {
+      return data == null ? null : data.getCommands().getToList();
+    }
+
     public CommandIndex getIndex() {
       return (data == null) ? null : CommandIndex.forNode(data.getRepresentation(),
           getPath(Path.CommandTreeNode.newBuilder()).build());

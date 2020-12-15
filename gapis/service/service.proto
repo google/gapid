@@ -1252,8 +1252,9 @@ message ProfilingData {
 
     message Group {
       int32 id = 1;
-      int32 parent = 2;  // references Group.id
-      path.Command link = 3;
+      string name = 2;
+      Group parent = 3;
+      path.Command link = 4;
     }
 
     repeated Slice slices = 1;
@@ -1296,7 +1297,7 @@ message ProfilingData {
 
     // Entry contains performance data for a specific command.
     message Entry {
-      repeated uint64 command_index = 1;
+      GpuSlices.Group group = 1;
       map<int32, Perf> metric_to_value = 2;  // Metric.id -> perf value.
     }
 

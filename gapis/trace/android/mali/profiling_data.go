@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/trace/android/profile"
+	"github.com/google/gapid/gapis/trace/android/utils"
 )
 
 var (
@@ -119,7 +120,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 	slicesColumns := slicesQueryResult.GetColumns()
 	numSliceRows := slicesQueryResult.GetNumRecords()
 	slices := make([]*service.ProfilingData_GpuSlices_Slice, numSliceRows)
-	groups := make([]*service.ProfilingData_GpuSlices_Group, 0)
+	groupsMap := map[api.CmdSubmissionKey]*service.ProfilingData_GpuSlices_Group{}
 	groupIds := make([]int32, numSliceRows)
 	var tracks []*service.ProfilingData_GpuSlices_Track
 	// Grab all the column values. Depends on the order of columns selected in slicesQuery
@@ -150,23 +151,35 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 
 	for i, v := range submissionIds {
 		subOrder, ok := submissionOrdering[v]
+		groupId := int32(-1)
 		if ok {
 			cb := uint64(commandBuffers[i])
 			key := api.CmdSubmissionKey{subOrder, cb, uint64(renderPasses[i]), uint64(renderTargets[i])}
-			if indices, ok := syncData.SubmissionIndices[key]; ok {
+			if group, ok := groupsMap[key]; ok {
+				groupId = group.Id
+			} else if indices, ok := syncData.SubmissionIndices[key]; ok {
 				if names[i] == "vertex" || names[i] == "fragment" {
+					parent := utils.FindParentGroup(ctx, subOrder, cb, groupsMap, syncData.SubmissionIndices, capture)
+					groupId = int32(len(groupsMap))
 					group := &service.ProfilingData_GpuSlices_Group{
-						Id:   int32(len(groups)),
-						Link: &path.Command{Capture: capture, Indices: indices[0]},
+						Id:     groupId,
+						Name:   fmt.Sprintf("RenderPass %v", uint64(renderPasses[i])),
+						Parent: parent,
+						Link:   &path.Command{Capture: capture, Indices: indices[0]},
 					}
-					groups = append(groups, group)
+					groupsMap[key] = group
+					names[i] = fmt.Sprintf("%v %v", group.Link.Indices, names[i])
 				}
 			}
 		} else {
 			log.W(ctx, "Encountered submission ID mismatch %v", v)
 		}
 
-		groupIds[i] = int32(len(groups)) - 1
+		groupIds[i] = groupId
+	}
+	groups := []*service.ProfilingData_GpuSlices_Group{}
+	for _, group := range groupsMap {
+		groups = append(groups, group)
 	}
 
 	for i := uint64(0); i < numSliceRows; i++ {
@@ -219,10 +232,6 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			Name:  "hwQueueId",
 			Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(hwQueueIds[i])},
 		})
-
-		if (names[i] == "vertex" || names[i] == "fragment") && groupIds[i] != -1 {
-			names[i] = fmt.Sprintf("%v %v", groups[groupIds[i]].Link.Indices, names[i])
-		}
 
 		slices[i] = &service.ProfilingData_GpuSlices_Slice{
 			Ts:      uint64(timestamps[i]),

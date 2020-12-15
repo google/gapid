@@ -166,31 +166,8 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       if (firstGroupId != -1) {
         for (Service.ProfilingData.GpuSlices.Group group : models.profile.getData().getSlices().getGroupsList()) {
           if (firstGroupId == group.getId()) {
-            // Use a real CommandStream.Node's CommandIndex to trigger the command selection, rather
-            // than using a CommandIndex stitched together on the spot. In this way the selection
-            // behavior aligns to what happens when selection is from the UI side, where the resource
-            // tabs' loading result is based on a "representation" command in the grouping node.
-            ListenableFuture<CommandStream.Node> node = MoreFutures.transformAsync(
-                models.commands.getGroupingNodePath(group.getLink()),
-                models.commands::findNode);
-            Rpc.listen(node, new UiCallback<CommandStream.Node, CommandStream.Node>(traceUi, LOG) {
-              @Override
-              protected CommandStream.Node onRpcThread(Rpc.Result<CommandStream.Node> result)
-                  throws RpcException, ExecutionException {
-                return result.get();
-              }
-
-              @Override
-              protected void onUiThread(CommandStream.Node node) {
-                if (node == null) {
-                  // A fallback.
-                  LOG.log(WARNING, "Profile View: failed to find the CommandStream.Node for command index: %s", group.getLink());
-                  models.commands.selectCommands(CommandIndex.forCommand(group.getLink()), false);
-                } else {
-                  models.commands.selectCommands(node.getIndex(), false);
-                }
-              }
-            });
+            models.profile.linkGpuGroupToCommand(group);
+            models.profile.selectGroup(group);
             break;
           }
         }

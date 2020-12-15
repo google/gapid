@@ -137,6 +137,7 @@ public class CommandTree extends Composite
             commandIdx.setText(COMMAND_INDEX_DSCRP + node.getIndexString());
             models.commands.selectCommands(index, false);
           }
+          models.profile.linkCommandToGpuGroup(node.getCommandStart());
         }
       }
     };

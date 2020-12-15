@@ -16,23 +16,28 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.util.Loadable.MessageType.Error;
+import static com.google.gapid.widgets.Widgets.createTreeColumn;
+import static com.google.gapid.widgets.Widgets.createTreeViewer;
+import static com.google.gapid.widgets.Widgets.packColumns;
 
-import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
-import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Profile;
+import com.google.gapid.models.Profile.PerfNode;
 import com.google.gapid.perfetto.Unit;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
+import java.util.List;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
+import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -40,8 +45,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.TreeColumn;
+import org.eclipse.swt.widgets.TreeItem;
 
 public class PerformanceView extends Composite
     implements Tab, Capture.Listener, CommandStream.Listener, Profile.Listener {
@@ -50,8 +55,8 @@ public class PerformanceView extends Composite
   private final Models models;
   private final LoadablePanel<Composite> loading;
   private final Button button;
-  protected final PerfTree tree;
-  private final SelectionHandler<Control> selectionHandler;
+  private final TreeViewer tree;
+  private boolean showEstimate = true;
 
   public PerformanceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -66,20 +71,48 @@ public class PerformanceView extends Composite
     button = new Button(composite, SWT.PUSH);
     button.setText("Estimate / Confidence Range");
     button.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+    button.addListener(SWT.Selection, e -> toggleEstimateOrRange());
 
-    tree = new PerfTree(composite, models, widgets);
-    tree.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    button.addListener(SWT.Selection, e -> tree.toggleEstimateOrRange());
+    tree = createTreeViewer(composite, SWT.NONE);
 
-    Menu popup = new Menu(tree.getControl());
-    Widgets.createMenuItem(popup, "Select in Command Tab", e -> {
-      CommandStream.Node node = tree.getSelection();
-      if (node != null && node.getIndex() != null && models.resources.isLoaded()) {
-        models.commands.selectCommands(node.getIndex(), true);
+    tree.getTree().setHeaderVisible(true);
+    tree.setLabelProvider(new LabelProvider());
+    tree.setContentProvider(new ITreeContentProvider() {
+      @SuppressWarnings("unchecked")
+      @Override
+      public Object[] getElements(Object inputElement) {
+        return ((List<Profile.PerfNode>)inputElement).toArray();
+      }
+
+      @Override
+      public boolean hasChildren(Object element) {
+        return element instanceof Profile.PerfNode && ((Profile.PerfNode)element).hasChildren();
+      }
+
+      @Override
+      public Object getParent(Object element) {
+        return null;
+      }
+
+      @Override
+      public Object[] getChildren(Object element) {
+        if (element instanceof Profile.PerfNode) {
+          return ((Profile.PerfNode)element).getChildren().toArray();
+        } else {
+          return new Object[0];
+        }
       }
     });
-    tree.setPopupMenu(popup, node -> node != null && node.getIndex() != null && models.resources.isLoaded());
 
+    tree.getTree().addListener(SWT.Selection, e -> {
+      TreeItem[] items = tree.getTree().getSelection();
+      if (items.length > 0) {
+        PerfNode selection = (PerfNode)items[0].getData();
+        models.profile.linkGpuGroupToCommand(selection.getGroup());
+      }
+    });
+
+    tree.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.capture.addListener(this);
@@ -90,22 +123,6 @@ public class PerformanceView extends Composite
       models.commands.removeListener(this);
       models.profile.removeListener(this);
     });
-
-    selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
-      @Override
-      protected void updateModel(Event e) {
-        models.analytics.postInteraction(View.Performance, ClientAction.Select);
-        CommandStream.Node node = tree.getSelection();
-        if (node != null) {
-          CommandIndex index = node.getIndex();
-          if (index == null) {
-            models.commands.load(node, () -> models.commands.selectCommands(node.getIndex(), false));
-          } else {
-            models.commands.selectCommands(index, false);
-          }
-        }
-      }
-    };
   }
 
   @Override
@@ -136,8 +153,11 @@ public class PerformanceView extends Composite
   }
 
   @Override
-  public void onCommandsSelected(CommandIndex index) {
-    selectionHandler.updateSelectionFromModel(() -> models.commands.getTreePath(index.getNode()).get(), tree::setSelection);
+  public void onGroupSelected(Service.ProfilingData.GpuSlices.Group group) {
+    TreeItem item = findItem(tree.getTree().getItems(), n -> group.getId() == n.getGroup().getId());
+    if (item != null) {
+      tree.getTree().setSelection(item);
+    }
   }
 
   @Override
@@ -146,78 +166,82 @@ public class PerformanceView extends Composite
       loading.showMessage(error);
       return;
     }
-    // Create columns for all the performance metrics.
-    for (Service.ProfilingData.GpuCounters.Metric metric :
-        models.profile.getData().getGpuPerformance().getMetricsList()) {
-      tree.addColumnForMetric(metric);
-    }
-    tree.packColumn();
-    tree.refresh();
+    updateTree(false);
   }
 
   private void updateTree(boolean assumeLoading) {
-    if (assumeLoading || !models.commands.isLoaded()) {
+    if (assumeLoading || !models.profile.isLoaded()) {
       loading.startLoading();
       tree.setInput(null);
       return;
     }
-
     loading.stopLoading();
-    tree.setInput(models.commands.getData());
+
+    List<Profile.PerfNode> perf = models.profile.getData().getPerfNodes();
+    for (TreeColumn col : tree.getTree().getColumns()) {
+      col.dispose();
+    }
+    createTreeColumn(tree, "Name", e -> ((Profile.PerfNode)e).getGroup().getName());
+    for (Service.ProfilingData.GpuCounters.Metric metric :
+        models.profile.getData().getGpuPerformance().getMetricsList()) {
+      addColumnForMetric(metric);
+    }
+    tree.setInput(perf);
+    tree.expandAll(true);
+    packColumns(tree.getTree());
+    tree.refresh();
   }
 
-  private static class PerfTree extends CommandTree.Tree {
-    private static final int DURATION_WIDTH = 95;
-    private boolean showEstimate = true;
-
-    public PerfTree(Composite parent, Models models, Widgets widgets) {
-      super(parent, models, widgets);
-    }
-
-    @Override
-    protected void addGpuPerformanceColumn() {
-      // The performance tab's GPU performances are calculated from server's side.
-      // Don't create columns at initialization, the columns will be created after profile is loaded.
-      setUpStateForColumnAdding();
-    }
-
-    @Override
-    protected boolean shouldShowImage(CommandStream.Node node) {
-      return false;
-    }
-
-    public void toggleEstimateOrRange() {
-      showEstimate = !showEstimate;
-      refresh();
-    }
-
-    private void addColumnForMetric(Service.ProfilingData.GpuCounters.Metric metric) {
-      Unit unit = CounterInfo.unitFromString(metric.getUnit());
-      TreeViewerColumn column = addColumn(metric.getName() + "(" + unit.name + ")", node -> {
-        Service.CommandTreeNode data = node.getData();
-        if (data == null) {
-          return "";
-        } else if (!models.profile.isLoaded()) {
-          return "Profiling...";
+  private void addColumnForMetric(Service.ProfilingData.GpuCounters.Metric metric) {
+    Unit unit = CounterInfo.unitFromString(metric.getUnit());
+    TreeViewerColumn column = createTreeColumn(tree, metric.getName() + "(" + unit.name + ")", e -> {
+      Profile.PerfNode node = (Profile.PerfNode)e;
+      if (node == null || node.getPerfs() == null) {
+        return "";
+      } else if (!models.profile.isLoaded()) {
+        return "Profiling...";
+      } else {
+        Service.ProfilingData.GpuCounters.Perf perf = node.getPerfs().get(metric.getId());
+        if (showEstimate) {
+          return perf.getEstimate() < 0 ? "" : unit.format(perf.getEstimate());
         } else {
-          Service.ProfilingData.GpuCounters.Perf perf = models.profile.getData().getGpuPerformance(data.getCommands().getFromList(), metric.getId());
-          if (perf == null) {
-            return "";
-          }
-          if (showEstimate) {
-            return perf.getEstimate() < 0 ? "" : unit.format(perf.getEstimate());
-          } else {
-            String minStr = perf.getMin() < 0 ? "?" : unit.format(perf.getMin());
-            String maxStr = perf.getMax() < 0 ? "?" : unit.format(perf.getMax());
-            return minStr + " ~ " + maxStr;
-          }
+          String minStr = perf.getMin() < 0 ? "?" : unit.format(perf.getMin());
+          String maxStr = perf.getMax() < 0 ? "?" : unit.format(perf.getMax());
+          return minStr + " ~ " + maxStr;
         }
-      }, DURATION_WIDTH);
-      column.getColumn().setAlignment(SWT.RIGHT);
-    }
+      }
+    });
+    column.getColumn().setAlignment(SWT.RIGHT);
+  }
 
-    public void refresh() {
-      refresher.refresh();
+  private void toggleEstimateOrRange() {
+    showEstimate = !showEstimate;
+    packColumns(tree.getTree());
+    tree.refresh();
+  }
+
+  // For a tree-structured TreeItem, do a preorder traversal, to find the PerfNode that meets the
+  // requirement.
+  private TreeItem findItem(TreeItem root, Predicate<PerfNode> requirement) {
+    if (root == null || !(root.getData() instanceof PerfNode)) {
+      return null;
     }
+    PerfNode rootNode = (PerfNode)root.getData();
+    if (requirement.test(rootNode)) {
+      return root;
+    }
+    return findItem(root.getItems(), requirement);
+  }
+
+  // For multiple tree-structured TreeItems, do a preorder traversal to each of them, to find the
+  // PerfNode that meets the requirement.
+  private TreeItem findItem(TreeItem[] roots, Predicate<PerfNode> requirement) {
+    for (TreeItem root : roots) {
+      TreeItem result = findItem(root, requirement);
+      if (result != null) {
+        return result;
+      }
+    }
+    return null;
   }
 }
