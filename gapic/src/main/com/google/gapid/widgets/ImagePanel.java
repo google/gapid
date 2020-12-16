@@ -479,6 +479,10 @@ public class ImagePanel extends Composite implements Loadable {
     }
   }
 
+  public boolean hasImage() {
+    return image != MultiLayerAndLevelImage.EMPTY;
+  }
+
   public void setImage(MultiLayerAndLevelImage image) {
     if (image == null || image == MultiLayerAndLevelImage.EMPTY) {
       clearImage();

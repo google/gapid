@@ -72,6 +72,7 @@ public class TextureView extends Composite
   private final SingleInFlight rpcController = new SingleInFlight();
   private final GotoAction gotoAction;
   protected final ImagePanel imagePanel;
+  protected boolean pinned = false;
 
   public TextureView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -118,14 +119,36 @@ public class TextureView extends Composite
   }
 
   @Override
+  public boolean supportsPinning() {
+    return true;
+  }
+
+  @Override
+  public boolean isPinnable() {
+    return !pinned && imagePanel.hasImage();
+  }
+
+  @Override
+  public boolean isPinned() {
+    return pinned;
+  }
+
+  @Override
+  public void pin() {
+    pinned = true;
+  }
+
+  @Override
   public void onCaptureLoadingStart(boolean maintainState) {
-    imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
+    if (!pinned) {
+      imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
+    }
     clear();
   }
 
   @Override
   public void onCaptureLoaded(Loadable.Message error) {
-    if (error != null) {
+    if (!pinned && error != null) {
       imagePanel.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
     clear();
@@ -133,13 +156,17 @@ public class TextureView extends Composite
 
   @Override
   public void onResourcesLoaded() {
-    imagePanel.showMessage(Info, Messages.SELECT_TEXTURE);
-    clear();
+    if (!pinned) {
+      imagePanel.showMessage(Info, Messages.SELECT_TEXTURE);
+      clear();
+    }
   }
 
   @Override
   public void onTextureSelected(Service.Resource texture) {
-    loadTexture(texture);
+    if (!pinned) {
+      loadTexture(texture);
+    }
   }
 
   private void clear() {

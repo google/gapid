@@ -213,6 +213,8 @@ public interface Theme {
   @Text(Text.Big) public Font bigBoldFont();
   @Text(Text.TabTitle) public Font selectedTabTitleFont();
   @Text(Text.SubTitle) public Font subTitleFont();
+  @Text(Text.Unpinned) public Font unpinnedTabTitleFont();
+  @Text(Text.UnpinnedSelected) public Font unpinnedSelectedTabTitleFont();
 
   public void dispose();
 
@@ -308,7 +310,7 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Text {
-    public static final int Mono = 1, Big = 2, TabTitle = 3, SubTitle = 4;
+    public static final int Mono = 1, Big = 2, TabTitle = 3, SubTitle = 4, Unpinned = 5, UnpinnedSelected = 6;
 
     public int value();
   }
@@ -487,6 +489,22 @@ public interface Theme {
             Font font = FontDescriptor.createFrom(dflt)
                 .setHeight(dflt.getFontData()[0].getHeight() * 5 / 4)
                 .setStyle(SWT.BOLD)
+                .createFont(display);
+            resources.put(method.getName(), font);
+            return true;
+          }
+          case Text.Unpinned: {
+            Font dflt = JFaceResources.getDefaultFont();
+            Font font = FontDescriptor.createFrom(dflt)
+                .setStyle(SWT.ITALIC)
+                .createFont(display);
+            resources.put(method.getName(), font);
+            return true;
+          }
+          case Text.UnpinnedSelected: {
+            Font dflt = JFaceResources.getDefaultFont();
+            Font font = FontDescriptor.createFrom(dflt)
+                .setStyle(SWT.ITALIC | SWT.BOLD)
                 .createFont(display);
             resources.put(method.getName(), font);
             return true;

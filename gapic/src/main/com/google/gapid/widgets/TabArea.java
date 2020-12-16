@@ -30,8 +30,8 @@ import java.util.List;
 
 /**
  * Manages {@link CTabItem tabs} in three {@link CTabFolder tab areas}. Allows the user to drag
- * tabs between areas and minimzing/maximzing each area. The three areas are horizontally laid out
- * with movable dividers.
+ * tabs between areas and minimizing/maximizing each area. The three areas are horizontally laid
+ * out with movable dividers.
  */
 public class TabArea extends TabComposite {
   public TabArea(Composite parent, Analytics analytics, Theme theme, Persistance persistance) {
@@ -47,7 +47,8 @@ public class TabArea extends TabComposite {
 
       @Override
       public void onTabClosed(TabInfo tab) {
-        analytics.postInteraction(tab.view, ClientAction.Disable);
+        analytics.postInteraction(tab.view,
+            tab.isPinned() ? ClientAction.ClosePinned : ClientAction.Disable);
       }
 
       @Override
@@ -59,11 +60,17 @@ public class TabArea extends TabComposite {
       public void onTabMoved(TabInfo tab) {
         analytics.postInteraction(tab.view, ClientAction.Move);
       }
+
+      @Override
+      public void onTabPinned(TabInfo tab) {
+        analytics.postInteraction(tab.view, ClientAction.Pin);
+      }
     };
     addListener(listener);
 
     addListener(SWT.Dispose, e -> {
       removeListener(listener);
+      disposePinnedTabs();
       InfoCollector ic = new InfoCollector();
       visit(ic);
       persistance.store(ic.getFolderInfos());

@@ -15,20 +15,15 @@
  */
 package com.google.gapid.views;
 
-import org.eclipse.swt.widgets.Control;
+import com.google.gapid.widgets.TabComposite.TabContent;
 
 /**
  * A tab in the main ui.
  */
-public interface Tab {
+public interface Tab extends TabContent {
   /**
    * Reinitializes this tab from the current state of the models. Called if the tab was created
    * after the UI has already been visible for some time.
    */
   public default void reinitialize() { /* do nothing */ }
-
-  /**
-   * @return the {@link Control} for this tab.
-   */
-  public Control getControl();
 }

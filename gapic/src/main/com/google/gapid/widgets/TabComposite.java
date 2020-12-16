@@ -36,6 +36,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
@@ -93,6 +94,9 @@ public class TabComposite extends Composite {
       if (e.button == 1) {
         mouseDown = hovered;
         switch (mouseDown.type) {
+          case Pin:
+            pinTab(mouseDown.tab.info.id);
+            break;
           case Close:
             disposeTab(mouseDown.tab.info.id);
             break;
@@ -108,7 +112,7 @@ public class TabComposite extends Composite {
             requestLayout();
             break;
           case Tab:
-            if (mouseDown.folder.updateCurrent(mouseDown.tab.control)) {
+            if (mouseDown.folder.updateCurrent(mouseDown.tab.content)) {
               listeners.fire().onTabShown(mouseDown.tab.info);
             }
             break;
@@ -189,7 +193,7 @@ public class TabComposite extends Composite {
             }
             dst.folder.redrawBar();
             group.merge();
-            dst.folder.updateCurrent(src.tab.control);
+            dst.folder.updateCurrent(src.tab.content);
             break;
           case Tab:
             listeners.fire().onTabMoved(src.tab.info);
@@ -202,7 +206,7 @@ public class TabComposite extends Composite {
             }
             dst.folder.redrawBar();
             group.merge();
-            dst.folder.updateCurrent(src.tab.control);
+            dst.folder.updateCurrent(src.tab.content);
             break;
           case Folder:
             Location location = getLocation(dst.folder, e.x, e.y);
@@ -299,6 +303,20 @@ public class TabComposite extends Composite {
     listeners.fire().onTabCreated(info);
   }
 
+  public boolean pinTab(Object id) {
+    TabInfo pinned = group.pinTab(id);
+    if (pinned != null) {
+      listeners.fire().onTabPinned(pinned);
+      return true;
+    }
+    return false;
+  }
+
+  public void disposePinnedTabs() {
+    group.disposePinnedTabs();
+    group.merge();
+  }
+
   public boolean disposeTab(Object id) {
     TabInfo disposed = group.disposeTab(id);
     if (disposed != null) {
@@ -362,17 +380,21 @@ public class TabComposite extends Composite {
    * Information about a single tab in a folder.
    */
   public static class TabInfo {
-    public final Object id;
+    public final Object id;  // Externally provided ID or TabContent for pinned tabs
     public final Analytics.View view;
     public final String label;
-    public final Function<Composite, Control> contentFactory;
+    public final Function<Composite, TabContent> contentFactory;
 
     public TabInfo(
-        Object id, View view, String label, Function<Composite, Control> contentFactory) {
+        Object id, View view, String label, Function<Composite, TabContent> contentFactory) {
       this.id = id;
       this.view = view;
       this.label = label;
       this.contentFactory = contentFactory;
+    }
+
+    public boolean isPinned() {
+      return id instanceof TabContent;
     }
   }
 
@@ -395,6 +417,8 @@ public class TabComposite extends Composite {
     public abstract boolean showTab(Object id);
     public abstract void addTabToFirstFolder(TabInfo tab);
     public abstract void addTabToLargestFolder(TabInfo tab);
+    public abstract TabInfo pinTab(Object id);
+    public abstract void disposePinnedTabs();
     public abstract TabInfo disposeTab(Object id);
 
     public abstract void setBounds(Set<Control> controls, int x, int y, int w, int h);
@@ -488,6 +512,24 @@ public class TabComposite extends Composite {
         }
       }
       children.get(max).addTabToLargestFolder(tab);
+    }
+
+    @Override
+    public TabInfo pinTab(Object id) {
+      for (Element child : children) {
+        TabInfo pinned = child.pinTab(id);
+        if (pinned != null) {
+          return pinned;
+        }
+      }
+      return null;
+    }
+
+    @Override
+    public void disposePinnedTabs() {
+      for (Element child : children) {
+        child.disposePinnedTabs();
+      }
     }
 
     @Override
@@ -874,7 +916,7 @@ public class TabComposite extends Composite {
     private final List<Tab> tabs = new ArrayList<>();
     private final List<Integer> rowTitleEnds = new ArrayList<>();  // past-end indices of each row
     private int titleHeight, currentTitleRow = 0;
-    private Control current;
+    private final LinkedList<TabContent> selectionHistory = new LinkedList<>();
     protected boolean maximized;
     private Shell expandedBarShell = null;
 
@@ -896,7 +938,7 @@ public class TabComposite extends Composite {
     public boolean showTab(Object id) {
       for (Tab tab : tabs) {
         if (Objects.equals(tab.info.id, id)) {
-          updateCurrent(tab.control);
+          updateCurrent(tab.content);
           return true;
         }
       }
@@ -914,11 +956,48 @@ public class TabComposite extends Composite {
     }
 
     @Override
+    public TabInfo pinTab(Object id) {
+      for (Tab tab : tabs) {
+        if (Objects.equals(tab.info.id, id)) {
+          if (tab.content.isPinnable()) {
+            tab.content.pin();
+            // assign new id for pinned tab
+            TabInfo oldInfo = tab.info;
+            tab.info = new TabInfo(tab.content, oldInfo.view, oldInfo.label, oldInfo.contentFactory);
+            return oldInfo;
+          } else {
+            return null;
+          }
+        }
+      }
+      return null;
+    }
+
+    @Override
+    public void disposePinnedTabs() {
+      int index = 0;
+      while (index < tabs.size()) {
+        Tab tab = tabs.get(index);
+        if (tab.info.isPinned()) {
+          selectionHistory.remove(tab.content);
+          tabs.remove(index);
+          tab.content.dispose();
+        } else {
+          index++;
+        }
+      }
+      if (selectionHistory.isEmpty() && !tabs.isEmpty()) {
+        selectionHistory.add(tabs.get(0).content);
+      }
+      requestLayout();
+    }
+
+    @Override
     public TabInfo disposeTab(Object id) {
       for (Tab tab : tabs) {
         if (Objects.equals(tab.info.id, id)) {
           removeTab(tab);
-          tab.control.dispose();
+          tab.content.dispose();
           return tab.info;
         }
       }
@@ -934,9 +1013,10 @@ public class TabComposite extends Composite {
       int barH = BAR_MARGIN + titleHeight + BAR_MARGIN + SEP_HEIGHT + BAR_MARGIN;
 
       for (Tab tab : tabs) {
-        tab.control.setBounds(x, y + barH, w, h - barH);
-        tab.control.setVisible(tab.control == current);
-        controls.remove(tab.control);
+        Control control = tab.content.getControl();
+        control.setBounds(x, y + barH, w, h - barH);
+        control.setVisible(tab.content == selectionHistory.getLast());
+        controls.remove(control);
       }
 
       updateRowTitleEnds();
@@ -960,7 +1040,7 @@ public class TabComposite extends Composite {
           rowTitleEnds.add(index);
           rowWidth = tabWidth;
         }
-        if (tab.control == current) {
+        if (tab.content == selectionHistory.getLast()) {
           currentTitleRow = rowTitleEnds.size();
         }
         index++;
@@ -1028,8 +1108,8 @@ public class TabComposite extends Composite {
 
     protected void addTab(Tab tab) {
       tabs.add(tab);
-      if (current == null) {
-        current = tab.control;
+      if (selectionHistory.isEmpty()) {
+        selectionHistory.add(tab.content);
       }
       updateRowTitleEnds();
     }
@@ -1077,25 +1157,19 @@ public class TabComposite extends Composite {
     }
 
     protected void removeTab(Tab tab) {
-      if (current == tab.control) {
-        int index = tabs.indexOf(tab);
-        if (index >= 0) {
-          tabs.remove(index);
-          if (index == tabs.size()) {
-            index--;
-          }
-          current = index >= 0 ? tabs.get(index).control : null;
-        }
-      } else {
-        tabs.remove(tab);
+      tabs.remove(tab);
+      selectionHistory.remove(tab.content);
+      if (selectionHistory.isEmpty() && !tabs.isEmpty()) {
+        selectionHistory.add(tabs.get(0).content);
       }
       updateRowTitleEnds();
       requestLayout();
     }
 
-    protected boolean updateCurrent(Control newCurrent) {
-      if (current != newCurrent) {
-        current = newCurrent;
+    protected boolean updateCurrent(TabContent current) {
+      if (selectionHistory.getLast() != current) {
+        selectionHistory.remove(current);
+        selectionHistory.add(current);
         updateCurrentTitleRow();
         requestLayout();
         redrawBar();
@@ -1109,7 +1183,7 @@ public class TabComposite extends Composite {
       int index = 0;
       while (currentTitleRow + 1 < rowTitleEnds.size()) {
         while (index < rowTitleEnds.get(currentTitleRow)
-            && index < tabs.size() && tabs.get(index).control != current) {
+            && index < tabs.size() && tabs.get(index).content != selectionHistory.getLast()) {
           index++;
         }
         if (index == rowTitleEnds.get(currentTitleRow)) {
@@ -1181,7 +1255,8 @@ public class TabComposite extends Composite {
         int rowEnd = Math.min(rowTitleEnds.get(row), tabs.size());
         for (int index = rowStart; index < rowEnd; index++) {
           Tab tab = tabs.get(index);
-          boolean isSelected = tab.control == current;
+          boolean isSelected = tab.content == selectionHistory.getLast();
+          boolean isUnpinned = tab.content.supportsPinning() && !tab.content.isPinned();
           int tabW = tab.getWidth();
 
           if (dragger != null) {
@@ -1203,6 +1278,9 @@ public class TabComposite extends Composite {
               case Tab:
                 gc.fillRectangle(b.x + tabX, b.y, tabW, tabH + 1);
                 break;
+              case Pin:
+                gc.fillRectangle(b.x + tabX + tabW - 2 * ICON_SIZE, b.y, ICON_SIZE, tabH + 1);
+                break;
               case Close:
                 gc.fillRectangle(b.x + tabX + tabW - ICON_SIZE, b.y, ICON_SIZE, tabH + 1);
                 break;
@@ -1213,13 +1291,20 @@ public class TabComposite extends Composite {
 
           if (isSelected || tab == hovered.tab) {
             gc.drawImage(theme.close(), b.x + tabX + tabW - ICON_SIZE, b.y + (tabH - ICON_SIZE) / 2);
+            if (tab.content.isPinnable()) {
+              gc.drawImage(theme.pinInactiveLight(),
+                  b.x + tabX + tabW - 2 * ICON_SIZE + 4, b.y + (tabH - ICON_SIZE) / 2 + 4);
+            }
           }
 
           gc.setForeground(theme.tabTitle());
           if (isSelected) {
             gc.setBackground(theme.tabFolderLineSelected());
             gc.fillRectangle(b.x + tabX, b.y + tabH, tabW, SEP_HEIGHT);
-            gc.setFont(theme.selectedTabTitleFont());
+            gc.setFont(isUnpinned ? theme.unpinnedSelectedTabTitleFont()
+                : theme.selectedTabTitleFont());
+          } else {
+            gc.setFont(isUnpinned ? theme.unpinnedTabTitleFont() : null);
           }
           gc.drawText(tab.info.label, b.x + tabX + TAB_MARGIN, b.y + BAR_MARGIN,
               SWT.DRAW_TRANSPARENT);
@@ -1313,6 +1398,8 @@ public class TabComposite extends Composite {
           if (mx >= tabX && mx < tabX + tabW) {
             if (mx >= tabX + tabW - ICON_SIZE) {
               return Hover.close(this, tab);
+            } else if (tab.content.isPinnable() && mx >= tabX + tabW - 2 * ICON_SIZE) {
+              return Hover.pin(this, tab);
             } else {
               return Hover.tab(this, tab);
             }
@@ -1347,22 +1434,48 @@ public class TabComposite extends Composite {
     public default void onTabShown(TabInfo tab) { /* do nothing */ }
 
     public default void onTabMoved(TabInfo tab) { /* do nothing */ }
+
+    public default void onTabPinned(TabInfo tab) { /* do nothing */ }
   }
 
   private static class Tab {
-    public final TabInfo info;
-    public final Control control;
+    public TabInfo info;
+    public final TabContent content;
     public final Point titleSize;
 
-    public Tab(TabInfo info, Control control, Point titleSize) {
+    public Tab(TabInfo info, TabContent content, Point titleSize) {
       this.info = info;
-      this.control = control;
+      this.content = content;
       this.titleSize = titleSize;
     }
 
     public int getWidth() {
-      return Math.max(TAB_MARGIN + titleSize.x + TAB_MARGIN + ICON_SIZE, MIN_TAB_WIDTH);
+      return Math.max(
+          TAB_MARGIN + titleSize.x + TAB_MARGIN + ICON_SIZE * (content.supportsPinning() ? 2 : 1),
+          MIN_TAB_WIDTH);
     }
+  }
+
+  public static interface TabContent {
+    public Control getControl();
+
+    public default void dispose() {
+      getControl().dispose();
+    }
+
+    public default boolean supportsPinning() {
+      return false;
+    }
+
+    public default boolean isPinnable() {
+      return false;
+    }
+
+    public default boolean isPinned() {
+      return false;
+    }
+
+    public default void pin() { /* do nothing */ }
   }
 
   private static class Hover {
@@ -1405,6 +1518,10 @@ public class TabComposite extends Composite {
       return new Hover(Type.Separator, group, index, cursor, null, null);
     }
 
+    public static Hover pin(Folder folder, Tab tab) {
+      return new Hover(Type.Pin, null, 0, 0, folder, tab);
+    }
+
     public static Hover close(Folder folder, Tab tab) {
       return new Hover(Type.Close, null, 0, 0, folder, tab);
     }
@@ -1438,12 +1555,12 @@ public class TabComposite extends Composite {
     }
 
     public boolean isBar() {
-      return type == Type.Close || type == Type.Expand || type == Type.Maximize
-          || type == Type.Bar || type == Type.Tab;
+      return type == Type.Pin || type == Type.Close || type == Type.Expand
+          || type == Type.Maximize || type == Type.Bar || type == Type.Tab;
     }
 
     public static enum Type {
-      None, Separator, Close, Expand, Maximize, Folder, Bar, Tab;
+      None, Separator, Pin, Close, Expand, Maximize, Folder, Bar, Tab;
     }
   }
 
