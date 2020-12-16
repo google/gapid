@@ -27,7 +27,7 @@ import (
 )
 
 // Thumbnail resolves and returns the thumbnail from the path p.
-func Thumbnail(ctx context.Context, p *path.Thumbnail, r *path.ResolveConfig) (*image.Info, error) {
+func Thumbnail(ctx context.Context, p *path.Thumbnail, r *path.ResolveConfig) (interface{}, error) {
 	switch parent := p.Parent().(type) {
 	case *path.Command:
 		return CommandThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent, r)
@@ -35,6 +35,8 @@ func Thumbnail(ctx context.Context, p *path.Thumbnail, r *path.ResolveConfig) (*
 		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent, r)
 	case *path.ResourceData:
 		return ResourceDataThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent, r)
+	case *path.MultiResourceData:
+		return MultiResourceDataThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent, r)
 	case *path.FramebufferAttachment:
 		return FramebufferAttachmentThumbnail(ctx, p.DesiredFormat, parent, r)
 	default:
@@ -150,10 +152,54 @@ func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p 
 	if err != nil {
 		return nil, err
 	}
+	return resourceThumbnail(ctx, w, h, f, obj)
+}
 
-	t, ok := obj.(image.Thumbnailer)
+// MultiResourceDataThumbnail resolves and returns the thumbnails for multiple resources at p.
+func MultiResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.MultiResourceData, r *path.ResolveConfig) (*service.MultiResourceThumbnail, error) {
+	obj, err := ResolveInternal(ctx, p, r)
+	if err != nil {
+		return nil, err
+	}
+
+	resources, ok := obj.(*service.MultiResourceData)
 	if !ok {
-		return nil, fmt.Errorf("Type %T does not support thumbnailing", obj)
+		return nil, fmt.Errorf("Expected *service.MultiResourceData, got %T", obj)
+	}
+
+	m := map[string]*service.MultiResourceThumbnail_ThumbnailOrError{}
+	for id, val := range resources.Resources {
+		switch v := val.GetVal().(type) {
+		case *service.MultiResourceData_ResourceOrError_Error:
+			m[id] = &service.MultiResourceThumbnail_ThumbnailOrError{
+				Val: &service.MultiResourceThumbnail_ThumbnailOrError_Error{
+					Error: v.Error,
+				},
+			}
+		case *service.MultiResourceData_ResourceOrError_Resource:
+			img, err := resourceThumbnail(ctx, w, h, f, v.Resource)
+			if err != nil {
+				m[id] = &service.MultiResourceThumbnail_ThumbnailOrError{
+					Val: &service.MultiResourceThumbnail_ThumbnailOrError_Error{
+						Error: service.NewError(err),
+					},
+				}
+			} else {
+				m[id] = &service.MultiResourceThumbnail_ThumbnailOrError{
+					Val: &service.MultiResourceThumbnail_ThumbnailOrError_Image{
+						Image: img,
+					},
+				}
+			}
+		}
+	}
+	return &service.MultiResourceThumbnail{Images: m}, nil
+}
+
+func resourceThumbnail(ctx context.Context, w, h uint32, f *image.Format, resource interface{}) (*image.Info, error) {
+	t, ok := resource.(image.Thumbnailer)
+	if !ok {
+		return nil, fmt.Errorf("Type %T does not support thumbnailing", resource)
 	}
 
 	img, err := t.Thumbnail(ctx, w, h, 1)

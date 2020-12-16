@@ -92,6 +92,7 @@ message Value {
     api.Mesh mesh = 32;
     api.Metrics metrics = 33;
     MultiResourceData multi_resource_data = 34;
+    MultiResourceThumbnail multi_resource_thumbnail = 38;
     FramebufferAttachments framebuffer_attachments = 35;
     FramebufferAttachment framebuffer_attachment = 36;
     api.Framegraph framegraph = 37;
@@ -986,6 +987,17 @@ message MultiResourceData {
     }
   }
   map<string, ResourceOrError> resources = 1;
+}
+
+// MultiResourceThumbnail represents the thumbnail images of multiple resources.
+message MultiResourceThumbnail {
+  message ThumbnailOrError {
+    oneof val {
+      image.Info image = 1;
+      Error error = 2;
+    }
+  }
+  map<string, ThumbnailOrError> images = 1;
 }
 
 // CommandTree represents a command tree hierarchy.

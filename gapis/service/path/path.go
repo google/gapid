@@ -459,6 +459,8 @@ func (n *Thumbnail) SetParent(p Node) {
 		n.Object = nil
 	case *ResourceData:
 		n.Object = &Thumbnail_Resource{p}
+	case *MultiResourceData:
+		n.Object = &Thumbnail_Resources{p}
 	case *Command:
 		n.Object = &Thumbnail_Command{p}
 	case *CommandTreeNode:
