@@ -409,6 +409,20 @@ public class Paths {
         .build();
   }
 
+  public static Path.Any thumbnails(
+      CommandIndex command, Path.ResourceType type, int size, boolean disableOpt) {
+    return thumbnail(Path.Thumbnail.newBuilder()
+        .setResources(Path.MultiResourceData.newBuilder()
+            .setAfter(command.getCommand())
+            .setAll(true)
+            .setType(type))
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .setDisableOptimization(disableOpt)
+        .build());
+  }
+
   public static Path.Any thumbnail(Path.Thumbnail thumb) {
     return Path.Any.newBuilder()
         .setThumbnail(thumb)

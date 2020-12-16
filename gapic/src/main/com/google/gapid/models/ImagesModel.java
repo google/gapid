@@ -17,14 +17,11 @@ package com.google.gapid.models;
 
 import static com.google.gapid.image.FetchedImage.loadThumbnail;
 
-import static java.util.logging.Level.SEVERE;
-
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.MoreFutures;
@@ -71,16 +68,16 @@ public class ImagesModel {
   public ListenableFuture<FetchedImage> getFramebuffer(CommandIndex command,
       int attachment, Path.RenderSettings renderSettings) {
     Path.Any fbPath = Paths.framebufferAttachmentAfter(command, attachment, renderSettings, FB_HINTS);
-    
-    return MoreFutures.transformAsync(client.get(fbPath, getReplayDevice()), 
+
+    return MoreFutures.transformAsync(client.get(fbPath, getReplayDevice()),
         value ->  FetchedImage.load(client, getReplayDevice(), value.getFramebufferAttachment().getImageInfo()));
   }
-  
+
   public ListenableFuture<ImageData> getFramebufferImage(CommandIndex command,
       int attachment, Path.RenderSettings renderSettings, Consumer<Image.Info> onInfo) {
     Path.Any fbPath = Paths.framebufferAttachmentAfter(command, attachment, renderSettings, PREV_HINTS);
 
-    return MoreFutures.transform(FetchedImage.loadImage(MoreFutures.transformAsync(client.get(fbPath, getReplayDevice()), 
+    return MoreFutures.transform(FetchedImage.loadImage(MoreFutures.transformAsync(client.get(fbPath, getReplayDevice()),
         value -> FetchedImage.load(client, getReplayDevice(), value.getFramebufferAttachment().getImageInfo(), onInfo)), 0, 0),
         image -> processImage(image, THUMB_SIZE));
   }
@@ -113,6 +110,18 @@ public class ImagesModel {
         image -> processImage(image, size));
   }
 
+  public ListenableFuture<ImageData> getThumbnail(Image.Info info, int size) {
+    return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), info),
+        image -> processImage(image, size));
+  }
+
+  public ListenableFuture<Service.MultiResourceThumbnail> getAllTextureThumbnails(CommandIndex command) {
+    return MoreFutures.transform(
+        client.get(thumbnails(command, Path.ResourceType.Texture), getReplayDevice()), res -> {
+          return res.getMultiResourceThumbnail();
+        });
+  }
+
   private Path.Thumbnail thumbnail(Path.Command command) {
     return Paths.thumbnail(command, THUMB_PIXELS, shouldDisableReplayOptimization());
   }
@@ -127,6 +136,10 @@ public class ImagesModel {
 
   private Path.Thumbnail thumbnail(CommandIndex command, int attachment) {
     return Paths.thumbnail(command, attachment, THUMB_PIXELS, shouldDisableReplayOptimization());
+  }
+
+  private Path.Any thumbnails(CommandIndex command, Path.ResourceType type) {
+    return Paths.thumbnails(command, type, THUMB_PIXELS, shouldDisableReplayOptimization());
   }
 
   private Path.Device getReplayDevice() {

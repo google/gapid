@@ -138,6 +138,12 @@ public class FetchedImage implements MultiLayerAndLevelImage {
     }), 0, 0);
   }
 
+  public static ListenableFuture<ImageData> loadThumbnail(
+      Client client, Path.Device device, com.google.gapid.proto.image.Image.Info info) {
+    return loadImage(
+        immediateFuture(new FetchedImage(client, device, Images.Format.Color8, info)), 0, 0);
+  }
+
   private static Images.Format getFormat(Info imageInfo) {
     return Images.Format.from(imageInfo.getFormat());
   }

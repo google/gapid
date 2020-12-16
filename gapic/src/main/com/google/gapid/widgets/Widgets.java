@@ -37,6 +37,7 @@ import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeSelection;
+import org.eclipse.jface.viewers.OwnerDrawLabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -473,6 +474,7 @@ public class Widgets {
     result.setCaret(null);
     // Clear selection when out of focus.
     result.addListener(SWT.FocusOut, new Listener() {
+      @Override
       public void handleEvent(Event e) {
         result.setSelection(0);
       }
@@ -553,6 +555,39 @@ public class Widgets {
     return column;
   }
 
+  private static final int IMAGE_MARGIN = 2;
+  public static <T> TableViewerColumn createLazyImageTableColumn(TableViewer viewer, String title,
+      Function<T, String> labelProvider, Function<T, Image> imageProvider, int imageSize) {
+    TableViewerColumn column = createTableColumn(viewer, title);
+    column.setLabelProvider(new OwnerDrawLabelProvider() {
+      @Override
+      @SuppressWarnings("unchecked")
+      protected void measure(Event event, Object element) {
+        String label = labelProvider.apply((T)element);
+        Point size = event.gc.textExtent(label, SWT.DRAW_TRANSPARENT);
+        event.width = 2 * IMAGE_MARGIN + imageSize + size.x;
+        event.height = Math.max(imageSize + 2 * IMAGE_MARGIN, size.y);
+      }
+
+      @Override
+      @SuppressWarnings("unchecked")
+      protected void paint(Event event, Object element) {
+        String label = labelProvider.apply((T)element);
+        Image image = imageProvider.apply((T)element);
+        if (image != null) {
+          Rectangle size = image.getBounds();
+          event.gc.drawImage(image, 0, 0, size.width, size.height,
+              event.x + IMAGE_MARGIN, event.y + IMAGE_MARGIN, imageSize, imageSize);
+        }
+
+        Point size = event.gc.textExtent(label, SWT.DRAW_TRANSPARENT);
+        event.gc.drawText(label, event.x + 2 * IMAGE_MARGIN + imageSize,
+            event.y + (imageSize + 2 * IMAGE_MARGIN - size.y) / 2, SWT.DRAW_TRANSPARENT);
+      }
+    });
+    return column;
+  }
+
   public static <T> ColumnAndComparator<T> createTableColumn(
       TableViewer viewer, String title, Function<T, String> labelProvider, Comparator<T> comp) {
     return new ColumnAndComparator<>(createTableColumn(viewer, title, labelProvider), comp);
@@ -562,6 +597,13 @@ public class Widgets {
       Function<T, String> labelProvider, Function<T, Image> imageProvider, Comparator<T> comp) {
     return new ColumnAndComparator<>(
         createTableColumn(viewer, title, labelProvider, imageProvider), comp);
+  }
+
+  public static <T> ColumnAndComparator<T> createLazyImageTableColumn(TableViewer viewer,
+      String title, Function<T, String> labelProvider, Function<T, Image> imageProvider,
+      int imageSize, Comparator<T> comp) {
+    return new ColumnAndComparator<>(
+        createLazyImageTableColumn(viewer, title, labelProvider, imageProvider, imageSize), comp);
   }
 
   @SafeVarargs

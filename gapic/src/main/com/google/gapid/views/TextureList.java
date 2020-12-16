@@ -21,6 +21,7 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createLazyImageTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.filling;
@@ -92,7 +93,7 @@ public class TextureList extends Composite
   private final Models models;
   private final LoadablePanel<Composite> loading;
   private final TableViewer textureTable;
-  private final ImageProvider imageProvider;
+  protected final ImageProvider imageProvider;
 
   public TextureList(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -145,7 +146,7 @@ public class TextureList extends Composite
     sorting(viewer,
         createTableColumn(viewer, "Type", Data::getType,
             Comparator.comparing(Data::getType)),
-        createTableColumn(viewer, "ID", Data::getId, d -> imageProvider.getImage(d),
+        createLazyImageTableColumn(viewer, "ID", Data::getId, d -> imageProvider.getImage(d), 18,
             (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
         createTableColumn(viewer, "Name", Data::getLabel,
             Comparator.comparing(Data::getLabel)),
@@ -227,10 +228,11 @@ public class TextureList extends Composite
   }
 
   private void updateTextures() {
+    CommandIndex command = models.commands.getSelectedCommands();
     if (!models.resources.isLoaded()) {
       loading.startLoading();
       clear();
-    } else if (models.commands.getSelectedCommands() == null) {
+    } else if (command == null) {
       loading.showMessage(Info, Messages.SELECT_COMMAND);
       clear();
     } else {
@@ -283,6 +285,33 @@ public class TextureList extends Composite
                 data.imageInfo = e.getValue();
               }
             }
+            refresher.refresh();
+          }
+        });
+        Rpc.listen(models.images.getAllTextureThumbnails(command),
+            new UiCallback<Service.MultiResourceThumbnail, Map<Data, Image.Info>>(
+                textureTable.getTable(), LOG) {
+          @Override
+          protected Map<Data, Image.Info> onRpcThread(
+              Result<Service.MultiResourceThumbnail> result) throws RpcException, ExecutionException {
+            Map<Data, Image.Info> images = Maps.newHashMap();
+            for (Map.Entry<String, Service.MultiResourceThumbnail.ThumbnailOrError> e :
+                result.get().getImagesMap().entrySet()) {
+              if (e.getValue().hasError()) {
+                // Ignore thumbnail errors.
+              } else {
+                Data data = mapped.get(e.getKey());
+                if (data != null) {
+                  images.put(data, e.getValue().getImage());
+                }
+              }
+            }
+            return images;
+          }
+
+          @Override
+          protected void onUiThread(Map<Data, Image.Info> result) {
+            imageProvider.setInfos(result);
             refresher.refresh();
           }
         });
@@ -386,7 +415,7 @@ public class TextureList extends Composite
 
     private static class AdditionalInfo {
       public static final AdditionalInfo NULL =
-          new AdditionalInfo("<unknown>", Image.Info.getDefaultInstance(), 0, 0);
+          new AdditionalInfo("", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_1D =
           new AdditionalInfo("1D", Image.Info.getDefaultInstance(), 0, 0);
       public static final AdditionalInfo NULL_1D_ARRAY =
@@ -502,6 +531,7 @@ public class TextureList extends Composite
     private final Models models;
     private final TableViewer viewer;
     private final LoadingIndicator loading;
+    private final Map<Data, Image.Info> infos = Maps.newIdentityHashMap();
     private final Map<Data, LoadableImage> images = Maps.newIdentityHashMap();
 
     public ImageProvider(Models models, TableViewer viewer, LoadingIndicator loading) {
@@ -510,8 +540,13 @@ public class TextureList extends Composite
       this.loading = loading;
     }
 
+    public void setInfos(Map<Data, Image.Info> infos) {
+      this.infos.clear();
+      this.infos.putAll(infos);
+    }
+
     public void load(Data data) {
-      LoadableImage image = getLoadableImage(data);
+      LoadableImage image = images.get(data);
       if (image != null) {
         image.load();
       }
@@ -525,30 +560,37 @@ public class TextureList extends Composite
     }
 
     public org.eclipse.swt.graphics.Image getImage(Data data) {
+      if (infos.isEmpty()) {
+        return null;
+      }
       return getLoadableImage(data).getImage();
     }
 
     @Override
     public void repaint() {
-      ifNotDisposed(viewer.getControl(), () -> viewer.refresh());
+      ifNotDisposed(viewer.getControl(), () -> viewer.getControl().redraw());
     }
 
     private LoadableImage getLoadableImage(Data data) {
       LoadableImage image = images.get(data);
       if (image == null) {
-        image = LoadableImage.newBuilder(loading)
-            .small()
-            .forImageData(() -> loadImage(data))
-            .onErrorReturnNull()
-            .build(viewer.getTable(), this);
+        Image.Info info = infos.get(data);
+        if (info == null) {
+          image = LoadableImage.loadedImage(viewer.getTable(), null);
+        } else {
+          image = LoadableImage.newBuilder(loading)
+              .small()
+              .forImageData(() -> loadImage(info))
+              .onErrorReturnNull()
+              .build(viewer.getTable(), this);
+        }
         images.put(data, image);
       }
       return image;
     }
 
-    private ListenableFuture<ImageData> loadImage(Data data) {
-      return noAlpha(models.images.getThumbnail(
-          models.resources.getResourcePath(data.info), SIZE, i -> { /* noop */ }));
+    private ListenableFuture<ImageData> loadImage(Image.Info info) {
+      return noAlpha(models.images.getThumbnail(info, SIZE));
     }
 
     public void reset() {
@@ -556,6 +598,7 @@ public class TextureList extends Composite
         image.dispose();
       }
       images.clear();
+      infos.clear();
     }
   }
 

@@ -66,8 +66,19 @@ public class LoadableImage {
     state = State.NOT_STARTED;
   }
 
+  private LoadableImage(Widget widget, Image image) {
+    this(widget, null, null, null, null);
+    this.errorImage = image;
+    this.state = State.FAILED;
+  }
+
   public static Builder newBuilder(LoadingIndicator loading) {
     return new Builder(loading);
+  }
+
+  // Does not take ownership of image. I.e. the image will not be disposed.
+  public static LoadableImage loadedImage(Widget widget, Image image) {
+    return new LoadableImage(widget, image);
   }
 
   public LoadableImage load() {
