@@ -21,6 +21,7 @@ package shadertools
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -187,6 +188,35 @@ func descriptorBindingLess(a DescriptorBinding, b DescriptorBinding) bool {
 	}
 	// SpirvId is a unique identifier so we don't need to keep comparing after this
 	return a.SpirvId < b.SpirvId
+}
+
+func ExtractDebugSource(shader []uint32) (string, error) {
+	spvReflectErr := func(res C.SpvReflectResult) error {
+		if res == C.SPV_REFLECT_RESULT_SUCCESS {
+			return nil
+		}
+		return fmt.Errorf("SPIRV-Reflect failed with error code %v\n", res)
+	}
+
+	if len(shader) == 0 {
+		return "", errors.New("Empty Shader")
+	}
+
+	module := C.SpvReflectShaderModule{}
+
+	shaderPtr := unsafe.Pointer(&shader[0])
+
+	err := spvReflectErr(C.spvReflectCreateShaderModule(C.size_t(len(shader)*4), shaderPtr, &module))
+	if err != nil {
+		return "", err
+	}
+	defer C.spvReflectDestroyShaderModule(&module)
+
+	if module.source_source == nil {
+		return "", errors.New("No Source File Detected")
+	}
+
+	return C.GoString(module.source_source), nil
 }
 
 // ParseAllDescriptorSets determines what descriptor sets are implied by the
