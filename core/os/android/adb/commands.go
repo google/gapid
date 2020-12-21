@@ -125,6 +125,12 @@ func (b *binding) InstallAPK(ctx context.Context, path string, reinstall bool, g
 		// during installation. Before API 23, the flag did not exist.
 		args = append(args, "-g")
 	}
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 {
+		// Starting with API 30, non-system applications can not be queried by
+		// application targeting api level 30 by default. This flag allows the
+		// installed apk to be queryable.
+		args = append(args, "--force-queryable")
+	}
 	args = append(args, path)
 	return b.Command("install", args...).Run(ctx)
 }
