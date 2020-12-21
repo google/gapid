@@ -85,7 +85,7 @@ func SetupProfileLayersSource(ctx context.Context, d adb.Device, apk *android.In
 	nextCleanup, err := android.SetupLayers(ctx, d, apk.Name, packages, []string{})
 	cleanup = cleanup.Then(nextCleanup)
 	if err != nil {
-		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages layer packages.")
+		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup GPU activity producer environment.")
 	}
 	return cleanup, nil
 }

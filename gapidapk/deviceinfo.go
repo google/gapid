@@ -124,6 +124,7 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		cleanup = cleanup.Then(nextCleanup)
 		defer cleanup.Invoke(ctx)
 		if err != nil {
+			log.E(ctx, "Failed when settings up layers: %v", err)
 			return err
 		}
 
