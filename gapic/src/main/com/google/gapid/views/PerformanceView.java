@@ -109,6 +109,7 @@ public class PerformanceView extends Composite
       if (items.length > 0) {
         PerfNode selection = (PerfNode)items[0].getData();
         models.profile.linkGpuGroupToCommand(selection.getGroup());
+        models.profile.selectGroup(selection.getGroup());
       }
     });
 

@@ -165,7 +165,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 					groupId = int32(len(groupsMap))
 					group := &service.ProfilingData_GpuSlices_Group{
 						Id:     groupId,
-						Name:   fmt.Sprintf("RenderPass %v", uint64(renderPasses[i])),
+						Name:   fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(renderPasses[i]), uint64(renderTargets[i])),
 						Parent: parent,
 						Link:   &path.Command{Capture: capture, Indices: idx},
 					}

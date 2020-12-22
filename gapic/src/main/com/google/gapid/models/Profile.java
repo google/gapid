@@ -60,12 +60,14 @@ public class Profile
 
   private final Capture capture;
   private final CommandStream commands;
+  private int selectedGroupId;
 
   public Profile(
       Shell shell, Analytics analytics, Client client, Capture capture, Devices devices, CommandStream commands) {
     super(LOG, shell, analytics, client, Listener.class, capture, devices);
     this.capture = capture;
     this.commands = commands;
+    this.selectedGroupId = -1;
   }
 
   @Override
@@ -114,7 +116,10 @@ public class Profile
   }
 
   public void selectGroup(Service.ProfilingData.GpuSlices.Group group) {
-    listeners.fire().onGroupSelected(group);
+    if (group.getId() != selectedGroupId) {
+      selectedGroupId = group.getId();
+      listeners.fire().onGroupSelected(group);
+    }
   }
 
   public void linkCommandToGpuGroup(List<Long> commandIndex) {

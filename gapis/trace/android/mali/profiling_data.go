@@ -155,21 +155,21 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 		if ok {
 			cb := uint64(commandBuffers[i])
 			key := api.CmdSubmissionKey{subOrder, cb, uint64(renderPasses[i]), uint64(renderTargets[i])}
-			if group, ok := groupsMap[key]; ok {
-				groupId = group.Id
-			} else if indices, ok := syncData.SubmissionIndices[key]; ok {
-				if names[i] == "vertex" || names[i] == "fragment" {
+			if names[i] == "vertex" || names[i] == "fragment" {
+				if group, ok := groupsMap[key]; ok {
+					groupId = group.Id
+				} else if indices, ok := syncData.SubmissionIndices[key]; ok {
 					parent := utils.FindParentGroup(ctx, subOrder, cb, groupsMap, syncData.SubmissionIndices, capture)
 					groupId = int32(len(groupsMap))
 					group := &service.ProfilingData_GpuSlices_Group{
 						Id:     groupId,
-						Name:   fmt.Sprintf("RenderPass %v", uint64(renderPasses[i])),
+						Name:   fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(renderPasses[i]), uint64(renderTargets[i])),
 						Parent: parent,
 						Link:   &path.Command{Capture: capture, Indices: indices[0]},
 					}
 					groupsMap[key] = group
-					names[i] = fmt.Sprintf("%v %v", group.Link.Indices, names[i])
 				}
+				names[i] = fmt.Sprintf("%v %v", groupsMap[key].Link.Indices, names[i])
 			}
 		} else {
 			log.W(ctx, "Encountered submission ID mismatch %v", v)

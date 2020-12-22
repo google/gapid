@@ -245,6 +245,10 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     public final Set<Long> sliceKeys = Sets.newHashSet();
     private final String title;
 
+    public Slices(String title) {
+      this.title = title;
+    }
+
     public Slices(QueryEngine.Row row, ArgSet argset, String title) {
       this.title = title;
       this.add(row, argset);

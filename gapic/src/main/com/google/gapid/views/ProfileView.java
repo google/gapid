@@ -46,7 +46,9 @@ import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.models.Selection.Kind;
 import com.google.gapid.perfetto.models.SliceTrack;
+import com.google.gapid.perfetto.models.SliceTrack.Slices;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.RootPanel;
@@ -151,6 +153,11 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
   }
 
   @Override
+  public void onGroupSelected(Service.ProfilingData.GpuSlices.Group group) {
+    traceUi.selectGroup(group);
+  }
+
+  @Override
   public void onSelectionChanged(Selection.MultiSelection selection) {
     Selection<?> selected = traceUi.getState().getSelection(Selection.Kind.Gpu);
 
@@ -185,6 +192,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
   }
 
   private abstract static class TraceUi extends TraceComposite<State> {
+    protected final List<GpuSliceTrack> tracks = Lists.newArrayList();
     protected final List<Panel> panels = Lists.newArrayList();
 
     public TraceUi(Composite parent, Analytics analytics, Perfetto perfetto, Theme theme) {
@@ -204,12 +212,22 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
             maxDepth = Math.max(maxDepth, slice.getDepth());
           }
         }
+        GpuSliceTrack gpuSliceTrack = new GpuSliceTrack(track.getId(), matched);
+        tracks.add(gpuSliceTrack);
         panels.add(new Container(new GpuQueuePanel(state,
             new GpuInfo.Queue(track.getId(), track.getName(), maxDepth + 1),
-            new GpuSliceTrack(track.getId(), matched))));
+            gpuSliceTrack)));
       }
 
       state.update(data.getSlicesTimeSpan());
+    }
+
+    public void selectGroup(Service.ProfilingData.GpuSlices.Group group) {
+      Slices combined = new Slices("");
+      for (GpuSliceTrack track : tracks) {
+        combined = combined.combine(track.getSlices(group));
+      }
+      state.setSelection(Kind.Gpu,combined);
     }
 
     @Override
@@ -346,6 +364,10 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
             .filter(s -> ts.overlaps(s.getTs(), s.getTs() + s.getDur()))
             .filter(s -> s.getDepth() >= minDepth && s.getDepth() <= maxDepth)
             .collect(toList())));
+      }
+
+      public Slices getSlices(Service.ProfilingData.GpuSlices.Group group) {
+        return toSlices(slices.stream().filter(s -> s.getGroupId() == group.getId()).collect(toList()));
       }
 
       @Override
