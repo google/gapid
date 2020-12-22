@@ -52,8 +52,6 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
-	var currentThread uint64
-	var currentAPI api.API
 	// If the capture contains initial state, build the necessary commands to recreate it.
 	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
 	if err != nil {
@@ -89,8 +87,6 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 
 	err = api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		currentThread = cmd.Thread()
-		currentAPI = cmd.API()
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
 			log.E(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
 			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
@@ -110,8 +106,6 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	err = api.ForeachCmd(ctx, capture.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
-		currentThread = cmd.Thread()
-		currentAPI = cmd.API()
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
 			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
 		}
