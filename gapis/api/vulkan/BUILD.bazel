@@ -64,7 +64,6 @@ go_library(
         "command_buffer_rebuilder.go",
         "custom_replay.go",
         "doc.go",
-        "drawCall.go",
         "draw_call_mesh.go",
         "externs.go",
         "extras.go",
