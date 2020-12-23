@@ -144,6 +144,18 @@ func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.Resolv
 	return nil, api.ErrMeshNotAvailable
 }
 
+// Interface check.
+var _ api.PipelineProvider = &API{}
+
+// BoundPipeline implements the api.PipelineProvider interface.
+func (API) BoundPipeline(ctx context.Context, o interface{}, p *path.Pipelines, r *path.ResolveConfig) (api.BoundPipeline, error) {
+	switch dc := o.(type) {
+	case *VkQueueSubmit:
+		return drawCallPipeline(ctx, dc, p, r)
+	}
+	return api.BoundPipeline{}, api.ErrPipelineNotAvailable
+}
+
 type MarkerType int
 
 const (

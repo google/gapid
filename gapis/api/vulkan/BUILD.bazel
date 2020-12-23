@@ -64,6 +64,7 @@ go_library(
         "custom_replay.go",
         "doc.go",
         "draw_call_mesh.go",
+        "draw_call_pipeline.go",
         "externs.go",
         "extras.go",
         "frame_loop.go",
