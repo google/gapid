@@ -1035,8 +1035,10 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		}
 	}
 
-	resourceMeta, _ := resolve.ResourceMeta(ctx, nil, cmd, r)
-	resources := resourceMeta.IDMap
+	resources, err := resolve.ResourceIDMap(ctx, cmd, r)
+	if err != nil {
+		return nil, err
+	}
 
 	stages := []*api.Stage{
 		p.inputAssembly(cmd, drawCallInfo),
@@ -2037,11 +2039,14 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 		}
 	}
 
-	resourceMeta, _ := resolve.ResourceMeta(ctx, nil, cmd, r)
+	resources, err := resolve.ResourceIDMap(ctx, cmd, r)
+	if err != nil {
+		return nil, err
+	}
 
 	framebuffer.SetNil()
 
-	dataGroups := commonShaderDataGroups(ctx, s, cmd, resourceMeta.IDMap, boundDsets, dynamicOffsets, framebuffer,
+	dataGroups := commonShaderDataGroups(ctx, s, cmd, resources, boundDsets, dynamicOffsets, framebuffer,
 		p.UsedDescriptors().All(), VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT,
 		map[uint32]StageData{0: p.Stage()})
 

@@ -57,3 +57,30 @@ func (r *ResourceMetaResolvable) Resolve(ctx context.Context) (interface{}, erro
 	}
 	return result, nil
 }
+
+// ResourceIDMap returns the ResourceMap at the given command.
+func ResourceIDMap(ctx context.Context, after *path.Command, r *path.ResolveConfig) (api.ResourceMap, error) {
+	resources, err := Resources(ctx, after.Capture, r)
+	if err != nil {
+		return nil, err
+	}
+
+	m := api.ResourceMap{}
+	created := map[string]*path.Command{}
+	for _, ty := range resources.Types {
+		for _, res := range ty.Resources {
+			if !res.Created.IsAfter(after) {
+				if other, ok := created[res.Handle]; ok && other.IsAfter(res.Created) {
+					// This handle is being re-used, and the previously seen one was
+					// created later, so ignore the current resource.
+					continue
+				}
+
+				m[res.Handle] = res.ID.ID()
+				created[res.Handle] = res.Created
+			}
+		}
+	}
+
+	return m, nil
+}
