@@ -38,6 +38,7 @@ go_library(
         "labeled.go",
         "memory_breakdown.go",
         "mesh.go",
+        "pipeline.go",
         "property.go",
         "reference.go",
         "resource.go",
