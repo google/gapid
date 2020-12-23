@@ -132,6 +132,9 @@ func (API) GetFramebufferAttachmentInfos(
 	return infos, nil
 }
 
+// Interface check.
+var _ api.MeshProvider = &API{}
+
 // Mesh implements the api.MeshProvider interface
 func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	switch dc := o.(type) {
