@@ -28,7 +28,6 @@ var _ = []database.Resolvable{
 	(*IndexLimitsResolvable)(nil),
 	(*ReportResolvable)(nil),
 	(*ResourceDataResolvable)(nil),
-	(*ResourceMetaResolvable)(nil),
 	(*ResourcesResolvable)(nil),
 	(*SetResolvable)(nil),
 	(*StateResolvable)(nil),

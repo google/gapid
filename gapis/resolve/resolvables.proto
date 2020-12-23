@@ -105,12 +105,6 @@ message AllResourceDataResolvable {
   api.ResourceType type = 3;
 }
 
-message ResourceMetaResolvable {
-  repeated path.ID IDs = 1;
-  path.Command after = 2;
-  path.ResolveConfig config = 3;
-}
-
 message GlobalStateResolvable {
   path.GlobalState path = 1;
   path.ResolveConfig config = 2;

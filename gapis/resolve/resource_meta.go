@@ -25,24 +25,14 @@ import (
 
 // ResourceMeta returns the metadata for the specified resource.
 func ResourceMeta(ctx context.Context, ids []*path.ID, after *path.Command, r *path.ResolveConfig) ([]api.Resource, error) {
-	obj, err := database.Build(ctx, &ResourceMetaResolvable{IDs: ids, After: after, Config: r})
-	if err != nil {
-		return nil, err
-	}
-	return obj.([]api.Resource), nil
-}
-
-// Resolve implements the database.Resolver interface.
-func (r *ResourceMetaResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: r.After, Config: r.Config})
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: after, Config: r})
 	if err != nil {
 		return nil, err
 	}
 	res, ok := resources.(*ResolvedResources)
 	if !ok {
-		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.After)
+		return nil, fmt.Errorf("Cannot resolve resources at command: %v", after)
 	}
-	ids := r.IDs
 	values := make([]api.Resource, len(ids))
 	for i, id := range ids {
 		val, ok := res.resources[id.ID()]
