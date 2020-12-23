@@ -286,12 +286,14 @@ func change(ctx context.Context, p path.Node, val interface{}, r *path.ResolveCo
 }
 
 func changeResources(ctx context.Context, after *path.Command, ids []*path.ID, data []*api.ResourceData, r *path.ResolveConfig) (*path.Capture, error) {
-	meta, err := ResourceMeta(ctx, ids, after, r)
+	resources, err := ResourceMeta(ctx, ids, after, r)
 	if err != nil {
 		return nil, err
 	}
-	if len(meta.Resources) != len(ids) {
-		return nil, fmt.Errorf("Expected %d resource(s), got %d", len(ids), len(meta.Resources))
+
+	idMap, err := ResourceIDMap(ctx, after, r)
+	if err != nil {
+		return nil, err
 	}
 
 	cmdIdx := after.Indices[0]
@@ -324,12 +326,12 @@ func changeResources(ctx context.Context, after *path.Command, ids []*path.ID, d
 		return initialState.APIs[API]
 	}
 
-	for i, resource := range meta.Resources {
+	for i, resource := range resources {
 		if err := resource.SetResourceData(
 			ctx,
 			after,
 			data[i],
-			meta.IDMap,
+			idMap,
 			replaceCommands,
 			mutateInitialState,
 			r); err != nil {

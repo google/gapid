@@ -58,12 +58,6 @@ type Resource interface {
 		r *path.ResolveConfig) error
 }
 
-// ResourceMeta represents resource with a state information obtained during building.
-type ResourceMeta struct {
-	Resources []Resource  // Resolved resource.
-	IDMap     ResourceMap // Map for resolved resources to ids.
-}
-
 // ReplaceCallback is called from SetResourceData to propagate changes to current command stream.
 type ReplaceCallback func(where uint64, with interface{})
 
