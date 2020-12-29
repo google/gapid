@@ -40,6 +40,7 @@ go_library(
         "memory.go",
         "mesh.go",
         "metrics.go",
+        "pipeline.go",
         "report.go",
         "resolve.go",
         "resource_data.go",

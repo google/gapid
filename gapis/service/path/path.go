@@ -128,7 +128,7 @@ func (n Mesh) Parent() Node                      { return oneOfNode(n.Object) }
 func (n Metrics) Parent() Node                   { return n.Command }
 func (n Messages) Parent() Node                  { return n.Capture }
 func (n Parameter) Parent() Node                 { return n.Command }
-func (n Pipelines) Parent() Node                 { return n.After }
+func (n Pipelines) Parent() Node                 { return oneOfNode(n.Object) }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
 func (n MultiResourceData) Parent() Node         { return n.After }
@@ -165,7 +165,6 @@ func (n *Memory) SetParent(p Node)                    { n.After, _ = p.(*Command
 func (n *MemoryAsType) SetParent(p Node)              { n.After, _ = p.(*Command) }
 func (n *Metrics) SetParent(p Node)                   { n.Command, _ = p.(*Command) }
 func (n *Messages) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
-func (n *Pipelines) SetParent(p Node)                 { n.After, _ = p.(*CommandTreeNode) }
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
 func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }
@@ -434,6 +433,19 @@ func (n *Mesh) SetParent(p Node) {
 	}
 }
 
+func (n *Pipelines) SetParent(p Node) {
+	switch p := p.(type) {
+	case nil:
+		n.Object = nil
+	case *Command:
+		n.Object = &Pipelines_Command{p}
+	case *CommandTreeNode:
+		n.Object = &Pipelines_CommandTreeNode{p}
+	default:
+		panic(fmt.Errorf("Cannot set Pipelines.Object to %T", p))
+	}
+}
+
 func (n *Slice) SetParent(p Node) {
 	switch p := p.(type) {
 	case nil:
@@ -634,10 +646,10 @@ func (n *CommandTreeNode) Mesh(options *MeshOptions) *Mesh {
 	}
 }
 
-// Pipelines returns the path node to the piplines after this command tree node.
+// Pipelines returns the path node to the pipelines after this command tree node.
 func (n *CommandTreeNode) Pipelines() *Pipelines {
 	return &Pipelines{
-		After: n,
+		Object: &Pipelines_CommandTreeNode{n},
 	}
 }
 
@@ -717,6 +729,13 @@ func (n *Command) Mesh(options *MeshOptions) *Mesh {
 	return &Mesh{
 		Options: options,
 		Object:  &Mesh_Command{n},
+	}
+}
+
+// Pipelines returns the path node to the pipelines of this command.
+func (n *Command) Pipelines() *Pipelines {
+	return &Pipelines{
+		Object: &Pipelines_Command{n},
 	}
 }
 

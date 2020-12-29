@@ -255,7 +255,7 @@ func (n *Parameter) Validate() error {
 
 // Validate checks the path is valid.
 func (n *Pipelines) Validate() error {
-	return checkNotNilAndValidate(n, n.After, "after")
+	return checkNotNilAndValidate(n, protoutil.OneOf(n.Object), "object")
 }
 
 // Validate checks the path is valid.

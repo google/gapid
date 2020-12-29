@@ -251,7 +251,7 @@ public class Paths {
     }
     return Path.Any.newBuilder()
         .setPipelines(Path.Pipelines.newBuilder()
-            .setAfter(command.getNode()))
+            .setCommandTreeNode(command.getNode()))
         .build();
   }
 

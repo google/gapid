@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -203,83 +202,4 @@ func ResourceDatas(ctx context.Context, p *path.MultiResourceData, r *path.Resol
 		}
 	}
 	return &service.MultiResourceData{Resources: m}, nil
-}
-
-// Pipelines resolves the data of the currently bound pipelines at the specified
-// point in the capture.
-func Pipelines(ctx context.Context, p *path.Pipelines, r *path.ResolveConfig) (interface{}, error) {
-	ctn, err := CommandTreeNode(ctx, p.After, r)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(ctn.Commands.From) != len(ctn.Commands.To) {
-		return nil, log.Errf(ctx, nil, "Subcommand indices must be the same length")
-	}
-
-	lastSubcommand := len(ctn.Commands.From) - 1
-	for i := 0; i < lastSubcommand; i++ {
-		if ctn.Commands.From[i] != ctn.Commands.To[i] {
-			return nil, log.Errf(ctx, nil, "Subcommand ranges must be identical everywhere but the last element")
-		}
-	}
-
-	cmd := append([]uint64{}, ctn.Commands.From...) // make a copy of ctn.Commands.From
-	for i := ctn.Commands.To[lastSubcommand]; i >= ctn.Commands.From[lastSubcommand]; i-- {
-		cmd[lastSubcommand] = i
-		c := ctn.Commands.Capture.Command(cmd[0], cmd[1:]...)
-
-		currentCmd, err := Cmd(ctx, c, r)
-		if err != nil {
-			return nil, err
-		}
-
-		if currentCmd.CmdFlags().IsExecutedDraw() || currentCmd.CmdFlags().IsExecutedDispatch() {
-			obj, err := database.Build(ctx, &PipelinesResolvable{After: c, Config: r})
-			if err != nil {
-				return nil, err
-			}
-			return obj, nil
-		}
-	}
-
-	return nil, &service.ErrDataUnavailable{Reason: messages.ErrNotADrawCall()}
-}
-
-// Resolve implements the database.Resolver interface.
-func (r *PipelinesResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	resources, err := database.Build(ctx, &AllResourceDataResolvable{
-		After:  r.After,
-		Type:   path.ResourceType_Pipeline,
-		Config: r.Config,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	res, ok := resources.(*ResolvedResources)
-	if !ok {
-		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.After)
-	}
-
-	pipelines := map[string]*service.MultiResourceData_ResourceOrError{}
-	for id, val := range res.resourceData {
-		switch v := val.(type) {
-		case error:
-			pipelines[id.String()] = &service.MultiResourceData_ResourceOrError{
-				Val: &service.MultiResourceData_ResourceOrError_Error{
-					Error: service.NewError(v),
-				},
-			}
-		case *api.ResourceData:
-			if p := v.GetPipeline(); p.GetBound() {
-				pipelines[id.String()] = &service.MultiResourceData_ResourceOrError{
-					Val: &service.MultiResourceData_ResourceOrError_Resource{
-						Resource: v,
-					},
-				}
-			}
-		}
-	}
-	return &service.MultiResourceData{Resources: pipelines}, nil
 }
