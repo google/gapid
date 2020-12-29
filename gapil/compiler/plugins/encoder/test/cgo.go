@@ -15,7 +15,7 @@
 package encodertest
 
 //#include "core/memory/arena/cc/arena.h"
-//#include "test.h"
+//#include "gapil/compiler/plugins/encoder/test/test.h"
 import "C"
 
 import (
@@ -71,9 +71,9 @@ func gapil_encode_object(ctx *C.context, isGroup uint8, ty uint32, dataSize uint
 }
 
 //export gapil_slice_encoded
-func gapil_slice_encoded(ctx *C.context, slice *C.slice) {
+func gapil_slice_encoded(ctx *C.context, s *C.slice) {
 	e := encoders[ctx]
-	e.callbacks = append(e.callbacks, cbSliceEncoded{Size: int(slice.size)})
+	e.callbacks = append(e.callbacks, cbSliceEncoded{Size: int(s.size)})
 }
 
 //export gapil_encode_backref

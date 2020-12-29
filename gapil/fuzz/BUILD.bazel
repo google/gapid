@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_test(
     name = "go_default_test",
@@ -20,6 +20,17 @@ go_test(
     srcs = ["fuzz_test.go"],
     deps = [
         "//core/log:go_default_library",
+        "//gapil:go_default_library",
+        "//gapil/semantic:go_default_library",
+    ],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["fuzz.go"],
+    importpath = "github.com/google/gapid/gapil/fuzz",
+    visibility = ["//visibility:public"],
+    deps = [
         "//gapil:go_default_library",
         "//gapil/semantic:go_default_library",
     ],

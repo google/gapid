@@ -15,7 +15,7 @@
 package perfetto
 
 // #include <stdlib.h> // free
-// #include "cc/processor.h"
+// #include "gapis/perfetto/cc/processor.h"
 import "C"
 import (
 	"context"

@@ -35,6 +35,8 @@ go_test(
         "choices_test.go",
         "repeated_test.go",
     ],
-    embed = [":go_default_library"],
-    deps = ["//core/assert:go_default_library"],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+    ],
 )

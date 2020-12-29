@@ -15,8 +15,8 @@
 // Package shadertools wraps around external C code for manipulating shaders.
 package shadertools
 
-//#include "cc/libmanager.h"
-//#include "cc/staticanalysis.h"
+//#include "gapis/shadertools/cc/staticanalysis.h"
+//#include "gapis/shadertools/cc/libmanager.h"
 //#include <stdlib.h>
 //#include "spirv_reflect.h"
 //#include "spirv_cross_c.h"

@@ -82,8 +82,8 @@ go_test(
         "linux_test.go",
         "osx_test.go",
     ],
-    embed = [":go_default_library"],
     deps = [
+        ":go_default_library",
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device/host:go_default_library",

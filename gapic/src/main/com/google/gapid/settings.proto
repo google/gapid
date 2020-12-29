@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-import "protos/perfetto/config/perfetto_config.proto";
+import "protos/perfetto/config/trace_config.proto";
 
 option java_package = "com.google.gapid.proto";
 option java_outer_classname = "SettingsProto";

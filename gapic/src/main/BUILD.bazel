@@ -93,7 +93,7 @@ proto_library(
     deps = [
         "//core/os/device:device_proto",
         "//gapis/service:service_proto",
-        "@perfetto//:protos_perfetto_config_merged_config_protos",
+        "@perfetto//:protos_perfetto_config_protos",
     ],
 )
 

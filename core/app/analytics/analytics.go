@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build analytics
+//go:build analytics
 
 // Package analytics implements methods for sending GAPID usage data to
 // Google Analytics.

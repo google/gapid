@@ -55,5 +55,5 @@ go_test(
         "time_test.go",
         "value_test.go",
     ],
-    embed = [":go_default_library"],
+    deps = [":go_default_library"],
 )

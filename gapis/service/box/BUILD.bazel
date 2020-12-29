@@ -58,8 +58,8 @@ java_proto_library(
 go_test(
     name = "go_default_test",
     srcs = ["box_test.go"],
-    embed = [":go_default_library"],
     deps = [
+        ":go_default_library",
         "//core/assert:go_default_library",
         "//core/data:go_default_library",
         "//core/data/deep:go_default_library",

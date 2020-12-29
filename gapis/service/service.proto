@@ -26,7 +26,7 @@ import "gapis/service/path/path.proto";
 import "gapis/service/types/types.proto";
 import "gapis/service/severity/severity.proto";
 import "gapis/stringtable/stringtable.proto";
-import "protos/perfetto/config/perfetto_config.proto";
+import "protos/perfetto/config/trace_config.proto";
 
 package service;
 option java_package = "com.google.gapid.proto.service";

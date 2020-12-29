@@ -33,6 +33,8 @@ go_test(
         "vec3_test.go",
         "vec4_test.go",
     ],
-    embed = [":go_default_library"],
-    deps = ["//core/assert:go_default_library"],
+    deps = [
+        ":go_default_library",
+        "//core/assert:go_default_library",
+    ],
 )

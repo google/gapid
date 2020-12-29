@@ -62,7 +62,7 @@ proto_library(
         "//gapis/service/severity:severity_proto",
         "//gapis/service/types:types_proto",
         "//gapis/stringtable:stringtable_proto",
-        "@perfetto//:protos_perfetto_config_merged_config_protos",
+        "@perfetto//:protos_perfetto_config_protos",
     ],
 )
 

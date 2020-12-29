@@ -38,7 +38,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
-import static perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy.RING_BUFFER;
+import static perfetto.protos.TraceConfigOuterClass.TraceConfig.BufferConfig.FillPolicy.RING_BUFFER;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
@@ -88,7 +88,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import perfetto.protos.PerfettoConfig;
+import perfetto.protos.AndroidPowerConfigOuterClass.AndroidPowerConfig;
+import perfetto.protos.FtraceConfigOuterClass.FtraceConfig;
+import perfetto.protos.GpuCounterConfigOuterClass.GpuCounterConfig;
+import perfetto.protos.SysStatsCounters;
+import perfetto.protos.TraceConfigOuterClass.TraceConfig;
 
 public class TraceConfigDialog extends DialogBase {
   protected static final Logger LOG = Logger.getLogger(TraceConfigDialog.class.getName());
@@ -142,17 +146,17 @@ public class TraceConfigDialog extends DialogBase {
   private static final String[] GPU_MEM_FTRACE = {
       "gpu_mem/gpu_mem_total",
   };
-  private static final PerfettoConfig.MeminfoCounters[] MEM_COUNTERS = {
-      PerfettoConfig.MeminfoCounters.MEMINFO_MEM_TOTAL,
-      PerfettoConfig.MeminfoCounters.MEMINFO_MEM_FREE,
-      PerfettoConfig.MeminfoCounters.MEMINFO_BUFFERS,
-      PerfettoConfig.MeminfoCounters.MEMINFO_CACHED,
-      PerfettoConfig.MeminfoCounters.MEMINFO_SWAP_CACHED,
+  private static final SysStatsCounters.MeminfoCounters[] MEM_COUNTERS = {
+      SysStatsCounters.MeminfoCounters.MEMINFO_MEM_TOTAL,
+      SysStatsCounters.MeminfoCounters.MEMINFO_MEM_FREE,
+      SysStatsCounters.MeminfoCounters.MEMINFO_BUFFERS,
+      SysStatsCounters.MeminfoCounters.MEMINFO_CACHED,
+      SysStatsCounters.MeminfoCounters.MEMINFO_SWAP_CACHED,
   };
-  private static final PerfettoConfig.AndroidPowerConfig.BatteryCounters[] BAT_COUNTERS = {
-      PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CAPACITY_PERCENT,
-      PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CHARGE,
-      PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CURRENT,
+  private static final AndroidPowerConfig.BatteryCounters[] BAT_COUNTERS = {
+      AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CAPACITY_PERCENT,
+      AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CHARGE,
+      AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CURRENT,
   };
 
   private static final ImmutableMap<ProtocolMessageEnum, String> VK_LABELS =
@@ -218,22 +222,22 @@ public class TraceConfigDialog extends DialogBase {
     return enabled.stream().collect(joining(", "));
   }
 
-  public static PerfettoConfig.TraceConfig.Builder getConfig(
+  public static TraceConfig.Builder getConfig(
       Settings settings, Device.PerfettoCapability caps, String traceTarget, int duration) {
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
     if (p.getUseCustom()) {
       return p.getCustomConfig().toBuilder().setDurationMs(duration);
     }
 
-    PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
-    PerfettoConfig.FtraceConfig.Builder ftrace = config.addDataSourcesBuilder()
+    TraceConfig.Builder config = TraceConfig.newBuilder();
+    FtraceConfig.Builder ftrace = config.addDataSourcesBuilder()
         .getConfigBuilder()
             .setName("linux.ftrace")
             .getFtraceConfigBuilder()
             .addAllFtraceEvents(Arrays.asList(PROCESS_TRACKING_FTRACE))
             .setDrainPeriodMs(FTRACE_DRAIN_PERIOD)
             .setBufferSizeKb(FTRACE_BUFFER_SIZE)
-            .setCompactSched(PerfettoConfig.FtraceConfig.CompactSchedConfig.newBuilder()
+            .setCompactSched(FtraceConfig.CompactSchedConfig.newBuilder()
                 .setEnabled(true));
     // Record process names at startup into the metadata buffer.
     config.addDataSourcesBuilder()
@@ -283,7 +287,7 @@ public class TraceConfigDialog extends DialogBase {
       }
       if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 &&
           gpu.getCounters() && gpu.getCounterIdsCount() > 0) {
-        PerfettoConfig.GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
+        GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("gpu.counters")
                 .getGpuCounterConfigBuilder()
@@ -343,11 +347,11 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     // Buffer 0 (default): main buffer.
-    config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
+    config.addBuffers(TraceConfig.BufferConfig.newBuilder()
         .setSizeKb(MAIN_BUFFER_SIZE)
         .setFillPolicy(RING_BUFFER));
     // Buffer 1: Initial process metadata.
-    config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
+    config.addBuffers(TraceConfig.BufferConfig.newBuilder()
         .setSizeKb(PROC_BUFFER_SIZE)
         .setFillPolicy(RING_BUFFER));
 
@@ -1016,7 +1020,7 @@ public class TraceConfigDialog extends DialogBase {
 
       input.addListener(SWT.Modify, ev -> {
         try {
-          TextFormat.merge(input.getText(), PerfettoConfig.TraceConfig.newBuilder());
+          TextFormat.merge(input.getText(), TraceConfig.newBuilder());
           error.setVisible(false);
           error.setText("");
           okEnabled.accept(true);

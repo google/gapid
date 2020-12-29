@@ -74,5 +74,11 @@ go_proto_library(
 java_proto_library(
     name = "config_java_proto",
     visibility = ["//visibility:public"],
-    deps = ["@perfetto//:protos_perfetto_config_merged_config_protos"],
+    deps = [
+        "@perfetto//:protos_perfetto_common_protos",
+        "@perfetto//:protos_perfetto_config_ftrace_protos",
+        "@perfetto//:protos_perfetto_config_gpu_protos",
+        "@perfetto//:protos_perfetto_config_power_protos",
+        "@perfetto//:protos_perfetto_config_protos",
+    ],
 )

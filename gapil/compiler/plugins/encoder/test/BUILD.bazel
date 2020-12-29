@@ -40,20 +40,23 @@ cc_library(
     srcs = [":api_compiled"],
 )
 
-go_library(
-    name = "go_default_library",
-    srcs = [
-        "cgo.go",
-        "test.cpp",
-        "test.h",
-    ],
-    cdeps = [
+cc_library(
+    name = "cc",
+    srcs = ["test.cpp"],
+    hdrs = ["test.h"],
+    copts = cc_copts(),
+    deps = [
         ":api_lib",
         "//core/memory/arena/cc",
         "//gapil/runtime/cc",
     ],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["cgo.go"],  # keep
+    cdeps = [":cc"],
     cgo = True,
-    cppopts = cc_copts(),
     importpath = "github.com/google/gapid/gapil/compiler/plugins/encoder/test",
     visibility = ["//visibility:public"],
     deps = [

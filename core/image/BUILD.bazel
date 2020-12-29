@@ -88,8 +88,8 @@ go_test(
         "rgba_f32_test.go",
     ],
     data = glob(["test_data/*"]),
-    embed = [":go_default_library"],
     deps = [
+        ":go_default_library",
         "//core/data/endian:go_default_library",
         "//core/image/astc:go_default_library",
         "//core/image/etc:go_default_library",
