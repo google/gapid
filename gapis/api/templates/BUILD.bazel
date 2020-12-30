@@ -68,22 +68,6 @@ api_template(
         "api_state.go",
     ],
     template = "api.go.tmpl",
-    deps = [
-        "//core/data:go_default_library",
-        "//core/data/binary:go_default_library",
-        "//core/data/dictionary:go_default_library",
-        "//core/data/id:go_default_library",
-        "//core/math/u64:go_default_library",
-        "//core/os/device:go_default_library",
-        "//gapis/api:go_default_library",
-        "//gapis/capture:go_default_library",
-        "//gapis/memory:go_default_library",
-        "//gapis/replay:go_default_library",
-        "//gapis/replay/builder:go_default_library",
-        "//gapis/replay/protocol:go_default_library",
-        "//gapis/replay/value:go_default_library",
-        "//gapis/service/path:go_default_library",
-    ],
 )
 
 api_template(

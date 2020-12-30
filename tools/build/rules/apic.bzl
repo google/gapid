@@ -23,10 +23,6 @@ def api_search_path(inputs):
             roots[dep.root.path] = True
     return ",".join(["."] + roots.keys())
 
-def _apic_library_to_source(go, attr, source, merge):
-    for t in attr.templates:
-        merge(source, t)
-
 def _apic_binary_impl(ctx):
     api = ctx.attr.api
     apilist = api.includes.to_list()
@@ -168,12 +164,10 @@ apic_compile = rule(
 )
 
 def _apic_template_impl(ctx):
-    go = go_context(ctx)
     api = ctx.attr.api
     apiname = api.apiname
     apilist = api.includes.to_list()
     generated = []
-    go_srcs = []
     for template in ctx.attr.templates:
         template = template[ApicTemplate]
         templatelist = template.uses.to_list()
@@ -196,12 +190,7 @@ def _apic_template_impl(ctx):
             executable = ctx.executable._apic,
             use_default_shell_env = True,
         )
-    go_srcs.extend([f for f in generated if f.basename.endswith(".go")])
-    library = go.new_library(go, srcs = go_srcs, resolver = _apic_library_to_source)
-    source = go.library_to_source(go, ctx.attr, library, ctx.coverage_instrumented())
     return [
-        library,
-        source,
         DefaultInfo(files = depset(generated)),
     ]
 
@@ -229,8 +218,6 @@ apic_template = rule(
             allow_files = True,
             default = Label("//cmd/apic:apic"),
         ),
-        "_go_context_data": attr.label(default = Label("@io_bazel_rules_go//:go_context_data")),
     },
-    toolchains = ["@io_bazel_rules_go//go:toolchain"],
     output_to_genfiles = True,
 )

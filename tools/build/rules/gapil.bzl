@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl",
-    "go_context",
-    "GoLibrary",
-)
-
 ApicTemplate = provider()
 
 def _api_library_impl(ctx):
@@ -50,11 +45,7 @@ api_library = rule(
 )
 
 def _api_template_impl(ctx):
-    go = go_context(ctx)
-    library = go.new_library(go)
     return [
-        library,
-        go.library_to_source(go, ctx.attr, library, False),
         ApicTemplate(
             main = ctx.file.template,
             uses = depset([ctx.file.template] + ctx.files.includes),
@@ -71,8 +62,5 @@ api_template = rule(
         ),
         "includes": attr.label_list(allow_files = True),
         "outputs": attr.string_list(),
-        "deps": attr.label_list(providers = [GoLibrary]),
-        "_go_context_data": attr.label(default=Label("@io_bazel_rules_go//:go_context_data")),
     },
-    toolchains = ["@io_bazel_rules_go//go:toolchain"],
 )

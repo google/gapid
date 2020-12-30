@@ -33,7 +33,6 @@ apic_template(
         "//gapis/api/templates:mutate",
         "//gapis/api/templates:constant_sets",
         "//gapis/api/templates:convert",
-        "//gapis/api/templates:proto",
     ],
     visibility = ["//visibility:public"],
 )
@@ -44,24 +43,31 @@ go_library(
         "doc.go",
         "helpers.go",
         "test.go",
-    ],
-    embed = [
         ":generated",  # keep
     ],
     importpath = "github.com/google/gapid/gapis/api/test",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data:go_default_library",  # keep
+        "//core/data/binary:go_default_library",  # keep
         "//core/data/compare:go_default_library",
+        "//core/data/id:go_default_library",  # keep
         "//core/data/protoconv:go_default_library",  # keep
         "//core/event/task:go_default_library",  # keep
         "//core/log:go_default_library",  # keep
         "//core/math/interval:go_default_library",
+        "//core/math/u64:go_default_library",  # keep
+        "//core/os/device:go_default_library",  # keep
         "//gapil/constset:go_default_library",  # keep
         "//gapis/api:go_default_library",
         "//gapis/api/test/test_pb:go_default_library",  # keep
         "//gapis/memory:go_default_library",
         "//gapis/memory/memory_pb:go_default_library",  # keep
         "//gapis/messages:go_default_library",  # keep
+        "//gapis/replay:go_default_library",  # keep
+        "//gapis/replay/builder:go_default_library",  # keep
+        "//gapis/replay/protocol:go_default_library",  # keep
+        "//gapis/replay/value:go_default_library",  # keep
         "//gapis/service/path:go_default_library",
         "//gapis/service/types:go_default_library",  # keep
         "//gapis/stringtable:go_default_library",  # keep
