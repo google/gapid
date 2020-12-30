@@ -171,22 +171,22 @@ func (n *DeviceTraceConfiguration) Validate() error {
 
 // Validate checks the path is valid.
 func (n *Events) Validate() error {
-	return checkNotNilAndValidate(n, protoutil.OneOf(n.Capture), "capture")
+	return checkNotNilAndValidate(n, n.Capture, "capture")
 }
 
 // Validate checks the path is valid.
 func (n *FramebufferObservation) Validate() error {
-	return checkNotNilAndValidate(n, protoutil.OneOf(n.Command), "command")
+	return checkNotNilAndValidate(n, n.Command, "command")
 }
 
 // Validate checks the path is valid.
 func (n *FramebufferAttachments) Validate() error {
-	return checkNotNilAndValidate(n, protoutil.OneOf(n.After), "command")
+	return checkNotNilAndValidate(n, n.After, "after")
 }
 
 // Validate checks the path is valid.
 func (n *FramebufferAttachment) Validate() error {
-	return checkNotNilAndValidate(n, protoutil.OneOf(n.After), "command")
+	return checkNotNilAndValidate(n, n.After, "after")
 }
 
 // Validate checks the path is valid.
@@ -248,7 +248,7 @@ func (n *Metrics) Validate() error {
 // Validate checks the path is valid.
 func (n *Parameter) Validate() error {
 	return anyErr(
-		checkNotNilAndValidate(n, protoutil.OneOf(n.Command), "command"),
+		checkNotNilAndValidate(n, n.Command, "command"),
 		checkNotEmptyString(n, n.Name, "name"),
 	)
 }
