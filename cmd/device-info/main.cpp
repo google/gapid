@@ -68,9 +68,9 @@ int main(int argc, char const* argv[]) {
     std::string output;
     google::protobuf::util::JsonPrintOptions options;
     options.add_whitespace = true;
-    if (google::protobuf::util::Status::OK !=
-        google::protobuf::util::MessageToJsonString(device_inst, &output,
-                                                    options)) {
+    if (!google::protobuf::util::MessageToJsonString(device_inst, &output,
+                                                     options)
+             .ok()) {
       GAPID_ERROR("Internal error: Could not convert to json");
       free_device_instance(instance);
       return -1;
