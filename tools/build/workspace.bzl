@@ -334,12 +334,6 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
             locals = locals,
         )
 
-        # Use the LLVM libc++ Android toolchain.
-        native.bind(
-            name = "android/crosstool",
-            actual = "@androidndk//:toolchain-libcpp",
-        )
-
     if mingw:
         cc_configure()
 
