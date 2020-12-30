@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("//tools/build:rules.bzl", "cc_copts", "cc_grpc_library")
 
 proto_library(
     name = "replay_service_proto",
     srcs = ["service.proto"],
     visibility = ["//visibility:public"],
     deps = ["//gapis/service/severity:severity_proto"],
+)
+
+cc_proto_library(
+    name = "replay_service_cc_proto",
+    visibility = ["//visibility:public"],
+    deps = [":replay_service_proto"],
 )
 
 go_proto_library(
@@ -44,13 +50,9 @@ go_library(
 cc_grpc_library(
     name = "proto",
     srcs = [":replay_service_proto"],
-    copts = cc_copts(),
+    grpc_only = True,
     visibility = ["//visibility:public"],
-    deps = [
-        "//gapis/service/severity:severity_cc_proto",
-        "@com_github_grpc_grpc//:grpc++",
-        "@com_google_protobuf//:protobuf",
-    ],
+    deps = [":replay_service_cc_proto"],
 )
 
 cc_library(

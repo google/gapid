@@ -58,7 +58,6 @@ load("//tools/build/rules:go.bzl",
 )
 load("//tools/build/rules:grpc.bzl",
     _java_grpc_library = "java_grpc_library",
-    _cc_grpc_library = "cc_grpc_library",
 )
 load("//tools/build/rules:lingo.bzl",\
     _lingo = "lingo",
@@ -96,7 +95,6 @@ api_library = _api_library
 api_template = _api_template
 go_stripped_binary = _go_stripped_binary
 java_grpc_library = _java_grpc_library
-cc_grpc_library = _cc_grpc_library
 lingo = _lingo
 mm_library = _mm_library
 stringgen = _stringgen

@@ -84,6 +84,7 @@ cc_library(
         "//tools/build:windows": [
             "-lopengl32",
             "-lgdi32",
+            "-ldbghelp",
         ],
         # Android
         "//conditions:default": [
@@ -97,7 +98,7 @@ cc_library(
         "//core/cc",
         "//gapir/replay_service:proto",
         "//gapir/replay_service:vm",
-        "@com_github_grpc_grpc//:grpc++",
+        "@com_github_grpc_grpc//:grpc++_unsecure",
         "//core/vulkan/vk_virtual_swapchain/cc:headers",
     ] + select({
         "//tools/build:darwin": [":darwin_renderer"],
