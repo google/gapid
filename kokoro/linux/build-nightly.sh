@@ -18,6 +18,10 @@
 
 export SWARMING_TIMESTAMP=`date '+%Y%m%d-%H%M%S'`
 export SWARMING_TASK_PREFIX="Nightly_${SWARMING_TIMESTAMP}"
+# SWARMING_TEST_DIR must exists on x20 under agi/kokoro/swarming_nightly
+# (loaded by nightly.cfg) and must not be called "tests", to avoid clashing with
+# default tests loaded by common.cfg
+export SWARMING_TEST_DIR=${KOKORO_GFILE_DIR}/tests_nightly
 
 # We obtain the cumulated results from previous nightly runs through our x20
 # input, and we want to make sure to propagate those results event if the

@@ -133,12 +133,17 @@ if [ -z "${SWARMING_TASK_PREFIX}" ] ; then
   export SWARMING_TASK_PREFIX="Kokoro_PR${KOKORO_GITHUB_PULL_REQUEST_NUMBER}"
 fi
 
+if [ -z "${SWARMING_TEST_DIR}" ] ; then
+  # By default, use the "tests" directory which is loaded by common.cfg
+  export SWARMING_TEST_DIR=${KOKORO_GFILE_DIR}/tests
+fi
+
 export SWARMING_AUTH_FLAG="--service-account-json=${KOKORO_KEYSTORE_DIR}/74894_kokoro_swarming_access_key"
 
 # Prepare Swarming files
 SWARMING_DIR=${SRC}/test/swarming
 cp -r bazel-bin/pkg ${SWARMING_DIR}/agi
-cp -r ${KOKORO_GFILE_DIR}/tests ${SWARMING_DIR}/tests
+cp -r ${SWARMING_TEST_DIR} ${SWARMING_DIR}/tests
 
 # Swarming environment
 
