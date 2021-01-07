@@ -168,8 +168,8 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 						Link:   &path.Command{Capture: capture, Indices: indices[0]},
 					}
 					groupsMap[key] = group
+					names[i] = fmt.Sprintf("%v %v", groupsMap[key].Link.Indices, names[i])
 				}
-				names[i] = fmt.Sprintf("%v %v", groupsMap[key].Link.Indices, names[i])
 			}
 		} else {
 			log.W(ctx, "Encountered submission ID mismatch %v", v)
