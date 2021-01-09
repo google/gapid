@@ -96,7 +96,7 @@ func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Cli
 				return nil, log.Err(ctx, err, "Failed to load the pipeline resource")
 			}
 			resourceData := boxedResourceData.(*api.ResourceData)
-			pipelineData := protoutil.OneOf(protoutil.OneOf(resourceData)).(*api.Pipeline)
+			pipelineData := protoutil.OneOf(resourceData.Data).(*api.Pipeline)
 			if pipelineData.Bound && pipelineData.PipelineType == targetType {
 				return pipelineData, nil
 			}
