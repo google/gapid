@@ -198,7 +198,10 @@ func gapit(ctx context.Context, nbErr *int, gapitPath string, args ...string) er
 		if _, ok := err.(*exec.ExitError); ok {
 			// Here the gapit command raised an error
 			fmt.Printf("FAIL %s\n", printCmd)
-			*nbErr += 1
+			fmt.Println("===============================================")
+			fmt.Println(output)
+			fmt.Println("===============================================")
+			*nbErr++
 		} else {
 			// Here the error comes from somewhere else
 			return err
