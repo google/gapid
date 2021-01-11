@@ -835,8 +835,12 @@ func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalSta
 	if err != nil {
 		return nil, fmt.Errorf("Could not get resource data %v", err)
 	}
-	source := shadertools.DisassembleSpirvBinary(words)
-	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source}), nil
+	source, sourceLanguage, isCross, err := shadertools.ExtractDebugSource(words)
+	if err != nil {
+		log.E(ctx, "Error decompiling shader: %v", err)
+	}
+	spirv := shadertools.DisassembleSpirvBinary(words)
+	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross}), nil
 }
 
 func (shader ShaderModuleObjectʳ) SetResourceData(
@@ -1082,8 +1086,12 @@ func commonShaderDataGroups(ctx context.Context,
 			module := stage.Module()
 
 			words, _ := module.Words().Read(ctx, nil, s, nil)
-			source := shadertools.DisassembleSpirvBinary(words)
-			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+			source, sourceLanguage, isCross, err := shadertools.ExtractDebugSource(words)
+			if err != nil {
+				log.E(ctx, "Error decompiling shader: %v", err)
+			}
+			spirv := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross}
 
 			dsetRows := []*api.Row{}
 			for _, usedSet := range usedSets {

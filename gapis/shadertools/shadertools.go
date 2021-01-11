@@ -18,6 +18,7 @@ package shadertools
 //#include "cc/libmanager.h"
 //#include <stdlib.h>
 //#include "spirv_reflect.h"
+//#include "spirv_cross_c.h"
 import "C"
 
 import (
@@ -190,7 +191,10 @@ func descriptorBindingLess(a DescriptorBinding, b DescriptorBinding) bool {
 	return a.SpirvId < b.SpirvId
 }
 
-func ExtractDebugSource(shader []uint32) (string, error) {
+// ExtractDebugSource returns the decompiled shader and it's source language as a string.
+// If the decompiled shader was provided via OpSource, the function returns false.
+// Otherwise, if SPIRV-Cross was needed to decompile the shader, it returns true.
+func ExtractDebugSource(shader []uint32) (string, string, bool, error) {
 	spvReflectErr := func(res C.SpvReflectResult) error {
 		if res == C.SPV_REFLECT_RESULT_SUCCESS {
 			return nil
@@ -199,7 +203,7 @@ func ExtractDebugSource(shader []uint32) (string, error) {
 	}
 
 	if len(shader) == 0 {
-		return "", errors.New("Empty Shader")
+		return "", "", false, errors.New("Empty Shader")
 	}
 
 	module := C.SpvReflectShaderModule{}
@@ -208,15 +212,53 @@ func ExtractDebugSource(shader []uint32) (string, error) {
 
 	err := spvReflectErr(C.spvReflectCreateShaderModule(C.size_t(len(shader)*4), shaderPtr, &module))
 	if err != nil {
-		return "", err
+		return "", "", false, err
 	}
 	defer C.spvReflectDestroyShaderModule(&module)
 
-	if module.source_source == nil {
-		return "", errors.New("No Source File Detected")
+	sourceLanguage := C.GoString(C.spvReflectSourceLanguage(module.source_language))
+
+	if module.source_source != nil {
+		return C.GoString(module.source_source), sourceLanguage, false, nil
 	}
 
-	return C.GoString(module.source_source), nil
+	var context C.spvc_context = nil
+	var ir C.spvc_parsed_ir = nil
+	var compiler C.spvc_compiler = nil
+	var options C.spvc_compiler_options = nil
+	var result *C.char = nil
+
+	C.spvc_context_create(&context)
+	C.spvc_context_parse_spirv(context, (*C.uint)(shaderPtr), (C.size_t)(len(shader)), &ir)
+	switch sourceLanguage {
+	case "GLSL":
+		if C.spvc_context_create_compiler(context, C.SPVC_BACKEND_GLSL, ir, C.SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) == C.SPVC_ERROR_INVALID_ARGUMENT {
+			return "", sourceLanguage, false, errors.New("Could not create compiler")
+		}
+
+		C.spvc_compiler_create_compiler_options(compiler, &options)
+		C.spvc_compiler_options_set_uint(options, C.SPVC_COMPILER_OPTION_GLSL_VERSION, module.source_language_version)
+		C.spvc_compiler_options_set_bool(options, C.SPVC_COMPILER_OPTION_GLSL_VULKAN_SEMANTICS, C.SPVC_TRUE)
+		C.spvc_compiler_install_compiler_options(compiler, options)
+
+		C.spvc_compiler_compile(compiler, &result)
+		return C.GoString(result), sourceLanguage, true, nil
+
+	case "HLSL":
+		if C.spvc_context_create_compiler(context, C.SPVC_BACKEND_HLSL, ir, C.SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) == C.SPVC_ERROR_INVALID_ARGUMENT {
+			return "", sourceLanguage, false, errors.New("Could not create compiler")
+		}
+
+		C.spvc_compiler_create_compiler_options(compiler, &options)
+		C.spvc_compiler_options_set_uint(options, C.SPVC_COMPILER_OPTION_HLSL_SHADER_MODEL, module.source_language_version)
+		C.spvc_compiler_install_compiler_options(compiler, options)
+
+		C.spvc_compiler_compile(compiler, &result)
+		return C.GoString(result), sourceLanguage, true, nil
+
+	default:
+		return "", sourceLanguage, false, errors.New("Source language not supported")
+	}
 }
 
 // ParseAllDescriptorSets determines what descriptor sets are implied by the

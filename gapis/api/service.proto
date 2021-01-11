@@ -142,6 +142,9 @@ message Texture {
 message Shader {
   ShaderType type = 1;
   string source = 2;
+  string source_language = 3;
+  string spirv_source = 4;
+  bool cross_compiled = 5;
 }
 
 // Program represents a shader resource.

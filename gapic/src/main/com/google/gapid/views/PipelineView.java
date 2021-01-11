@@ -26,6 +26,8 @@ import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createScrolledComposite;
+import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
+import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
@@ -79,6 +81,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -527,15 +531,43 @@ public class PipelineView extends Composite
           break;
 
         case SHADER:
+          TabFolder tabFolder = createStandardTabFolder(dataGroupComposite);
+          tabFolder.setFont(theme.defaultFont());
+          TabItem spirvTab = createStandardTabItem(tabFolder, "SPIR-V");
+
+          Group spirvGroup = createGroup(tabFolder, "");
           SourceViewer viewer = new SourceViewer(
-              dataGroupComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+            spirvGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
           StyledText textWidget = viewer.getTextWidget();
           textWidget.setFont(theme.monoSpaceFont());
           textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
           viewer.configure(new GlslSourceConfiguration(theme));
           viewer.setEditable(false);
           viewer.setDocument(
-              GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
+              GlslSourceConfiguration.createDocument(dataGroup.getShader().getSpirvSource()));
+
+          spirvTab.setControl(spirvGroup);
+
+          if (!dataGroup.getShader().getSource().isEmpty()) {
+            TabItem sourceTab = createStandardTabItem(tabFolder, dataGroup.getShader().getSourceLanguage());
+            Group sourceGroup = createGroup(tabFolder, "", new GridLayout(1, false));
+            if (dataGroup.getShader().getCrossCompiled()) {
+              createBoldLabel(sourceGroup, "Source code was decompiled using SPIRV-Cross");
+            }
+  
+            SourceViewer viewer2 = new SourceViewer(
+              sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+            StyledText textWidget2 = viewer2.getTextWidget();
+            textWidget2.setFont(theme.monoSpaceFont());
+            textWidget2.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+            viewer2.configure(new GlslSourceConfiguration(theme));
+            viewer2.setEditable(false);
+            viewer2.setDocument(
+                GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
+            viewer2.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+  
+            sourceTab.setControl(sourceGroup);
+          }
 
           break;
 

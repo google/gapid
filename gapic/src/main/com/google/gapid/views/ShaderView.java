@@ -23,7 +23,9 @@ import static com.google.gapid.util.Colors.getLuminance;
 import static com.google.gapid.util.Colors.rgb;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
+import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
@@ -90,6 +92,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.TreeItem;
 
 import java.util.ArrayList;
@@ -417,15 +420,18 @@ public class ShaderView extends Composite
     }
 
     private SourceViewer createSourcePanel(Composite parent, Source source) {
-      Group group = createGroup(parent, source.label);
+      TabFolder tabFolder = createStandardTabFolder(parent);
+      TabItem spirvTab = createStandardTabItem(tabFolder, "SPIR-V");
+
+      Group spirvGroup = createGroup(tabFolder, "");
       SourceViewer viewer =
-          new SourceViewer(group, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+          new SourceViewer(spirvGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
       StyledText textWidget = viewer.getTextWidget();
       viewer.setEditable(type.isEditable());
       textWidget.setFont(theme.monoSpaceFont());
       textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
       viewer.configure(new GlslSourceConfiguration(theme));
-      viewer.setDocument(GlslSourceConfiguration.createDocument(source.source));
+      viewer.setDocument(GlslSourceConfiguration.createDocument(source.spirvSource));
       textWidget.addListener(SWT.KeyDown, e -> {
         if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
           viewer.doOperation(ITextOperationTarget.UNDO);
@@ -433,6 +439,37 @@ public class ShaderView extends Composite
           viewer.doOperation(ITextOperationTarget.REDO);
         }
       });
+
+      spirvTab.setControl(spirvGroup);
+
+      if (!source.source.isEmpty()) {
+        TabItem sourceTab = createStandardTabItem(tabFolder, source.sourceLanguage);
+
+        Group sourceGroup = createGroup(tabFolder, "", new GridLayout(1, false));
+        if (source.crossCompiled) {
+          createBoldLabel(sourceGroup, "Source code was decompiled using SPIRV-Cross");
+        }
+  
+        SourceViewer viewer2 =
+            new SourceViewer(sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+        StyledText textWidget2 = viewer2.getTextWidget();
+        viewer2.setEditable(type.isEditable());
+        textWidget2.setFont(theme.monoSpaceFont());
+        textWidget2.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+        viewer2.configure(new GlslSourceConfiguration(theme));
+        viewer2.setDocument(GlslSourceConfiguration.createDocument(source.source));
+        textWidget2.addListener(SWT.KeyDown, e -> {
+          if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+            viewer2.doOperation(ITextOperationTarget.UNDO);
+          } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+            viewer2.doOperation(ITextOperationTarget.REDO);
+          }
+        });
+        viewer2.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+        sourceTab.setControl(sourceGroup);
+      }
+
       return viewer;
     }
 
@@ -540,21 +577,33 @@ public class ShaderView extends Composite
 
     public static class Source {
       private static final Source EMPTY_PROGRAM = new Source("Program",
-          "// No shaders attached to this program at this point in the trace.");
+          "// No shaders attached to this program at this point in the trace.",
+          "// No shaders attached to this program at this point in the trace.",
+          "",
+          false);
       private static final String EMPTY_SHADER =
           "// No source attached to this shader at this point in the trace.";
 
       public final String label;
       public final String source;
+      public final String spirvSource;
+      public final String sourceLanguage;
+      public final boolean crossCompiled;
 
-      public Source(String label, String source) {
+      public Source(String label, String source, String spirvSource, String sourceLanguage, boolean crossCompiled) {
         this.label = label;
         this.source = source;
+        this.spirvSource = spirvSource;
+        this.sourceLanguage = sourceLanguage;
+        this.crossCompiled = crossCompiled;
       }
 
       public static Source of(API.Shader shader) {
         return new Source(shader.getType() + " Shader",
-            shader.getSource().isEmpty() ? EMPTY_SHADER : shader.getSource());
+          shader.getSource().isEmpty() ? EMPTY_SHADER : shader.getSource(),
+          shader.getSpirvSource().isEmpty() ? EMPTY_SHADER : shader.getSpirvSource(),
+          shader.getSourceLanguage(),
+          shader.getCrossCompiled());
       }
 
       public static Source[] of(API.Program program) {

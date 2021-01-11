@@ -21,8 +21,13 @@ cc_library(
     ]),
     hdrs = [
         "spirv_glsl.hpp",
+        "spirv_hlsl.hpp",
     ],
     include_prefix = "third_party/SPIRV-Cross",
+    local_defines = [
+        "SPIRV_CROSS_C_API_GLSL",
+        "SPIRV_CROSS_C_API_HLSL",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "@spirv_headers//:spirv_c_headers",

@@ -209,6 +209,7 @@ public interface Theme {
   @TextStyle(foreground = 0xee0000) public Styler errorStyler();
   @TextStyle(foreground = 0xffc800) public Styler warningStyler();
 
+  @Text(Text.Default) public Font defaultFont();
   @Text(Text.Mono) public Font monoSpaceFont();
   @Text(Text.Big) public Font bigBoldFont();
   @Text(Text.TabTitle) public Font selectedTabTitleFont();
@@ -310,7 +311,7 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Text {
-    public static final int Mono = 1, Big = 2, TabTitle = 3, SubTitle = 4, Unpinned = 5, UnpinnedSelected = 6;
+    public static final int Mono = 1, Big = 2, TabTitle = 3, SubTitle = 4, Unpinned = 5, UnpinnedSelected = 6, Default = 7;
 
     public int value();
   }
@@ -460,6 +461,11 @@ public interface Theme {
       Text text = method.getDeclaredAnnotation(Text.class);
       if (text != null) {
         switch (text.value()) {
+          case Text.Default: {
+            Font font = JFaceResources.getDefaultFont();
+            resources.put(method.getName(), font);
+            return true;
+          }
           case Text.Mono: {
             Font font = FontDescriptor.createFrom(JFaceResources.getFont(JFaceResources.TEXT_FONT))
                 .setHeight(JFaceResources.getDefaultFont().getFontData()[0].getHeight())
