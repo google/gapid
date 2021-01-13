@@ -282,25 +282,6 @@ void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
   mNumDrawsPerFrame++;
 }
 
-void Spy::onPreStartOfFrame(CallObserver* observer, uint8_t api) {
-  GAPID_ASSERT(mNestedFrameEnd < 2048);
-  if (++mNestedFrameStart > 1) {
-    return;
-  }
-  if (is_suspended()) {
-    return;
-  }
-  if (mObserveFrameFrequency != 0 &&
-      (mNumFrames % mObserveFrameFrequency == 0)) {
-    GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
-    observeFramebuffer(observer, api);
-  }
-  GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d", mNumFrames,
-              mNumDraws, mNumDrawsPerFrame);
-  mNumFrames++;
-  mNumDrawsPerFrame = 0;
-}
-
 void Spy::saveInitialState() {
   GAPID_INFO("Saving initial state");
 
@@ -334,7 +315,7 @@ void Spy::saveInitialStateForApi(const char* name) {
   }
 }
 
-void Spy::onPostFrameBoundary(bool isStartOfFrame) {
+void Spy::onPostFrameBoundary() {
   mFrameNumber++;
   if (should_record_timestamps()) {
     std::stringstream fn;
@@ -367,13 +348,6 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
   }
 }
 
-void Spy::onPostStartOfFrame() {
-  GAPID_ASSERT(mNestedFrameStart > 0);
-  if (--mNestedFrameStart == 0) {
-    onPostFrameBoundary(true);
-  }
-}
-
 void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
   GAPID_ASSERT(mNestedFrameEnd < 2048);
   if (++mNestedFrameEnd > 1) {
@@ -396,7 +370,7 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
 void Spy::onPostEndOfFrame() {
   GAPID_ASSERT(mNestedFrameEnd > 0);
   if (--mNestedFrameEnd == 0) {
-    onPostFrameBoundary(false);
+    onPostFrameBoundary();
   }
 }
 

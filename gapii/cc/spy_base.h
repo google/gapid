@@ -157,12 +157,6 @@ class SpyBase {
   // onPostDrawCall is after any command annotated with @draw_call
   inline virtual void onPostDrawCall(CallObserver*, uint8_t) {}
 
-  // onPreStartOfFrame is before any command annotated with @frame_start
-  inline virtual void onPreStartOfFrame(CallObserver*, uint8_t) {}
-
-  // onPostStrartOfFrame is after any command annotated with @frame_start
-  inline virtual void onPostStartOfFrame() {}
-
   // onPreEndOfFrame is before any command annotated with @frame_end
   inline virtual void onPreEndOfFrame(CallObserver*, uint8_t) {}
 

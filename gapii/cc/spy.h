@@ -39,8 +39,6 @@ class Spy : public VulkanSpy {
   void endTraceIfRequested() override;
 
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
-  void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;
-  void onPostStartOfFrame() override;
   void onPreEndOfFrame(CallObserver* observer, uint8_t api) override;
   void onPostEndOfFrame() override;
   void onPostFence(CallObserver* observer) override;
@@ -74,7 +72,7 @@ class Spy : public VulkanSpy {
   void saveInitialStateForApi(const char* name);
 
   // onPostFrameBoundary is called from onPost{Start,End}OfFrame().
-  void onPostFrameBoundary(bool isStartOfFrame);
+  void onPostFrameBoundary();
 
   std::unordered_map<std::string, void*> mSymbols;
 

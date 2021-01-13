@@ -21,7 +21,6 @@ const (
 	DrawCall CmdFlags = 1 << iota
 	TransformFeedback
 	Clear
-	StartOfFrame
 	EndOfFrame
 	PushUserMarker
 	PopUserMarker
@@ -39,9 +38,6 @@ func (f CmdFlags) IsTransformFeedback() bool { return (f & TransformFeedback) !=
 
 // IsClear returns true if the command is a clear call.
 func (f CmdFlags) IsClear() bool { return (f & Clear) != 0 }
-
-// IsStartOfFrame returns true if the command represents the begin of a frame.
-func (f CmdFlags) IsStartOfFrame() bool { return (f & StartOfFrame) != 0 }
 
 // IsEndOfFrame returns true if the command represents the end of a frame.
 func (f CmdFlags) IsEndOfFrame() bool { return (f & EndOfFrame) != 0 }

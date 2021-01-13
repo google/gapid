@@ -54,15 +54,6 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		// FramebufferObservation as described below).
 		f := cmd.CmdFlags()
 
-		// Add LastInFrame event of a previous command first.
-		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
-			events = append(events, &service.Event{
-				Kind:      service.EventKind_LastInFrame,
-				Command:   p.Capture.Command(uint64(lastCmd)),
-				Timestamp: getTime(c.Commands[lastCmd]),
-			})
-		}
-
 		// Add any pending events (currently only FirstInFrame events).
 		for _, kind := range pending {
 			events = append(events, &service.Event{
@@ -74,16 +65,19 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		pending = nil
 
 		// Add all first in frame events
-		if p.FirstInFrame && (f.IsStartOfFrame() || id == 0) {
+		if p.FirstInFrame && id == 0 {
 			events = append(events, &service.Event{
 				Kind:      service.EventKind_FirstInFrame,
 				Command:   p.Capture.Command(uint64(id)),
 				Timestamp: getTime(cmd),
 			})
 		}
+		// If the current command is EndOfFrame, store in pending the fact that
+		// the next command will be FirstInFrame
 		if p.FirstInFrame && f.IsEndOfFrame() {
 			pending = append(pending, service.EventKind_FirstInFrame)
 		}
+
 		if p.Clears && f.IsClear() {
 			events = append(events, &service.Event{
 				Kind:      service.EventKind_Clear,
