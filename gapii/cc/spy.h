@@ -90,9 +90,6 @@ class Spy : public VulkanSpy {
   int mNumDrawsPerFrame;
   int mObserveFrameFrequency;
   int mObserveDrawFrequency;
-  // These keep track of nested frame start/end callbacks.
-  int mNestedFrameStart;
-  int mNestedFrameEnd;
   uint64_t mFrameNumber;
 
   std::unique_ptr<core::AsyncJob> mMessageReceiverJob;

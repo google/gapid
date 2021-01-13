@@ -96,8 +96,6 @@ Spy::Spy()
       mNumDrawsPerFrame(0),
       mObserveFrameFrequency(0),
       mObserveDrawFrequency(0),
-      mNestedFrameStart(0),
-      mNestedFrameEnd(0),
       mFrameNumber(0) {
   bool this_executable = true;
   char* pn = getenv("GAPID_CAPTURE_PROCESS_NAME");
@@ -349,10 +347,6 @@ void Spy::onPostFrameBoundary() {
 }
 
 void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
-  GAPID_ASSERT(mNestedFrameEnd < 2048);
-  if (++mNestedFrameEnd > 1) {
-    return;
-  }
   if (is_suspended()) {
     return;
   }
@@ -367,12 +361,7 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
   mNumDrawsPerFrame = 0;
 }
 
-void Spy::onPostEndOfFrame() {
-  GAPID_ASSERT(mNestedFrameEnd > 0);
-  if (--mNestedFrameEnd == 0) {
-    onPostFrameBoundary();
-  }
-}
+void Spy::onPostEndOfFrame() { onPostFrameBoundary(); }
 
 static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW,
                              uint32_t srcH, std::vector<uint8_t>* outData,
