@@ -155,7 +155,7 @@ public class TraceConfigDialog extends DialogBase {
       PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CURRENT,
   };
 
-  private static final ImmutableMap<ProtocolMessageEnum, String> VK_LABLES =
+  private static final ImmutableMap<ProtocolMessageEnum, String> VK_LABELS =
       ImmutableMap.<ProtocolMessageEnum, String> builder()
         .put(CPU_TIMING_DEVICE, "VkDevice")
         .put(CPU_TIMING_INSTANCE, "VkInstance")
@@ -363,7 +363,7 @@ public class TraceConfigDialog extends DialogBase {
 
   private static String vkLabels(List<?> list) {
     return list.stream()
-      .map(VK_LABLES::get)
+      .map(VK_LABELS::get)
       .filter(Objects::nonNull)
       .distinct()
       .collect(joining(":"));
