@@ -71,9 +71,6 @@ class Spy : public VulkanSpy {
   template <typename T>
   void saveInitialStateForApi(const char* name);
 
-  // onPostFrameBoundary is called from onPost{Start,End}OfFrame().
-  void onPostFrameBoundary();
-
   std::unordered_map<std::string, void*> mSymbols;
 
   int mNumFrames;

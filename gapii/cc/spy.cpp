@@ -313,7 +313,22 @@ void Spy::saveInitialStateForApi(const char* name) {
   }
 }
 
-void Spy::onPostFrameBoundary() {
+void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
+  if (is_suspended()) {
+    return;
+  }
+  if (mObserveFrameFrequency != 0 &&
+      (mNumFrames % mObserveFrameFrequency == 0)) {
+    GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
+    observeFramebuffer(observer, api);
+  }
+  GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d", mNumFrames,
+              mNumDraws, mNumDrawsPerFrame);
+  mNumFrames++;
+  mNumDrawsPerFrame = 0;
+}
+
+void Spy::onPostEndOfFrame() {
   mFrameNumber++;
   if (should_record_timestamps()) {
     std::stringstream fn;
@@ -345,23 +360,6 @@ void Spy::onPostFrameBoundary() {
     }
   }
 }
-
-void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
-  if (is_suspended()) {
-    return;
-  }
-  if (mObserveFrameFrequency != 0 &&
-      (mNumFrames % mObserveFrameFrequency == 0)) {
-    GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
-    observeFramebuffer(observer, api);
-  }
-  GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d", mNumFrames,
-              mNumDraws, mNumDrawsPerFrame);
-  mNumFrames++;
-  mNumDrawsPerFrame = 0;
-}
-
-void Spy::onPostEndOfFrame() { onPostFrameBoundary(); }
 
 static bool downsamplePixels(const std::vector<uint8_t>& srcData, uint32_t srcW,
                              uint32_t srcH, std::vector<uint8_t>* outData,
