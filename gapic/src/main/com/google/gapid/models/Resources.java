@@ -57,6 +57,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
   protected final Capture capture;
   private final CommandStream commands;
 
+  protected Service.Resource selectedShader = null;
   protected Service.Resource selectedTexture = null;
 
   public Resources(Shell shell, Analytics analytics, Client client, Capture capture,
@@ -88,6 +89,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
 
   @Override
   protected void fireLoadStartEvent() {
+    selectShader(null);
     selectTexture(null);
   }
 
@@ -102,6 +104,9 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
 
     if (r != null) {
       switch (r.resource.getType()) {
+        case Shader:
+          selectShader(r.resource);
+          break;
         case Texture:
           selectTexture(r.resource);
           break;
@@ -213,6 +218,17 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     });
   }
 
+  public Service.Resource getSelectedShader() {
+    return selectedShader;
+  }
+
+  public void selectShader(Service.Resource shader) {
+    if (selectedShader != shader) {
+      selectedShader = shader;
+      listeners.fire().onShaderSelected(selectedShader);
+    }
+  }
+
   public Service.Resource getSelectedTexture() {
     return selectedTexture;
   }
@@ -306,6 +322,11 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
      * Event indicating that the resources metadata has been loaded.
      */
     public default void onResourcesLoaded() { /* empty */ }
+
+    /**
+     * Event indicating that a shader resource has been selected.
+     */
+    public default void onShaderSelected(Service.Resource shader) { /* empty */ }
 
     /**
      * Event indicating that a texture resource has been selected.

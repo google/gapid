@@ -42,6 +42,7 @@ import com.google.gapid.views.PerformanceView;
 import com.google.gapid.views.PipelineView;
 import com.google.gapid.views.ProfileView;
 import com.google.gapid.views.ReportView;
+import com.google.gapid.views.ShaderList;
 import com.google.gapid.views.ShaderView;
 import com.google.gapid.views.StateView;
 import com.google.gapid.views.Tab;
@@ -157,6 +158,13 @@ public class GraphicsTraceView extends Composite
   public void updateViewMenu(MenuManager manager) {
     manager.removeAll();
     manager.add(createViewTabsMenu());
+  }
+
+  @Override
+  public void onShaderSelected(Service.Resource shader) {
+    if (shader != null) {
+      showTab(MainTab.Type.ShaderView);
+    }
   }
 
   @Override
@@ -422,12 +430,13 @@ public class GraphicsTraceView extends Composite
       Pipeline(View.Pipeline, "Pipeline", DefaultPosition.Center, PipelineView::new),
       Textures(View.Textures, "Textures", DefaultPosition.Center, TextureList::new),
       Geometry(View.Geometry, "Geometry", DefaultPosition.Center, GeometryView::new),
-      Shaders(View.Shaders, "Shaders", DefaultPosition.Center, ShaderView::new),
+      Shaders(View.Shaders, "Shaders", DefaultPosition.Center, ShaderList::new),
       Performance(View.Performance, "Performance(Experimental)", DefaultPosition.Center, PerformanceView::new),
       Report(View.Report, "Report", DefaultPosition.Center, ReportView::new),
       Log(View.Log, "Log", DefaultPosition.Center, (p, m, w) -> new LogView(p, w)),
 
       TextureView(View.TextureView, "Texture", DefaultPosition.Right, TextureView::new),
+      ShaderView(View.ShaderView, "Shader", DefaultPosition.Right, ShaderView::new),
       ApiState(View.State, "State", DefaultPosition.Right, StateView::new),
       Memory(View.Memory, "Memory", DefaultPosition.Right, MemoryView::new);
 

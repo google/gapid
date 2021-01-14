@@ -15,74 +15,36 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.util.Arrays.last;
-import static com.google.gapid.util.Colors.BLACK;
-import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
-import static com.google.gapid.util.Colors.WHITE;
-import static com.google.gapid.util.Colors.getLuminance;
-import static com.google.gapid.util.Colors.rgb;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
-import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
-import static com.google.gapid.widgets.Widgets.createTableViewer;
-import static com.google.gapid.widgets.Widgets.createTreeColumn;
-import static com.google.gapid.widgets.Widgets.createTreeViewer;
-import static com.google.gapid.widgets.Widgets.disposeAllChildren;
-import static com.google.gapid.widgets.Widgets.packColumns;
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
-import static com.google.gapid.widgets.Widgets.sorting;
-import static java.util.logging.Level.FINE;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
-import com.google.gapid.models.CommandStream;
-import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
-import com.google.gapid.models.Settings;
-import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.widgets.LoadablePanel;
-import com.google.gapid.widgets.SearchBox;
-import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.text.ITextOperationTarget;
 import org.eclipse.jface.text.source.SourceViewer;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ITreeContentProvider;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
-import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
-import org.eclipse.swt.graphics.PaletteData;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -91,127 +53,106 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
-import org.eclipse.swt.widgets.TreeItem;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 /**
- * View allowing the inspection and editing of the shader resources.
+ * View allowing the inspection and editing of a shader resource.
  */
 public class ShaderView extends Composite
-    implements Tab, Capture.Listener, CommandStream.Listener, Resources.Listener {
+    implements Tab, Capture.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
+  private static final String EMPTY_SHADER =
+      "// No source attached to this shader at this point in the trace.";
 
   protected final Models models;
-  private final Widgets widgets;
-  private final SingleInFlight shaderRpcController = new SingleInFlight();
-  private final SingleInFlight programRpcController = new SingleInFlight();
+  private final SingleInFlight rpcController = new SingleInFlight();
   private final LoadablePanel<Composite> loading;
-  private boolean uiBuiltWithPrograms;
+  private final TabFolder tabFolder;
+  private final Group spirvGroup;
+  private final Group sourceGroup;
+  private final Label crossCompileLabel;
+  private final GridData crossCompileGridData;
+  private final SourceViewer spirvViewer;
+  private final SourceViewer sourceViewer;
+  private final Button pushButton;
+  private TabItem sourceTab;
+
+  protected Service.Resource shaderResource = null;
+  protected API.Shader shaderMessage = null;
+  protected boolean pinned = false;
 
   public ShaderView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
-    this.widgets = widgets;
 
     setLayout(new FillLayout());
 
     loading = LoadablePanel.create(this, widgets,
-        panel -> createComposite(panel, new FillLayout(SWT.VERTICAL)));
-    updateUi(true);
+        panel -> createComposite(panel, new GridLayout(1, false)));
+
+    tabFolder = createStandardTabFolder(loading.getContents());
+    tabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    spirvGroup = createGroup(tabFolder, "");
+    spirvViewer =
+        new SourceViewer(spirvGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+    spirvViewer.setEditable(true);
+    spirvViewer.configure(new GlslSourceConfiguration(widgets.theme));
+    StyledText spirvTextWidget = spirvViewer.getTextWidget();
+    spirvTextWidget.setFont(widgets.theme.monoSpaceFont());
+    spirvTextWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+    spirvTextWidget.addListener(SWT.KeyDown, e -> {
+      if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+        spirvViewer.doOperation(ITextOperationTarget.UNDO);
+      } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+        spirvViewer.doOperation(ITextOperationTarget.REDO);
+      }
+    });
+    TabItem spirvTab = createStandardTabItem(tabFolder, "SPIR-V");
+    spirvTab.setControl(spirvGroup);
+
+    sourceGroup = createGroup(tabFolder, "", new GridLayout(1, false));
+    crossCompileGridData = new GridData(SWT.LEFT, SWT.TOP, false, false);
+    crossCompileLabel =
+        createBoldLabel(sourceGroup, "Source code was decompiled using SPIRV-Cross");
+    crossCompileLabel.setLayoutData(crossCompileGridData);
+    sourceViewer =
+        new SourceViewer(sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+    sourceViewer.setEditable(true);
+    sourceViewer.configure(new GlslSourceConfiguration(widgets.theme));
+    sourceViewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    StyledText sourceTextWidget = sourceViewer.getTextWidget();
+    sourceTextWidget.setFont(widgets.theme.monoSpaceFont());
+    sourceTextWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+    sourceTextWidget.addListener(SWT.KeyDown, e -> {
+      if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+        sourceViewer.doOperation(ITextOperationTarget.UNDO);
+      } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
+        sourceViewer.doOperation(ITextOperationTarget.REDO);
+      }
+    });
+
+    pushButton = Widgets.createButton(loading.getContents(), "Push Changes", e -> {
+      if (shaderResource != null && shaderMessage != null) {
+        models.analytics.postInteraction(View.ShaderView, ClientAction.Edit);
+        models.resources.updateResource(shaderResource, API.ResourceData.newBuilder()
+            .setShader(shaderMessage.toBuilder().setSource(spirvViewer.getDocument().get()))
+            .build());
+      }
+    });
+    pushButton.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
+    pushButton.setEnabled(false);
 
     models.capture.addListener(this);
-    models.commands.addListener(this);
     models.resources.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
-      models.commands.removeListener(this);
       models.resources.removeListener(this);
-    });
-  }
-
-  private Control createShaderTab(Composite parent) {
-    ShaderPanel panel = new ShaderPanel(parent, models, widgets.theme, Type.shader((data, src) -> {
-      API.Shader shader = (data == null) ? null : (API.Shader)data.resource;
-      if (shader != null) {
-        models.analytics.postInteraction(View.Shaders, ClientAction.Edit);
-        models.resources.updateResource(data.info, API.ResourceData.newBuilder()
-            .setShader(shader.toBuilder()
-                .setSource(src))
-            .build());
-      }
-    }));
-    panel.addListener(SWT.Selection, e -> {
-      models.analytics.postInteraction(View.Shaders, ClientAction.SelectShader);
-      getShaderSource((Data)e.data, panel::setSource);
-    });
-    return panel;
-  }
-
-  private Control createProgramTab(Composite parent) {
-    SashForm splitter = new SashForm(parent, SWT.VERTICAL);
-
-    ShaderPanel panel = new ShaderPanel(splitter, models, widgets.theme, Type.program());
-    Composite uniformsGroup = createGroup(splitter, "Uniforms");
-    UniformsPanel uniforms = new UniformsPanel(uniformsGroup);
-
-    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Uniforms));
-
-    panel.addListener(SWT.Selection, e -> {
-      models.analytics.postInteraction(View.Shaders, ClientAction.SelectProgram);
-      getProgramSource((Data)e.data, program ->
-          scheduleIfNotDisposed(uniforms, () -> uniforms.setUniforms(program)), panel::setSource);
-    });
-    splitter.addListener(SWT.Dispose, e ->
-      models.settings.setSplitterWeights(Settings.SplitterWeights.Uniforms, splitter.getWeights()));
-    return splitter;
-  }
-
-  private void getShaderSource(Data data, Consumer<ShaderPanel.Source[]> callback) {
-    shaderRpcController.start().listen(models.resources.loadResource(data.info),
-        new UiCallback<API.ResourceData, ShaderPanel.Source>(this, LOG) {
-      @Override
-      protected ShaderPanel.Source onRpcThread(Rpc.Result<API.ResourceData> result)
-          throws RpcException, ExecutionException {
-        API.Shader shader = result.get().getShader();
-        data.resource = shader;
-        return ShaderPanel.Source.of(shader);
-      }
-
-      @Override
-      protected void onUiThread(ShaderPanel.Source result) {
-        callback.accept(new ShaderPanel.Source[] { result });
-      }
-    });
-  }
-
-  private void getProgramSource(
-      Data data, Consumer<API.Program> onProgramLoaded, Consumer<ShaderPanel.Source[]> callback) {
-    programRpcController.start().listen(models.resources.loadResource(data.info),
-        new UiCallback<API.ResourceData, ShaderPanel.Source[]>(this, LOG) {
-      @Override
-      protected ShaderPanel.Source[] onRpcThread(Rpc.Result<API.ResourceData> result)
-          throws RpcException, ExecutionException {
-        API.Program program = result.get().getProgram();
-        data.resource = program;
-        onProgramLoaded.accept(program);
-        return ShaderPanel.Source.of(program);
-      }
-
-      @Override
-      protected void onUiThread(ShaderPanel.Source[] result) {
-        callback.accept(result);
-      }
     });
   }
 
@@ -222,565 +163,128 @@ public class ShaderView extends Composite
 
   @Override
   public void reinitialize() {
-    onCaptureLoadingStart(false);
-    updateUi(false);
-    updateLoading();
+    if (!models.capture.isLoaded()) {
+      onCaptureLoadingStart(false);
+    } else {
+      loadShader(models.resources.getSelectedShader());
+    }
+  }
+
+  @Override
+  public boolean supportsPinning() {
+    return true;
+  }
+
+  @Override
+  public boolean isPinnable() {
+    return shaderResource != null;
+  }
+
+  @Override
+  public boolean isPinned() {
+    return pinned;
+  }
+
+  @Override
+  public void pin() {
+    pinned = true;
   }
 
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
-    loading.showMessage(Info, Messages.LOADING_CAPTURE);
+    if (!pinned) {
+      loading.showMessage(Info, Messages.LOADING_CAPTURE);
+    }
+    clear();
   }
 
   @Override
   public void onCaptureLoaded(Loadable.Message error) {
-    if (error != null) {
+    if (!pinned && error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
-  }
-
-  @Override
-  public void onCommandsLoaded() {
-    if (!models.commands.isLoaded()) {
-      loading.showMessage(Info, Messages.CAPTURE_LOAD_FAILURE);
-    } else {
-      updateLoading();
-    }
-  }
-
-  @Override
-  public void onCommandsSelected(CommandIndex path) {
-    updateLoading();
+    clear();
   }
 
   @Override
   public void onResourcesLoaded() {
-    if (!models.resources.isLoaded()) {
-      loading.showMessage(Info, Messages.CAPTURE_LOAD_FAILURE);
-    } else {
-      updateUi(false);
-      updateLoading();
+    if (!pinned) {
+      loading.showMessage(Info, Messages.SELECT_SHADER);
+      clear();
     }
   }
 
-  private void updateLoading() {
-    if (models.commands.isLoaded() && models.resources.isLoaded()) {
-      if (models.commands.getSelectedCommands() == null) {
-        loading.showMessage(Info, Messages.SELECT_COMMAND);
+  @Override
+  public void onShaderSelected(Service.Resource shader) {
+    if (!pinned) {
+      loadShader(shader);
+    }
+  }
+
+  public void setShader(API.Shader shader) {
+    loading.stopLoading();
+    shaderMessage = shader;
+    pushButton.setEnabled(true);
+    String label = shaderResource != null ? shaderResource.getHandle() : "Shader";
+    spirvGroup.setText(label);
+    String spirvSource = shaderMessage.getSpirvSource();
+    if (spirvSource.isEmpty()) {
+      spirvSource = EMPTY_SHADER;
+    }
+    spirvViewer.setDocument(GlslSourceConfiguration.createDocument(spirvSource));
+    String source = shaderMessage.getSource();
+    if (!source.isEmpty()) {
+      sourceViewer.setDocument(GlslSourceConfiguration.createDocument(source));
+      crossCompileLabel.setVisible(shaderMessage.getCrossCompiled());
+      crossCompileGridData.exclude = !crossCompileLabel.isVisible();
+      if (sourceTab != null) {
+        sourceTab.setText(shaderMessage.getSourceLanguage());
       } else {
-        loading.stopLoading();
+        sourceTab = createStandardTabItem(tabFolder, shaderMessage.getSourceLanguage());
+        sourceTab.setControl(sourceGroup);
+      }
+      sourceGroup.layout();
+    } else {
+      if (sourceTab != null) {
+        sourceTab.dispose();
+        sourceTab = null;
       }
     }
   }
 
-  private void updateUi(boolean force) {
-    boolean hasPrograms = true;
-    if (models.resources.isLoaded()) {
-      hasPrograms = models.resources.getResources().stream()
-          .filter(r -> r.getType() == Path.ResourceType.Program)
-          .findAny()
-          .isPresent();
-    } else if (!force) {
+  private void clear() {
+    shaderResource = null;
+    if (!pinned) {
+      shaderMessage = null;
+    }
+    pushButton.setEnabled(false);
+  }
+
+  private void loadShader(Service.Resource shader) {
+    clear();
+    if (shader == null) {
+      loading.showMessage(Info, Messages.SELECT_SHADER);
       return;
     }
 
-    if (force || hasPrograms != uiBuiltWithPrograms) {
-      LOG.log(FINE, "(Re-)creating the shader UI, force: {0}, programs: {1}",
-          new Object[] { force, hasPrograms });
-      uiBuiltWithPrograms = hasPrograms;
-      disposeAllChildren(loading.getContents());
-
-      if (hasPrograms) {
-        TabFolder folder = createStandardTabFolder(loading.getContents());
-        createStandardTabItem(folder, "Shaders", createShaderTab(folder));
-        createStandardTabItem(folder, "Programs", createProgramTab(folder));
-      } else {
-        createShaderTab(loading.getContents());
+    loading.startLoading();
+    shaderResource = shader;
+    rpcController.start().listen(models.resources.loadResource(shaderResource),
+        new UiCallback<API.ResourceData, API.Shader>(this, LOG) {
+      @Override
+      protected API.Shader onRpcThread(Rpc.Result<API.ResourceData> result)
+          throws RpcException, ExecutionException {
+        return result.get().getShader();
       }
-      loading.getContents().requestLayout();
-    }
+
+      @Override
+      protected void onUiThread(API.Shader result) {
+        setShader(result);
+      }
+    });
   }
 
-  /**
-   * Panel displaying the source code of a shader or program.
-   */
-  private static class ShaderPanel extends Composite
-      implements Resources.Listener, CommandStream.Listener {
-    private final Models models;
-    private final Theme theme;
-    protected final Type type;
-    private final TreeViewer shaderViewer;
-    private final Composite sourceComposite;
-    private final Button pushButton;
-    private ViewerFilter keywordSearchFilter;
-    private SourceViewer shaderSourceViewer;
-    private boolean lastUpdateContainedAllShaders = false;
-    private List<Data> shaders = Collections.emptyList();
-
-    public ShaderPanel(Composite parent, Models models, Theme theme, Type type) {
-      super(parent, SWT.NONE);
-      this.models = models;
-      this.theme = theme;
-      this.type = type;
-
-      setLayout(new FillLayout(SWT.HORIZONTAL));
-
-      SashForm splitter = new SashForm(this, SWT.HORIZONTAL);
-      Composite treeViewerContainer= createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
-      Composite sourcesContainer = createComposite(splitter, new GridLayout(1, false));
-
-      if (type.type == Path.ResourceType.Shader) {
-        splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Shaders));
-        splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
-            Settings.SplitterWeights.Shaders, splitter.getWeights()));
-      } else if (type.type == Path.ResourceType.Program) {
-        splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Programs));
-        splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
-            Settings.SplitterWeights.Programs, splitter.getWeights()));
-      }
-
-      SearchBox searchBox = new SearchBox(treeViewerContainer, true);
-      searchBox.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-      searchBox.addListener(Events.Search, e -> updateSearchFilter(e.text, (e.detail & Events.REGEX) != 0));
-
-      shaderViewer = createShaderSelector(treeViewerContainer);
-      shaderViewer.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-      sourceComposite = createComposite(sourcesContainer, new FillLayout(SWT.VERTICAL));
-      sourceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-      if (type.isEditable()) {
-        pushButton = Widgets.createButton(sourcesContainer, "Push Changes",
-            e -> type.updateShader(
-                (Data)getLastSelection().getData(),
-                shaderSourceViewer.getDocument().get()));
-        pushButton.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
-        pushButton.setEnabled(false);
-      } else {
-        pushButton = null;
-      }
-
-      models.commands.addListener(this);
-      models.resources.addListener(this);
-      addListener(SWT.Dispose, e -> {
-        models.commands.removeListener(this);
-        models.resources.removeListener(this);
-      });
-
-      updateShaders();
-    }
-
-    private TreeViewer createShaderSelector(Composite parent) {
-      TreeViewer treeViewer = createTreeViewer(parent, SWT.FILL);
-      treeViewer.getTree().setHeaderVisible(true);
-      treeViewer.setContentProvider(createShaderContentProvider());
-      treeViewer.setLabelProvider(new LabelProvider());
-      treeViewer.getControl().addListener(SWT.Selection, e -> updateSelection());
-
-      sorting(treeViewer,
-          createTreeColumn(treeViewer, "ID", Data::getId,
-              (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
-          createTreeColumn(treeViewer, "Label", Data::getLabel,
-              Comparator.comparing(Data::getLabel)));
-      return treeViewer;
-    }
-
-    private static ITreeContentProvider createShaderContentProvider() {
-      return new ITreeContentProvider() {
-        @SuppressWarnings("unchecked")
-        @Override
-        public Object[] getElements(Object inputElement) {
-          return ((List<Data>) inputElement).toArray();
-        }
-
-        @Override
-        public boolean hasChildren(Object element) {
-          return false;
-        }
-
-        @Override
-        public Object getParent(Object element) {
-          return null;
-        }
-
-        @Override
-        public Object[] getChildren(Object element) {
-          return null;
-        }
-      };
-    }
-
-    private static ViewerFilter createSearchFilter(Pattern pattern) {
-      return new ViewerFilter() {
-        @Override
-        public boolean select(Viewer viewer, Object parentElement, Object element) {
-          return !(element instanceof Data) || ((Data)element).matches(pattern);
-        }
-      };
-    }
-
-    private SourceViewer createSourcePanel(Composite parent, Source source) {
-      TabFolder tabFolder = createStandardTabFolder(parent);
-      TabItem spirvTab = createStandardTabItem(tabFolder, "SPIR-V");
-
-      Group spirvGroup = createGroup(tabFolder, "");
-      SourceViewer viewer =
-          new SourceViewer(spirvGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-      StyledText textWidget = viewer.getTextWidget();
-      viewer.setEditable(type.isEditable());
-      textWidget.setFont(theme.monoSpaceFont());
-      textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
-      viewer.configure(new GlslSourceConfiguration(theme));
-      viewer.setDocument(GlslSourceConfiguration.createDocument(source.spirvSource));
-      textWidget.addListener(SWT.KeyDown, e -> {
-        if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
-          viewer.doOperation(ITextOperationTarget.UNDO);
-        } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
-          viewer.doOperation(ITextOperationTarget.REDO);
-        }
-      });
-
-      spirvTab.setControl(spirvGroup);
-
-      if (!source.source.isEmpty()) {
-        TabItem sourceTab = createStandardTabItem(tabFolder, source.sourceLanguage);
-
-        Group sourceGroup = createGroup(tabFolder, "", new GridLayout(1, false));
-        if (source.crossCompiled) {
-          createBoldLabel(sourceGroup, "Source code was decompiled using SPIRV-Cross");
-        }
-  
-        SourceViewer viewer2 =
-            new SourceViewer(sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-        StyledText textWidget2 = viewer2.getTextWidget();
-        viewer2.setEditable(type.isEditable());
-        textWidget2.setFont(theme.monoSpaceFont());
-        textWidget2.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
-        viewer2.configure(new GlslSourceConfiguration(theme));
-        viewer2.setDocument(GlslSourceConfiguration.createDocument(source.source));
-        textWidget2.addListener(SWT.KeyDown, e -> {
-          if (isKey(e, SWT.MOD1, 'z') && !isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
-            viewer2.doOperation(ITextOperationTarget.UNDO);
-          } else if (isKey(e, SWT.MOD1, 'y') || isKey(e, SWT.MOD1 | SWT.SHIFT, 'z')) {
-            viewer2.doOperation(ITextOperationTarget.REDO);
-          }
-        });
-        viewer2.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        sourceTab.setControl(sourceGroup);
-      }
-
-      return viewer;
-    }
-
-    private static boolean isKey(Event e, int stateMask, int keyCode) {
-      return (e.stateMask & stateMask) == stateMask && e.keyCode == keyCode;
-    }
-
-    public void clearSource() {
-      shaderSourceViewer = null;
-      disposeAllChildren(sourceComposite);
-      if (pushButton != null) {
-        pushButton.setEnabled(false);
-      }
-    }
-
-    public void setSource(Source[] sources) {
-      clearSource();
-      SashForm sourceSash = new SashForm(sourceComposite, SWT.VERTICAL);
-      for (Source source : sources) {
-        shaderSourceViewer = createSourcePanel(sourceSash, source);
-      }
-      sourceSash.requestLayout();
-      if (sources.length > 0 && pushButton != null) {
-        pushButton.setEnabled(true);
-      }
-    }
-
-    @Override
-    public void onResourcesLoaded() {
-      lastUpdateContainedAllShaders = false;
-      updateShaders();
-    }
-
-    @Override
-    public void onCommandsSelected(CommandIndex path) {
-      updateShaders();
-    }
-
-    private TreeItem getLastSelection() {
-      return last(shaderViewer.getTree().getSelection());
-    }
-
-    private void updateShaders() {
-      if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
-        Resources.ResourceList resources = models.resources.getResources(type.type);
-
-        // If we previously had created the dropdown with all the shaders and didn't skip any
-        // this time, the dropdown does not need to change.
-        if (!lastUpdateContainedAllShaders || !resources.complete) {
-          shaders = new ArrayList<Data>();
-          if (!resources.isEmpty()) {
-            resources.stream()
-                .map(r -> new Data(r.resource))
-                .forEach(shaders::add);
-          }
-          lastUpdateContainedAllShaders = resources.complete;
-
-          // Because TreeViewer will dispose old TreeItems after refresh,
-          // memorize and select with index, rather than object.
-          TreeItem selection = getLastSelection();
-          int selectionIndex = -1;
-          if (selection != null) {
-            selectionIndex = shaderViewer.getTree().indexOf(selection);
-          }
-          shaderViewer.setInput(shaders);
-          packColumns(shaderViewer.getTree());
-
-          if (selectionIndex >= 0 && selectionIndex < shaderViewer.getTree().getItemCount()) {
-            selection = shaderViewer.getTree().getItem(selectionIndex);
-            shaderViewer.getTree().setSelection(selection);
-          }
-        } else {
-          for (Data data : shaders) {
-            data.resource = null;
-          }
-        }
-
-        updateSelection();
-      }
-    }
-
-    private void updateSelection() {
-      if (shaderViewer.getTree().getSelectionCount() < 1) {
-        clearSource();
-      } else {
-        Event event = new Event();
-        event.data = getLastSelection().getData();
-        notifyListeners(SWT.Selection, event);
-      }
-    }
-
-    private void updateSearchFilter(String text, boolean isRegex) {
-      // Keyword Filter is dynamic.
-      // Remove the previous one each time to avoid filter accumulation.
-      if (keywordSearchFilter != null) {
-        shaderViewer.removeFilter(keywordSearchFilter);
-        keywordSearchFilter = null;
-      }
-      if (!text.isEmpty()) {
-        Pattern pattern = SearchBox.getPattern(text, isRegex);
-        keywordSearchFilter = createSearchFilter(pattern);
-        shaderViewer.addFilter(keywordSearchFilter);
-      }
-    }
-
-    public static class Source {
-      private static final Source EMPTY_PROGRAM = new Source("Program",
-          "// No shaders attached to this program at this point in the trace.",
-          "// No shaders attached to this program at this point in the trace.",
-          "",
-          false);
-      private static final String EMPTY_SHADER =
-          "// No source attached to this shader at this point in the trace.";
-
-      public final String label;
-      public final String source;
-      public final String spirvSource;
-      public final String sourceLanguage;
-      public final boolean crossCompiled;
-
-      public Source(String label, String source, String spirvSource, String sourceLanguage, boolean crossCompiled) {
-        this.label = label;
-        this.source = source;
-        this.spirvSource = spirvSource;
-        this.sourceLanguage = sourceLanguage;
-        this.crossCompiled = crossCompiled;
-      }
-
-      public static Source of(API.Shader shader) {
-        return new Source(shader.getType() + " Shader",
-          shader.getSource().isEmpty() ? EMPTY_SHADER : shader.getSource(),
-          shader.getSpirvSource().isEmpty() ? EMPTY_SHADER : shader.getSpirvSource(),
-          shader.getSourceLanguage(),
-          shader.getCrossCompiled());
-      }
-
-      public static Source[] of(API.Program program) {
-        if (program.getShadersCount() == 0) {
-          return new Source[] { EMPTY_PROGRAM };
-        }
-
-        Source[] source = new Source[program.getShadersCount()];
-        for (int i = 0; i < source.length; i++) {
-          source[i] = of(program.getShaders(i));
-        }
-        return source;
-      }
-    }
-
-    protected static interface UpdateShader {
-      public void updateShader(Data data, String newSource);
-    }
-  }
-
-  /**
-   * Panel displaying the uniforms of the current shader program.
-   */
-  private static class UniformsPanel extends Composite {
-    private final TableViewer table;
-    private final Map<API.Uniform, Image> images = Maps.newIdentityHashMap();
-
-    public UniformsPanel(Composite parent) {
-      super(parent, SWT.NONE);
-      setLayout(new FillLayout(SWT.VERTICAL));
-
-      table = createTableViewer(
-          this, SWT.BORDER | SWT.MULTI | SWT.FULL_SELECTION | SWT.H_SCROLL | SWT.V_SCROLL);
-      table.setContentProvider(new ArrayContentProvider());
-
-      Widgets.<API.Uniform>createTableColumn(table, "Location",
-          uniform -> String.valueOf(uniform.getUniformLocation()));
-      Widgets.<API.Uniform>createTableColumn(table, "Name", API.Uniform::getName);
-      Widgets.<API.Uniform>createTableColumn(table, "Type",
-          uniform -> String.valueOf(uniform.getType()));
-      Widgets.<API.Uniform>createTableColumn(table, "Format",
-          uniform -> String.valueOf(uniform.getFormat()));
-      Widgets.<API.Uniform>createTableColumn(table, "Value", uniform -> {
-        Pod.Value value = uniform.getValue().getPod(); // TODO
-        switch (uniform.getType()) {
-          case Int32: return String.valueOf(value.getSint32Array().getValList());
-          case Uint32: return String.valueOf(value.getUint32Array().getValList());
-          case Bool: return String.valueOf(value.getBoolArray().getValList());
-          case Float: return String.valueOf(value.getFloat32Array().getValList());
-          case Double: return String.valueOf(value.getFloat64Array().getValList());
-          default: return ProtoDebugTextFormat.shortDebugString(value);
-        }
-      },this::getImage);
-      packColumns(table.getTable());
-      addListener(SWT.Dispose, e -> clearImages());
-    }
-
-    public void setUniforms(API.Program program) {
-      List<API.Uniform> uniforms = Lists.newArrayList(program.getUniformsList());
-      Collections.sort(uniforms, (a, b) -> a.getUniformLocation() - b.getUniformLocation());
-      clearImages();
-      table.setInput(uniforms);
-      table.refresh();
-      packColumns(table.getTable());
-      table.getTable().requestLayout();
-    }
-
-    private Image getImage(API.Uniform uniform) {
-      if (!images.containsKey(uniform)) {
-        Image image = null;
-        Pod.Value value = uniform.getValue().getPod(); // TODO
-        switch (uniform.getType()) {
-          case Float: {
-            List<Float> values = value.getFloat32Array().getValList();
-            if ((values.size() == 3 || values.size() == 4) &&
-                isColorRange(values.get(0)) && isColorRange(values.get(1)) &&
-                isColorRange(values.get(2))) {
-              image = createImage(values.get(0), values.get(1), values.get(2));
-            }
-            break;
-          }
-          case Double: {
-            List<Double> values = value.getFloat64Array().getValList();
-            if ((values.size() == 3 || values.size() == 4) &&
-                isColorRange(values.get(0)) && isColorRange(values.get(1)) &&
-                isColorRange(values.get(2))) {
-              image = createImage(values.get(0), values.get(1), values.get(2));
-            }
-            break;
-          }
-          default:
-            // Not a color.
-        }
-        images.put(uniform, image);
-      }
-      return images.get(uniform);
-    }
-
-    private static boolean isColorRange(double v) {
-      return v >= 0 && v <= 1;
-    }
-
-    private Image createImage(double r, double g, double b) {
-      ImageData data = new ImageData(12, 12, 1, new PaletteData(
-          (getLuminance(r, g, b) < DARK_LUMINANCE_THRESHOLD) ? WHITE : BLACK, rgb(r, g, b)), 1,
-          new byte[] {
-              0, 0, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31, 127, -31,
-              127, -31, 127, -31, 0, 0
-          } /* Square of 1s with a border of 0s (and padding to 2 bytes per row) */);
-      return new Image(getDisplay(), data);
-    }
-
-    private void clearImages() {
-      for (Image image : images.values()) {
-        if (image != null) {
-          image.dispose();
-        }
-      }
-      images.clear();
-    }
-  }
-
-  /**
-   * Distinguishes between shaders and programs.
-   */
-  private static class Type implements ShaderPanel.UpdateShader {
-    public final Path.ResourceType type;
-    public final ShaderPanel.UpdateShader onSourceEdited;
-
-    public Type(Path.ResourceType type, ShaderPanel.UpdateShader onSourceEdited) {
-      this.type = type;
-      this.onSourceEdited = onSourceEdited;
-    }
-
-    public static Type shader(ShaderPanel.UpdateShader onSourceEdited) {
-      return new Type(Path.ResourceType.Shader, onSourceEdited);
-    }
-
-    public static Type program() {
-      return new Type(Path.ResourceType.Program, null);
-    }
-
-    @Override
-    public void updateShader(Data data, String newSource) {
-      onSourceEdited.updateShader(data, newSource);
-    }
-
-    public boolean isEditable() {
-      return onSourceEdited != null;
-    }
-  }
-
-  /**
-   * Shader or program data.
-   */
-  private static class Data {
-    public final Service.Resource info;
-    public Object resource;
-
-    public Data(Service.Resource info) {
-      this.info = info;
-    }
-
-    public String getId() {
-      return info.getHandle();
-    }
-
-    public long getSortId() {
-      return info.getOrder();
-    }
-
-    public String getLabel() {
-      return info.getLabel();
-    }
-
-    public boolean matches(Pattern pattern) {
-      return pattern.matcher(getId()).find() || pattern.matcher(getLabel()).find();
-    }
+  private static boolean isKey(Event e, int stateMask, int keyCode) {
+    return (e.stateMask & stateMask) == stateMask && e.keyCode == keyCode;
   }
 }

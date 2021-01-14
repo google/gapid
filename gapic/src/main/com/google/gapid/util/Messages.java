@@ -33,6 +33,7 @@ public interface Messages {
   public static final String SELECT_SHADER = "Select a shader.";
   public static final String SELECT_PROGRAM = "Select a program.";
   public static final String NO_IMAGE_DATA = "No image data available at this point in the trace.";
+  public static final String NO_SHADERS = "No shaders have been created by this point.";
   public static final String NO_TEXTURES = "No textures have been created by this point.";
   public static final String VIEW_DETAILS = "View Details";
   public static final String LICENSES = "Licenses";

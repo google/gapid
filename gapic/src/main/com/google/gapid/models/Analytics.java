@@ -34,7 +34,8 @@ public class Analytics implements ExceptionHandler {
     Main, LeftTabs, RightTabs,
     About, Help, GotoCommand, GotoMemory, Licenses, Settings, Trace, Welcome,
     // See MainWindow.MainTab.Type
-    FilmStrip, Profile, Commands, Framebuffer, Pipeline, Textures, TextureView, Geometry, Shaders, Performance, Report, Log, State, Memory,
+    FilmStrip, Profile, Commands, Framebuffer, Pipeline, Textures, TextureView,
+    Geometry, Shaders, ShaderView, Performance, Report, Log, State, Memory,
     ContextSelector, ReplayDeviceSelector, QueryMetadata;
   }
 
