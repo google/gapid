@@ -257,7 +257,7 @@ func TestDecompressors(t *testing.T) {
 
 		out, err := in.Convert(image.RGBA_U8_NORM)
 		if err != nil {
-			t.Errorf("Failed to convert '%s' from %v to %v: %v", inPath, test.fmt, image.RGBA_U8_NORM, err)
+			t.Errorf("Failed to convert '%s' from %v to %v: %v", inPath, test.fmt.Name, image.RGBA_U8_NORM.Name, err)
 			continue
 		}
 

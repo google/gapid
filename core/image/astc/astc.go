@@ -18,10 +18,13 @@
 // slow builds.
 package astc
 
-// #include "astc.h"
+/*
+#include "astc.h"
+*/
 import "C"
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/google/gapid/core/image"
@@ -88,8 +91,6 @@ func NewSRGB8_ALPHA8_12x10(name string) *image.Format { return image.NewASTC(nam
 func NewSRGB8_ALPHA8_12x12(name string) *image.Format { return image.NewASTC(name, 12, 12, true) }
 
 func init() {
-	C.init_astc()
-
 	for _, f := range []struct {
 		src *image.Format
 		dst *image.Format
@@ -133,13 +134,20 @@ func init() {
 				out := (unsafe.Pointer)(&dst[0])
 				blockW := f.src.GetAstc().BlockWidth
 				blockH := f.src.GetAstc().BlockHeight
-				C.decompress_astc(
+
+				result := C.decompress_astc(
 					(*C.uint8_t)(in),
 					(*C.uint8_t)(out),
 					(C.uint32_t)(w),
 					(C.uint32_t)(h),
 					(C.uint32_t)(blockW),
-					(C.uint32_t)(blockH))
+					(C.uint32_t)(blockH),
+				)
+
+				if result != 0 {
+					return nil, fmt.Errorf("ASTC decompression failed : %s",
+						C.GoString(C.get_error_string(result)))
+				}
 			}
 			return dst, nil
 		})

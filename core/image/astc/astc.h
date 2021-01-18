@@ -12,17 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef ASTC_H_
+#define ASTC_H_
+
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void init_astc();
+typedef int astc_error;
 
-void decompress_astc(uint8_t* in, uint8_t* out, uint32_t width, uint32_t height,
-                     uint32_t block_width, uint32_t block_height);
+astc_error decompress_astc(uint8_t* in, uint8_t* out, uint32_t width,
+                           uint32_t height, uint32_t block_width,
+                           uint32_t block_height);
+
+const char* get_error_string(astc_error error_code);
 
 #ifdef __cplusplus
 }  // extern "C"
+#endif
+
 #endif
