@@ -66,10 +66,6 @@ load("//tools/build/rules:lingo.bzl",\
 load("//tools/build/rules:mm.bzl",
     _mm_library = "mm_library",
 )
-load("//tools/build/rules:repository.bzl",
-    _empty_repository = "empty_repository",
-    _github_repository = "github_repository",
-)
 load("//tools/build/rules:stringgen.bzl",
     _stringgen = "stringgen",
 )
@@ -103,7 +99,5 @@ java_grpc_library = _java_grpc_library
 cc_grpc_library = _cc_grpc_library
 lingo = _lingo
 mm_library = _mm_library
-empty_repository = _empty_repository
-github_repository = _github_repository
 stringgen = _stringgen
 extract = _extract

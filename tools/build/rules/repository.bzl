@@ -28,15 +28,6 @@ def _add_build_file(ctx):
       return True
     return False
 
-def _empty_repository_impl(ctx):
-  if not _add_build_file(ctx):
-    fail("You must specify either build_file or build_file_content'")
-
-empty_repository = repository_rule(
-    _empty_repository_impl,
-    attrs = _BUILD_FILE_ATTRS,
-)
-
 def github_http_args(organization, project, branch, commit):
   ref = ""
   if commit:
