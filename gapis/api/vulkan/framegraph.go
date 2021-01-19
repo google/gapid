@@ -43,14 +43,42 @@ func backedByCoherentMemory(state *State, mem DeviceMemoryObjectʳ) bool {
 
 func newFramegraphBuffer(state *State, buf *BufferObjectʳ) *api.FramegraphBuffer {
 	usage := uint32(buf.Info().Usage())
-	coherentMemory := backedByCoherentMemory(state, buf.Memory())
-	memoryMapped := !(buf.Memory().MappedLocation().IsNullptr())
+	coherentMemory := false
+	memoryMapped := false
+	mem := buf.Memory()
+	if mem != NilDeviceMemoryObjectʳ {
+		coherentMemory = backedByCoherentMemory(state, mem)
+		if !(mem.MappedLocation().IsNullptr()) {
+			memRange := memory.Range{
+				Base: uint64(buf.MemoryOffset()),
+				Size: uint64(buf.Info().Size()),
+			}
+			mappedRange := memory.Range{
+				Base: uint64(mem.MappedOffset()),
+				Size: uint64(mem.MappedSize()),
+			}
+			memoryMapped = memRange.Overlaps(mappedRange)
+		}
+	}
 	// No need to scan sparse memory if both coherent/mapped are already true
 	if !coherentMemory || !memoryMapped {
 		for _, sparseMemBinding := range buf.SparseMemoryBindings().All() {
 			mem := state.DeviceMemories().Get(sparseMemBinding.Memory())
 			coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
-			memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+			if !(mem.MappedLocation().IsNullptr()) {
+				memRange := memory.Range{
+					Base: uint64(sparseMemBinding.MemoryOffset()),
+					Size: uint64(sparseMemBinding.Size()),
+				}
+				mappedRange := memory.Range{
+					Base: uint64(mem.MappedOffset()),
+					Size: uint64(mem.MappedSize()),
+				}
+				memoryMapped = memoryMapped || memRange.Overlaps(mappedRange)
+			}
+			if coherentMemory && memoryMapped {
+				break
+			}
 		}
 	}
 
@@ -82,25 +110,71 @@ func newFramegraphImage(state *State, img *ImageObjectʳ) *api.FramegraphImage {
 	memoryMapped := false
 	for _, planeMemInfo := range img.PlaneMemoryInfo().All() {
 		mem := planeMemInfo.BoundMemory()
-		coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
-		memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+		if mem != NilDeviceMemoryObjectʳ {
+			coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
+			if !(mem.MappedLocation().IsNullptr()) {
+				memRange := memory.Range{
+					Base: uint64(planeMemInfo.BoundMemoryOffset()),
+					Size: uint64(mem.AllocationSize()),
+				}
+				mappedRange := memory.Range{
+					Base: uint64(mem.MappedOffset()),
+					Size: uint64(mem.MappedSize()),
+				}
+				memoryMapped = memoryMapped || memRange.Overlaps(mappedRange)
+			}
+		}
+		if coherentMemory && memoryMapped {
+			break
+		}
 	}
 	// No need to scan sparse memory if both coherent/mapped are already true
 	if !coherentMemory || !memoryMapped {
 		for _, sparseMemBinding := range img.OpaqueSparseMemoryBindings().All() {
 			mem := state.DeviceMemories().Get(sparseMemBinding.Memory())
-			coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
-			memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+			if mem != NilDeviceMemoryObjectʳ {
+				coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
+				if !(mem.MappedLocation().IsNullptr()) {
+					memRange := memory.Range{
+						Base: uint64(sparseMemBinding.MemoryOffset()),
+						Size: uint64(sparseMemBinding.Size()),
+					}
+					mappedRange := memory.Range{
+						Base: uint64(mem.MappedOffset()),
+						Size: uint64(mem.MappedSize()),
+					}
+					memoryMapped = memoryMapped || memRange.Overlaps(mappedRange)
+				}
+			}
+			if coherentMemory && memoryMapped {
+				break
+			}
 		}
 	}
 	if !coherentMemory || !memoryMapped {
+	SPARSE_IMG_LOOP: // Label for early break of nested loops
 		for _, sparseImgMem := range img.SparseImageMemoryBindings().All() {
-			for _, layers := range sparseImgMem.Layers().All() {
-				for _, level := range layers.Levels().All() {
-					for _, blocks := range level.Blocks().All() {
-						mem := state.DeviceMemories().Get(blocks.Memory())
-						coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
-						memoryMapped = memoryMapped || !(mem.MappedLocation().IsNullptr())
+			for _, layer := range sparseImgMem.Layers().All() {
+				for _, level := range layer.Levels().All() {
+					for _, block := range level.Blocks().All() {
+						mem := state.DeviceMemories().Get(block.Memory())
+						if mem != NilDeviceMemoryObjectʳ {
+							coherentMemory = coherentMemory || backedByCoherentMemory(state, mem)
+							if !(mem.MappedLocation().IsNullptr()) {
+								memRange := memory.Range{
+									Base: uint64(block.MemoryOffset()),
+									Size: uint64(block.Size()),
+								}
+								mappedRange := memory.Range{
+									Base: uint64(mem.MappedOffset()),
+									Size: uint64(mem.MappedSize()),
+								}
+								memoryMapped = memoryMapped || memRange.Overlaps(mappedRange)
+							}
+						}
+						if coherentMemory && memoryMapped {
+							break SPARSE_IMG_LOOP
+						}
 					}
 				}
 			}
@@ -319,6 +393,7 @@ func (helpers *framegraphInfoHelpers) endWorkload() {
 func (helpers *framegraphInfoHelpers) updateImageLookup(state *State) {
 	helpers.imageLookup = make(map[memory.PoolID]map[memory.Range][]*api.FramegraphImage)
 	for _, image := range state.Images().All() {
+		fgImg := newFramegraphImage(state, &image)
 		for _, aspect := range image.Aspects().All() {
 			for _, layer := range aspect.Layers().All() {
 				for _, level := range layer.Levels().All() {
@@ -327,7 +402,43 @@ func (helpers *framegraphInfoHelpers) updateImageLookup(state *State) {
 					if _, ok := helpers.imageLookup[pool]; !ok {
 						helpers.imageLookup[pool] = make(map[memory.Range][]*api.FramegraphImage)
 					}
-					helpers.imageLookup[pool][memRange] = append(helpers.imageLookup[pool][memRange], newFramegraphImage(state, &image))
+					helpers.imageLookup[pool][memRange] = append(helpers.imageLookup[pool][memRange], fgImg)
+				}
+			}
+		}
+
+		for _, sparseMemBinding := range image.OpaqueSparseMemoryBindings().All() {
+			mem := state.DeviceMemories().Get(sparseMemBinding.Memory())
+			if mem != NilDeviceMemoryObjectʳ {
+				pool := mem.Data().Pool()
+				memRange := memory.Range{
+					Base: uint64(sparseMemBinding.MemoryOffset()),
+					Size: uint64(sparseMemBinding.Size()),
+				}
+				if _, ok := helpers.imageLookup[pool]; !ok {
+					helpers.imageLookup[pool] = make(map[memory.Range][]*api.FramegraphImage)
+				}
+				helpers.imageLookup[pool][memRange] = append(helpers.imageLookup[pool][memRange], fgImg)
+			}
+		}
+
+		for _, sparseImgMem := range image.SparseImageMemoryBindings().All() {
+			for _, layer := range sparseImgMem.Layers().All() {
+				for _, level := range layer.Levels().All() {
+					for _, block := range level.Blocks().All() {
+						mem := state.DeviceMemories().Get(block.Memory())
+						if mem != NilDeviceMemoryObjectʳ {
+							pool := mem.Data().Pool()
+							memRange := memory.Range{
+								Base: uint64(block.MemoryOffset()),
+								Size: uint64(block.Size()),
+							}
+							if _, ok := helpers.imageLookup[pool]; !ok {
+								helpers.imageLookup[pool] = make(map[memory.Range][]*api.FramegraphImage)
+							}
+							helpers.imageLookup[pool][memRange] = append(helpers.imageLookup[pool][memRange], fgImg)
+						}
+					}
 				}
 			}
 		}
@@ -349,15 +460,34 @@ func (helpers *framegraphInfoHelpers) lookupImages(pool memory.PoolID, memRange 
 func (helpers *framegraphInfoHelpers) updateBufferLookup(state *State) {
 	helpers.bufferLookup = make(map[memory.PoolID]map[memory.Range][]*api.FramegraphBuffer)
 	for _, buffer := range state.Buffers().All() {
-		pool := buffer.Memory().Data().Pool()
-		memRange := memory.Range{
-			Base: uint64(buffer.MemoryOffset()),
-			Size: uint64(buffer.Info().Size()),
+		fgBuffer := newFramegraphBuffer(state, &buffer)
+		mem := buffer.Memory()
+		if mem != NilDeviceMemoryObjectʳ {
+			pool := mem.Data().Pool()
+			memRange := memory.Range{
+				Base: uint64(buffer.MemoryOffset()),
+				Size: uint64(buffer.Info().Size()),
+			}
+			if _, ok := helpers.bufferLookup[pool]; !ok {
+				helpers.bufferLookup[pool] = make(map[memory.Range][]*api.FramegraphBuffer)
+			}
+			helpers.bufferLookup[pool][memRange] = append(helpers.bufferLookup[pool][memRange], fgBuffer)
 		}
-		if _, ok := helpers.bufferLookup[pool]; !ok {
-			helpers.bufferLookup[pool] = make(map[memory.Range][]*api.FramegraphBuffer)
+
+		for _, sparseMemBinding := range buffer.SparseMemoryBindings().All() {
+			mem := state.DeviceMemories().Get(sparseMemBinding.Memory())
+			if mem != NilDeviceMemoryObjectʳ {
+				pool := mem.Data().Pool()
+				memRange := memory.Range{
+					Base: uint64(sparseMemBinding.MemoryOffset()),
+					Size: uint64(sparseMemBinding.Size()),
+				}
+				if _, ok := helpers.bufferLookup[pool]; !ok {
+					helpers.bufferLookup[pool] = make(map[memory.Range][]*api.FramegraphBuffer)
+				}
+				helpers.bufferLookup[pool][memRange] = append(helpers.bufferLookup[pool][memRange], fgBuffer)
+			}
 		}
-		helpers.bufferLookup[pool][memRange] = append(helpers.bufferLookup[pool][memRange], newFramegraphBuffer(state, &buffer))
 	}
 }
 
