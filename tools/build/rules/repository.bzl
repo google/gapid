@@ -65,7 +65,7 @@ def _github_repository_impl(ctx):
   _apply_patch(ctx)
   _add_build_file(ctx)
 
-_github_repository = repository_rule(
+github_repository = repository_rule(
     _github_repository_impl,
     attrs = dict(_BUILD_FILE_ATTRS,
         organization = attr.string(mandatory = True),
@@ -76,13 +76,6 @@ _github_repository = repository_rule(
         patch_file = attr.string(),
     ),
 )
-
-def github_repository(name, path="", **kwargs):
-  if path:
-    print("Using local copy for {} at {}".format(name, path))
-    native.local_repository(name = name, path = path)
-  else:
-    _github_repository(name=name, **kwargs)
 
 def maybe_repository(repo_rule, name, locals, **kwargs):
     if name in native.existing_rules():
