@@ -117,7 +117,6 @@ def _github_go_repository(name, organization, project, commit, **kwargs):
         organization = organization,
         project = project,
         commit = commit,
-        branch = "",
     )
     go_repository(
         name = name,

@@ -12,70 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-_BUILD_FILE_ATTRS = {
-  "build_file": attr.label(
-      allow_single_file = True,
-  ),
-  "build_file_content": attr.string(),
-}
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-def _add_build_file(ctx):
-    if ctx.attr.build_file:
-      ctx.symlink(ctx.attr.build_file, "BUILD.bazel")
-      return True
-    if ctx.attr.build_file_content:
-      ctx.file("BUILD.bazel", ctx.attr.build_file_content)
-      return True
-    return False
-
-def github_http_args(organization, project, branch, commit):
-  ref = ""
-  if commit:
-    ref = commit
-  elif branch:
-    ref = branch
-  else:
-    fail("You must specify either commit or branch")
+def github_http_args(organization, project, commit):
   return struct(
-    url = "https://codeload.github.com/{organization}/{project}/zip/{ref}".format(
+    url = "https://codeload.github.com/{organization}/{project}/zip/{commit}".format(
       organization = organization,
       project = project,
-      ref = ref
+      commit = commit,
     ),
     type = "zip",
-    strip_prefix = "{project}-{ref}".format(
+    strip_prefix = "{project}-{commit}".format(
       project = project,
-      ref = ref
+      commit = commit
     ),
   )
 
-def _github_repository_impl(ctx):
-  args = github_http_args(
-    organization = ctx.attr.organization,
-    project = ctx.attr.project,
-    branch = ctx.attr.branch,
-    commit = ctx.attr.commit,
-  )
-  ctx.download_and_extract(
+def github_repository(name, organization, project, commit, **kwargs):
+  args = github_http_args(organization, project, commit)
+  patch_args = kwargs.pop("patch_args", [ "-p1" ]) # sensible default
+
+  http_archive(
+    name = name,
     url = args.url,
     type = args.type,
-    stripPrefix = args.strip_prefix,
-    sha256 = ctx.attr.sha256,
+    strip_prefix = args.strip_prefix,
+    patch_args = patch_args,
+    **kwargs
   )
-  _apply_patch(ctx)
-  _add_build_file(ctx)
-
-github_repository = repository_rule(
-    _github_repository_impl,
-    attrs = dict(_BUILD_FILE_ATTRS,
-        organization = attr.string(mandatory = True),
-        project = attr.string(mandatory = True),
-        branch = attr.string(),
-        commit = attr.string(),
-        sha256 = attr.string(),
-        patch_file = attr.string(),
-    ),
-)
 
 def maybe_repository(repo_rule, name, locals, **kwargs):
     if name in native.existing_rules():
@@ -97,20 +61,6 @@ def maybe_repository(repo_rule, name, locals, **kwargs):
             path = locals.get(name),
             build_file = build_file
         )
-
-def _apply_patch(ctx):
-  if ctx.attr.patch_file:
-    ctx.symlink(Label(ctx.attr.patch_file), "patch_to_repository.patch")
-    cmd = "cd \"{}\" && /usr/bin/patch -p1 -i patch_to_repository.patch".format(ctx.path("."))
-    print("Applying patch: " + cmd)
-    bash_exe = "bash"
-    if ctx.os.name.startswith("windows"):
-      bash_exe = ctx.os.environ["BAZEL_SH"] if "BAZEL_SH" in ctx.os.environ else "c:/tools/msys64/usr/bin/bash.exe"
-    result = ctx.execute([bash_exe, "--login", "-c", cmd])
-    if result.return_code:
-        fail("Failed to apply patch: (%d)\n%s" % (result.return_code, result.stderr))
-    else:
-        print("Patch applied successfully")
 
 # This is *not* a complete maven implementation, it's just good enough for our rules.
 

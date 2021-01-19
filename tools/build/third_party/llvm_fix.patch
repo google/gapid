@@ -1,6 +1,6 @@
-diff -Naur a/lib/Demangle/MicrosoftDemangleNodes.h b/lib/Demangle/MicrosoftDemangleNodes.h
---- a/lib/Demangle/MicrosoftDemangleNodes.h	2018-09-13 14:16:38.000000000 +0100
-+++ b/lib/Demangle/MicrosoftDemangleNodes.h	2020-11-03 21:21:54.555936492 +0000
+diff -u a/lib/Demangle/MicrosoftDemangleNodes.h b/lib/Demangle/MicrosoftDemangleNodes.h
+--- a/lib/Demangle/MicrosoftDemangleNodes.h
++++ b/lib/Demangle/MicrosoftDemangleNodes.h
 @@ -4,6 +4,8 @@
  #include "llvm/Demangle/Compiler.h"
  #include "llvm/Demangle/StringView.h"
@@ -10,10 +10,3 @@ diff -Naur a/lib/Demangle/MicrosoftDemangleNodes.h b/lib/Demangle/MicrosoftDeman
  
  class OutputStream;
  
-@@ -694,4 +696,4 @@
- } // namespace ms_demangle
- } // namespace llvm
- 
--#endif
-\ No newline at end of file
-+#endif

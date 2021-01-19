@@ -82,7 +82,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         # gcc on windows, so we choose to patch grpc directly. Once grpc has a
         # version that builds fine on all our targets, we can update grpc and
         # drop this patch.
-        patch_file = "@gapid//tools/build/third_party/com_github_grpc_grpc:com_github_grpc_grpc_fix.patch",
+        patches = [
+            "@gapid//tools/build/third_party/com_github_grpc_grpc:com_github_grpc_grpc_fix.patch",
+        ],
     )
     _grpc_deps(locals)
 
@@ -162,7 +164,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         # issues in recent gcc. This issue is fixed on recent llvm versions (since
         # https://github.com/llvm-mirror/llvm/commit/e0402b5c9813a2458b8dd3f640883110db280395),
         # but updating our llvm version leads to other errors.
-        patch_file = "@gapid//tools/build/third_party:llvm_fix.patch",
+        patches = [
+            "@gapid//tools/build/third_party:llvm_fix.patch",
+        ],
     )
 
     maybe_repository(
