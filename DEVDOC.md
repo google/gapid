@@ -396,3 +396,265 @@ bazel-bin/gapii/cc/vulkan_spy_1.cpp
 To get a unified file tree view, interleaving source files with generated files,
 you can use the `cmd/gofuse` setup. `cmd/gofuse` links the generated source
 files in the same directories as their siblings in the same packages/namespaces.
+
+-------------------------------------------------------------------------------
+
+## Life of a gfxtrace
+
+This is an overview of how AGI captures graphics API calls, stores them into a
+gfxtrace file, and process that file to replay the calls.
+
+This is oriented to AGI developers who need to work with AGI internals. It is
+meant to help build a high-level mental model that facilitates navigating the
+actual source code. It references concepts and code modules that are unlikely to
+change anytime soon, and it tries not to reference details that are likely to
+change. You are encouraged to check the source code while reading this, to
+clarify how the various parts actually fit together. If you spot any
+discrepancy, please update this doc, but please keep it high-level.
+
+AGI is architectured to be API-agnostic in order to support multiple graphics
+APIs. GAPID, from which AGI was forked, supports GLES and Vulkan. AGI's main
+focus is Vulkan on Android, so all examples in this doc are related to Vulkan on
+Android.
+
+### AGI's overall architecture
+
+AGI is separated in main components that interact mostly via protobuf:
+
+- GAPIS (Graphics API Server, Go code under `gapis/`, see `gapis/README.md`) is
+  the main component, running on the developer desktop/laptop. Any complex logic
+  is meant to be implemented in GAPIS, while the other components are meant to
+  be kept as simple as possible. The protobuf interface of GAPIS is defined in
+  `gapis/service/service.proto`.
+
+- GAPII (Graphics API Interceptor, mostly C++ code under `gapii/`, see
+  `gapii/README.md`) is the component responsible for intercepting graphics API
+  calls during capture. It interacts with GAPIS via a dedicated protocol.
+
+- GAPIR (Graphics API Replayer, mostly C++ code under `gapir/`, see
+  `gapir/README.md`) is the component that can replay graphics API calls. Its
+  protobuf interface is defined in `gapir/replay_service/service.proto`.
+
+- GAPIC (Graphics API Client, Java code under `gapic/`, see `gapic/README.md`)
+  is the GUI client. It uses GAPIS protobuf interface.
+
+- GAPIT (Graphics API Terminal, Go code under `cmd/gapit/`) is the
+  developer-oriented CLI client. It uses GAPIS protobuf interface.
+
+When you start AGI via the desktop icon or the `./agi` command, this triggers
+the entry point defined under `cmd/agi/`, which by default starts a new GAPIS
+and then a new GAPIC that connects to this GAPIS. GAPIS may then itself start
+GAPII or GAPIR instances.
+
+To capture and replay on Android, AGI has APKs (one per ABI, e.g.
+`gapid-arm64-v8a.apk`) that embeds GAPII and GAPIR.
+
+### Create a gfxtrace: capture, serialize and store Vulkan calls
+
+AGI uses a Vulkan layer to intercept and capture the Vulkan calls emitted by an
+application, and stores them into a gfxtrace file. Be aware that in the code
+base, the act of intercepting graphics API calls may be referred by the words
+"capture", "trace", "intercept" and "spy".
+
+For a Vulkan capture on Android, the main steps are:
+
+1. GAPIS issues a few adb commands to edit global settings that tell the Android
+   Vulkan loader to insert AGI's Vulkan layer when starting the app to capture.
+   This layer is called `GraphicsSpy` and is implemented by
+   `libVkLayer_GraphicsSpy.so` which is mostly a wrapper around `libgapii.so`.
+
+2. The capture layer and GAPIS establish a TCP connection over ADB. The
+   `gapii::Spy::Spy()` creator contains the logic to establish this connection.
+
+3. The capture layer monitors every Vulkan API call, and shadows the Vulkan
+   state accordingly. The logic of each Vulkan command is implemented in `.api`
+   files under `gapis/api/vulkan/`, and code is auto-generated from these files
+   (see [Code generated at compile time](#code-generated-at-compile-time)). In
+   particular, each command has a `mutate` function that mutates (updates) the
+   Vulkan state with respect to the command logic. For instance,
+   `vkCreateBuffer()` mutation results in adding a new buffer in the Vulkan
+   state.
+
+4. When the user clicks "Start" to start the one-frame capture, GAPIS tells the
+   capture layer that it wants the next frame to be captured. The capture layer
+   waits for the current frame to end before streaming the whole Vulkan state
+   back to GAPIS (see e.g. `VulkanSpy::serializeGPUBuffers`). After that, each
+   new intercepted Vulkan command and related memory observations are streamed
+   to GAPIS. When the frame terminates, the capture layer sends a special "end"
+   message to GAPIS.
+
+5. GAPIS receives the serialized data from the capture layer and stores it into
+   a `gfxtrace` file, until it receives the special "end" message.
+
+### What's in a gfxtrace file?
+
+A `gfxtrace` file contains data encoded in
+[proto-pack](https://github.com/google/agi/tree/master/core/data/pack/README.md),
+a homemade format to encapsulate protobuf messages.
+
+To see the plain content of a gfxtrace, you can use the `./gapit unpack -verbose
+myfile.gfxtrace` command. On a simple Vulkan app, this produces the following
+(here edited to fit, and with added `#` comments):
+
+```
+# Header
+Object(msg: Headerᵈ{ABI: ABIᵈ{OS: 4, architecture: 1, ...})
+# API state at the start of the capture
+BeginGroup(msg: GlobalStateᵈ{...}, id: 24)
+Object(msg: Resourceᵈ{index: 1})
+  ChildObject(msg: Observationᵈ{pool: 3, res_index: 1}, parentID: 24)
+[...]
+EndGroup(id: 24)
+# List of commands
+[...]
+# Example of a command: vkQueueSubmit
+## The command and its arguments
+BeginGroup(msg: vkQueueSubmitᵈ{fence: 3916257488, pSubmits: 3141568848, ...}, id: 599)
+## A few memory observations (resource + observation)
+Object(msg: Resourceᵈ{data: [4 0 0 0 0 0 0 0 1 0 0 0 208 ...] (truncated 40 bytes), index: 12})
+  ChildObject(msg: Observationᵈ{base: 3141568848, res_index: 12, size: 40}, parentID: 599)
+Object(msg: Resourceᵈ{data: [240 87 109 233 0 0 0 0 176 110 109 233 0 0 0 0], index: 13})
+  ChildObject(msg: Observationᵈ{base: 3838428368, res_index: 13, size: 16}, parentID: 599)
+Object(msg: Resourceᵈ{data: [112 38 139 233], index: 14})
+  ChildObject(msg: Observationᵈ{base: 3918206552, res_index: 14, size: 4}, parentID: 599)
+## The actual call to the driver, and the return value (not being printed here as it is 0 == VK_SUCCESS)
+  ChildObject(msg: vkQueueSubmitCallᵈ{}, parentID: 599)
+EndGroup(id: 599)
+[...]
+```
+
+At the proto-pack level, we have `Object`, `ChildObject`, `BeginGroup` and
+`EndGroup`. The `msg` fields are the protobuf messages. For instance, the
+`Header` protobuf message is defined in `gapis/capture/capture.proto`. The
+Vulkan-specific protobuf messages are defined in the `api.proto` file which is
+generated from the `.api` files.
+
+We can see the capture header followed by `GlobalState`, the dump of Vulkan
+state. Then, the rest of the capture is made of a series of Vulkan calls. Each
+call is represented as a protopack group. This example illustrates how a
+`vkQueueSubmit` call is encoded.
+
+In general, the call to a graphics API command leads to objects and messages
+that represent:
+
+1. The API command and its arguments.
+
+2. Zero or more memory observations that represent memory that the driver may
+   read during this command. For instance, many Vulkan commands have pointers to
+   struct as arguments: the content of these structures is read by the driver.
+
+3. The actual call to the driver, and its return value (if any).
+
+4. Zero or more memory observations that represent memory that the driver may
+   have written to during its processing of the command. For instance, a
+   `vkCreateBuffer` call writes the handle of the newly create buffer to the
+   memory pointed at by its `VkBuffer* pBuffer` argument.
+
+Note that on multithreaded apps, the object groups may be interleaved.
+
+### GAPIS handling of a gfxtrace
+
+GAPIS parses gfxtrace files and represents them in a `GraphicsCapture` Go
+object. This type gives access to the header, the initial state and the list of
+commands, among other things. Once a gfxtrace file is loaded inside GAPIS, the
+clients can use GAPIS protobuf interface to interact with the capture.
+
+For instance, a client may request the Vulkan state after a certain command. To
+obtain this state, GAPIS will use the Go version of the `mutate` functions
+(generated from the `.api` files) to mutate the initial state up to the required
+command, and return the resulting state. Note that this does not require a
+proper replay, as the state mutation happens entirely in GAPIS.
+
+The `.api` files can be seen here as an implementation of a driver for a given
+graphics API, as they describe how each command affects the graphics API state.
+Thus, it is possible to simulate the evolution of the graphics API state inside
+GAPIS. This is what enables GAPIS to provide a snapshot of the state at some
+point in the capture without having to do an actual replay.
+
+However, this driver simulation is not complete: the actual effects of draw
+calls to their render targets are not implemented. This means that while GAPIS
+does not need a replay to say e.g. how many images are in the state at a given
+point, it does need a replay to show you the content of such images after some
+draw calls. This replay is necessary as the result depends on the actual device
+and driver used for replay.
+
+### Replay of a gfxtrace
+
+GAPIR is effectively a stack-based virtual machine specialized for the replay of
+graphics API commands, see details in its own [README](gapir/README.md). To
+replay a gfxtrace, GAPIS takes a `GraphicsCapture` object and generates a
+payload made of GAPIR VM opcodes.
+
+The actual transformation of API commands into replay opcodes is made by the
+`mutate` function of each command. These functions take a "replay builder" (see
+`gapis/replay/builder` module) as an optional argument. When this builder is not
+nil, the `mutate` function uses it to generate the replay opcodes corresponding
+to the API command.
+
+When the initial state of a capture is not empty, GAPIS also generates "initial"
+commands that are required to reconstruct the initial state from a fresh empty
+state. For instance, if the initial state of a Vulkan capture has a Vulkan
+instance, GAPIS generates a `vkCreateInstance` command to recreate a similar
+instance. These initial commands must be replayed first in order to obtain a
+state from wich the capture commands can be called.
+
+#### The command transformation framework
+
+One of the key feature of AGI is being able to replay variations of the original
+capture. For instance, in order to see what the framebuffer looks like after a
+certain draw call, AGI must make a replay up to the desired draw call, but no
+further. In Vulkan, this typically requires to re-write the content of a command
+buffer to only include the relevant draw calls.
+
+In order to implement such modifications on the capture, GAPIS has a command
+transformation framework. Conceptually, the commands of a capture are streamed
+into a chain of "transforms". A transform receives commands, may modify them,
+and then pass the resulting commands to the next transform. At the end of the
+chain, the obtained commands are mutated with a replay builder to obtain replay
+opcodes.
+
+At a high-level, this can be compared to a series of unix pipes:
+
+```
+cat commands | transform1 | transform2 | ... | replay_builder > replay_payload
+```
+
+To see examples of Vulkan transforms, look at the `gapis/vulkan/transform_*.go`
+files.
+
+### GAPIR executes the replay instructions
+
+GAPIS uses the GAPIR protobuf service (`gapir/replay_service/service.proto`) to
+request the replay of a payload. This payload contains replay opcodes, and
+references to the required replay resources (i.e. the raw bytes of e.g. buffer
+contents).
+
+The resources are not directly embedded in the replay payload: GAPIR lazily
+requests them to GAPIS during the replay. On Android, GAPIR runs on the device
+and communicates with GAPIS over ADB. Pushing the resources from GAPIS to GAPIR
+is very slow, as they must be transferred over ADB. Because a replay may not
+require all resources, and also because all resources may not fit in the replay
+device memory, AGI refrains from uploading all resources upfront. Instead, GAPIR
+maintains a resource cache and has some logic to request batches of resources to
+lower the number of requests while keeping the cache full.
+
+During the replay, GAPIR can send back various information to GAPIS. For
+instance, it can send back the content of a render target at a given point. It
+also regularly sends notifications of how many instructions have been processed
+so far, this information is used to reflect the progress of a replay in GAPIC.
+
+#### Split-replay: pre-warm replay with initial commands
+
+In order to speed-up replays, GAPIS requests the initial commands of a capture
+to be replayed even before the user asks for a replay.
+
+Depending on the replay request, the capture commands may be transformed to
+produce a relevant replay payload. Most of the time, these transformations only
+need to be applied on the capture commands, not on the initial commands. Hence,
+when waiting for user input, it makes sense to replay the default initial
+commands to rebuilt the initial state: once the user requests a specific replay,
+only the (transformed) capture commands needs to be replayed.
+
+If the user-requested replay does require to transform the initial commands,
+then the pre-warm replay is abandonned and a new replay of the transformed
+inital commands and then the transformed capture commands are executed.
