@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -55,6 +56,12 @@ func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, []bool, []
 	compatibleDevices := []prioritizedDevice{}
 	incompatibleDevices := []prioritizedDevice{}
 	for _, device := range all {
+		if len(apis) == 0 {
+			prioDev := prioritizedDevice{device, 0, messages.ReplayCompatibilityMissingApi()}
+			incompatibleDevices = append(incompatibleDevices, prioDev)
+			continue
+		}
+
 		instance := device.Instance()
 		p := uint32(1)
 		for _, api := range apis {

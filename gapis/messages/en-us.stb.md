@@ -258,3 +258,7 @@ Device graphics API version ({{device_api_version}}) is different from the one o
 # REPLAY_COMPATIBILITY_INCOMPATIBLE_API
 
 Device does not support the graphics API of the trace.
+
+# REPLAY_COMPATIBILITY_MISSING_API
+
+Trace file is incomplete/truncated: it does not contain any traced commands.

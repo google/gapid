@@ -25,6 +25,7 @@ go_library(
         "//core/os/device/bind:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/capture:go_default_library",
+        "//gapis/messages:go_default_library",
         "//gapis/replay:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/stringtable:go_default_library",
