@@ -236,7 +236,7 @@ public class ShaderView extends Composite
     if (!source.isEmpty()) {
       sourceViewer.setDocument(GlslSourceConfiguration.createDocument(source));
       crossCompileLabel.setVisible(shaderMessage.getCrossCompiled());
-      crossCompileGridData.exclude = !crossCompileLabel.isVisible();
+      crossCompileGridData.exclude = !shaderMessage.getCrossCompiled();
       if (sourceTab != null) {
         sourceTab.setText(shaderMessage.getSourceLanguage());
       } else {
