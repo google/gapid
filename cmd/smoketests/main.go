@@ -28,11 +28,13 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/file"
 )
 
 var (
-	gapitArg  = flag.String("gapit", "gapit", "Path to gapit executable")
+	gapitArg  = flag.String("gapit", "", "Path to gapit executable")
 	keepArg   = flag.Bool("keep", false, "Keep the temporary directory even if no errors are found")
 	tracesArg = flag.String("traces", "traces", "The directory containing traces to run smoke tests on")
 )
@@ -74,13 +76,14 @@ func run(ctx context.Context) error {
 		traceDir = filepath.Join(startwd, traceDir)
 	}
 
-	// Gapit path argument
-	gapitPath := *gapitArg
-	// We assume gapitPath is found in PATH environment unless it
-	// contains a separator, in which case we treat it as a path
-	hasSeparator := strings.ContainsAny(gapitPath, string(filepath.Separator))
-	if hasSeparator && !filepath.IsAbs(gapitPath) {
-		gapitPath = filepath.Join(startwd, gapitPath)
+	var gapitPath file.Path
+	if *gapitArg != "" {
+		gapitPath = file.Abs(*gapitArg)
+	} else {
+		gapitPath, err = layout.Gapit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Create temporary directory
@@ -114,7 +117,7 @@ func run(ctx context.Context) error {
 			return err
 		}
 		os.Chdir(tracewd)
-		if err := testTrace(ctx, &nbErr, gapitPath, tracepath); err != nil {
+		if err := testTrace(ctx, &nbErr, gapitPath.System(), tracepath); err != nil {
 			return err
 		}
 		os.Chdir(startwd)
@@ -192,7 +195,7 @@ func gapit(ctx context.Context, nbErr *int, gapitPath string, args ...string) er
 	printCmd := "gapit " + strings.Join(argsWithoutTrace, " ") + " " + trace
 
 	// Execute, check error, print status
-	cmd := exec.Command(gapitPath, args...)
+	cmd := exec.Command(gapitPath, append(layout.GoArgs(ctx), args...)...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); ok {

@@ -60,35 +60,31 @@ export DEVELOPER_DIR=/Applications/Xcode_11.3.app/Contents/Developer
 cd $SRC
 BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
-function build {
-  echo $(date): Starting build for $@...
+function run_bazel {
+  ACTION=$1
+  shift
   # "--strategy CppLink=local" disables the sandbox when linking, which is
   # required for the symbol dumping to work, as the linker *always* puts absolute
   # paths to the .a files into the debug section of the executable.
   $BUILD_ROOT/bazel/bin/bazel \
       --output_base="${TMP}/bazel_out" \
-      build -c opt --config symbols \
+      $ACTION -c opt --config symbols \
       --define AGI_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
       --define AGI_BUILD_SHA="$BUILD_SHA" \
       --strategy CppLink=local \
+      --show_timestamps \
       $@
-  echo $(date): Build completed.
 }
 
 # Build each API package separately first, as the go-compiler needs ~8GB of
 # RAM for each of the big API packages.
-build //gapis/api/vulkan:go_default_library
+run_bazel build //gapis/api/vulkan:go_default_library
 
 # Build the package and symbol file.
-build //:pkg //:symbols
+run_bazel build //:pkg //:symbols
 
 # Build and run the smoketests.
-build //cmd/smoketests:smoketests
-echo $(date): Run smoketests...
-# Using "bazel run //cmd/smoketests seems to make 'bazel-bin/pkg/gapit'
-# disappear, hence we call the binary directly
-bazel-bin/cmd/smoketests/darwin_amd64_stripped/smoketests -gapit bazel-bin/pkg/gapit -traces test/traces
-echo $(date): Smoketests completed.
+run_bazel run //cmd/smoketests:smoketests -- --traces test/traces
 
 # Build the release packages.
 mkdir $BUILD_ROOT/out

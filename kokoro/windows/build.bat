@@ -116,12 +116,16 @@ REM Build everything else.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
     --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define AGI_BUILD_SHA="%BUILD_SHA%" ^
-    //:pkg //:symbols //cmd/smoketests //cmd/vulkan_sample:vulkan_sample //tools/logo:agi_ico
+    //:pkg //:symbols //cmd/vulkan_sample:vulkan_sample //tools/logo:agi_ico
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 
 REM Smoketests
-%SRC%\bazel-bin\cmd\smoketests\windows_amd64_stripped\smoketests -gapit bazel-bin\pkg\gapit -traces test\traces
+%BUILD_ROOT%\bazel run -c opt --config symbols ^
+    --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define AGI_BUILD_SHA="%BUILD_SHA%" ^
+    //cmd/smoketests -- --traces test/traces
+if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 
 REM Build the release packages.
