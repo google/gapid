@@ -19,6 +19,17 @@ import (
 	"time"
 )
 
+// Provide a mean to let a context ignore cancellation. Use unexported type and
+// variable to force other packages to use IgnoreCancellation().
+type key int
+
+var ignoreCancellationKey key
+
+// IgnoreCancellation returns a context that will pretend to never be canceled.
+func IgnoreCancellation(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ignoreCancellationKey, struct{}{})
+}
+
 // CancelFunc is a function type that can be used to stop a context.
 type CancelFunc context.CancelFunc
 
@@ -46,12 +57,20 @@ func WithTimeout(ctx context.Context, duration time.Duration) (context.Context, 
 // context should be stopped.
 // See context.Context.Done for more details.
 func ShouldStop(ctx context.Context) <-chan struct{} {
+	if ctx.Value(ignoreCancellationKey) != nil {
+		// return the nil channel from which reading blocks forever
+		return nil
+	}
 	return ctx.Done()
 }
 
 // StopReason returns a non-nil error value after Done is closed.
 // See context.Context.Err for more details.
 func StopReason(ctx context.Context) error {
+	if ctx.Value(ignoreCancellationKey) != nil {
+		// pretend to never be canceled
+		return nil
+	}
 	return ctx.Err()
 }
 
