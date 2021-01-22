@@ -199,7 +199,7 @@ func gapit(ctx context.Context, nbErr *int, gapitPath string, args ...string) er
 			// Here the gapit command raised an error
 			fmt.Printf("FAIL %s\n", printCmd)
 			fmt.Println("===============================================")
-			fmt.Println(output)
+			fmt.Println(string(output))
 			fmt.Println("===============================================")
 			*nbErr++
 		} else {
