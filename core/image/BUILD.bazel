@@ -83,6 +83,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = [
+        "compress_test.go",
         "decompress_test.go",
         "image_test.go",
         "rgba_f32_test.go",

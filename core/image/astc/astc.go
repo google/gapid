@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package astc implements ASTC texture decompression.
+// Package astc implements ASTC texture compression and decompression.
 //
 // astc is in a separate package from image as it contains cgo code that can
 // slow builds.
@@ -90,6 +90,11 @@ func NewSRGB8_ALPHA8_10x10(name string) *image.Format { return image.NewASTC(nam
 func NewSRGB8_ALPHA8_12x10(name string) *image.Format { return image.NewASTC(name, 12, 10, true) }
 func NewSRGB8_ALPHA8_12x12(name string) *image.Format { return image.NewASTC(name, 12, 12, true) }
 
+type converterLayout struct {
+	src *image.Format
+	dst *image.Format
+}
+
 func init() {
 	for _, f := range []struct {
 		src *image.Format
@@ -152,4 +157,81 @@ func init() {
 			return dst, nil
 		})
 	}
+
+	compressionSupportMap := []converterLayout{
+		{image.RGBA_U8_NORM, RGBA_4x4},
+		{image.RGBA_U8_NORM, RGBA_5x4},
+		{image.RGBA_U8_NORM, RGBA_5x5},
+		{image.RGBA_U8_NORM, RGBA_6x5},
+		{image.RGBA_U8_NORM, RGBA_6x6},
+		{image.RGBA_U8_NORM, RGBA_8x5},
+		{image.RGBA_U8_NORM, RGBA_8x6},
+		{image.RGBA_U8_NORM, RGBA_8x8},
+		{image.RGBA_U8_NORM, RGBA_10x5},
+		{image.RGBA_U8_NORM, RGBA_10x6},
+		{image.RGBA_U8_NORM, RGBA_10x8},
+		{image.RGBA_U8_NORM, RGBA_10x10},
+		{image.RGBA_U8_NORM, RGBA_12x10},
+		{image.RGBA_U8_NORM, RGBA_12x12},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_4x4},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_5x4},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_5x5},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_6x5},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_6x6},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_8x5},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_8x6},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_8x8},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_10x5},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_10x6},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_10x8},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_10x10},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_12x10},
+		{image.SRGBA_U8_NORM, SRGB8_ALPHA8_12x12},
+	}
+
+	for _, conversion := range compressionSupportMap {
+		// Intentional local copy
+		conv := conversion
+		image.RegisterConverter(conv.src, conv.dst, func(src []byte, width, height, depth int) ([]byte, error) {
+			return compress(src, width, height, depth, conv.dst)
+		})
+	}
+}
+
+func compress(src []byte, width int, height int, depth int, format *image.Format) ([]byte, error) {
+	astcFormat := format.GetAstc()
+	blockWidth := astcFormat.GetBlockWidth()
+	blockHeight := astcFormat.GetBlockHeight()
+	isSrgb := 0
+	if astcFormat.GetSrgb() {
+		isSrgb = 1
+	}
+
+	srcSliceSize := width * height * 4
+	dstSliceSize := format.Size(width, height, 1)
+	dst := make([]byte, dstSliceSize*depth)
+
+	for z := 0; z < depth; z++ {
+		currentSrcSlice := src[srcSliceSize*z:]
+		currentDstSlice := dst[dstSliceSize*z:]
+		inputImageData := (unsafe.Pointer)(&currentSrcSlice[0])
+		outputImageData := (unsafe.Pointer)(&currentDstSlice[0])
+
+		result := C.compress_astc(
+			(*C.uint8_t)(inputImageData),
+			(*C.uint8_t)(outputImageData),
+			(C.uint32_t)(width),
+			(C.uint32_t)(height),
+			(C.uint32_t)(blockWidth),
+			(C.uint32_t)(blockHeight),
+			(C.uint32_t)(isSrgb),
+		)
+
+		if result != 0 {
+			return nil, fmt.Errorf("ASTC compression failed: %s",
+				C.GoString(C.get_error_string(result)))
+		}
+	}
+
+	return dst, nil
 }

@@ -18,18 +18,14 @@
 static_assert(sizeof(astc_error) >= sizeof(astcenc_error),
               "astc_error should superset of astcenc_error");
 
-astcenc_error init_astc_for_decode(astcenc_profile profile,
-                                   astc_compressed_image& input_image,
-                                   astcenc_config& config) {
-  unsigned int block_x = input_image.block_x;
-  unsigned int block_y = input_image.block_y;
-  unsigned int block_z = input_image.block_z;
-
-  astcenc_preset preset = ASTCENC_PRE_FASTEST;
-  unsigned int flags = 0;
-  return astcenc_config_init(profile, block_x, block_y, block_z, preset, flags,
-                             config);
-}
+struct compression_workload {
+  astcenc_context* context;
+  astcenc_image* image;
+  astcenc_swizzle swizzle;
+  uint8_t* data_out;
+  size_t data_len;
+  astcenc_error error;
+};
 
 astc_compressed_image create_astc_compressed_image(uint8_t* data,
                                                    uint32_t width,
@@ -51,13 +47,15 @@ astc_compressed_image create_astc_compressed_image(uint8_t* data,
   return image;
 }
 
-void write_image(uint8_t* buf, astcenc_image* img) {
+void write_image(uint8_t* buf, const astcenc_image* img) {
+  // This is a custom implementation for "unorm8x4_array_from_astc_img()"
+  // original implementation does allocation
   uint8_t*** data8 = static_cast<uint8_t***>(img->data);
-  for (unsigned int y = 0; y < img->dim_y; y++) {
+  for (uint32_t y = 0; y < img->dim_y; y++) {
     const uint8_t* src = data8[0][y + img->dim_pad] + (4 * img->dim_pad);
     uint8_t* dst = buf + y * img->dim_x * 4;
 
-    for (unsigned int x = 0; x < img->dim_x; x++) {
+    for (uint32_t x = 0; x < img->dim_x; x++) {
       dst[4 * x] = src[4 * x];
       dst[4 * x + 1] = src[4 * x + 1];
       dst[4 * x + 2] = src[4 * x + 2];
@@ -66,28 +64,99 @@ void write_image(uint8_t* buf, astcenc_image* img) {
   }
 }
 
-extern "C" astc_error decompress_astc(uint8_t* input_image_raw,
-                                      uint8_t* output_image_raw, uint32_t width,
-                                      uint32_t height, uint32_t block_width,
-                                      uint32_t block_height) {
-  astc_compressed_image input_image = create_astc_compressed_image(
-      input_image_raw, width, height, block_width, block_height);
+astcenc_image* read_image(const uint8_t* buf, uint32_t width, uint32_t height,
+                          uint32_t padding) {
+  return astc_img_from_unorm8x4_array(buf, width, height, padding, false);
+}
 
-  astcenc_profile profile = ASTCENC_PRF_LDR;
+void compression_workload_runner(int thread_count, int thread_id,
+                                 void* payload) {
+  compression_workload* work = static_cast<compression_workload*>(payload);
+  astcenc_error error =
+      astcenc_compress_image(work->context, *work->image, work->swizzle,
+                             work->data_out, work->data_len, thread_id);
+
+  if (error != ASTCENC_SUCCESS) {
+    work->error = error;
+  }
+}
+
+extern "C" astc_error compress_astc(uint8_t* input_image_raw,
+                                    uint8_t* output_image_raw, uint32_t width,
+                                    uint32_t height, uint32_t block_width,
+                                    uint32_t block_height, uint32_t is_srgb) {
+  astcenc_profile profile = is_srgb ? ASTCENC_PRF_LDR_SRGB : ASTCENC_PRF_LDR;
   astcenc_config config{};
-  astcenc_error result = init_astc_for_decode(profile, input_image, config);
+
+  astcenc_error result = astcenc_config_init(profile, block_width, block_height,
+                                             1, ASTCENC_PRE_FASTEST, 0, config);
   if (result != ASTCENC_SUCCESS) {
     return result;
   }
 
-  unsigned int thread_count = get_cpu_count();
+  uint32_t thread_count = get_cpu_count();
   astcenc_context* codec_context;
   result = astcenc_context_alloc(config, thread_count, &codec_context);
   if (result != ASTCENC_SUCCESS) {
     return result;
   }
 
-  unsigned int bitness = 8;
+  astcenc_image* uncompressed_image =
+      read_image(input_image_raw, width, height,
+                 MAX(config.v_rgba_radius, config.a_scale_radius));
+
+  astcenc_swizzle swz_encode{ASTCENC_SWZ_R, ASTCENC_SWZ_G, ASTCENC_SWZ_B,
+                             ASTCENC_SWZ_A};
+  uint32_t blocks_x =
+      (uncompressed_image->dim_x + config.block_x - 1) / config.block_x;
+  uint32_t blocks_y =
+      (uncompressed_image->dim_y + config.block_y - 1) / config.block_y;
+  size_t buffer_size = blocks_x * blocks_y * 16;
+
+  compression_workload work;
+  work.context = codec_context;
+  work.image = uncompressed_image;
+  work.swizzle = swz_encode;
+  work.data_out = output_image_raw;
+  work.data_len = buffer_size;
+  work.error = ASTCENC_SUCCESS;
+
+  launch_threads(thread_count, compression_workload_runner, &work);
+  if (work.error != ASTCENC_SUCCESS) {
+    free_image(uncompressed_image);
+    astcenc_context_free(codec_context);
+    return work.error;
+  }
+
+  free_image(uncompressed_image);
+  astcenc_context_free(codec_context);
+
+  return ASTCENC_SUCCESS;
+}
+
+extern "C" astc_error decompress_astc(uint8_t* input_image_raw,
+                                      uint8_t* output_image_raw, uint32_t width,
+                                      uint32_t height, uint32_t block_width,
+                                      uint32_t block_height) {
+  astcenc_config config{};
+  astcenc_error result =
+      astcenc_config_init(ASTCENC_PRF_LDR, block_width, block_height, 1,
+                          ASTCENC_PRE_FASTEST, 0, config);
+  if (result != ASTCENC_SUCCESS) {
+    return result;
+  }
+
+  uint32_t thread_count = get_cpu_count();
+  astcenc_context* codec_context;
+  result = astcenc_context_alloc(config, thread_count, &codec_context);
+  if (result != ASTCENC_SUCCESS) {
+    return result;
+  }
+
+  astc_compressed_image input_image = create_astc_compressed_image(
+      input_image_raw, width, height, block_width, block_height);
+
+  const uint32_t bitness = 8;
   astcenc_image* output_image = alloc_image(
       bitness, input_image.dim_x, input_image.dim_y, input_image.dim_z, 0);
 

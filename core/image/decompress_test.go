@@ -118,45 +118,6 @@ glBaseInternalFormat=0x%x
 	}, nil
 }
 
-func loadASTC(data []byte) (*image.Data, error) {
-	r := endian.Reader(bytes.NewBuffer(data), device.LittleEndian)
-
-	if got := r.Uint32(); got != 0x5ca1ab13 {
-		return nil, fmt.Errorf("Invalid header. Got: %x", got)
-	}
-
-	blockWidth := uint32(r.Uint8())
-	blockHeight := uint32(r.Uint8())
-	blockDepth := uint32(r.Uint8())
-
-	if blockDepth != 1 {
-		return nil, fmt.Errorf("Got a block depth of %v. Only 2D textures are currently supported", blockDepth)
-	}
-
-	texelWidth := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
-	texelHeight := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
-	texelDepth := uint32(r.Uint8()) + 0x100*uint32(r.Uint8()) + 0x10000*uint32(r.Uint8())
-
-	blocksX := (texelWidth + blockWidth - 1) / blockWidth
-	blocksY := (texelHeight + blockHeight - 1) / blockHeight
-	blocksZ := (texelDepth + blockDepth - 1) / blockDepth
-
-	texelData := make([]byte, blocksX*blocksY*blocksZ*16)
-	r.Data(texelData)
-
-	if err := r.Error(); err != nil {
-		return nil, err
-	}
-
-	return &image.Data{
-		Format: image.NewASTC("astc", blockWidth, blockHeight, false),
-		Width:  texelWidth,
-		Height: texelHeight,
-		Depth:  texelDepth,
-		Bytes:  texelData,
-	}, nil
-}
-
 func TestDecompressors(t *testing.T) {
 	// For these tests we need to check that the S16_NORM formats match the
 	// U8_NORM PNGs. There's no generic way to do this, so we declare our
@@ -229,7 +190,7 @@ func TestDecompressors(t *testing.T) {
 			in = ktx
 
 		case ".astc":
-			astc, err := loadASTC(data)
+			astc, err := image.ASTCFrom(data)
 			if err != nil {
 				t.Errorf("Failed to read '%s': %v", inPath, err)
 				continue
