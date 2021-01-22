@@ -157,7 +157,24 @@
       {{end}}
       func (ϟc *{{$name}}) Mutate(§
     {{end}}
-        ϟctx context.Context, ϟi api.CmdID, ϟg *api.GlobalState, ϟb *builder.Builder, ϟw api.StateWatcher) error {
+        ϟcancellableCtx context.Context, ϟi api.CmdID, ϟg *api.GlobalState, ϟb *builder.Builder, ϟw api.StateWatcher) error {
+
+      {{/*
+      Use a context that is not cancellable to avoid panics when a context
+      cancellation happens during a MustRead/MustWrite.
+
+      The generated code called from here typically contains calls to
+      MustRead/MustWrite that trigger database resolutions which check for
+      context cancellation (in gapis/database.resolveLocked(), this check is
+      needed to early-stop long-running requests that are no longer relevant to
+      the user). If MustRead/MustWrite receive a cancellation error from the
+      database, they turn it into a panic with panicOnError(): in order to avoid
+      this, we make the context ignore cancellation. We do this at Mutate entry
+      point rather than at MustRead/MustWrite level to lower the number of calls
+      to task.IgnoreCancellation(). Note that Mutate does check for task
+      cancellation when it returns.
+      */}}
+      ϟctx := task.IgnoreCancellation(ϟcancellableCtx)
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
@@ -180,7 +197,8 @@
       }
       {{Template "Block" $.Block}}
 
-      return task.StopReason(ϟctx)
+      {{/* Use the cancellable context when checking for cancellation */}}
+      return task.StopReason(ϟcancellableCtx)
     }
 
     {{if $r}}
