@@ -219,8 +219,8 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 		rc := &resolveChain{r, getResolveChain(ctx)}
 
 		// Build a cancellable context for the resolve from database's resolve
-		// context. We use this as we don't to cancel the resolve if a single
-		// caller cancel's their context.
+		// context. We use this as we don't want to cancel the resolve if a
+		// single caller cancel's their context.
 		resolveCtx, cancel := task.WithCancel(d.resolveCtx)
 
 		rs = &resolveState{
@@ -262,9 +262,11 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 		rs.callstacks = append(rs.callstacks, getCallstack(4))
 		// Wait for either the resolve to finish or ctx to be cancelled.
 		d.mutex.Unlock()
+		var cancelledContextErr error
 		select {
 		case <-finished:
 		case <-task.ShouldStop(ctx):
+			cancelledContextErr = task.StopReason(ctx)
 		}
 		d.mutex.Lock()
 
@@ -278,11 +280,12 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 			r.resolveState = nil
 			d.records[id] = r
 		}
+
+		if cancelledContextErr != nil {
+			return nil, cancelledContextErr
+		}
 	}
 
-	if err := task.StopReason(ctx); err != nil {
-		return nil, err // Context was cancelled.
-	}
 	if rs.err != nil {
 		return nil, rs.err // Resolve errored.
 	}
