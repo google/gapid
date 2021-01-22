@@ -67,7 +67,7 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	}
 
 	// Calculate GPU Time Performance and GPU Wall Time Performance for all leaf groups/commands.
-	setTimeMetrics(groupToSlices, &metrics, groupToEntry)
+	setTimeMetrics(ctx, groupToSlices, &metrics, groupToEntry)
 
 	// Calculate GPU Counter Performances for all leaf groups/commands.
 	setGpuCounterMetrics(ctx, groupToSlices, counters, filteredSlices, &metrics, groupToEntry)
@@ -86,7 +86,7 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 
 // Create GPU time metric metadata, calculate time performance for each GPU
 // slice group, and append the result to corresponding entries.
-func setTimeMetrics(groupToSlices map[int32][]*service.ProfilingData_GpuSlices_Slice, metrics *[]*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) {
+func setTimeMetrics(ctx context.Context, groupToSlices map[int32][]*service.ProfilingData_GpuSlices_Slice, metrics *[]*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) {
 	*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
 		Id:   gpuTimeMetricId,
 		Name: "GPU Time",
@@ -102,6 +102,10 @@ func setTimeMetrics(groupToSlices map[int32][]*service.ProfilingData_GpuSlices_S
 	for groupId, slices := range groupToSlices {
 		gpuTime, wallTime := gpuTimeForGroup(slices)
 		entry := groupToEntry[groupId]
+		if entry == nil {
+			log.W(ctx, "Didn't find corresponding counter performance entry for GPU slice group %v.", groupId)
+			continue
+		}
 		entry.MetricToValue[gpuTimeMetricId] = &service.ProfilingData_GpuCounters_Perf{
 			Estimate: float64(gpuTime),
 			Min:      float64(gpuTime),
