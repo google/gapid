@@ -38,15 +38,15 @@ func TestCompressors(t *testing.T) {
 	}
 
 	for _, testImage := range testImageInfos {
-		plainImg, err := getUncompressedImage(testImage.fmt.Name)
+		uncompressedImg, err := getUncompressedImage(testImage.fmt.Name)
 		if err != nil {
 			t.Error(err)
 			continue
 		}
 
-		compressedImage, err := plainImg.Convert(testImage.fmt)
+		compressedImage, err := uncompressedImg.Convert(testImage.fmt)
 		if err != nil {
-			t.Errorf("Failed to convert '%s' from %v to %v: %v", testImage.fmt.Name, plainImg.Format.Name, testImage.fmt.Name, err)
+			t.Errorf("Failed to convert '%s' from %v to %v: %v", testImage.fmt.Name, uncompressedImg.Format.Name, testImage.fmt.Name, err)
 			continue
 		}
 

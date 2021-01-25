@@ -91,73 +91,11 @@ func NewSRGB8_ALPHA8_12x10(name string) *image.Format { return image.NewASTC(nam
 func NewSRGB8_ALPHA8_12x12(name string) *image.Format { return image.NewASTC(name, 12, 12, true) }
 
 type converterLayout struct {
-	src *image.Format
-	dst *image.Format
+	uncompressed *image.Format
+	compressed   *image.Format
 }
 
 func init() {
-	for _, f := range []struct {
-		src *image.Format
-		dst *image.Format
-	}{
-		{RGBA_4x4, image.RGBA_U8_NORM},
-		{RGBA_5x4, image.RGBA_U8_NORM},
-		{RGBA_5x5, image.RGBA_U8_NORM},
-		{RGBA_6x5, image.RGBA_U8_NORM},
-		{RGBA_6x6, image.RGBA_U8_NORM},
-		{RGBA_8x5, image.RGBA_U8_NORM},
-		{RGBA_8x6, image.RGBA_U8_NORM},
-		{RGBA_8x8, image.RGBA_U8_NORM},
-		{RGBA_10x5, image.RGBA_U8_NORM},
-		{RGBA_10x6, image.RGBA_U8_NORM},
-		{RGBA_10x8, image.RGBA_U8_NORM},
-		{RGBA_10x10, image.RGBA_U8_NORM},
-		{RGBA_12x10, image.RGBA_U8_NORM},
-		{RGBA_12x12, image.RGBA_U8_NORM},
-		{SRGB8_ALPHA8_4x4, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_5x4, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_5x5, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_6x5, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_6x6, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_8x5, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_8x6, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_8x8, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_10x5, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_10x6, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_10x8, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_10x10, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_12x10, image.SRGBA_U8_NORM},
-		{SRGB8_ALPHA8_12x12, image.SRGBA_U8_NORM},
-	} {
-		f := f
-		image.RegisterConverter(f.src, f.dst, func(src []byte, w, h, d int) ([]byte, error) {
-			dst := make([]byte, w*h*d*4)
-			sliceSize := f.src.Size(w, h, 1)
-			for z := 0; z < d; z++ {
-				dst, src := dst[z*w*h*4:], src[z*sliceSize:]
-				in := (unsafe.Pointer)(&src[0])
-				out := (unsafe.Pointer)(&dst[0])
-				blockW := f.src.GetAstc().BlockWidth
-				blockH := f.src.GetAstc().BlockHeight
-
-				result := C.decompress_astc(
-					(*C.uint8_t)(in),
-					(*C.uint8_t)(out),
-					(C.uint32_t)(w),
-					(C.uint32_t)(h),
-					(C.uint32_t)(blockW),
-					(C.uint32_t)(blockH),
-				)
-
-				if result != 0 {
-					return nil, fmt.Errorf("ASTC decompression failed : %s",
-						C.GoString(C.get_error_string(result)))
-				}
-			}
-			return dst, nil
-		})
-	}
-
 	compressionSupportMap := []converterLayout{
 		{image.RGBA_U8_NORM, RGBA_4x4},
 		{image.RGBA_U8_NORM, RGBA_5x4},
@@ -192,10 +130,46 @@ func init() {
 	for _, conversion := range compressionSupportMap {
 		// Intentional local copy
 		conv := conversion
-		image.RegisterConverter(conv.src, conv.dst, func(src []byte, width, height, depth int) ([]byte, error) {
-			return compress(src, width, height, depth, conv.dst)
+		image.RegisterConverter(conv.uncompressed, conv.compressed, func(src []byte, width, height, depth int) ([]byte, error) {
+			return compress(src, width, height, depth, conv.compressed)
+		})
+
+		image.RegisterConverter(conv.compressed, conv.uncompressed, func(src []byte, width, height, depth int) ([]byte, error) {
+			return decompress(src, width, height, depth, conv.compressed)
 		})
 	}
+}
+
+func decompress(src []byte, width int, height int, depth int, format *image.Format) ([]byte, error) {
+	dst := make([]byte, width*height*depth*4)
+	srcSliceSize := format.Size(width, height, 1)
+	dstSliceSize := width * height * 4
+
+	astcFormat := format.GetAstc()
+	blockWidth := astcFormat.GetBlockWidth()
+	blockHeight := astcFormat.GetBlockHeight()
+
+	for z := 0; z < depth; z++ {
+		currentSrcSlice := src[z*srcSliceSize:]
+		currentDstSlice := dst[z*dstSliceSize:]
+		inputImageData := (unsafe.Pointer)(&currentSrcSlice[0])
+		outputImageData := (unsafe.Pointer)(&currentDstSlice[0])
+
+		result := C.decompress_astc(
+			(*C.uint8_t)(inputImageData),
+			(*C.uint8_t)(outputImageData),
+			(C.uint32_t)(width),
+			(C.uint32_t)(height),
+			(C.uint32_t)(blockWidth),
+			(C.uint32_t)(blockHeight),
+		)
+
+		if result != 0 {
+			return nil, fmt.Errorf("ASTC decompression failed : %s",
+				C.GoString(C.get_error_string(result)))
+		}
+	}
+	return dst, nil
 }
 
 func compress(src []byte, width int, height int, depth int, format *image.Format) ([]byte, error) {

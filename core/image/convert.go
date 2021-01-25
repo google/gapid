@@ -37,7 +37,7 @@ var registeredConverters = make(map[srcDstFmt]Converter)
 func RegisterConverter(src, dst *Format, c Converter) {
 	key := srcDstFmt{src.Key(), dst.Key()}
 	if _, found := registeredConverters[key]; found {
-		panic(fmt.Errorf("Converter from %s to %s already registered", src, dst))
+		panic(fmt.Errorf("Converter from %s to %s already registered", src.Name, dst.Name))
 	}
 	registeredConverters[key] = c
 }
@@ -82,7 +82,7 @@ func Convert(data []byte, width, height, depth int, srcFmt, dstFmt *Format) ([]b
 	}
 
 	return nil, fmt.Errorf("No converter registered that can convert from format '%s' to '%s'",
-		srcFmt, dstFmt)
+		srcFmt.Name, dstFmt.Name)
 }
 
 func convertDirect(data []byte, width, height, depth int, srcFmt, dstFmt *Format) ([]byte, error) {
@@ -92,7 +92,7 @@ func convertDirect(data []byte, width, height, depth int, srcFmt, dstFmt *Format
 	}
 
 	if err := srcFmt.Check(data, width, height, depth); err != nil {
-		return nil, fmt.Errorf("Source data of format %s is invalid: %s", srcFmt, err)
+		return nil, fmt.Errorf("Source data of format %s is invalid: %s", srcFmt.Name, err)
 	}
 
 	// Look for a registered converter.
