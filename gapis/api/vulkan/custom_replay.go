@@ -534,7 +534,9 @@ func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *ap
 
 	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
-	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	if err := hijack.PSurface().Write(ctx, handle, hijack, g, b); err != nil {
+		return err
+	}
 	surface.SetVulkanHandle(handle)
 	GetState(g).Surfaces().Add(handle, surface)
 	hijack.Result()
@@ -582,7 +584,9 @@ func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api
 
 	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
-	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	if err := hijack.PSurface().Write(ctx, handle, hijack, g, b); err != nil {
+		return err
+	}
 	surface.SetVulkanHandle(handle)
 	GetState(g).Surfaces().Add(handle, surface)
 	hijack.Result()
@@ -629,7 +633,9 @@ func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 
 	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
-	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	if err := hijack.PSurface().Write(ctx, handle, hijack, g, b); err != nil {
+		return err
+	}
 	surface.SetVulkanHandle(handle)
 	GetState(g).Surfaces().Add(handle, surface)
 	hijack.Result()
@@ -676,7 +682,9 @@ func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *a
 
 	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
-	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	if err := hijack.PSurface().Write(ctx, handle, hijack, g, b); err != nil {
+		return err
+	}
 	surface.SetVulkanHandle(handle)
 	GetState(g).Surfaces().Add(handle, surface)
 	hijack.Result()
@@ -723,7 +731,9 @@ func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 
 	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
-	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	if err := hijack.PSurface().Write(ctx, handle, hijack, g, b); err != nil {
+		return err
+	}
 	surface.SetVulkanHandle(handle)
 	GetState(g).Surfaces().Add(handle, surface)
 	hijack.Result()
@@ -770,7 +780,9 @@ func (c *VkCreateMacOSSurfaceMVK) Mutate(ctx context.Context, id api.CmdID, g *a
 
 	hijack.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	handle := hijack.PSurface().MustRead(ctx, hijack, g, nil)
-	hijack.PSurface().MustWrite(ctx, handle, hijack, g, b)
+	if err := hijack.PSurface().Write(ctx, handle, hijack, g, b); err != nil {
+		return err
+	}
 	surface.SetVulkanHandle(handle)
 	GetState(g).Surfaces().Add(handle, surface)
 	hijack.Result()
@@ -796,14 +808,20 @@ func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id ap
 	c.Call(ctx, g, b)
 	c.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	if (c.PSurfaceFormats()) == (VkSurfaceFormatKHRᵖ(0)) {
-		c.PSurfaceFormatCount().MustWrite(ctx, c.PSurfaceFormatCount().MustRead(ctx, c, g, nil), c, g, b)
+		if err := c.PSurfaceFormatCount().Write(ctx, c.PSurfaceFormatCount().MustRead(ctx, c, g, nil), c, g, b); err != nil {
+			return err
+		}
 	} else {
 		count := c.PSurfaceFormatCount().MustRead(ctx, c, g, nil)
 		formats := c.PSurfaceFormats().Slice(0, uint64(count), l)
 		for i := uint32(0); i < count; i++ {
-			formats.Index(uint64(i)).MustWrite(ctx, []VkSurfaceFormatKHR{c.PSurfaceFormats().Slice(uint64(uint32(0)), uint64(count), l).Index(uint64(i)).MustRead(ctx, c, g, nil)[0]}, c, g, b)
+			if _, err := formats.Index(uint64(i)).Write(ctx, []VkSurfaceFormatKHR{c.PSurfaceFormats().Slice(uint64(uint32(0)), uint64(count), l).Index(uint64(i)).MustRead(ctx, c, g, nil)[0]}, c, g, b); err != nil {
+				return err
+			}
 		}
-		c.PSurfaceFormatCount().MustWrite(ctx, count, c, g, b)
+		if err := c.PSurfaceFormatCount().Write(ctx, count, c, g, b); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -822,14 +840,20 @@ func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, 
 	c.Call(ctx, g, b)
 	c.Extras().Observations().ApplyWrites(g.Memory.ApplicationPool())
 	if (c.PPresentModes()) == (VkPresentModeKHRᵖ(0)) {
-		c.PPresentModeCount().MustWrite(ctx, c.PPresentModeCount().MustRead(ctx, c, g, nil), c, g, b)
+		if err := c.PPresentModeCount().Write(ctx, c.PPresentModeCount().MustRead(ctx, c, g, nil), c, g, b); err != nil {
+			return err
+		}
 	} else {
 		count := c.PPresentModeCount().MustRead(ctx, c, g, nil)
 		modes := c.PPresentModes().Slice(0, uint64(count), l)
 		for i := uint32(0); i < count; i++ {
-			modes.Index(uint64(i)).MustWrite(ctx, []VkPresentModeKHR{c.PPresentModes().Slice(0, uint64(count), l).Index(uint64(i)).MustRead(ctx, c, g, nil)[0]}, c, g, b)
+			if _, err := modes.Index(uint64(i)).Write(ctx, []VkPresentModeKHR{c.PPresentModes().Slice(0, uint64(count), l).Index(uint64(i)).MustRead(ctx, c, g, nil)[0]}, c, g, b); err != nil {
+				return err
+			}
 		}
-		c.PPresentModeCount().MustWrite(ctx, count, c, g, b)
+		if err := c.PPresentModeCount().Write(ctx, count, c, g, b); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -874,6 +898,9 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	imageWidth := imageObject.Info().Extent().Width()
 	imageHeight := imageObject.Info().Extent().Height()
 	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info().Fmt())
+	if err != nil {
+		return err
+	}
 	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
 	memoryObject := NewDeviceMemoryObjectʳ(
 		a.Device(),                        // Device
@@ -892,8 +919,10 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	)
 
 	c.DeviceMemories().Add(memory, memoryObject)
-	a.PMemory().Slice(0, 1, l).Write(ctx, []VkDeviceMemory{memory}, a, s, b)
-	return err
+	if _, err = a.PMemory().Slice(0, 1, l).Write(ctx, []VkDeviceMemory{memory}, a, s, b); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (i AllocationCallbacks) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
