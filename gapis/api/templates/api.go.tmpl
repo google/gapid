@@ -1047,12 +1047,15 @@ import (
       return out, nil
     }
 
-    // MustRead calls and returns Read, panicing if there was an error.
+    // MustRead calls MustReadʷ with a nil state watcher.
     func (s {{$slice_ty}}) MustRead(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) []{{$el_ty}} {
       return s.MustReadʷ(ϟctx, ϟc, ϟg, ϟb, nil)
     }
 
-    // MustRead calls and returns Read, panicing if there was an error.
+    // MustReadʷ calls and returns Readʷ, panicing if there was an error. Since
+    // Readʷ eventually does database resolves that may check for context
+    // cancellation, MustReadʷ should be called with a context that ignores
+    // cancellation to avoid cancellation errors being turned into a panic.
     func (s {{$slice_ty}}) MustReadʷ(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) []{{$el_ty}} {
       vals, err := s.Readʷ(ϟctx, ϟc, ϟg, ϟb, ϟw)
       panicOnError(err)
