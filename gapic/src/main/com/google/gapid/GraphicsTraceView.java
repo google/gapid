@@ -227,8 +227,10 @@ public class GraphicsTraceView extends Composite
 
   protected void syncTabMenuItem(MainTab.Type type, boolean shown) {
     Action action = typeActions.get(type);
-    if (action != null && action.isChecked() != shown) {
+    if (action != null) {
       action.setChecked(shown);
+    }
+    if (hiddenTabs.contains(type) == shown) {
       if (shown) {
         hiddenTabs.remove(type);
       } else {
