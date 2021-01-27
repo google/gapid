@@ -177,7 +177,7 @@ public class ShaderView extends Composite
 
   @Override
   public boolean isPinnable() {
-    return shaderResource != null;
+    return !pinned && shaderResource != null;
   }
 
   @Override
