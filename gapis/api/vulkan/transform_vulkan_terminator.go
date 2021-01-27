@@ -130,7 +130,10 @@ func (vtTransform *vulkanTerminator) TransformCommand(ctx context.Context, id tr
 	outputCmds := make([]api.Cmd, 0)
 	for _, cmd := range inputCommands {
 		if vkQueueSubmitCmd, ok := cmd.(*VkQueueSubmit); ok {
-			processedCmds := vtTransform.processVkQueueSubmit(ctx, id.GetID(), vkQueueSubmitCmd, inputState)
+			processedCmds, err := vtTransform.processVkQueueSubmit(ctx, id.GetID(), vkQueueSubmitCmd, inputState)
+			if err != nil {
+				return nil, err
+			}
 			outputCmds = append(outputCmds, processedCmds...)
 		} else {
 			outputCmds = append(outputCmds, cmd)
@@ -144,7 +147,7 @@ func (vtTransform *vulkanTerminator) TransformCommand(ctx context.Context, id tr
 	return outputCmds, nil
 }
 
-func (vtTransform *vulkanTerminator) processVkQueueSubmit(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, inputState *api.GlobalState) []api.Cmd {
+func (vtTransform *vulkanTerminator) processVkQueueSubmit(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, inputState *api.GlobalState) ([]api.Cmd, error) {
 	doCut := false
 	cutIndex := api.SubCmdIdx(nil)
 	// If we have been requested to cut at a particular subindex,
@@ -159,7 +162,7 @@ func (vtTransform *vulkanTerminator) processVkQueueSubmit(ctx context.Context, i
 	}
 
 	if !doCut {
-		return []api.Cmd{cmd}
+		return []api.Cmd{cmd}, nil
 	}
 
 	return vtTransform.cutCommandBuffer(ctx, id, cmd, cutIndex, inputState)
@@ -171,7 +174,7 @@ func (vtTransform *vulkanTerminator) processVkQueueSubmit(ctx context.Context, i
 // It will make sure that if the replay were to stop at the given
 // index it would remain valid. This means closing any open
 // RenderPasses.
-func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, idx api.SubCmdIdx, inputState *api.GlobalState) []api.Cmd {
+func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, idx api.SubCmdIdx, inputState *api.GlobalState) ([]api.Cmd, error) {
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	layout := inputState.MemoryLayout
@@ -199,10 +202,16 @@ func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id ap
 		}
 	}
 	submitCopy.SetSubmitCount(uint32(lastSubmit + 1))
-	newSubmits := submitInfo.Slice(0, lastSubmit+1).MustRead(ctx, cmd, inputState, nil)
+	newSubmits, err := submitInfo.Slice(0, lastSubmit+1).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	newSubmits[lastSubmit].SetCommandBufferCount(uint32(lastCommandBuffer + 1))
 
-	newCommandBuffers := newSubmits[lastSubmit].PCommandBuffers().Slice(0, lastCommandBuffer+1, layout).MustRead(ctx, cmd, inputState, nil)
+	newCommandBuffers, err := newSubmits[lastSubmit].PCommandBuffers().Slice(0, lastCommandBuffer+1, layout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	stateObject := GetState(inputState)
 
@@ -217,7 +226,10 @@ func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id ap
 			lsp = 0
 		}
 	}
-	lrp, lsp = resolveCurrentRenderPass2(ctx, inputState, cmd, idx, lrp, lsp)
+	lrp, lsp, err = resolveCurrentRenderPass2(ctx, inputState, cmd, idx, lrp, lsp)
+	if err != nil {
+		return nil, err
+	}
 
 	extraCommands := make([]interface{}, 0)
 	if !lrp.IsNil() {
@@ -256,7 +268,7 @@ func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id ap
 	}
 
 	outputCmds = append(outputCmds, submitCopy)
-	return outputCmds
+	return outputCmds, nil
 }
 
 func walkCommands2(s *State, commands U32ːCommandReferenceʳDense_ᵐ, callback func(CommandReferenceʳ)) {
@@ -290,9 +302,9 @@ func incrementLoopLevel2(idx api.SubCmdIdx, loopLevel *int) bool {
 // resolveCurrentRenderPass2 walks all of the current and pending commands
 // to determine what renderpass we are in after the idx'th subcommand
 func resolveCurrentRenderPass2(ctx context.Context, s *api.GlobalState, submit *VkQueueSubmit,
-	idx api.SubCmdIdx, lrp RenderPassObjectʳ, subpass uint32) (RenderPassObjectʳ, uint32) {
+	idx api.SubCmdIdx, lrp RenderPassObjectʳ, subpass uint32) (RenderPassObjectʳ, uint32, error) {
 	if len(idx) == 0 {
-		return lrp, subpass
+		return lrp, subpass, nil
 	}
 	a := submit
 	c := GetState(s)
@@ -315,33 +327,54 @@ func resolveCurrentRenderPass2(ctx context.Context, s *api.GlobalState, submit *
 	submitInfo := submit.PSubmits().Slice(0, uint64(submit.SubmitCount()), l)
 	loopLevel := 0
 	for sub := 0; sub < int(idx[0])+getExtra2(idx, loopLevel); sub++ {
-		info := submitInfo.Index(uint64(sub)).MustRead(ctx, a, s, nil)[0]
-		buffers := info.PCommandBuffers().Slice(0, uint64(info.CommandBufferCount()), l).MustRead(ctx, a, s, nil)
+
+		pInfo, err := submitInfo.Index(uint64(sub)).Read(ctx, a, s, nil)
+		if err != nil {
+			return NilRenderPassObjectʳ, 0, err
+		}
+		info := pInfo[0]
+
+		buffers, err := info.PCommandBuffers().Slice(0, uint64(info.CommandBufferCount()), l).Read(ctx, a, s, nil)
+		if err != nil {
+			return NilRenderPassObjectʳ, 0, err
+		}
 		for _, buffer := range buffers {
 			bufferObject := c.CommandBuffers().Get(buffer)
 			walkCommands2(c, bufferObject.CommandReferences(), walkCommandsCallback)
 		}
 	}
 	if !incrementLoopLevel2(idx, &loopLevel) {
-		return lrp, subpass
+		return lrp, subpass, nil
 	}
-	lastInfo := submitInfo.Index(uint64(idx[0])).MustRead(ctx, a, s, nil)[0]
+	pLastInfo, err := submitInfo.Index(uint64(idx[0])).Read(ctx, a, s, nil)
+	if err != nil {
+		return NilRenderPassObjectʳ, 0, err
+	}
+	lastInfo := pLastInfo[0]
 	lastBuffers := lastInfo.PCommandBuffers().Slice(0, uint64(lastInfo.CommandBufferCount()), l)
 	for cmdbuffer := 0; cmdbuffer < int(idx[1])+getExtra2(idx, loopLevel); cmdbuffer++ {
-		buffer := lastBuffers.Index(uint64(cmdbuffer)).MustRead(ctx, a, s, nil)[0]
+		pBuffer, err := lastBuffers.Index(uint64(cmdbuffer)).Read(ctx, a, s, nil)
+		if err != nil {
+			return NilRenderPassObjectʳ, 0, err
+		}
+		buffer := pBuffer[0]
 		bufferObject := c.CommandBuffers().Get(buffer)
 		walkCommands2(c, bufferObject.CommandReferences(), walkCommandsCallback)
 	}
 	if !incrementLoopLevel2(idx, &loopLevel) {
-		return lrp, subpass
+		return lrp, subpass, nil
 	}
-	lastBuffer := lastBuffers.Index(uint64(idx[1])).MustRead(ctx, a, s, nil)[0]
+	pLastBuffer, err := lastBuffers.Index(uint64(idx[1])).Read(ctx, a, s, nil)
+	if err != nil {
+		return NilRenderPassObjectʳ, 0, err
+	}
+	lastBuffer := pLastBuffer[0]
 	lastBufferObject := c.CommandBuffers().Get(lastBuffer)
 	for cmd := 0; cmd < int(idx[2])+getExtra2(idx, loopLevel); cmd++ {
 		walkCommandsCallback(lastBufferObject.CommandReferences().Get(uint32(cmd)))
 	}
 	if !incrementLoopLevel2(idx, &loopLevel) {
-		return lrp, subpass
+		return lrp, subpass, nil
 	}
 	lastCommand := lastBufferObject.CommandReferences().Get(uint32(idx[2]))
 
@@ -353,7 +386,7 @@ func resolveCurrentRenderPass2(ctx context.Context, s *api.GlobalState, submit *
 			walkCommands2(c, bufferObject.CommandReferences(), walkCommandsCallback)
 		}
 		if !incrementLoopLevel2(idx, &loopLevel) {
-			return lrp, subpass
+			return lrp, subpass, nil
 		}
 		lastsubBuffer := executeSubcommand.CommandBuffers().Get(uint32(idx[3]))
 		lastSubBufferObject := c.CommandBuffers().Get(lastsubBuffer)
@@ -362,7 +395,7 @@ func resolveCurrentRenderPass2(ctx context.Context, s *api.GlobalState, submit *
 		}
 	}
 
-	return lrp, subpass
+	return lrp, subpass, nil
 }
 
 // rebuildCommandBuffer2 takes the commands from commandBuffer up to, and

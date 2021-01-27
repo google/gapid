@@ -122,20 +122,27 @@ func (timestampTransform *queryTimestamps) TransformCommand(ctx context.Context,
 			continue
 		}
 
-		newCommands := timestampTransform.modifyQueueSubmit(ctx, id.GetID(), vkQueueSubmitCmd, inputState)
+		newCommands, err := timestampTransform.modifyQueueSubmit(ctx, id.GetID(), vkQueueSubmitCmd, inputState)
+		if err != nil {
+			return nil, err
+		}
+
 		outputCmds = append(outputCmds, newCommands...)
 	}
 
 	return outputCmds, nil
 }
 
-func (timestampTransform *queryTimestamps) modifyQueueSubmit(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, inputState *api.GlobalState) []api.Cmd {
+func (timestampTransform *queryTimestamps) modifyQueueSubmit(ctx context.Context, id api.CmdID, cmd *VkQueueSubmit, inputState *api.GlobalState) ([]api.Cmd, error) {
 	ctx = log.Enter(ctx, "queryTimestamps")
 
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	timestampTransform.timestampPeriod = getTimestampLimit(cmd, inputState)
-	queryCount := getQueryCount(ctx, cmd, inputState)
+	queryCount, err := getQueryCount(ctx, cmd, inputState)
+	if err != nil {
+		return nil, err
+	}
 
 	outputCmds := make([]api.Cmd, 0)
 	commandPool, ok := timestampTransform.getCommandPool(ctx, cmd, inputState)
@@ -165,9 +172,12 @@ func (timestampTransform *queryTimestamps) modifyQueueSubmit(ctx context.Context
 		outputCmds = append(outputCmds, queryCmds...)
 	}
 
-	newCmds := timestampTransform.rewriteQueueSubmit(ctx, inputState, id, cmd, queryPoolInfo, commandPool)
+	newCmds, err := timestampTransform.rewriteQueueSubmit(ctx, inputState, id, cmd, queryPoolInfo, commandPool)
+	if err != nil {
+		return nil, err
+	}
 	outputCmds = append(outputCmds, newCmds...)
-	return outputCmds
+	return outputCmds, nil
 }
 
 func getTimestampLimit(cmd *VkQueueSubmit, inputState *api.GlobalState) float32 {
@@ -180,16 +190,19 @@ func getTimestampLimit(cmd *VkQueueSubmit, inputState *api.GlobalState) float32 
 	return physicalDevice.PhysicalDeviceProperties().Limits().TimestampPeriod()
 }
 
-func getQueryCount(ctx context.Context, cmd *VkQueueSubmit, inputState *api.GlobalState) uint32 {
+func getQueryCount(ctx context.Context, cmd *VkQueueSubmit, inputState *api.GlobalState) (uint32, error) {
 	submitCount := cmd.SubmitCount()
-	submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), inputState.MemoryLayout).MustRead(ctx, cmd, inputState, nil)
+	submitInfos, err := cmd.pSubmits.Slice(0, uint64(submitCount), inputState.MemoryLayout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return 0, err
+	}
 	cmdBufferCount := uint32(0)
 	for i := uint32(0); i < submitCount; i++ {
 		si := submitInfos[i]
 		cmdBufferCount += si.CommandBufferCount()
 	}
 	queryCount := cmdBufferCount * 2
-	return queryCount
+	return queryCount, nil
 }
 
 func (timestampTransform *queryTimestamps) getQueryPoolInfo(ctx context.Context, cmd *VkQueueSubmit, inputState *api.GlobalState) *queryPoolInfo {
@@ -367,7 +380,7 @@ func (timestampTransform *queryTimestamps) rewriteQueueSubmit(ctx context.Contex
 	id api.CmdID,
 	cmd *VkQueueSubmit,
 	info *queryPoolInfo,
-	commandPool VkCommandPool) []api.Cmd {
+	commandPool VkCommandPool) ([]api.Cmd, error) {
 
 	vkQueue := cmd.Queue()
 	queue := GetState(inputState).Queues().Get(vkQueue)
@@ -384,7 +397,10 @@ func (timestampTransform *queryTimestamps) rewriteQueueSubmit(ctx context.Contex
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	submitCount := cmd.SubmitCount()
-	submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), layout).MustRead(ctx, cmd, inputState, nil)
+	submitInfos, err := cmd.pSubmits.Slice(0, uint64(submitCount), layout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	newSubmitInfos := make([]VkSubmitInfo, submitCount)
 
 	cb := CommandBuilder{Thread: cmd.Thread()}
@@ -395,23 +411,32 @@ func (timestampTransform *queryTimestamps) rewriteQueueSubmit(ctx context.Contex
 		waitSemPtr := memory.Nullptr
 		waitDstStagePtr := memory.Nullptr
 		if count := uint64(si.WaitSemaphoreCount()); count > 0 {
-			waitSemPtr = allocAndRead(si.PWaitSemaphores().
-				Slice(0, count, layout).
-				MustRead(ctx, cmd, inputState, nil)).Ptr()
-			waitDstStagePtr = allocAndRead(si.PWaitDstStageMask().
-				Slice(0, count, layout).
-				MustRead(ctx, cmd, inputState, nil)).Ptr()
+			waitSem, err := si.PWaitSemaphores().Slice(0, count, layout).Read(ctx, cmd, inputState, nil)
+			if err != nil {
+				return nil, err
+			}
+			waitSemPtr = allocAndRead(waitSem).Ptr()
+			waitDstStage, err := si.PWaitDstStageMask().Slice(0, count, layout).Read(ctx, cmd, inputState, nil)
+			if err != nil {
+				return nil, err
+			}
+			waitDstStagePtr = allocAndRead(waitDstStage).Ptr()
 		}
 
 		signalSemPtr := memory.Nullptr
 
 		if count := uint64(si.SignalSemaphoreCount()); count > 0 {
-			signalSemPtr = allocAndRead(si.PSignalSemaphores().
-				Slice(0, count, layout).
-				MustRead(ctx, cmd, inputState, nil)).Ptr()
+			signalSem, err := si.PSignalSemaphores().Slice(0, count, layout).Read(ctx, cmd, inputState, nil)
+			if err != nil {
+				return nil, err
+			}
+			signalSemPtr = allocAndRead(signalSem).Ptr()
 		}
 
-		cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), layout).MustRead(ctx, cmd, inputState, nil)
+		cmdBuffers, err := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), layout).Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		cmdCount := si.CommandBufferCount()
 		cmdBufferPtr := memory.Nullptr
 		newCmdCount := uint32(0)
@@ -491,7 +516,7 @@ func (timestampTransform *queryTimestamps) rewriteQueueSubmit(ctx context.Contex
 	for _, read := range reads {
 		newCmd.AddRead(read.Data())
 	}
-	return outputCmds
+	return outputCmds, nil
 }
 
 func (timestampTransform *queryTimestamps) generateQueryCommand(ctx context.Context,

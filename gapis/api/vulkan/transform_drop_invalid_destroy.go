@@ -65,7 +65,11 @@ func (dropTransform *dropInvalidDestroy) TransformCommand(ctx context.Context, i
 	outputCmds := make([]api.Cmd, 0)
 
 	for i, cmd := range inputCommands {
-		if newCmd := dropTransform.dropOrModifyCommand(ctx, inputState, id.GetID(), i, cmd); newCmd != nil {
+		newCmd, err := dropTransform.dropOrModifyCommand(ctx, inputState, id.GetID(), i, cmd)
+		if err != nil {
+			return nil, err
+		}
+		if newCmd != nil {
 			outputCmds = append(outputCmds, newCmd)
 		}
 	}
@@ -73,130 +77,130 @@ func (dropTransform *dropInvalidDestroy) TransformCommand(ctx context.Context, i
 	return outputCmds, nil
 }
 
-func (dropTransform *dropInvalidDestroy) dropOrModifyCommand(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd api.Cmd) api.Cmd {
+func (dropTransform *dropInvalidDestroy) dropOrModifyCommand(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd api.Cmd) (api.Cmd, error) {
 	vulkanState := GetState(inputState)
 
 	switch cmd := cmd.(type) {
 	case *VkDestroyInstance:
 		if !vulkanState.Instances().Contains(cmd.Instance()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Instance())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyDevice:
 		if !vulkanState.Devices().Contains(cmd.Device()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Device())
-			return nil
+			return nil, nil
 		}
 	case *VkFreeMemory:
 		if !vulkanState.DeviceMemories().Contains(cmd.Memory()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Memory())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyBuffer:
 		if !vulkanState.Buffers().Contains(cmd.Buffer()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Buffer())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyBufferView:
 		if !vulkanState.BufferViews().Contains(cmd.BufferView()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.BufferView())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyImage:
 		if !vulkanState.Images().Contains(cmd.Image()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Image())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyImageView:
 		if !vulkanState.ImageViews().Contains(cmd.ImageView()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.ImageView())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyShaderModule:
 		if !vulkanState.ShaderModules().Contains(cmd.ShaderModule()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.ShaderModule())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyPipeline:
 		if !vulkanState.GraphicsPipelines().Contains(cmd.Pipeline()) &&
 			!vulkanState.ComputePipelines().Contains(cmd.Pipeline()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Pipeline())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyPipelineLayout:
 		if !vulkanState.PipelineLayouts().Contains(cmd.PipelineLayout()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.PipelineLayout())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyPipelineCache:
 		if !vulkanState.PipelineCaches().Contains(cmd.PipelineCache()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.PipelineCache())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroySampler:
 		if !vulkanState.Samplers().Contains(cmd.Sampler()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Sampler())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyDescriptorSetLayout:
 		if !vulkanState.DescriptorSetLayouts().Contains(cmd.DescriptorSetLayout()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.DescriptorSetLayout())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyDescriptorPool:
 		if !vulkanState.DescriptorPools().Contains(cmd.DescriptorPool()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.DescriptorPool())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyFence:
 		if !vulkanState.Fences().Contains(cmd.Fence()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Fence())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroySemaphore:
 		if !vulkanState.Semaphores().Contains(cmd.Semaphore()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Semaphore())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyEvent:
 		if !vulkanState.Events().Contains(cmd.Event()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Event())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyQueryPool:
 		if !vulkanState.QueryPools().Contains(cmd.QueryPool()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.QueryPool())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyFramebuffer:
 		if !vulkanState.Framebuffers().Contains(cmd.Framebuffer()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Framebuffer())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyRenderPass:
 		if !vulkanState.RenderPasses().Contains(cmd.RenderPass()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.RenderPass())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyCommandPool:
 		if !vulkanState.CommandPools().Contains(cmd.CommandPool()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.CommandPool())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroySurfaceKHR:
 		if !vulkanState.Surfaces().Contains(cmd.Surface()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Surface())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroySwapchainKHR:
 		if !vulkanState.Swapchains().Contains(cmd.Swapchain()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Swapchain())
-			return nil
+			return nil, nil
 		}
 	case *VkDestroyDebugReportCallbackEXT:
 		if !vulkanState.DebugReportCallbacks().Contains(cmd.Callback()) {
 			dropTransform.warnDropCmd(ctx, id, index, cmd, cmd.Callback())
-			return nil
+			return nil, nil
 		}
 	case *VkFreeDescriptorSets:
 		return dropTransform.dropOrModifyFreeDescriptorSets(ctx, inputState, id, index, cmd)
@@ -204,18 +208,21 @@ func (dropTransform *dropInvalidDestroy) dropOrModifyCommand(ctx context.Context
 		return dropTransform.dropOrModifyFreeCommandBuffers(ctx, inputState, id, index, cmd)
 	}
 
-	return cmd
+	return cmd, nil
 }
 
-func (dropTransform *dropInvalidDestroy) dropOrModifyFreeDescriptorSets(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeDescriptorSets) api.Cmd {
+func (dropTransform *dropInvalidDestroy) dropOrModifyFreeDescriptorSets(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeDescriptorSets) (api.Cmd, error) {
 	descSetCount := cmd.DescriptorSetCount()
 	if descSetCount == 0 {
-		return cmd
+		return cmd, nil
 	}
 
 	layout := inputState.MemoryLayout
 	cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-	descSets := cmd.PDescriptorSets().Slice(0, uint64(descSetCount), layout).MustRead(ctx, cmd, inputState, nil)
+	descSets, err := cmd.PDescriptorSets().Slice(0, uint64(descSetCount), layout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	newDescSets := []VkDescriptorSet{}
 	dropped := []VkDescriptorSet{}
 	for _, ds := range descSets {
@@ -228,13 +235,13 @@ func (dropTransform *dropInvalidDestroy) dropOrModifyFreeDescriptorSets(ctx cont
 
 	if len(newDescSets) == len(descSets) {
 		// No need to modify the command
-		return cmd
+		return cmd, nil
 	}
 
 	if len(newDescSets) == 0 {
 		// no need to have this command
 		dropTransform.warnDropCmd(ctx, id, index, cmd, descSets)
-		return nil
+		return nil, nil
 	}
 
 	// need to modify the command to drop the command buffers not
@@ -247,18 +254,21 @@ func (dropTransform *dropInvalidDestroy) dropOrModifyFreeDescriptorSets(ctx cont
 	newCmd := cb.VkFreeDescriptorSets(
 		cmd.Device(), cmd.DescriptorPool(), uint32(len(newDescSets)),
 		newDescSetsData.Ptr(), VkResult_VK_SUCCESS).AddRead(newDescSetsData.Data())
-	return newCmd
+	return newCmd, nil
 }
 
-func (dropTransform *dropInvalidDestroy) dropOrModifyFreeCommandBuffers(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeCommandBuffers) api.Cmd {
+func (dropTransform *dropInvalidDestroy) dropOrModifyFreeCommandBuffers(ctx context.Context, inputState *api.GlobalState, id api.CmdID, index int, cmd *VkFreeCommandBuffers) (api.Cmd, error) {
 	cmdBufCount := cmd.CommandBufferCount()
 	if cmdBufCount == 0 {
-		return cmd
+		return cmd, nil
 	}
 
 	layout := inputState.MemoryLayout
 	cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-	cmdBufs := cmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), layout).MustRead(ctx, cmd, inputState, nil)
+	cmdBufs, err := cmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), layout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	newCmdBufs := []VkCommandBuffer{}
 	dropped := []VkCommandBuffer{}
 	for _, commandBuffer := range cmdBufs {
@@ -271,13 +281,13 @@ func (dropTransform *dropInvalidDestroy) dropOrModifyFreeCommandBuffers(ctx cont
 
 	if len(newCmdBufs) == len(cmdBufs) {
 		// no need to modify this command
-		return cmd
+		return cmd, nil
 	}
 
 	if len(newCmdBufs) == 0 {
 		// no need to have this command
 		dropTransform.warnDropCmd(ctx, id, index, cmd, cmdBufs)
-		return nil
+		return nil, nil
 	}
 
 	// need to modify the command to drop the command buffers not
@@ -289,7 +299,7 @@ func (dropTransform *dropInvalidDestroy) dropOrModifyFreeCommandBuffers(ctx cont
 	cb := CommandBuilder{Thread: cmd.Thread()}
 	newCmd := cb.VkFreeCommandBuffers(cmd.Device(), cmd.CommandPool(), uint32(len(newCmdBufs)), newCmdBufsData.Ptr()).AddRead(newCmdBufsData.Data())
 
-	return newCmd
+	return newCmd, nil
 }
 
 func (dropTransform *dropInvalidDestroy) warnDropCmd(ctx context.Context, id api.CmdID, index int, cmd api.Cmd, handles ...interface{}) {

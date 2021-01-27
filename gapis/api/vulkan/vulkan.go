@@ -406,10 +406,16 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			refs := []sync.SubcommandReference{}
 			d.SubcommandGroups[i] = make([]api.SubCmdIdx, 0)
 			submitCount := uint64(cmd.SubmitCount())
-			submits := cmd.PSubmits().Slice(uint64(0), submitCount, l).MustRead(ctx, cmd, s, nil)
+			submits, err := cmd.PSubmits().Slice(uint64(0), submitCount, l).Read(ctx, cmd, s, nil)
+			if err != nil {
+				return err
+			}
 			for submitIdx, submit := range submits {
 				bufferCount := submit.CommandBufferCount()
-				buffers := submit.PCommandBuffers().Slice(uint64(0), uint64(bufferCount), l).MustRead(ctx, cmd, s, nil)
+				buffers, err := submit.PCommandBuffers().Slice(uint64(0), uint64(bufferCount), l).Read(ctx, cmd, s, nil)
+				if err != nil {
+					return err
+				}
 				d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx)}, fmt.Sprintf("pSubmits[%v]: ", submitIdx))
 				for j, buff := range buffers {
 					d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx), uint64(j)}, fmt.Sprintf("Command Buffer: %v", buff))

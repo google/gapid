@@ -111,7 +111,10 @@ func (issueTransform *findIssues) TransformCommand(ctx context.Context, id trans
 			// Modify the vkCreateInstance to first remove any validation layers,
 			// and then insert the meta validation layer. Also enable the
 			// VK_EXT_debug_report extension.
-			newCmd := issueTransform.modifyVkCreateInstance(ctx, createInstanceCmd, inputState)
+			newCmd, err := issueTransform.modifyVkCreateInstance(ctx, createInstanceCmd, inputState)
+			if err != nil {
+				return nil, err
+			}
 			outputCmds = append(outputCmds, newCmd)
 		} else {
 			outputCmds = append(outputCmds, cmd)
@@ -121,7 +124,10 @@ func (issueTransform *findIssues) TransformCommand(ctx context.Context, id trans
 		// for it. The create info is not completed, the device side code should complete
 		// the create info before calling the underlying Vulkan command.
 		if createInstanceCommand, ok := cmd.(*VkCreateInstance); ok {
-			debugCmd := issueTransform.createDebugReportCallback(ctx, createInstanceCommand, inputState)
+			debugCmd, err := issueTransform.createDebugReportCallback(ctx, createInstanceCommand, inputState)
+			if err != nil {
+				return nil, err
+			}
 			if debugCmd != nil {
 				outputCmds = append(outputCmds, cmd)
 			}
@@ -192,9 +198,12 @@ func (issueTransform *findIssues) filterAndAppendIssues(ctx context.Context, iss
 	}
 }
 
-func (issueTransform *findIssues) modifyVkCreateInstance(ctx context.Context, cmd *VkCreateInstance, inputState *api.GlobalState) api.Cmd {
+func (issueTransform *findIssues) modifyVkCreateInstance(ctx context.Context, cmd *VkCreateInstance, inputState *api.GlobalState) (api.Cmd, error) {
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
-	info := cmd.PCreateInfo().MustRead(ctx, cmd, inputState, nil)
+	info, err := cmd.PCreateInfo().Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	layers := []Charᶜᵖ{}
 	validationMetaLayerData := issueTransform.allocations.AllocDataOrPanic(ctx, validationMetaLayer)
@@ -202,12 +211,19 @@ func (issueTransform *findIssues) modifyVkCreateInstance(ctx context.Context, cm
 	layersData := issueTransform.allocations.AllocDataOrPanic(ctx, layers)
 
 	extCount := info.EnabledExtensionCount()
-	exts := info.PpEnabledExtensionNames().Slice(0, uint64(extCount), inputState.MemoryLayout).MustRead(ctx, cmd, inputState, nil)
+	exts, err := info.PpEnabledExtensionNames().Slice(0, uint64(extCount), inputState.MemoryLayout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	var debugReportExtNameData api.AllocResult
 	hasDebugReport := false
 	for _, e := range exts {
 		// TODO(chrisforbes): provide a better way of getting the contents of the string
-		if debugReportExtension == strings.TrimRight(string(memory.CharToBytes(e.StringSlice(ctx, inputState).MustRead(ctx, cmd, inputState, nil))), "\x00") {
+		rawStr, err := e.StringSlice(ctx, inputState).Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
+		if debugReportExtension == strings.TrimRight(string(memory.CharToBytes(rawStr)), "\x00") {
 			hasDebugReport = true
 		}
 	}
@@ -244,11 +260,14 @@ func (issueTransform *findIssues) modifyVkCreateInstance(ctx context.Context, cm
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 
-	return newCmd
+	return newCmd, nil
 }
 
-func (issueTransform *findIssues) createDebugReportCallback(ctx context.Context, cmd *VkCreateInstance, inputState *api.GlobalState) api.Cmd {
-	instance := cmd.PInstance().MustRead(ctx, cmd, inputState, nil)
+func (issueTransform *findIssues) createDebugReportCallback(ctx context.Context, cmd *VkCreateInstance, inputState *api.GlobalState) (api.Cmd, error) {
+	instance, err := cmd.PInstance().Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	callbackHandle := VkDebugReportCallbackEXT(newUnusedID(true, func(x uint64) bool {
 		for _, callback := range issueTransform.reportCallbacks {
 			if uint64(callback) == x {
@@ -279,7 +298,7 @@ func (issueTransform *findIssues) createDebugReportCallback(ctx context.Context,
 		callbackCreateInfo.Data(),
 	).AddWrite(
 		callbackHandleData.Data(),
-	)
+	), nil
 }
 
 func (issueTransform *findIssues) destroyDebugReportCallback(cmd *VkDestroyInstance, inputState *api.GlobalState) api.Cmd {

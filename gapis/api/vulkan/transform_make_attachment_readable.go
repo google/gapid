@@ -65,19 +65,35 @@ func (attachmentTransform *makeAttachmentReadable) TransformCommand(ctx context.
 	for i, cmd := range inputCommands {
 		cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
+		var err error
 		var modifiedCmd api.Cmd
 		modifiedCmd = nil
 
 		if createImageCmd, ok := cmd.(*VkCreateImage); ok {
-			modifiedCmd = attachmentTransform.makeImageReadable(ctx, inputState, createImageCmd)
+			modifiedCmd, err = attachmentTransform.makeImageReadable(ctx, inputState, createImageCmd)
+			if err != nil {
+				return nil, err
+			}
 		} else if createSwapchainCmd, ok := cmd.(*VkCreateSwapchainKHR); ok {
-			modifiedCmd = attachmentTransform.makeSwapchainReadable(ctx, inputState, createSwapchainCmd)
+			modifiedCmd, err = attachmentTransform.makeSwapchainReadable(ctx, inputState, createSwapchainCmd)
+			if err != nil {
+				return nil, err
+			}
 		} else if createRenderPassCmd, ok := cmd.(*VkCreateRenderPass); ok && !attachmentTransform.imagesOnly {
-			modifiedCmd = attachmentTransform.makeRenderPassReadable(ctx, inputState, createRenderPassCmd)
+			modifiedCmd, err = attachmentTransform.makeRenderPassReadable(ctx, inputState, createRenderPassCmd)
+			if err != nil {
+				return nil, err
+			}
 		} else if enumeratePhysicalDevicesCmd, ok := cmd.(*VkEnumeratePhysicalDevices); ok && !attachmentTransform.imagesOnly {
-			modifiedCmd = attachmentTransform.makePhysicalDevicesReadable(ctx, inputState, id.GetID(), enumeratePhysicalDevicesCmd)
+			modifiedCmd, err = attachmentTransform.makePhysicalDevicesReadable(ctx, inputState, id.GetID(), enumeratePhysicalDevicesCmd)
+			if err != nil {
+				return nil, err
+			}
 		} else if createBufferCmd, ok := cmd.(*VkCreateBuffer); ok {
-			modifiedCmd = attachmentTransform.makeBufferReadable(ctx, inputState, createBufferCmd)
+			modifiedCmd, err = attachmentTransform.makeBufferReadable(ctx, inputState, createBufferCmd)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if modifiedCmd != nil {
@@ -88,13 +104,16 @@ func (attachmentTransform *makeAttachmentReadable) TransformCommand(ctx context.
 	return inputCommands, nil
 }
 
-func (attachmentTransform *makeAttachmentReadable) makeImageReadable(ctx context.Context, inputState *api.GlobalState, createImageCmd *VkCreateImage) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeImageReadable(ctx context.Context, inputState *api.GlobalState, createImageCmd *VkCreateImage) (api.Cmd, error) {
 	pinfo := createImageCmd.PCreateInfo()
-	info := pinfo.MustRead(ctx, createImageCmd, inputState, nil)
+	info, err := pinfo.Read(ctx, createImageCmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	newUsage, changed := patchImageUsage2(info.Usage())
 	if !changed {
-		return nil
+		return nil, nil
 	}
 
 	device := createImageCmd.Device()
@@ -129,16 +148,19 @@ func (attachmentTransform *makeAttachmentReadable) makeImageReadable(ctx context
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 
-	return newCmd
+	return newCmd, nil
 }
 
-func (attachmentTransform *makeAttachmentReadable) makeSwapchainReadable(ctx context.Context, inputState *api.GlobalState, createSwapchainCmd *VkCreateSwapchainKHR) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeSwapchainReadable(ctx context.Context, inputState *api.GlobalState, createSwapchainCmd *VkCreateSwapchainKHR) (api.Cmd, error) {
 	pinfo := createSwapchainCmd.PCreateInfo()
-	info := pinfo.MustRead(ctx, createSwapchainCmd, inputState, nil)
+	info, err := pinfo.Read(ctx, createSwapchainCmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	newUsage, changed := patchImageUsage2(info.ImageUsage())
 	if !changed {
-		return nil
+		return nil, nil
 	}
 
 	device := createSwapchainCmd.Device()
@@ -167,16 +189,22 @@ func (attachmentTransform *makeAttachmentReadable) makeSwapchainReadable(ctx con
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 
-	return newCmd
+	return newCmd, nil
 }
 
-func (attachmentTransform *makeAttachmentReadable) makeRenderPassReadable(ctx context.Context, inputState *api.GlobalState, createRenderPassCmd *VkCreateRenderPass) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeRenderPassReadable(ctx context.Context, inputState *api.GlobalState, createRenderPassCmd *VkCreateRenderPass) (api.Cmd, error) {
 	pInfo := createRenderPassCmd.PCreateInfo()
-	info := pInfo.MustRead(ctx, createRenderPassCmd, inputState, nil)
+	info, err := pInfo.Read(ctx, createRenderPassCmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	layout := inputState.MemoryLayout
 	pAttachments := info.PAttachments()
-	attachments := pAttachments.Slice(0, uint64(info.AttachmentCount()), layout).MustRead(ctx, createRenderPassCmd, inputState, nil)
+	attachments, err := pAttachments.Slice(0, uint64(info.AttachmentCount()), layout).Read(ctx, createRenderPassCmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	changed := false
 	for i := range attachments {
 		if attachments[i].StoreOp() == VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE {
@@ -186,7 +214,7 @@ func (attachmentTransform *makeAttachmentReadable) makeRenderPassReadable(ctx co
 	}
 
 	if !changed {
-		return nil
+		return nil, nil
 	}
 
 	// Build new attachments data, new create info and new command
@@ -215,7 +243,7 @@ func (attachmentTransform *makeAttachmentReadable) makeRenderPassReadable(ctx co
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 
-	return newCmd
+	return newCmd, nil
 }
 
 func buildReplayEnumeratePhysicalDevices2(
@@ -237,18 +265,25 @@ func buildReplayEnumeratePhysicalDevices2(
 		numDevData.Data()).AddRead(phyDevData.Data()).AddRead(devIDData.Data())
 }
 
-func (attachmentTransform *makeAttachmentReadable) makePhysicalDevicesReadable(ctx context.Context, inputState *api.GlobalState, id api.CmdID, enumeratePhysicalDeviceCmd *VkEnumeratePhysicalDevices) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makePhysicalDevicesReadable(ctx context.Context, inputState *api.GlobalState, id api.CmdID, enumeratePhysicalDeviceCmd *VkEnumeratePhysicalDevices) (api.Cmd, error) {
 	if enumeratePhysicalDeviceCmd.PPhysicalDevices() == 0 {
 		// Querying for the number of devices.
 		// No changes needed here.
-		return nil
+		return nil, nil
 	}
 
 	layout := inputState.MemoryLayout
 	enumeratePhysicalDeviceCmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-	numDev := enumeratePhysicalDeviceCmd.PPhysicalDeviceCount().Slice(0, 1, layout).MustRead(ctx, enumeratePhysicalDeviceCmd, inputState, nil)[0]
+	pNumDev, err := enumeratePhysicalDeviceCmd.PPhysicalDeviceCount().Slice(0, 1, layout).Read(ctx, enumeratePhysicalDeviceCmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
+	numDev := pNumDev[0]
 	devSlice := enumeratePhysicalDeviceCmd.PPhysicalDevices().Slice(0, uint64(numDev), layout)
-	devs := devSlice.MustRead(ctx, enumeratePhysicalDeviceCmd, inputState, nil)
+	devs, err := devSlice.Read(ctx, enumeratePhysicalDeviceCmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	allProps := externs{ctx, enumeratePhysicalDeviceCmd, id, inputState, nil, nil}.fetchPhysicalDeviceProperties(enumeratePhysicalDeviceCmd.Instance(), devSlice)
 
 	propList := []VkPhysicalDeviceProperties{}
@@ -261,16 +296,19 @@ func (attachmentTransform *makeAttachmentReadable) makePhysicalDevicesReadable(c
 	for _, extra := range enumeratePhysicalDeviceCmd.Extras().All() {
 		newCmd.Extras().Add(extra)
 	}
-	return newCmd
+	return newCmd, nil
 }
 
-func (attachmentTransform *makeAttachmentReadable) makeBufferReadable(ctx context.Context, inputState *api.GlobalState, createBufferCmd *VkCreateBuffer) api.Cmd {
+func (attachmentTransform *makeAttachmentReadable) makeBufferReadable(ctx context.Context, inputState *api.GlobalState, createBufferCmd *VkCreateBuffer) (api.Cmd, error) {
 	pinfo := createBufferCmd.PCreateInfo()
-	info := pinfo.MustRead(ctx, createBufferCmd, inputState, nil)
+	info, err := pinfo.Read(ctx, createBufferCmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	newUsage, changed := patchBufferUsage2(info.Usage())
 	if !changed {
-		return nil
+		return nil, nil
 	}
 
 	info.SetUsage(newUsage)
@@ -298,7 +336,7 @@ func (attachmentTransform *makeAttachmentReadable) makeBufferReadable(ctx contex
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 
-	return newCmd
+	return newCmd, nil
 }
 
 // color/depth/stencil attachment bit.

@@ -244,13 +244,15 @@ func (splitTransform *commandSplitter) rewriteQueueSubmit(ctx context.Context, i
 	cb := CommandBuilder{Thread: queueSubmit.Thread()}
 	queueSubmit.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
-	submitInfos := queueSubmit.PSubmits().Slice(0, uint64(queueSubmit.SubmitCount()), layout).MustRead(ctx, queueSubmit, inputState, nil)
+	submitInfos, err := queueSubmit.PSubmits().Slice(0, uint64(queueSubmit.SubmitCount()), layout).Read(ctx, queueSubmit, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	newSubmitInfos := []VkSubmitInfo{}
 
 	newSubmit := cb.VkQueueSubmit(queueSubmit.Queue(), queueSubmit.SubmitCount(), queueSubmit.PSubmits(), queueSubmit.Fence(), queueSubmit.Result())
 	newSubmit.Extras().MustClone(queueSubmit.Extras().All()...)
 
-	var err error
 	for i := 0; i < len(submitInfos); i++ {
 		subIdx := api.SubCmdIdx{uint64(id), uint64(i)}
 		newCuts := []api.SubCmdIdx{}
@@ -272,7 +274,10 @@ func (splitTransform *commandSplitter) rewriteQueueSubmit(ctx context.Context, i
 				return nil, err
 			}
 		} else {
-			commandBuffers := submitInfos[i].PCommandBuffers().Slice(0, uint64(submitInfos[i].CommandBufferCount()), layout).MustRead(ctx, queueSubmit, inputState, nil)
+			commandBuffers, err := submitInfos[i].PCommandBuffers().Slice(0, uint64(submitInfos[i].CommandBufferCount()), layout).Read(ctx, queueSubmit, inputState, nil)
+			if err != nil {
+				return nil, err
+			}
 			splitTransform.pendingCommandBuffers = append(splitTransform.pendingCommandBuffers, commandBuffers...)
 		}
 		newSubmitInfos = append(newSubmitInfos, newSubmitInfo)
@@ -306,7 +311,10 @@ func (splitTransform *commandSplitter) splitSubmit(ctx context.Context, submit V
 
 	layout := inputState.MemoryLayout
 	// pCommandBuffers
-	commandBuffers := submit.PCommandBuffers().Slice(0, uint64(submit.CommandBufferCount()), layout).MustRead(ctx, queueSubmit, inputState, nil)
+	commandBuffers, err := submit.PCommandBuffers().Slice(0, uint64(submit.CommandBufferCount()), layout).Read(ctx, queueSubmit, inputState, nil)
+	if err != nil {
+		return VkSubmitInfo{}, err
+	}
 	newCommandBuffers := make([]VkCommandBuffer, 0)
 
 	cb := CommandBuilder{Thread: queueSubmit.Thread()}

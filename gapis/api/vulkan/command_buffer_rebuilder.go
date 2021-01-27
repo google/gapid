@@ -959,7 +959,10 @@ func rebuildVkCmdPushConstants(
 	s *api.GlobalState,
 	d VkCmdPushConstantsArgsʳ) (func(), api.Cmd, error) {
 
-	dat := d.Data().MustRead(ctx, nil, r, nil)
+	dat, err := d.Data().Read(ctx, nil, r, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	data := s.AllocDataOrPanic(ctx, dat)
 
 	return func() {
@@ -1190,7 +1193,10 @@ func rebuildVkCmdUpdateBuffer(
 		return nil, nil, fmt.Errorf("Cannot find buffer %v", d.DstBuffer())
 	}
 
-	dat := d.Data().MustRead(ctx, nil, r, nil)
+	dat, err := d.Data().Read(ctx, nil, r, nil)
+	if err != nil {
+		return nil, nil, err
+	}
 	data := s.AllocDataOrPanic(ctx, dat)
 
 	return func() {

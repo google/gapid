@@ -598,7 +598,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Instances
 		case *VkCreateInstance:
 			vkCmd := cmd.(*VkCreateInstance)
-			instance := vkCmd.PInstance().MustRead(ctx, vkCmd, currentState, nil)
+			instance, err := vkCmd.PInstance().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Instance %v created.", instance)
 			f.instanceToDestroy[instance] = true
 
@@ -615,7 +618,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Device
 		case *VkCreateDevice:
 			vkCmd := cmd.(*VkCreateDevice)
-			device := vkCmd.PDevice().MustRead(ctx, vkCmd, currentState, nil)
+			device, err := vkCmd.PDevice().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Device %v created.", device)
 			f.deviceToDestroy[device] = true
 
@@ -632,7 +638,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Memories
 		case *VkAllocateMemory:
 			vkCmd := cmd.(*VkAllocateMemory)
-			mem := vkCmd.PMemory().MustRead(ctx, vkCmd, currentState, nil)
+			mem, err := vkCmd.PMemory().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Memory %v allocated", mem)
 			f.memoryToFree[mem] = true
 
@@ -666,7 +675,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Buffers.
 		case *VkCreateBuffer:
 			vkCmd := cmd.(*VkCreateBuffer)
-			buffer := vkCmd.PBuffer().MustRead(ctx, vkCmd, currentState, nil)
+			buffer, err := vkCmd.PBuffer().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Buffer %v created.", buffer)
 			f.bufferToDestroy[buffer] = true
 
@@ -683,37 +695,55 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Surfaces
 		case *VkCreateXlibSurfaceKHR:
 			vkCmd := cmd.(*VkCreateXlibSurfaceKHR)
-			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			surface, err := vkCmd.PSurface().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Surface %v created", surface)
 			f.surfaceToDestroy[surface] = true
 
 		case *VkCreateWaylandSurfaceKHR:
 			vkCmd := cmd.(*VkCreateWaylandSurfaceKHR)
-			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			surface, err := vkCmd.PSurface().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Surface %v created", surface)
 			f.surfaceToDestroy[surface] = true
 
 		case *VkCreateWin32SurfaceKHR:
 			vkCmd := cmd.(*VkCreateWin32SurfaceKHR)
-			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			surface, err := vkCmd.PSurface().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Surface %v created", surface)
 			f.surfaceToDestroy[surface] = true
 
 		case *VkCreateAndroidSurfaceKHR:
 			vkCmd := cmd.(*VkCreateAndroidSurfaceKHR)
-			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			surface, err := vkCmd.PSurface().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Surface %v created", surface)
 			f.surfaceToDestroy[surface] = true
 
 		case *VkCreateDisplayPlaneSurfaceKHR:
 			vkCmd := cmd.(*VkCreateDisplayPlaneSurfaceKHR)
-			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			surface, err := vkCmd.PSurface().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Surface %v created", surface)
 			f.surfaceToDestroy[surface] = true
 
 		case *VkCreateMacOSSurfaceMVK:
 			vkCmd := cmd.(*VkCreateMacOSSurfaceMVK)
-			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			surface, err := vkCmd.PSurface().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Surface %v created", surface)
 			f.surfaceToDestroy[surface] = true
 
@@ -730,7 +760,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Swapchains
 		case *VkCreateSwapchainKHR:
 			vkCmd := cmd.(*VkCreateSwapchainKHR)
-			swapchain := vkCmd.PSwapchain().MustRead(ctx, vkCmd, currentState, nil)
+			swapchain, err := vkCmd.PSwapchain().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Swapchain %v created", swapchain)
 			f.swapchainToDestroy[swapchain] = true
 
@@ -747,7 +780,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// BufferViews
 		case *VkCreateBufferView:
 			vkCmd := cmd.(*VkCreateBufferView)
-			buffer := vkCmd.PView().MustRead(ctx, vkCmd, currentState, nil)
+			buffer, err := vkCmd.PView().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "BuferView %v created", buffer)
 			f.bufferViewToDestroy[buffer] = true
 
@@ -764,7 +800,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Images
 		case *VkCreateImage:
 			vkCmd := cmd.(*VkCreateImage)
-			img := vkCmd.PImage().MustRead(ctx, vkCmd, currentState, nil)
+			img, err := vkCmd.PImage().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Image %v created", img)
 			f.imageToDestroy[img] = true
 
@@ -781,7 +820,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// ImageViews
 		case *VkCreateImageView:
 			vkCmd := cmd.(*VkCreateImageView)
-			img := vkCmd.PView().MustRead(ctx, vkCmd, currentState, nil)
+			img, err := vkCmd.PView().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "ImageView %v created", img)
 			f.imageViewToDestroy[img] = true
 
@@ -798,7 +840,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// SamplerYcbcrConversion(s)
 		case *VkCreateSamplerYcbcrConversion:
 			vkCmd := cmd.(*VkCreateSamplerYcbcrConversion)
-			samplerYcbcrConversion := vkCmd.PYcbcrConversion().MustRead(ctx, vkCmd, currentState, nil)
+			samplerYcbcrConversion, err := vkCmd.PYcbcrConversion().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "SamplerYcbcrConversion %v created", samplerYcbcrConversion)
 			f.samplerYcbcrConversionToDestroy[samplerYcbcrConversion] = true
 
@@ -815,7 +860,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Sampler(s)
 		case *VkCreateSampler:
 			vkCmd := cmd.(*VkCreateSampler)
-			sampler := vkCmd.PSampler().MustRead(ctx, vkCmd, currentState, nil)
+			sampler, err := vkCmd.PSampler().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Sampler %v created", sampler)
 			f.samplerToDestroy[sampler] = true
 
@@ -832,7 +880,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// ShaderModule(s)
 		case *VkCreateShaderModule:
 			vkCmd := cmd.(*VkCreateShaderModule)
-			shaderModule := vkCmd.PShaderModule().MustRead(ctx, vkCmd, currentState, nil)
+			shaderModule, err := vkCmd.PShaderModule().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "ShaderModule %v created", shaderModule)
 			f.shaderModuleToDestroy[shaderModule] = true
 
@@ -849,7 +900,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// DescriptionSetLayout(s)
 		case *VkCreateDescriptorSetLayout:
 			vkCmd := cmd.(*VkCreateDescriptorSetLayout)
-			descriptorSetLayout := vkCmd.PSetLayout().MustRead(ctx, vkCmd, currentState, nil)
+			descriptorSetLayout, err := vkCmd.PSetLayout().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
 			f.descriptorSetLayoutToDestroy[descriptorSetLayout] = true
 
@@ -866,7 +920,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// PipelineLayout(s)
 		case *VkCreatePipelineLayout:
 			vkCmd := cmd.(*VkCreatePipelineLayout)
-			pipelineLayout := vkCmd.PPipelineLayout().MustRead(ctx, vkCmd, currentState, nil)
+			pipelineLayout, err := vkCmd.PPipelineLayout().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "PipelineLayout %v created", pipelineLayout)
 			f.pipelineLayoutToDestroy[pipelineLayout] = true
 
@@ -883,7 +940,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// PipelineCache(s)
 		case *VkCreatePipelineCache:
 			vkCmd := cmd.(*VkCreatePipelineCache)
-			pipelineCache := vkCmd.PPipelineCache().MustRead(ctx, vkCmd, currentState, nil)
+			pipelineCache, err := vkCmd.PPipelineCache().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "PipelineCache %v created", pipelineCache)
 			f.pipelineCacheToDestroy[pipelineCache] = true
 
@@ -901,7 +961,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkCreateComputePipelines:
 			vkCmd := cmd.(*VkCreateComputePipelines)
 			count := vkCmd.CreateInfoCount()
-			pipelines := vkCmd.PPipelines().Slice(0, (uint64)(count), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+			pipelines, err := vkCmd.PPipelines().Slice(0, (uint64)(count), startState.MemoryLayout).Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			for index := range pipelines {
 				log.D(ctx, "ComputePipeline %v created", pipelines[index])
 				f.pipelineToDestroy[pipelines[index]] = true
@@ -911,7 +974,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkCreateGraphicsPipelines:
 			vkCmd := cmd.(*VkCreateGraphicsPipelines)
 			count := vkCmd.CreateInfoCount()
-			pipelines := vkCmd.PPipelines().Slice(0, (uint64)(count), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+			pipelines, err := vkCmd.PPipelines().Slice(0, (uint64)(count), startState.MemoryLayout).Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			for index := range pipelines {
 				log.D(ctx, "GraphicsPipeline %v created", pipelines[index])
 				f.pipelineToDestroy[pipelines[index]] = true
@@ -938,7 +1004,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// DescriptorPool(s)
 		case *VkCreateDescriptorPool:
 			vkCmd := cmd.(*VkCreateDescriptorPool)
-			descriptorPool := vkCmd.PDescriptorPool().MustRead(ctx, vkCmd, currentState, nil)
+			descriptorPool, err := vkCmd.PDescriptorPool().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "DescriptorPool %v created", descriptorPool)
 			f.descriptorPoolToDestroy[descriptorPool] = true
 
@@ -960,7 +1029,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// DescriptorSet(s)
 		case *VkAllocateDescriptorSets:
 			vkCmd := cmd.(*VkAllocateDescriptorSets)
-			allocInfo := vkCmd.PAllocateInfo().MustRead(ctx, vkCmd, currentState, nil)
+			allocInfo, err := vkCmd.PAllocateInfo().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			descriptorPool := allocInfo.DescriptorPool()
 			descriptorPoolObj := GetState(currentState).DescriptorPools().Get(descriptorPool)
 			if descriptorPoolObj.IsNil() {
@@ -973,7 +1045,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				}
 			} else {
 				descSetCount := allocInfo.DescriptorSetCount()
-				descriptorSets := vkCmd.PDescriptorSets().Slice(0, (uint64)(descSetCount), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+				descriptorSets, err := vkCmd.PDescriptorSets().Slice(0, (uint64)(descSetCount), startState.MemoryLayout).Read(ctx, vkCmd, currentState, nil)
+				if err != nil {
+					return err
+				}
 				for index := range descriptorSets {
 					log.D(ctx, "DescriptorSet %v allocated", descriptorSets[index])
 					f.descriptorSetToFree[descriptorSets[index]] = true
@@ -983,7 +1058,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkFreeDescriptorSets:
 			vkCmd := cmd.(*VkFreeDescriptorSets)
 			descSetCount := vkCmd.DescriptorSetCount()
-			descriptorSets := vkCmd.PDescriptorSets().Slice(0, (uint64)(descSetCount), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+			descriptorSets, err := vkCmd.PDescriptorSets().Slice(0, (uint64)(descSetCount), startState.MemoryLayout).Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			for index := range descriptorSets {
 				log.D(ctx, "DescriptorSet %v freed", descriptorSets[index])
 				if _, ok := f.descriptorSetToFree[descriptorSets[index]]; ok {
@@ -996,7 +1074,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Semaphores
 		case *VkCreateSemaphore:
 			vkCmd := cmd.(*VkCreateSemaphore)
-			sem := vkCmd.PSemaphore().MustRead(ctx, vkCmd, currentState, nil)
+			sem, err := vkCmd.PSemaphore().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Semaphore %v is created during loop.", sem)
 			f.semaphoreToDestroy[sem] = true
 
@@ -1013,7 +1094,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Fences
 		case *VkCreateFence:
 			vkCmd := cmd.(*VkCreateFence)
-			fence := vkCmd.PFence().MustRead(ctx, vkCmd, currentState, nil)
+			fence, err := vkCmd.PFence().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Fence %v is created during loop.", fence)
 			f.fenceToDestroy[fence] = true
 
@@ -1030,7 +1114,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Events
 		case *VkCreateEvent:
 			vkCmd := cmd.(*VkCreateEvent)
-			event := vkCmd.PEvent().MustRead(ctx, vkCmd, currentState, nil)
+			event, err := vkCmd.PEvent().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Event %v is created during loop.", event)
 			f.eventToDestroy[event] = true
 
@@ -1047,7 +1134,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// FrameBuffers
 		case *VkCreateFramebuffer:
 			vkCmd := cmd.(*VkCreateFramebuffer)
-			framebuffer := vkCmd.PFramebuffer().MustRead(ctx, vkCmd, currentState, nil)
+			framebuffer, err := vkCmd.PFramebuffer().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "Framebuffer %v created", framebuffer)
 			f.framebufferToDestroy[framebuffer] = true
 
@@ -1064,7 +1154,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// RenderPass(s)
 		case *VkCreateRenderPass:
 			vkCmd := cmd.(*VkCreateRenderPass)
-			renderPass := vkCmd.PRenderPass().MustRead(ctx, vkCmd, currentState, nil)
+			renderPass, err := vkCmd.PRenderPass().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "RenderPass %v created", renderPass)
 			f.renderPassToDestroy[renderPass] = true
 
@@ -1081,7 +1174,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// QueryPool(s)
 		case *VkCreateQueryPool:
 			vkCmd := cmd.(*VkCreateQueryPool)
-			queryPool := vkCmd.PQueryPool().MustRead(ctx, vkCmd, currentState, nil)
+			queryPool, err := vkCmd.PQueryPool().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "QueryPool %v created", queryPool)
 			f.queryPoolToDestroy[queryPool] = true
 
@@ -1126,7 +1222,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// CommandPool(s)
 		case *VkCreateCommandPool:
 			vkCmd := cmd.(*VkCreateCommandPool)
-			commandPool := vkCmd.PCommandPool().MustRead(ctx, vkCmd, currentState, nil)
+			commandPool, err := vkCmd.PCommandPool().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			log.D(ctx, "CommandPool %v created", commandPool)
 			f.commandPoolToDestroy[commandPool] = true
 
@@ -1143,8 +1242,15 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Command Buffers
 		case *VkAllocateCommandBuffers:
 			vkCmd := cmd.(*VkAllocateCommandBuffers)
-			cmdBufCount := vkCmd.PAllocateInfo().MustRead(ctx, vkCmd, currentState, nil).CommandBufferCount()
-			cmdBuffers := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+			allocInfo, err := vkCmd.PAllocateInfo().Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
+			cmdBufCount := allocInfo.CommandBufferCount()
+			cmdBuffers, err := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).Read(ctx, vkCmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			for _, cmdBuf := range cmdBuffers {
 				f.commandBufferToFree[cmdBuf] = true
 				log.D(ctx, "Command buffer %v allocated.", cmdBuf)
@@ -1153,7 +1259,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkFreeCommandBuffers:
 			vkCmd := cmd.(*VkFreeCommandBuffers)
 			cmdBufCount := vkCmd.CommandBufferCount()
-			cmdBufs := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
+			cmdBufs, err := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).Read(ctx, cmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			for _, cmdBuf := range cmdBufs {
 				log.D(ctx, "Command buffer %v freed.", cmdBufs)
 				if _, ok := f.commandBufferToFree[cmdBuf]; ok {
@@ -1168,9 +1277,15 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkQueueSubmit:
 			vkCmd := cmd.(*VkQueueSubmit)
 			submitCount := vkCmd.SubmitCount()
-			submitInfos := vkCmd.pSubmits.Slice(0, uint64(submitCount), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
+			submitInfos, err := vkCmd.pSubmits.Slice(0, uint64(submitCount), currentState.MemoryLayout).Read(ctx, cmd, currentState, nil)
+			if err != nil {
+				return err
+			}
 			for _, si := range submitInfos {
-				cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
+				cmdBuffers, err := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), currentState.MemoryLayout).Read(ctx, cmd, currentState, nil)
+				if err != nil {
+					return err
+				}
 				for _, cmdBuf := range cmdBuffers {
 					// Re-record all command buffers that are not allocated during the loop for now.
 					if _, ok := f.commandBufferToFree[cmdBuf]; !ok {

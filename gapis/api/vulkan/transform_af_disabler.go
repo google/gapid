@@ -58,7 +58,11 @@ func (afDisabler *afDisablerTransform) ClearTransformResources(ctx context.Conte
 func (afDisabler *afDisablerTransform) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if cmd, ok := cmd.(*VkCreateSampler); ok {
-			inputCommands[i] = afDisabler.disableAFInSamplerCreation(ctx, cmd, inputState)
+			var err error
+			inputCommands[i], err = afDisabler.disableAFInSamplerCreation(ctx, cmd, inputState)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -69,14 +73,17 @@ func (afDisabler *afDisablerTransform) EndTransform(ctx context.Context, inputSt
 	return nil, nil
 }
 
-func (afDisabler *afDisablerTransform) disableAFInSamplerCreation(ctx context.Context, cmd *VkCreateSampler, inputState *api.GlobalState) api.Cmd {
+func (afDisabler *afDisablerTransform) disableAFInSamplerCreation(ctx context.Context, cmd *VkCreateSampler, inputState *api.GlobalState) (api.Cmd, error) {
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	pAlloc := memory.Pointer(cmd.PAllocator())
 	pSampler := memory.Pointer(cmd.PSampler())
 
 	pInfo := cmd.PCreateInfo()
-	info := pInfo.MustRead(ctx, cmd, inputState, nil)
+	info, err := pInfo.Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	info.SetAnisotropyEnable(VkBool32(0))
 	newInfo := afDisabler.allocations.AllocDataOrPanic(ctx, info)
 
@@ -87,5 +94,5 @@ func (afDisabler *afDisablerTransform) disableAFInSamplerCreation(ctx context.Co
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 
-	return newCmd
+	return newCmd, nil
 }

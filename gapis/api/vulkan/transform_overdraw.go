@@ -203,7 +203,10 @@ func (overdrawTransform *stencilOverdraw) rewriteImageCreate(ctx context.Context
 	}
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
-	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, inputState, nil)
+	createInfo, err := cmd.PCreateInfo().Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return err
+	}
 	mask := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
 	if !isDepthFormat(createInfo.Fmt()) || (createInfo.Usage()&mask == mask) {
 		return nil
@@ -212,9 +215,12 @@ func (overdrawTransform *stencilOverdraw) rewriteImageCreate(ctx context.Context
 	newCreateInfo := createInfo.Clone(api.CloneContext{})
 
 	if !newCreateInfo.PQueueFamilyIndices().IsNullptr() {
-		indices := newCreateInfo.PQueueFamilyIndices().Slice(0,
-			uint64(newCreateInfo.QueueFamilyIndexCount()), inputState.MemoryLayout).
-			MustRead(ctx, cmd, inputState, nil)
+		indices, err := newCreateInfo.PQueueFamilyIndices().Slice(0,
+			uint64(newCreateInfo.QueueFamilyIndexCount()), inputState.MemoryLayout).Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return err
+		}
+
 		data := allocAndRead(indices)
 		newCreateInfo.SetPQueueFamilyIndices(NewU32ᶜᵖ(data.Ptr()))
 	}
@@ -226,12 +232,19 @@ func (overdrawTransform *stencilOverdraw) rewriteImageCreate(ctx context.Context
 
 	allocatorPtr := memory.Nullptr
 	if !cmd.PAllocator().IsNullptr() {
-		allocatorPtr = allocAndRead(
-			cmd.PAllocator().MustRead(ctx, cmd, inputState, nil)).Ptr()
+		pAllocator, err := cmd.PAllocator().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return err
+		}
+		allocatorPtr = allocAndRead(pAllocator).Ptr()
 	}
 
 	cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-	idData := overdrawTransform.allocations.AllocDataOrPanic(ctx, cmd.PImage().MustRead(ctx, cmd, inputState, nil))
+	pImage, err := cmd.PImage().Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return err
+	}
+	idData := overdrawTransform.allocations.AllocDataOrPanic(ctx, pImage)
 
 	newCmd := overdrawTransform.cmdBuilder.VkCreateImage(cmd.Device(), newCreateInfoPtr,
 		allocatorPtr, idData.Ptr(),
@@ -682,14 +695,19 @@ func (overdrawTransform *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx c
 				}
 				module = m
 			}
+			specializationInfo, err := createSpecializationInfo(ctx, inputState, stage.Specialization(), allocAndRead)
+			if err != nil {
+				return NilVkGraphicsPipelineCreateInfo, err
+			}
+
 			data[idx] = NewVkPipelineShaderStageCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, // sType
 				0,             // pNext
 				0,             // flags
 				stage.Stage(), // stage
 				module,        // module
-				NewCharᶜᵖ(allocAndRead(stage.EntryPoint()).Ptr()),                               // pName
-				createSpecializationInfo(ctx, inputState, stage.Specialization(), allocAndRead), // pSpecializationInfo
+				NewCharᶜᵖ(allocAndRead(stage.EntryPoint()).Ptr()), // pName
+				specializationInfo, // pSpecializationInfo
 			)
 		}
 		allocation := allocAndRead(data)
@@ -904,7 +922,10 @@ func (overdrawTransform *stencilOverdraw) createShaderModule(ctx context.Context
 	}))
 	moduleData := overdrawTransform.allocations.AllocDataOrPanic(ctx, module)
 
-	words := info.Words().MustRead(ctx, nil, inputState, nil)
+	words, err := info.Words().Read(ctx, nil, inputState, nil)
+	if err != nil {
+		return VkShaderModule(0), err
+	}
 	wordsData := overdrawTransform.allocations.AllocDataOrPanic(ctx, words)
 	createInfoData := overdrawTransform.allocations.AllocDataOrPanic(ctx,
 		NewVkShaderModuleCreateInfo(
@@ -1726,8 +1747,10 @@ func (overdrawTransform *stencilOverdraw) rewriteQueueSubmit(ctx context.Context
 	layout := inputState.MemoryLayout
 	queueSubmitCmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 	submitCount := queueSubmitCmd.SubmitCount()
-	submitInfos := queueSubmitCmd.PSubmits().Slice(0, uint64(submitCount), layout).MustRead(
-		ctx, queueSubmitCmd, inputState, nil)
+	submitInfos, err := queueSubmitCmd.PSubmits().Slice(0, uint64(submitCount), layout).Read(ctx, queueSubmitCmd, inputState, nil)
+	if err != nil {
+		return stencilImage{}, err
+	}
 
 	newSubmitInfos := make([]VkSubmitInfo, submitCount)
 	for i := uint32(0); i < submitCount; i++ {
@@ -1736,26 +1759,34 @@ func (overdrawTransform *stencilOverdraw) rewriteQueueSubmit(ctx context.Context
 		waitSemPtr := memory.Nullptr
 		waitDstStagePtr := memory.Nullptr
 		if count := uint64(si.WaitSemaphoreCount()); count > 0 {
-			waitSemPtr = allocAndRead(si.PWaitSemaphores().
-				Slice(0, count, layout).
-				MustRead(ctx, queueSubmitCmd, inputState, nil)).Ptr()
-			waitDstStagePtr = allocAndRead(si.PWaitDstStageMask().
-				Slice(0, count, layout).
-				MustRead(ctx, queueSubmitCmd, inputState, nil)).Ptr()
+			waitSem, err := si.PWaitSemaphores().Slice(0, count, layout).Read(ctx, queueSubmitCmd, inputState, nil)
+			if err != nil {
+				return stencilImage{}, err
+			}
+			waitSemPtr = allocAndRead(waitSem).Ptr()
+
+			waitDstStage, err := si.PWaitDstStageMask().Slice(0, count, layout).Read(ctx, queueSubmitCmd, inputState, nil)
+			if err != nil {
+				return stencilImage{}, err
+			}
+			waitDstStagePtr = allocAndRead(waitDstStage).Ptr()
 		}
 
 		signalSemPtr := memory.Nullptr
 		if count := uint64(si.SignalSemaphoreCount()); count > 0 {
-			signalSemPtr = allocAndRead(si.PSignalSemaphores().
-				Slice(0, count, layout).
-				MustRead(ctx, queueSubmitCmd, inputState, nil)).Ptr()
+			signalSem, err := si.PSignalSemaphores().Slice(0, count, layout).Read(ctx, queueSubmitCmd, inputState, nil)
+			if err != nil {
+				return stencilImage{}, err
+			}
+			signalSemPtr = allocAndRead(signalSem).Ptr()
 		}
 
 		cmdBufferPtr := memory.Nullptr
 		if count := uint64(si.CommandBufferCount()); count > 0 {
-			cmdBuffers := si.PCommandBuffers().
-				Slice(0, count, layout).
-				MustRead(ctx, queueSubmitCmd, inputState, nil)
+			cmdBuffers, err := si.PCommandBuffers().Slice(0, count, layout).Read(ctx, queueSubmitCmd, inputState, nil)
+			if err != nil {
+				return stencilImage{}, err
+			}
 			if uint64(i) == rpBeginIdx[0] {
 				newCommandBuffer, err := overdrawTransform.createCommandBuffer(ctx, inputState,
 					queueSubmitCmd.Queue(), cmdBuffers[rpBeginIdx[1]], renderInfo, rpBeginIdx[2])
@@ -2771,19 +2802,22 @@ func createSpecializationInfo(ctx context.Context,
 	inputState *api.GlobalState,
 	info SpecializationInfoʳ,
 	allocAndRead func(v ...interface{}) api.AllocResult,
-) VkSpecializationInfoᶜᵖ {
+) (VkSpecializationInfoᶜᵖ, error) {
 	if info.IsNil() {
-		return 0
+		return 0, nil
 	}
 	mapEntries, mapEntryCount := unpackMapWithAllocator(allocAndRead, info.Specializations().All())
-	data := info.Data().MustRead(ctx, nil, inputState, nil)
+	data, err := info.Data().Read(ctx, nil, inputState, nil)
+	if err != nil {
+		return VkSpecializationInfoᶜᵖ(0), err
+	}
 	return NewVkSpecializationInfoᶜᵖ(allocAndRead(
 		NewVkSpecializationInfo(
 			mapEntryCount, // mapEntryCount
 			NewVkSpecializationMapEntryᶜᵖ(mapEntries.Ptr()), // pMapEntries
 			memory.Size(len(data)),                          // dataSize,
 			NewVoidᶜᵖ(allocAndRead(data).Ptr()),             // pData
-		)).Ptr())
+		)).Ptr()), nil
 }
 
 func subpassToSubpassDescription(
@@ -2966,14 +3000,18 @@ func getLastRenderPass(ctx context.Context,
 	lastRenderPassArgs := NilVkCmdBeginRenderPassArgsʳ
 	var lastRenderPassIdx api.SubCmdIdx
 	submit.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
-	submitInfos := submit.PSubmits().Slice(0, uint64(submit.SubmitCount()),
-		inputState.MemoryLayout).MustRead(ctx, submit, inputState, nil)
+	submitInfos, err := submit.PSubmits().Slice(0, uint64(submit.SubmitCount()), inputState.MemoryLayout).Read(ctx, submit, inputState, nil)
+	if err != nil {
+		return NilVkCmdBeginRenderPassArgsʳ, nil, err
+	}
 	for i, si := range submitInfos {
 		if len(lastIdx) >= 1 && lastIdx[0] < uint64(i) {
 			break
 		}
-		cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()),
-			inputState.MemoryLayout).MustRead(ctx, submit, inputState, nil)
+		cmdBuffers, err := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), inputState.MemoryLayout).Read(ctx, submit, inputState, nil)
+		if err != nil {
+			return NilVkCmdBeginRenderPassArgsʳ, nil, err
+		}
 		for j, buf := range cmdBuffers {
 			if len(lastIdx) >= 2 && lastIdx[0] == uint64(i) && lastIdx[1] < uint64(j) {
 				break

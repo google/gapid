@@ -61,7 +61,11 @@ func (surfaceTransform *displayToSurface) ClearTransformResources(ctx context.Co
 
 func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
-		if modifiedCmd := surfaceTransform.modifySurface(ctx, cmd, inputState); modifiedCmd != nil {
+		modifiedCmd, err := surfaceTransform.modifySurface(ctx, cmd, inputState)
+		if err != nil {
+			return nil, err
+		}
+		if modifiedCmd != nil {
 			inputCommands[i] = modifiedCmd
 		}
 	}
@@ -69,48 +73,69 @@ func (surfaceTransform *displayToSurface) TransformCommand(ctx context.Context, 
 	return inputCommands, nil
 }
 
-func (surfaceTransform *displayToSurface) modifySurface(ctx context.Context, cmd api.Cmd, inputState *api.GlobalState) api.Cmd {
+func (surfaceTransform *displayToSurface) modifySurface(ctx context.Context, cmd api.Cmd, inputState *api.GlobalState) (api.Cmd, error) {
 	if swapchainCmd, ok := cmd.(*VkCreateSwapchainKHR); ok {
 		newCmd := swapchainCmd.clone()
 		newCmd.extras = api.CmdExtras{}
 		// Add an extra to indicate to custom_replay to add a flag to
 		// the virtual swapchain pNext
 		newCmd.extras = append(api.CmdExtras{surfaceTransform}, swapchainCmd.Extras().All()...)
-		return newCmd
+		return newCmd, nil
 	}
 
 	switch c := cmd.(type) {
 	case *VkCreateAndroidSurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, inputState, nil)
+		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR)
 	case *VkCreateWaylandSurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, inputState, nil)
+		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR)
 	case *VkCreateWin32SurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, inputState, nil)
+		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR)
 	case *VkCreateXcbSurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, inputState, nil)
+		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR)
 	case *VkCreateXlibSurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, inputState, nil)
+		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR)
 	case *VkCreateMacOSSurfaceMVK:
 		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, inputState, nil)
+		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK)
 	case *VkCreateStreamDescriptorSurfaceGGP:
 		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, inputState, nil)
+		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP)
 	default:
-		return nil
+		return nil, nil
 	}
 
-	return cmd
+	return cmd, nil
 }

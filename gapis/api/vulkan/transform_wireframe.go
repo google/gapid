@@ -61,7 +61,10 @@ func (wireframe *wireframeTransform) ClearTransformResources(ctx context.Context
 func (wireframe *wireframeTransform) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if createGraphicsPipelinesCmd, ok := cmd.(*VkCreateGraphicsPipelines); ok {
-			modifiedCmd := wireframe.updateGraphicsPipelines(ctx, createGraphicsPipelinesCmd, inputState)
+			modifiedCmd, err := wireframe.updateGraphicsPipelines(ctx, createGraphicsPipelinesCmd, inputState)
+			if err != nil {
+				return nil, err
+			}
 			if modifiedCmd != nil {
 				inputCommands[i] = modifiedCmd
 			}
@@ -71,7 +74,7 @@ func (wireframe *wireframeTransform) TransformCommand(ctx context.Context, id tr
 	return inputCommands, nil
 }
 
-func (wireframe *wireframeTransform) updateGraphicsPipelines(ctx context.Context, cmd *VkCreateGraphicsPipelines, inputState *api.GlobalState) api.Cmd {
+func (wireframe *wireframeTransform) updateGraphicsPipelines(ctx context.Context, cmd *VkCreateGraphicsPipelines, inputState *api.GlobalState) (api.Cmd, error) {
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
 	count := uint64(cmd.CreateInfoCount())
@@ -80,8 +83,17 @@ func (wireframe *wireframeTransform) updateGraphicsPipelines(ctx context.Context
 
 	newRasterStateDatas := make([]api.AllocResult, count)
 	for i := uint64(0); i < count; i++ {
-		info := infos.Index(i).MustRead(ctx, cmd, inputState, nil)[0]
-		rasterState := info.PRasterizationState().MustRead(ctx, cmd, inputState, nil)
+
+		pInfo, err := infos.Index(i).Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
+		info := pInfo[0]
+
+		rasterState, err := info.PRasterizationState().Read(ctx, cmd, inputState, nil)
+		if err != nil {
+			return nil, err
+		}
 		rasterState.SetPolygonMode(VkPolygonMode_VK_POLYGON_MODE_LINE)
 		newRasterStateDatas[i] = wireframe.allocations.AllocDataOrPanic(ctx, rasterState)
 		info.SetPRasterizationState(NewVkPipelineRasterizationStateCreateInfoᶜᵖ(newRasterStateDatas[i].Ptr()))
@@ -101,5 +113,5 @@ func (wireframe *wireframeTransform) updateGraphicsPipelines(ctx context.Context
 	for _, w := range cmd.Extras().Observations().Writes {
 		newCmd.AddWrite(w.Range, w.ID)
 	}
-	return newCmd
+	return newCmd, nil
 }

@@ -60,7 +60,10 @@ func (profilingLayerTransform *profilingLayers) EndTransform(ctx context.Context
 func (profilingLayerTransform *profilingLayers) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	for i, cmd := range inputCommands {
 		if createInstanceCommand, ok := cmd.(*VkCreateInstance); ok {
-			modifiedCmd := profilingLayerTransform.addProfilingLayersToCreateInstance(ctx, createInstanceCommand, inputState)
+			modifiedCmd, err := profilingLayerTransform.addProfilingLayersToCreateInstance(ctx, createInstanceCommand, inputState)
+			if err != nil {
+				return nil, err
+			}
 			if modifiedCmd != nil {
 				inputCommands[i] = modifiedCmd
 			}
@@ -73,11 +76,14 @@ func (profilingLayerTransform *profilingLayers) ClearTransformResources(ctx cont
 	profilingLayerTransform.allocations.FreeAllocations()
 }
 
-func (profilingLayerTransform *profilingLayers) addProfilingLayersToCreateInstance(ctx context.Context, createInstanceCommand *VkCreateInstance, inputState *api.GlobalState) api.Cmd {
+func (profilingLayerTransform *profilingLayers) addProfilingLayersToCreateInstance(ctx context.Context, createInstanceCommand *VkCreateInstance, inputState *api.GlobalState) (api.Cmd, error) {
 	ctx = log.Enter(ctx, "ProfilingLayers")
 
 	createInstanceCommand.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
-	info := createInstanceCommand.PCreateInfo().MustRead(ctx, createInstanceCommand, inputState, nil)
+	info, err := createInstanceCommand.PCreateInfo().Read(ctx, createInstanceCommand, inputState, nil)
+	if err != nil {
+		return nil, err
+	}
 	// Strip all instance layers that were originally present. If the device wants
 	// a layer in order to support collecting renderstages, then add that layer only.
 
@@ -109,5 +115,5 @@ func (profilingLayerTransform *profilingLayers) addProfilingLayersToCreateInstan
 	for _, w := range createInstanceCommand.Extras().Observations().Writes {
 		newCmd.AddWrite(w.Range, w.ID)
 	}
-	return newCmd
+	return newCmd, nil
 }

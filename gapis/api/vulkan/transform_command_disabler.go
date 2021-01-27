@@ -155,7 +155,10 @@ func (disablerTransform *commandDisabler) removeCommandFromVkQueueSubmit(ctx con
 	cb := CommandBuilder{Thread: cmd.Thread()}
 	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
-	submitInfos := cmd.PSubmits().Slice(0, uint64(cmd.SubmitCount()), layout).MustRead(ctx, cmd, inputState, nil)
+	submitInfos, err := cmd.PSubmits().Slice(0, uint64(cmd.SubmitCount()), layout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return err
+	}
 	newSubmitInfos := []VkSubmitInfo{}
 
 	newSubmit := cb.VkQueueSubmit(cmd.Queue(), cmd.SubmitCount(), cmd.PSubmits(), cmd.Fence(), cmd.Result())
@@ -198,7 +201,10 @@ func (disablerTransform *commandDisabler) removeCommandFromSubmit(ctx context.Co
 	idx api.SubCmdIdx, submitInfo VkSubmitInfo, cmd *VkQueueSubmit, inputState *api.GlobalState) (VkSubmitInfo, error) {
 	layout := inputState.MemoryLayout
 	// pCommandBuffers
-	commandBuffers := submitInfo.PCommandBuffers().Slice(0, uint64(submitInfo.CommandBufferCount()), layout).MustRead(ctx, cmd, inputState, nil)
+	commandBuffers, err := submitInfo.PCommandBuffers().Slice(0, uint64(submitInfo.CommandBufferCount()), layout).Read(ctx, cmd, inputState, nil)
+	if err != nil {
+		return VkSubmitInfo{}, err
+	}
 	newCommandBuffers := make([]VkCommandBuffer, 0, len(commandBuffers))
 
 	for i, commandBuffer := range commandBuffers {

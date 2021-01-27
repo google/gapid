@@ -102,7 +102,6 @@ func (kb *ipHostCopyKitBuilder) BuildHostCopyKits(sb *stateBuilder, recipes ...i
 func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 	sb *stateBuilder, dstImgObj ImageObjectʳ, dstAspect VkImageAspectFlagBits,
 	srcImgObj ImageObjectʳ, srcAspect VkImageAspectFlagBits, subAspect ipHostCopyRecipeSubAspectPiece) (ipHostCopyKitPiece, error) {
-	var err error
 	srcVkFmt := srcImgObj.Info().Fmt()
 	dstVkFmt := dstImgObj.Info().Fmt()
 	kitPiece := ipHostCopyKitPiece{
@@ -133,7 +132,10 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 	if srcVkFmt != dstVkFmt {
 		// dstImg format is different with the srcImage format, the dst image
 		// should be a staging image.
-		data := srcDataSlice.MustRead(sb.ctx, nil, sb.oldState, nil)
+		data, err := srcDataSlice.Read(sb.ctx, nil, sb.oldState, nil)
+		if err != nil {
+			return ipHostCopyKitPiece{}, err
+		}
 		if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 			data, srcVkFmt, err = ebgrDataToRGB32SFloat(data,
 				NewVkExtent3D(
@@ -155,7 +157,10 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 		// be used directly, except when the src image is a dpeth 24 UNORM one.
 		if (srcVkFmt == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) ||
 			(srcVkFmt == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
-			data := srcDataSlice.MustRead(sb.ctx, nil, sb.oldState, nil)
+			data, err := srcDataSlice.Read(sb.ctx, nil, sb.oldState, nil)
+			if err != nil {
+				return ipHostCopyKitPiece{}, err
+			}
 			unpackedData, _, err = unpackDataForPriming(sb.ctx, data, srcVkFmt, srcAspect)
 			if err != nil {
 				return kitPiece, log.Errf(sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcVkFmt, srcAspect)
@@ -169,7 +174,10 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 			return kitPiece, log.Errf(sb.ctx, err, "failed at checking unpacked data size, unpacked from: %v", srcVkFmt)
 		}
 	} else if srcDataSlice.Size()%8 != 0 {
-		data := srcDataSlice.MustRead(sb.ctx, nil, sb.oldState, nil)
+		data, err := srcDataSlice.Read(sb.ctx, nil, sb.oldState, nil)
+		if err != nil {
+			return ipHostCopyKitPiece{}, err
+		}
 		extendToMultipleOf8(&data)
 		kitPiece.data = newHashedDataFromBytes(sb.ctx, data)
 		if err := checkHostCopyPieceDataSize(sb, dstVkFmt, dstAspect, kitPiece); err != nil {

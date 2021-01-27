@@ -922,7 +922,10 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Graphic
 	pAlloc := memory.Pointer(cmd.PAllocator())
 	pShaderModule := memory.Pointer(cmd.PShaderModule())
 	result := cmd.Result()
-	createInfo := cmd.PCreateInfo().MustRead(ctx, cmd, state, nil)
+	createInfo, err := cmd.PCreateInfo().Read(ctx, cmd, state, nil)
+	if err != nil {
+		return err
+	}
 
 	createInfo.SetPCode(NewU32ᶜᵖ(code.Ptr()))
 	createInfo.SetCodeSize(memory.Size(codeSize))
