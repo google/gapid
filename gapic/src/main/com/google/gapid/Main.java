@@ -125,7 +125,9 @@ public class Main {
 
         LOG.log(Level.WARNING, "Unhandled exception in the UI thread.", thrown);
         handler.reportException(thrown);
-        showErrorDialog(null, getAnalytics(), "Unhandled exception in the UI thread.", thrown);
+        if (shouldShowUIErrorDialog(thrown)) {
+          showErrorDialog(null, getAnalytics(), "Unhandled exception in the UI thread.", thrown);
+        }
       });
     }
 
@@ -214,6 +216,16 @@ public class Main {
 
     private Analytics getAnalytics() {
       return (models == null) ? null : models.analytics;
+    }
+
+    private boolean shouldShowUIErrorDialog(Throwable throwable) {
+      // TODO b/178397207: Disable error dialog for a known UI issue, while waiting solution from the SWT side.
+      if (OS.isMac && throwable != null && throwable.getStackTrace().length > 0
+          && "org.eclipse.swt.widgets.Widget".equals(throwable.getStackTrace()[0].getClassName())
+          && "drawRect".equals(throwable.getStackTrace()[0].getMethodName())) {
+        return false;
+      }
+      return true;
     }
 
     private static interface ShellRunnable {
