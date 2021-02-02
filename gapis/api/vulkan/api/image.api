@@ -549,8 +549,8 @@ cmd void vkDestroyImageView(
                 _ = indices
                 for _, index, _ in indices {
                   if index in desSetObj.Bindings[binding].ImageBinding {
-                    if desSetObj.Bindings[binding].ImageBinding[index].ImageView == imageView {
-                      desSetObj.Bindings[binding].ImageBinding[index].ImageView = as!VkImageView(0)
+                    if desSetObj.Bindings[binding].ImageBinding[index].imageView == imageView {
+                      desSetObj.Bindings[binding].ImageBinding[index].imageView = as!VkImageView(0)
                     }
                   }
                 }
@@ -696,8 +696,8 @@ cmd void vkDestroySampler(
                 case VK_DESCRIPTOR_TYPE_SAMPLER,
                   VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                   for _, index, _ in indices {
-                    if desSetObj.Bindings[binding].ImageBinding[index].Sampler == sampler {
-                      desSetObj.Bindings[binding].ImageBinding[index].Sampler = as!VkSampler(0)
+                    if desSetObj.Bindings[binding].ImageBinding[index].sampler == sampler {
+                      desSetObj.Bindings[binding].ImageBinding[index].sampler = as!VkSampler(0)
                     }
                   }
                 }

@@ -382,9 +382,9 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
             DstSet:             write.dstSet,
             Type:               write.descriptorType,
             ImageInfo:          new!VkDescriptorImageInfo(
-              Sampler:      imageInfo.Sampler,
-              ImageView:    0,
-              ImageLayout:  as!VkImageLayout(0)
+              sampler:      imageInfo.sampler,
+              imageView:    0,
+              imageLayout:  as!VkImageLayout(0)
             )
           )
         }
@@ -400,9 +400,9 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
             DstSet:             write.dstSet,
             Type:               write.descriptorType,
             ImageInfo:          new!VkDescriptorImageInfo(
-              Sampler:      imageInfo.Sampler,
-              ImageView:    imageInfo.ImageView,
-              ImageLayout:  imageInfo.ImageLayout
+              sampler:      imageInfo.sampler,
+              imageView:    imageInfo.imageView,
+              imageLayout:  imageInfo.imageLayout
             )
           )
         }
@@ -430,9 +430,9 @@ sub map!(u32, DescriptorSetWrite) RewriteWriteDescriptorSets
             DstSet:             write.dstSet,
             BindingArrayIndex:  updating.ArrayIndex,
             BufferInfo:         new!VkDescriptorBufferInfo(
-              Buffer:  bufferInfo.Buffer,
-              Offset:  bufferInfo.Offset,
-              Range:   bufferInfo.Range
+              buffer:  bufferInfo.buffer,
+              offset:  bufferInfo.offset,
+              range:   bufferInfo.range
             )
           )
         }
@@ -609,14 +609,14 @@ cmd void vkUpdateDescriptorSets(
             imageBinding[arrayIndex] = w.ImageInfo
             setBinding.ImageBinding = imageBinding
 
-            if w.ImageInfo.Sampler in Samplers {
-              samObj := Samplers[w.ImageInfo.Sampler]
+            if w.ImageInfo.sampler in Samplers {
+              samObj := Samplers[w.ImageInfo.sampler]
               if samObj != null {
                 registerDescriptorUser!SamplerObject(samObj, w.DstSet, binding, arrayIndex)
               }
             }
-            if w.ImageInfo.ImageView in ImageViews {
-              viewObj := ImageViews[w.ImageInfo.ImageView]
+            if w.ImageInfo.imageView in ImageViews {
+              viewObj := ImageViews[w.ImageInfo.imageView]
               if viewObj != null {
                 registerDescriptorUser!ImageViewObject(viewObj, w.DstSet, binding, arrayIndex)
               }
@@ -644,8 +644,8 @@ cmd void vkUpdateDescriptorSets(
         bufferBindings[arrayIndex] = w.BufferInfo
         setBinding.BufferBinding = bufferBindings
         for _, _, b in setBinding.BufferBinding {
-          if !b.Buffer in Buffers {
-            vkErrorInvalidBuffer(b.Buffer)
+          if !b.buffer in Buffers {
+            vkErrorInvalidBuffer(b.buffer)
           }
         }
       }
@@ -677,7 +677,7 @@ cmd void vkUpdateDescriptorSets(
           imageBinding[c.DstArrayIndex] = srcBinding.ImageBinding[c.SrcArrayIndex]
           dstBinding.ImageBinding = imageBinding
 
-          vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].Sampler
+          vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].sampler
           if vkSam in Samplers {
             samObj := Samplers[vkSam]
             if samObj != null {
@@ -693,7 +693,7 @@ cmd void vkUpdateDescriptorSets(
           imageBinding[c.DstArrayIndex] = srcBinding.ImageBinding[c.SrcArrayIndex]
           dstBinding.ImageBinding = imageBinding
 
-          vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].Sampler
+          vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].sampler
           if vkSam in Samplers {
             samObj := Samplers[vkSam]
             if samObj != null {
@@ -701,7 +701,7 @@ cmd void vkUpdateDescriptorSets(
             }
           }
 
-          vkView := srcBinding.ImageBinding[c.SrcArrayIndex].ImageView
+          vkView := srcBinding.ImageBinding[c.SrcArrayIndex].imageView
           if vkView in ImageViews {
             viewObj := ImageViews[vkView]
             if viewObj != null {
@@ -735,8 +735,8 @@ cmd void vkUpdateDescriptorSets(
           srcBinding.BufferBinding[c.SrcArrayIndex]
           dstBinding.BufferBinding = bufferBinding
           for _, _, b in dstBinding.BufferBinding {
-            if !b.Buffer in Buffers {
-              vkErrorInvalidBuffer(b.Buffer)
+            if !b.buffer in Buffers {
+              vkErrorInvalidBuffer(b.buffer)
             }
           }
         }
@@ -815,9 +815,9 @@ sub void trackDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs arg
 
             binding_offset := switch binding.BindingType {
               case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                as!VkDeviceSize(args.DynamicOffsets[dynamic_offset_index.Val]) + bufferInfo.Offset
+                as!VkDeviceSize(args.DynamicOffsets[dynamic_offset_index.Val]) + bufferInfo.offset
               default:
-                bufferInfo.Offset
+                bufferInfo.offset
             }
             dynamic_offset_index.Val = switch binding.BindingType {
               case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:

@@ -172,13 +172,13 @@ sub void updateDescriptorSetWithTemplate(
                         inf := as!VkDescriptorImageInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
                         imageBinding := setBinding.ImageBinding
                         imageBinding[entry.dstArrayElement] = new!VkDescriptorImageInfo(
-                            Sampler: inf.Sampler,
-                            ImageView: 0,
-                            ImageLayout: as!VkImageLayout(0)
+                            sampler: inf.sampler,
+                            imageView: 0,
+                            imageLayout: as!VkImageLayout(0)
                         )
                         setBinding.ImageBinding = imageBinding
-                        if inf.Sampler in Samplers {
-                          samObj := Samplers[inf.Sampler]
+                        if inf.sampler in Samplers {
+                          samObj := Samplers[inf.sampler]
                           if samObj != null {
                             registerDescriptorUser!SamplerObject(samObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
                           }
@@ -191,19 +191,19 @@ sub void updateDescriptorSetWithTemplate(
                         inf := as!VkDescriptorImageInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
                         imageBinding := setBinding.ImageBinding
                         imageBinding[entry.dstArrayElement] = new!VkDescriptorImageInfo(
-                            Sampler: inf.Sampler,
-                            ImageView: inf.ImageView,
-                            ImageLayout: inf.ImageLayout
+                            sampler: inf.sampler,
+                            imageView: inf.imageView,
+                            imageLayout: inf.imageLayout
                         )
                         setBinding.ImageBinding = imageBinding
-                        if inf.Sampler in Samplers {
-                          samObj := Samplers[inf.Sampler]
+                        if inf.sampler in Samplers {
+                          samObj := Samplers[inf.sampler]
                           if samObj != null {
                             registerDescriptorUser!SamplerObject(samObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
                           }
                         }
-                        if inf.ImageView in ImageViews {
-                          viewObj := ImageViews[inf.ImageView]
+                        if inf.imageView in ImageViews {
+                          viewObj := ImageViews[inf.imageView]
                           if viewObj != null {
                             registerDescriptorUser!ImageViewObject(viewObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
                           }
@@ -229,9 +229,9 @@ sub void updateDescriptorSetWithTemplate(
                         bufferInfo := as!VkDescriptorBufferInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
                         bufferBindings := setBinding.BufferBinding
                         bufferBindings[entry.dstArrayElement] = new!VkDescriptorBufferInfo(
-                            Buffer: bufferInfo.Buffer,
-                            Offset: bufferInfo.Offset,
-                            Range: bufferInfo.Range
+                            buffer: bufferInfo.buffer,
+                            offset: bufferInfo.offset,
+                            range: bufferInfo.range
                         )
                         setBinding.BufferBinding = bufferBindings
                     }

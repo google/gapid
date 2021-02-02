@@ -95,11 +95,11 @@ sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo
   rcb := LastBoundQueue.ReadCoherentBuffers
   for i in (0 .. n) {
     descBufferInfo := bufferBindings[as!u32(i)]
-    if descBufferInfo.Buffer != as!VkBuffer(0) {
-      if !(descBufferInfo.Buffer in rcb) {
-        if (descBufferInfo.Buffer in Buffers) {
-          rcb[descBufferInfo.Buffer] = true
-          readCoherentMemoryInBuffer(Buffers[descBufferInfo.Buffer])
+    if descBufferInfo.buffer != as!VkBuffer(0) {
+      if !(descBufferInfo.buffer in rcb) {
+        if (descBufferInfo.buffer in Buffers) {
+          rcb[descBufferInfo.buffer] = true
+          readCoherentMemoryInBuffer(Buffers[descBufferInfo.buffer])
         }
       }
     }
@@ -111,15 +111,15 @@ sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) buffer
   n := len(bufferBindings)
   for i in (0 .. n) {
     descBufferInfo := bufferBindings[as!u32(i)]
-    if descBufferInfo.Buffer != as!VkBuffer(0) {
-      if (descBufferInfo.Buffer in Buffers) {
+    if descBufferInfo.buffer != as!VkBuffer(0) {
+      if (descBufferInfo.buffer in Buffers) {
         offset := switch as!u32(i) in bufferBindingOffsets {
           case true:
             bufferBindingOffsets[as!u32(i)]
           case false:
-            descBufferInfo.Offset
+            descBufferInfo.offset
         }
-        readMemoryInBuffer(Buffers[descBufferInfo.Buffer], offset, descBufferInfo.Range)
+        readMemoryInBuffer(Buffers[descBufferInfo.buffer], offset, descBufferInfo.range)
       }
     }
   }
@@ -130,15 +130,15 @@ sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) buffe
   n := len(bufferBindings)
   for i in (0 .. n) {
     bufferBinding := bufferBindings[as!u32(i)]
-    if bufferBinding.Buffer != as!VkBuffer(0) {
-      if (bufferBinding.Buffer in Buffers) {
+    if bufferBinding.buffer != as!VkBuffer(0) {
+      if (bufferBinding.buffer in Buffers) {
         offset := switch as!u32(i) in bufferBindingOffsets {
           case true:
             bufferBindingOffsets[as!u32(i)]
           case false:
-            bufferBinding.Offset
+            bufferBinding.offset
         }
-        writeMemoryInBuffer(Buffers[bufferBinding.Buffer], offset, bufferBinding.Range)
+        writeMemoryInBuffer(Buffers[bufferBinding.buffer], offset, bufferBinding.range)
       }
     }
   }
@@ -324,10 +324,10 @@ sub void updateImageViewQueue(ref!ImageViewObject view) {
 @server_disabled
 sub void readCoherentMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
   for _, _, v in imageBindings {
-    _ = Samplers[v.Sampler]
-    if v.ImageView != as!VkImageView(0) {
-      if (v.ImageView in ImageViews) {
-        view := ImageViews[v.ImageView]
+    _ = Samplers[v.sampler]
+    if v.imageView != as!VkImageView(0) {
+      if (v.imageView in ImageViews) {
+        view := ImageViews[v.imageView]
         updateImageViewQueue(view)
         imageObj := view.Image
         readCoherentMemoryInImage(imageObj)
@@ -339,10 +339,10 @@ sub void readCoherentMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) 
 @spy_disabled
 sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
   for _, _, v in imageBindings {
-    _ = Samplers[v.Sampler]
-    if v.ImageView != as!VkImageView(0) {
-      if (v.ImageView in ImageViews) {
-        view := ImageViews[v.ImageView]
+    _ = Samplers[v.sampler]
+    if v.imageView != as!VkImageView(0) {
+      if (v.imageView in ImageViews) {
+        view := ImageViews[v.imageView]
         updateImageViewQueue(view)
         readImageView(view)
       }
@@ -353,10 +353,10 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
 @spy_disabled
 sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
   for _, _, v in imageBindings {
-    _ = Samplers[v.Sampler]
-    if v.ImageView != as!VkImageView(0) {
-      if (v.ImageView in ImageViews) {
-        view := ImageViews[v.ImageView]
+    _ = Samplers[v.sampler]
+    if v.imageView != as!VkImageView(0) {
+      if (v.imageView in ImageViews) {
+        view := ImageViews[v.imageView]
         updateImageViewQueue(view)
         writeImageView(view)
       }
