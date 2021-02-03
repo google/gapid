@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
+	"github.com/google/gapid/core/image/etc"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/os/device"
 )
@@ -79,16 +80,16 @@ func loadKTX(data []byte) (*image.Data, error) {
 	}
 
 	formats := map[uint32]*image.Format{
-		0x9270: image.ETC2_R_U11_NORM,          // GL_COMPRESSED_R11_EAC
-		0x9271: image.ETC2_R_S11_NORM,          // GL_COMPRESSED_SIGNED_R11_EAC
-		0x9272: image.ETC2_RG_U11_NORM,         // GL_COMPRESSED_RG11_EAC
-		0x9273: image.ETC2_RG_S11_NORM,         // GL_COMPRESSED_SIGNED_RG11_EAC
-		0x9274: image.ETC2_RGB_U8_NORM,         // GL_COMPRESSED_RGB8_ETC2
-		0x9275: image.ETC2_SRGB_U8_NORM,        // GL_COMPRESSED_SRGB8_ETC2
-		0x9276: image.ETC2_RGBA_U8U8U8U1_NORM,  // GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2
-		0x9277: image.ETC2_SRGBA_U8U8U8U1_NORM, // GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2
-		0x9278: image.ETC2_RGBA_U8_NORM,        // GL_COMPRESSED_RGBA8_ETC2_EAC
-		0x9279: image.ETC2_SRGBA_U8_NORM,       // GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC
+		0x9270: etc.ETC2_R_U11_NORM,          // GL_COMPRESSED_R11_EAC
+		0x9271: etc.ETC2_R_S11_NORM,          // GL_COMPRESSED_SIGNED_R11_EAC
+		0x9272: etc.ETC2_RG_U11_NORM,         // GL_COMPRESSED_RG11_EAC
+		0x9273: etc.ETC2_RG_S11_NORM,         // GL_COMPRESSED_SIGNED_RG11_EAC
+		0x9274: etc.ETC2_RGB_U8_NORM,         // GL_COMPRESSED_RGB8_ETC2
+		0x9275: etc.ETC2_SRGB_U8_NORM,        // GL_COMPRESSED_SRGB8_ETC2
+		0x9276: etc.ETC2_RGBA_U8U8U8U1_NORM,  // GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2
+		0x9277: etc.ETC2_SRGBA_U8U8U8U1_NORM, // GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2
+		0x9278: etc.ETC2_RGBA_U8_NORM,        // GL_COMPRESSED_RGBA8_ETC2_EAC
+		0x9279: etc.ETC2_SRGBA_U8_NORM,       // GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC
 	}
 	format, ok := formats[glInternalFormat]
 	if !ok {
@@ -129,13 +130,13 @@ func TestDecompressors(t *testing.T) {
 		fmt *image.Format
 		ext string
 	}{
-		{image.ETC2_RGBA_U8U8U8U1_NORM, ".ktx"},
-		{image.ETC2_RGBA_U8_NORM, ".ktx"},
-		{image.ETC2_RGB_U8_NORM, ".ktx"},
-		{image.ETC2_RG_S11_NORM, ".ktx"},
-		{image.ETC2_RG_U11_NORM, ".ktx"},
-		{image.ETC2_R_S11_NORM, ".ktx"},
-		{image.ETC2_R_U11_NORM, ".ktx"},
+		{etc.ETC2_RGBA_U8U8U8U1_NORM, ".ktx"},
+		{etc.ETC2_RGBA_U8_NORM, ".ktx"},
+		{etc.ETC2_RGB_U8_NORM, ".ktx"},
+		{etc.ETC2_RG_S11_NORM, ".ktx"},
+		{etc.ETC2_RG_U11_NORM, ".ktx"},
+		{etc.ETC2_R_S11_NORM, ".ktx"},
+		{etc.ETC2_R_U11_NORM, ".ktx"},
 		{image.S3_DXT1_RGB, ".bin"},
 		{image.S3_DXT1_RGBA, ".bin"},
 		{image.S3_DXT3_RGBA, ".bin"},
@@ -184,7 +185,7 @@ func TestDecompressors(t *testing.T) {
 
 			if ktx.Format.Key() != test.fmt.Key() {
 				t.Errorf("%v was not the expected format. Expected %v, got %v",
-					inPath, test.fmt, ktx.Format)
+					inPath, test.fmt.Name, ktx.Format.Name)
 				continue
 			}
 			in = ktx
@@ -198,7 +199,7 @@ func TestDecompressors(t *testing.T) {
 
 			if astc.Format.Key() != test.fmt.Key() {
 				t.Errorf("%v was not the expected format. Expected %v, got %v",
-					inPath, test.fmt, astc.Format)
+					inPath, test.fmt.Name, astc.Format.Name)
 				continue
 			}
 			in = astc

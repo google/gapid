@@ -42,7 +42,7 @@ func RegisterConverter(src, dst *Format, c Converter) {
 	registeredConverters[key] = c
 }
 
-func registered(src, dst *Format) bool {
+func Registered(src, dst *Format) bool {
 	key := srcDstFmt{src.Key(), dst.Key()}
 	_, found := registeredConverters[key]
 	return found

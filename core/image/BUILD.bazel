@@ -50,7 +50,6 @@ go_library(
         "//core/data/id:go_default_library",
         "//core/data/protoutil:go_default_library",
         "//core/math/sint:go_default_library",
-        "//core/math/u64:go_default_library",
         "//core/os/device:go_default_library",
         "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",
@@ -93,6 +92,7 @@ go_test(
     deps = [
         "//core/data/endian:go_default_library",
         "//core/image/astc:go_default_library",
+        "//core/image/etc:go_default_library",
         "//core/math/f32:go_default_library",
         "//core/math/sint:go_default_library",
         "//core/os/device:go_default_library",

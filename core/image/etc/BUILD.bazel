@@ -1,0 +1,32 @@
+# Copyright (C) 2021 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "etc.go",
+        "etc2_decompressor.go",
+    ],
+    importpath = "github.com/google/gapid/core/image/etc",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/data/endian:go_default_library",
+        "//core/image:go_default_library",
+        "//core/math/sint:go_default_library",
+        "//core/math/u64:go_default_library",
+        "//core/os/device:go_default_library",
+    ],
+)
