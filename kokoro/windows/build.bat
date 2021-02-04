@@ -20,10 +20,10 @@ set BUILD_ROOT=%cd%
 set SRC=%cd%\github\agi
 
 REM Use a fixed JDK.
-set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
+set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_152
 
 REM Install the Android SDK components and NDK.
-set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
+set ANDROID_HOME=c:\Android\android-sdk
 
 REM Install a license file for the Android SDK to avoid license query.
 REM This file might need to be updated in the future.
