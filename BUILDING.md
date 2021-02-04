@@ -102,7 +102,6 @@ Make sure the environment is setup before you run bazel (`bazel shutdown` will s
 
 1. Add `C:\tools\python27` to the PATH:
    `set PATH=C:\tools\python27;%PATH%`
-   Alternatively, pass the path to python via the `--python_path` to bazel. See the [bazel documentation](https://docs.bazel.build/versions/master/windows.html#build-python) for more info.
 
 1. Set TMP to something very short. `C:\tmp` is known to work. For faster builds, add this folder to the excemptions of the Windows Defender anti-malware scanner.
 
