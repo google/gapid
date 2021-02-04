@@ -127,7 +127,7 @@ func runTrace(ctx context.Context, cfg *config, idx int, tmpOut file.Path) (*res
 	for i := 0; i < cfg.Iterations; i++ {
 		summaryOut := tmpOut.Join(fmt.Sprintf("summry_%d_%d.csv", idx, i))
 		args := []string{
-			"benchmark2",
+			"benchmark",
 			"--numdraws", strconv.Itoa(cfg.Draws),
 			"--summaryout", summaryOut.System(),
 		}
