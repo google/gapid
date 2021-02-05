@@ -575,6 +575,11 @@ service Gapid {
       returns (GetDevicesForReplayResponse) {
   }
 
+  // ValidateDevice checks the GPU profiling capabilities of the requested
+  // device
+  rpc ValidateDevice(ValidateDeviceRequest) returns (ValidateDeviceResponse) {
+  }
+
   // GetLogStream calls the handler with each log record raised until the
   // context is cancelled.
   rpc GetLogStream(GetLogStreamRequest) returns (stream log.Message) {
@@ -649,11 +654,6 @@ service Gapid {
   // and end of execution of a command buffer.
   rpc GetTimestamps(GetTimestampsRequest)
       returns (stream GetTimestampsResponse) {
-  }
-
-  // ValidateDevice checks the GPU profiling capabilities of the requested
-  // device
-  rpc ValidateDevice(ValidateDeviceRequest) returns (ValidateDeviceResponse) {
   }
 }
 
