@@ -77,3 +77,9 @@ type binding struct {
 
 // verify that binding implements Device
 var _ Device = (*binding)(nil)
+
+// InstallApp implements the bind.Device interface, which can be implemented using
+// just the android.Device interface.
+func (b *binding) InstallApp(ctx context.Context, path string) error {
+	return b.InstallAPK(ctx, path, true /*reinstall*/, true /*grant permissions*/)
+}

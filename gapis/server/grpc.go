@@ -684,3 +684,12 @@ func (s *grpcServer) ValidateDevice(ctx xctx.Context, req *service.ValidateDevic
 	}
 	return &service.ValidateDeviceResponse{}, nil
 }
+
+func (s *grpcServer) InstallApp(ctx xctx.Context, req *service.InstallAppRequest) (*service.InstallAppResponse, error) {
+	defer s.inRPC()()
+	err := s.handler.InstallApp(s.bindCtx(ctx), req.Device, req.Application)
+	if err := service.NewError(err); err != nil {
+		return &service.InstallAppResponse{Error: err}, nil
+	}
+	return &service.InstallAppResponse{}, nil
+}

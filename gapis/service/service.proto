@@ -580,6 +580,10 @@ service Gapid {
   rpc ValidateDevice(ValidateDeviceRequest) returns (ValidateDeviceResponse) {
   }
 
+  // InstallApp installs an application to a device.
+  rpc InstallApp(InstallAppRequest) returns (InstallAppResponse) {
+  }
+
   // GetLogStream calls the handler with each log record raised until the
   // context is cancelled.
   rpc GetLogStream(GetLogStreamRequest) returns (stream log.Message) {
@@ -1166,6 +1170,15 @@ message ImportCaptureResponse {
     path.Capture capture = 1;
     Error error = 2;
   }
+}
+
+message InstallAppRequest {
+  path.Device device = 1;
+  string application = 2;
+}
+
+message InstallAppResponse {
+  Error error = 1;
 }
 
 message LoadCaptureRequest {

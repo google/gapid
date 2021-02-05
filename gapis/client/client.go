@@ -576,3 +576,17 @@ func (c *client) ValidateDevice(ctx context.Context, device *path.Device) error 
 	}
 	return nil
 }
+
+func (c *client) InstallApp(ctx context.Context, d *path.Device, app string) error {
+	res, err := c.client.InstallApp(ctx, &service.InstallAppRequest{
+		Device:      d,
+		Application: app,
+	})
+	if err != nil {
+		return err
+	}
+	if err := res.GetError(); err != nil {
+		return err.Get()
+	}
+	return nil
+}

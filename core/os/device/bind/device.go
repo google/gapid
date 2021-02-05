@@ -76,4 +76,6 @@ type Device interface {
 	PushFile(ctx context.Context, sourcePath, destPath string) error
 	// WriteFile writes the given file into the given location on the remote device
 	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
+	// InstallApp installs the given application to this device
+	InstallApp(ctx context.Context, app string) error
 }

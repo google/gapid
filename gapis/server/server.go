@@ -44,6 +44,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
+	"github.com/google/gapid/gapis/messages"
 	perfetto "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
@@ -887,4 +888,20 @@ func (s *server) ValidateDevice(ctx context.Context, d *path.Device) error {
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "ValidateDevice")
 	return trace.Validate(ctx, d)
+}
+
+func (s *server) InstallApp(ctx context.Context, d *path.Device, app string) error {
+	ctx = status.Start(ctx, "RPC Install App")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "InstallApp")
+
+	if !s.enableLocalFiles {
+		return fmt.Errorf("Server not configured to allow reading of local files")
+	}
+
+	device := bind.GetRegistry(ctx).Device(d.GetID().ID())
+	if device == nil {
+		return &service.ErrDataUnavailable{Reason: messages.ErrUnknownDevice()}
+	}
+	return device.InstallApp(ctx, app)
 }

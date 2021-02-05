@@ -16,6 +16,7 @@ package bind
 
 import (
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -180,6 +181,11 @@ func (b *Simple) ABI() *device.ABI {
 		return device.UnknownABI
 	}
 	return b.To.Configuration.ABIs[0]
+}
+
+// InstallApp implements the Device interface, always returning an error.
+func (b *Simple) InstallApp(ctx context.Context, app string) error {
+	return errors.New("Installing applications is not supported on this device")
 }
 
 type simpleTarget struct{}
