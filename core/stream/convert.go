@@ -183,7 +183,7 @@ func (m *mapping) conv(count int, min, max float64) error {
 			return intCast(count, m.dst, m.src)
 		}
 		// Source is normalized
-		if d.DataType.Signed == s.DataType.Signed {
+		if d.DataType.Signed == s.DataType.Signed || s.DataType.Signed {
 			if d.DataType.GetInteger().Bits > s.DataType.GetInteger().Bits {
 				return intExpand(count, m.dst, m.src)
 			}
@@ -254,21 +254,29 @@ var uintExpandPatterns = []uint64{
 // int to larger bit precision (bit repeating)
 func intExpand(count int, dst, src buf) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
-	if dstTy.Signed != srcTy.Signed {
-		return fmt.Errorf("Cannot perform signed conversion")
+	if !srcTy.Signed && dstTy.Signed {
+		return fmt.Errorf("Cannot perform unsigned-to-signed conversion")
 	}
 	dstBitsIncSign, srcBitsIncSign := dstTy.Bits(), srcTy.Bits()
 	dstBitsExcSign, srcBitsExcSign := dstTy.GetInteger().Bits, srcTy.GetInteger().Bits
 	toU64 := uintExpandPatterns[srcBitsExcSign] // index out of range? Add more patterns!
 	shift := 64 - dstBitsIncSign
-	signed := dstTy.Signed
+	maxWithSign := math.Pow(2, float64(srcBitsIncSign)) - 1
 	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
 	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	for i := 0; i < count; i++ {
-		v := uint64(sourceStream.Read(srcBitsExcSign))
+		v := uint64(0)
+
+		if srcTy.Signed && !dstTy.Signed {
+			v = uint64(sourceStream.Read(srcBitsIncSign))
+			v = uint64(float64(v) + (maxWithSign + 1/2))
+		} else {
+			v = uint64(sourceStream.Read(srcBitsExcSign))
+		}
+
 		v = (v * toU64) >> shift
 		destStream.Write(uint64(v), dstBitsExcSign)
-		if signed {
+		if dstTy.Signed {
 			destStream.Write(sourceStream.Read(1), 1) // Copy sign
 		}
 		destStream.WritePos += dst.stride - dstBitsIncSign
@@ -280,16 +288,16 @@ func intExpand(count int, dst, src buf) error {
 // int to smaller bit precision (drops LSBs)
 func intCollapse(count int, dst, src buf) error {
 	dstTy, srcTy := dst.component.DataType, src.component.DataType
-	if dstTy.Signed != srcTy.Signed {
-		return fmt.Errorf("intCollapse cannot perform signed conversion")
+	if !srcTy.Signed && dstTy.Signed {
+		return fmt.Errorf("intCollapse cannot perform unsigned-to-signed conversion")
 	}
 	dstBitsIncSign, srcBitsIncSign := dstTy.Bits(), srcTy.Bits()
 	dstBitsExcSign, srcBitsExcSign := dstTy.GetInteger().Bits, srcTy.GetInteger().Bits
 	shift := srcBitsIncSign - dstBitsIncSign
-	signed := dstTy.Signed
 	sourceStream := binary.BitStream{Data: src.bytes, ReadPos: src.offset}
 	destStream := binary.BitStream{Data: dst.bytes, WritePos: dst.offset}
 	maxPossibleValue := math.Pow(2, float64(srcBitsExcSign)) - 1
+	maxWithSign := math.Pow(2, float64(srcBitsIncSign)) - 1
 	min, max := maxPossibleValue, float64(0)
 	if src.component.Channel == Channel_Depth {
 		for i := 0; i < count; i++ {
@@ -300,23 +308,35 @@ func intCollapse(count int, dst, src buf) error {
 			if f > max {
 				max = f
 			}
+			sourceStream.ReadPos += src.stride - srcBitsIncSign
 		}
 		sourceStream.ReadPos = src.offset
 	}
 	for i := 0; i < count; i++ {
-		v := sourceStream.Read(srcBitsExcSign)
-		if src.component.Channel == Channel_Depth {
-			f := float64(v) / maxPossibleValue
-			if max != min {
-				f = (f - min) * (1 / (max - min))
-			} else {
-				f = 0
+		v := uint64(0)
+
+		if srcTy.Signed && !dstTy.Signed {
+			v = sourceStream.Read(srcBitsIncSign)
+			v = uint64(float64(v) + ((maxWithSign + 1) / 2))
+		} else {
+			v = sourceStream.Read(srcBitsExcSign)
+
+			if src.component.Channel == Channel_Depth {
+				f := float64(v) / maxPossibleValue
+
+				if max != min {
+					f = (f - min) * (1 / (max - min))
+				} else {
+					f = 0
+				}
+
+				v = uint64(f * maxPossibleValue)
 			}
-			v = uint64(f * maxPossibleValue)
 		}
+
 		v >>= shift
 		destStream.Write(uint64(v), dstBitsExcSign)
-		if signed {
+		if dstTy.Signed {
 			destStream.Write(sourceStream.Read(1), 1) // Copy sign
 		}
 		destStream.WritePos += dst.stride - dstBitsIncSign
