@@ -74,6 +74,7 @@ import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Sash;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
@@ -937,6 +938,14 @@ public class Widgets {
         parent, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
     text.setText(html.replaceAll("<[^>]+>", ""));
     return text;
+  }
+
+  public static ProgressBar createProgressBar(Composite parent, int totalWork) {
+    ProgressBar bar = new ProgressBar(parent, SWT.SMOOTH);
+    bar.setMaximum(totalWork);
+    bar.setMinimum(0);
+    bar.setSelection(0);
+    return bar;
   }
 
   /**

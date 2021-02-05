@@ -101,4 +101,5 @@ public interface Messages {
   public static final String SELECT_DEVICE_REFRESH_TABLE = "Refresh device tables";
   public static final String SELECT_DEVICE_TABLE_REFRESHING = "Refreshing devices...";
   public static final String VALIDATION_FAILED_LANDING_PAGE = "<a>Why is my device not supported?</a>";
+  public static final String INSTALL_ANGLE_TITLE = "Downloading and Installing ANGLE...";
 }

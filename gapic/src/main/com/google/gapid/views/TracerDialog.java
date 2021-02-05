@@ -27,6 +27,7 @@ import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
+import static com.google.gapid.widgets.Widgets.createProgressBar;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.withIndents;
@@ -98,11 +99,14 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.net.URL;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -489,8 +493,8 @@ public class TracerDialog {
         adbWarning.setVisible(!models.settings.isAdbValid());
 
         newAngleAvailableMessage = createLink(this, "A new ANGLE version is available for this " +
-            "device. Please <a>download</a> and install the APK.",
-            e -> openAngleDownloadPage(models.settings));
+            "device. Click to <a>download and install</a> the APK.",
+            e -> downloadAndInstallAngle(widgets.theme, models.settings));
         newAngleAvailableMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
         newAngleAvailableMessage.setVisible(false);
 
@@ -873,35 +877,34 @@ public class TracerDialog {
         return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + angle + date + ext;
       }
 
-      private void openAngleDownloadPage(Settings settings) {
+      private void downloadAndInstallAngle(Theme theme, Settings settings) {
         DeviceCaptureInfo dev = devices.get(device.getCombo().getSelectionIndex());
         Service.Releases.ANGLERelease release = settings.preferences().getLatestAngleRelease();
-        if (dev.device.getConfiguration().getABIsCount() > 0) {
-          switch (dev.device.getConfiguration().getABIs(0).getArchitecture()) {
-            case ARMv8a:
-              if (release.getArm64().startsWith("https://")) {
-                Program.launch(release.getArm64());
-                return;
-              }
-              break;
-            case ARMv7a:
-              if (release.getArm32().startsWith("https://")) {
-                Program.launch(release.getArm32());
-                return;
-              }
-              break;
-            case X86:
-              if (release.getX86().startsWith("https://")) {
-                Program.launch(release.getX86());
-                return;
-              }
-              break;
-            default: // Ignore unknown ABIs.
-          }
+        String url = getAngleAPKUrl(dev, release);
+        if (url == null || !url.startsWith(URLs.EXPECTED_ANGLE_PREFIX)) {
+          // Something went wrong, bring the user to our download landing page.
+          Program.launch(URLs.ANGLE_DOWNLOAD);
+          return;
         }
 
-        // Open the main page if no ABI direct link was found.
-        Program.launch(URLs.ANGLE_DOWNLOAD);
+        if (InstallAngleDialog
+            .showDialogAndInstallApk(getShell(), models, theme, dev.device, url) == Window.OK) {
+          newAngleAvailableMessage.setVisible(false);
+        }
+      }
+
+      private static String getAngleAPKUrl(
+          DeviceCaptureInfo dev, Service.Releases.ANGLERelease release) {
+        if (dev.device.getConfiguration().getABIsCount() == 0) {
+          return null;
+        }
+
+        switch (dev.device.getConfiguration().getABIs(0).getArchitecture()) {
+          case ARMv8a: return release.getArm64();
+          case ARMv7a: return release.getArm32();
+          case X86: return release.getX86();
+          default: return null;
+        }
       }
 
       public boolean isReady() {
@@ -1246,8 +1249,8 @@ public class TracerDialog {
       updateButton();
     }
 
-    private String getStatusLabel(Service.TraceStatus status) {
-      switch (status) {
+    private String getStatusLabel(Service.TraceStatus traceStatus) {
+      switch (traceStatus) {
         case Uninitialized:
           return "Sending request...";
         case Initializing:
@@ -1337,6 +1340,137 @@ public class TracerDialog {
               cancelPressed();
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Dialog that shows progress of downloading and installing an ANGLE apk.
+   */
+  private static class InstallAngleDialog extends DialogBase {
+    private ProgressBar progressBar;
+    private Label statusLabel;
+    private Status status = Status.DOWNLOADING;
+
+    public InstallAngleDialog(Shell shell, Theme theme) {
+      super(shell, theme);
+      setReturnCode(Window.CANCEL);
+    }
+
+    @SuppressWarnings("CheckReturnValue")
+    public static int showDialogAndInstallApk(
+        Shell shell, Models models, Theme theme, Device.Instance device, String url) {
+      InstallAngleDialog dialog = new InstallAngleDialog(shell, theme);
+      Scheduler.EXECUTOR.schedule(
+          () -> dialog.downloadAndInstall(shell, models, device, url),
+          100, TimeUnit.MILLISECONDS /*give the dialog some time to show*/);
+      return dialog.open();
+    }
+
+    @Override
+    public String getTitle() {
+      return Messages.INSTALL_ANGLE_TITLE;
+    }
+
+    @Override
+    protected Control createDialogArea(Composite parent) {
+      Composite area = (Composite)super.createDialogArea(parent);
+
+      Composite container = createComposite(area, new GridLayout(1, false));
+      container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      createLabel(container, Messages.INSTALL_ANGLE_TITLE);
+      progressBar = withLayoutData(createProgressBar(container, 100),
+          new GridData(SWT.FILL, SWT.TOP, true, false));
+      statusLabel = createLabel(container, status.message);
+
+      return area;
+    }
+
+    @Override
+    public void create() {
+      super.create();
+      updateButtons();
+    }
+
+    public void scheduleUpdate(Status newStatus, int progress) {
+      Widgets.scheduleIfNotDisposed(getShell(), () -> updateStatus(newStatus, progress));
+    }
+
+    public void updateStatus(Status newStatus, int progress) {
+      if (getShell().isDisposed()) {
+        return;
+      }
+
+      status = newStatus;
+      progressBar.setSelection(progress);
+      if (newStatus ==  Status.FAILED) {
+        progressBar.setState(SWT.ERROR);
+      }
+      statusLabel.setText(newStatus.message);
+      statusLabel.requestLayout();
+
+      updateButtons();
+    }
+
+    private void updateButtons() {
+      Button ok = getButton(IDialogConstants.OK_ID);
+      if (ok != null) {
+        ok.setEnabled(status.isDone());
+      }
+      Button cancel = getButton(IDialogConstants.CANCEL_ID);
+      if (cancel != null) {
+        // Only the download can be cancelled.
+        cancel.setEnabled(status == Status.DOWNLOADING);
+      }
+    }
+
+    // This runs on a background thread.
+    private void downloadAndInstall(Shell parent, Models models, Device.Instance dev, String url) {
+      // ProgressBar: 5% get download size, 80% download, 15% install
+      try {
+        File tmpFile = File.createTempFile("agi_angle", ".apk");
+        try (FileOutputStream out = new FileOutputStream(tmpFile)) {
+          URLs.downloadWithProgressUpdates(new URL(url), out, new URLs.DownloadProgressListener() {
+            @Override
+            public boolean onProgress(long done, long total) {
+              scheduleUpdate(Status.DOWNLOADING, (int)(5 + 80 * done / total));
+              return !getShell().isDisposed();
+            }
+          });
+        }
+
+        scheduleUpdate(Status.INSTALLING, 85);
+        if (getShell().isDisposed()) {
+          return;
+        }
+        models.devices.installApp(dev, tmpFile).get();
+        tmpFile.delete();
+        scheduleUpdate(Status.DONE, 100);
+      } catch (Exception e) {
+        scheduleUpdate(Status.FAILED, 100);
+        Widgets.scheduleIfNotDisposed(parent, () -> {
+          ErrorDialog.showErrorDialog(
+              parent, models.analytics, "Error downloading or installing ANGLE!", e);
+          close();
+        });
+      }
+    }
+
+    private static enum Status {
+      DOWNLOADING("Downloading APK..."),
+      INSTALLING("Installing APK..."),
+      DONE("All done."),
+      FAILED("Download/Install failed.");
+
+      public final String message;
+
+      private Status(String message) {
+        this.message = message;
+      }
+
+      public boolean isDone() {
+        return this == DONE || this == FAILED;
       }
     }
   }

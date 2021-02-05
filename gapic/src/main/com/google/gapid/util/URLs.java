@@ -15,9 +15,47 @@
  */
 package com.google.gapid.util;
 
-public interface URLs {
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public class URLs {
   public static final String FILE_BUG_URL =
       "https://github.com/google/agi/issues/new?template=standard-bug-report-for-gapid.md";
   public static final String DEVICE_COMPATIBILITY_URL = "https://gpuinspector.dev/validation";
-  public static final String ANGLE_DOWNLOAD = "https://agi-angle.storage.googleapis.com/index.html";
+  public static final String EXPECTED_ANGLE_PREFIX = "https://agi-angle.storage.googleapis.com/";
+  public static final String ANGLE_DOWNLOAD = EXPECTED_ANGLE_PREFIX + "/index.html";
+
+  private URLs() {
+  }
+
+  public static boolean downloadWithProgressUpdates(
+      URL url, OutputStream out, DownloadProgressListener listener) throws IOException {
+    HttpURLConnection con = (HttpURLConnection) url.openConnection();
+    long size = con.getContentLength();
+    listener.onProgress(0, size);
+
+    try (BufferedInputStream in = new BufferedInputStream(con.getInputStream())) {
+      byte[] buffer = new byte[4096];
+      long done = 0;
+      int now;
+      while ((now = in.read(buffer, 0, buffer.length)) >= 0) {
+        done += now;
+        out.write(buffer, 0, now);
+        if (!listener.onProgress(done, size)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  public static interface DownloadProgressListener {
+    @SuppressWarnings("unused")
+    public default boolean onProgress(long done, long total) {
+      return true;
+    }
+  }
 }
