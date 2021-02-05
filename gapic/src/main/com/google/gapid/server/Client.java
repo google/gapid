@@ -259,6 +259,16 @@ public class Client {
             in -> immediateFuture(in)));
   }
 
+  public ListenableFuture<Void> installApp(Path.Device device, String app) {
+    return call(() -> String.format("RPC->installApp(%s, %s)", shortDebugString(device), app),
+        stack -> MoreFutures.transformAsync(
+            client.installApp(Service.InstallAppRequest.newBuilder()
+                .setDevice(device)
+                .setApplication(app)
+                .build()),
+            in -> immediateFuture(throwIfError(null, in.getError(), stack))));
+  }
+
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
     LOG.log(FINE, "RPC->getLogStream()");
     return client.streamLog(onLogMessage);

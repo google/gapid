@@ -26,6 +26,8 @@ import com.google.gapid.proto.service.Service.ClientEventRequest;
 import com.google.gapid.proto.service.Service.ClientEventResponse;
 import com.google.gapid.proto.service.Service.GpuProfileRequest;
 import com.google.gapid.proto.service.Service.GpuProfileResponse;
+import com.google.gapid.proto.service.Service.InstallAppRequest;
+import com.google.gapid.proto.service.Service.InstallAppResponse;
 import com.google.gapid.proto.service.Service.PerfettoQueryRequest;
 import com.google.gapid.proto.service.Service.PerfettoQueryResponse;
 import com.google.gapid.proto.service.Service.PingRequest;
@@ -168,6 +170,11 @@ public class GapidClientGrpc implements GapidClient {
   @Override
   public ListenableFuture<ValidateDeviceResponse> validateDevice(ValidateDeviceRequest request) {
     return client.validateDevice(request);
+  }
+
+  @Override
+  public ListenableFuture<InstallAppResponse> installApp(InstallAppRequest request) {
+    return client.installApp(request);
   }
 
   @Override

@@ -48,7 +48,7 @@ import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.util.Arrays;
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -261,6 +261,10 @@ public class Devices {
   protected void updateDevices(List<DeviceCaptureInfo> newDevices) {
     devices = newDevices;
     listeners.fire().onCaptureDevicesLoaded();
+  }
+
+  public ListenableFuture<Void> installApp(Device.Instance device, File file) {
+    return client.installApp(Paths.device(device.getID()), file.getAbsolutePath());
   }
 
   public boolean isLoaded() {
