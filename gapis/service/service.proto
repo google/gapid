@@ -33,36 +33,71 @@ option java_package = "com.google.gapid.proto.service";
 option java_outer_classname = "Service";
 option go_package = "github.com/google/gapid/gapis/service";
 
-message ServerInfo {
-  string name = 1;
-  uint32 version_major = 2;
-  uint32 version_minor = 3;
-  uint32 version_point = 4;
-  // A string list of features supported by the server. This feature list can be
-  // used by the client to determine what new RPCs can be called.
-  repeated string features = 5;
-  path.Device server_local_device = 6;
+/******************************************************************************/
+/****                         Service Objects                              ****/
+/******************************************************************************/
+
+enum TraceType {
+  Graphics = 0;
+  Perfetto = 1;
 }
 
-// Messages that hold a repeated field so they can be used in oneofs.
+message Error {
+  oneof err {
+    ErrInternal err_internal = 1;
+    ErrDataUnavailable err_data_unavailable = 2;
+    ErrInvalidPath err_invalid_path = 3;
+    ErrInvalidArgument err_invalid_argument = 4;
+    ErrPathNotFollowable err_path_not_followable = 5;
+    ErrUnsupportedVersion err_unsupported_version = 6;
+  }
+}
 
-message Commands {
-  repeated path.Command list = 1;
+// ErrInternal is the error raised when an internal server error has occurred.
+message ErrInternal {
+  string message = 1;
 }
-message Devices {
-  repeated path.Device list = 1;
-  // compatibilities and reasons are set only in GetDevicesForReplay responses
-  repeated bool compatibilities = 2;
-  repeated stringtable.Msg reasons = 3;
+
+// ErrDataUnavailable is the error raised when the requested data is
+// unavailable. For instance: the error raised when a framebuffer is
+// requested at a point in the capture where none is bound.
+message ErrDataUnavailable {
+  // The reason the data is unavailable.
+  stringtable.Msg reason = 1;
+  // If true, then making the same request at a later time may result in data.
+  bool transient = 2;
 }
-message Events {
-  repeated Event list = 1;
+
+// ErrInvalidPath is the error raised when the specified path is invalid.
+// This type of error is permanent.
+message ErrInvalidPath {
+  // The description of what's invalid.
+  stringtable.Msg reason = 1;
+  // The part of the path that was invalid.
+  path.Any path = 2;
 }
-message StringTableInfos {
-  repeated stringtable.Info list = 1;
+
+// ErrInvalidArgument is the error raised when one of the parameters to an RPC
+// call is invalid.
+// This type of error is permanent.
+message ErrInvalidArgument {
+  // The description of what's invalid.
+  stringtable.Msg reason = 1;
 }
-message Threads {
-  repeated path.Thread list = 1;
+
+// ErrPathNotFollowable is the error raised when attempting to follow a path
+// that cannot be followed.
+message ErrPathNotFollowable {
+  path.Any path = 1;
+}
+
+// ErrUnsupportedVersion is the error raised attempting to load data with an
+// unsupported version.
+message ErrUnsupportedVersion {
+  // The reason the data is unsupported.
+  stringtable.Msg reason = 1;
+  // If true, the client should prompt the user to update GAPID.
+  bool suggest_update = 2;
 }
 
 message Value {
@@ -108,210 +143,129 @@ message Value {
   }
 }
 
-message PingRequest {
-}
-message PingResponse {
-}
-
-message GetServerInfoRequest {
-}
-message GetServerInfoResponse {
-  oneof res {
-    ServerInfo info = 1;
-    Error error = 2;
-  }
-}
-
-message CheckForUpdatesRequest {
-  bool include_dev_releases = 1;
-}
-message CheckForUpdatesResponse {
-  oneof res {
-    Releases releases = 1;
-    Error error = 2;
-  }
-}
-
-message Releases {
-  message AGIRelease {
-    string name = 1;
-    uint32 version_major = 2;
-    uint32 version_minor = 3;
-    uint32 version_point = 4;
-    uint32 version_dev = 5;
-    string browser_url = 6;
-  }
-
-  message ANGLERelease {
-    uint32 version = 1;
-    string arm_32 = 2;
-    string arm_64 = 3;
-    string x86 = 4;
-  }
-
-  AGIRelease AGI = 1;
-  ANGLERelease ANGLE = 2;
-}
-
-message GetRequest {
-  path.Any path = 1;
-  // Config to use when resolving paths.
-  path.ResolveConfig config = 2;
-}
-
-message GetResponse {
-  oneof res {
-    Value value = 1;
-    Error error = 2;
-  }
-}
-
-message SetRequest {
-  path.Any path = 1;
-  Value value = 2;
-  // Config to use when resolving paths.
-  path.ResolveConfig config = 3;
-}
-
-message SetResponse {
-  oneof res {
-    path.Any path = 1;
-    Error error = 2;
-  }
-}
-
-message DeleteRequest {
-  path.Any path = 1;
-  // Config to use when resolving paths.
-  path.ResolveConfig config = 2;
-}
-
-message DeleteResponse {
-  oneof res {
-    path.Any path = 1;
-    Error error = 2;
-  }
-}
-
-message FollowRequest {
-  path.Any path = 1;
-  // Config to use when resolving paths.
-  path.ResolveConfig config = 2;
-}
-
-message FollowResponse {
-  oneof res {
-    path.Any path = 1;
-    Error error = 2;
-  }
-}
-
-message ProfileRequest {
-  // Settings for what profile data the client wants.
-  // Set all to false to flush any pending data and disable profiling.
-  bool pprof = 1;  // Enable pprof profiling?
-  bool trace = 2;  // Enable trace data?
-
-  // Time in seconds between memory snapshots
-  uint32 memory_snapshot_interval = 3;
-}
-
-message ProfileResponse {
-  bytes pprof = 1;  // Streamed pprof data.
-  bytes trace = 2;  // Streamed trace data.
-  Error error = 3;
-}
-
-message GetPerformanceCountersRequest {
-}
-message GetPerformanceCountersResponse {
-  oneof res {
-    string data = 1;
-    Error error = 2;
-  }
-}
-
-message GetProfileRequest {
+// Capture describes single capture file held by the server.
+message Capture {
+  // The type of this capture.
+  TraceType type = 7;
+  // Name given to the capture. e.g. "KittyWorld"
   string name = 1;
-  int32 debug = 2;
-}
-message GetProfileResponse {
-  oneof res {
-    bytes data = 1;
-    Error error = 2;
-  }
-}
-
-enum TaskStatus {
-  STARTING = 0;
-  FINISHED = 1;
-  PROGRESS = 2;
-  BLOCKED = 3;
-  UNBLOCKED = 4;
-  EVENT = 5;
+  // Information about the device used to create the capture.
+  device.Instance device = 2;
+  // Information about the abi used by the traced process.
+  device.ABI ABI = 3;
+  // Number of commands in this capture.
+  uint64 num_commands = 4;
+  // List of graphics APIs used by this capture.
+  repeated path.API APIs = 5;
+  // List of all the memory observations made by the application.
+  repeated MemoryRange observations = 6;
 }
 
-message TaskUpdate {
-  TaskStatus status = 1;
-  uint64 id = 2;
-  uint64 parent = 3;
-  string name = 4;
-  int32 complete_percent = 5;
-  bool background = 6;
-  string event = 7;
+// CommandTree represents a command tree hierarchy.
+message CommandTree {
+  path.CommandTreeNode root = 1;
 }
 
-message MemoryStatus {
-  uint64 totalHeap = 1;
+// CommandTreeNode is a node in a command tree hierarchy.
+message CommandTreeNode {
+  // The path to the command that best represents this group. For example the
+  // the last draw call in a frame.
+  path.Command representation = 1;
+  // Number of child nodes.
+  uint64 num_children = 2;
+  // Group name if this node represents a group of commands.
+  string group = 3;
+  // Path to the command range represented by this node.
+  path.Commands commands = 4;
+  // Number of commands encapsulated by this group.
+  uint64 num_commands = 5;
 }
 
-enum ReplayStatus {
-  REPLAY_QUEUED = 0;
-  REPLAY_STARTED = 1;
-  REPLAY_EXECUTING = 2;
-  REPLAY_FINISHED = 3;
+message Commands {
+  repeated path.Command list = 1;
 }
 
-message ReplayUpdate {
-  uint32 replay_id = 1;
-  path.Device device = 2;
-  ReplayStatus status = 3;
-  // Progress information below, sent if status is EXECUTING.
-  uint64 label = 4;
-  uint32 total_instrs = 5;
-  uint32 finished_instrs = 6;
+// ConstantSet is a collection on name-value pairs to be used as an enumeration
+// of possible values for a field or parameter.
+message ConstantSet {
+  repeated Constant constants = 1;
+  bool is_bitfield = 2;
 }
 
-message ServerStatusRequest {
-  float memory_snapshot_interval = 1;
-  float status_update_frequency = 2;
+// Constant is a name-value pair that is owned by a ConstantSet.
+message Constant {
+  // The name of the constant.
+  string name = 1;
+  // The value of the constant.
+  uint64 value = 2;
 }
 
-message ServerStatusResponse {
-  oneof res {
-    TaskUpdate task = 1;
-    MemoryStatus memory = 2;
-    ReplayUpdate replay = 3;
-  }
+// Event represents a single event in the capture.
+message Event {
+  EventKind kind = 1;
+  path.Command command = 2;
+  uint64 timestamp = 3;
 }
 
-message GetAvailableStringTablesRequest {
-}
-message GetAvailableStringTablesResponse {
-  oneof res {
-    StringTableInfos tables = 1;
-    Error error = 2;
-  }
+enum EventKind {
+  Unknown = 0;
+  DrawCall = 1;
+  Submission = 2;
+  TransformFeedback = 3;
+  // All command events should occur between FirstInFrame and LastInFrame
+  // (except FramebufferObservation, which comes last as gapit sxs_video
+  // depends on this).
+  FirstInFrame = 4;
+  LastInFrame = 5;
+  Clear = 6;
+  UserMarker = 7;
+  PushUserMarker = 8;
+  PopUserMarker = 9;
+  FramebufferObservation = 10;
+  // Note you probably only want to use AllCommands for debugging/testing
+  // purposes.
+  AllCommands = 11;
 }
 
-message GetStringTableRequest {
-  stringtable.Info table = 1;
+message Events {
+  repeated Event list = 1;
 }
-message GetStringTableResponse {
-  oneof res {
-    stringtable.StringTable table = 1;
-    Error error = 2;
-  }
+
+// Memory describes the state of a range of memory at a specific point in
+// the command stream.
+message Memory {
+  // The memory values for the span.
+  bytes data = 1;
+  // The data-relative ranges that were read-from at the specified command.
+  repeated MemoryRange reads = 2;
+  // The data-relative ranges that were written-to at the specified command.
+  repeated MemoryRange writes = 3;
+  // The data-relative ranges that have been observed.
+  repeated MemoryRange observed = 4;
+  // All types of the reads on this command
+  repeated TypedMemoryRange typed_ranges = 5;
+}
+
+// MemoryRange represents a contiguous range of memory.
+message MemoryRange {
+  // The address of the first byte in the memory range.
+  uint64 base = 1;
+  // The number of bytes that are in the memory range.
+  uint64 size = 2;
+}
+
+message TypedMemoryRange {
+  // The type of the memory observations
+  path.Type type = 1;
+  MemoryRange range = 2;
+  // The root of the memory observation
+  uint64 root = 3;
+  // The structured value of the typed memory observation.
+  memory_box.Value value = 4;
+}
+
+message Messages {
+  repeated Message list = 1;
 }
 
 message Message {
@@ -319,112 +273,185 @@ message Message {
   string message = 2;
 }
 
-message Messages {
-  repeated Message list = 1;
+// Report describes all warnings and errors found by a capture.
+message Report {
+  // Report items for this report.
+  repeated ReportItem items = 1;
+  // Report groups for this report.
+  repeated ReportGroup groups = 2;
+  // Array of strings for messages.
+  repeated string strings = 3;
+  // Array of values for messages.
+  repeated stringtable.Value values = 4;
 }
 
-message ImportCaptureRequest {
+// ReportItem represents an entry in a report.
+message ReportItem {
+  // The severity of the report item.
+  severity.Severity severity = 1;
+  // The message for the item.
+  MsgRef message = 2;
+  // The path to the command that reported the issue.
+  path.Command command = 3;
+  // The references to tags associated with this item.
+  repeated MsgRef tags = 4;
+}
+
+// MsgRef references a message in a Report.
+message MsgRef {
+  // The index in Report.strings of the message identifier.
+  uint32 identifier = 1;
+  // The indexed arguments.
+  repeated MsgRefArgument arguments = 2;
+}
+
+// MsgRefArgument is an argument formed from two indices into the report.
+message MsgRefArgument {
+  // The index in Report.strings of the argument identifier.
+  uint32 key = 1;
+  // The index in Report.values of the argument value.
+  uint32 value = 2;
+}
+
+// ReportGroup represents a group of ReportItem which have the same tag.
+message ReportGroup {
+  // The reference to Msg which describes this group.
+  MsgRef name = 1;
+  // The indices of report items which belong to this group.
+  repeated uint32 items = 2;
+  // The union of all Items tags. Currently isn't supported and is nil. TODO:
+  // Add filtering support for the entire group.
+  repeated MsgRef tags = 3;
+}
+
+// Resources contains the full list of resources used by a capture.
+message Resources {
+  repeated ResourcesByType types = 1;
+  map<string, path.ResourceType> resourcesToTypes = 2;
+}
+
+// ResourcesByType contains all resources of a specific type.
+message ResourcesByType {
+  path.ResourceType type = 1;
+  repeated Resource resources = 2;
+}
+
+// Resource describes a single resource.
+message Resource {
+  // The resource's unique identifier.
+  path.ID ID = 1;
+  // The resource identifier used for display.
+  string handle = 2;
+  // The resource label.
+  string label = 3;
+  // An int used to sort the resources for presentation.
+  uint64 order = 4;
+  // The list of command indices where the resource was used.
+  repeated path.Command accesses = 5;
+  // The command at which this resource was deleted/destroyed.
+  path.Command deleted = 6;
+  // The command at which this resource was created.
+  path.Command created = 7;
+  // The type of the resource
+  path.ResourceType type = 9;
+}
+
+// StateTree represents a state tree hierarchy.
+message StateTree {
+  path.StateTreeNode root = 1;
+}
+
+// StateTreeNode is a node in a state tree hierarchy.
+message StateTreeNode {
+  // Number of child nodes.
+  uint64 num_children = 1;
+  // The name of the field or group.
+  string name = 2;
+  // The path to the value.
+  path.Any value_path = 3;
+  // The 'preview' value of the field.
+  // For simple POD types, this may be the actual value, in which case
+  // preview_is_value will be true.
+  // For more complex types, this may be a string representation of the value.
+  // Long arrays may be truncated.
+  box.Value preview = 4;
+  // If true then preview is the complete data of the node. In this situation
+  // preview is equal to calling Get() on the path.
+  bool preview_is_value = 5;
+  // The possible alternative named values for the field.
+  path.ConstantSet constants = 6;
+}
+
+// Stats stores the statistics for a capture
+message Stats {
+  // The draw calls per frame, if requested in the path.Stats.
+  repeated uint64 draw_calls = 1;
+  uint64 trace_start = 2;
+}
+
+// Thread represents a single thread in the capture.
+message Thread {
   string name = 1;
-  bytes data = 2;
 }
-message ImportCaptureResponse {
-  oneof res {
-    path.Capture capture = 1;
-    Error error = 2;
+
+message Threads {
+  repeated path.Thread list = 1;
+}
+
+message DeviceTraceConfiguration {
+  // Is the path to the app on this device server-local.
+  bool server_local_path = 1;
+  // Does it make sense to specify a CWD for the application.
+  bool can_specify_cwd = 2;
+  // Can we upload an application to trace.
+  bool can_upload_application = 3;
+  // Can we specify an environment.
+  bool can_specify_env = 4;
+  // The default URI that should be used for looking at packages.
+  string preferred_root_uri = 5;
+  // Type and API-specific capabilities.
+  repeated TraceTypeCapabilities apis = 6;
+  // Is there a cache that can be cleared.
+  bool has_cache = 7;
+}
+
+message TraceTypeCapabilities {
+  // The type of trace this describes.
+  TraceType type = 5;
+  // What is the API this is for.
+  string api = 1;
+  reserved 2;
+  // [deprecated] Does this API support MEC.
+  // This was used only for GLES.
+  // FeatureStatus mid_execution_capture_support = 3;
+  reserved 3;
+  // Whether unsupported extensions can be enabled.
+  bool can_enable_unsupported_extensions = 4;
+  // Does this trace require starting an application.
+  bool requires_application = 6;
+}
+
+// MultiResourceData represents the state of resources at a single point in a
+// capture.
+message MultiResourceData {
+  message ResourceOrError {
+    oneof val {
+      api.ResourceData resource = 1;
+      Error error = 2;
+    }
   }
+  map<string, ResourceOrError> resources = 1;
 }
 
-message ExportCaptureRequest {
-  path.Capture capture = 1;
-}
-message ExportCaptureResponse {
-  oneof res {
-    bytes data = 1;
-    Error error = 2;
+// MultiResourceThumbnail represents the thumbnail images of multiple resources.
+message MultiResourceThumbnail {
+  message ThumbnailOrError {
+    oneof val {
+      image.Info image = 1;
+      Error error = 2;
+    }
   }
-}
-
-message LoadCaptureRequest {
-  string path = 1;
-}
-message LoadCaptureResponse {
-  oneof res {
-    path.Capture capture = 1;
-    Error error = 2;
-  }
-}
-
-message SaveCaptureRequest {
-  path.Capture capture = 1;
-  string path = 2;
-}
-message SaveCaptureResponse {
-  Error error = 1;
-}
-
-message ExportReplayOptions {
-  path.Report report = 1;
-  repeated path.FramebufferAttachment framebuffer_attachments = 2;
-  GetTimestampsRequest get_timestamps_request = 3;
-  bool display_to_surface = 4;
-  int32 LoopCount = 5;
-}
-
-message ExportReplayRequest {
-  path.Capture capture = 1;
-  string path = 2;
-  path.Device device = 3;
-  ExportReplayOptions options = 4;
-}
-
-message ExportReplayResponse {
-  Error error = 1;
-}
-
-message DCECaptureRequest {
-  path.Capture capture = 1;
-  repeated path.Command commands = 2;
-}
-message DCECaptureResponse {
-  oneof res {
-    path.Capture capture = 1;
-    Error error = 2;
-  }
-}
-
-enum GraphFormat {
-  PBTXT = 0;
-  DOT = 1;
-}
-
-message GraphVisualizationRequest {
-  path.Capture capture = 1;
-  GraphFormat format = 2;
-}
-message GraphVisualizationResponse {
-  oneof res {
-    bytes graphVisualization = 1;
-    Error error = 2;
-  }
-}
-
-message GetDevicesRequest {
-}
-message GetDevicesResponse {
-  oneof res {
-    Devices devices = 1;
-    Error error = 2;
-  }
-}
-
-message GetDevicesForReplayRequest {
-  path.Capture capture = 1;
-}
-message GetDevicesForReplayResponse {
-  oneof res {
-    Devices devices = 1;
-    Error error = 2;
-  }
+  map<string, ThumbnailOrError> images = 1;
 }
 
 message FramebufferAttachments {
@@ -438,146 +465,15 @@ message FramebufferAttachment {
   string label = 4;
 }
 
-message GetLogStreamRequest {
+message VulkanHandleMappingItem {
+  string handle_type = 1;
+  uint64 trace_value = 2;
+  uint64 replay_value = 3;
 }
 
-message FindRequest {
-  // If true then searching will begin at from and move backwards.
-  bool backwards = 1;
-  // Maximum number of results to return. 0 means unlimited.
-  uint32 max_items = 2;
-  // The searching point.
-  oneof from {
-    path.CommandTreeNode command_tree_node = 5;
-    path.StateTreeNode state_tree_node = 6;
-  }
-  // The text to search for.
-  string text = 3;
-  // If true then text should be treated as a regular expression.
-  bool is_regex = 4;
-  // If true the search should be case sensitive.
-  bool is_case_sensitive = 7;
-  // If true, the search will wrap.
-  bool wrap = 8;
-  // Config to use when resolving paths.
-  path.ResolveConfig config = 9;
-}
-
-message FindResponse {
-  oneof result {
-    path.CommandTreeNode command_tree_node = 1;
-    path.StateTreeNode state_tree_node = 2;
-  }
-}
-
-enum ClientAction {
-  Undefined = 0;
-  Color0 = 1;
-  Color1 = 2;
-  Color2 = 3;
-  Color3 = 4;
-  Copy = 5;
-  CullOn = 6;
-  CullOff = 7;
-  Depth = 8;
-  Disable = 9;
-  Edit = 10;
-  Enable = 11;
-  Faceted = 12;
-  Flat = 13;
-  Flip = 14;
-  GotoReference = 15;
-  HideHistogram = 16;
-  Move = 17;
-  Normals = 18;
-  Open = 19;
-  OpenRecent = 20;
-  OverlayWireframe = 21;
-  Points = 22;
-  Save = 23;
-  Search = 24;
-  Select = 25;
-  SelectObservation = 26;
-  SelectProgram = 27;
-  SelectShader = 28;
-  Shaded = 29;
-  Show = 30;
-  ShowActivityPicker = 31;
-  ShowBackground = 32;
-  ShowColorChannels = 33;
-  ShowEdit = 34;
-  ShowError = 35;
-  ShowHelp = 36;
-  ShowHistogram = 37;
-  ShowLogDir = 38;
-  ShowReferences = 39;
-  ShowTargets = 40;
-  Smooth = 41;
-  Triangles = 42;
-  WindingCCW = 43;
-  WindingCW = 44;
-  Wireframe = 45;
-  YUp = 46;
-  ZUp = 47;
-  YDown = 48;
-  ZDown = 49;
-  ZoomActual = 50;
-  ZoomFit = 51;
-  ZoomIn = 52;
-  ZoomOut = 53;
-  VertexSemantics = 54;
-  Overdraw = 55;
-  Pin = 56;
-  ClosePinned = 57;
-}
-
-message ClientInteraction {
-  string view = 1;
-  ClientAction action = 2;
-};
-
-message ClientEventRequest {
-  oneof kind {
-    ClientInteraction interaction = 1;
-  }
-}
-
-message ClientEventResponse {
-}
-
-message UpdateSettingsRequest {
-  // Enables or disable anonymous crash reporting.
-  // This will override the -crashreport command line flag.
-  bool enable_crash_reporting = 1;
-
-  // Enables or disable anonymous analytics reporting.
-  // This will override the -analytics command line flag.
-  bool enable_analytics = 2;
-
-  // The client identifier to use for analytics reporting.
-  // This will override the -analytics command line flag.
-  string client_id = 3;
-
-  // The path to the adb executable to use.
-  // This will override the -adb command line flag.
-  string adb = 4;
-}
-
-message UpdateSettingsResponse {
-  Error error = 1;
-}
-
-message PerfettoQueryRequest {
-  path.Capture capture = 1;
-  string query = 2;
-}
-
-message PerfettoQueryResponse {
-  oneof res {
-    perfetto.QueryResult result = 1;
-    Error error = 2;
-  }
-}
+/******************************************************************************/
+/****                         Service Definition                           ****/
+/******************************************************************************/
 
 // Gapid is the RPC service to the GAPIS server.
 service Gapid {
@@ -761,369 +657,198 @@ service Gapid {
   }
 }
 
-message ValidateDeviceRequest {
-  path.Device device = 1;
+/******************************************************************************/
+/****                     Request/Response Messages                        ****/
+/******************************************************************************/
+
+message CheckForUpdatesRequest {
+  bool include_dev_releases = 1;
 }
 
-message ValidateDeviceResponse {
+message CheckForUpdatesResponse {
+  oneof res {
+    Releases releases = 1;
+    Error error = 2;
+  }
+}
+
+message Releases {
+  message AGIRelease {
+    string name = 1;
+    uint32 version_major = 2;
+    uint32 version_minor = 3;
+    uint32 version_point = 4;
+    uint32 version_dev = 5;
+    string browser_url = 6;
+  }
+
+  message ANGLERelease {
+    uint32 version = 1;
+    string arm_32 = 2;
+    string arm_64 = 3;
+    string x86 = 4;
+  }
+
+  AGIRelease AGI = 1;
+  ANGLERelease ANGLE = 2;
+}
+
+message ClientEventRequest {
+  oneof kind {
+    ClientInteraction interaction = 1;
+  }
+}
+
+message ClientEventResponse {
+}
+
+message ClientInteraction {
+  string view = 1;
+  ClientAction action = 2;
+}
+
+enum ClientAction {
+  Undefined = 0;
+  Color0 = 1;
+  Color1 = 2;
+  Color2 = 3;
+  Color3 = 4;
+  Copy = 5;
+  CullOn = 6;
+  CullOff = 7;
+  Depth = 8;
+  Disable = 9;
+  Edit = 10;
+  Enable = 11;
+  Faceted = 12;
+  Flat = 13;
+  Flip = 14;
+  GotoReference = 15;
+  HideHistogram = 16;
+  Move = 17;
+  Normals = 18;
+  Open = 19;
+  OpenRecent = 20;
+  OverlayWireframe = 21;
+  Points = 22;
+  Save = 23;
+  Search = 24;
+  Select = 25;
+  SelectObservation = 26;
+  SelectProgram = 27;
+  SelectShader = 28;
+  Shaded = 29;
+  Show = 30;
+  ShowActivityPicker = 31;
+  ShowBackground = 32;
+  ShowColorChannels = 33;
+  ShowEdit = 34;
+  ShowError = 35;
+  ShowHelp = 36;
+  ShowHistogram = 37;
+  ShowLogDir = 38;
+  ShowReferences = 39;
+  ShowTargets = 40;
+  Smooth = 41;
+  Triangles = 42;
+  WindingCCW = 43;
+  WindingCW = 44;
+  Wireframe = 45;
+  YUp = 46;
+  ZUp = 47;
+  YDown = 48;
+  ZDown = 49;
+  ZoomActual = 50;
+  ZoomFit = 51;
+  ZoomIn = 52;
+  ZoomOut = 53;
+  VertexSemantics = 54;
+  Overdraw = 55;
+  Pin = 56;
+  ClosePinned = 57;
+}
+
+message DCECaptureRequest {
+  path.Capture capture = 1;
+  repeated path.Command commands = 2;
+}
+
+message DCECaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
+}
+
+message DeleteRequest {
+  path.Any path = 1;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 2;
+}
+
+message DeleteResponse {
+  oneof res {
+    path.Any path = 1;
+    Error error = 2;
+  }
+}
+
+message ExportCaptureRequest {
+  path.Capture capture = 1;
+}
+
+message ExportCaptureResponse {
+  oneof res {
+    bytes data = 1;
+    Error error = 2;
+  }
+}
+
+message ExportReplayRequest {
+  path.Capture capture = 1;
+  string path = 2;
+  path.Device device = 3;
+  ExportReplayOptions options = 4;
+}
+
+message ExportReplayResponse {
   Error error = 1;
 }
 
-message Error {
-  oneof err {
-    ErrInternal err_internal = 1;
-    ErrDataUnavailable err_data_unavailable = 2;
-    ErrInvalidPath err_invalid_path = 3;
-    ErrInvalidArgument err_invalid_argument = 4;
-    ErrPathNotFollowable err_path_not_followable = 5;
-    ErrUnsupportedVersion err_unsupported_version = 6;
+message ExportReplayOptions {
+  path.Report report = 1;
+  repeated path.FramebufferAttachment framebuffer_attachments = 2;
+  GetTimestampsRequest get_timestamps_request = 3;
+  bool display_to_surface = 4;
+  int32 LoopCount = 5;
+}
+
+message FindRequest {
+  // If true then searching will begin at from and move backwards.
+  bool backwards = 1;
+  // Maximum number of results to return. 0 means unlimited.
+  uint32 max_items = 2;
+  // The searching point.
+  oneof from {
+    path.CommandTreeNode command_tree_node = 5;
+    path.StateTreeNode state_tree_node = 6;
   }
+  // The text to search for.
+  string text = 3;
+  // If true then text should be treated as a regular expression.
+  bool is_regex = 4;
+  // If true the search should be case sensitive.
+  bool is_case_sensitive = 7;
+  // If true, the search will wrap.
+  bool wrap = 8;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 9;
 }
 
-// ErrInternal is the error raised when an internal server error has occurred.
-message ErrInternal {
-  string message = 1;
-}
-
-// ErrDataUnavailable is the error raised when the requested data is
-// unavailable. For instance: the error raised when a framebuffer is
-// requested at a point in the capture where none is bound.
-message ErrDataUnavailable {
-  // The reason the data is unavailable.
-  stringtable.Msg reason = 1;
-  // If true, then making the same request at a later time may result in data.
-  bool transient = 2;
-}
-
-// ErrInvalidPath is the error raised when the specified path is invalid.
-// This type of error is permanent.
-message ErrInvalidPath {
-  // The description of what's invalid.
-  stringtable.Msg reason = 1;
-  // The part of the path that was invalid.
-  path.Any path = 2;
-}
-
-// ErrInvalidArgument is the error raised when one of the parameters to an RPC
-// call is invalid.
-// This type of error is permanent.
-message ErrInvalidArgument {
-  // The description of what's invalid.
-  stringtable.Msg reason = 1;
-}
-
-// ErrPathNotFollowable is the error raised when attempting to follow a path
-// that cannot be followed.
-message ErrPathNotFollowable {
-  path.Any path = 1;
-}
-
-// ErrUnsupportedVersion is the error raised attempting to load data with an
-// unsupported version.
-message ErrUnsupportedVersion {
-  // The reason the data is unsupported.
-  stringtable.Msg reason = 1;
-  // If true, the client should prompt the user to update GAPID.
-  bool suggest_update = 2;
-}
-
-enum TraceType {
-  Graphics = 0;
-  Perfetto = 1;
-}
-
-// Capture describes single capture file held by the server.
-message Capture {
-  // The type of this capture.
-  TraceType type = 7;
-  // Name given to the capture. e.g. "KittyWorld"
-  string name = 1;
-  // Information about the device used to create the capture.
-  device.Instance device = 2;
-  // Information about the abi used by the traced process.
-  device.ABI ABI = 3;
-  // Number of commands in this capture.
-  uint64 num_commands = 4;
-  // List of graphics APIs used by this capture.
-  repeated path.API APIs = 5;
-  // List of all the memory observations made by the application.
-  repeated MemoryRange observations = 6;
-}
-
-// Report describes all warnings and errors found by a capture.
-message Report {
-  // Report items for this report.
-  repeated ReportItem items = 1;
-  // Report groups for this report.
-  repeated ReportGroup groups = 2;
-  // Array of strings for messages.
-  repeated string strings = 3;
-  // Array of values for messages.
-  repeated stringtable.Value values = 4;
-}
-
-// ReportItem represents an entry in a report.
-message ReportItem {
-  // The severity of the report item.
-  severity.Severity severity = 1;
-  // The message for the item.
-  MsgRef message = 2;
-  // The path to the command that reported the issue.
-  path.Command command = 3;
-  // The references to tags associated with this item.
-  repeated MsgRef tags = 4;
-}
-
-// Stats stores the statistics for a capture
-message Stats {
-  // The draw calls per frame, if requested in the path.Stats.
-  repeated uint64 draw_calls = 1;
-  uint64 trace_start = 2;
-}
-
-// Thread represents a single thread in the capture.
-message Thread {
-  string name = 1;
-}
-
-// MsgRef references a message in a Report.
-message MsgRef {
-  // The index in Report.strings of the message identifier.
-  uint32 identifier = 1;
-  // The indexed arguments.
-  repeated MsgRefArgument arguments = 2;
-}
-
-// MsgRefArgument is an argument formed from two indices into the report.
-message MsgRefArgument {
-  // The index in Report.strings of the argument identifier.
-  uint32 key = 1;
-  // The index in Report.values of the argument value.
-  uint32 value = 2;
-}
-
-// ReportGroup represents a group of ReportItem which have the same tag.
-message ReportGroup {
-  // The reference to Msg which describes this group.
-  MsgRef name = 1;
-  // The indices of report items which belong to this group.
-  repeated uint32 items = 2;
-  // The union of all Items tags. Currently isn't supported and is nil. TODO:
-  // Add filtering support for the entire group.
-  repeated MsgRef tags = 3;
-}
-
-// Memory describes the state of a range of memory at a specific point in
-// the command stream.
-message Memory {
-  // The memory values for the span.
-  bytes data = 1;
-  // The data-relative ranges that were read-from at the specified command.
-  repeated MemoryRange reads = 2;
-  // The data-relative ranges that were written-to at the specified command.
-  repeated MemoryRange writes = 3;
-  // The data-relative ranges that have been observed.
-  repeated MemoryRange observed = 4;
-  // All types of the reads on this command
-  repeated TypedMemoryRange typed_ranges = 5;
-}
-
-// MemoryRange represents a contiguous range of memory.
-message MemoryRange {
-  // The address of the first byte in the memory range.
-  uint64 base = 1;
-  // The number of bytes that are in the memory range.
-  uint64 size = 2;
-}
-
-message TypedMemoryRange {
-  // The type of the memory observations
-  path.Type type = 1;
-  MemoryRange range = 2;
-  // The root of the memory observation
-  uint64 root = 3;
-  // The structured value of the typed memory observation.
-  memory_box.Value value = 4;
-}
-
-// Resources contains the full list of resources used by a capture.
-message Resources {
-  repeated ResourcesByType types = 1;
-  map<string, path.ResourceType> resourcesToTypes = 2;
-}
-
-// ResourcesByType contains all resources of a specific type.
-message ResourcesByType {
-  path.ResourceType type = 1;
-  repeated Resource resources = 2;
-}
-
-// Resource describes a single resource.
-message Resource {
-  // The resource's unique identifier.
-  path.ID ID = 1;
-  // The resource identifier used for display.
-  string handle = 2;
-  // The resource label.
-  string label = 3;
-  // An int used to sort the resources for presentation.
-  uint64 order = 4;
-  // The list of command indices where the resource was used.
-  repeated path.Command accesses = 5;
-  // The command at which this resource was deleted/destroyed.
-  path.Command deleted = 6;
-  // The command at which this resource was created.
-  path.Command created = 7;
-  // The type of the resource
-  path.ResourceType type = 9;
-}
-
-// MultiResourceData represents the state of resources at a single point in a
-// capture.
-message MultiResourceData {
-  message ResourceOrError {
-    oneof val {
-      api.ResourceData resource = 1;
-      Error error = 2;
-    }
-  }
-  map<string, ResourceOrError> resources = 1;
-}
-
-// MultiResourceThumbnail represents the thumbnail images of multiple resources.
-message MultiResourceThumbnail {
-  message ThumbnailOrError {
-    oneof val {
-      image.Info image = 1;
-      Error error = 2;
-    }
-  }
-  map<string, ThumbnailOrError> images = 1;
-}
-
-// CommandTree represents a command tree hierarchy.
-message CommandTree {
-  path.CommandTreeNode root = 1;
-}
-
-// CommandTreeNode is a node in a command tree hierarchy.
-message CommandTreeNode {
-  // The path to the command that best represents this group. For example the
-  // the last draw call in a frame.
-  path.Command representation = 1;
-  // Number of child nodes.
-  uint64 num_children = 2;
-  // Group name if this node represents a group of commands.
-  string group = 3;
-  // Path to the command range represented by this node.
-  path.Commands commands = 4;
-  // Number of commands encapsulated by this group.
-  uint64 num_commands = 5;
-}
-
-// ConstantSet is a collection on name-value pairs to be used as an enumeration
-// of possible values for a field or parameter.
-message ConstantSet {
-  repeated Constant constants = 1;
-  bool is_bitfield = 2;
-}
-
-// Constant is a name-value pair that is owned by a ConstantSet.
-message Constant {
-  // The name of the constant.
-  string name = 1;
-  // The value of the constant.
-  uint64 value = 2;
-}
-
-// Event represents a single event in the capture.
-message Event {
-  EventKind kind = 1;
-  path.Command command = 2;
-  uint64 timestamp = 3;
-}
-
-enum EventKind {
-  Unknown = 0;
-  DrawCall = 1;
-  Submission = 2;
-  TransformFeedback = 3;
-  // All command events should occur between FirstInFrame and LastInFrame
-  // (except FramebufferObservation, which comes last as gapit sxs_video
-  // depends on this).
-  FirstInFrame = 4;
-  LastInFrame = 5;
-  Clear = 6;
-  UserMarker = 7;
-  PushUserMarker = 8;
-  PopUserMarker = 9;
-  FramebufferObservation = 10;
-  // Note you probably only want to use AllCommands for debugging/testing
-  // purposes.
-  AllCommands = 11;
-}
-
-// StateTree represents a state tree hierarchy.
-message StateTree {
-  path.StateTreeNode root = 1;
-}
-
-// StateTreeNode is a node in a state tree hierarchy.
-message StateTreeNode {
-  // Number of child nodes.
-  uint64 num_children = 1;
-  // The name of the field or group.
-  string name = 2;
-  // The path to the value.
-  path.Any value_path = 3;
-  // The 'preview' value of the field.
-  // For simple POD types, this may be the actual value, in which case
-  // preview_is_value will be true.
-  // For more complex types, this may be a string representation of the value.
-  // Long arrays may be truncated.
-  box.Value preview = 4;
-  // If true then preview is the complete data of the node. In this situation
-  // preview is equal to calling Get() on the path.
-  bool preview_is_value = 5;
-  // The possible alternative named values for the field.
-  path.ConstantSet constants = 6;
-}
-
-message TraceTargetTreeNode {
-  // The name of the node
-  string name = 1;
-  // The icon of this node.
-  bytes icon = 2;
-  // The uri of this node
-  string uri = 3;
-  // The parent of this node. It will point to
-  // this node if there is no parent
-  string parent_uri = 4;
-  // Child nodes from this tree node
-  repeated string children_uris = 5;
-  // The uri that should be passed to the TraceOptions to trace this target.
-  // If null, this node is not traceable.
-  string trace_uri = 6;
-  // The friendly application name, if it makes sense.
-  string friendly_application = 7;
-  // The friendly executable name, if it makes sense.
-  string friendly_executable = 8;
-}
-
-message TraceTargetTreeNodes {
-  repeated TraceTargetTreeNode nodes = 1;
-}
-
-message TraceTargetTreeNodeRequest {
-  path.Device device = 1;
-  string uri = 2;
-  float density = 3;
-}
-
-message TraceTargetTreeNodeResponse {
-  oneof val {
-    TraceTargetTreeNode node = 1;
-    Error error = 2;
+message FindResponse {
+  oneof result {
+    path.CommandTreeNode command_tree_node = 1;
+    path.StateTreeNode state_tree_node = 2;
   }
 }
 
@@ -1139,126 +864,188 @@ message FindTraceTargetsResponse {
   }
 }
 
-message TraceOptions {
-  // The device on which to trace
-  path.Device device = 1;
-  oneof app {
-    // The device-specific uri to trace
-    string uri = 2;
-    // The application to upload and trace
-    bytes upload_application = 3;
-    // The server port that should be connected to for tracing
-    uint32 port = 4;
-  }
-  // The type of this trace.
-  TraceType type = 23;
-  // What APIs should we trace
-  repeated string apis = 5;
-  // Any additional command-line args to pass to the app
-  string additional_command_line_args = 6;
-  // What directory should be used for tracing
-  string cwd = 7;
-  // Additional environment variables to add in the form 'X=Y'
-  repeated string environment = 8;
-  // How long should we trace for
-  float duration = 9;
-  // What frames should we insert into the trace
-  uint32 observe_frame_frequency = 10;
-  // What draw calls should we insert into the trace
-  uint32 observe_draw_frequency = 11;
-  // What frame should we start tracing.
-  uint32 start_frame = 12;
-  // How many frames should we capture
-  uint32 frames_to_capture = 13;
-  reserved 14;
-  // Insert extra commands to record error state
-  bool record_error_state = 15;
-  // Wait for an event to start tracing
-  bool defer_start = 16;
-  // Disable buffering. (In case of a crash)
-  bool no_buffer = 17;
-  // Clear the application cache
-  bool clear_cache = 18;
-  // Hide unknown extensions
-  bool hide_unknown_extensions = 19;
-  // Record trace timing
-  bool record_trace_times = 20;
-  // Where should we save the capture file.
-  string server_local_save_path = 21;
-  // Name of the pipe to connect/listen to.
-  string pipe_name = 22;
-  // Disable coherent_memory_tracking. (Useful if you want to attach a debugger)
-  bool disable_coherent_memory_tracker = 25;
-  // Make GAPII wait for a debugger to attach
-  bool wait_for_debugger = 26;
-  // The config to use if doing a Perfetto trace.
-  perfetto.protos.TraceConfig perfetto_config = 24;
+message TraceTargetTreeNodes {
+  repeated TraceTargetTreeNode nodes = 1;
 }
 
-enum TraceEvent {
-  Begin = 0;   // Begin tracing (only valid if started with MidExecution)
-  Stop = 1;    // Flush and stop the trace
-  Status = 2;  // Get the status of the trace
+message FollowRequest {
+  path.Any path = 1;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 2;
 }
 
-message TraceRequest {
-  oneof action {
-    TraceOptions initialize = 1;
-    TraceEvent query_event = 2;
-  }
-}
-
-enum TraceStatus {
-  Uninitialized = 0;
-  Initializing = 1;
-  Capturing = 2;
-  WaitingToStart = 3;
-  Done = 4;
-}
-
-message StatusResponse {
-  int64 bytes_captured = 1;  // How many bytes have been captured so far
-  TraceStatus status = 2;    // What state the trace is in
-}
-
-message TraceResponse {
+message FollowResponse {
   oneof res {
-    StatusResponse status = 1;
+    path.Any path = 1;
     Error error = 2;
   }
 }
 
-message DeviceTraceConfiguration {
-  // Is the path to the app on this device server-local.
-  bool server_local_path = 1;
-  // Does it make sense to specify a CWD for the application.
-  bool can_specify_cwd = 2;
-  // Can we upload an application to trace.
-  bool can_upload_application = 3;
-  // Can we specify an environment.
-  bool can_specify_env = 4;
-  // The default URI that should be used for looking at packages.
-  string preferred_root_uri = 5;
-  // Type and API-specific capabilities.
-  repeated TraceTypeCapabilities apis = 6;
-  // Is there a cache that can be cleared.
-  bool has_cache = 7;
+message GetRequest {
+  path.Any path = 1;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 2;
 }
 
-message TraceTypeCapabilities {
-  // The type of trace this describes.
-  TraceType type = 5;
-  // What is the API this is for.
-  string api = 1;
-  reserved 2;
-  // [deprecated] Does this API support MEC.
-  // This was used only for GLES.
-  // FeatureStatus mid_execution_capture_support = 3;
-  reserved 3;
-  // Whether unsupported extensions can be enabled.
-  bool can_enable_unsupported_extensions = 4;
-  // Does this trace require starting an application.
-  bool requires_application = 6;
+message GetResponse {
+  oneof res {
+    Value value = 1;
+    Error error = 2;
+  }
+}
+
+message GetAvailableStringTablesRequest {
+}
+
+message GetAvailableStringTablesResponse {
+  oneof res {
+    StringTableInfos tables = 1;
+    Error error = 2;
+  }
+}
+
+message StringTableInfos {
+  repeated stringtable.Info list = 1;
+}
+
+message GetDevicesRequest {
+}
+
+message GetDevicesResponse {
+  oneof res {
+    Devices devices = 1;
+    Error error = 2;
+  }
+}
+
+message GetDevicesForReplayRequest {
+  path.Capture capture = 1;
+}
+
+message GetDevicesForReplayResponse {
+  oneof res {
+    Devices devices = 1;
+    Error error = 2;
+  }
+}
+
+message Devices {
+  repeated path.Device list = 1;
+  // compatibilities and reasons are set only in GetDevicesForReplay responses
+  repeated bool compatibilities = 2;
+  repeated stringtable.Msg reasons = 3;
+}
+
+message GetLogStreamRequest {
+}
+
+// There is no GetLogStreamResponse.
+
+message GetPerformanceCountersRequest {
+}
+
+message GetPerformanceCountersResponse {
+  oneof res {
+    string data = 1;
+    Error error = 2;
+  }
+}
+
+message GetProfileRequest {
+  string name = 1;
+  int32 debug = 2;
+}
+
+message GetProfileResponse {
+  oneof res {
+    bytes data = 1;
+    Error error = 2;
+  }
+}
+
+message GetServerInfoRequest {
+}
+
+message GetServerInfoResponse {
+  oneof res {
+    ServerInfo info = 1;
+    Error error = 2;
+  }
+}
+
+message ServerInfo {
+  string name = 1;
+  uint32 version_major = 2;
+  uint32 version_minor = 3;
+  uint32 version_point = 4;
+  // A string list of features supported by the server. This feature list can be
+  // used by the client to determine what new RPCs can be called.
+  repeated string features = 5;
+  path.Device server_local_device = 6;
+}
+
+message GetStringTableRequest {
+  stringtable.Info table = 1;
+}
+
+message GetStringTableResponse {
+  oneof res {
+    stringtable.StringTable table = 1;
+    Error error = 2;
+  }
+}
+
+// GetTimestampsRequest is the request send to server to get the timestamps for
+// the commands in the capture.
+message GetTimestampsRequest {
+  path.Capture capture = 1;
+  path.Device device = 2;
+  int32 LoopCount = 3;
+}
+
+// GetTimestampsResponse is the response message server sends back which
+// contains the time duratoins for the commands when replay the trace.
+message GetTimestampsResponse {
+  oneof res {
+    Timestamps timestamps = 1;
+    Error error = 2;
+  }
+}
+
+// Timestamps describes the durations of commands execution, each of which
+// is specified in a TimestampsItem message.
+message Timestamps {
+  repeated TimestampsItem timestamps = 1;
+}
+
+// TimestampsItem represents one entry in a Timestamps report.
+// It describes the duratoin of execution time between the two commands
+// specified by "begin" and "end" fields.
+message TimestampsItem {
+  // The path of the command which begins the time measurement.
+  path.Command begin = 1;
+  // The path of the command which ends the time measurement.
+  path.Command end = 2;
+  // The duration in nanoseconds between the two commands specified.
+  uint64 time_in_nanoseconds = 3;
+}
+
+message GpuProfileRequest {
+  path.Capture capture = 1;
+  path.Device device = 2;
+  ProfileExperiments experiments = 3;
+}
+
+message GpuProfileResponse {
+  oneof res {
+    ProfilingData profiling_data = 1;
+    Error error = 2;
+  }
+}
+
+message ProfileExperiments {
+  repeated path.Command disabledCommands = 1;
+  bool disableAnisotropicFiltering = 2;
 }
 
 message ProfilingData {
@@ -1352,28 +1139,154 @@ message ProfilingData {
   GpuCounters gpu_counters = 3;
 }
 
-message VulkanHandleMappingItem {
-  string handle_type = 1;
-  uint64 trace_value = 2;
-  uint64 replay_value = 3;
+message GraphVisualizationRequest {
+  path.Capture capture = 1;
+  GraphFormat format = 2;
 }
 
-message ProfileExperiments {
-  repeated path.Command disabledCommands = 1;
-  bool disableAnisotropicFiltering = 2;
-}
-
-message GpuProfileResponse {
+message GraphVisualizationResponse {
   oneof res {
-    ProfilingData profiling_data = 1;
+    bytes graphVisualization = 1;
     Error error = 2;
   }
 }
 
-message GpuProfileRequest {
+enum GraphFormat {
+  PBTXT = 0;
+  DOT = 1;
+}
+
+message ImportCaptureRequest {
+  string name = 1;
+  bytes data = 2;
+}
+
+message ImportCaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
+}
+
+message LoadCaptureRequest {
+  string path = 1;
+}
+
+message LoadCaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
+}
+
+message PerfettoQueryRequest {
   path.Capture capture = 1;
+  string query = 2;
+}
+
+message PerfettoQueryResponse {
+  oneof res {
+    perfetto.QueryResult result = 1;
+    Error error = 2;
+  }
+}
+
+message PingRequest {
+}
+
+message PingResponse {
+}
+
+message ProfileRequest {
+  // Settings for what profile data the client wants.
+  // Set all to false to flush any pending data and disable profiling.
+  bool pprof = 1;  // Enable pprof profiling?
+  bool trace = 2;  // Enable trace data?
+
+  // Time in seconds between memory snapshots
+  uint32 memory_snapshot_interval = 3;
+}
+
+message ProfileResponse {
+  bytes pprof = 1;  // Streamed pprof data.
+  bytes trace = 2;  // Streamed trace data.
+  Error error = 3;
+}
+
+message ServerStatusRequest {
+  float memory_snapshot_interval = 1;
+  float status_update_frequency = 2;
+}
+
+message ServerStatusResponse {
+  oneof res {
+    TaskUpdate task = 1;
+    MemoryStatus memory = 2;
+    ReplayUpdate replay = 3;
+  }
+}
+
+message TaskUpdate {
+  TaskStatus status = 1;
+  uint64 id = 2;
+  uint64 parent = 3;
+  string name = 4;
+  int32 complete_percent = 5;
+  bool background = 6;
+  string event = 7;
+}
+
+enum TaskStatus {
+  STARTING = 0;
+  FINISHED = 1;
+  PROGRESS = 2;
+  BLOCKED = 3;
+  UNBLOCKED = 4;
+  EVENT = 5;
+}
+
+message MemoryStatus {
+  uint64 totalHeap = 1;
+}
+
+message ReplayUpdate {
+  uint32 replay_id = 1;
   path.Device device = 2;
-  ProfileExperiments experiments = 3;
+  ReplayStatus status = 3;
+  // Progress information below, sent if status is EXECUTING.
+  uint64 label = 4;
+  uint32 total_instrs = 5;
+  uint32 finished_instrs = 6;
+}
+
+enum ReplayStatus {
+  REPLAY_QUEUED = 0;
+  REPLAY_STARTED = 1;
+  REPLAY_EXECUTING = 2;
+  REPLAY_FINISHED = 3;
+}
+
+message SaveCaptureRequest {
+  path.Capture capture = 1;
+  string path = 2;
+}
+
+message SaveCaptureResponse {
+  Error error = 1;
+}
+
+message SetRequest {
+  path.Any path = 1;
+  Value value = 2;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 3;
+}
+
+message SetResponse {
+  oneof res {
+    path.Any path = 1;
+    Error error = 2;
+  }
 }
 
 message SplitCaptureRequest {
@@ -1387,41 +1300,155 @@ message SplitCaptureResponse {
   }
 }
 
-// GetTimestampsRequest is the request send to server to get the timestamps for
-// the commands in the capture.
-message GetTimestampsRequest {
-  path.Capture capture = 1;
-  path.Device device = 2;
-  int32 LoopCount = 3;
+message TraceRequest {
+  oneof action {
+    TraceOptions initialize = 1;
+    TraceEvent query_event = 2;
+  }
 }
 
-// Timestamps describes the durations of commands execution, each of which
-// is specified in a TimestampsItem message.
-message Timestamps {
-  repeated TimestampsItem timestamps = 1;
-}
-
-// TimestampsItem represents one entry in a Timestamps report.
-// It describes the duratoin of execution time between the two commands
-// specified by "begin" and "end" fields.
-message TimestampsItem {
-  // The path of the command which begins the time measurement.
-  path.Command begin = 1;
-  // The path of the command which ends the time measurement.
-  path.Command end = 2;
-  // The duration in nanoseconds between the two commands specified.
-  uint64 time_in_nanoseconds = 3;
-}
-
-// GetTimestampsResponse is the response message server sends back which
-// contains the time duratoins for the commands when replay the trace.
-message GetTimestampsResponse {
+message TraceResponse {
   oneof res {
-    Timestamps timestamps = 1;
+    StatusResponse status = 1;
     Error error = 2;
   }
 }
 
-// Passes the current command, unmodified
-message Pass {
+message TraceOptions {
+  // The device on which to trace
+  path.Device device = 1;
+  oneof app {
+    // The device-specific uri to trace
+    string uri = 2;
+    // The application to upload and trace
+    bytes upload_application = 3;
+    // The server port that should be connected to for tracing
+    uint32 port = 4;
+  }
+  // The type of this trace.
+  TraceType type = 23;
+  // What APIs should we trace
+  repeated string apis = 5;
+  // Any additional command-line args to pass to the app
+  string additional_command_line_args = 6;
+  // What directory should be used for tracing
+  string cwd = 7;
+  // Additional environment variables to add in the form 'X=Y'
+  repeated string environment = 8;
+  // How long should we trace for
+  float duration = 9;
+  // What frames should we insert into the trace
+  uint32 observe_frame_frequency = 10;
+  // What draw calls should we insert into the trace
+  uint32 observe_draw_frequency = 11;
+  // What frame should we start tracing.
+  uint32 start_frame = 12;
+  // How many frames should we capture
+  uint32 frames_to_capture = 13;
+  reserved 14;
+  // Insert extra commands to record error state
+  bool record_error_state = 15;
+  // Wait for an event to start tracing
+  bool defer_start = 16;
+  // Disable buffering. (In case of a crash)
+  bool no_buffer = 17;
+  // Clear the application cache
+  bool clear_cache = 18;
+  // Hide unknown extensions
+  bool hide_unknown_extensions = 19;
+  // Record trace timing
+  bool record_trace_times = 20;
+  // Where should we save the capture file.
+  string server_local_save_path = 21;
+  // Name of the pipe to connect/listen to.
+  string pipe_name = 22;
+  // Disable coherent_memory_tracking. (Useful if you want to attach a debugger)
+  bool disable_coherent_memory_tracker = 25;
+  // Make GAPII wait for a debugger to attach
+  bool wait_for_debugger = 26;
+  // The config to use if doing a Perfetto trace.
+  perfetto.protos.TraceConfig perfetto_config = 24;
+}
+
+enum TraceEvent {
+  Begin = 0;   // Begin tracing (only valid if started with MidExecution)
+  Stop = 1;    // Flush and stop the trace
+  Status = 2;  // Get the status of the trace
+}
+
+message StatusResponse {
+  int64 bytes_captured = 1;  // How many bytes have been captured so far
+  TraceStatus status = 2;    // What state the trace is in
+}
+
+enum TraceStatus {
+  Uninitialized = 0;
+  Initializing = 1;
+  Capturing = 2;
+  WaitingToStart = 3;
+  Done = 4;
+}
+
+message TraceTargetTreeNodeRequest {
+  path.Device device = 1;
+  string uri = 2;
+  float density = 3;
+}
+
+message TraceTargetTreeNodeResponse {
+  oneof val {
+    TraceTargetTreeNode node = 1;
+    Error error = 2;
+  }
+}
+
+message TraceTargetTreeNode {
+  // The name of the node
+  string name = 1;
+  // The icon of this node.
+  bytes icon = 2;
+  // The uri of this node
+  string uri = 3;
+  // The parent of this node. It will point to
+  // this node if there is no parent
+  string parent_uri = 4;
+  // Child nodes from this tree node
+  repeated string children_uris = 5;
+  // The uri that should be passed to the TraceOptions to trace this target.
+  // If null, this node is not traceable.
+  string trace_uri = 6;
+  // The friendly application name, if it makes sense.
+  string friendly_application = 7;
+  // The friendly executable name, if it makes sense.
+  string friendly_executable = 8;
+}
+
+message UpdateSettingsRequest {
+  // Enables or disable anonymous crash reporting.
+  // This will override the -crashreport command line flag.
+  bool enable_crash_reporting = 1;
+
+  // Enables or disable anonymous analytics reporting.
+  // This will override the -analytics command line flag.
+  bool enable_analytics = 2;
+
+  // The client identifier to use for analytics reporting.
+  // This will override the -analytics command line flag.
+  string client_id = 3;
+
+  // The path to the adb executable to use.
+  // This will override the -adb command line flag.
+  string adb = 4;
+}
+
+message UpdateSettingsResponse {
+  Error error = 1;
+}
+
+message ValidateDeviceRequest {
+  path.Device device = 1;
+}
+
+message ValidateDeviceResponse {
+  Error error = 1;
 }
