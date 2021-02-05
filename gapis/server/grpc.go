@@ -616,6 +616,7 @@ func (s *grpcServer) FindTraceTargets(ctx xctx.Context, req *service.FindTraceTa
 }
 
 func (s *grpcServer) Trace(conn service.Gapid_TraceServer) error {
+	defer s.inRPC()()
 	ctx := s.bindCtx(conn.Context())
 	ctx = status.Start(ctx, "Tracing")
 	defer status.Finish(ctx)
@@ -667,6 +668,7 @@ func (s *grpcServer) GetTimestamps(req *service.GetTimestampsRequest, server ser
 }
 
 func (s *grpcServer) PerfettoQuery(ctx xctx.Context, req *service.PerfettoQueryRequest) (*service.PerfettoQueryResponse, error) {
+	defer s.inRPC()()
 	data, err := s.handler.PerfettoQuery(s.bindCtx(ctx), req.Capture, req.Query)
 	if err := service.NewError(err); err != nil {
 		return &service.PerfettoQueryResponse{Res: &service.PerfettoQueryResponse_Error{Error: err}}, nil
@@ -675,6 +677,7 @@ func (s *grpcServer) PerfettoQuery(ctx xctx.Context, req *service.PerfettoQueryR
 }
 
 func (s *grpcServer) ValidateDevice(ctx xctx.Context, req *service.ValidateDeviceRequest) (*service.ValidateDeviceResponse, error) {
+	defer s.inRPC()()
 	err := s.handler.ValidateDevice(s.bindCtx(ctx), req.Device)
 	if err := service.NewError(err); err != nil {
 		return &service.ValidateDeviceResponse{Error: err}, nil
