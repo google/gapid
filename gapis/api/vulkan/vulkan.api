@@ -90,6 +90,7 @@ import "extensions/khr_16bit_storage.api"
 import "extensions/khr_external_fence_capabilities.api"
 import "extensions/khr_external_memory_capabilities.api"
 import "extensions/khr_external_semaphore_capabilities.api"
+import "extensions/khr_external_semaphore_fd.api"
 import "extensions/khr_variable_pointers.api"
 import "extensions/khr_sampler_ycbcr_conversion.api"
 import "extensions/amd_draw_indirect_count.api"
@@ -281,6 +282,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_driver_properties"] = true
   supported.ExtensionNames["VK_ANDROID_frame_boundary"] = true
   supported.ExtensionNames["VK_KHR_external_semaphore"] = true
+  supported.ExtensionNames["VK_KHR_external_semaphore_fd"] = true
   supported.ExtensionNames["VK_KHR_external_memory"] = true
   return supported
 }
