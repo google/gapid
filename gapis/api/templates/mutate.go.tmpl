@@ -503,7 +503,8 @@
     default:
     {{if IsNil $.Default}}
       v := {{Template "Go.Read" $.Value}}
-      return fmt.Errorf("Missing switch case handler for value %T %v", v, v)
+      ϟerr := fmt.Errorf("Missing switch case handler for value %T %v", v, v)
+      {{Template "Go.ReturnErr" "ϟerr"}}
     {{else}}
       {{Template "Block" $.Default}}
     {{end}}
