@@ -88,16 +88,20 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 // slice group, and append the result to corresponding entries.
 func setTimeMetrics(ctx context.Context, groupToSlices map[int32][]*service.ProfilingData_GpuSlices_Slice, metrics *[]*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) {
 	*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
-		Id:   gpuTimeMetricId,
-		Name: "GPU Time",
-		Unit: strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
-		Op:   service.ProfilingData_GpuCounters_Metric_Summation,
+		Id:              gpuTimeMetricId,
+		Name:            "GPU Time",
+		Unit:            strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
+		Op:              service.ProfilingData_GpuCounters_Metric_Summation,
+		Description:     "GPU Time",
+		SelectByDefault: true,
 	})
 	*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
-		Id:   gpuWallTimeMetricId,
-		Name: "GPU Wall Time",
-		Unit: strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
-		Op:   service.ProfilingData_GpuCounters_Metric_Summation,
+		Id:              gpuWallTimeMetricId,
+		Name:            "GPU Wall Time",
+		Unit:            strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
+		Op:              service.ProfilingData_GpuCounters_Metric_Summation,
+		Description:     "GPU Wall Time",
+		SelectByDefault: true,
 	})
 	for groupId, slices := range groupToSlices {
 		gpuTime, wallTime := gpuTimeForGroup(slices)
@@ -144,11 +148,19 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 	for i, counter := range counters {
 		metricId := counterMetricIdOffset + int32(i)
 		op := getCounterAggregationMethod(counter)
+		description := ""
+		selectByDefault := false
+		if counter.Spec != nil {
+			description = counter.Spec.Description
+			selectByDefault = counter.Spec.SelectByDefault
+		}
 		*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
-			Id:   metricId,
-			Name: counter.Name,
-			Unit: counter.Unit,
-			Op:   op,
+			Id:              metricId,
+			Name:            counter.Name,
+			Unit:            counter.Unit,
+			Op:              op,
+			Description:     description,
+			SelectByDefault: selectByDefault,
 		})
 		if op != service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg {
 			log.E(ctx, "Counter aggregation method not implemented yet. Operation: %v", op)

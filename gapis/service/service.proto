@@ -17,6 +17,7 @@ syntax = "proto3";
 import "core/image/image.proto";
 import "core/log/log_pb/log.proto";
 import "core/os/device/device.proto";
+import "core/os/device/gpu_counter_descriptor.proto";
 import "gapis/api/service.proto";
 import "gapis/perfetto/service/perfetto.proto";
 import "gapis/service/box/box.proto";
@@ -1306,8 +1307,9 @@ message ProfilingData {
     string description = 3;
     string unit = 4;
     bool default = 5;
-    repeated uint64 timestamps = 6;
-    repeated double values = 7;
+    device.GpuCounterDescriptor.GpuCounterSpec spec = 6;
+    repeated uint64 timestamps = 7;
+    repeated double values = 8;
   }
 
   // GpuCounters contains aggregated GPU performance result, the aggregation
@@ -1324,6 +1326,8 @@ message ProfilingData {
       string name = 2;
       string unit = 3;
       AggregationOperator op = 4;
+      string description = 5;
+      bool select_by_default = 6;
     }
 
     // Perf includes a best-guessing performance value and a confidence range.

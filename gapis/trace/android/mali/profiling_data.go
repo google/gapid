@@ -275,6 +275,11 @@ func processCounters(ctx context.Context, processor *perfetto.Processor, desc *d
 	units := tracksColumns[2].GetStringValues()
 	descriptions := tracksColumns[3].GetStringValues()
 
+	nameToSpec := map[string]*device.GpuCounterDescriptor_GpuCounterSpec{}
+	for _, spec := range desc.Specs {
+		nameToSpec[spec.Name] = spec
+	}
+
 	for i := uint64(0); i < numTracksRows; i++ {
 		countersQuery := fmt.Sprintf(countersQueryFmt, trackIds[i])
 		countersQueryResult, err := processor.Query(countersQuery)
@@ -288,12 +293,15 @@ func processCounters(ctx context.Context, processor *perfetto.Processor, desc *d
 			timestamps[i] = uint64(t)
 		}
 		values := countersColumns[1].GetDoubleValues()
+
+		spec, _ := nameToSpec[names[i]]
 		// TODO(apbodnar) Populate the `default` field once the trace processor supports it (b/147432390)
 		counters[i] = &service.ProfilingData_Counter{
 			Id:          uint32(trackIds[i]),
 			Name:        names[i],
 			Unit:        units[i],
 			Description: descriptions[i],
+			Spec:        spec,
 			Timestamps:  timestamps,
 			Values:      values,
 		}

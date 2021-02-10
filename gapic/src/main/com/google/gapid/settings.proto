@@ -76,6 +76,13 @@ message UI {
     bool enabled = 1;
   }
   FramebufferPicker framebuffer_picker = 3;
+
+  message PerformancePreset {
+    string preset_name = 1;
+    string device_name = 2;
+    repeated int32 counter_ids = 3;
+  }
+  repeated PerformancePreset performance_presets = 4;
 }
 
 message Trace {

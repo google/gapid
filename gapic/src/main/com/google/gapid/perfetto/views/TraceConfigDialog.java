@@ -416,6 +416,153 @@ public class TraceConfigDialog extends DialogBase {
     super.okPressed();
   }
 
+  public static class GpuCountersDialog extends DialogBase {
+    private static final Predicate<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>
+        SELECT_DEFAULT = GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getSelectByDefault;
+
+    private final List<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec> specs;
+    private final Set<Integer> currentIds;
+
+    protected CheckboxTableViewer table;
+    private List<Integer> selectedIds;
+    protected Set<Object> checkedElements;
+    private boolean hasFilters;
+
+    public GpuCountersDialog(
+        Shell shell, Theme theme, List<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec> specs,
+        List<Integer> currentIds) {
+      super(shell, theme);
+      this.specs = specs;
+      this.currentIds = Sets.newHashSet(currentIds);
+      this.checkedElements = Sets.newHashSet();
+      this.hasFilters = false;
+    }
+
+    public List<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec> getSpecs() {
+      return specs;
+    }
+
+    public List<Integer> getSelectedIds() {
+      return selectedIds;
+    }
+
+    @Override
+    public String getTitle() {
+      return Messages.CAPTURE_TRACE_PERFETTO;
+    }
+
+    @Override
+    protected Control createDialogArea(Composite parent) {
+      Composite area = (Composite)super.createDialogArea(parent);
+      createGpuCounterTable(area);
+      return area;
+    }
+
+    protected void createGpuCounterTable(Composite area) {
+      Text search = new Text(area, SWT.SINGLE | SWT.SEARCH | SWT.ICON_SEARCH | SWT.ICON_CANCEL);
+      search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+
+      table = createCheckboxTableViewer(area, SWT.NONE);
+      table.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      Widgets.<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>createTableColumn(
+          table, "Name", counter -> counter.getName());
+      Widgets.<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>createTableColumn(
+          table, "Description", counter -> counter.getDescription());
+      table.setContentProvider(new ArrayContentProvider());
+      table.setInput(specs);
+      table.setCheckedElements(
+          specs.stream()
+              .filter(c -> currentIds.contains(c.getCounterId()))
+              .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
+      table.getTable().getColumn(0).pack();
+      table.getTable().getColumn(1).pack();
+      collectCheckedElements();
+
+      table.addCheckStateListener(new ICheckStateListener() {
+        @Override
+        public void checkStateChanged(CheckStateChangedEvent event) {
+          if (event.getChecked()) {
+            checkedElements.add(event.getElement());
+          } else {
+            checkedElements.remove(event.getElement());
+          }
+        }
+      });
+
+      createLink(area, "Select <a>none</a> | <a>default</a> | <a>all</a>", e -> {
+        switch (e.text) {
+          case "none":
+            checkedElements.removeAll(Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet()));
+            table.setAllChecked(false);
+            break;
+          case "default":
+            table.setCheckedElements(
+                specs.stream()
+                    .filter(SELECT_DEFAULT)
+                    .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
+            if (hasFilters) {
+              appendCheckedElements();
+            } else {
+              collectCheckedElements();
+            }
+            break;
+          case "all":
+            table.setAllChecked(true);
+            appendCheckedElements();
+            break;
+        }
+      });
+
+      search.addListener(SWT.Modify, e -> {
+        String query = search.getText().trim().toLowerCase();
+        if (query.isEmpty()) {
+          table.resetFilters();
+          hasFilters = false;
+          resumeCheckedElements();
+          return;
+        }
+        table.setFilters(new ViewerFilter() {
+          @Override
+          public boolean select(Viewer viewer, Object parentElement, Object element) {
+            return ((GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)element)
+                .getName()
+                .toLowerCase()
+                .contains(query);
+          }
+        });
+        hasFilters = true;
+        resumeCheckedElements();
+      });
+    }
+
+    @Override
+    protected Point getInitialSize() {
+      return new Point(convertHorizontalDLUsToPixels(450), convertVerticalDLUsToPixels(300));
+    }
+
+    @Override
+    protected void okPressed() {
+      selectedIds = Arrays.stream(checkedElements.toArray())
+          .map(item -> (GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)item)
+          .mapToInt(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
+          .boxed()
+          .collect(toList());
+      super.okPressed();
+    }
+
+    private void collectCheckedElements() {
+      checkedElements = Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet());
+    }
+
+    private void appendCheckedElements() {
+      checkedElements.addAll(Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet()));
+    }
+
+    private void resumeCheckedElements() {
+      table.setCheckedElements(checkedElements.toArray());
+    }
+  }
+
   private static interface InputArea {
     public default void onSwitchedTo(@SuppressWarnings("unused") Settings settings) {
       // Do nothing.
@@ -541,7 +688,8 @@ public class TraceConfigDialog extends DialogBase {
           gpuCountersLabels[0] = createLabel(counterGroup, count + " of " + total + " selected");
           gpuCountersSelect = Widgets.createButton(counterGroup, "Select", e -> {
             List<Integer> currentIds = settings.perfetto().getGpuOrBuilder().getCounterIdsList();
-            GpuCountersDialog dialog = new GpuCountersDialog(getShell(), theme, caps, currentIds);
+            GpuCountersDialog dialog = new GpuCountersDialog(getShell(), theme,
+                caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList(), currentIds);
             if (dialog.open() == Window.OK) {
               List<Integer> newIds = dialog.getSelectedIds();
               settings.writePerfetto().getGpuBuilder()
@@ -818,144 +966,6 @@ public class TraceConfigDialog extends DialogBase {
       batRate.setEnabled(enabled);
       for (Label label : batLabels) {
         label.setEnabled(enabled);
-      }
-    }
-
-    private static class GpuCountersDialog extends DialogBase {
-      private static final Predicate<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>
-          SELECT_DEFAULT = GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getSelectByDefault;
-
-      private final Device.PerfettoCapability caps;
-      private final Set<Integer> currentIds;
-
-      private CheckboxTableViewer table;
-      private List<Integer> selectedIds;
-      private Set<Object> checkedElements;
-      private boolean hasFilters;
-
-      public GpuCountersDialog(
-          Shell shell, Theme theme, Device.PerfettoCapability caps, List<Integer> currentIds) {
-        super(shell, theme);
-        this.caps = caps;
-        this.currentIds = Sets.newHashSet(currentIds);
-        this.checkedElements = Sets.newHashSet();
-        this.hasFilters = false;
-      }
-
-      public List<Integer> getSelectedIds() {
-        return selectedIds;
-      }
-
-      @Override
-      public String getTitle() {
-        return Messages.CAPTURE_TRACE_PERFETTO;
-      }
-
-      @Override
-      protected Control createDialogArea(Composite parent) {
-        Composite area = (Composite)super.createDialogArea(parent);
-        Text search = new Text(area, SWT.SINGLE | SWT.SEARCH | SWT.ICON_SEARCH | SWT.ICON_CANCEL);
-        search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-
-        table = createCheckboxTableViewer(area, SWT.NONE);
-        table.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-        Widgets.<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>createTableColumn(
-            table, "Name", counter -> counter.getName());
-        Widgets.<GpuProfiling.GpuCounterDescriptor.GpuCounterSpec>createTableColumn(
-            table, "Description", counter -> counter.getDescription());
-        table.setContentProvider(new ArrayContentProvider());
-        table.setInput(caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList());
-        table.setCheckedElements(
-            caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
-                .filter(c -> currentIds.contains(c.getCounterId()))
-                .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
-        table.getTable().getColumn(0).pack();
-        table.getTable().getColumn(1).pack();
-        collectCheckedElements();
-
-        table.addCheckStateListener(new ICheckStateListener() {
-          @Override
-          public void checkStateChanged(CheckStateChangedEvent event) {
-            if (event.getChecked()) {
-              checkedElements.add(event.getElement());
-            } else {
-              checkedElements.remove(event.getElement());
-            }
-          }
-        });
-
-        createLink(area, "Select <a>none</a> | <a>default</a> | <a>all</a>", e -> {
-          switch (e.text) {
-            case "none":
-              checkedElements.removeAll(Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet()));
-              table.setAllChecked(false);
-              break;
-            case "default":
-              table.setCheckedElements(
-                  caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
-                      .filter(SELECT_DEFAULT)
-                      .toArray(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec[]::new));
-              if (hasFilters) {
-                appendCheckedElements();
-              } else {
-                collectCheckedElements();
-              }
-              break;
-            case "all":
-              table.setAllChecked(true);
-              appendCheckedElements();
-              break;
-          }
-        });
-
-        search.addListener(SWT.Modify, e -> {
-          String query = search.getText().trim().toLowerCase();
-          if (query.isEmpty()) {
-            table.resetFilters();
-            hasFilters = false;
-            resumeCheckedElements();
-            return;
-          }
-          table.setFilters(new ViewerFilter() {
-            @Override
-            public boolean select(Viewer viewer, Object parentElement, Object element) {
-              return ((GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)element)
-                  .getName()
-                  .toLowerCase()
-                  .contains(query);
-            }
-          });
-          hasFilters = true;
-          resumeCheckedElements();
-        });
-        return area;
-      }
-
-      @Override
-      protected Point getInitialSize() {
-        return new Point(convertHorizontalDLUsToPixels(450), convertVerticalDLUsToPixels(300));
-      }
-
-      @Override
-      protected void okPressed() {
-        selectedIds = Arrays.stream(checkedElements.toArray())
-            .map(item -> (GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)item)
-            .mapToInt(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
-            .boxed()
-            .collect(toList());
-        super.okPressed();
-      }
-
-      private void collectCheckedElements() {
-        checkedElements = Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet());
-      }
-
-      private void appendCheckedElements() {
-        checkedElements.addAll(Arrays.stream(table.getCheckedElements()).collect(Collectors.toSet()));
-      }
-
-      private void resumeCheckedElements() {
-        table.setCheckedElements(checkedElements.toArray());
       }
     }
   }

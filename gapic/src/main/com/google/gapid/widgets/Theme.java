@@ -112,6 +112,7 @@ public interface Theme {
   @Icon(file = "settings.png") public Image settings();
   @Icon(file = "smile.png") public Image smile();
   @Icon(file = "smooth.png") public Image smooth();
+  @Icon(file = "swap.png") public Image swap();
   @Icon(file = "timing_mode.png") public Image timingMode();
   @Icon(file = "transparency.png") public Image transparency();
   @Icon(file = "unfold_less.png") public Image unfoldLessLight();
