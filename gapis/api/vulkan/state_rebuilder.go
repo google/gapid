@@ -843,6 +843,31 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceFloatControlsPropertiesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceFloatControlsPropertiesKHR(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceFloatControlsPropertiesKHR().DenormBehaviorIndependence(),            // denormBehaviorIndependence
+				d.PhysicalDeviceFloatControlsPropertiesKHR().RoundingModeIndependence(),              // roundingModeIndependence
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderSignedZeroInfNanPreserveFloat16(), // shaderSignedZeroInfNanPreserveFloat16
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderSignedZeroInfNanPreserveFloat32(), // shaderSignedZeroInfNanPreserveFloat32
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderSignedZeroInfNanPreserveFloat64(), // shaderSignedZeroInfNanPreserveFloat64
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderDenormPreserveFloat16(),           // shaderDenormPreserveFloat16
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderDenormPreserveFloat32(),           // shaderDenormPreserveFloat32
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderDenormPreserveFloat64(),           // shaderDenormPreserveFloat64
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderDenormFlushToZeroFloat16(),        // shaderDenormFlushToZeroFloat16
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderDenormFlushToZeroFloat32(),        // shaderDenormFlushToZeroFloat32
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderDenormFlushToZeroFloat64(),        // shaderDenormFlushToZeroFloat64
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderRoundingModeRTEFloat16(),          // shaderRoundingModeRTEFloat16
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderRoundingModeRTEFloat32(),          // shaderRoundingModeRTEFloat32
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderRoundingModeRTEFloat64(),          // shaderRoundingModeRTEFloat64
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderRoundingModeRTZFloat16(),          // shaderRoundingModeRTZFloat16
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderRoundingModeRTZFloat32(),          // shaderRoundingModeRTZFloat32
+				d.PhysicalDeviceFloatControlsPropertiesKHR().ShaderRoundingModeRTZFloat64(),          // shaderRoundingModeRTZFloat64
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
