@@ -23,40 +23,53 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
+	"github.com/google/gapid/core/image/etc"
 )
 
 type testImageInfo struct {
-	fmt *image.Format
-	ext string
+	compressed   *image.Format
+	ext          string
+	uncompressed *image.Format
 }
 
 func TestCompressors(t *testing.T) {
-	// TODO: We may need S16toU8 converter.
+	// TODO(melihyalcin): We don't have a converter for'png' to 'RG_S16_NORM' or 'R_S16_NORM'
+	// If we need this conversion, we can add the converter then we can read
+	// the png and test it
 
+	// TODO(melihyalcin): Conversion quality for ETC2_R_U11_NORM is low (~0.20) we don't need
+	// to test that quality for our use case. If we need, we have to look at how to improve it.
 	testImageInfos := []testImageInfo{
-		{astc.RGBA_4x4, ".png"},
+		{astc.RGBA_4x4, ".astc", image.RGBA_U8_NORM},
+		{etc.ETC2_RGBA_U8U8U8U1_NORM, ".ktx", image.RGBA_U8_NORM},
+		{etc.ETC2_RGBA_U8_NORM, ".ktx", image.RGBA_U8_NORM},
+		{etc.ETC2_RGB_U8_NORM, ".ktx", image.RGB_U8_NORM},
+		// {etc.ETC2_RG_S11_NORM, ".ktx", image.RG_S16_NORM},
+		// {etc.ETC2_RG_U11_NORM, ".ktx", image.RG_U16_NORM},
+		// {etc.ETC2_R_S11_NORM, ".ktx", image.R_S16_NORM},
+		// {etc.ETC2_R_U11_NORM, ".ktx", image.R_U16_NORM},
 	}
 
 	for _, testImage := range testImageInfos {
-		uncompressedImg, err := getUncompressedImage(testImage.fmt.Name)
+		uncompressedImg, err := getUncompressedImage(testImage)
 		if err != nil {
 			t.Error(err)
 			continue
 		}
 
-		compressedImage, err := uncompressedImg.Convert(testImage.fmt)
+		compressedImage, err := uncompressedImg.Convert(testImage.compressed)
 		if err != nil {
-			t.Errorf("Failed to convert '%s' from %v to %v: %v", testImage.fmt.Name, uncompressedImg.Format.Name, testImage.fmt.Name, err)
+			t.Errorf("Failed to convert '%s' from %v to %v: %v", testImage.compressed.Name, uncompressedImg.Format.Name, testImage.compressed.Name, err)
 			continue
 		}
 
-		refImg, err := getRefImage(testImage.fmt.Name)
+		refImg, err := getRefImage(testImage)
 		if err != nil {
 			t.Error(err)
 			continue
 		}
 
-		errs := outputDifference(testImage.fmt.Name, refImg, compressedImage)
+		errs := outputDifference(testImage.compressed.Name, refImg, compressedImage)
 		if errs != nil && len(errs) > 0 {
 			for _, err := range errs {
 				t.Error(err)
@@ -66,24 +79,45 @@ func TestCompressors(t *testing.T) {
 	}
 }
 
-func getRefImage(name string) (*image.Data, error) {
-	imagePath := filepath.Join("test_data", name+".astc")
-
+func getRefImage(testImage testImageInfo) (*image.Data, error) {
+	imagePath := filepath.Join("test_data", testImage.compressed.Name+testImage.ext)
 	imageData, err := ioutil.ReadFile(imagePath)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read  '%s': %v", imagePath, err)
 	}
 
-	imageASTC, err := image.ASTCFrom(imageData)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to read '%s': %v", name, err)
-	}
+	switch testImage.ext {
+	case ".astc":
+		imageASTC, err := image.ASTCFrom(imageData)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read '%s': %v", testImage.compressed.Name, err)
+		}
 
-	return imageASTC, nil
+		if imageASTC.Format.Key() != testImage.compressed.Key() {
+			return nil, fmt.Errorf("%v was not the expected format. Expected %v, got %v",
+				imagePath, testImage.compressed.Name, imageASTC.Format.Name)
+		}
+
+		return imageASTC, nil
+	case ".ktx":
+		imageKTX, err := loadKTX(imageData)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read '%s': %v", imagePath, err)
+		}
+
+		if imageKTX.Format.Key() != testImage.compressed.Key() {
+			return nil, fmt.Errorf("%v was not the expected format. Expected %v, got %v",
+				imagePath, testImage.compressed.Name, imageKTX.Format.Name)
+		}
+
+		return imageKTX, nil
+	default:
+		return nil, fmt.Errorf("This should not happen: Unknown Format")
+	}
 }
 
-func getUncompressedImage(name string) (*image.Data, error) {
-	imagePath := filepath.Join("test_data", name+".png")
+func getUncompressedImage(testImage testImageInfo) (*image.Data, error) {
+	imagePath := filepath.Join("test_data", testImage.compressed.Name+".png")
 
 	imagePNGData, err := ioutil.ReadFile(imagePath)
 	if err != nil {
@@ -94,9 +128,9 @@ func getUncompressedImage(name string) (*image.Data, error) {
 		return nil, fmt.Errorf("Failed to read PNG '%s': %v", imagePath, err)
 	}
 
-	img, err := imagePNG.Convert(image.RGBA_U8_NORM)
+	img, err := imagePNG.Convert(testImage.uncompressed)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to convert '%s' from PNG to %v: %v", imagePath, image.RGBA_U8_NORM, err)
+		return nil, fmt.Errorf("Failed to convert '%s' from PNG to %v: %v", imagePath, testImage.uncompressed.Name, err)
 	}
 
 	return img, nil
@@ -111,8 +145,8 @@ func outputDifference(name string, refImage *image.Data, finalImage *image.Data)
 	outputPath := name + "-output.png"
 	errorPath := name + "-error.png"
 
-	astcErrorMargin := float32(0.0001)
-	if diff <= astcErrorMargin {
+	errorMargin := float32(0.01)
+	if diff <= errorMargin {
 		os.Remove(outputPath)
 		os.Remove(errorPath)
 		return nil

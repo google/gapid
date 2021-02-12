@@ -177,7 +177,7 @@ extern "C" astc_error decompress_astc(uint8_t* input_image_raw,
   return ASTCENC_SUCCESS;
 }
 
-const char* get_error_string(astc_error error_code) {
+extern "C" const char* get_astc_error_string(astc_error error_code) {
   switch (error_code) {
     case ASTCENC_ERR_BAD_BLOCK_SIZE:
       return "ERROR: Block size is invalid";

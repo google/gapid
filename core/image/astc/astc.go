@@ -166,7 +166,7 @@ func decompress(src []byte, width int, height int, depth int, format *image.Form
 
 		if result != 0 {
 			return nil, fmt.Errorf("ASTC decompression failed : %s",
-				C.GoString(C.get_error_string(result)))
+				C.GoString(C.get_astc_error_string(result)))
 		}
 	}
 	return dst, nil
@@ -203,7 +203,7 @@ func compress(src []byte, width int, height int, depth int, format *image.Format
 
 		if result != 0 {
 			return nil, fmt.Errorf("ASTC compression failed: %s",
-				C.GoString(C.get_error_string(result)))
+				C.GoString(C.get_astc_error_string(result)))
 		}
 	}
 

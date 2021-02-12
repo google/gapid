@@ -123,6 +123,17 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
     )
 
     maybe_repository(
+        github_repository,
+        name = "etc2comp",
+        locals = locals,
+        organization = "google",
+        project = "etc2comp",
+        commit = "9cd0f9cae0f32338943699bb418107db61bb66f2", # 2017/04/24
+        build_file = "@gapid//tools/build/third_party:etc2comp.BUILD",
+        sha256 = "0ddcf7484c0d55bc5a3cb92edb4812dc932ac9f73b4641ad2843fec82ae8cf90",
+    )
+
+    maybe_repository(
         breakpad,
         name = "breakpad",
         locals = locals,

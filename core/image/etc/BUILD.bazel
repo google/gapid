@@ -18,8 +18,13 @@ go_library(
     name = "go_default_library",
     srcs = [
         "etc.go",
+        "etc2.h",
+        "etc2_compressor.cpp",
         "etc2_decompressor.go",
     ],
+    cdeps = ["@etc2comp//:etc2comp"],
+    cgo = True,
+    clinkopts = [],  # keep
     importpath = "github.com/google/gapid/core/image/etc",
     visibility = ["//visibility:public"],
     deps = [
