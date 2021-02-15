@@ -161,7 +161,7 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 		{"commands", "-groupbyusermarkers", tracepath},
 		{"commands", "-groupbysubmission", tracepath},
 		{"commands", "-maxchildren", "1", tracepath},
-		{"commands", "-name", "glBindFramebuffer", tracepath},
+		{"commands", "-name", "vkQueueSubmit", tracepath},
 		{"commands", "-observations-ranges", tracepath},
 		{"commands", "-observations-data", tracepath},
 		{"commands", "-raw", tracepath},
