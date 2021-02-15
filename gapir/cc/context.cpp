@@ -295,7 +295,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
           auto pCreateInfo = stack->pop<Vulkan::VkDeviceCreateInfo*>();
           auto physicalDevice = static_cast<size_val>(stack->pop<size_val>());
           if (!stack->isValid()) {
-            GAPID_ERROR("Error during calling funtion ReplayCreateVkDevice");
+            GAPID_ERROR("Error during calling function ReplayCreateVkDevice");
             return false;
           }
           uint32_t result = Vulkan::VkResult::VK_SUCCESS;

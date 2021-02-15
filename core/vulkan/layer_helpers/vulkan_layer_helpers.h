@@ -154,4 +154,4 @@ struct Context {
 };
 }  // namespace layer_helpers
 
-#endif  // VULKAN_LAYER_HELPES_H__
+#endif  // VULKAN_LAYER_HELPERS_H__
