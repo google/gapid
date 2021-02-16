@@ -81,12 +81,12 @@ cmd VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkPhysicalDeviceSurfaceInfo2KHR
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
-  
+
   if !(info.surface in Surfaces) { vkErrorInvalidSurface(info.surface) }
   if pSurfaceCapabilities == null { vkErrorNullPointer("VkSurfaceCapabilitiesKHR") }
   pSurfaceCapabilities[0] = ?
@@ -112,8 +112,8 @@ cmd VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkPhysicalDeviceSurfaceInfo2KHR
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }

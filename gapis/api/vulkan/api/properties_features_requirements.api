@@ -341,7 +341,6 @@ sub void GetPhysicalDeviceFeatures2(
   }
   features := pFeatures[0]
   if (physicalDevice in PhysicalDevices) {
-    // TODO: handle pNext
     if features.pNext != null {
       numPNext := numberOfPNext(
         as!const void*(features.pNext))
@@ -394,7 +393,6 @@ sub void GetPhysicalDeviceFeatures2(
   if (physicalDevice in PhysicalDevices) {
     pFeatures[0] = ?
     newFeatures := pFeatures[0]
-    // TODO: handle pNext
     if newFeatures.pNext != null {
       numPNext := numberOfPNext(
         as!const void*(newFeatures.pNext))
@@ -502,7 +500,6 @@ sub void GetPhysicalDeviceImageFormatProperties2(
             }
           }
         }
-        // TODO: handle extensions for VkPhysicalDeviceImageFormatInfo2
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -591,7 +588,6 @@ sub void GetPhysicalDeviceProperties2(
       props := pProperties[0]
       phyDev := PhysicalDevices[physicalDevice]
       phyDev.PhysicalDeviceProperties = props.properties
-      // TODO: handle pNext
       if props.pNext != null {
         numPNext := numberOfPNext(as!const void*(props.pNext))
         next := MutableVoidPtr(as!void*(props.pNext))
@@ -741,8 +737,8 @@ sub void GetPhysicalDeviceSparseImageFormatProperties2(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkPhysicalDeviceSparseImageFormatInfo2KHR
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -827,8 +823,8 @@ sub void GetPhysicalDeviceExternalBufferProperties(
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // handle future extensions VkPhysicalDeviceExternalBufferInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -845,8 +841,8 @@ sub void GetPhysicalDeviceExternalBufferProperties(
     next := MutableVoidPtr(props.pNext)
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // handle future extensions for VkExternalBufferProperties
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -878,8 +874,8 @@ sub void GetPhysicalDeviceExternalSemaphoreProperties(
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // handle future extensions for VkPhysicalDeviceExternalSemaphoreInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -896,8 +892,8 @@ sub void GetPhysicalDeviceExternalSemaphoreProperties(
     next := MutableVoidPtr(props.pNext)
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // handle future extensions for VkExternalSemaphoreProperties
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -929,8 +925,8 @@ sub void GetPhysicalDeviceExternalFenceProperties(
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // handle future extensions for VkPhysicalDeviceExternalFenceInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -947,8 +943,8 @@ sub void GetPhysicalDeviceExternalFenceProperties(
     next := MutableVoidPtr(props.pNext)
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // handle future extensions for VkExternalFenceProperties
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -975,14 +971,14 @@ sub void GetBufferMemoryRequirements2(
     VkMemoryRequirements2*                 pMemoryRequirements) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   info := pInfo[0]
-  // TODO: handle pNext
-
   memReqs := pMemoryRequirements[0]
   if memReqs.pNext != null {
     nPNext := numberOfPNext(as!const void*(memReqs.pNext))
     next := MutableVoidPtr(as!void*(memReqs.pNext))
     for i in (0 .. nPNext) {
-      _ = as!const VkStructureType*(next.Ptr)[0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
@@ -991,7 +987,6 @@ sub void GetBufferMemoryRequirements2(
 
   if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements2(KHR)") }
   pMemoryRequirements[0] = ?
-  // TODO: handle pNext for 'memReq'
   memReq := pMemoryRequirements[0]
   if !(info.buffer in Buffers) { vkErrorInvalidBuffer(info.buffer) }
   // TODO: Do the touch of the buffer object once we extract the memory
@@ -1121,8 +1116,8 @@ sub void GetImageSparseMemoryRequirements2(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkImageSparseMemoryRequirementsInfo2
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }

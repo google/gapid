@@ -64,8 +64,8 @@ cmd VkResult vkCreateCommandPool(
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkCommandPoolCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -391,8 +391,8 @@ cmd VkResult vkAllocateCommandBuffers(
     next := MutableVoidPtr(as!void*(allocateInfo.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkCommandBufferAllocateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -463,7 +463,6 @@ cmd VkResult vkBeginCommandBuffer(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
       switch sType {
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO: {
           ext := as!VkDeviceGroupCommandBufferBeginInfo*(next.Ptr)[0:1][0]
@@ -496,8 +495,8 @@ cmd VkResult vkBeginCommandBuffer(
         next := MutableVoidPtr(as!void*(inheritanceInfo.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkCommandBufferInheritanceInfo
+          switch (sType) {
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }

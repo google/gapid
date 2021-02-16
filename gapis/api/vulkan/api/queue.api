@@ -105,7 +105,6 @@ cmd VkResult vkQueueSubmit(
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
         switch sType {
           case VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO: {
             ext := as!VkDeviceGroupSubmitInfo*(next.Ptr)[0:1][0]
@@ -275,11 +274,9 @@ cmd VkResult vkQueueBindSparse(
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
         switch sType {
           case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
-            s := as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
-            _ = s
+            _ = as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext

@@ -190,8 +190,8 @@ cmd VkResult vkCreateBufferView(
     next := MutableVoidPtr(as!void*(buffer_view_create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkBufferViewCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -313,7 +313,6 @@ sub void BindBufferMemory2(
         next := MutableVoidPtr(as!void*(info.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
           switch sType {
             case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO: {
               ext := as!VkBindBufferMemoryDeviceGroupInfo*(next.Ptr)[0:1][0]

@@ -64,8 +64,8 @@ cmd VkResult vkCreateFence(
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkFenceCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -191,8 +191,8 @@ cmd VkResult vkCreateSemaphore(
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkSemaphoreCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -277,8 +277,8 @@ cmd VkResult vkCreateEvent(
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkEventCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -532,8 +532,8 @@ sub void handleMemoryBarriersPNext(const VkMemoryBarrier* pBarriers, u32 count) 
       next := MutableVoidPtr(as!void*(b.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkMemoryBarrier
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -550,8 +550,8 @@ sub void handleBufferMemoryBarriersPNext(const VkBufferMemoryBarrier* pBarriers,
       next := MutableVoidPtr(as!void*(b.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkBufferMemoryBarrier
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -568,8 +568,8 @@ sub void handleImageMemoryBarriersPNext(const VkImageMemoryBarrier* pBarriers, u
       next := MutableVoidPtr(as!void*(b.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkImageMemoryBarrier
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }

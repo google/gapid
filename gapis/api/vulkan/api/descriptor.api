@@ -72,8 +72,8 @@ cmd VkResult vkCreateDescriptorSetLayout(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkDescriptorSetLayoutCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -153,8 +153,8 @@ cmd VkResult vkCreateDescriptorPool(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkDescriptorPoolCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -267,8 +267,8 @@ cmd VkResult vkAllocateDescriptorSets(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkDescriptorSetAllocateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -555,8 +555,8 @@ cmd void vkUpdateDescriptorSets(
       next := MutableVoidPtr(as!void*(w.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkWriteDescriptorSet
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -571,8 +571,8 @@ cmd void vkUpdateDescriptorSets(
       next := MutableVoidPtr(as!void*(c.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkCopyDescriptorSet
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -968,7 +968,8 @@ sub void GetDescriptorSetLayoutSupport(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -983,7 +984,8 @@ sub void GetDescriptorSetLayoutSupport(
     next := MutableVoidPtr(as!void*(support.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }

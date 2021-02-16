@@ -261,7 +261,6 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           )
         }
       }
-      // TODO: handle extensions for VkDeviceCreateInfo
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -276,8 +275,8 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
       next := MutableVoidPtr(as!void*(queue_info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkDeviceQueueCreateInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }

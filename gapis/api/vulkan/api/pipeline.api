@@ -272,7 +272,6 @@ cmd VkResult vkCreateGraphicsPipelines(
             read(pcfcie[0:1])
           }
         }
-        // TODO: handle extensions for VkGraphicsPipelineCreateInfo
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -290,8 +289,8 @@ cmd VkResult vkCreateGraphicsPipelines(
         next := MutableVoidPtr(as!void*(stage_create_info.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkPipelineShaderStageCreateInfo
+          switch (sType) {
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
@@ -348,8 +347,8 @@ cmd VkResult vkCreateGraphicsPipelines(
       next := MutableVoidPtr(as!void*(vertex_input_state.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkPipelineVertexInputStateCreateInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -375,8 +374,8 @@ cmd VkResult vkCreateGraphicsPipelines(
       next := MutableVoidPtr(as!void*(input_assembly_state.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkPipelineInputAssemblyStateCreateInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -412,8 +411,8 @@ cmd VkResult vkCreateGraphicsPipelines(
         next := MutableVoidPtr(as!void*(pipeline_viewport_state_create_info.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkPipelineViewportStateCreateInfo
+          switch (sType) {
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
@@ -466,8 +465,8 @@ cmd VkResult vkCreateGraphicsPipelines(
       next := MutableVoidPtr(as!void*(rasterization_state.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkPipelineRasterizationStateCreateInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -487,8 +486,8 @@ cmd VkResult vkCreateGraphicsPipelines(
         next := MutableVoidPtr(as!void*(multisample_state.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkPipelineMultisampleStateCreateInfo
+          switch (sType) {
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
@@ -511,8 +510,8 @@ cmd VkResult vkCreateGraphicsPipelines(
         next := MutableVoidPtr(as!void*(depth_stencil_state.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkPipelineDepthStencilStateCreateInfo
+          switch (sType) {
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
@@ -540,8 +539,8 @@ cmd VkResult vkCreateGraphicsPipelines(
         next := MutableVoidPtr(as!void*(color_blend_state.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkPipelineColorBlendStateCreateInfo
+          switch (sType) {
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
@@ -561,8 +560,8 @@ cmd VkResult vkCreateGraphicsPipelines(
         next := MutableVoidPtr(as!void*(dynamic_state_info.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkPipelineDynamicStateCreateInfo
+          switch (sType) {
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
@@ -671,8 +670,8 @@ cmd VkResult vkCreateComputePipelines(
       next := MutableVoidPtr(as!void*(stage_create_info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkPipelineShaderStageCreateInfo
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -808,8 +807,8 @@ cmd VkResult vkCreateShaderModule(
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkShaderModuleCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -863,8 +862,8 @@ cmd VkResult vkCreatePipelineCache(
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkPipelineCacheCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }

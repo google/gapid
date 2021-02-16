@@ -76,8 +76,8 @@ cmd VkResult vkCreateFramebuffer(
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkFramebufferCreateInfo
+      switch (sType) {
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -348,7 +348,6 @@ cmd void vkCmdBeginRenderPass(
       next := MutableVoidPtr(as!void*(begin_info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
         switch sType {
           case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: {
             ext := as!VkDeviceGroupRenderPassBeginInfo*(next.Ptr)[0:1][0]

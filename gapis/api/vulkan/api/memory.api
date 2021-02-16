@@ -218,8 +218,8 @@ cmd VkResult vkFlushMappedMemoryRanges(
       next := MutableVoidPtr(as!void*(flushRange.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkMappedMemoryRange
+        switch (sType) {
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }

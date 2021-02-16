@@ -335,14 +335,12 @@ cmd VkResult vkQueuePresentKHR(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for queue present
-      // Example: Device Gropu Extension
-      // switch sType {
-      //   case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: {
-      //   ext := as!VkDeviceGroupPresentInfoKHR*(next.Ptr)[0]
-      //  }
-      // }
+      switch (sType) {
+        // TODO: handle device group extension
+        // case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: {
+        //   ext := as!VkDeviceGroupPresentInfoKHR*(next.Ptr)[0]
+        // }
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
