@@ -649,16 +649,21 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
      */
     public static List<StructNode> simplifyTrees(List<StructNode> trees) {
       // Remove redundant layers.
-      Map<Long, StructNode> nodes = new HashMap<Long, StructNode>();
+      List<StructNode> allNodes = Lists.newArrayList();
+      Map<Long, List<StructNode>> nodesMap = new HashMap<Long, List<StructNode>>();
       for (StructNode tree : trees) {
-        nodes.put(tree.getRootAddress(), removeExtraLayers(tree));
+        StructNode simpleTree = removeExtraLayers(tree);
+        nodesMap.putIfAbsent(tree.getRootAddress(), Lists.newArrayList());
+        nodesMap.get(tree.getRootAddress()).add(simpleTree);
+        allNodes.add(simpleTree);
       }
       // Append pointed nodes to corresponding pointer field if possible.
-      Set<StructNode> appended = Sets.newHashSet();
-      for (StructNode node : nodes.values()) {
-        appendPointedNodes(node, nodes, appended);
+      Set<StructNode> appended = Sets.newHashSet(); // Whether the node is appended to other nodes, if so, it shouldn't get displayed a second time as a basic independent tree.
+      Set<StructNode> treated = Sets.newHashSet();  // Whether the node got treated so that all of its children pointer field got appended.
+      for (StructNode node : allNodes) {
+        appendPointedNodes(node, nodesMap, appended, treated);
       }
-      return nodes.values().stream().filter(n -> !appended.contains(n)).collect(Collectors.toList());
+      return allNodes.stream().filter(n -> !appended.contains(n)).collect(Collectors.toList());
     }
 
     /**
@@ -703,20 +708,21 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
      * Find all the nodes with type TypeInfo.PointerType in this tree, append the pointed tree to
      * these nodes if possible.
      */
-    private static void appendPointedNodes(StructNode root, Map<Long, StructNode> nodes,
-        Set<StructNode> appended) {
-      if (root == null) {
+    private static void appendPointedNodes(StructNode root, Map<Long, List<StructNode>> nodesMap,
+        Set<StructNode> appended, Set<StructNode> treated) {
+      if (root == null || treated.contains(root)) {
         return;
       }
       if (root.getTypeCase() == TyCase.POINTER) {
         long pointedAddress = root.getValue().getPointer().getAddress();
-        if (nodes.containsKey(pointedAddress)) {
-          root.getChildren().add(nodes.get(pointedAddress));
-          appended.add(nodes.get(pointedAddress));
+        if (nodesMap.containsKey(pointedAddress)) {
+          root.getChildren().addAll(nodesMap.get(pointedAddress));
+          appended.addAll(nodesMap.get(pointedAddress));
         }
       }
+      treated.add(root);
       for (StructNode child : root.getChildren()) {
-        appendPointedNodes(child, nodes, appended);
+        appendPointedNodes(child, nodesMap, appended, treated);
       }
     }
   }
