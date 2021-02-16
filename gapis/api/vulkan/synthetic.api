@@ -191,11 +191,11 @@ cmd VkResult ReplayCreateSwapchain(
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
       switch sType {
         case VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT: {
-	  ext := as!VirtualSwapchainPNext*(next.Ptr)[0:1][0]
-	  if ext.surfaceCreateInfo != null {
+          ext := as!VirtualSwapchainPNext*(next.Ptr)[0:1][0]
+          if ext.surfaceCreateInfo != null {
             _ = as!VkStructureType*(ext.surfaceCreateInfo)[0:1][0]
           }
-	}
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }

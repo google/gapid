@@ -488,9 +488,9 @@ cmd void vkCmdWaitEvents(
     for i in (0 .. imageMemoryBarrierCount) {
       args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
       img := Images[args.ImageMemoryBarriers[i].image]
-      RecordLayoutTransition(cb, 
+      RecordLayoutTransition(cb,
         img,
-        args.ImageMemoryBarriers[i].subresourceRange, 
+        args.ImageMemoryBarriers[i].subresourceRange,
         args.ImageMemoryBarriers[i].newLayout
       )
     }
@@ -615,9 +615,9 @@ cmd void vkCmdPipelineBarrier(
     for i in (0 .. imageMemoryBarrierCount) {
       args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
       img := Images[args.ImageMemoryBarriers[i].image]
-      RecordLayoutTransition(cb, 
+      RecordLayoutTransition(cb,
         img,
-        args.ImageMemoryBarriers[i].subresourceRange, 
+        args.ImageMemoryBarriers[i].subresourceRange,
         args.ImageMemoryBarriers[i].newLayout
       )
     }
