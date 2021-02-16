@@ -110,6 +110,9 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
       switch (sType) {
+        case VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO: {
+          // Ignore.
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
