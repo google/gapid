@@ -282,8 +282,10 @@ func processCounters(ctx context.Context, processor *perfetto.Processor, desc *d
 	descriptions := tracksColumns[3].GetStringValues()
 
 	nameToSpec := map[string]*device.GpuCounterDescriptor_GpuCounterSpec{}
-	for _, spec := range desc.Specs {
-		nameToSpec[spec.Name] = spec
+	if desc != nil {
+		for _, spec := range desc.Specs {
+			nameToSpec[spec.Name] = spec
+		}
 	}
 
 	for i := uint64(0); i < numTracksRows; i++ {
