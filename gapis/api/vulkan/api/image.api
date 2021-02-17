@@ -55,6 +55,7 @@
   VkImageLayout                                  InitialLayout
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
   ref!ImageFormatList                            ViewFormatList
+  VkExternalMemoryHandleTypeFlags                ExternalHandleTypeFlags
 }
 
 @resource
@@ -220,6 +221,10 @@ cmd VkResult vkCreateImage(
             }
            }
            imageInfo.ViewFormatList = ifl
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
+          ext := as!VkExternalMemoryImageCreateInfo*(next.Ptr)[0]
+          imageInfo.ExternalHandleTypeFlags = ext.handleTypes
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext

@@ -47,6 +47,7 @@
   @unused VkSharingMode                          SharingMode
   @unused map!(u32, u32)                         QueueFamilyIndices
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
+  @unused VkExternalMemoryHandleTypeFlags        ExternalHandleTypeFlags
 }
 
 @internal class MutableDeviceGroupBinding {
@@ -112,6 +113,10 @@ cmd VkResult vkCreateBuffer(
           bufferInfo.DedicatedAllocationNV = new!DedicatedAllocationBufferImageCreateInfoNV(
             DedicatedAllocation: ext.dedicatedAllocation
           )
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
+          ext := as!VkExternalMemoryBufferCreateInfo*(next.Ptr)[0]
+          bufferInfo.ExternalHandleTypeFlags = ext.handleTypes
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext

@@ -1120,7 +1120,7 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			NewVkDedicatedAllocationMemoryAllocateInfoNV(
 				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV, // sType
-				0,                                    // pNext
+				pNext,                                // pNext
 				mem.DedicatedAllocationNV().Image(),  // image
 				mem.DedicatedAllocationNV().Buffer(), // buffer
 			),
@@ -1135,6 +1135,16 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 				pNext,              // pNext
 				flags.Flags(),      // flags
 				flags.DeviceMask(), // deviceMask
+			),
+		).Ptr())
+	}
+
+	if mem.ExternalHandleTypeFlags() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkExportMemoryAllocateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO, // sType
+				pNext,
+				mem.ExternalHandleTypeFlags(), // handleTypes
 			),
 		).Ptr())
 	}
@@ -3136,8 +3146,18 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			NewVkDedicatedAllocationBufferCreateInfoNV(
 				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV, // sType
-				0, // pNext
+				pNext, // pNext
 				src.Info().DedicatedAllocationNV().DedicatedAllocation(), // dedicatedAllocation
+			),
+		).Ptr())
+	}
+
+	if src.Info().ExternalHandleTypeFlags() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkExternalMemoryBufferCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO, // sType
+				pNext,                                // pNext
+				src.Info().ExternalHandleTypeFlags(), // handleTypes
 			),
 		).Ptr())
 	}

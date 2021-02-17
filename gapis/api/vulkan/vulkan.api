@@ -284,6 +284,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_driver_properties"] = true
   supported.ExtensionNames["VK_ANDROID_frame_boundary"] = true
   supported.ExtensionNames["VK_KHR_external_semaphore"] = true
+  supported.ExtensionNames["VK_KHR_external_memory"] = true
   return supported
 }
 

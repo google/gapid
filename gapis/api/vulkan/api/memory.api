@@ -56,6 +56,7 @@
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationKHR
   ref!MemoryAllocateFlagsInfo MemoryAllocateFlagsInfo
+  @unused VkExternalMemoryHandleTypeFlags ExternalHandleTypeFlags
 }
 
 @internal class MemoryAllocateFlagsInfo {
@@ -118,6 +119,10 @@ cmd VkResult vkAllocateMemory(
             Flags: ext.flags,
             DeviceMask: ext.deviceMask,
           )
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
+          ext := as!VkExportMemoryAllocateInfo*(next.Ptr)[0]
+          memoryObject.ExternalHandleTypeFlags = ext.handleTypes
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext

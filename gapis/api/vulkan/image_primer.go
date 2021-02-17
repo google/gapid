@@ -553,7 +553,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			NewVkDedicatedAllocationImageCreateInfoNV(
 				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV, // sType
-				0, // pNext
+				pNext, // pNext
 				info.DedicatedAllocationNV().DedicatedAllocation(), // dedicatedAllocation
 			),
 		).Ptr())
@@ -566,6 +566,16 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 				pNext, // pNext
 				uint32(info.ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
 				NewVkFormatᶜᵖ(sb.MustUnpackReadMap(info.ViewFormatList().ViewFormats().All()).Ptr()), // pViewFormats
+			),
+		).Ptr())
+	}
+
+	if info.ExternalHandleTypeFlags() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkExternalMemoryImageCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO, // sType
+				pNext,                          // pNext
+				info.ExternalHandleTypeFlags(), // handleTypes
 			),
 		).Ptr())
 	}
