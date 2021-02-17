@@ -2043,8 +2043,10 @@ import (
       { // {{$.Name}}.{{$name}}
         ϟd.Align({{Template "Go.AlignOf" (TypeOf $f)}})
         addr := value.ObservedPointer(s.Base() + ϟd.Offset())
-        ϟb.Push({{Macro "Go.Type" $f}}(ϟd.Pointer()).value(ϟb, ϟc, ϟg))
-        ϟb.Store(addr)
+        if p := ϟd.Pointer(); p != 0 {
+          ϟb.Push({{Macro "Go.Type" $f}}(p).value(ϟb, ϟc, ϟg))
+          ϟb.Store(addr)
+        }
       }
     {{else if IsClass ($f.Type | Underlying)}}
       ϟd.Align({{Template "Go.AlignOf" (TypeOf $f)}})
