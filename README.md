@@ -23,6 +23,11 @@ developers. See also the README files under some source directories.
 
 *Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases).
 
+> Dependency for Linux builds in zip archives: they depend on java8 and
+> libwebkit2gtk. These two are marked as dependencies in the deb package, if
+> you install AGI via a zip archive, make sure to also install java8 and
+> libwebkit2gtk.
+
 ## Building
 
 **See [Building Android GPU Inspector](BUILDING.md).**
