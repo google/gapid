@@ -323,7 +323,6 @@ sub void BindBufferMemory2(
                 dg.Binding.Bindings[j] = indices[j]
               }
             }
-            default: {}
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }

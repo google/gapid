@@ -501,7 +501,6 @@ sub void GetPhysicalDeviceImageFormatProperties2(
               _ = ext.pViewFormats[0:ext.viewFormatCount]
             }
           }
-          default: {}
         }
         // TODO: handle extensions for VkPhysicalDeviceImageFormatInfo2
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext

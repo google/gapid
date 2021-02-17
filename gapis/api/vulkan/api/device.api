@@ -260,9 +260,6 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             ShaderInt8: ext.shaderInt8,
           )
         }
-        default: {
-          // do nothing
-        }
       }
       // TODO: handle extensions for VkDeviceCreateInfo
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext

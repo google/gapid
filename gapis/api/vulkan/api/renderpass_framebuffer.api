@@ -360,7 +360,6 @@ cmd void vkCmdBeginRenderPass(
               args.DeviceGroupBeginInfo.RenderAreas[j] = rects[j]
             }
           }
-          default: {}
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }

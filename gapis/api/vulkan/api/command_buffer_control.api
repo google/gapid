@@ -471,7 +471,6 @@ cmd VkResult vkBeginCommandBuffer(
             DeviceMask: ext.deviceMask,
           )
         }
-        default: {}
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }

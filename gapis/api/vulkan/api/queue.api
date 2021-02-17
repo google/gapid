@@ -128,7 +128,6 @@ cmd VkResult vkQueueSubmit(
               }
             }
           }
-          default: {}
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -178,7 +177,7 @@ cmd VkResult vkQueueSubmit(
         }
       }
     }
-    
+
     executeSubmit(queue, subm)
     nextSubcontext()
   }
@@ -282,7 +281,6 @@ cmd VkResult vkQueueBindSparse(
             s := as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
             _ = s
           }
-          default: {}
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -318,7 +316,7 @@ cmd VkResult vkQueueBindSparse(
     }
     clear(LastBoundQueue.ReadCoherentBuffers)
     queuedBinds := new!QueuedSparseBinds()
-    
+
     bufferBinds := info.pBufferBinds[0:info.bufferBindCount]
     for j in (0 .. info.bufferBindCount) {
       bufferBindInfo := bufferBinds[j]

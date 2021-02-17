@@ -271,7 +271,6 @@ cmd VkResult vkCreateGraphicsPipelines(
             pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)
             read(pcfcie[0:1])
           }
-          default: {}
         }
         // TODO: handle extensions for VkGraphicsPipelineCreateInfo
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
@@ -613,7 +612,6 @@ cmd VkResult vkCreateGraphicsPipelines(
             write(pcfcie.pPipelineCreationFeedback[0:1])
             write(pcfcie.pPipelineStageCreationFeedbacks[0:pcfcie.pipelineStageCreationFeedbackCount])
           }
-          default: {}
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -656,7 +654,6 @@ cmd VkResult vkCreateComputePipelines(
             pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)
             read(pcfcie[0:1])
           }
-          default: {}
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -748,7 +745,6 @@ cmd VkResult vkCreateComputePipelines(
             write(pcfcie.pPipelineCreationFeedback[0:1])
             write(pcfcie.pPipelineStageCreationFeedbacks[0:pcfcie.pipelineStageCreationFeedbackCount])
           }
-          default: {}
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }

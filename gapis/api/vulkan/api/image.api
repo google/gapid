@@ -655,9 +655,6 @@ cmd VkResult vkCreateSampler(
             sampler.YcbcrConversion = SamplerYcbcrConversions[conversion]
           }
         }
-        default: {
-          // do nothing
-        }
       }
       // TODO: handle extensions for VkSamplerCreateInfo
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
@@ -869,7 +866,6 @@ sub void BindImageMemory2(
                 dg.Binding.SplitInstanceBindings[j] = regions[j]
               }
             }
-            default: {}
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
