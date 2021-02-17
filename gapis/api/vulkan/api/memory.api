@@ -49,14 +49,16 @@
   VkDeviceSize            MappedSize
   void*                   MappedLocation
   u32                     MemoryTypeIndex
-  @spy_disabled
-  @hidden @nobox @internal u8[]     Data
-  @unused ref!VulkanDebugMarkerInfo DebugInfo
-  ref!MemoryDedicatedAllocationInfo DedicatedAllocationNV
+
+  @spy_disabled @hidden @nobox @internal u8[] Data
+
+  @unused ref!VulkanDebugMarkerInfo       DebugInfo
+  ref!MemoryDedicatedAllocationInfo       DedicatedAllocationNV
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
-  ref!MemoryDedicatedAllocationInfo DedicatedAllocationKHR
-  ref!MemoryAllocateFlagsInfo MemoryAllocateFlagsInfo
+  ref!MemoryDedicatedAllocationInfo       DedicatedAllocationKHR
+  ref!MemoryAllocateFlagsInfo             MemoryAllocateFlagsInfo
   @unused VkExternalMemoryHandleTypeFlags ExternalHandleTypeFlags
+  @unused u64                             AndroidHardwareBuffer
 }
 
 @internal class MemoryAllocateFlagsInfo {
@@ -123,6 +125,10 @@ cmd VkResult vkAllocateMemory(
         case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
           ext := as!VkExportMemoryAllocateInfo*(next.Ptr)[0]
           memoryObject.ExternalHandleTypeFlags = ext.handleTypes
+        }
+        case VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID: {
+          ext := as!VkImportAndroidHardwareBufferInfoANDROID*(next.Ptr)[0]
+          memoryObject.AndroidHardwareBuffer = as!u64(ext.buffer)
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext

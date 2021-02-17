@@ -502,6 +502,9 @@ sub void GetPhysicalDeviceImageFormatProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: {
             _ = as!VkPhysicalDeviceExternalImageFormatInfo*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID: {
+            _ = as!VkAndroidHardwareBufferUsageANDROID*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -525,6 +528,9 @@ sub void GetPhysicalDeviceImageFormatProperties2(
         }
         case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES: {
           _ = as!VkExternalImageFormatProperties*(next.Ptr)[0]
+        }
+        case VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID: {
+          _ = as!VkAndroidHardwareBufferUsageANDROID*(next.Ptr)[0]
         }
       }
     }

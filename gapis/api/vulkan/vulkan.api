@@ -89,6 +89,7 @@ import "extensions/khr_bind_memory2.api"
 import "extensions/khr_16bit_storage.api"
 import "extensions/khr_external_fence_capabilities.api"
 import "extensions/khr_external_memory_capabilities.api"
+import "extensions/android_external_memory_android_hardware_buffer.api"
 import "extensions/khr_external_semaphore_capabilities.api"
 import "extensions/khr_external_semaphore_fd.api"
 import "extensions/khr_variable_pointers.api"
@@ -284,6 +285,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_external_semaphore"] = true
   supported.ExtensionNames["VK_KHR_external_semaphore_fd"] = true
   supported.ExtensionNames["VK_KHR_external_memory"] = true
+  supported.ExtensionNames["VK_ANDROID_external_memory_android_hardware_buffer"] = true
   return supported
 }
 

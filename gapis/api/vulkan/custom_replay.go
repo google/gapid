@@ -1087,6 +1087,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationKHR
 		NilMemoryAllocateFlagsInfoʳ,       // MemoryAllocateFlagsInfo
 		0,                                 // ExternalHandleTypeFlags
+		0,                                 // AndroidHardwareBuffer
 	)
 
 	c.DeviceMemories().Add(memory, memoryObject)

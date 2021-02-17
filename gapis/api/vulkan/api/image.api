@@ -56,6 +56,7 @@
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
   ref!ImageFormatList                            ViewFormatList
   VkExternalMemoryHandleTypeFlags                ExternalHandleTypeFlags
+  u64                                            AndroidExternalFormat
 }
 
 @resource
@@ -225,6 +226,10 @@ cmd VkResult vkCreateImage(
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
           ext := as!VkExternalMemoryImageCreateInfo*(next.Ptr)[0]
           imageInfo.ExternalHandleTypeFlags = ext.handleTypes
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID: {
+          ext := as!VkExternalFormatANDROID*(next.Ptr)[0]
+          imageInfo.AndroidExternalFormat = ext.externalFormat
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
@@ -903,6 +908,7 @@ cmd VkResult vkBindImageMemory2(
   @unused VkFilter                      ChromaFilter
   @unused VkBool32                      ForceExplicitReconstruction
   @unused bool                          IsFromExtension
+  @unused u64                           AndroidExternalFormat
 }
 
 sub void CreateSamplerYcbcrConversion(
@@ -926,6 +932,21 @@ sub void CreateSamplerYcbcrConversion(
     object.ChromaFilter = createInfo.chromaFilter
     object.ForceExplicitReconstruction = createInfo.forceExplicitReconstruction
     object.IsFromExtension = isFromExtension
+
+    if createInfo.pNext != null {
+      numPNext := numberOfPNext(createInfo.pNext)
+      next := MutableVoidPtr(as!void*(createInfo.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0]
+        switch (sType) {
+          case VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID: {
+            ext := as!VkExternalFormatANDROID*(next.Ptr)[0]
+            object.AndroidExternalFormat = ext.externalFormat
+          }
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+      }
+    }
   }
   fence
   pYcbcrConversion[0] = ?

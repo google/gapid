@@ -112,7 +112,7 @@ bitfield VkImageCreateFlagBits {
 
   //@extesion("VK_KHR_sampler_ycbcr_conversion")
   VK_IMAGE_CREATE_DISJOINT_BIT_KHR = 0x00000200,
-  
+
   // Vulkan 1.1 core
   VK_IMAGE_CREATE_ALIAS_BIT                       = 0x00000400,
   VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT = 0x00000040,
@@ -513,6 +513,9 @@ bitfield VkExternalMemoryHandleTypeFlagBits {
   VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT = 0x00000010,
   VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT        = 0x00000020,
   VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT    = 0x00000040,
+
+  //@extension("VK_ANDROID_external_memory_android_hardware_buffer")
+  VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID = 0x00000400
 }
 type VkFlags VkExternalMemoryHandleTypeFlags
 

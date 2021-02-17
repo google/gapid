@@ -1147,6 +1147,16 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 		).Ptr())
 	}
 
+	if mem.AndroidHardwareBuffer() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkImportAndroidHardwareBufferInfoANDROID(
+				VkStructureType_VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID, // sType
+				pNext, // pNext
+				AHardwareBufferᵖ(mem.AndroidHardwareBuffer()), // buffer
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkAllocateMemory(
 		mem.Device(),
 		NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
@@ -1815,12 +1825,23 @@ func (sb *stateBuilder) primeImage(img ImageObjectʳ, imgPrimer *imagePrimer, op
 }
 
 func (sb *stateBuilder) createSamplerYcbcrConversion(conv SamplerYcbcrConversionObjectʳ) {
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if conv.AndroidExternalFormat() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkExternalFormatANDROID(
+				VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID,
+				pNext,                        // pNext
+				conv.AndroidExternalFormat(), // externalFormat
+			),
+		).Ptr())
+	}
+
 	if conv.IsFromExtension() {
 		sb.write(sb.cb.VkCreateSamplerYcbcrConversionKHR(
 			conv.Device(),
 			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR, // sType
-				0,                                  // pNext
+				pNext,                              // pNext
 				conv.Fmt(),                         // format
 				conv.YcbcrModel(),                  // ycbcrModel
 				conv.YcbcrRange(),                  // ycbcrRange
@@ -1839,7 +1860,7 @@ func (sb *stateBuilder) createSamplerYcbcrConversion(conv SamplerYcbcrConversion
 			conv.Device(),
 			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO, // sType
-				0,                                  // pNext
+				pNext,                              // pNext
 				conv.Fmt(),                         // format
 				conv.YcbcrModel(),                  // ycbcrModel
 				conv.YcbcrRange(),                  // ycbcrRange

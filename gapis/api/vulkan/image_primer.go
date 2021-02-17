@@ -580,6 +580,16 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		).Ptr())
 	}
 
+	if info.AndroidExternalFormat() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkExternalFormatANDROID(
+				VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID,
+				pNext,                        // pNext
+				info.AndroidExternalFormat(), // externalFormat
+			),
+		).Ptr())
+	}
+
 	create := sb.cb.VkCreateImage(
 		dev, sb.MustAllocReadData(
 			NewVkImageCreateInfo(
