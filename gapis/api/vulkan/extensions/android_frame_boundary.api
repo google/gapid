@@ -1,0 +1,76 @@
+// Copyright (C) 2021 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// VK_ANDROID_frame_boundary is not defined by Khronos, it's a bespoke device
+// extension AGI implements in order to support HWUI use-case, which bypasses
+// the Khronos swapchain and thus never uses vkQueuePresentKHR. HWUI can use
+// vkFrameBoundaryANDROID in order to mark frame boundaries. This approach is
+// sufficient for HWUI, which renders frames in sequence, one at a time, but
+// cannot handle the general case of overlapping frames.
+//
+// As this extension won't be defined by Khronos vulkan headers, use this:
+//
+// typedef void (VKAPI_PTR *PFN_vkFrameBoundaryANDROID)(VkDevice device, VkSemaphore semaphore, VkImage image, AHardwareBuffer* buffer);
+//
+// Make sure to load this function only when the device supports
+// "VK_ANDROID_frame_boundary", this support will be present only when AGI's
+// spy vulkan layer is present (i.e., when AGI traces the app).
+
+/////////////
+// Structs //
+/////////////
+
+// TODO: In due time, this will be declared in the implementation of
+// VK_ANDROID_external_memory_android_hardware_buffer
+@platform("VK_USE_PLATFORM_ANDROID_KHR")
+@extension("VK_ANDROID_external_memory_android_hardware_buffer")
+@forwarddecl
+class AHardwareBuffer {}
+
+//////////////
+// Commands //
+//////////////
+
+@platform("VK_USE_PLATFORM_ANDROID_KHR")
+@extension("VK_ANDROID_frame_boundary")
+@indirect("VkDevice")
+@override
+@frame_end
+cmd void vkFrameBoundaryANDROID(
+    VkDevice                device,
+    VkSemaphore             semaphore,
+    VkImage                 image,
+    AHardwareBuffer*        buffer) {
+
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(semaphore in Semaphores) { vkErrorInvalidSemaphore(semaphore) }
+  if !(image in Images) { vkErrorInvalidImage(image) }
+
+  sema := Semaphores[semaphore]
+  if sema.SubmitCount == 0 {
+    vkErrorSemaphoreNotSubmitted(semaphore)
+  } else {
+    // The semaphore signal and submit logic is copied from vkQueuePresentKHR
+    if (sema.Signaled) {
+      sema.Signaled = false
+      // TODO: This should be decreased not when it is processed but
+      // when it is submmitted for wait. Change the logic when we
+      // support handling unsignaled waits.
+      sema.SubmitCount = sema.SubmitCount - 1
+    } else {
+      // TODO: handle case when semaphore is not yet signaled
+      // see https://github.com/google/gapid/issues/1860
+    }
+  }
+}

@@ -842,6 +842,12 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
     }
   }
 
+  // AGI implements VK_ANDROID_frame_boundary itself
+  char frame_boundary_extension_name[] = "VK_ANDROID_frame_boundary";
+  uint32_t frame_boundary_spec_version = 1;
+  all_properties.push_back(VkExtensionProperties{frame_boundary_extension_name,
+                                                 frame_boundary_spec_version});
+
   if (pProperties == NULL) {
     *pCount = all_properties.size();
     return VkResult::VK_SUCCESS;

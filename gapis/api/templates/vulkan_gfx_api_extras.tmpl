@@ -198,10 +198,25 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
                        return false;
                      }),
       layers.end());
+  // VK_ANDROID_frame_boundary is implemented by AGI itself, the driver at
+  // replay time is not expected to support it, so drop this extension at replay
+  // time.
+   std::vector<const char*> extensions(
+      pCreateInfo->ppEnabledExtensionNames,
+      pCreateInfo->ppEnabledExtensionNames + pCreateInfo->enabledExtensionCount);
+  extensions.erase(
+      std::remove_if(extensions.begin(), extensions.end(),
+                     [](const char* extension) -> bool {
+                       return std::strcmp(extension, "VK_ANDROID_frame_boundary") == 0;
+                     }),
+      extensions.end());
+
   VkDeviceCreateInfo new_info = *pCreateInfo;
   new_info.pNext = nullptr;
   new_info.ppEnabledLayerNames = layers.data();
   new_info.enabledLayerCount = layers.size();
+  new_info.ppEnabledExtensionNames = extensions.data();
+  new_info.enabledExtensionCount = extensions.size();
   stack->push(physicalDevice);
   stack->push(&new_info);
   stack->push(pAllocator);

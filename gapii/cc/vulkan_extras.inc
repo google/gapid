@@ -156,3 +156,11 @@ void walkImageSubRng(
 void parseShaderModule(
     StageData* stage,
     gapil::Ref<DescriptorInfo>& descriptors);
+
+// AGI implements VK_ANDROID_frame_boundary itself, the underlying ICD
+// is not expected to provide it. Hence, override the spy to avoid calling into
+// the next layer/ICD implementation of that function.
+void SpyOverride_vkFrameBoundaryANDROID(VkDevice device,
+                                        VkSemaphore semaphore,
+                                        VkImage image,
+                                        AHardwareBuffer* buffer) {}
