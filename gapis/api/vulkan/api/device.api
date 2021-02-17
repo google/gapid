@@ -260,6 +260,9 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             ShaderInt8: ext.shaderInt8,
           )
         }
+        case VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO: {
+          // Ignore.
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
