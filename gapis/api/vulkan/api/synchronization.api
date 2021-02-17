@@ -166,13 +166,14 @@ cmd VkResult vkWaitForFences(
 ///////////////
 
 @internal class SemaphoreObject {
-  @unused VkDevice                  Device
-  @unused VkSemaphore               VulkanHandle
-  @unused VkQueue                   LastQueue
-  @unused s32                       SubmitCount
-  @unused bool                      Signaled
-  @unused ref!VulkanDebugMarkerInfo DebugInfo
-  @unused VkQueue                   WaitingQueue
+  @unused VkDevice                           Device
+  @unused VkSemaphore                        VulkanHandle
+  @unused VkQueue                            LastQueue
+  @unused s32                                SubmitCount
+  @unused bool                               Signaled
+  @unused ref!VulkanDebugMarkerInfo          DebugInfo
+  @unused VkQueue                            WaitingQueue
+  @unused VkExternalSemaphoreHandleTypeFlags ExternalHandleTypeFlags
 }
 
 @threadSafety("system")
@@ -184,7 +185,10 @@ cmd VkResult vkCreateSemaphore(
     VkSemaphore*                 pSemaphore) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSemaphoreCreateInfo") }
+  if pSemaphore == null { vkErrorNullPointer("VkSemaphore") }
   create_info := pCreateInfo[0]
+
+  semaphoreObject := new!SemaphoreObject(Device: device)
   // handle pNext
   if create_info.pNext != null {
     numPNext := numberOfPNext(create_info.pNext)
@@ -192,16 +196,18 @@ cmd VkResult vkCreateSemaphore(
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
       switch (sType) {
+        case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: {
+          ext := as!VkExportSemaphoreCreateInfo*(next.Ptr)[0]
+          semaphoreObject.ExternalHandleTypeFlags = ext.handleTypes
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
 
   handle := ?
-  semaphoreObject := new!SemaphoreObject(Device: device,
-    VulkanHandle:           handle)
-  if pSemaphore == null { vkErrorNullPointer("VkSemaphore") }
   pSemaphore[0] = handle
+  semaphoreObject.VulkanHandle = handle
   Semaphores[handle] = semaphoreObject
 
   return ?

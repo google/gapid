@@ -1907,12 +1907,22 @@ func (sb *stateBuilder) createFence(fnc FenceObjectʳ) {
 }
 
 func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
+	pNext := NewVoidᵖ(memory.Nullptr)
+	if sem.ExternalHandleTypeFlags() != 0 {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkExportSemaphoreCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO, // sType
+				NewVoidᶜᵖ(pNext),              // pNext
+				sem.ExternalHandleTypeFlags(), // handleTypes
+			),
+		).Ptr())
+	}
 	sb.write(sb.cb.VkCreateSemaphore(
 		sem.Device(),
 		sb.MustAllocReadData(NewVkSemaphoreCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, // sType
-			0, // pNext
-			0, // flags
+			NewVoidᶜᵖ(pNext), // pNext
+			0,                // flags
 		)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(sem.VulkanHandle()).Ptr(),
