@@ -978,6 +978,9 @@ sub void GetBufferMemoryRequirements2(
     for i in (0 .. nPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+          _ = as!VkMemoryDedicatedRequirements*(next.Ptr)[0]
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
