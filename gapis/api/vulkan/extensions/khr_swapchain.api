@@ -336,6 +336,13 @@ cmd VkResult vkQueuePresentKHR(
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
       switch (sType) {
+        case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE: {
+          ext := as!VkPresentTimesInfoGOOGLE*(next.Ptr)[0]
+          if ext.pTimes != null {
+            read(ext.pTimes[0:ext.swapchainCount])
+          }
+        }
+
         // TODO: handle device group extension
         // case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: {
         //   ext := as!VkDeviceGroupPresentInfoKHR*(next.Ptr)[0]
