@@ -48,9 +48,10 @@
   @hidden @unused map!(VkFormat, VkFormatProperties) FormatProperties
 
   // Vulkan 1.1 core
-  @unused ref!PointClippingProperties PointClippingProperties
-  @unused ref!Maintenance3Properties  Maintenance3Properties
-  @unused ref!SubgroupProperties      SubgroupProperties
+  @unused ref!PointClippingProperties    PointClippingProperties
+  @unused ref!Maintenance3Properties     Maintenance3Properties
+  @unused ref!SubgroupProperties         SubgroupProperties
+  @unused ref!PhysicalDeviceIDProperties IDProperties
 
   // Extensions
   @unused ref!PhysicalDevicePCIBusInfoPropertiesEXT PhysicalDevicePCIBusInfoPropertiesEXT
@@ -141,4 +142,12 @@ cmd VkResult vkEnumeratePhysicalDevices(
   VkShaderStageFlags     SupportedStages
   VkSubgroupFeatureFlags SupportedOperations
   VkBool32               QuadOperationsInAllStages
+}
+
+@internal class PhysicalDeviceIDProperties {
+  u8[VK_UUID_SIZE] DeviceUUID
+  u8[VK_UUID_SIZE] DriverUUID
+  u8[VK_LUID_SIZE] DeviceLUID
+  u32              DeviceNodeMask
+  VkBool32         DeviceLUIDValid
 }

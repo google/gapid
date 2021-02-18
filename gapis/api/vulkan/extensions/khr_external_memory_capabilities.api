@@ -117,7 +117,7 @@ class VkPhysicalDeviceIDPropertiesKHR {
     void*              pNext
     u8[VK_UUID_SIZE]   deviceUUID
     u8[VK_UUID_SIZE]   driverUUID
-    u8[VK_UUID_SIZE]   deviceLUID
+    u8[VK_LUID_SIZE]   deviceLUID
     u32                deviceNodeMask
     VkBool32           deviceLUIDValid
 }

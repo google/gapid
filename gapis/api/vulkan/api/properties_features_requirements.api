@@ -499,6 +499,9 @@ sub void GetPhysicalDeviceImageFormatProperties2(
               _ = ext.pViewFormats[0:ext.viewFormatCount]
             }
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: {
+            _ = as!VkPhysicalDeviceExternalImageFormatInfo*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -519,6 +522,9 @@ sub void GetPhysicalDeviceImageFormatProperties2(
       switch sType {
         case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
           _ = as!VkSamplerYcbcrConversionImageFormatProperties*(next.Ptr)[0]
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES: {
+          _ = as!VkExternalImageFormatProperties*(next.Ptr)[0]
         }
       }
     }
@@ -617,6 +623,14 @@ sub void GetPhysicalDeviceProperties2(
               )
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+              ext := as!VkPhysicalDeviceIDProperties*(next.Ptr)[0]
+              phyDev.IDProperties = new!PhysicalDeviceIDProperties(
+                DeviceUUID: ext.deviceUUID,
+                DriverUUID: ext.driverUUID,
+                DeviceLUID: ext.deviceLUID,
+                DeviceNodeMask: ext.deviceNodeMask,
+                DeviceLUIDValid: ext.deviceLUIDValid,
+              )
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
               ext := as!VkPhysicalDevicePCIBusInfoPropertiesEXT*(next.Ptr)[0]
