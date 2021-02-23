@@ -47,12 +47,23 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) []*service.TypedMemor
 		return ranges
 	}
 	sort.Slice(ranges, func(i, j int) bool {
-		return (ranges[i].Root < ranges[j].Root ||
-			ranges[i].Root == ranges[j].Root &&
-				ranges[i].Type.TypeIndex < ranges[j].Type.TypeIndex ||
-			ranges[i].Root == ranges[j].Root &&
-				ranges[i].Type.TypeIndex == ranges[j].Type.TypeIndex &&
-				ranges[i].Range.Base < ranges[j].Range.Base)
+		if ranges[i].Root < ranges[j].Root {
+			return true
+		} else if ranges[i].Root != ranges[j].Root {
+			return false
+		} else if ranges[i].Type.TypeIndex < ranges[j].Type.TypeIndex {
+			return true
+		} else if ranges[i].Type.TypeIndex != ranges[j].Type.TypeIndex {
+			return false
+		} else if ranges[i].Range.Base < ranges[j].Range.Base {
+			return true
+		} else if ranges[i].Range.Base != ranges[j].Range.Base {
+			return false
+		} else if a, b := ranges[i].Write, ranges[j].Write; a != b {
+			return a // Writes should win, and be first.
+		} else {
+			return false
+		}
 	})
 	newRanges := []*service.TypedMemoryRange{ranges[0]}
 	last := 0
@@ -156,6 +167,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 								},
 								Root:  root,
 								Value: value,
+								Write: false,
 							},
 						)
 					}
@@ -181,6 +193,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 								},
 								Root:  root,
 								Value: value,
+								Write: true,
 							},
 						)
 					}

@@ -262,6 +262,8 @@ message TypedMemoryRange {
   uint64 root = 3;
   // The structured value of the typed memory observation.
   memory_box.Value value = 4;
+  // Whether this is a write (true) or read (false) observation.
+  bool write = 5;
 }
 
 message Messages {
