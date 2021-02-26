@@ -41,6 +41,7 @@ type traceVerb struct{ TraceFlags }
 
 func init() {
 	verb := &traceVerb{}
+	verb.Disable.Unknown.Extensions = true
 
 	app.AddVerb(&app.Verb{
 		Name:      "trace",
