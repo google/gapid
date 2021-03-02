@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/google/gapid/core/app/analytics"
 	coreid "github.com/google/gapid/core/data/id"
@@ -41,10 +42,11 @@ var (
 )
 
 // filterTypedRanges takes a list of typed ranges and
-//   combines ranges that have identical bases and types
-func filterTypedRanges(ranges []*service.TypedMemoryRange) []*service.TypedMemoryRange {
+//   combines ranges that have identical bases and types, and
+//   filters some highly correlated structs into smaller number.
+func filterTypedRanges(ranges []*service.TypedMemoryRange) ([]*service.TypedMemoryRange, error) {
 	if len(ranges) == 0 {
-		return ranges
+		return ranges, nil
 	}
 	sort.Slice(ranges, func(i, j int) bool {
 		if ranges[i].Root < ranges[j].Root {
@@ -65,6 +67,7 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) []*service.TypedMemor
 			return false
 		}
 	})
+	// Combines ranges that have identical bases and types.
 	newRanges := []*service.TypedMemoryRange{ranges[0]}
 	last := 0
 	for i := 1; i < len(ranges); i++ {
@@ -96,7 +99,82 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) []*service.TypedMemor
 			newRanges = append(newRanges, ranges[i])
 		}
 	}
-	return newRanges
+	// Filter pnext pointer related structs, only keep the most specific one.
+	// When seeing a pointer struct, scan all the structs having the same root,
+	// and identify whether some are less precise and excessive structs caused by
+	// pnext pointer type castings. If found, filter them out.
+	toDelete := map[int]bool{}
+	index := 0
+	for index < len(newRanges) {
+		ty, err := types.GetType(newRanges[index].Type.TypeIndex)
+		if err != nil {
+			return nil, err
+		}
+		if strings.Contains(strings.ToLower(ty.Name), "void") {
+			root := newRanges[index].Root
+			dups := []int{}
+			for left := index - 1; left >= 0 && newRanges[left].Root == root; left-- {
+				dups = append(dups, left)
+			}
+			for right := index + 1; right < len(newRanges) && newRanges[right].Root == root; right++ {
+				dups = append(dups, right)
+			}
+			mostPreciseIndex := index
+			mostPreciseLevel, err := pNextPrecision(newRanges[index].Type.TypeIndex)
+			if err != nil {
+				return nil, err
+			}
+			for _, i := range dups {
+				preciseLevel, err := pNextPrecision(newRanges[i].Type.TypeIndex)
+				if err != nil {
+					return nil, err
+				}
+				if preciseLevel < 0 {
+					continue
+				} else if preciseLevel < mostPreciseLevel {
+					toDelete[i] = true
+				} else if preciseLevel > mostPreciseLevel {
+					toDelete[mostPreciseIndex] = true
+					mostPreciseIndex = i
+					mostPreciseLevel = preciseLevel
+				}
+			}
+			index = dups[len(dups)-1] + 1
+		} else {
+			index++
+		}
+	}
+	filteredRanges := []*service.TypedMemoryRange{}
+	for i := 0; i < len(newRanges); i++ {
+		if shouldDelete := toDelete[i]; !shouldDelete {
+			filteredRanges = append(filteredRanges, newRanges[i])
+		}
+	}
+	return filteredRanges, nil
+}
+
+// pNextPrecision returns the precision of a pnext pointer derived struct.
+// The larger the number, the more precise and specific the struct is. Return -1
+// for irrelevant structs.
+// The ranking is based on how the pnext pointers are type casted in api files,
+// a typical casting chain could be found at gapis/api/vulkan/api/device.api.
+func pNextPrecision(typeIndex uint64) (int, error) {
+	ty, err := types.GetType(typeIndex)
+	if err != nil {
+		return -1, err
+	}
+	tyName := strings.ToLower(ty.Name)
+	if strings.Contains(tyName, "void") {
+		return 0, nil
+	} else if strings.HasPrefix(tyName, "vkstructuretype") {
+		return 1, nil
+	} else if strings.HasPrefix(tyName, "vulkanstructheader") {
+		return 2, nil
+	} else if strings.HasPrefix(tyName, "vk") {
+		return 3, nil
+	} else {
+		return -1, nil
+	}
 }
 
 // Memory resolves and returns the memory from the path p.
@@ -208,7 +286,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 		return nil, err
 	}
 
-	typedRanges = filterTypedRanges(typedRanges)
+	typedRanges, err = filterTypedRanges(typedRanges)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check whether the requested pool was ever created.
 	pool, err := s.Memory.Get(memory.PoolID(p.Pool))
