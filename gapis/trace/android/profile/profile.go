@@ -156,6 +156,7 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 		}
 		*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
 			Id:              metricId,
+			CounterId:       counter.Id,
 			Name:            counter.Name,
 			Unit:            counter.Unit,
 			Op:              op,
@@ -183,9 +184,12 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 				max = f64.MaxOf(max, maxSetRes)
 			}
 			groupToEntry[groupId].MetricToValue[metricId] = &service.ProfilingData_GpuCounters_Perf{
-				Estimate: estimate,
-				Min:      min,
-				Max:      max,
+				Estimate:        estimate,
+				Min:             min,
+				Max:             max,
+				EstimateSamples: estimateSet,
+				MinSamples:      minSet,
+				MaxSamples:      maxSet,
 			}
 		}
 	}
@@ -214,11 +218,11 @@ func scanConcurrency(globalSlices []*service.ProfilingData_GpuSlices_Slice, coun
 // be maintained based on attribution strategy: the minimum set,
 // the best guess set, and the maximum set.
 // The returned results map {sample index} to {sample weight}.
-func mapCounterSamples(slices []*service.ProfilingData_GpuSlices_Slice, counter *service.ProfilingData_Counter, concurrentSlicesCount []int) (map[int]float64, map[int]float64, map[int]float64) {
-	estimateSet, minSet, maxSet := map[int]float64{}, map[int]float64{}, map[int]float64{}
+func mapCounterSamples(slices []*service.ProfilingData_GpuSlices_Slice, counter *service.ProfilingData_Counter, concurrentSlicesCount []int) (map[int32]float64, map[int32]float64, map[int32]float64) {
+	estimateSet, minSet, maxSet := map[int32]float64{}, map[int32]float64{}, map[int32]float64{}
 	for _, slice := range slices {
 		sStart, sEnd := slice.Ts, slice.Ts+slice.Dur
-		for i := 1; i < len(counter.Timestamps); i++ {
+		for i := int32(1); i < int32(len(counter.Timestamps)); i++ {
 			cStart, cEnd := counter.Timestamps[i-1], counter.Timestamps[i]
 			concurrencyWeight := 1.0
 			if concurrentSlicesCount[i] > 1 {
@@ -254,7 +258,7 @@ func mapCounterSamples(slices []*service.ProfilingData_GpuSlices_Slice, counter 
 }
 
 // Aggregate counter samples to a single value based on counter weight.
-func aggregateCounterSamples(sampleWeight map[int]float64, counter *service.ProfilingData_Counter) float64 {
+func aggregateCounterSamples(sampleWeight map[int32]float64, counter *service.ProfilingData_Counter) float64 {
 	switch getCounterAggregationMethod(counter) {
 	case service.ProfilingData_GpuCounters_Metric_Summation:
 		ValueSum := float64(0)

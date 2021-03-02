@@ -225,14 +225,14 @@ public class Profile
       }
       // Link the nodes.
       for (PerfNode node : nodes.values()) {
-        if (node.group.hasParent()) {
-          nodes.get(node.group.getParent().getId()).children.add(node);
+        if (node.getGroup().hasParent()) {
+          nodes.get(node.getGroup().getParent().getId()).children.add(node);
         }
       }
       // Return the root nodes.
       List<PerfNode> rootNodes = Lists.newArrayList();
       for (PerfNode node : nodes.values()) {
-        if (!node.group.hasParent()) {
+        if (!node.getGroup().hasParent()) {
           rootNodes.add(node);
         }
       }
@@ -350,22 +350,24 @@ public class Profile
   }
 
   public static class PerfNode {
-    private final Service.ProfilingData.GpuSlices.Group group;
-    private final Map<Integer, Service.ProfilingData.GpuCounters.Perf> perfs;
+    private final Service.ProfilingData.GpuCounters.Entry entry;
     private final List<PerfNode> children;
 
     public PerfNode(Service.ProfilingData.GpuCounters.Entry entry) {
-      this.group = entry.getGroup();
-      this.perfs = entry.getMetricToValueMap();
+      this.entry = entry;
       this.children = Lists.newArrayList();
     }
 
+    public Service.ProfilingData.GpuCounters.Entry getEntry() {
+      return entry;
+    }
+
     public Service.ProfilingData.GpuSlices.Group getGroup() {
-      return group;
+      return entry.getGroup();
     }
 
     public Map<Integer, Service.ProfilingData.GpuCounters.Perf> getPerfs() {
-      return perfs;
+      return entry.getMetricToValueMap();
     }
 
     public boolean hasChildren() {

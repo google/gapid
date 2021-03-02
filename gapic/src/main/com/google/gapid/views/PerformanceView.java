@@ -15,6 +15,8 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.perfetto.views.StyleConstants.threadStateSleeping;
+import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.widgets.Widgets.createButton;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -26,8 +28,10 @@ import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withMargin;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
@@ -35,22 +39,31 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Profile;
 import com.google.gapid.models.Profile.PerfNode;
 import com.google.gapid.models.Settings;
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.Unit;
+import com.google.gapid.perfetto.canvas.Fonts;
+import com.google.gapid.perfetto.canvas.Panel;
+import com.google.gapid.perfetto.canvas.PanelCanvas;
+import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.views.TraceConfigDialog.GpuCountersDialog;
 import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.SettingsProto.UI.PerformancePreset;
 import com.google.gapid.proto.device.GpuProfiling;
 import com.google.gapid.proto.device.GpuProfiling.GpuCounterDescriptor.GpuCounterSpec;
+
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -62,9 +75,14 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
+import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
@@ -86,21 +104,28 @@ public class PerformanceView extends Composite
   private final LoadablePanel<Composite> loading;
   private final PresetsBar presetsBar;
   private final TreeViewer tree;
+  private final Map<Integer, Service.ProfilingData.GpuCounters.Metric> columnToMetric = Maps.newHashMap();;
+  private final CounterDetailUi counterDetailUi;
   private boolean showEstimate = true;
   private Set<Integer> visibleMetrics = Sets.newHashSet();  // identified by metric.id
+  private ViewerCell selectedCell;
 
   public PerformanceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
     this.buttonColor = getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND);
 
-    setLayout(new GridLayout(1, false));
-    loading = LoadablePanel.create(this, widgets, p -> new Composite(p, SWT.NONE));
+    setLayout(new FillLayout(SWT.VERTICAL));
+    loading = LoadablePanel.create(this, widgets, p -> createComposite(p, new FillLayout(SWT.VERTICAL)));
     Composite composite = loading.getContents();
-    composite.setLayout(new GridLayout(1, false));
-    composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    SashForm splitter = new SashForm(composite, SWT.VERTICAL);
+    Composite top = withLayoutData(createComposite(splitter, new GridLayout(1, false)),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
+    Composite bottom = withLayoutData(createComposite(splitter, new FillLayout()),
+        new GridData(SWT.FILL, SWT.BOTTOM, true, true));
+    splitter.setWeights(new int[] { 70, 30 });
 
-    Composite buttonsComposite = createComposite(composite, new GridLayout(3, false));
+    Composite buttonsComposite = createComposite(top, new GridLayout(3, false));
     buttonsComposite.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, true, false));
 
     Button toggleButton = createButton(buttonsComposite, SWT.FLAT, "Estimate / Confidence Range",
@@ -122,7 +147,7 @@ public class PerformanceView extends Composite
     presetsBar = new PresetsBar(buttonsComposite, models.settings, widgets.theme);
     presetsBar.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
 
-    tree = createTreeViewer(composite, SWT.NONE);
+    tree = createTreeViewer(top, SWT.NONE);
 
     tree.getTree().setHeaderVisible(true);
     tree.setLabelProvider(new LabelProvider());
@@ -153,16 +178,35 @@ public class PerformanceView extends Composite
       }
     });
 
-    tree.getTree().addListener(SWT.Selection, e -> {
-      TreeItem[] items = tree.getTree().getSelection();
-      if (items.length > 0) {
-        PerfNode selection = (PerfNode)items[0].getData();
-        models.profile.linkGpuGroupToCommand(selection.getGroup());
-        models.profile.selectGroup(selection.getGroup());
+    tree.getTree().addMouseListener(new MouseAdapter() {
+      @Override
+      public void mouseUp(MouseEvent e) {
+        if (selectedCell != null && !selectedCell.getItem().isDisposed()) {
+          selectedCell.setFont(widgets.theme.defaultFont());
+        }
+        ViewerCell newSelectedCell = tree.getCell(new Point(e.x, e.y));
+        if (newSelectedCell != null) {
+          newSelectedCell.setFont(widgets.theme.selectedTabTitleFont());
+        }
+        selectedCell = newSelectedCell;
+
+        TreeItem[] items = tree.getTree().getSelection();
+        if (items.length > 0) {
+          PerfNode selection = (PerfNode)items[0].getData();
+          models.profile.linkGpuGroupToCommand(selection.getGroup());
+          models.profile.selectGroup(selection.getGroup());
+          if (selectedCell != null) {
+            counterDetailUi.updateSelectedCell(selection.getEntry(),
+                columnToMetric.get(selectedCell.getColumnIndex()));
+          }
+        }
       }
     });
 
     tree.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    counterDetailUi = new CounterDetailUi(bottom, widgets.theme);
+
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.capture.addListener(this);
@@ -184,12 +228,14 @@ public class PerformanceView extends Composite
   public void reinitialize() {
     presetsBar.refresh();
     updateTree(false);
+    counterDetailUi.updateCounterData(models.profile);
   }
 
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
     presetsBar.refresh();
     updateTree(true);
+    counterDetailUi.updateCounterData(models.profile);
   }
 
   @Override
@@ -222,6 +268,7 @@ public class PerformanceView extends Composite
     visibleMetrics = getCounterSpecs().stream()
         .mapToInt(GpuCounterSpec::getCounterId).boxed().collect(Collectors.toSet());
     updateTree(false);
+    counterDetailUi.updateCounterData(models.profile);
   }
 
   private void updateTree(boolean assumeLoading) {
@@ -236,11 +283,15 @@ public class PerformanceView extends Composite
     for (TreeColumn col : tree.getTree().getColumns()) {
       col.dispose();
     }
+    columnToMetric.clear();
+
     createTreeColumn(tree, "Name", e -> ((Profile.PerfNode)e).getGroup().getName());
+    int columnIndex = 1;
     for (Service.ProfilingData.GpuCounters.Metric metric :
         models.profile.getData().getGpuPerformance().getMetricsList()) {
       if (visibleMetrics.contains(metric.getId())){
         addColumnForMetric(metric);
+        columnToMetric.put(columnIndex++, metric);
       }
     }
     tree.setInput(perf);
@@ -544,6 +595,169 @@ public class PerformanceView extends Composite
         }
         presetsBar.refresh();
         super.okPressed();
+      }
+    }
+  }
+
+  private static class CounterDetailUi extends Composite {
+    private static final String ENTRY_LABEL_PREFIX = "Entry: ";
+    private static final String METRIC_LABEL_PREFIX = "Metric: ";
+
+    private final Label coordinateLabel;
+    private final CounterDetailPanel counterDetailPanel;
+    private final PanelCanvas canvas;
+    private final Map<Integer, Service.ProfilingData.Counter> counterDataLookup = Maps.newHashMap(); // metric id -> counter data.
+    private Service.ProfilingData.GpuCounters.Entry selectedEntry;      // Row.
+    private Service.ProfilingData.GpuCounters.Metric selectedMetric;    // Column.
+
+    public CounterDetailUi(Composite parent, Theme theme) {
+      super(parent, SWT.NONE);
+
+      setLayout(withMargin(new GridLayout(2, false), 0, 5));
+      Label titleLabel = withLayoutData(createLabel(this, "GPU Counter Detail Graph: "),
+          new GridData(SWT.LEFT, SWT.FILL, true, false, 2, 1));
+      titleLabel.setFont(theme.selectedTabTitleFont());
+      coordinateLabel = withLayoutData(createLabel(this, ENTRY_LABEL_PREFIX + "; " + METRIC_LABEL_PREFIX),
+          new GridData(SWT.LEFT, SWT.FILL, true, false));
+      withLayoutData(createLabel(this, "* (counter sample weight). ** Only for GPU counters."),
+          new GridData(SWT.RIGHT, SWT.FILL, false, false));
+      counterDetailPanel = new CounterDetailPanel();
+      this.canvas = withLayoutData(new PanelCanvas(this, SWT.NONE, theme, counterDetailPanel),
+          new GridData(SWT.FILL, SWT.FILL, true, true, 2, 1));
+    }
+
+    public void updateCounterData(Profile profile) {
+      counterDataLookup.clear();
+      if (profile == null || !profile.isLoaded()) {
+        updateSelectedCell(null, null);
+        return;
+      }
+      List<Service.ProfilingData.Counter> counters = profile.getData().getCounters();
+      Service.ProfilingData.GpuCounters perfs = profile.getData().getGpuPerformance();
+      List<Service.ProfilingData.GpuCounters.Metric> metrics = perfs.getMetricsList();
+      for (Service.ProfilingData.Counter counter: counters) {
+        for (Service.ProfilingData.GpuCounters.Metric metric : metrics) {
+          if (counter.getId() == metric.getCounterId()) {
+            counterDataLookup.put(metric.getId(), counter);
+          }
+        }
+      }
+      counterDetailPanel.updateTimeRange(profile.getData().getSlicesTimeSpan());
+    }
+
+    public void updateSelectedCell(Service.ProfilingData.GpuCounters.Entry entry, Service.ProfilingData.GpuCounters.Metric metric) {
+      this.selectedEntry = entry;
+      this.selectedMetric = metric;
+      String coordinateStr = ENTRY_LABEL_PREFIX
+          + (entry != null ? entry.getGroup().getName() : "")
+          + "; " + METRIC_LABEL_PREFIX
+          + (metric != null ? metric.getName() : "");
+      coordinateLabel.setText(coordinateStr);
+      coordinateLabel.requestLayout();
+      canvas.redraw();
+    }
+
+    private class CounterDetailPanel extends Panel.Base {
+      public static final double TRACK_HEIGHT = 200;
+      public static final double TRACK_HEIGHT_MARGIN = 30;
+      public static final double TRACK_WIDTH_MARGIN = 20;
+      public static final double TRACK_X_AXIS_HEIGHT = 10;
+      public static final double TRACK_Y_AXIS_WIDTH = 100;
+      public static final double AXIS_ARROW_LENGTH = 10;
+      public static final double AXIS_ARROW_SIZE = 5;
+      public static final double AXIS_Y_CHUNK_NUM = 4;
+
+      private long traceStart;
+
+      public CounterDetailPanel() {
+        super();
+      }
+
+      // Update the time range of the trace.
+      public void updateTimeRange(TimeSpan ts) {
+        traceStart = ts.start;
+      }
+
+      @Override
+      public double getPreferredHeight() {
+        return TRACK_HEIGHT + 2 * TRACK_HEIGHT_MARGIN + TRACK_X_AXIS_HEIGHT + AXIS_ARROW_SIZE;
+      }
+
+      @Override
+      public void render(RenderContext ctx, Repainter repainter) {
+        ctx.trace("Counter", () -> {
+          int selectedMetricId = selectedMetric == null ? -1 : selectedMetric.getId();
+          if (selectedEntry == null
+              || !selectedEntry.getMetricToValueMap().containsKey(selectedMetricId)
+              || !counterDataLookup.containsKey(selectedMetricId)) {
+            return;
+          }
+          Service.ProfilingData.Counter counter = counterDataLookup.get(selectedMetricId);
+          Service.ProfilingData.GpuCounters.Perf perf = selectedEntry.getMetricToValueMap().get(selectedMetricId);
+          // Use TreeSet so that the indexes are sorted during iteration.
+          TreeSet<Integer> indexes = Sets.newTreeSet(perf.getEstimateSamplesMap().keySet());
+          if (indexes.size() == 0) {
+            return;
+          }
+          double max = indexes.stream().mapToDouble(counter::getValues).max().getAsDouble();
+
+          double h = height - 2 * TRACK_HEIGHT_MARGIN - TRACK_X_AXIS_HEIGHT;
+          double w = width - 2 * TRACK_WIDTH_MARGIN - TRACK_Y_AXIS_WIDTH;
+          double top = TRACK_HEIGHT_MARGIN, bottom = height - TRACK_X_AXIS_HEIGHT - TRACK_HEIGHT_MARGIN;
+          double left = TRACK_Y_AXIS_WIDTH + TRACK_WIDTH_MARGIN, right = width - TRACK_WIDTH_MARGIN;
+          double stepX = w / (indexes.size());
+          double stepY = h / AXIS_Y_CHUNK_NUM;
+
+          // Draw graph.
+          mainGradient().applyBaseAndBorder(ctx);
+          ctx.path(path -> {
+            double lastX = left;
+            path.moveTo(left, bottom);
+            for (int i : indexes) {
+              double nextX = lastX + stepX;
+              double nextY = top + h * (1 - counter.getValues(i) / max);
+              path.lineTo(lastX, nextY);  // Go up.
+              path.lineTo(nextX, nextY);  // Go right.
+              ctx.drawTextCenteredRightTruncate(Fonts.Style.Normal,
+                  "(" + perf.getEstimateSamplesMap().get(i) + ")",
+                  lastX, nextY - 20, stepX, 20);
+              lastX = nextX;
+            }
+            path.lineTo(lastX, bottom);
+            ctx.fillPath(path);
+            ctx.drawPath(path);
+          });
+
+          // Draw x-axis.
+          threadStateSleeping().applyBaseAndBorder(ctx);
+          ctx.drawLine(left, bottom, right + AXIS_ARROW_LENGTH, bottom);
+          ctx.drawLine(right + AXIS_ARROW_LENGTH, bottom, right + AXIS_ARROW_LENGTH - AXIS_ARROW_SIZE, bottom + AXIS_ARROW_SIZE);
+          ctx.drawLine(right + AXIS_ARROW_LENGTH, bottom, right + AXIS_ARROW_LENGTH - AXIS_ARROW_SIZE, bottom - AXIS_ARROW_SIZE);
+          double x = left;
+          for (int i : indexes) {
+            // A counter sample at time {tn} is seen as holding the value {vn} during the implicit
+            // time range between {tn-1} ~ {tn}.
+            if (i > 0) {
+              ctx.drawText(Fonts.Style.Normal, Unit.NANO_SECOND.format(
+                  counter.getTimestamps(i - 1) - traceStart), x, bottom + AXIS_ARROW_SIZE);
+            }
+            ctx.drawLine(x, bottom, x, bottom - AXIS_ARROW_SIZE);
+            x += stepX;
+          }
+          ctx.drawTextRightJustified(Fonts.Style.Normal, Unit.NANO_SECOND.format(
+              counter.getTimestamps(indexes.last()) - traceStart), x, bottom + AXIS_ARROW_SIZE);
+
+          // Draw y-axis.
+          ctx.drawLine(left, bottom, left, top - AXIS_ARROW_LENGTH);
+          ctx.drawLine(left, top - AXIS_ARROW_LENGTH, left - AXIS_ARROW_SIZE, top - AXIS_ARROW_LENGTH + AXIS_ARROW_SIZE);
+          ctx.drawLine(left, top - AXIS_ARROW_LENGTH, left + AXIS_ARROW_SIZE, top - AXIS_ARROW_LENGTH + AXIS_ARROW_SIZE);
+          for (int i = 1; i <= AXIS_Y_CHUNK_NUM; i++) {
+            ctx.drawText(Fonts.Style.Normal, CounterInfo.unitFromString(
+                selectedMetric.getUnit()).format(max / AXIS_Y_CHUNK_NUM * i),
+                TRACK_WIDTH_MARGIN, bottom - stepY * i);
+            ctx.drawLine(left, bottom - stepY * i, left + AXIS_ARROW_SIZE, bottom - stepY * i);
+          }
+        });
       }
     }
   }

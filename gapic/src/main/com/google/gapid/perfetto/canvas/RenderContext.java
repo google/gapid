@@ -323,6 +323,12 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     }
   }
 
+  // draws the text on the left of x, and beneath the bottom of y.
+  public void drawTextRightJustified(Fonts.Style style, String text, double x, double y) {
+    Size size = fontContext.measure(style, text);
+    drawText(style, text, x - size.w, y);
+  }
+
   // draws the text centered vertically and on the left of x.
   public void drawTextRightJustified(Fonts.Style style, String text, double x, double y, double h) {
     Size size = fontContext.measure(style, text);

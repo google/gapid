@@ -1116,11 +1116,12 @@ message ProfilingData {
         TimeWeightedAvg = 1;
       }
       int32 id = 1;
-      string name = 2;
-      string unit = 3;
-      AggregationOperator op = 4;
-      string description = 5;
-      bool select_by_default = 6;
+      uint32 counter_id = 2;  // -> Counter.id. Valid for GPU counter metrics.
+      string name = 3;
+      string unit = 4;
+      AggregationOperator op = 5;
+      string description = 6;
+      bool select_by_default = 7;
     }
 
     // Perf includes a best-guessing performance value and a confidence range.
@@ -1128,6 +1129,9 @@ message ProfilingData {
       double estimate = 1;
       double min = 2;
       double max = 3;
+      map<int32, double> estimateSamples = 4;  // {index} -> {sample weight}
+      map<int32, double> minSamples = 5;       // {index} -> {sample weight}
+      map<int32, double> maxSamples = 6;       // {index} -> {sample weight}
     }
 
     // Entry contains performance data for a specific command.
