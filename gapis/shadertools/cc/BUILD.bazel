@@ -20,7 +20,10 @@ cc_library(
         "*.cpp",
         "*.h",
     ]),
-    hdrs = ["libmanager.h"],
+    hdrs = [
+        "libmanager.h",
+        "staticanalysis.h",
+    ],
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [

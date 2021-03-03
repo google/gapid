@@ -22,6 +22,7 @@ cc_library(
     hdrs = [
         "spirv_glsl.hpp",
         "spirv_hlsl.hpp",
+        "spirv_parser.hpp",
     ],
     include_prefix = "third_party/SPIRV-Cross",
     local_defines = [

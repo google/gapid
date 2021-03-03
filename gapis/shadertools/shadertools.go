@@ -16,6 +16,7 @@
 package shadertools
 
 //#include "cc/libmanager.h"
+//#include "cc/staticanalysis.h"
 //#include <stdlib.h>
 //#include "spirv_reflect.h"
 //#include "spirv_cross_c.h"
@@ -189,6 +190,29 @@ func descriptorBindingLess(a DescriptorBinding, b DescriptorBinding) bool {
 	}
 	// SpirvId is a unique identifier so we don't need to keep comparing after this
 	return a.SpirvId < b.SpirvId
+}
+
+type StaticAnalysisCounters struct {
+	ALUInstructions    uint32
+	TexInstructions    uint32
+	BranchInstructions uint32
+}
+
+// Obtains static analysis statistics on the given shader code
+func Analyze(shader []uint32) (StaticAnalysisCounters, error) {
+	res := StaticAnalysisCounters{}
+
+	if len(shader) == 0 {
+		return res, errors.New("Empty Shader")
+	}
+
+	counters := C.performStaticAnalysis((*C.uint32_t)(&shader[0]), C.size_t(len(shader)))
+
+	res.ALUInstructions = uint32(counters.alu_instructions)
+	res.TexInstructions = uint32(counters.texture_instructions)
+	res.BranchInstructions = uint32(counters.branch_instructions)
+
+	return res, nil
 }
 
 // ExtractDebugSource returns the decompiled shader and it's source language as a string.
