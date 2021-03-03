@@ -107,7 +107,7 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 				continue
 			}
 			queries = append(queries, func(mgr replay.Manager) error {
-				return a.QueryTimestamps(ctx, intent, mgr, opts.LoopCount, nil, nil)
+				return a.QueryTimestamps(ctx, intent, mgr, nil, nil)
 			})
 		}
 	case opts.Report != nil:
@@ -122,7 +122,7 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 				continue
 			}
 			queries = append(queries, func(mgr replay.Manager) error {
-				_, err := a.QueryIssues(ctx, intent, mgr, opts.LoopCount, opts.DisplayToSurface, nil)
+				_, err := a.QueryIssues(ctx, intent, mgr, opts.DisplayToSurface, nil)
 				return err
 			})
 		}

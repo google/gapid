@@ -67,7 +67,6 @@ go_library(
         "draw_call_pipeline.go",
         "externs.go",
         "extras.go",
-        "frame_loop.go",
         "framegraph.go",
         "graph_visualization.go",
         "image_primer.go",
@@ -79,6 +78,7 @@ go_library(
         "image_primer_store.go",
         "insertion_command.go",
         "links.go",
+        "looping_vulkan_control_flow_generator.go",
         "mem_binding_list.go",
         "memory_breakdown.go",
         "primeable_image_data.go",
@@ -106,9 +106,9 @@ go_library(
         "transform_query_timestamps.go",
         "transform_read_framebuffer.go",
         "transform_vulkan_terminator.go",
-        "transform_wait_for_perfetto.go",
         "transform_wireframe.go",
         "vulkan.go",
+        "wait_for_perfetto.go",
         ":generated",  # keep
     ],
     embed = [
@@ -118,6 +118,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/status:go_default_library",
+        "//core/context/keys:go_default_library",
         "//core/data:go_default_library",  # keep
         "//core/data/binary:go_default_library",
         "//core/data/dictionary:go_default_library",

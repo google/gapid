@@ -61,7 +61,6 @@ func (verb *serverPerformanceVerb) Run(ctx context.Context, flags flag.FlagSet) 
 		FramebufferAttachments: make([]*gapidPath.FramebufferAttachment, 0),
 		GetTimestampsRequest:   nil,
 		DisplayToSurface:       false,
-		LoopCount:              int32(verb.LoopCount),
 	}
 
 	start := time.Now()

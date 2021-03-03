@@ -240,7 +240,7 @@ public class Client {
   }
 
 
-  public ListenableFuture<Service.ProfilingData> profile(Path.Capture capture, Path.Device device, ProfileExperiments experiments) {
+  public ListenableFuture<Service.ProfilingData> profile(Path.Capture capture, Path.Device device, ProfileExperiments experiments, int loopCount) {
     return call(() -> String.format(
         "RPC->profile(%s, %s)", shortDebugString(capture), shortDebugString(device)),
         stack -> MoreFutures.transformAsync(
@@ -248,6 +248,7 @@ public class Client {
                 .setCapture(capture)
                 .setDevice(device)
                 .setExperiments(experiments.toProto())
+                .setLoopCount(loopCount)
                 .build()),
             in -> immediateFuture(throwIfError(in.getProfilingData(), in.getError(), stack))));
   }

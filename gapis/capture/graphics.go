@@ -127,6 +127,14 @@ func (c *GraphicsCapture) NewUninitializedState(ctx context.Context) *api.Global
 	return s
 }
 
+func (c *GraphicsCapture) NewUninitializedStateSharingAllocator(ctx context.Context, oldGlobalState *api.GlobalState) *api.GlobalState {
+	s := api.NewStateWithAllocator(
+		oldGlobalState.Allocator,
+		c.Header.ABI.MemoryLayout,
+	)
+	return s
+}
+
 // NewState returns a new, initialized GlobalState object built for the capture
 // c. If the capture contains a mid-execution state, then this will be copied
 // into the returned state.

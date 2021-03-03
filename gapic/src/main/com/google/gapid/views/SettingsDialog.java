@@ -52,6 +52,7 @@ public class SettingsDialog extends DialogBase {
   protected final Models models;
   private SettingsFormBase form;
   protected Button disableReplayOptimization;
+  protected Button disableFrameLooping;
   protected Button enableAllExperimentalFeatures;
 
   public SettingsDialog(Shell parent, Models models, Theme theme) {
@@ -79,6 +80,10 @@ public class SettingsDialog extends DialogBase {
         disableReplayOptimization = withLayoutData(createCheckbox(this,
             "Disable replay optimization",
             models.settings.preferences().getDisableReplayOptimization()),
+            withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+        disableFrameLooping = withLayoutData(createCheckbox(this,
+            "Disable frame looping",
+            models.settings.preferences().getUseFrameLooping() == false),
             withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
         enableAllExperimentalFeatures = withLayoutData(createCheckbox(this,
             "Enable all unsupported experimental features (requires restart)",
@@ -108,6 +113,8 @@ public class SettingsDialog extends DialogBase {
   private void update() {
     models.settings.writePreferences().setDisableReplayOptimization(
         disableReplayOptimization.getSelection());
+    models.settings.writePreferences().setUseFrameLooping(
+        disableFrameLooping.getSelection() == false);
     models.settings.writePreferences().setEnableAllExperimentalFeatures(
         enableAllExperimentalFeatures.getSelection());
   }

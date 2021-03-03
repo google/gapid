@@ -24,7 +24,7 @@ import (
 )
 
 // GetTimestamps replays the trace and return the start and end timestamps for each commandbuffers
-func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.Device, loopCount int32, handler service.TimeStampsHandler) error {
+func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.Device, handler service.TimeStampsHandler) error {
 	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.
 		hints := &path.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if qi, ok := a.(QueryTimestamps); ok {
-				err = qi.QueryTimestamps(ctx, intent, mgr, loopCount, handler, hints)
+				err = qi.QueryTimestamps(ctx, intent, mgr, handler, hints)
 				if err != nil {
 					log.E(ctx, "Query timestamps failed.")
 					continue

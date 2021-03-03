@@ -37,7 +37,7 @@ func TestSingleTransformTransformChain(t *testing.T) {
 	chain := transform.CreateTransformChain(ctx, generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
-		chain.GetNextTransformedCommands(ctx)
+		chain.ProcessNextTransformedCommands(ctx)
 	}
 
 	assert.For(ctx, "TestSingleTransformTransformChain").ThatSlice(writer.output).IsLength(2)
@@ -54,7 +54,7 @@ func TestMultipleTransformTransformChain(t *testing.T) {
 	chain := transform.CreateTransformChain(ctx, generator, transforms, writer)
 
 	for !chain.IsEndOfCommands() {
-		chain.GetNextTransformedCommands(ctx)
+		chain.ProcessNextTransformedCommands(ctx)
 	}
 
 	assert.For(ctx, "TestMultipleTransformTransformChain").ThatSlice(writer.output).IsLength(8)

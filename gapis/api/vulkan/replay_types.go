@@ -71,15 +71,13 @@ type issuesConfig struct {
 type issuesRequest struct {
 	out              chan<- replay.Issue
 	displayToSurface bool
-	loopCount        int32
 }
 
 type timestampsConfig struct {
 }
 
 type timestampsRequest struct {
-	handler   service.TimeStampsHandler
-	loopCount int32
+	handler service.TimeStampsHandler
 }
 
 // uniqueConfig returns a replay.Config that is guaranteed to be unique.
@@ -95,6 +93,7 @@ type profileRequest struct {
 	buffer         *bytes.Buffer
 	handleMappings *map[uint64][]service.VulkanHandleMappingItem
 	experiments    replay.ProfileExperiments
+	loopCount      int32
 }
 
 func (a API) QueryFramebufferAttachment(
@@ -145,11 +144,10 @@ func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
-	loopCount int32,
 	displayToSurface bool,
 	hints *path.UsageHints) ([]replay.Issue, error) {
 
-	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface, loopCount: loopCount}
+	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 
 	if err != nil {
@@ -165,13 +163,11 @@ func (a API) QueryTimestamps(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
-	loopCount int32,
 	handler service.TimeStampsHandler,
 	hints *path.UsageHints) error {
 
 	c, r := timestampsConfig{}, timestampsRequest{
-		handler:   handler,
-		loopCount: loopCount}
+		handler: handler}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
 	if err != nil {
 		return err
@@ -188,13 +184,14 @@ func (a API) QueryProfile(
 	mgr replay.Manager,
 	hints *path.UsageHints,
 	traceOptions *service.TraceOptions,
-	experiments replay.ProfileExperiments) (*service.ProfilingData, error) {
+	experiments replay.ProfileExperiments,
+	loopCount int32) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
 	handleMappings := make(map[uint64][]service.VulkanHandleMappingItem)
-	r := profileRequest{traceOptions, handler, &buffer, &handleMappings, experiments}
+	r := profileRequest{traceOptions, handler, &buffer, &handleMappings, experiments, loopCount}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err

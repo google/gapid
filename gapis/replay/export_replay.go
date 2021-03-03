@@ -103,7 +103,7 @@ func (m *exportManager) Export(ctx context.Context, waitRequests int) (*gapir.Pa
 			requests,
 			d.Instance(),
 			c,
-			&adapter{
+			&builderWriter{
 				state:   c.NewUninitializedState(ctx).ReserveMemory(ranges),
 				builder: b,
 			})

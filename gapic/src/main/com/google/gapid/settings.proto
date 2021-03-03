@@ -57,6 +57,7 @@ message Preferences {
   bool disable_replay_optimization = 8;
   bool report_crashes = 9;
   bool enable_all_experimental_features = 10;
+  bool use_frame_looping = 12;
 }
 
 message UI {

@@ -141,7 +141,7 @@ func (r *InitialPayloadResolvable) Resolve(
 
 	b := builder.New(replayABI.MemoryLayout, nil)
 
-	out := &adapter{
+	out := &builderWriter{
 		state:   c.NewUninitializedState(ctx),
 		builder: b,
 	}
@@ -184,7 +184,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	}
 
 	b = builder.New(replayABI.MemoryLayout, oldBuilder)
-	out = &adapter{
+	out = &builderWriter{
 		state:   out.state,
 		builder: b,
 	}
@@ -337,7 +337,7 @@ func (m *manager) execute(
 
 	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
 
-	out := &adapter{
+	out := &builderWriter{
 		state:   initState,
 		builder: b,
 	}
@@ -408,18 +408,18 @@ func (m *manager) execute(
 	return err
 }
 
-// adapter conforms to the the transformer.Writer interface, performing replay
+// builderWriter conforms to the the transformer.Writer interface, performing replay
 // writes on each command.
-type adapter struct {
+type builderWriter struct {
 	state   *api.GlobalState
 	builder *builder.Builder
 }
 
-func (w *adapter) State() *api.GlobalState {
+func (w *builderWriter) State() *api.GlobalState {
 	return w.state
 }
 
-func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+func (w *builderWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 	w.builder.BeginCommand(uint64(id), cmd.Thread())
 	err := cmd.Mutate(ctx, id, w.state, w.builder, nil)
 	if err == nil {

@@ -54,7 +54,7 @@ func (cf *linearControlFlowGenerator) TransformAll(ctx context.Context) error {
 			}
 		}
 
-		if err := cf.chain.GetNextTransformedCommands(subctx); err != nil {
+		if _, err := cf.chain.ProcessNextTransformedCommands(subctx); err != nil {
 			return err
 		}
 

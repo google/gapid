@@ -852,14 +852,14 @@ func (s *server) GetTimestamps(ctx context.Context, req *service.GetTimestampsRe
 	ctx = status.Start(ctx, "RPC GetTimestamps")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GetTimestamps")
-	return replay.GetTimestamps(ctx, req.Capture, req.Device, req.LoopCount, h)
+	return replay.GetTimestamps(ctx, req.Capture, req.Device, h)
 }
 
 func (s *server) GpuProfile(ctx context.Context, req *service.GpuProfileRequest) (*service.ProfilingData, error) {
 	ctx = status.Start(ctx, "RPC GpuProfile")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GpuProfile")
-	res, err := replay.GpuProfile(ctx, req.Capture, req.Device, req.Experiments)
+	res, err := replay.GpuProfile(ctx, req.Capture, req.Device, req.Experiments, req.LoopCount)
 	if err != nil {
 		return nil, err
 	}

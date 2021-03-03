@@ -47,7 +47,6 @@ type QueryIssues interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
-		loopCount int32,
 		displayToSurface bool,
 		hints *path.UsageHints) ([]Issue, error)
 }
@@ -59,7 +58,6 @@ type QueryTimestamps interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
-		loopCount int32,
 		handler service.TimeStampsHandler,
 		hints *path.UsageHints) error
 }
@@ -92,7 +90,8 @@ type Profiler interface {
 		mgr Manager,
 		hints *path.UsageHints,
 		traceOptions *service.TraceOptions,
-		experiments ProfileExperiments) (*service.ProfilingData, error)
+		experiments ProfileExperiments,
+		loopCount int32) (*service.ProfilingData, error)
 }
 
 // Issue represents a single replay issue reported by QueryIssues.

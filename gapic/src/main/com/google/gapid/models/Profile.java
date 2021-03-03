@@ -57,17 +57,20 @@ import java.util.logging.Logger;
 public class Profile
     extends CaptureDependentModel<Profile.Data, Profile.Source, Loadable.Message, Profile.Listener> {
   private static final Logger LOG = Logger.getLogger(Profile.class.getName());
+  private static final int FRAME_LOOP_COUNT = 10;
 
   private final Capture capture;
   private final CommandStream commands;
   private int selectedGroupId;
+  private final Settings settings;
 
   public Profile(
-      Shell shell, Analytics analytics, Client client, Capture capture, Devices devices, CommandStream commands) {
+      Shell shell, Analytics analytics, Client client, Capture capture, Devices devices, CommandStream commands, Settings settings) {
     super(LOG, shell, analytics, client, Listener.class, capture, devices);
     this.capture = capture;
     this.commands = commands;
     this.selectedGroupId = -1;
+    this.settings = settings;
   }
 
   @Override
@@ -82,7 +85,8 @@ public class Profile
 
   @Override
   protected ListenableFuture<Data> doLoad(Source source, Path.Device device) {
-    return transform(client.profile(capture.getData().path, device, source.experiments), r -> new Data(device, r));
+    int loopCount = this.settings.preferences().getUseFrameLooping() ? FRAME_LOOP_COUNT : 0;
+    return transform(client.profile(capture.getData().path, device, source.experiments, loopCount), r -> new Data(device, r));
   }
 
   @Override

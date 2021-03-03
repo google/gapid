@@ -74,7 +74,7 @@ func getPerfettoConfig(ctx context.Context, device *path.Device) (*perfetto_pb.T
 }
 
 // GpuProfile replays the trace and writes a Perfetto trace of the replay
-func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device, experiments *service.ProfileExperiments) (*service.ProfilingData, error) {
+func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device, experiments *service.ProfileExperiments, loopCount int32) (*service.ProfilingData, error) {
 	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Dev
 		hints := &path.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if pf, ok := a.(Profiler); ok {
-				data, err := pf.QueryProfile(ctx, intent, mgr, hints, opts, profilingExperiments)
+				data, err := pf.QueryProfile(ctx, intent, mgr, hints, opts, profilingExperiments, loopCount)
 				if err != nil {
 					log.E(ctx, "Replay profiling failed.")
 					return nil, err

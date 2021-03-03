@@ -1,4 +1,4 @@
-// Copyright (C) 2019 Google Inc.
+// Copyright (C) 2020 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,49 +18,44 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/context/keys"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/controlFlowGenerator"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/value"
 )
 
-type legacyTransformWriter interface {
-	// State returns the state object associated with this writer.
-	State() *api.GlobalState
-	// MutateAndWrite mutates the state object associated with this writer,
-	// and it passes the command to further consumers.
-	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error
-	//Notify next transformer it's ready to start loop the trace.
-	NotifyPreLoop(ctx context.Context)
-	//Notify next transformer it's the end of the loop.
-	NotifyPostLoop(ctx context.Context)
-}
-
-type stateWatcher struct {
+type statewatcher struct {
 	memoryWrites map[memory.PoolID]*interval.U64SpanList
 	ignore       bool // Ignore tracking current command
 }
 
-func (b *stateWatcher) OnBeginCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
+func (b *statewatcher) OnBeginCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
 }
-func (b *stateWatcher) OnEndCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
+func (b *statewatcher) OnEndCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
 }
-func (b *stateWatcher) OnBeginSubCmd(ctx context.Context, subIdx api.SubCmdIdx, recordIdx api.RecordIdx) {
+func (b *statewatcher) OnBeginSubCmd(ctx context.Context, subIdx api.SubCmdIdx, recordIdx api.RecordIdx) {
 }
-func (b *stateWatcher) OnRecordSubCmd(ctx context.Context, recordIdx api.RecordIdx) {
+func (b *statewatcher) OnRecordSubCmd(ctx context.Context, recordIdx api.RecordIdx) {
 }
-func (b *stateWatcher) OnEndSubCmd(ctx context.Context) {
+func (b *statewatcher) OnEndSubCmd(ctx context.Context) {
 }
-func (b *stateWatcher) OnReadFrag(ctx context.Context, owner api.RefObject, frag api.Fragment, valueRef api.RefObject, track bool) {
+func (b *statewatcher) OnReadFrag(ctx context.Context, owner api.RefObject, frag api.Fragment, valueRef api.RefObject, track bool) {
 }
-func (b *stateWatcher) OnWriteFrag(ctx context.Context, owner api.RefObject, frag api.Fragment, oldValueRef api.RefObject, newValueRef api.RefObject, track bool) {
+func (b *statewatcher) OnWriteFrag(ctx context.Context, owner api.RefObject, frag api.Fragment, oldValueRef api.RefObject, newValueRef api.RefObject, track bool) {
 }
 
-func (b *stateWatcher) OnWriteSlice(ctx context.Context, slice memory.Slice) {
+func (b *statewatcher) OnWriteSlice(ctx context.Context, slice memory.Slice) {
 
 	if b.ignore {
 		return
@@ -79,17 +74,17 @@ func (b *stateWatcher) OnWriteSlice(ctx context.Context, slice memory.Slice) {
 	interval.Merge(b.memoryWrites[poolID], span, true)
 }
 
-func (b *stateWatcher) OnReadSlice(ctx context.Context, slice memory.Slice) {
+func (b *statewatcher) OnReadSlice(ctx context.Context, slice memory.Slice) {
 }
-func (b *stateWatcher) OnWriteObs(ctx context.Context, observations []api.CmdObservation) {
+func (b *statewatcher) OnWriteObs(ctx context.Context, observations []api.CmdObservation) {
 }
-func (b *stateWatcher) OnReadObs(ctx context.Context, observations []api.CmdObservation) {
+func (b *statewatcher) OnReadObs(ctx context.Context, observations []api.CmdObservation) {
 }
-func (b *stateWatcher) OpenForwardDependency(ctx context.Context, dependencyID interface{}) {
+func (b *statewatcher) OpenForwardDependency(ctx context.Context, dependencyID interface{}) {
 }
-func (b *stateWatcher) CloseForwardDependency(ctx context.Context, dependencyID interface{}) {
+func (b *statewatcher) CloseForwardDependency(ctx context.Context, dependencyID interface{}) {
 }
-func (b *stateWatcher) DropForwardDependency(ctx context.Context, dependencyID interface{}) {
+func (b *statewatcher) DropForwardDependency(ctx context.Context, dependencyID interface{}) {
 }
 
 type backupMemory struct {
@@ -98,18 +93,31 @@ type backupMemory struct {
 	offset VkDeviceSize
 }
 
-// Transfrom
-type frameLoop struct {
-	capture   *capture.GraphicsCapture
-	loopCount int32
+type loopCallbackFunc func(ctx context.Context, request *gapir.FenceReadyRequest)
+
+type loopCallbacks struct {
+	preLoop  loopCallbackFunc
+	postLoop loopCallbackFunc
+}
+
+type loopingVulkanControlFlowGenerator struct {
+	ctx context.Context
+
+	chain *transform.TransformChain
+	out   transform.Writer
+
+	capture *capture.GraphicsCapture
 
 	loopStartIdx api.CmdID
 	loopEndIdx   api.CmdID
+	loopCount    int32
+
+	loopCallbacks loopCallbacks
 
 	capturedLoopCmds   []api.Cmd
 	capturedLoopCmdIds []api.CmdID
 
-	watcher        *stateWatcher
+	watcher        *statewatcher
 	loopStartState *api.GlobalState
 	loopEndState   *api.GlobalState
 
@@ -207,14 +215,14 @@ type frameLoop struct {
 
 	loopCountPtr value.Pointer
 
-	frameNum uint32
-
 	loopTerminated       bool
 	lastObservedCommand  api.CmdID
 	totalMemoryAllocated uint64
 }
 
-func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture, loopStart api.CmdID, loopEnd api.CmdID, loopCount int32) *frameLoop {
+// NewLoopingVulkanControlFlowGenerator generates a simple control flow
+// that takes initial and real commands and transforms all of them
+func NewLoopingVulkanControlFlowGenerator(ctx context.Context, chain *transform.TransformChain, out transform.Writer, graphicsCapture *capture.GraphicsCapture, loopStart api.CmdID, loopEnd api.CmdID, loopCount int32, loopCallbacks loopCallbacks) controlFlowGenerator.ControlFlowGenerator {
 
 	if api.CmdID.Real(loopStart) >= api.CmdID.Real(loopEnd) {
 		log.F(ctx, true, "FrameLoop: Cannot create FrameLoop for zero or negative length loop")
@@ -226,18 +234,24 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		return nil
 	}
 
-	return &frameLoop{
+	return &loopingVulkanControlFlowGenerator{
 
-		capture:   graphicsCapture,
-		loopCount: loopCount,
+		ctx: ctx,
 
-		loopStartIdx: api.CmdID.Real(loopStart),
-		loopEndIdx:   api.CmdID.Real(loopEnd),
+		chain: chain,
+		out:   out,
 
-		capturedLoopCmds:   make([]api.Cmd, 0),
-		capturedLoopCmdIds: make([]api.CmdID, 0),
+		capture: graphicsCapture,
 
-		watcher: &stateWatcher{
+		loopStartIdx:  api.CmdID.Real(loopStart),
+		loopEndIdx:    api.CmdID.Real(loopEnd),
+		loopCount:     loopCount,
+		loopCallbacks: loopCallbacks,
+
+		capturedLoopCmds:   nil,
+		capturedLoopCmdIds: nil,
+
+		watcher: &statewatcher{
 			memoryWrites: make(map[memory.PoolID]*interval.U64SpanList),
 		},
 
@@ -338,167 +352,227 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 	}
 }
 
-func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, out legacyTransformWriter) error {
+func (f *loopingVulkanControlFlowGenerator) TransformAll(ctx context.Context) error {
 
-	// If we're looping only once we can just passthrough commands
-	if f.loopCount == 1 {
-		return out.MutateAndWrite(ctx, cmdId, cmd)
-	}
+	numberOfCmds := f.chain.GetNumOfRemainingCommands()
+	ctx = status.Start(ctx, "Running LoopingVulkanControlFlow <count:%v>", numberOfCmds)
+	defer status.Finish(ctx)
 
-	ctx = log.Enter(ctx, "FrameLoop Transform")
-	log.D(ctx, "FrameLoop: looping from %v to %v. Current CmdID/CmD = %v/%v", f.loopStartIdx, f.loopEndIdx, cmdId, cmd)
-	log.D(ctx, "f.loopTerminated = %v, f.lastObservedCommand = %v", f.loopTerminated, f.lastObservedCommand)
+	var id transform.CommandID
+	defer recoverFromPanic(id)
 
-	// Lets capture and update the last observed frame from f. From this point on use the local lastObservedCommand variable.
-	lastObservedCommand := f.lastObservedCommand
-	f.lastObservedCommand = cmdId
+	subctx := keys.Clone(context.Background(), ctx)
+	for !f.chain.IsEndOfCommands() {
+		id = f.chain.GetCurrentCommandID()
+		if id.GetCommandType() == transform.TransformCommand {
+			cmdID := uint64(id.GetID())
+			if cmdID%100 == 99 {
+				status.UpdateProgress(ctx, cmdID, numberOfCmds)
+			}
+		}
 
-	if lastObservedCommand != api.CmdNoID && lastObservedCommand > api.CmdID.Real(cmdId) {
-		return fmt.Errorf("FrameLoop: expected next observed command ID to be >= last observed command ID")
-	}
+		cmdId := id.GetID()
 
-	// Walk the frame count forwards if we just hit the end of one.
-	if _, ok := cmd.(*VkQueuePresentKHR); ok {
-		f.frameNum++
-	}
+		// Lets capture and update the last observed frame from f. From this point on use the local lastObservedCommand variable.
+		lastObservedCommand := f.lastObservedCommand
+		f.lastObservedCommand = cmdId
+		if cmds, err := f.chain.ProcessNextTransformedCommands(subctx); err == nil {
 
-	// Are we before the loop or just at the start of it?
-	if lastObservedCommand == api.CmdNoID || lastObservedCommand < f.loopStartIdx {
+			log.D(ctx, "FrameLoop: looping %v times from %v to %v. Current CmdID/CmDs = %v/%v", f.loopCount, f.loopStartIdx, f.loopEndIdx, id, cmds)
 
-		// This is the start of the loop.
-		if api.CmdID.Real(cmdId) >= f.loopStartIdx && cmdId != api.CmdNoID {
+			if err := task.StopReason(ctx); err != nil {
+				return err
+			}
 
-			log.D(ctx, "FrameLoop: start loop at frame %v, cmdId %v, cmd %v.", f.frameNum, cmdId, cmd)
+			if lastObservedCommand != api.CmdNoID && lastObservedCommand > api.CmdID.Real(cmdId) {
+				return fmt.Errorf("FrameLoop: expected next observed command ID to be >= last observed command ID")
+			}
 
-			f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
-			f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
+			// Are we before the loop or just at the start of it?
+			if lastObservedCommand == api.CmdNoID || lastObservedCommand < f.loopStartIdx {
 
-			return nil
+				// This is the start of the loop.
+				if api.CmdID.Real(cmdId) >= f.loopStartIdx && cmdId != api.CmdNoID {
 
+					log.D(ctx, "FrameLoop: start loop at cmdId %v, cmds %v.", cmdId, cmds)
+
+					for _, cmd := range cmds {
+						f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
+						f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
+					}
+
+					continue
+
+				} else { // The current command is before the loop begins and needs no special treatment. Just pass-through.
+
+					log.D(ctx, "FrameLoop: before loop at cmdId %v, cmds %v.", cmdId, cmds)
+
+					if err := f.buildCommands(ctx, cmdId, cmds, f.out); err != nil {
+						return err
+					}
+
+					if api.CmdID.Real(cmdId) == f.loopStartIdx-1 {
+						f.loopStartState = f.cloneState(ctx, f.chain.State()) // ALAN: This is going to have the effects of the first command applied, we actually want the state one command earlier.
+					}
+
+					continue
+				}
+
+			} else if f.loopTerminated == false { // We're not before or at the start of the loop: thus, are we inside the loop or just at the end of it?
+
+				// This is the end of the loop. We have a lot of deferred things to do.
+				if api.CmdID.Real(cmdId) >= f.loopEndIdx && cmdId != api.CmdNoID {
+
+					if lastObservedCommand == api.CmdNoID {
+						return fmt.Errorf("FrameLoop: Somehow, the FrameLoop ended before it began. Did an earlier transform delete the whole loop? Were your loop indexes realistic?")
+					}
+
+					if len(f.capturedLoopCmdIds) != len(f.capturedLoopCmds) {
+						return fmt.Errorf("FrameLoop: Control flow error: Somehow, the number of captured commands and commandIds are not equal.") // TODO: Compress this list
+					}
+
+					f.loopTerminated = true
+					log.D(ctx, "FrameLoop: end loop at cmdId %v, cmds is %v.", cmdId, cmds)
+
+					// This command is the last in the loop so lets add it to the captured commands so we don't need to special case it.
+					for _, cmd := range cmds {
+						f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
+						f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
+					}
+
+					// Some things we're going to need for the next work...
+					globalState := f.out.State()
+					stateBuilder := GetState(globalState).newStateBuilder(ctx, newTransformerOutput(f.out))
+
+					// If we're looping once or less this stuff isn't needed. If we're looping N > 1 times then we need to do the first N-1 loops.
+					if f.loopCount > 1 {
+
+						// Do start loop stuff.
+						{
+							// Now that we know the complete contents of the loop (only since we've just seen it finish!)...
+							// We can finally run over the loop contents looking for resources that have changed.
+							// This is required so we can emit extra instructions before the loop capturing the values of
+							// anything that we need to restore at the end of the loop. Do that now.
+							f.buildEndState(ctx, globalState)
+							f.detectChangedResources(ctx)
+							f.updateChangedResourcesMap(ctx, stateBuilder)
+
+							// Back up the resources that change in the loop (as indentified above)
+							if err := f.backupChangedResources(ctx, stateBuilder); err != nil {
+								return fmt.Errorf("FrameLoop: Failed to backup changed resources: %v", err)
+							}
+
+						}
+
+						// Mark branch target for loop jump
+						{
+							// Write out some custom bytecode for the loop.
+							stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+								f.loopCountPtr = b.AllocateMemory(4)
+								b.Push(value.S32(f.loopCount - 1))
+								b.Store(f.loopCountPtr)
+								b.JumpLabel(uint32(0x1))
+								return nil
+							}))
+						}
+
+						// Do first N-1 iterations of mid-loop stuff.
+						if err := f.writeLoopContents(ctx, f.out); err != nil {
+							return err
+						}
+
+						// Do state rewind stuff.
+						{
+							// Now we need to emit the instructions to reset the state, before the conditional branch back to the start of the loop.
+							if err := f.resetResources(ctx, stateBuilder); err != nil {
+								return fmt.Errorf("FrameLoop: Failed to reset changed resources %v.", err)
+							}
+						}
+
+						// Write out the conditional jump to the start of the state rewind code to provide the actual looping behaviour
+						{
+							stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+								b.Load(protocol.Type_Int32, f.loopCountPtr)
+								b.Sub(1)
+								b.Clone(0)
+								b.Store(f.loopCountPtr)
+								b.JumpNZ(uint32(0x1))
+								return nil
+							}))
+						}
+					}
+
+					// Start the perfetto
+					{
+						cmds := make([]api.Cmd, 0)
+						cmds = append(cmds, f.createVkDeviceWaitIdleCommandsForDevices(ctx, f.out.State())...)
+						waitForFenceCmd := f.createWaitForFence(ctx, uint32(id.GetID()), func(ctx context.Context, request *gapir.FenceReadyRequest) {
+							f.loopCallbacks.preLoop(ctx, request)
+						})
+						cmds = append(cmds, waitForFenceCmd)
+
+						if err := f.buildCommands(ctx, cmdId, cmds, f.out); err != nil {
+							return err
+						}
+					}
+
+					// Do the final iteration of mid-loop stuff.
+					if err := f.writeLoopContents(ctx, f.out); err != nil {
+						return err
+					}
+
+					// End the perfetto
+					{
+						cmds := make([]api.Cmd, 0)
+						cmds = append(cmds, f.createVkDeviceWaitIdleCommandsForDevices(ctx, f.out.State())...)
+
+						fenceID := uint32(0x3ffffff)
+						waitForFenceCmd := f.createWaitForFence(ctx, fenceID, func(ctx context.Context, request *gapir.FenceReadyRequest) {
+							f.loopCallbacks.postLoop(ctx, request)
+						})
+						cmds = append(cmds, waitForFenceCmd)
+
+						if err := f.buildCommands(ctx, cmdId, cmds, f.out); err != nil {
+							return err
+						}
+					}
+
+					// Finally, we've done all the processing for a loop. Nothing left to do.
+					continue
+
+				} else { // We're currently inside the loop.
+
+					// Lets just remember the command we've seen so we can do all the work we need at the end of the loop.
+					// This is done because the information we need to transform the loop is only available at that time;
+					// due to the possibility of preceeding transforms modifing the loop contents in-flight.
+					for _, cmd := range cmds {
+						f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
+						f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
+					}
+
+					log.D(ctx, "FrameLoop: inside loop at cmdId %v, cmds %v.", cmdId, cmds)
+
+					continue
+				}
+
+			} else { // We're after the loop. Again, we can simply pass-through commands.
+
+				if err := f.buildCommands(ctx, cmdId, cmds, f.out); err != nil {
+					return err
+				}
+
+				continue
+			}
 		} else {
-			// The current command is before the loop begins and needs no special treatment. Just pass-through.
-			log.D(ctx, "FrameLoop: before loop at frame %v, cmdId %v, cmd %v.", f.frameNum, cmdId, cmd)
-			return out.MutateAndWrite(ctx, cmdId, cmd)
+			log.E(ctx, "FrameLoop: error processing command: %v.", err)
+			return err
 		}
-
-	} else if f.loopTerminated == false { // We're not before or at the start of the loop: thus, are we inside the loop or just at the end of it?
-
-		// This is the end of the loop. We have a lot of deferred things to do.
-		if api.CmdID.Real(cmdId) >= f.loopEndIdx && cmdId != api.CmdNoID {
-
-			if lastObservedCommand == api.CmdNoID {
-				return fmt.Errorf("FrameLoop: Somehow, the FrameLoop ended before it began. Did an earlier transform delete the whole loop? Were your loop indexes realistic?")
-			}
-
-			if len(f.capturedLoopCmdIds) != len(f.capturedLoopCmds) {
-				return fmt.Errorf("FrameLoop: Control flow error: Somehow, the number of captured commands and commandIds are not equal.")
-			}
-
-			f.loopTerminated = true
-			log.D(ctx, "FrameLoop: end loop at frame %v cmdId %v, cmd is %v.", f.frameNum, cmdId, cmd)
-
-			// This command is the last in the loop so lets add it to the captured commands so we don't need to special case it.
-			f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
-			f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
-
-			// If we are looping zero times we can just drop the commands inside the loop.
-			if f.loopCount == 0 {
-				f.capturedLoopCmds = make([]api.Cmd, 0)
-				f.capturedLoopCmdIds = make([]api.CmdID, 0)
-				return nil
-			}
-
-			// Some things we're going to need for the next work...
-			apiState := GetState(out.State())
-			stateBuilder := apiState.newStateBuilder(ctx, newTransformerOutput(out))
-
-			// Do start loop stuff.
-			{
-				// Now that we know the complete contents of the loop (only since we've just seen it finish!)...
-				// We can finally run over the loop contents looking for resources that have changed.
-				// This is required so we can emit extra instructions before the loop capturing the values of
-				// anything that we need to restore at the end of the loop. Do that now.
-				f.buildStartEndStates(ctx, out.State())
-				f.detectChangedResources(ctx)
-				f.updateChangedResourcesMap(ctx, stateBuilder)
-
-				// Back up the resources that change in the loop (as indentified above)
-				if err := f.backupChangedResources(ctx, stateBuilder); err != nil {
-					return fmt.Errorf("FrameLoop: Failed to backup changed resources: %v", err)
-				}
-
-			}
-
-			// Do first iteration of mid-loop stuff.
-			if err := f.writeLoopContents(ctx, cmd, out); err != nil {
-				return err
-			}
-
-			// Mark branch target for loop jump
-			{
-				// Write out some custom bytecode for the loop.
-				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					f.loopCountPtr = b.AllocateMemory(4)
-					b.Push(value.S32(f.loopCount - 1))
-					b.Store(f.loopCountPtr)
-					b.JumpLabel(uint32(0x1))
-					return nil
-				}))
-			}
-
-			// Do state rewind stuff.
-			{
-				// Now we need to emit the instructions to reset the state, before the conditional branch back to the start of the loop.
-				if err := f.resetResources(ctx, stateBuilder); err != nil {
-					return fmt.Errorf("FrameLoop: Failed to reset changed resources %v.", err)
-				}
-			}
-
-			// Do first iteration mid-loop stuff.
-			if err := f.writeLoopContents(ctx, cmd, out); err != nil {
-				return err
-			}
-
-			// Write out the conditional jump to the start of the state rewind code to provide the actual looping behaviour
-			{
-				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					b.Load(protocol.Type_Int32, f.loopCountPtr)
-					b.Sub(1)
-					b.Clone(0)
-					b.Store(f.loopCountPtr)
-					b.JumpNZ(uint32(0x1))
-					return nil
-				}))
-			}
-
-			// Finally, we've done all the processing for a loop. Nothing left to do.
-			return nil
-
-		} else { // We're currently inside the loop.
-
-			// Lets just remember the command we've seen so we can do all the work we need at the end of the loop.
-			// This is done because the information we need to transform the loop is only available at that time;
-			// due to the possibility of preceeding transforms modifing the loop contents in-flight.
-			f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
-			f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
-
-			log.D(ctx, "FrameLoop: inside loop at frame %v, cmdId %v, cmd %v.", f.frameNum, cmdId, cmd)
-
-			return nil
-		}
-
-	} else { // We're after the loop. Again, we can simply pass-through commands.
-		return out.MutateAndWrite(ctx, cmdId, cmd)
 	}
 
-	// Should have early out-ed before this point.
-	return fmt.Errorf("FrameLoop: Internal control flow error: Should not be possible to reach this statement.")
+	return nil
 }
 
-func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out legacyTransformWriter) error {
-
-	// Notify the other transforms that we're about to emit the start of the loop.
-	out.NotifyPreLoop(ctx)
+func (f *loopingVulkanControlFlowGenerator) writeLoopContents(ctx context.Context, out transform.Writer) error {
 
 	// Iterate through the loop contents, emitting instructions one by one.
 	for cmdIndex, cmd := range f.capturedLoopCmds {
@@ -507,40 +581,31 @@ func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out lega
 		}
 	}
 
-	// Notify the other transforms that we're about to emit the end of the loop.
-	out.NotifyPostLoop(ctx)
-
 	return nil
 }
 
-func (f *frameLoop) Flush(ctx context.Context, out legacyTransformWriter) error {
-
-	log.W(ctx, "FrameLoop FLUSH")
-
-	if f.loopTerminated == false {
-		if f.lastObservedCommand == api.CmdNoID {
-			log.W(ctx, "FrameLoop transform was applied to whole trace (Flush() has been called) without the loop starting.")
-			return fmt.Errorf("FrameLoop transform was applied to whole trace (Flush() has been called) without the loop starting.")
-		} else {
-			log.E(ctx, "FrameLoop: current frame is %v cmdId %v, cmd is %v.", f.frameNum, f.capturedLoopCmdIds[len(f.capturedLoopCmdIds)-1], f.capturedLoopCmds[len(f.capturedLoopCmds)-1])
-			log.F(ctx, true, "FrameLoop transform was applied to whole trace (Flush() has been called) mid loop. Cannot end transformation in this state.")
-		}
+func recoverFromPanic(id transform.CommandID) {
+	r := recover()
+	if r == nil {
+		return
 	}
-	return nil
+
+	switch id.GetCommandType() {
+	case transform.TransformCommand:
+		panic(fmt.Errorf("Panic at command %v\n%v", id.GetID(), r))
+	case transform.EndCommand:
+		panic(fmt.Errorf("Panic at end command\n%v", r))
+	default:
+		panic(fmt.Errorf("Panic at Unknown command type\n%v", r))
+	}
 }
 
-func (f *frameLoop) PreLoop(ctx context.Context, out legacyTransformWriter) {
-}
-func (f *frameLoop) PostLoop(ctx context.Context, out legacyTransformWriter) {
-}
-func (f *frameLoop) BuffersCommands() bool { return true }
-
-func (f *frameLoop) cloneState(ctx context.Context, startState *api.GlobalState) *api.GlobalState {
+func (f *loopingVulkanControlFlowGenerator) cloneState(ctx context.Context, state *api.GlobalState) *api.GlobalState {
 
 	clone := f.capture.NewUninitializedState(ctx)
-	clone.Memory = startState.Memory.Clone()
+	clone.Memory = state.Memory.Clone()
 
-	for apiState, graphicsApi := range startState.APIs {
+	for apiState, graphicsApi := range state.APIs {
 
 		clonedState := graphicsApi.Clone()
 		clonedState.SetupInitialState(ctx, clone)
@@ -551,10 +616,9 @@ func (f *frameLoop) cloneState(ctx context.Context, startState *api.GlobalState)
 	return clone
 }
 
-func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.GlobalState) {
+func (f *loopingVulkanControlFlowGenerator) buildEndState(ctx context.Context, startState *api.GlobalState) {
 
-	f.loopStartState = f.cloneState(ctx, startState)
-	currentState := f.cloneState(ctx, startState)
+	currentState := f.cloneState(ctx, f.loopStartState)
 
 	st := GetState(currentState)
 	st.PreSubcommand = func(i interface{}) {
@@ -1305,7 +1369,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 	f.loopEndState = currentState
 }
 
-func (f *frameLoop) detectChangedResources(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) detectChangedResources(ctx context.Context) {
 
 	f.detectChangedBuffers(ctx)
 	f.detectChangedImages(ctx)
@@ -1317,7 +1381,7 @@ func (f *frameLoop) detectChangedResources(ctx context.Context) {
 	// TODO: Find out other changed resources.
 }
 
-func (f *frameLoop) detectChangedBuffers(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) detectChangedBuffers(ctx context.Context) {
 
 	apiState := GetState(f.loopStartState)
 
@@ -1361,7 +1425,7 @@ func (f *frameLoop) detectChangedBuffers(ctx context.Context) {
 	log.D(ctx, "Total number of buffer %v, number of buffer changed %v", len(apiState.Buffers().All()), len(f.bufferChanged))
 }
 
-func (f *frameLoop) detectChangedImages(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) detectChangedImages(ctx context.Context) {
 
 	apiState := GetState(f.loopStartState)
 
@@ -1375,7 +1439,7 @@ func (f *frameLoop) detectChangedImages(ctx context.Context) {
 
 		// Skip the multi-sampled images.
 		if image.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-			log.W(ctx, "Multi-sampled image %v is not supported for backup/reset.", image)
+			log.D(ctx, "Multi-sampled image %v is not supported for backup/reset.", image)
 			continue
 		}
 
@@ -1425,7 +1489,7 @@ func (f *frameLoop) detectChangedImages(ctx context.Context) {
 	log.D(ctx, "Total number of Image %v, number of image changed %v", len(apiState.Images().All()), len(f.imageChanged))
 }
 
-func (f *frameLoop) isSameDescriptorSet(src, dst DescriptorSetObjectʳ) bool {
+func (f *loopingVulkanControlFlowGenerator) isSameDescriptorSet(src, dst DescriptorSetObjectʳ) bool {
 
 	if src.VulkanHandle() != dst.VulkanHandle() || src.Device() != dst.Device() || src.DescriptorPool() != dst.DescriptorPool() {
 		return false
@@ -1482,7 +1546,7 @@ func (f *frameLoop) isSameDescriptorSet(src, dst DescriptorSetObjectʳ) bool {
 	return true
 }
 
-func (f *frameLoop) detectChangedDescriptorSets(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) detectChangedDescriptorSets(ctx context.Context) {
 
 	startState := GetState(f.loopStartState)
 	endState := GetState(f.loopEndState)
@@ -1505,7 +1569,7 @@ func (f *frameLoop) detectChangedDescriptorSets(ctx context.Context) {
 	}
 }
 
-func (f *frameLoop) detectChangedSemaphores(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) detectChangedSemaphores(ctx context.Context) {
 	semaphores := GetState(f.loopEndState).Semaphores().All()
 	for semaphore, semaphoreStartState := range GetState(f.loopStartState).Semaphores().All() {
 		if semaphoreEndState, present := semaphores[semaphore]; present {
@@ -1516,7 +1580,7 @@ func (f *frameLoop) detectChangedSemaphores(ctx context.Context) {
 	}
 }
 
-func (f *frameLoop) detectChangedFences(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) detectChangedFences(ctx context.Context) {
 	fences := GetState(f.loopEndState).Fences().All()
 	for fence, fenceStartState := range GetState(f.loopStartState).Fences().All() {
 		if fenceEndState, present := fences[fence]; present {
@@ -1527,7 +1591,7 @@ func (f *frameLoop) detectChangedFences(ctx context.Context) {
 	}
 }
 
-func (f *frameLoop) detectChangedEvents(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) detectChangedEvents(ctx context.Context) {
 	events := GetState(f.loopEndState).Events().All()
 	for event, eventStartState := range GetState(f.loopStartState).Events().All() {
 		if eventEndState, present := events[event]; present {
@@ -1538,14 +1602,14 @@ func (f *frameLoop) detectChangedEvents(ctx context.Context) {
 	}
 }
 
-func (f *frameLoop) waitDeviceIdle(stateBuilder *stateBuilder) {
+func (f *loopingVulkanControlFlowGenerator) waitDeviceIdle(stateBuilder *stateBuilder) {
 	currentState := GetState(stateBuilder.newState)
 	for device := range currentState.Devices().All() {
 		stateBuilder.write(stateBuilder.cb.VkDeviceWaitIdle(device, VkResult_VK_SUCCESS))
 	}
 }
 
-func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) backupChangedResources(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	if err := f.backupChangedBuffers(ctx, stateBuilder); err != nil {
 		return err
@@ -1562,7 +1626,7 @@ func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *st
 	return nil
 }
 
-func (f *frameLoop) createStagingBuffer(ctx context.Context, stateBuilder *stateBuilder, src BufferObjectʳ) (VkBuffer, error) {
+func (f *loopingVulkanControlFlowGenerator) createStagingBuffer(ctx context.Context, stateBuilder *stateBuilder, src BufferObjectʳ) (VkBuffer, error) {
 
 	bufferObj := src.Clone(api.CloneContext{})
 	usage := VkBufferUsageFlags(uint32(bufferObj.Info().Usage()) | uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
@@ -1589,7 +1653,7 @@ func (f *frameLoop) createStagingBuffer(ctx context.Context, stateBuilder *state
 }
 
 // allocateMemoryForStagingbuffer allocates one vkDeviceMemory per device for the backup buffers.
-func (f *frameLoop) allocateMemoryForStagingbuffer(ctx context.Context, stateBuilder *stateBuilder) {
+func (f *loopingVulkanControlFlowGenerator) allocateMemoryForStagingbuffer(ctx context.Context, stateBuilder *stateBuilder) {
 
 	// Calculates total memory need for backup for each device.
 	for buffer := range f.bufferChanged {
@@ -1621,7 +1685,7 @@ func (f *frameLoop) allocateMemoryForStagingbuffer(ctx context.Context, stateBui
 	}
 }
 
-func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) backupChangedBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	f.allocateMemoryForStagingbuffer(ctx, stateBuilder)
 
@@ -1663,7 +1727,7 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stat
 	return nil
 }
 
-func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) backupChangedImages(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	apiState := GetState(stateBuilder.oldState)
 
@@ -1696,7 +1760,7 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 	return nil
 }
 
-func (f *frameLoop) handleFreeDescriptorSet(ctx context.Context, descriptorSet VkDescriptorSet) {
+func (f *loopingVulkanControlFlowGenerator) handleFreeDescriptorSet(ctx context.Context, descriptorSet VkDescriptorSet) {
 	endState := GetState(f.loopEndState)
 
 	// No action needs if already been deleted in endstate
@@ -1721,7 +1785,7 @@ func (f *frameLoop) handleFreeDescriptorSet(ctx context.Context, descriptorSet V
 	}
 }
 
-func (f *frameLoop) updateChangedResourcesMap(ctx context.Context, stateBuilder *stateBuilder) {
+func (f *loopingVulkanControlFlowGenerator) updateChangedResourcesMap(ctx context.Context, stateBuilder *stateBuilder) {
 
 	// Instances
 	{
@@ -2184,7 +2248,7 @@ func (f *frameLoop) updateChangedResourcesMap(ctx context.Context, stateBuilder 
 
 }
 
-func (f *frameLoop) destroyAllocatedResources(ctx context.Context, stateBuilder *stateBuilder) {
+func (f *loopingVulkanControlFlowGenerator) destroyAllocatedResources(ctx context.Context, stateBuilder *stateBuilder) {
 	//commandBuffers
 	{
 		for cmdBuf := range f.commandBufferToFree {
@@ -2515,7 +2579,7 @@ func (f *frameLoop) destroyAllocatedResources(ctx context.Context, stateBuilder 
 
 }
 
-func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetResources(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	log.D(ctx, "Begin to reset resources in frame loop")
 	// TODO: remove those waitdeviceidle after we're sure it is safe to do so.
@@ -2640,7 +2704,7 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 	return nil
 }
 
-func (f *frameLoop) resetInstances(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetInstances(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Instance that we need to create at the end of the loop...
 	for toCreate := range f.instanceToCreate {
@@ -2652,7 +2716,7 @@ func (f *frameLoop) resetInstances(ctx context.Context, stateBuilder *stateBuild
 	return nil
 }
 
-func (f *frameLoop) resetDevices(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetDevices(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Device that we need to create at the end of the loop...
 	for toCreate := range f.deviceToCreate {
@@ -2664,7 +2728,7 @@ func (f *frameLoop) resetDevices(ctx context.Context, stateBuilder *stateBuilder
 	return nil
 }
 
-func (f *frameLoop) resetDeviceMemory(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetDeviceMemory(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	for mem := range f.memoryToAllocate {
 		log.D(ctx, "Allcate memory %v which was freed during loop.", mem)
@@ -2700,7 +2764,7 @@ func (f *frameLoop) resetDeviceMemory(ctx context.Context, stateBuilder *stateBu
 	return nil
 }
 
-func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	for buf := range f.bufferToCreate {
 		log.D(ctx, "Recreate buffer %v which was destroyed during loop.", buf)
@@ -2753,7 +2817,7 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 	return nil
 }
 
-func (f *frameLoop) resetBufferViews(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetBufferViews(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every BufferView that we need to create at the end of the loop...
 	for toCreate := range f.bufferViewToCreate {
@@ -2765,7 +2829,7 @@ func (f *frameLoop) resetBufferViews(ctx context.Context, stateBuilder *stateBui
 	return nil
 }
 
-func (f *frameLoop) resetSurfaces(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetSurfaces(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Surface that we need to create at the end of the loop...
 	for toCreate := range f.surfaceToCreate {
@@ -2777,7 +2841,7 @@ func (f *frameLoop) resetSurfaces(ctx context.Context, stateBuilder *stateBuilde
 	return nil
 }
 
-func (f *frameLoop) resetSwapchains(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetSwapchains(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Swapchain that we need to create at the end of the loop...
 	for toCreate := range f.swapchainToCreate {
@@ -2789,7 +2853,7 @@ func (f *frameLoop) resetSwapchains(ctx context.Context, stateBuilder *stateBuil
 	return nil
 }
 
-func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder, imgPrimer *imagePrimer) error {
+func (f *loopingVulkanControlFlowGenerator) resetImages(ctx context.Context, stateBuilder *stateBuilder, imgPrimer *imagePrimer) error {
 
 	if len(f.imageToRestore) == 0 {
 		return nil
@@ -2825,7 +2889,7 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder,
 	return nil
 }
 
-func (f *frameLoop) resetImageViews(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetImageViews(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every ImageView that we need to create at the end of the loop...
 	for toCreate := range f.imageViewToCreate {
@@ -2837,7 +2901,7 @@ func (f *frameLoop) resetImageViews(ctx context.Context, stateBuilder *stateBuil
 	return nil
 }
 
-func (f *frameLoop) getBackupImageTargetLayout(ctx context.Context, srcImg ImageObjectʳ) ipLayoutInfo {
+func (f *loopingVulkanControlFlowGenerator) getBackupImageTargetLayout(ctx context.Context, srcImg ImageObjectʳ) ipLayoutInfo {
 	dstImageLayout := sameLayoutsOfImage(srcImg)
 
 	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
@@ -2861,7 +2925,7 @@ func (f *frameLoop) getBackupImageTargetLayout(ctx context.Context, srcImg Image
 	return dstImageLayout
 }
 
-func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ, stateBuilder *stateBuilder) error {
 
 	deviceCopyKit, err := ipBuildDeviceCopyKit(stateBuilder, srcImg.VulkanHandle(), dstImg.VulkanHandle())
 	if err != nil {
@@ -2896,7 +2960,7 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	return nil
 }
 
-func (f *frameLoop) resetSamplerYcbcrConversions(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetSamplerYcbcrConversions(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every SamplerYcbcrConversion that we need to create at the end of the loop...
 	for toCreate := range f.samplerYcbcrConversionToCreate {
@@ -2908,7 +2972,7 @@ func (f *frameLoop) resetSamplerYcbcrConversions(ctx context.Context, stateBuild
 	return nil
 }
 
-func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetSamplers(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Sampler that we need to create at the end of the loop...
 	for toCreate := range f.samplerToCreate {
@@ -2921,7 +2985,7 @@ func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilde
 	return nil
 }
 
-func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetShaderModules(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every ShaderModule that we need to create at the end of the loop...
 	for toCreate := range f.shaderModuleToCreate {
@@ -2933,7 +2997,7 @@ func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateB
 	return nil
 }
 
-func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetDescriptorSetLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every DescriptorSetLayout that we need to create at the end of the loop...
 	for toCreate := range f.descriptorSetLayoutToCreate {
@@ -2944,7 +3008,7 @@ func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder 
 	return nil
 }
 
-func (f *frameLoop) resetPipelineLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetPipelineLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every PipelineLayout that we need to create at the end of the loop...
 	for toCreate := range f.pipelineLayoutToCreate {
@@ -2955,7 +3019,7 @@ func (f *frameLoop) resetPipelineLayouts(ctx context.Context, stateBuilder *stat
 	return nil
 }
 
-func (f *frameLoop) resetPipelines(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetPipelines(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every ComputePipeline that we need to create at the end of the loop...
 	for toCreate := range f.computePipelineToCreate {
@@ -2972,7 +3036,7 @@ func (f *frameLoop) resetPipelines(ctx context.Context, stateBuilder *stateBuild
 	return nil
 }
 
-func (f *frameLoop) resetPipelineCaches(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetPipelineCaches(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every PipelineCache that we need to create at the end of the loop...
 	for toCreate := range f.pipelineCacheToCreate {
@@ -2983,7 +3047,7 @@ func (f *frameLoop) resetPipelineCaches(ctx context.Context, stateBuilder *state
 	return nil
 }
 
-func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetDescriptorPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every DescriptorPool that we need to create at the end of the loop...
 	for toCreate := range f.descriptorPoolToCreate {
@@ -2995,7 +3059,7 @@ func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stat
 	return nil
 }
 
-func (f *frameLoop) updateChangedDescriptorSet(ctx context.Context) {
+func (f *loopingVulkanControlFlowGenerator) updateChangedDescriptorSet(ctx context.Context) {
 	startState := GetState(f.loopStartState)
 
 	for descriptorSet, descriptorSetData := range startState.descriptorSets.All() {
@@ -3035,7 +3099,7 @@ func (f *frameLoop) updateChangedDescriptorSet(ctx context.Context) {
 	}
 }
 
-func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetDescriptorSets(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every DescriptorSet that we need to create at the end of the loop...
 	for toCreate := range f.descriptorSetToAllocate {
@@ -3062,7 +3126,7 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 	return nil
 }
 
-func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetSemaphores(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	for sem := range f.semaphoreToCreate {
 		semObj := GetState(f.loopStartState).Semaphores().Get(sem)
@@ -3124,7 +3188,7 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuil
 	return nil
 }
 
-func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetFences(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	for fence := range f.fenceToCreate {
 		fenceObj := GetState(f.loopStartState).Fences().Get(fence)
@@ -3181,7 +3245,7 @@ func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder)
 	return nil
 }
 
-func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetEvents(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	for event := range f.eventToCreate {
 		eventObj := GetState(f.loopStartState).Events().Get(event)
@@ -3222,7 +3286,7 @@ func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder)
 	return nil
 }
 
-func (f *frameLoop) resetFramebuffers(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetFramebuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Framebuffers that we need to create at the end of the loop...
 	for toCreate := range f.framebufferToCreate {
@@ -3234,7 +3298,7 @@ func (f *frameLoop) resetFramebuffers(ctx context.Context, stateBuilder *stateBu
 	return nil
 }
 
-func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetRenderPasses(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every RenderPass that we need to create at the end of the loop...
 	for toCreate := range f.renderPassToCreate {
@@ -3246,7 +3310,7 @@ func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBu
 	return nil
 }
 
-func (f *frameLoop) resetQueryPools(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetQueryPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every QueryPools that we need to create at the end of the loop...
 	for toCreate := range f.queryPoolToCreate {
@@ -3260,7 +3324,7 @@ func (f *frameLoop) resetQueryPools(ctx context.Context, stateBuilder *stateBuil
 	return nil
 }
 
-func (f *frameLoop) resetCommandPools(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetCommandPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every CommandPool that we need to create at the end of the loop...
 	for toCreate := range f.commandPoolToCreate {
@@ -3273,7 +3337,7 @@ func (f *frameLoop) resetCommandPools(ctx context.Context, stateBuilder *stateBu
 	return nil
 }
 
-func (f *frameLoop) resetCommandBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *loopingVulkanControlFlowGenerator) resetCommandBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	for cmdBuf := range f.commandBufferToAllocate {
 		cmdBufObj := GetState(f.loopStartState).CommandBuffers().Get(cmdBuf)
@@ -3300,4 +3364,40 @@ func (f *frameLoop) resetCommandBuffers(ctx context.Context, stateBuilder *state
 	}
 
 	return nil
+}
+
+func (f *loopingVulkanControlFlowGenerator) buildCommands(ctx context.Context, cmdId api.CmdID, cmds []api.Cmd, out transform.Writer) error {
+
+	for _, cmd := range cmds {
+		if err := out.MutateAndWrite(ctx, cmdId, cmd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (f *loopingVulkanControlFlowGenerator) createVkDeviceWaitIdleCommandsForDevices(ctx context.Context, inputState *api.GlobalState) []api.Cmd {
+	cb := CommandBuilder{Thread: 0}
+	allDevices := GetState(inputState).Devices().All()
+
+	waitCmds := make([]api.Cmd, 0, len(allDevices))
+
+	// Wait for all queues in all devices to finish their jobs first.
+	for handle := range allDevices {
+		waitCmds = append(waitCmds, cb.VkDeviceWaitIdle(handle, VkResult_VK_SUCCESS))
+	}
+
+	return waitCmds
+}
+
+func (f *loopingVulkanControlFlowGenerator) createWaitForFence(ctx context.Context, id uint32, callback loopCallbackFunc) api.Cmd {
+	return replay.Custom{T: 0, F: func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		fenceID := id
+		b.Wait(fenceID)
+		tcb := func(p *gapir.FenceReadyRequest) {
+			callback(ctx, p)
+		}
+		return b.RegisterFenceReadyRequestCallback(fenceID, tcb)
+	}}
 }

@@ -1043,6 +1043,7 @@ message GpuProfileRequest {
   path.Capture capture = 1;
   path.Device device = 2;
   ProfileExperiments experiments = 3;
+  int32 loopCount = 4;
 }
 
 message GpuProfileResponse {

@@ -82,7 +82,7 @@ public class Models {
     Memory memory = new Memory(shell, analytics, client, devices, commands);
     MemoryTypes types = new MemoryTypes(client, devices, constants);
     Perfetto perfetto = new Perfetto(shell, analytics, client, capture, status);
-    Profile profile = new Profile(shell, analytics, client, capture, devices, commands);
+    Profile profile = new Profile(shell, analytics, client, capture, devices, commands, settings);
     return new Models(settings, analytics, follower, capture, devices, commands, resources, state,
         reports, images, constants, geometries, memory, types, perfetto, profile, status);
   }

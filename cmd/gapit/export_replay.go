@@ -136,14 +136,13 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		}
 	case ExportTimestamps:
 		// There are no useful field in GetTimestampsRequest as of now.
-		tsreq = &service.GetTimestampsRequest{LoopCount: int32(verb.LoopCount)}
+		tsreq = &service.GetTimestampsRequest{}
 	}
 
 	opts := &service.ExportReplayOptions{
 		FramebufferAttachments: fbreqs,
 		GetTimestampsRequest:   tsreq,
 		DisplayToSurface:       onscreen,
-		LoopCount:              int32(verb.LoopCount),
 	}
 
 	if err := client.ExportReplay(ctx, capturePath, device, verb.Out, opts); err != nil {

@@ -148,11 +148,32 @@ func (a API) Replay(
 	transforms = appendLogTransforms(ctx, replayType, c, transforms)
 
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, c.Commands)
-	chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, out)
-	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
-	if err := controlFlow.TransformAll(ctx); err != nil {
-		log.E(ctx, "%v Error: %v", replayType, err)
-		return err
+
+	// Handle this if it's a profile request and return
+	if request, ok := firstRequest.(profileRequest); ok {
+
+		loopStart := numOfInitialCmds
+		loopEnd := api.CmdID(len(initialCmds) + len(c.Commands) - 1)
+		nullWriterObj := nullWriter{state: cloneStateWithSharedAllocator(ctx, c, out.State())}
+		chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, nullWriterObj)
+		loopCallbacks := getPerfettoLoopCallbacks(request.traceOptions, request.handler, request.buffer)
+		controlFlow := NewLoopingVulkanControlFlowGenerator(ctx, chain, out, c, loopStart, loopEnd, request.loopCount, loopCallbacks)
+
+		if err := controlFlow.TransformAll(ctx); err != nil {
+			log.E(ctx, "%v Error: %v", replayType, err)
+			return err
+		}
+
+	} else {
+
+		// Handle all other types of request in the normal way.
+		chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, out)
+		controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
+
+		if err := controlFlow.TransformAll(ctx); err != nil {
+			log.E(ctx, "%v Error: %v", replayType, err)
+			return err
+		}
 	}
 
 	return nil
@@ -279,7 +300,6 @@ func getProfileTransforms(ctx context.Context,
 	profileTransform.AddResult(requestAndResult.Result)
 
 	transforms := make([]transform.Transform, 0)
-	transforms = append(transforms, newWaitForPerfetto(request.traceOptions, request.handler, request.buffer, numOfInitialCmds))
 	transforms = append(transforms, newProfilingLayers(layerName))
 	transforms = append(transforms, newMappingExporter(ctx, request.handleMappings))
 
@@ -439,4 +459,33 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 		reason = messages.ReplayCompatibilityIncompatibleArchitecture(h.GetABI().GetArchitecture().String())
 	}
 	return 0, reason
+}
+
+// nullWriter conforms to the the transformer.Writer interface, it just updates a state object and does nothing with the commands
+type nullWriter struct {
+	state *api.GlobalState
+}
+
+func (w nullWriter) State() *api.GlobalState {
+	return w.state
+}
+
+func (w nullWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	return cmd.Mutate(ctx, id, w.state, nil, nil)
+}
+
+func cloneStateWithSharedAllocator(ctx context.Context, capture *capture.GraphicsCapture, state *api.GlobalState) *api.GlobalState {
+
+	clone := capture.NewUninitializedStateSharingAllocator(ctx, state)
+	clone.Memory = state.Memory.Clone()
+
+	for apiState, graphicsApi := range state.APIs {
+
+		clonedState := graphicsApi.Clone()
+		clonedState.SetupInitialState(ctx, clone)
+
+		clone.APIs[apiState] = clonedState
+	}
+
+	return clone
 }
