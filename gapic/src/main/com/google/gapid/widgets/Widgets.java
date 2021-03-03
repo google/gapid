@@ -27,6 +27,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.OS;
 import com.google.gapid.views.CommandEditor;
+import com.google.gapid.views.Experiments;
 
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
@@ -112,19 +113,22 @@ public class Widgets {
   public final CopyPaste copypaste;
   public final LoadingIndicator loading;
   public final CommandEditor editor;
+  public final Experiments experiments;
 
-  public Widgets(Theme theme, CopyPaste copypaste, LoadingIndicator loading, CommandEditor editor) {
+  public Widgets(Theme theme, CopyPaste copypaste, LoadingIndicator loading, CommandEditor editor, Experiments experiments) {
     this.theme = theme;
     this.copypaste = copypaste;
     this.loading = loading;
     this.editor = editor;
+    this.experiments = experiments;
   }
 
   public static Widgets create(Display display, Theme theme, Client client, Models models) {
     CopyPaste copypaste = new CopyPaste(display);
     LoadingIndicator loading = new LoadingIndicator(display, theme);
     CommandEditor editor = new CommandEditor(client, models, theme);
-    return new Widgets(theme, copypaste, loading, editor);
+    Experiments experiments = new Experiments(models, theme);
+    return new Widgets(theme, copypaste, loading, editor, experiments);
   }
 
   public void dispose() {
@@ -389,6 +393,14 @@ public class Widgets {
   public static MenuItem createMenuItem(
       Menu parent, String text, int accelerator, Listener listener) {
     MenuItem item = new MenuItem(parent, SWT.PUSH);
+    item.setText(text);
+    item.setAccelerator(accelerator);
+    item.addListener(SWT.Selection, listener);
+    return item;
+  }
+
+  public static MenuItem createCheckMenuItem(Menu parent, String text, int accelerator, Listener listener) {
+    MenuItem item = new MenuItem(parent, SWT.CHECK);
     item.setText(text);
     item.setAccelerator(accelerator);
     item.addListener(SWT.Selection, listener);

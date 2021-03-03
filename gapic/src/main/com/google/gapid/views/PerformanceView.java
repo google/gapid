@@ -53,12 +53,14 @@ import com.google.gapid.proto.device.GpuProfiling;
 import com.google.gapid.proto.device.GpuProfiling.GpuCounterDescriptor.GpuCounterSpec;
 
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +69,7 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -125,13 +128,25 @@ public class PerformanceView extends Composite
         new GridData(SWT.FILL, SWT.BOTTOM, true, true));
     splitter.setWeights(new int[] { 70, 30 });
 
-    Composite buttonsComposite = createComposite(top, new GridLayout(3, false));
+    int numberOfButtons = 3;
+    if (Experimental.enableProfileExperiments(models.settings)) {
+      numberOfButtons = 4;
+    }
+
+    Composite buttonsComposite = createComposite(top, new GridLayout(numberOfButtons, false));
     buttonsComposite.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, true, false));
 
     Button toggleButton = createButton(buttonsComposite, SWT.FLAT, "Estimate / Confidence Range",
         buttonColor, e -> toggleEstimateOrRange());
     toggleButton.setImage(widgets.theme.swap());
     toggleButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+    if (Experimental.enableProfileExperiments(models.settings)) {
+      Button experimentsButton =createButton(buttonsComposite, SWT.FLAT, "Experiments",buttonColor,
+          e -> widgets.experiments.showExperimentsPopup(getShell()));
+      experimentsButton.setImage(widgets.theme.science());
+      experimentsButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+    }
 
     Button filterButton = createButton(buttonsComposite, SWT.FLAT, "Filter Counters", buttonColor, e -> {
       GpuCountersDialog dialog = new GpuCountersDialog(

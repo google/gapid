@@ -38,6 +38,9 @@ public class Experimental {
   public static final Flag<Boolean> enablePerfTab = Flags.value("experimental-enable-perf-tab",
       false, "Enable the experimental feature Counter performance tab.");
 
+  public static final Flag<Boolean> enableProfileExperiments = Flags.value("experimental-enable-profile-experiments",
+      false, "Enable Profile Experiments.");
+
   public static List<String> getGapisFlags(boolean enableAllExperimentalFeatures) {
     List<String> args = Lists.newArrayList();
     // The --experimental-enable-all flag is a sugar flag from the UI. GAPIS knows nothing about it.
@@ -68,5 +71,10 @@ public class Experimental {
   public static boolean enablePerfTab(Settings settings) {
     return settings.preferences().getEnableAllExperimentalFeatures() ||
         enableAll.get() || enablePerfTab.get();
+  }
+
+  public static boolean enableProfileExperiments(Settings settings) {
+    return settings.preferences().getEnableAllExperimentalFeatures() ||
+        enableAll.get() || enableProfileExperiments.get();
   }
 }

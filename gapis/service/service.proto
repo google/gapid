@@ -772,6 +772,9 @@ enum ClientAction {
   Overdraw = 55;
   Pin = 56;
   ClosePinned = 57;
+  ShowExperiments = 58;
+  UpdateExperiments = 59;
+  DisableAnisotropicFiltering = 60;
 }
 
 message DCECaptureRequest {

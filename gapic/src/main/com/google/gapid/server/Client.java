@@ -23,6 +23,7 @@ import static java.util.logging.Level.FINE;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.google.gapid.models.ProfileExperiments;
 import com.google.gapid.models.Strings;
 import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.perfetto.Perfetto;
@@ -239,13 +240,14 @@ public class Client {
   }
 
 
-  public ListenableFuture<Service.ProfilingData> profile(Path.Capture capture, Path.Device device) {
+  public ListenableFuture<Service.ProfilingData> profile(Path.Capture capture, Path.Device device, ProfileExperiments experiments) {
     return call(() -> String.format(
         "RPC->profile(%s, %s)", shortDebugString(capture), shortDebugString(device)),
         stack -> MoreFutures.transformAsync(
             client.profile(Service.GpuProfileRequest.newBuilder()
                 .setCapture(capture)
                 .setDevice(device)
+                .setExperiments(experiments.toProto())
                 .build()),
             in -> immediateFuture(throwIfError(in.getProfilingData(), in.getError(), stack))));
   }

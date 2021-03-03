@@ -108,6 +108,7 @@ public interface Theme {
   @Icon(file = "recent.png") public Image recent();
   @Icon(file = "refresh.png") public Image refresh();
   @Icon(file = "save.png") public Image save();
+  @Icon(file = "science.png") public Image science();
   @Icon(file = "selection_mode.png") public Image selectionMode();
   @Icon(file = "settings.png") public Image settings();
   @Icon(file = "smile.png") public Image smile();

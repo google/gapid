@@ -20,7 +20,6 @@ import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
 import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
-import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.withIndents;
 
@@ -69,7 +68,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 
 import java.util.Map;
@@ -142,17 +140,7 @@ public class CommandTree extends Composite
       }
     };
 
-    Menu popup = new Menu(tree.getControl());
-    Widgets.createMenuItem(popup, "&Edit", SWT.MOD1 + 'E', e -> {
-      CommandStream.Node node = tree.getSelection();
-      if (node != null && node.getData() != null && node.getCommand() != null) {
-        widgets.editor.showEditPopup(getShell(), lastCommand(node.getData().getCommands()),
-            node.getCommand(), node.device);
-      }
-    });
-    tree.setPopupMenu(popup, node ->
-        node.getData() != null && node.getCommand() != null &&
-        CommandEditor.shouldShowEditPopup(node.getCommand()));
+    CommandOptions.CreateCommandOptionsMenu(tree.getControl(), widgets, tree, this.models);
 
     tree.registerAsCopySource(widgets.copypaste, node -> {
       models.analytics.postInteraction(View.Commands, ClientAction.Copy);

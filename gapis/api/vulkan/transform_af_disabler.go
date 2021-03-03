@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
@@ -93,6 +94,8 @@ func (afDisabler *afDisablerTransform) disableAFInSamplerCreation(ctx context.Co
 	for _, w := range cmd.Extras().Observations().Writes {
 		newCmd.AddWrite(w.Range, w.ID)
 	}
+
+	log.I(ctx, "Anisotropic Filtering disabled.")
 
 	return newCmd, nil
 }

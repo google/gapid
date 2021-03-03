@@ -72,7 +72,7 @@ public class Profile
 
   @Override
   protected Source getSource(Capture.Data data) {
-    return new Source(data.path);
+    return new Source(data.path, new ProfileExperiments());
   }
 
   @Override
@@ -82,7 +82,7 @@ public class Profile
 
   @Override
   protected ListenableFuture<Data> doLoad(Source source, Path.Device device) {
-    return transform(client.profile(capture.getData().path, device), r -> new Data(device, r));
+    return transform(client.profile(capture.getData().path, device, source.experiments), r -> new Data(device, r));
   }
 
   @Override
@@ -161,11 +161,29 @@ public class Profile
     });
   }
 
+  public ProfileExperiments getExperiments() {
+    DeviceDependentModel.Source<Source> src = getSource();
+    return (src == null || src.source == null) ? null : src.source.experiments;
+  }
+
+  public void updateExperiments(ProfileExperiments experiments) {
+    load(Source.withExperiments(getSource(), experiments), false);
+  }
+
   public static class Source {
     public final Path.Capture capture;
+    public final ProfileExperiments experiments;
 
-    public Source(Path.Capture capture) {
+    public Source(Path.Capture capture, ProfileExperiments experiments) {
       this.capture = capture;
+      this.experiments = experiments;
+    }
+
+    public static DeviceDependentModel.Source<Source> withExperiments(
+        DeviceDependentModel.Source<Source> src, ProfileExperiments newExperiments) {
+      Source me = (src == null) ? null : src.source;
+      return new DeviceDependentModel.Source<Source>((src == null) ? null : src.device,
+          new Source((me == null) ? null : me.capture, newExperiments));
     }
 
     @Override
@@ -175,7 +193,8 @@ public class Profile
       } else if (!(obj instanceof Source)) {
         return false;
       }
-      return Objects.equal(capture, ((Source)obj).capture);
+      Source s = (Source)obj;
+      return Objects.equal(capture, s.capture) && Objects.equal(experiments, s.experiments);
     }
 
     @Override
