@@ -1289,6 +1289,13 @@ func commonShaderDataGroups(ctx context.Context,
 				Active:  true,
 			}
 
+			counters, _ := shadertools.Analyze(words)
+
+			counterList := &api.KeyValuePairList{}
+			counterList = counterList.AppendKeyValuePair("ALU Instructions", api.CreatePoDDataValue("u32", counters.ALUInstructions), false)
+			counterList = counterList.AppendKeyValuePair("Texture Instructions", api.CreatePoDDataValue("u32", counters.TexInstructions), false)
+			counterList = counterList.AppendKeyValuePair("Branch Instructions", api.CreatePoDDataValue("u32", counters.BranchInstructions), false)
+
 			return []*api.DataGroup{
 				&api.DataGroup{
 					GroupName: "Shader Code",
@@ -1298,6 +1305,11 @@ func commonShaderDataGroups(ctx context.Context,
 				&api.DataGroup{
 					GroupName: "Descriptor Sets",
 					Data:      &api.DataGroup_Table{dsetTable},
+				},
+
+				&api.DataGroup{
+					GroupName: "Static Analysis",
+					Data:      &api.DataGroup_KeyValues{counterList},
 				},
 			}
 		}
