@@ -36,8 +36,8 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
-@extension("VK_KHR_uniform_buffer_standard_layout") define VK_EXT_SCALAR_BLOCK_LAYOUT_SPEC_VERSION 1
-@extension("VK_KHR_uniform_buffer_standard_layout") define VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME "VK_KHR_uniform_buffer_standard_layout"
+@extension("VK_KHR_uniform_buffer_standard_layout") define VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_SPEC_VERSION   1
+@extension("VK_KHR_uniform_buffer_standard_layout") define VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME "VK_KHR_uniform_buffer_standard_layout"
 
 @extension("VK_KHR_uniform_buffer_standard_layout")
 class VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR {

@@ -36,8 +36,8 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
-@extension("VK_KHR_vulkan_memory_model") define VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_SPEC_VERSION   1
-@extension("VK_KHR_vulkan_memory_model") define VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME "VK_KHR_vulkan_memory_model"
+@extension("VK_KHR_vulkan_memory_model") define VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION   1
+@extension("VK_KHR_vulkan_memory_model") define VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME "VK_KHR_vulkan_memory_model"
 
 @extension("VK_KHR_vulkan_memory_model")
 class VkPhysicalDeviceVulkanMemoryModelFeaturesKHR {

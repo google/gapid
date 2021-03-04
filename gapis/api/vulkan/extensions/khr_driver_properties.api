@@ -36,8 +36,8 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
-@extension("VK_KHR_driver_properties") define VK_KHR_SHADER_FLOAT16_INT8_SPEC_VERSION   1
-@extension("VK_KHR_driver_properties") define VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME "VK_KHR_driver_properties"
+@extension("VK_KHR_driver_properties") define VK_KHR_DRIVER_PROPERTIES_SPEC_VERSION   1
+@extension("VK_KHR_driver_properties") define VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME "VK_KHR_driver_properties"
 
 define VK_MAX_DRIVER_NAME_SIZE_KHR         256 /// Vulkan 1.1
 define VK_MAX_DRIVER_INFO_SIZE_KHR         256 /// Vulkan 1.1

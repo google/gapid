@@ -37,7 +37,7 @@
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
 @extension("VK_EXT_pipeline_creation_feedback") define VK_EXT_PIPELINE_CREATION_FEEDBACK_SPEC_VERSION 1
-@extension("VK_EXT_pipeline_creation_feedback") define VK_EXT_DEBUG_UTILS_EXTENSION_NAME "VK_EXT_debug_utils"
+@extension("VK_EXT_pipeline_creation_feedback") define VK_EXT_PIPELINE_CREATION_FEEDBACK_EXTENSION_NAME "VK_EXT_pipeline_creation_feedback"
 
 
 @extension("VK_EXT_pipeline_creation_feedback")
