@@ -63,8 +63,8 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveCo
 		}
 
 		cmd := append([]uint64{}, o.Commands.From...) // make a copy of o.Commands.From
-		for i := o.Commands.To[lastSubcommand]; i >= o.Commands.From[lastSubcommand]; i-- {
-			cmd[lastSubcommand] = i
+		for i := int64(o.Commands.To[lastSubcommand]); i >= int64(o.Commands.From[lastSubcommand]); i-- {
+			cmd[lastSubcommand] = uint64(i)
 			p := o.Commands.Capture.Command(cmd[0], cmd[1:]...).Mesh(p.Options)
 			if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p, r); err != api.ErrMeshNotAvailable {
 				return mesh, err
