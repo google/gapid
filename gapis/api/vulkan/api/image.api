@@ -750,7 +750,6 @@ sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng,
 }
 
 sub u32 imageSubresourceLayerCount(ref!ImageObject image, VkImageSubresourceRange rng) {
-  VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
   return switch (rng.layerCount == VK_REMAINING_ARRAY_LAYERS) {
     case true:
       image.Info.ArrayLayers - rng.baseArrayLayer
@@ -765,7 +764,6 @@ sub u32 imageSubresourceLayerCount(ref!ImageObject image, VkImageSubresourceRang
 }
 
 sub u32 imageSubresourceLevelCount(ref!ImageObject image, VkImageSubresourceRange rng) {
-  VK_REMAINING_MIP_LEVELS := as!u32(0xFFFFFFFF)
   return switch (rng.levelCount == VK_REMAINING_MIP_LEVELS) {
     case true:
       image.Info.MipLevels - rng.baseMipLevel

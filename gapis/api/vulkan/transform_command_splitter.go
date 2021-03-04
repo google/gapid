@@ -428,8 +428,6 @@ func (splitTransform *commandSplitter) splitAfterSubmit(ctx context.Context, id 
 	return info, nil
 }
 
-const VK_ATTACHMENT_UNUSED = uint32(0xFFFFFFFF)
-
 func (splitTransform *commandSplitter) splitRenderPass(ctx context.Context, rp RenderPassObjectʳ, inputState *api.GlobalState) ([][3]VkRenderPass, error) {
 	st := GetState(inputState)
 

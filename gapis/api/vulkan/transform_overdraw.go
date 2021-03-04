@@ -2976,9 +2976,8 @@ func getDepthAttachment(rpInfo RenderPassObjectʳ) (VkAttachmentDescription, uin
 		}
 	}
 	if attachment0.IsNil() ||
-		// VK_ATTACHMENT_UNUSED
-		attachment0.Attachment() == ^uint32(0) {
-		return NilVkAttachmentDescription, ^uint32(0), nil
+		attachment0.Attachment() == VK_ATTACHMENT_UNUSED {
+		return NilVkAttachmentDescription, VK_ATTACHMENT_UNUSED, nil
 	}
 
 	attachmentDesc, ok := rpInfo.AttachmentDescriptions().Lookup(

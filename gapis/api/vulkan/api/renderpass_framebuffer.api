@@ -295,7 +295,6 @@ class MutableAspect {
 }
 
 sub void RecordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
-  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   cb.CurrentRecordingSubpass = subpass
   rp := cb.CurrentRecordingRenderpass
   for _, _, v in rp.SubpassDescriptions[subpass].InputAttachments {
@@ -488,7 +487,6 @@ cmd void vkCmdEndRenderPass(
 }
 
 sub void loadImageAttachment(u32 attachmentID) {
-  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
     ldi := lastDrawInfo()
     attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
@@ -511,7 +509,6 @@ sub void loadImageAttachment(u32 attachmentID) {
 }
 
 sub void storeImageAttachment(u32 attachmentID) {
-  VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
     ldi := lastDrawInfo()
     attachment := ldi.Framebuffer.ImageAttachments[attachmentID]

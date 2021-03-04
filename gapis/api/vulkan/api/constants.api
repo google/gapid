@@ -45,12 +45,15 @@ define VERSION_PATCH 3
 define VK_MAX_PHYSICAL_DEVICE_NAME_SIZE 256
 define VK_UUID_SIZE                     16
 define VK_MAX_DEVICE_GROUP_SIZE         32 /// Vulkan 1.1
+define VK_MAX_DEVICE_GROUP_SIZE_KHR     32
 define VK_LUID_SIZE                     8  /// Vulkan 1.1
-
-define VK_MAX_EXTENSION_NAME_SIZE 256
-define VK_MAX_DESCRIPTION_SIZE    256
-define VK_MAX_MEMORY_TYPES        32
-define VK_MAX_MEMORY_HEAPS        16 /// The maximum number of unique memory heaps, each of which supporting 1 or more memory types.
+define VK_LUID_SIZE_KHR                 8
+define VK_MAX_EXTENSION_NAME_SIZE       256
+define VK_MAX_DESCRIPTION_SIZE          256
+define VK_MAX_MEMORY_TYPES              32
+define VK_MAX_MEMORY_HEAPS              16
+define VK_MAX_DRIVER_NAME_SIZE          256
+define VK_MAX_DRIVER_INFO_SIZE          256
 
 // API keywords
 define VK_TRUE  1
@@ -58,3 +61,16 @@ define VK_FALSE 0
 
 // API keyword, but needs special handling by some templates
 define NULL_HANDLE 0
+
+// Constants passed in as values having special meaning.
+define VK_LOD_CLAMP_NONE            1000.0
+define VK_REMAINING_MIP_LEVELS      as!u32(0xFFFFFFFF)     // (~0U)
+define VK_REMAINING_ARRAY_LAYERS    as!u32(0xFFFFFFFF)     // (~0U)
+define VK_WHOLE_SIZE                as!VkDeviceSize(0xFFFFFFFFFFFFFFFF)    // (~0ULL)
+define VK_ATTACHMENT_UNUSED         as!u32(0xFFFFFFFF)     // (~0U)
+define VK_QUEUE_FAMILY_IGNORED      as!u32(0xFFFFFFFF)     // (~0U)
+define VK_QUEUE_FAMILY_EXTERNAL     as!u32(0xFFFFFFFE)     // (~0U-1)
+define VK_QUEUE_FAMILY_EXTERNAL_KHR as!u32(0xFFFFFFFE)     // (~0U-1)
+define VK_QUEUE_FAMILY_FOREIGN_EXT  as!u32(0xFFFFFFFD)     // (~0U-2)
+define VK_SUBPASS_EXTERNAL          as!u32(0xFFFFFFFF)     // (~0U)
+define VK_SHADER_UNUSED_NV          as!u32(0xFFFFFFFF)     // (~0U)

@@ -210,7 +210,6 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 // VkImageSubresourceRange data
 @spy_disabled
 sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRange rng, u32 baseDepth, u32 depthCount, bool isWrite) {
-  VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
 
@@ -258,7 +257,6 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
 
 @spy_disabled
 sub void accessImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, bool isWrite) {
-  VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
   accessImageSubresourceSlice(image, rng, 0, VK_REMAINING_ARRAY_LAYERS, isWrite)
 }
 
