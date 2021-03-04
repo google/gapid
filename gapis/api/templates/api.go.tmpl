@@ -23,6 +23,7 @@
   {{AssertType $ "API"}}
   {{$ | Macro "api_enums.go" | GoFmt | Write "api_enums.go"}}
   {{$ | Macro "api_amrp.go" | GoFmt | Write "api_amrp.go"}}
+  {{$ | Macro "api_constants.go" | GoFmt | Write "api_constants.go"}}
   {{$ | Macro "api_slices.go" | GoFmt | Write "api_slices.go"}}
   {{$ | Macro "api_pointers.go" | GoFmt | Write "api_pointers.go"}}
   {{$ | Macro "api_classes.go" | GoFmt | Write "api_classes.go"}}
@@ -111,6 +112,16 @@ var ( // Don't error if these packages aren't used.
 
   {{template "Go.CommentHeader" "Slices"}}
   {{ForEach $.Slices "DeclareSlice" | JoinWith "\n"}}
+{{end}}
+
+{{define "api_constants.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+  {{template "Go.CommentHeader" "Constants"}}
+
+  {{ForEach $.Definitions "DeclareDefinition" | JoinWith "\n"}}
+
 {{end}}
 
 {{define "api_pointers.go"}}
@@ -2007,6 +2018,17 @@ import (
   }
 {{end}}
 
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits a constant definition
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareDefinition"}}
+  {{AssertType $ "Definition"}}
+
+  const {{$.Name}} = {{Template "Go.Read" $.Expression}}
+{{end}}
 
 {{/*
 -------------------------------------------------------------------------------

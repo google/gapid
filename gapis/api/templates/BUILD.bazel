@@ -62,6 +62,7 @@ api_template(
         "api_builder.go",
         "api_classes.go",
         "api_commands.go",
+        "api_constants.go",
         "api_enums.go",
         "api_pointers.go",
         "api_slices.go",
