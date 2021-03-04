@@ -508,6 +508,7 @@
 {{define "Go.Read"}}
   {{     if IsBoolValue        $}}{{$}}
   {{else if IsNumericValue     $}}{{Template "Go.Type" $}}({{$}})
+  {{else if IsDefinitionUsage  $}}{{$.Definition.Name}}
   {{else if IsUnaryOp          $}}{{$.Operator}}({{Template "Go.Read" $.Expression}})
   {{else if IsStringValue      $}}{{printf "%q" $}}
   {{else if IsMessageValue     $}}messages.{{$.AST.Name.Value | SplitOn "_" | Lower | Title}}({{ForEach $.Arguments "Go.Read" | JoinWith ", "}})

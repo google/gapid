@@ -696,6 +696,7 @@
 {{define "C++.Read"}}
   {{     if IsBoolValue        $}}{{$}}
   {{else if IsNumericValue     $}}{{Template "C++.NumericValue" $}}
+  {{else if IsDefinitionUsage  $}}{{Template "C++.Read" $.Expression}}
   {{else if IsStringValue      $}}gapil::String({{Template "C++.Arena"}}, {{printf "%q" $}})
   {{else if IsMessageValue     $}}"{{$.AST.Name.Value}}"
   {{else if IsParameter        $}}{{Template "C++.ReadParameter" $}}

@@ -69,6 +69,7 @@ var (
 		semantic.Create{},
 		semantic.DeclareLocal{},
 		semantic.Definition{},
+		semantic.DefinitionUsage{},
 		semantic.EnumEntry{},
 		semantic.Enum{},
 		semantic.Fence{},
