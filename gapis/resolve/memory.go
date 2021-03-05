@@ -104,8 +104,7 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) ([]*service.TypedMemo
 	// and identify whether some are less precise and excessive structs caused by
 	// pnext pointer type castings. If found, filter them out.
 	toDelete := map[int]bool{}
-	index := 0
-	for index < len(newRanges) {
+	for index := 0; index < len(newRanges); index++ {
 		ty, err := types.GetType(newRanges[index].Type.TypeIndex)
 		if err != nil {
 			return nil, err
@@ -119,6 +118,10 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) ([]*service.TypedMemo
 			for right := index + 1; right < len(newRanges) && newRanges[right].Root == root; right++ {
 				dups = append(dups, right)
 			}
+			if len(dups) == 0 {
+				continue
+			}
+
 			mostPreciseIndex := index
 			mostPreciseLevel, err := pNextPrecision(newRanges[index].Type.TypeIndex)
 			if err != nil {
@@ -139,11 +142,12 @@ func filterTypedRanges(ranges []*service.TypedMemoryRange) ([]*service.TypedMemo
 					mostPreciseLevel = preciseLevel
 				}
 			}
-			index = dups[len(dups)-1] + 1
-		} else {
-			index++
+			if skip := dups[len(dups)-1]; skip > index {
+				index = skip
+			}
 		}
 	}
+
 	filteredRanges := []*service.TypedMemoryRange{}
 	for i := 0; i < len(newRanges); i++ {
 		if shouldDelete := toDelete[i]; !shouldDelete {
