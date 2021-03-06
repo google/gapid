@@ -196,6 +196,7 @@ type StaticAnalysisCounters struct {
 	ALUInstructions    uint32
 	TexInstructions    uint32
 	BranchInstructions uint32
+	TempRegisters      uint32
 }
 
 // Obtains static analysis statistics on the given shader code
@@ -211,6 +212,7 @@ func Analyze(shader []uint32) (StaticAnalysisCounters, error) {
 	res.ALUInstructions = uint32(counters.alu_instructions)
 	res.TexInstructions = uint32(counters.texture_instructions)
 	res.BranchInstructions = uint32(counters.branch_instructions)
+	res.TempRegisters = uint32(counters.temp_registers)
 
 	return res, nil
 }

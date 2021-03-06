@@ -27,10 +27,7 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
   parser.parse();
   spirv_cross::ParsedIR pir = parser.get_parsed_ir();
 
-  instruction_counters_t counters;
-  counters.alu_instructions = 0;
-  counters.texture_instructions = 0;
-  counters.branch_instructions = 0;
+  instruction_counters_t counters = instruction_counters_t{0, 0, 0, 0};
 
   for (auto& block : pir.ids_for_type[spirv_cross::Types::TypeBlock]) {
     if (pir.ids[block].get_type() ==
@@ -38,6 +35,8 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
       spirv_cross::SPIRBlock currentBlock =
           spirv_cross::variant_get<spirv_cross::SPIRBlock>(pir.ids[block]);
       for (auto& currentOp : currentBlock.ops) {
+        uint32_t resultID = 0;
+
         switch (currentOp.op) {
           default:
             break;
@@ -60,6 +59,9 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpGenericCastToPtr:
           case spv::OpGenericCastToPtrExplicit:
           case spv::OpBitcast:
+          case spv::OpPtrEqual:
+          case spv::OpPtrNotEqual:
+          case spv::OpPtrDiff:
           case spv::OpSNegate:
           case spv::OpFNegate:
           case spv::OpIAdd:
@@ -89,7 +91,6 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpSMulExtended:
           case spv::OpShiftRightLogical:
           case spv::OpShiftRightArithmetic:
-          case spv::OpShiftLeftLogical:
           case spv::OpBitwiseOr:
           case spv::OpBitwiseXor:
           case spv::OpBitwiseAnd:
@@ -126,12 +127,6 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpULessThanEqual:
           case spv::OpSLessThanEqual:
           case spv::OpFOrdEqual:
-          case spv::OpFUnordEqual:
-          case spv::OpFOrdNotEqual:
-          case spv::OpFUnordNotEqual:
-          case spv::OpFOrdLessThan:
-          case spv::OpFUnordLessThan:
-          case spv::OpFOrdGreaterThan:
           case spv::OpFUnordGreaterThan:
           case spv::OpFOrdLessThanEqual:
           case spv::OpFUnordLessThanEqual:
@@ -159,7 +154,44 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpAtomicXor:
           case spv::OpAtomicFlagTestAndSet:
           case spv::OpAtomicFlagClear:
+          case spv::OpGroupIAdd:
+          case spv::OpGroupFAdd:
+          case spv::OpGroupFMin:
+          case spv::OpGroupUMin:
+          case spv::OpGroupSMin:
+          case spv::OpGroupFMax:
+          case spv::OpGroupUMax:
+          case spv::OpGroupSMax:
+          case spv::OpGroupIAddNonUniformAMD:
+          case spv::OpGroupFAddNonUniformAMD:
+          case spv::OpGroupFMinNonUniformAMD:
+          case spv::OpGroupUMinNonUniformAMD:
+          case spv::OpGroupSMinNonUniformAMD:
+          case spv::OpGroupFMaxNonUniformAMD:
+          case spv::OpGroupUMaxNonUniformAMD:
+          case spv::OpGroupSMaxNonUniformAMD:
+          case spv::OpGroupNonUniformIAdd:
+          case spv::OpGroupNonUniformFAdd:
+          case spv::OpGroupNonUniformIMul:
+          case spv::OpGroupNonUniformFMul:
+          case spv::OpGroupNonUniformSMin:
+          case spv::OpGroupNonUniformUMin:
+          case spv::OpGroupNonUniformFMin:
+          case spv::OpGroupNonUniformSMax:
+          case spv::OpGroupNonUniformUMax:
+          case spv::OpGroupNonUniformFMax:
+          case spv::OpGroupNonUniformBitwiseAnd:
+          case spv::OpGroupNonUniformBitwiseOr:
+          case spv::OpGroupNonUniformBitwiseXor:
+          case spv::OpGroupNonUniformLogicalAnd:
+          case spv::OpGroupNonUniformLogicalOr:
+          case spv::OpGroupNonUniformLogicalXor:
             counters.alu_instructions++;
+
+            resultID = pir.spirv[currentOp.offset + 1];
+            if (pir.ids[resultID].get_type() == spirv_cross::TypeNone) {
+              counters.temp_registers++;
+            }
             break;
 
           case spv::OpSampledImage:
@@ -199,6 +231,109 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpImageSparseRead:
           case spv::OpImageSampleFootprintNV:
             counters.texture_instructions++;
+
+            resultID = pir.spirv[currentOp.offset + 1];
+            if (pir.ids[resultID].get_type() == spirv_cross::TypeNone) {
+              counters.temp_registers++;
+            }
+            break;
+
+          // Deal with other instructions that have a result ID.
+          // Ignore ones like OpString that are already known to not be
+          // TypeNone.
+          case spv::OpLoad:
+          case spv::OpAccessChain:
+          case spv::OpInBoundsAccessChain:
+          case spv::OpPtrAccessChain:
+          case spv::OpArrayLength:
+          case spv::OpGenericPtrMemSemantics:
+          case spv::OpInBoundsPtrAccessChain:
+          case spv::OpFunctionParameter:
+          case spv::OpFunctionCall:
+          case spv::OpVectorExtractDynamic:
+          case spv::OpVectorInsertDynamic:
+          case spv::OpVectorShuffle:
+          case spv::OpCompositeConstruct:
+          case spv::OpCompositeExtract:
+          case spv::OpCompositeInsert:
+          case spv::OpCopyObject:
+          case spv::OpTranspose:
+          case spv::OpCopyLogical:
+          case spv::OpPhi:
+          case spv::OpLabel:
+          case spv::OpAtomicLoad:
+          case spv::OpAtomicExchange:
+          case spv::OpAtomicCompareExchange:
+          case spv::OpAtomicCompareExchangeWeak:
+          case spv::OpNamedBarrierInitialize:
+          case spv::OpGroupAsyncCopy:
+          case spv::OpGroupAll:
+          case spv::OpGroupAny:
+          case spv::OpGroupBroadcast:
+          case spv::OpSubgroupBallotKHR:
+          case spv::OpSubgroupFirstInvocationKHR:
+          case spv::OpSubgroupAllKHR:
+          case spv::OpSubgroupAnyKHR:
+          case spv::OpSubgroupAllEqualKHR:
+          case spv::OpSubgroupReadInvocationKHR:
+          case spv::OpSubgroupShuffleINTEL:
+          case spv::OpSubgroupShuffleDownINTEL:
+          case spv::OpSubgroupShuffleUpINTEL:
+          case spv::OpSubgroupShuffleXorINTEL:
+          case spv::OpSubgroupBlockReadINTEL:
+          case spv::OpSubgroupBlockWriteINTEL:
+          case spv::OpSubgroupImageBlockReadINTEL:
+          case spv::OpSubgroupImageBlockWriteINTEL:
+          case spv::OpSubgroupImageMediaBlockReadINTEL:
+          case spv::OpSubgroupImageMediaBlockWriteINTEL:
+          case spv::OpEnqueueMarker:
+          case spv::OpEnqueueKernel:
+          case spv::OpGetKernelNDrangeSubGroupCount:
+          case spv::OpGetKernelNDrangeMaxSubGroupSize:
+          case spv::OpGetKernelWorkGroupSize:
+          case spv::OpGetKernelPreferredWorkGroupSizeMultiple:
+          case spv::OpCreateUserEvent:
+          case spv::OpIsValidEvent:
+          case spv::OpGetDefaultQueue:
+          case spv::OpBuildNDRange:
+          case spv::OpGetKernelLocalSizeForSubgroupCount:
+          case spv::OpGetKernelMaxNumSubgroups:
+          case spv::OpReadPipe:
+          case spv::OpWritePipe:
+          case spv::OpReservedReadPipe:
+          case spv::OpReservedWritePipe:
+          case spv::OpReserveReadPipePackets:
+          case spv::OpReserveWritePipePackets:
+          case spv::OpIsValidReserveId:
+          case spv::OpGetNumPipePackets:
+          case spv::OpGetMaxPipePackets:
+          case spv::OpGroupReserveReadPipePackets:
+          case spv::OpGroupReserveWritePipePackets:
+          case spv::OpConstantPipeStorage:
+          case spv::OpCreatePipeFromPipeStorage:
+          case spv::OpGroupNonUniformElect:
+          case spv::OpGroupNonUniformAll:
+          case spv::OpGroupNonUniformAny:
+          case spv::OpGroupNonUniformAllEqual:
+          case spv::OpGroupNonUniformBroadcast:
+          case spv::OpGroupNonUniformBroadcastFirst:
+          case spv::OpGroupNonUniformBallot:
+          case spv::OpGroupNonUniformInverseBallot:
+          case spv::OpGroupNonUniformBallotBitExtract:
+          case spv::OpGroupNonUniformBallotBitCount:
+          case spv::OpGroupNonUniformBallotFindLSB:
+          case spv::OpGroupNonUniformBallotFindMSB:
+          case spv::OpGroupNonUniformShuffle:
+          case spv::OpGroupNonUniformShuffleXor:
+          case spv::OpGroupNonUniformShuffleUp:
+          case spv::OpGroupNonUniformShuffleDown:
+          case spv::OpGroupNonUniformQuadBroadcast:
+          case spv::OpGroupNonUniformQuadSwap:
+          case spv::OpGroupNonUniformPartitionNV:
+            resultID = pir.spirv[currentOp.offset + 1];
+            if (pir.ids[resultID].get_type() == spirv_cross::TypeNone) {
+              counters.temp_registers++;
+            }
             break;
         }
       }

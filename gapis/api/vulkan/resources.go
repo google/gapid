@@ -1295,6 +1295,7 @@ func commonShaderDataGroups(ctx context.Context,
 			counterList = counterList.AppendKeyValuePair("ALU Instructions", api.CreatePoDDataValue("u32", counters.ALUInstructions), false)
 			counterList = counterList.AppendKeyValuePair("Texture Instructions", api.CreatePoDDataValue("u32", counters.TexInstructions), false)
 			counterList = counterList.AppendKeyValuePair("Branch Instructions", api.CreatePoDDataValue("u32", counters.BranchInstructions), false)
+			counterList = counterList.AppendKeyValuePair("Temporary Registers", api.CreatePoDDataValue("u32", counters.TempRegisters), false)
 
 			return []*api.DataGroup{
 				&api.DataGroup{
