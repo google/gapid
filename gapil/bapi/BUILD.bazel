@@ -40,7 +40,6 @@ go_library(
     importpath = "github.com/google/gapid/gapil/bapi",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/data/protoutil:go_default_library",
         "//core/text/parse/cst:go_default_library",
         "//gapil/ast:go_default_library",
         "//gapil/semantic:go_default_library",

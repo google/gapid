@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/semantic"
@@ -627,7 +626,7 @@ func (d *decoder) expr(exprID uint64) semantic.Expression {
 		return nil
 	}
 	exprIdx := exprID - 1
-	switch p := protoutil.OneOf(d.content.Instances.Expression[exprIdx]).(type) {
+	switch p := d.content.Instances.Expression[exprIdx].Ty.(type) {
 	case *Expression_ArrayIndex:
 		return d.arrayIndex(p.ArrayIndex)
 	case *Expression_ArrayInitializer:
@@ -1148,7 +1147,7 @@ func (d *decoder) stat(statID uint64) semantic.Statement {
 		return nil
 	}
 	statIdx := statID - 1
-	switch p := protoutil.OneOf(d.content.Instances.Statement[statIdx]).(type) {
+	switch p := d.content.Instances.Statement[statIdx].Ty.(type) {
 	case *Statement_Abort:
 		return d.abort(p.Abort)
 	case *Statement_Assert:
@@ -1229,7 +1228,7 @@ func (d *decoder) node(p *Node) semantic.Node {
 	if p == nil {
 		return nil
 	}
-	switch p := protoutil.OneOf(p).(type) {
+	switch p := p.Ty.(type) {
 	case *Node_Abort:
 		return d.abort(p.Abort)
 	case *Node_Annotation:
@@ -1347,7 +1346,7 @@ func (d *decoder) ty(p *Type) semantic.Type {
 	if p == nil {
 		return nil
 	}
-	switch p := protoutil.OneOf(p).(type) {
+	switch p := p.Ty.(type) {
 	case *Type_Builtin:
 		return d.builtin(p.Builtin)
 	case *Type_Class:
@@ -1715,7 +1714,7 @@ func (d *decoder) astNode(p *ASTNode) ast.Node {
 	if p == nil {
 		return nil
 	}
-	switch p := protoutil.OneOf(p).(type) {
+	switch p := p.Ty.(type) {
 	case *ASTNode_Abort:
 		return d.astAbort(p.Abort)
 	case *ASTNode_Annotation:
@@ -1910,7 +1909,7 @@ func (d *decoder) cstBranch(cstBranchID uint64) (out *cst.Branch) {
 }
 
 func (d *decoder) cstFragment(p *CSTFragment) cst.Fragment {
-	switch n := protoutil.OneOf(p).(type) {
+	switch n := p.Ty.(type) {
 	case *CSTFragment_Branch:
 		return d.cstBranch(n.Branch)
 	case *CSTFragment_Token:
@@ -1932,7 +1931,7 @@ func (d *decoder) cstLeaf(cstLeafID uint64) (out *cst.Leaf) {
 }
 
 func (d *decoder) cstNode(p *CSTNode) cst.Node {
-	switch n := protoutil.OneOf(p).(type) {
+	switch n := p.Ty.(type) {
 	case *CSTNode_Branch:
 		return d.cstBranch(n.Branch)
 	case *CSTNode_Leaf:
