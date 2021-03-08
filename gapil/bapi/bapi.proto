@@ -420,6 +420,7 @@ message Expression {
     uint64 clone = 9;              // Clone ID
     uint64 create = 10;            // Create ID
     uint64 definition = 11;        // Definition ID
+    uint64 definition_usage = 43;  // Definition Usage ID
     uint64 enum_entry = 12;        // EnumEntry ID
     uint64 field = 13;             // Field ID
     uint64 float32_value = 14;     // Float32Value ID

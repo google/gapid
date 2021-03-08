@@ -34,73 +34,74 @@ type decoder struct {
 }
 
 type decoderInstances struct {
-	API          []*semantic.API
-	Abort        []*semantic.Abort
-	Annotation   []*semantic.Annotation
-	ArrayAssign  []*semantic.ArrayAssign
-	ArrayIndex   []*semantic.ArrayIndex
-	ArrayInit    []*semantic.ArrayInitializer
-	Assert       []*semantic.Assert
-	Assign       []*semantic.Assign
-	BinaryOp     []*semantic.BinaryOp
-	BitTest      []*semantic.BitTest
-	Block        []*semantic.Block
-	Branch       []*semantic.Branch
-	Call         []*semantic.Call
-	Callable     []*semantic.Callable
-	Case         []*semantic.Case
-	Cast         []*semantic.Cast
-	Choice       []*semantic.Choice
-	Class        []*semantic.Class
-	ClassInit    []*semantic.ClassInitializer
-	Clone        []*semantic.Clone
-	Copy         []*semantic.Copy
-	Create       []*semantic.Create
-	DeclareLocal []*semantic.DeclareLocal
-	Definition   []*semantic.Definition
-	Enum         []*semantic.Enum
-	EnumEntry    []*semantic.EnumEntry
-	Fence        []*semantic.Fence
-	Field        []*semantic.Field
-	FieldInit    []*semantic.FieldInitializer
-	Function     []*semantic.Function
-	Global       []*semantic.Global
-	Ignore       []*semantic.Ignore
-	Iteration    []*semantic.Iteration
-	Length       []*semantic.Length
-	Local        []*semantic.Local
-	Make         []*semantic.Make
-	Map          []*semantic.Map
-	MapAssign    []*semantic.MapAssign
-	MapContains  []*semantic.MapContains
-	MapIndex     []*semantic.MapIndex
-	MapIteration []*semantic.MapIteration
-	MapRemove    []*semantic.MapRemove
-	MapClear     []*semantic.MapClear
-	Member       []*semantic.Member
-	MessageValue []*semantic.MessageValue
-	Observed     []*semantic.Observed
-	Parameter    []*semantic.Parameter
-	Pointer      []*semantic.Pointer
-	PointerRange []*semantic.PointerRange
-	Print        []*semantic.Print
-	Pseudonym    []*semantic.Pseudonym
-	Read         []*semantic.Read
-	Reference    []*semantic.Reference
-	Return       []*semantic.Return
-	Select       []*semantic.Select
-	Signature    []*semantic.Signature
-	Slice        []*semantic.Slice
-	SliceAssign  []*semantic.SliceAssign
-	SliceIndex   []*semantic.SliceIndex
-	SliceRange   []*semantic.SliceRange
-	Statement    []semantic.Statement
-	StaticArray  []*semantic.StaticArray
-	StringValue  []semantic.StringValue
-	Switch       []*semantic.Switch
-	UnaryOp      []*semantic.UnaryOp
-	Unknown      []*semantic.Unknown
-	Write        []*semantic.Write
+	API             []*semantic.API
+	Abort           []*semantic.Abort
+	Annotation      []*semantic.Annotation
+	ArrayAssign     []*semantic.ArrayAssign
+	ArrayIndex      []*semantic.ArrayIndex
+	ArrayInit       []*semantic.ArrayInitializer
+	Assert          []*semantic.Assert
+	Assign          []*semantic.Assign
+	BinaryOp        []*semantic.BinaryOp
+	BitTest         []*semantic.BitTest
+	Block           []*semantic.Block
+	Branch          []*semantic.Branch
+	Call            []*semantic.Call
+	Callable        []*semantic.Callable
+	Case            []*semantic.Case
+	Cast            []*semantic.Cast
+	Choice          []*semantic.Choice
+	Class           []*semantic.Class
+	ClassInit       []*semantic.ClassInitializer
+	Clone           []*semantic.Clone
+	Copy            []*semantic.Copy
+	Create          []*semantic.Create
+	DeclareLocal    []*semantic.DeclareLocal
+	Definition      []*semantic.Definition
+	DefinitionUsage []*semantic.DefinitionUsage
+	Enum            []*semantic.Enum
+	EnumEntry       []*semantic.EnumEntry
+	Fence           []*semantic.Fence
+	Field           []*semantic.Field
+	FieldInit       []*semantic.FieldInitializer
+	Function        []*semantic.Function
+	Global          []*semantic.Global
+	Ignore          []*semantic.Ignore
+	Iteration       []*semantic.Iteration
+	Length          []*semantic.Length
+	Local           []*semantic.Local
+	Make            []*semantic.Make
+	Map             []*semantic.Map
+	MapAssign       []*semantic.MapAssign
+	MapContains     []*semantic.MapContains
+	MapIndex        []*semantic.MapIndex
+	MapIteration    []*semantic.MapIteration
+	MapRemove       []*semantic.MapRemove
+	MapClear        []*semantic.MapClear
+	Member          []*semantic.Member
+	MessageValue    []*semantic.MessageValue
+	Observed        []*semantic.Observed
+	Parameter       []*semantic.Parameter
+	Pointer         []*semantic.Pointer
+	PointerRange    []*semantic.PointerRange
+	Print           []*semantic.Print
+	Pseudonym       []*semantic.Pseudonym
+	Read            []*semantic.Read
+	Reference       []*semantic.Reference
+	Return          []*semantic.Return
+	Select          []*semantic.Select
+	Signature       []*semantic.Signature
+	Slice           []*semantic.Slice
+	SliceAssign     []*semantic.SliceAssign
+	SliceIndex      []*semantic.SliceIndex
+	SliceRange      []*semantic.SliceRange
+	Statement       []semantic.Statement
+	StaticArray     []*semantic.StaticArray
+	StringValue     []semantic.StringValue
+	Switch          []*semantic.Switch
+	UnaryOp         []*semantic.UnaryOp
+	Unknown         []*semantic.Unknown
+	Write           []*semantic.Write
 
 	ASTAnnotation   []*ast.Annotation
 	ASTAbort        []*ast.Abort
@@ -556,6 +557,15 @@ func (d *decoder) definition(definitionID uint64) (out *semantic.Definition) {
 	return
 }
 
+func (d *decoder) definitionUsage(definitionUsageID uint64) (out *semantic.DefinitionUsage) {
+	d.build(d.content.Instances.DefinitionUsage, &d.inst.DefinitionUsage, definitionUsageID, &out,
+		func(p *DefinitionUsage, s *semantic.DefinitionUsage) {
+			s.Definition = d.definition(p.Definition)
+			s.Expression = d.expr(p.Expression)
+		})
+	return
+}
+
 func (d *decoder) docs(p *Documentation) semantic.Documentation {
 	s := semantic.Documentation{}
 	foreach(p.Strings, d.str, &s)
@@ -640,6 +650,8 @@ func (d *decoder) expr(exprID uint64) semantic.Expression {
 		return d.create(p.Create)
 	case *Expression_Definition:
 		return d.definition(p.Definition)
+	case *Expression_DefinitionUsage:
+		return d.definitionUsage(p.DefinitionUsage)
 	case *Expression_EnumEntry:
 		return d.enumEntry(p.EnumEntry)
 	case *Expression_Field:

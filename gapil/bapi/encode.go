@@ -818,7 +818,7 @@ func (e *encoder) expr(n semantic.Expression) (outID uint64) {
 		case *semantic.Definition:
 			p.Ty = &Expression_Definition{e.definition(n)}
 		case *semantic.DefinitionUsage:
-			p.Ty = &Expression_Definition{e.definitionUsage(n)}
+			p.Ty = &Expression_DefinitionUsage{e.definitionUsage(n)}
 		case *semantic.EnumEntry:
 			p.Ty = &Expression_EnumEntry{e.enumEntry(n)}
 		case *semantic.Field:
