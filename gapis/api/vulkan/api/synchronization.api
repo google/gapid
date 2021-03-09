@@ -63,10 +63,10 @@ cmd VkResult vkCreateFence(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -194,14 +194,14 @@ cmd VkResult vkCreateSemaphore(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
         case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: {
           ext := as!VkExportSemaphoreCreateInfo*(next.Ptr)[0]
           semaphoreObject.ExternalHandleTypeFlags = ext.handleTypes
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -282,10 +282,10 @@ cmd VkResult vkCreateEvent(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -537,10 +537,10 @@ sub void handleMemoryBarriersPNext(const VkMemoryBarrier* pBarriers, u32 count) 
       numPNext := numberOfPNext(b.pNext)
       next := MutableVoidPtr(as!void*(b.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -555,10 +555,10 @@ sub void handleBufferMemoryBarriersPNext(const VkBufferMemoryBarrier* pBarriers,
       numPNext := numberOfPNext(b.pNext)
       next := MutableVoidPtr(as!void*(b.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -573,10 +573,10 @@ sub void handleImageMemoryBarriersPNext(const VkImageMemoryBarrier* pBarriers, u
       numPNext := numberOfPNext(b.pNext)
       next := MutableVoidPtr(as!void*(b.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }

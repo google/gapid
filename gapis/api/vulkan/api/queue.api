@@ -104,10 +104,10 @@ cmd VkResult vkQueueSubmit(
       numPNext := numberOfPNext(info.pNext)
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch sType {
           case VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO: {
-            ext := as!VkDeviceGroupSubmitInfo*(next.Ptr)[0:1][0]
+            ext := as!VkDeviceGroupSubmitInfo*(next.Ptr)[0]
             waitsemaphoreindices := ext.pWaitSemaphoreDeviceIndices[0:ext.waitSemaphoreCount]
             for j in (0 .. ext.waitSemaphoreCount) {
               if waitsemaphoreindices[j] != 0 {
@@ -128,7 +128,7 @@ cmd VkResult vkQueueSubmit(
             }
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
     subm := Submission()
@@ -273,13 +273,13 @@ cmd VkResult vkQueueBindSparse(
       numPNext := numberOfPNext(info.pNext)
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch sType {
           case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
-            _ = as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
+            _ = as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0]
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
 

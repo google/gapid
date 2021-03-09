@@ -154,7 +154,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
           ext := as!VkPhysicalDeviceFeatures2*(next.Ptr)[0]
@@ -264,7 +264,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           // Ignore.
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -277,10 +277,10 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
       numPNext := numberOfPNext(queue_info.pNext)
       next := MutableVoidPtr(as!void*(queue_info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
 

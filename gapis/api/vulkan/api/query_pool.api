@@ -73,10 +73,10 @@ cmd VkResult vkCreateQueryPool(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 

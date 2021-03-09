@@ -75,10 +75,10 @@ cmd VkResult vkCreateFramebuffer(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   attachments := create_info.pAttachments[0:create_info.attachmentCount]
@@ -160,7 +160,7 @@ cmd VkResult vkCreateRenderPass(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO: {
           ext := as!VkRenderPassInputAttachmentAspectCreateInfo*(next.Ptr)[0]
@@ -183,7 +183,7 @@ cmd VkResult vkCreateRenderPass(
           }
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -346,10 +346,10 @@ cmd void vkCmdBeginRenderPass(
       numPNext := numberOfPNext(begin_info.pNext)
       next := MutableVoidPtr(as!void*(begin_info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch sType {
           case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: {
-            ext := as!VkDeviceGroupRenderPassBeginInfo*(next.Ptr)[0:1][0]
+            ext := as!VkDeviceGroupRenderPassBeginInfo*(next.Ptr)[0]
             args.DeviceGroupBeginInfo = new!DeviceGroupBeginInfo(
               DeviceMask: ext.deviceMask,
             )
@@ -359,7 +359,7 @@ cmd void vkCmdBeginRenderPass(
             }
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
 

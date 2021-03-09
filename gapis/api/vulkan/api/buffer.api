@@ -106,7 +106,7 @@ cmd VkResult vkCreateBuffer(
     numPNext := numberOfPNext(buffer_create_info.pNext)
     next := MutableVoidPtr(as!void*(buffer_create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
           ext := as!VkDedicatedAllocationBufferCreateInfoNV*(next.Ptr)[0]
@@ -119,7 +119,7 @@ cmd VkResult vkCreateBuffer(
           bufferInfo.ExternalHandleTypeFlags = ext.handleTypes
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -194,10 +194,10 @@ cmd VkResult vkCreateBufferView(
     numPNext := numberOfPNext(buffer_view_create_info.pNext)
     next := MutableVoidPtr(as!void*(buffer_view_create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   if !(buffer_view_create_info.buffer in Buffers) { vkErrorInvalidBuffer(buffer_view_create_info.buffer) }
@@ -317,10 +317,10 @@ sub void BindBufferMemory2(
         numPNext := numberOfPNext(info.pNext)
         next := MutableVoidPtr(as!void*(info.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch sType {
             case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO: {
-              ext := as!VkBindBufferMemoryDeviceGroupInfo*(next.Ptr)[0:1][0]
+              ext := as!VkBindBufferMemoryDeviceGroupInfo*(next.Ptr)[0]
               dg.Binding = new!DeviceGroupBinding()
               indices := ext.pDeviceIndices[0:ext.deviceIndexCount]
               for j in (0 .. ext.deviceIndexCount) {
@@ -328,7 +328,7 @@ sub void BindBufferMemory2(
               }
             }
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
       BindBufferMemory(info.buffer, info.memory, info.memoryOffset, dg.Binding)

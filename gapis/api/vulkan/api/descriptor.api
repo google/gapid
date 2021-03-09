@@ -71,10 +71,10 @@ cmd VkResult vkCreateDescriptorSetLayout(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   count := info.bindingCount
@@ -152,10 +152,10 @@ cmd VkResult vkCreateDescriptorPool(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   pool := new!DescriptorPoolObject(
@@ -266,10 +266,10 @@ cmd VkResult vkAllocateDescriptorSets(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   count := info.descriptorSetCount
@@ -554,10 +554,10 @@ cmd void vkUpdateDescriptorSets(
       numPNext := numberOfPNext(w.pNext)
       next := MutableVoidPtr(as!void*(w.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -570,10 +570,10 @@ cmd void vkUpdateDescriptorSets(
       numPNext := numberOfPNext(c.pNext)
       next := MutableVoidPtr(as!void*(c.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -967,10 +967,10 @@ sub void GetDescriptorSetLayoutSupport(
       as!const void*(info.pNext))
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   fence
@@ -983,10 +983,10 @@ sub void GetDescriptorSetLayoutSupport(
       as!const void*(support.pNext))
     next := MutableVoidPtr(as!void*(support.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 }

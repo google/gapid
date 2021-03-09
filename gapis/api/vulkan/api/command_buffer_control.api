@@ -63,10 +63,10 @@ cmd VkResult vkCreateCommandPool(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -390,10 +390,10 @@ cmd VkResult vkAllocateCommandBuffers(
     numPNext := numberOfPNext(allocateInfo.pNext)
     next := MutableVoidPtr(as!void*(allocateInfo.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   count := allocateInfo.commandBufferCount
@@ -462,16 +462,16 @@ cmd VkResult vkBeginCommandBuffer(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO: {
-          ext := as!VkDeviceGroupCommandBufferBeginInfo*(next.Ptr)[0:1][0]
+          ext := as!VkDeviceGroupCommandBufferBeginInfo*(next.Ptr)[0]
           begin.DeviceGroupBegin = new!DeviceGroupBegin(
             DeviceMask: ext.deviceMask,
           )
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -494,10 +494,10 @@ cmd VkResult vkBeginCommandBuffer(
         numPNext := numberOfPNext(inheritanceInfo.pNext)
         next := MutableVoidPtr(as!void*(inheritanceInfo.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
     }

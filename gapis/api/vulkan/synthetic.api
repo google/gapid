@@ -188,16 +188,16 @@ cmd VkResult ReplayCreateSwapchain(
     numPNext := numberOfPNext(createInfo.pNext)
     next := MutableVoidPtr(as!void*(createInfo.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT: {
-          ext := as!VirtualSwapchainPNext*(next.Ptr)[0:1][0]
+          ext := as!VirtualSwapchainPNext*(next.Ptr)[0]
           if ext.surfaceCreateInfo != null {
-            _ = as!VkStructureType*(ext.surfaceCreateInfo)[0:1][0]
+            _ = as!VkStructureType*(ext.surfaceCreateInfo)[0]
           }
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   create_info := pCreateInfo[0]

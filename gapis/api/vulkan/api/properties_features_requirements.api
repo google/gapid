@@ -346,7 +346,7 @@ sub void GetPhysicalDeviceFeatures2(
         as!const void*(features.pNext))
       next := MutableVoidPtr(as!void*(features.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch sType {
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
             _ = as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0]
@@ -385,7 +385,7 @@ sub void GetPhysicalDeviceFeatures2(
             _ = as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0]
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -398,7 +398,7 @@ sub void GetPhysicalDeviceFeatures2(
         as!const void*(newFeatures.pNext))
       next := MutableVoidPtr(as!void*(newFeatures.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch sType {
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
             write(as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0:1])
@@ -437,7 +437,7 @@ sub void GetPhysicalDeviceFeatures2(
             write(as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0:1])
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -491,7 +491,7 @@ sub void GetPhysicalDeviceImageFormatProperties2(
       numPNext := numberOfPNext(info.pNext)
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch sType {
           case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR: {
             ext := as!VkImageFormatListCreateInfoKHR*(next.Ptr)[0]
@@ -503,7 +503,7 @@ sub void GetPhysicalDeviceImageFormatProperties2(
             _ = as!VkPhysicalDeviceExternalImageFormatInfo*(next.Ptr)[0]
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -518,7 +518,7 @@ sub void GetPhysicalDeviceImageFormatProperties2(
     numPNext := numberOfPNext(as!const void*(props.pNext))
     next := MutableVoidPtr(props.pNext)
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
           _ = as!VkSamplerYcbcrConversionImageFormatProperties*(next.Ptr)[0]
@@ -554,7 +554,7 @@ sub void GetPhysicalDeviceProperties2(
       numPNext := numberOfPNext(as!const void*(props.pNext))
       next := MutableVoidPtr(as!void*(props.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch sType {
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
             _ = as!VkPhysicalDevicePointClippingProperties*(next.Ptr)[0]
@@ -581,7 +581,7 @@ sub void GetPhysicalDeviceProperties2(
             _ = as!VkPhysicalDeviceDriverPropertiesKHR*(next.Ptr)[0]
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -598,7 +598,7 @@ sub void GetPhysicalDeviceProperties2(
         numPNext := numberOfPNext(as!const void*(props.pNext))
         next := MutableVoidPtr(as!void*(props.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch sType {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
               ext := as!VkPhysicalDevicePointClippingProperties*(next.Ptr)[0]
@@ -692,7 +692,7 @@ sub void GetPhysicalDeviceProperties2(
               )
             }
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
     }
@@ -750,10 +750,10 @@ sub void GetPhysicalDeviceSparseImageFormatProperties2(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -836,10 +836,10 @@ sub void GetPhysicalDeviceExternalBufferProperties(
       numPNext := numberOfPNext(info.pNext)
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -854,10 +854,10 @@ sub void GetPhysicalDeviceExternalBufferProperties(
     numPNext := numberOfPNext(as!const void*(props.pNext))
     next := MutableVoidPtr(props.pNext)
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 }
@@ -887,10 +887,10 @@ sub void GetPhysicalDeviceExternalSemaphoreProperties(
       numPNext := numberOfPNext(info.pNext)
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -905,10 +905,10 @@ sub void GetPhysicalDeviceExternalSemaphoreProperties(
     numPNext := numberOfPNext(as!const void*(props.pNext))
     next := MutableVoidPtr(props.pNext)
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 }
@@ -938,10 +938,10 @@ sub void GetPhysicalDeviceExternalFenceProperties(
       numPNext := numberOfPNext(info.pNext)
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -956,10 +956,10 @@ sub void GetPhysicalDeviceExternalFenceProperties(
     numPNext := numberOfPNext(as!const void*(props.pNext))
     next := MutableVoidPtr(props.pNext)
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 }
@@ -1132,10 +1132,10 @@ sub void GetImageSparseMemoryRequirements2(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   if pSparseMemoryRequirementCount == null { vkErrorNullPointer("uint32_t") }

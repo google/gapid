@@ -97,24 +97,24 @@ cmd VkResult vkAllocateMemory(
     numPNext := numberOfPNext(allocateInfo.pNext)
     next := MutableVoidPtr(as!void*(allocateInfo.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
-          ext := as!VkDedicatedAllocationMemoryAllocateInfoNV*(next.Ptr)[0:1][0]
+          ext := as!VkDedicatedAllocationMemoryAllocateInfoNV*(next.Ptr)[0]
           memoryObject.DedicatedAllocationNV = new!MemoryDedicatedAllocationInfo(
             Image:   ext.image,
             Buffer:  ext.buffer,
           )
         }
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR: {
-          ext := as!VkMemoryDedicatedAllocationInfoKHR*(next.Ptr)[0:1][0]
+          ext := as!VkMemoryDedicatedAllocationInfoKHR*(next.Ptr)[0]
           memoryObject.DedicatedAllocationKHR = new!MemoryDedicatedAllocationInfo(
             Image:   ext.image,
             Buffer:  ext.buffer,
           )
         }
         case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: {
-          ext := as!VkMemoryAllocateFlagsInfo*(next.Ptr)[0:1][0]
+          ext := as!VkMemoryAllocateFlagsInfo*(next.Ptr)[0]
           memoryObject.MemoryAllocateFlagsInfo = new!MemoryAllocateFlagsInfo(
             Flags: ext.flags,
             DeviceMask: ext.deviceMask,
@@ -125,7 +125,7 @@ cmd VkResult vkAllocateMemory(
           memoryObject.ExternalHandleTypeFlags = ext.handleTypes
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -222,10 +222,10 @@ cmd VkResult vkFlushMappedMemoryRanges(
       numPNext := numberOfPNext(flushRange.pNext)
       next := MutableVoidPtr(as!void*(flushRange.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
 

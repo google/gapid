@@ -152,12 +152,12 @@ cmd VkResult vkCreateSwapchainKHR(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT: {
-          ext := as!VirtualSwapchainPNext*(next.Ptr)[0:1][0]
+          ext := as!VirtualSwapchainPNext*(next.Ptr)[0]
           if ext.surfaceCreateInfo != null {
-            _ = as!VkStructureType*(ext.surfaceCreateInfo)[0:1][0]
+            _ = as!VkStructureType*(ext.surfaceCreateInfo)[0]
           }
         }
         case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR: {
@@ -172,7 +172,7 @@ cmd VkResult vkCreateSwapchainKHR(
            swapchainObject.Info.ViewFormatList = ifl
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -334,7 +334,7 @@ cmd VkResult vkQueuePresentKHR(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
         case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE: {
           ext := as!VkPresentTimesInfoGOOGLE*(next.Ptr)[0]
@@ -348,7 +348,7 @@ cmd VkResult vkQueuePresentKHR(
         //   ext := as!VkDeviceGroupPresentInfoKHR*(next.Ptr)[0]
         // }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 

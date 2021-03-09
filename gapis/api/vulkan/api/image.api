@@ -203,7 +203,7 @@ cmd VkResult vkCreateImage(
     numPNext := numberOfPNext(info.pNext)
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
           ext := as!VkDedicatedAllocationImageCreateInfoNV*(next.Ptr)[0]
@@ -227,7 +227,7 @@ cmd VkResult vkCreateImage(
           imageInfo.ExternalHandleTypeFlags = ext.handleTypes
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -470,10 +470,10 @@ cmd VkResult vkCreateImageView(
     numPNext := numberOfPNext(image_view_create_info.pNext)
     next := MutableVoidPtr(as!void*(image_view_create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
-          ext := as!VkImageViewUsageCreateInfo*(next.Ptr)[0:1][0]
+          ext := as!VkImageViewUsageCreateInfo*(next.Ptr)[0]
           imageViewObject.UsageInfo = new!ImageViewUsageInfo(Usage: ext.usage)
         }
         case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
@@ -484,7 +484,7 @@ cmd VkResult vkCreateImageView(
           }
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -651,7 +651,7 @@ cmd VkResult vkCreateSampler(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch sType {
         case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
           ycbcrInfo := as!VkSamplerYcbcrConversionInfo*(next.Ptr)[0]
@@ -661,7 +661,7 @@ cmd VkResult vkCreateSampler(
           }
         }
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
   handle := ?
@@ -850,14 +850,14 @@ sub void BindImageMemory2(
         numPNext := numberOfPNext(info.pNext)
         next := MutableVoidPtr(as!void*(info.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch sType {
             case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
               ext := as!VkBindImagePlaneMemoryInfo*(next.Ptr)[0]
               p.aspect = ext.planeAspect
             }
             case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: {
-              ext := as!VkBindImageMemoryDeviceGroupInfo*(next.Ptr)[0:1][0]
+              ext := as!VkBindImageMemoryDeviceGroupInfo*(next.Ptr)[0]
               dg.Binding = new!ImageDeviceGroupBinding()
               indices := ext.pDeviceIndices[0:ext.deviceIndexCount]
               for j in (0 .. ext.deviceIndexCount) {
@@ -869,7 +869,7 @@ sub void BindImageMemory2(
               }
             }
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
       BindImageMemory(info.image, info.memory, info.memoryOffset, p.aspect, dg.Binding)

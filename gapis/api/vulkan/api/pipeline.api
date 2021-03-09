@@ -265,14 +265,14 @@ cmd VkResult vkCreateGraphicsPipelines(
       numPNext := numberOfPNext(create_info.pNext)
       next := MutableVoidPtr(as!void*(create_info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch(sType) {
           case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
             pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)
             read(pcfcie[0:1])
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
     obj.Flags = create_info.flags
@@ -288,10 +288,10 @@ cmd VkResult vkCreateGraphicsPipelines(
         numPNext := numberOfPNext(stage_create_info.pNext)
         next := MutableVoidPtr(as!void*(stage_create_info.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
       if !(stage_create_info.module in ShaderModules) { vkErrorInvalidShaderModule(stage_create_info.module) }
@@ -346,10 +346,10 @@ cmd VkResult vkCreateGraphicsPipelines(
       numPNext := numberOfPNext(vertex_input_state.pNext)
       next := MutableVoidPtr(as!void*(vertex_input_state.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
     for b in (0 .. vertex_input_state.vertexBindingDescriptionCount) {
@@ -373,10 +373,10 @@ cmd VkResult vkCreateGraphicsPipelines(
       numPNext := numberOfPNext(input_assembly_state.pNext)
       next := MutableVoidPtr(as!void*(input_assembly_state.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
 
@@ -390,7 +390,7 @@ cmd VkResult vkCreateGraphicsPipelines(
         numPNext := numberOfPNext(tessellation_state.pNext)
         next := MutableVoidPtr(as!void*(tessellation_state.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch sType {
             case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO: {
               ext := as!VkPipelineTessellationDomainOriginStateCreateInfo*(next.Ptr)[0]
@@ -398,7 +398,7 @@ cmd VkResult vkCreateGraphicsPipelines(
                 = new!TessellationDomainOriginState(DomainOrigin: ext.domainOrigin)
             }
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
     }
@@ -410,10 +410,10 @@ cmd VkResult vkCreateGraphicsPipelines(
         numPNext := numberOfPNext(pipeline_viewport_state_create_info.pNext)
         next := MutableVoidPtr(as!void*(pipeline_viewport_state_create_info.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
 
@@ -464,10 +464,10 @@ cmd VkResult vkCreateGraphicsPipelines(
       numPNext := numberOfPNext(rasterization_state.pNext)
       next := MutableVoidPtr(as!void*(rasterization_state.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
 
@@ -485,10 +485,10 @@ cmd VkResult vkCreateGraphicsPipelines(
         numPNext := numberOfPNext(multisample_state.pNext)
         next := MutableVoidPtr(as!void*(multisample_state.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
       if (multisample_state.pSampleMask != null) {
@@ -509,10 +509,10 @@ cmd VkResult vkCreateGraphicsPipelines(
         numPNext := numberOfPNext(depth_stencil_state.pNext)
         next := MutableVoidPtr(as!void*(depth_stencil_state.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
       obj.DepthState = new!DepthData(
@@ -538,10 +538,10 @@ cmd VkResult vkCreateGraphicsPipelines(
         numPNext := numberOfPNext(color_blend_state.pNext)
         next := MutableVoidPtr(as!void*(color_blend_state.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
       attachments := color_blend_state.pAttachments[0:
@@ -559,10 +559,10 @@ cmd VkResult vkCreateGraphicsPipelines(
         numPNext := numberOfPNext(dynamic_state_info.pNext)
         next := MutableVoidPtr(as!void*(dynamic_state_info.pNext))
         for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
           }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
       states := dynamic_state_info.pDynamicStates[0:
@@ -604,7 +604,7 @@ cmd VkResult vkCreateGraphicsPipelines(
       numPNext := numberOfPNext(create_info.pNext)
       next := MutableVoidPtr(as!void*(create_info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch(sType) {
           case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
             pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)[0]
@@ -612,7 +612,7 @@ cmd VkResult vkCreateGraphicsPipelines(
             write(pcfcie.pPipelineStageCreationFeedbacks[0:pcfcie.pipelineStageCreationFeedbackCount])
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -647,14 +647,14 @@ cmd VkResult vkCreateComputePipelines(
       numPNext := numberOfPNext(info.pNext)
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch(sType) {
           case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
             pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)
             read(pcfcie[0:1])
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
     obj := new!ComputePipelineObject(
@@ -669,10 +669,10 @@ cmd VkResult vkCreateComputePipelines(
       numPNext := numberOfPNext(stage_create_info.pNext)
       next := MutableVoidPtr(as!void*(stage_create_info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
 
@@ -737,7 +737,7 @@ cmd VkResult vkCreateComputePipelines(
       numPNext := numberOfPNext(create_info.pNext)
       next := MutableVoidPtr(as!void*(create_info.pNext))
       for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        sType := as!const VkStructureType*(next.Ptr)[0]
         switch(sType) {
           case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
             pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)[0]
@@ -745,7 +745,7 @@ cmd VkResult vkCreateComputePipelines(
             write(pcfcie.pPipelineStageCreationFeedbacks[0:pcfcie.pipelineStageCreationFeedbackCount])
           }
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
     }
   }
@@ -806,10 +806,10 @@ cmd VkResult vkCreateShaderModule(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
@@ -861,10 +861,10 @@ cmd VkResult vkCreatePipelineCache(
     numPNext := numberOfPNext(create_info.pNext)
     next := MutableVoidPtr(as!void*(create_info.pNext))
     for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
       }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
 
