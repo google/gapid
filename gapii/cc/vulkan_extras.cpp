@@ -700,7 +700,7 @@ gapil::Ref<DescriptorInfo> VulkanSpy::fetchUsedDescriptors(
 // the their function table to be created through the template system, so they
 // won't be defined here, but vk_spy_helpers.cpp.tmpl
 uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceLayerProperties(
-    uint32_t* pCount, VkLayerProperties* pProperties) {
+    CallObserver*, uint32_t* pCount, VkLayerProperties* pProperties) {
   if (pProperties == NULL) {
     *pCount = 1;
     return VkResult::VK_SUCCESS;
@@ -718,7 +718,8 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceLayerProperties(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceLayerProperties(
-    VkPhysicalDevice dev, uint32_t* pCount, VkLayerProperties* pProperties) {
+    CallObserver*, VkPhysicalDevice dev, uint32_t* pCount,
+    VkLayerProperties* pProperties) {
   if (pProperties == NULL) {
     *pCount = 1;
     return VkResult::VK_SUCCESS;
@@ -735,14 +736,14 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceLayerProperties(
   return VkResult::VK_SUCCESS;
 }
 uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceExtensionProperties(
-    const char* pLayerName, uint32_t* pCount,
+    CallObserver*, const char* pLayerName, uint32_t* pCount,
     VkExtensionProperties* pProperties) {
   *pCount = 0;
   return VkResult::VK_SUCCESS;
 }
 
 uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroups(
-    VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
+    CallObserver*, VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
     VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties) {
   auto inst_func_iter = mImports.mVkInstanceFunctions.find(instance);
   gapii::VulkanImports::PFNVKENUMERATEPHYSICALDEVICEGROUPS next =
@@ -761,7 +762,7 @@ uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroups(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroupsKHR(
-    VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
+    CallObserver*, VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
     VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties) {
   auto inst_func_iter = mImports.mVkInstanceFunctions.find(instance);
   gapii::VulkanImports::PFNVKENUMERATEPHYSICALDEVICEGROUPSKHR next =
@@ -780,8 +781,8 @@ uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroupsKHR(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
-    VkPhysicalDevice physicalDevice, const char* pLayerName, uint32_t* pCount,
-    VkExtensionProperties* pProperties) {
+    CallObserver*, VkPhysicalDevice physicalDevice, const char* pLayerName,
+    uint32_t* pCount, VkExtensionProperties* pProperties) {
   gapii::VulkanImports::PFNVKENUMERATEDEVICEEXTENSIONPROPERTIES
       next_layer_enumerate_extensions = NULL;
   auto phy_dev_iter = mState.PhysicalDevices.find(physicalDevice);
@@ -864,7 +865,8 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
 }
 
 void VulkanSpy::SpyOverride_vkDestroyInstance(
-    VkInstance instance, const VkAllocationCallbacks* pAllocator) {
+    CallObserver*, VkInstance instance,
+    const VkAllocationCallbacks* pAllocator) {
   // First we have to find the function to chain to, then we have to
   // remove this instance from our list, then we forward the call.
   auto it = mImports.mVkInstanceFunctions.find(instance);
@@ -879,7 +881,7 @@ void VulkanSpy::SpyOverride_vkDestroyInstance(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
-    VkDevice device, const VkBufferCreateInfo* pCreateInfo,
+    CallObserver*, VkDevice device, const VkBufferCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
   if (is_suspended()) {
     VkBufferCreateInfo override_create_info = *pCreateInfo;
@@ -896,7 +898,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
 // SpyOverride_vkCreateImage adds the TRANSFER_SRC_BIT to images such that we
 // can retrieve them when we serialize the initial state.
 uint32_t VulkanSpy::SpyOverride_vkCreateImage(
-    VkDevice device, const VkImageCreateInfo* pCreateInfo,
+    CallObserver*, VkDevice device, const VkImageCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkImage* pImage) {
   VkImageCreateInfo override_create_info = *pCreateInfo;
   // TODO(b/148857112): do not set TRANSFER_SRC_BIT on images with
@@ -909,7 +911,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateImage(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateSwapchainKHR(
-    VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
+    CallObserver*, VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pImage) {
   if (is_observing() || is_suspended()) {
     VkSwapchainCreateInfoKHR override_create_info = *pCreateInfo;
@@ -924,7 +926,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateSwapchainKHR(
 }
 
 void VulkanSpy::SpyOverride_vkDestroyDevice(
-    VkDevice device, const VkAllocationCallbacks* pAllocator) {
+    CallObserver*, VkDevice device, const VkAllocationCallbacks* pAllocator) {
   // First we have to find the function to chain to, then we have to
   // remove this instance from our list, then we forward the call.
   auto it = mImports.mVkDeviceFunctions.find(device);
@@ -938,7 +940,7 @@ void VulkanSpy::SpyOverride_vkDestroyDevice(
 }
 
 uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(
-    VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo,
+    CallObserver*, VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo,
     const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
   uint32_t r = mImports.mVkDeviceFunctions[device].vkAllocateMemory(
       device, pAllocateInfo, pAllocator, pMemory);

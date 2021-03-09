@@ -233,7 +233,7 @@
         {{if not (GetAnnotation $ "synthetic")}}
           {{if not (IsVoid $.Return.Type)}}result = §{{end}}
           {{if (GetAnnotation $ "override")}}
-            SpyOverride_{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
+            SpyOverride_{{Template "CmdName" $}}(observer, {{Template "C++.CallArguments" $}});
           {{else if (GetAnnotation $ "indirect")}}
             {{Template "GetIndirectedCall" "Annotations" (GetAnnotation $ "indirect").Arguments "Element" ((index $.CallParameters 0).Name) "Function" (Macro "CmdName" $)}}({{Template "C++.CallArguments" $}});
           {{else}}
