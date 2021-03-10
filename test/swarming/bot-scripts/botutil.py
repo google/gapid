@@ -29,7 +29,8 @@ def log(msg):
 
 
 def runcmd(cmd):
-    '''Run a command, redirecting output to the system stdout and stderr.'''
+    '''Log and run a command, redirecting output to the system stdout and stderr.'''
+    print('Run command: ' + ' '.join(cmd), flush=True)
     return subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
 
 
