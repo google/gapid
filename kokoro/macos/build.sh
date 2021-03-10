@@ -18,13 +18,14 @@ set -ex
 
 BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
+CURL="curl -fksLS --http1.1 --retry 3"
 
 # Setup the Android SDK and NDK
-curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
+$CURL -O https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
 echo y | ./android/tools/bin/sdkmanager build-tools\;29.0.2 platforms\;android-26
-curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.zip
+$CURL -O https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.zip
 unzip -q android-ndk-r21d-darwin-x86_64.zip -d android
 export ANDROID_HOME=$PWD/android
 export ANDROID_NDK_HOME=$PWD/android/android-ndk-r21d
@@ -34,19 +35,19 @@ JDK_BUILD=zulu8.46.0.19-ca
 JDK_VERSION=8.0.252
 JDK_NAME=$JDK_BUILD-jdk$JDK_VERSION-macosx_x64
 JRE_NAME=$JDK_BUILD-jre$JDK_VERSION-macosx_x64
-curl -L -k -O -s https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JDK_NAME.zip
+$CURL -O https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JDK_NAME.zip
 echo "c7ef75d36a1cf0a30c6ea3fdeadd780dd55cafeb120de6dce4a469f91e435cba  $JDK_NAME.zip" | shasum --check
 unzip -q $JDK_NAME.zip
 export JAVA_HOME=$PWD/$JDK_NAME/zulu-8.jdk/Contents/Home
 
-curl -L -k -O -s https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JRE_NAME.zip
+$CURL -O https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JRE_NAME.zip
 echo "b84ac76e7126f60fa4120c331a5dfb12a461286ac3b91e77fa1ce7352bf6f54a  $JRE_NAME.zip" | shasum --check
 unzip -q $JRE_NAME.zip
 export JRE_HOME=$PWD/$JRE_NAME/zulu-8.jre/Contents/Home
 
 # Get bazel.
 BAZEL_VERSION=2.0.0
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh
+$CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh
 mkdir bazel
 sh bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 

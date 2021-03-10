@@ -18,10 +18,11 @@ set -ex
 
 BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
+CURL="curl -fksLS --http1.1 --retry 3"
 
 # Get bazel.
 BAZEL_VERSION=2.0.0
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
+$CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
@@ -33,7 +34,7 @@ sudo apt-get -qy install gcc-8 g++-8
 export CC=/usr/bin/gcc-8
 
 # Get the Android NDK
-curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
+$CURL -O https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
 unzip -q android-ndk-r21d-linux-x86_64.zip
 export ANDROID_NDK_HOME=$PWD/android-ndk-r21d
 
@@ -44,7 +45,7 @@ echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
 JDK_BUILD=zulu8.46.0.19-ca
 JDK_VERSION=8.0.252
 JDK_NAME=$JDK_BUILD-jdk$JDK_VERSION-linux_x64
-curl -L -k -O -s https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JDK_NAME.zip
+$CURL -O https://storage.googleapis.com/jdk-mirror/$JDK_BUILD/$JDK_NAME.zip
 echo "ab9df193a482152ec9b7d5f37cc07637190e623efe5aaba240f0f4c2239d1046  $JDK_NAME.zip" | sha256sum --check
 unzip -q $JDK_NAME.zip
 export JAVA_HOME=$PWD/$JDK_NAME
@@ -168,7 +169,7 @@ sudo apt-get -qy install libvulkan1 xvfb
 # Get prebuilt SwiftShader.
 # This is the latest commit at the time of writing.
 # Should be updated periodically.
-curl -fsSL -o swiftshader.zip https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F0bbf7ba9f909092f0328b1d519d5f7db1773be57/gfbuild-swiftshader-0bbf7ba9f909092f0328b1d519d5f7db1773be57-Linux_x64_Debug.zip
+$CURL -o swiftshader.zip https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F0bbf7ba9f909092f0328b1d519d5f7db1773be57/gfbuild-swiftshader-0bbf7ba9f909092f0328b1d519d5f7db1773be57-Linux_x64_Debug.zip
 unzip -d swiftshader swiftshader.zip
 
 # Use SwiftShader.

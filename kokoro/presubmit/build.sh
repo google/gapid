@@ -18,10 +18,11 @@ set -ex
 
 BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
+CURL="curl -fksLS --http1.1 --retry 3"
 
 # Get bazel.
 BAZEL_VERSION=2.0.0
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
+$CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
@@ -34,7 +35,8 @@ go get github.com/bazelbuild/buildtools/buildifier github.com/bazelbuild/buildto
 sudo rm /etc/apt/sources.list.d/cuda.list*
 sudo add-apt-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
 sudo add-apt-repository "deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu trusty main"
-curl -L -k -s https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+$CURL -O https://apt.llvm.org/llvm-snapshot.gpg.key
+sudo apt-key add llvm-snapshot.gpg.key
 sudo apt-get update
 sudo apt-get install -y clang-format-6.0
 
