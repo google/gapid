@@ -104,14 +104,20 @@ go_stripped_binary(
     name = "gapit",
     data = [
         "//cmd/gapis",
-        "//core/vulkan/vk_api_timing_layer/cc:libVkLayer_CPUTiming",
-        "//core/vulkan/vk_memory_tracker_layer/cc:libVkLayer_MemoryTracker",
         "//core/vulkan/vk_virtual_swapchain/cc:json",
         "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
         "//gapii/cc:libgapii",
         "//gapii/vulkan/vk_graphics_spy/cc:json",
         "//gapis/messages:stb",
-    ],
+    ] + select({
+        "@gapid//tools/build:linux": [
+            "//core/vulkan/vk_api_timing_layer/cc:json",
+            "//core/vulkan/vk_api_timing_layer/cc:libVkLayer_CPUTiming",
+            "//core/vulkan/vk_memory_tracker_layer/cc:json",
+            "//core/vulkan/vk_memory_tracker_layer/cc:libVkLayer_MemoryTracker",
+        ],
+        "//conditions:default": [],
+    }),
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )

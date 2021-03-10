@@ -195,16 +195,10 @@ copy_to(
         "@gapid//tools/build:linux": [
             "//core/vulkan/vk_api_timing_layer/cc:json",
             "//core/vulkan/vk_api_timing_layer/cc:libVkLayer_CPUTiming",
-        ],
-        "//conditions:default": [
-        ],
-    }) + select({
-        "@gapid//tools/build:linux": [
             "//core/vulkan/vk_memory_tracker_layer/cc:json",
             "//core/vulkan/vk_memory_tracker_layer/cc:libVkLayer_MemoryTracker",
         ],
-        "//conditions:default": [
-        ],
+        "//conditions:default": [],
     }),
     rename = {
         "gapic_deploy.jar": "gapic.jar",
