@@ -21,22 +21,11 @@
 //
 // As this extension won't be defined by Khronos vulkan headers, use this:
 //
-// typedef void (VKAPI_PTR *PFN_vkFrameBoundaryANDROID)(VkDevice device, VkSemaphore semaphore, VkImage image, AHardwareBuffer* buffer);
+// typedef void (VKAPI_PTR *PFN_vkFrameBoundaryANDROID)(VkDevice device, VkSemaphore semaphore, VkImage image);
 //
 // Make sure to load this function only when the device supports
 // "VK_ANDROID_frame_boundary", this support will be present only when AGI's
 // spy vulkan layer is present (i.e., when AGI traces the app).
-
-/////////////
-// Structs //
-/////////////
-
-// TODO: In due time, this will be declared in the implementation of
-// VK_ANDROID_external_memory_android_hardware_buffer
-@platform("VK_USE_PLATFORM_ANDROID_KHR")
-@extension("VK_ANDROID_external_memory_android_hardware_buffer")
-@forwarddecl
-class AHardwareBuffer {}
 
 //////////////
 // Commands //
@@ -50,8 +39,7 @@ class AHardwareBuffer {}
 cmd void vkFrameBoundaryANDROID(
     VkDevice                device,
     VkSemaphore             semaphore,
-    VkImage                 image,
-    AHardwareBuffer*        buffer) {
+    VkImage                 image) {
 
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(semaphore in Semaphores) { vkErrorInvalidSemaphore(semaphore) }

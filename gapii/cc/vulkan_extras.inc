@@ -162,5 +162,4 @@ void parseShaderModule(
 // the next layer/ICD implementation of that function.
 void SpyOverride_vkFrameBoundaryANDROID(VkDevice device,
                                         VkSemaphore semaphore,
-                                        VkImage image,
-                                        AHardwareBuffer* buffer) {}
+                                        VkImage image) {}
