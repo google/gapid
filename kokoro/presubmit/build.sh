@@ -23,6 +23,7 @@ CURL="curl -fksLS --http1.1 --retry 3"
 # Get bazel.
 BAZEL_VERSION=2.0.0
 $CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
+echo "2fbdc9c0e3d376697caf0ee3673b7c9475214068c55a01b9744891e131f90b87  bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh" | sha256sum --check
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
@@ -36,6 +37,7 @@ sudo rm /etc/apt/sources.list.d/cuda.list*
 sudo add-apt-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
 sudo add-apt-repository "deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu trusty main"
 $CURL -O https://apt.llvm.org/llvm-snapshot.gpg.key
+echo "ce6eee4130298f79b0e0f09a89f93c1bc711cd68e7e3182d37c8e96c5227e2f0  llvm-snapshot.gpg.key" | sha256sum --check
 sudo apt-key add llvm-snapshot.gpg.key
 sudo apt-get update
 sudo apt-get install -y clang-format-6.0

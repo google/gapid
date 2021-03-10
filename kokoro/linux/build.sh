@@ -23,6 +23,7 @@ CURL="curl -fksLS --http1.1 --retry 3"
 # Get bazel.
 BAZEL_VERSION=2.0.0
 $CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
+echo "2fbdc9c0e3d376697caf0ee3673b7c9475214068c55a01b9744891e131f90b87  bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh" | sha256sum --check
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
@@ -35,6 +36,7 @@ export CC=/usr/bin/gcc-8
 
 # Get the Android NDK
 $CURL -O https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
+echo "dd6dc090b6e2580206c64bcee499bc16509a5d017c6952dcd2bed9072af67cbd  android-ndk-r21d-linux-x86_64.zip" | sha256sum --check
 unzip -q android-ndk-r21d-linux-x86_64.zip
 export ANDROID_NDK_HOME=$PWD/android-ndk-r21d
 
@@ -170,6 +172,7 @@ sudo apt-get -qy install libvulkan1 xvfb
 # This is the latest commit at the time of writing.
 # Should be updated periodically.
 $CURL -o swiftshader.zip https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F0bbf7ba9f909092f0328b1d519d5f7db1773be57/gfbuild-swiftshader-0bbf7ba9f909092f0328b1d519d5f7db1773be57-Linux_x64_Debug.zip
+echo "0b9fc77c469da6f047df6bf2b9103350551c93cde21eee5d51013c1cda046619  swiftshader.zip" | sha256sum --check
 unzip -d swiftshader swiftshader.zip
 
 # Use SwiftShader.

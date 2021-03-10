@@ -22,10 +22,12 @@ CURL="curl -fksLS --http1.1 --retry 3"
 
 # Setup the Android SDK and NDK
 $CURL -O https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
+echo "593544d4ca7ab162705d0032fb0c0c88e75bd0f42412d09a1e8daa3394681dc6  tools_r25.2.3-macosx.zip" | shasum --check
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
 echo y | ./android/tools/bin/sdkmanager build-tools\;29.0.2 platforms\;android-26
 $CURL -O https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.zip
+echo "5851115c6fc4cce26bc320295b52da240665d7ff89bda2f5d5af1887582f5c48  android-ndk-r21d-darwin-x86_64.zip" | shasum --check
 unzip -q android-ndk-r21d-darwin-x86_64.zip -d android
 export ANDROID_HOME=$PWD/android
 export ANDROID_NDK_HOME=$PWD/android/android-ndk-r21d
@@ -48,6 +50,7 @@ export JRE_HOME=$PWD/$JRE_NAME/zulu-8.jre/Contents/Home
 # Get bazel.
 BAZEL_VERSION=2.0.0
 $CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh
+echo "c675fa27d99a3114d681db10eb03ded547c40f702b2048c99b8f4ea8e89b9356  bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh" | shasum --check
 mkdir bazel
 sh bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 
