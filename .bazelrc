@@ -41,6 +41,8 @@ build --define gotags=analytics,crashreporting
 # Disable c-ares for grpc.
 build --define grpc_no_ares=true
 
+build --features=-debug_prefix_map_pwd_is_dot
+
 # Config used by the build servers to dump symbols.
 build:symbols --copt="-g"
 

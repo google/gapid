@@ -20,8 +20,8 @@ cc_toolchain_suite(
     name = "toolchain",
     # target_cpu | compiler
     toolchains = {
-        "x64_windows|mingw": "cc-compiler-mingw",
-        "x64_windows": "cc-compiler-mingw",
+        "x64_windows|mingw": "cc-compiler-x64_windows",
+        "x64_windows": "cc-compiler-x64_windows",
     },
 )
 
@@ -30,7 +30,7 @@ cc_toolchain_config(
 )
 
 cc_toolchain(
-    name = "cc-compiler-mingw",
+    name = "cc-compiler-x64_windows",
     all_files = ":empty",
     compiler_files = ":empty",
     dwp_files = ":empty",
@@ -39,12 +39,6 @@ cc_toolchain(
     strip_files = ":empty",
     supports_param_files = 1,
     toolchain_config = ":cc-config",
-)
-
-toolchain(
-    name = "cc-toolchain-mingw",
-    toolchain = ":cc-compiler-mingw",
-    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
 )
 
 filegroup(

@@ -1,6 +1,6 @@
 # Building Android GPU Inspector
 
-AGI uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **2.0.0**.
+AGI uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **4.2.0**.
 
 Bazel is able to fetch most of the dependencies required to build AGI, but currently the Android SDK and NDK both need to be downloaded and installed by hand.
 
@@ -153,7 +153,7 @@ tools/bin/sdkmanager platform-tools
 ```
 
 Install
-[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.dmg) (installing the App Bundle is needed in order to keep the notarization) 
+[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-darwin-x86_64.dmg) (installing the App Bundle is needed in order to keep the notarization)
 into the /Applications/ folder, and set the `ANDROID_NDK_HOME` environment pointing to NDK subdirectory:
 
 ```

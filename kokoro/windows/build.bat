@@ -90,8 +90,9 @@ unzip -q %JRE_NAME%.zip
 set JRE_HOME=%CD%\%JRE_NAME%
 
 REM Install Bazel.
-set BAZEL_VERSION=2.0.0
+set BAZEL_VERSION=4.2.0
 wget -q https://github.com/bazelbuild/bazel/releases/download/%BAZEL_VERSION%/bazel-%BAZEL_VERSION%-windows-x86_64.zip
+echo | set /p dummy="56c29f850677a7aaf9b59cbd762d0d41d9f9e158bf96c5b6022af123fd52db7f bazel-%BAZEL_VERSION%-windows-x86_64.zip" | sha256sum --check || exit /b 1
 unzip -q bazel-%BAZEL_VERSION%-windows-x86_64.zip
 set PATH=C:\python35;%PATH%
 

@@ -15,9 +15,10 @@
 # Automatically configures the CC toolchain. This is adapted from
 # Bazel's cc_configure, but will use mingw on Windows.
 
-load("@bazel_tools//tools/cpp:lib_cc_configure.bzl", "get_cpu_value")
+load("@bazel_tools//tools/cpp:lib_cc_configure.bzl", "get_cpu_value", "resolve_labels")
 load("@bazel_tools//tools/cpp:osx_cc_configure.bzl", "configure_osx_toolchain")
 load("@bazel_tools//tools/cpp:unix_cc_configure.bzl", "configure_unix_toolchain")
+load("@bazel_tools//tools/osx:xcode_configure.bzl", "run_xcode_locator")
 
 def _find_cc(repository_ctx):
     cc = repository_ctx.os.environ.get("CC")
@@ -82,36 +83,106 @@ def _configure_windows_toolchain(repository_ctx):
         ]),
     }, executable = False)
 
-def _configure_toolchain_impl(repository_ctx):
+def _generate_cpp_only_build_file(repository_ctx, cpu_value, paths):
+    repository_ctx.template(
+        "BUILD",
+        paths["@bazel_tools//tools/cpp:BUILD.toolchains.tpl"],
+        {"%{name}": cpu_value},
+    )
+
+def _cc_autoconf_toolchains_impl(repository_ctx):
+    paths = resolve_labels(repository_ctx, [
+        "@bazel_tools//tools/cpp:BUILD.toolchains.tpl",
+        "@bazel_tools//tools/osx/crosstool:BUILD.toolchains",
+        "@bazel_tools//tools/osx/crosstool:osx_archs.bzl",
+        "@bazel_tools//tools/osx:xcode_locator.m",
+    ])
+    cpu_value = get_cpu_value(repository_ctx)
+
+    should_detect_cpp_toolchain = True
+    should_use_cpp_only_toolchain = False
+    should_use_xcode = False
+
+    if cpu_value.startswith("darwin"):
+        (xcode_toolchains, _xcodeloc_err) = run_xcode_locator(
+            repository_ctx,
+            paths["@bazel_tools//tools/osx:xcode_locator.m"],
+        )
+        if xcode_toolchains:
+            repository_ctx.symlink(paths["@bazel_tools//tools/osx/crosstool:BUILD.toolchains"], "BUILD")
+            repository_ctx.symlink(paths["@bazel_tools//tools/osx/crosstool:osx_archs.bzl"], "osx_archs.bzl")
+        else:
+            _generate_cpp_only_build_file(repository_ctx, cpu_value, paths)
+    else:
+        _generate_cpp_only_build_file(repository_ctx, cpu_value, paths)
+
+_cc_autoconf_toolchains = repository_rule(
+    implementation = _cc_autoconf_toolchains_impl,
+    configure = True,
+)
+
+def _cc_autoconf_impl(repository_ctx):
   cpu_value = get_cpu_value(repository_ctx)
   if cpu_value == "x64_windows":
     _configure_windows_toolchain(repository_ctx)
   elif cpu_value == "darwin":
-    configure_osx_toolchain(repository_ctx, {})
+    configure_osx_toolchain(repository_ctx, cpu_value, {})
   else:
     configure_unix_toolchain(repository_ctx, cpu_value, {})
 
-_configure_toolchain = repository_rule(
-    implementation = _configure_toolchain_impl,
+MSVC_ENVVARS = [
+    "BAZEL_VC",
+    "BAZEL_VC_FULL_VERSION",
+    "BAZEL_VS",
+    "BAZEL_WINSDK_FULL_VERSION",
+    "VS90COMNTOOLS",
+    "VS100COMNTOOLS",
+    "VS110COMNTOOLS",
+    "VS120COMNTOOLS",
+    "VS140COMNTOOLS",
+    "VS150COMNTOOLS",
+    "VS160COMNTOOLS",
+    "TMP",
+    "TEMP",
+]
+
+_cc_autoconf = repository_rule(
     environ = [
         "ABI_LIBC_VERSION",
         "ABI_VERSION",
         "BAZEL_COMPILER",
         "BAZEL_HOST_SYSTEM",
+        "BAZEL_CXXOPTS",
+        "BAZEL_LINKOPTS",
+        "BAZEL_LINKLIBS",
+        "BAZEL_LLVM_COV",
         "BAZEL_PYTHON",
         "BAZEL_SH",
         "BAZEL_TARGET_CPU",
         "BAZEL_TARGET_LIBC",
         "BAZEL_TARGET_SYSTEM",
+        "BAZEL_USE_LLVM_NATIVE_COVERAGE",
+        "BAZEL_LLVM",
+        "BAZEL_IGNORE_SYSTEM_HEADERS_VERSIONS",
+        "USE_CLANG_CL",
         "CC",
         "CC_CONFIGURE_DEBUG",
         "CC_TOOLCHAIN_NAME",
+        "CPLUS_INCLUDE_PATH",
+        "DEVELOPER_DIR",
+        "GCOV",
+        "HOMEBREW_RUBY_PATH",
         "SYSTEMROOT",
-    ])
+        "USER",
+    ] + MSVC_ENVVARS,
+    implementation = _cc_autoconf_impl,
+    configure = True,
+)
 
 def cc_configure():
-  _configure_toolchain(name = "local_config_cc")
-  native.bind(name = "cc_toolchain", actual = "@local_config_cc//:toolchain")
-  native.register_toolchains(
-    "@local_config_cc//:all",
-  )
+    _cc_autoconf_toolchains(name = "local_config_cc_toolchains")
+    _cc_autoconf(name = "local_config_cc")
+    native.bind(name = "cc_toolchain", actual = "@local_config_cc//:toolchain")
+    native.register_toolchains(
+        "@local_config_cc_toolchains//:all",
+    )

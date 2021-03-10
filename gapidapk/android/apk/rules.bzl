@@ -21,7 +21,7 @@ def _strip_impl(ctx):
     if cc_toolchain.cpu == ctx.attr.abi:
         out = ctx.actions.declare_file("lib/{}/{}".format(ctx.attr.abi, ctx.file.lib.basename))
         ctx.actions.run(
-            executable = cc_toolchain.strip_executable(),
+            executable = cc_toolchain.strip_executable,
             arguments = ["--strip-unneeded", "-o", out.path, ctx.file.lib.path],
             inputs = [ctx.file.lib] + ctx.files._ndk,
             outputs = [out],

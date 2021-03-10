@@ -20,10 +20,10 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
 CURL="curl -fksLS --http1.1 --retry 3"
 
-# Get bazel
-BAZEL_VERSION=2.0.0
+# Get bazel.
+BAZEL_VERSION=4.2.0
 $CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
-echo "2fbdc9c0e3d376697caf0ee3673b7c9475214068c55a01b9744891e131f90b87  bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh" | sha256sum --check
+echo "396d7031134889647351b9caf947811ecee5c2c1c5772e01b0916439067667fd  bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh" | sha256sum --check
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 

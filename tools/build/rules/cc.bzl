@@ -60,7 +60,7 @@ def _strip_impl(ctx):
         fail("Unhandled CPU type in strip rule: " + cc_toolchain.cpu)
 
     ctx.actions.run(
-        executable = cc_toolchain.strip_executable(),
+        executable = cc_toolchain.strip_executable,
         arguments = flags + ["-o", out.path, src.path],
         inputs = [src],
         outputs = [out],
