@@ -48,6 +48,10 @@ def main():
     assert os.path.isdir('agi')
     agi_dir = os.path.abspath('agi')
 
+    #### Print AGI build properties (AGI version, build commit SHA)
+    cmd = ['cat', os.path.join(agi_dir, 'build.properties')]
+    botutil.runcmd(cmd)
+
     #### Check test parameters
     test_params = {}
     params_file = os.path.join(test_dir, 'params.json')
