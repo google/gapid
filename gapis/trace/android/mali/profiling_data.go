@@ -120,7 +120,8 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 	slicesColumns := slicesQueryResult.GetColumns()
 	numSliceRows := slicesQueryResult.GetNumRecords()
 	slices := make([]*service.ProfilingData_GpuSlices_Slice, numSliceRows)
-	groupsMap := map[api.CmdSubmissionKey]*service.ProfilingData_GpuSlices_Group{}
+	groupParentLookup := map[api.CmdSubmissionKey]*service.ProfilingData_GpuSlices_Group{}
+	groups := make([]*service.ProfilingData_GpuSlices_Group, 0)
 	groupIds := make([]int32, numSliceRows)
 	var tracks []*service.ProfilingData_GpuSlices_Track
 	// Grab all the column values. Depends on the order of columns selected in slicesQuery
@@ -151,35 +152,31 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 
 	for i, v := range submissionIds {
 		subOrder, ok := submissionOrdering[v]
-		groupId := int32(-1)
 		if ok {
 			cb := uint64(commandBuffers[i])
 			key := api.CmdSubmissionKey{subOrder, cb, uint64(renderPasses[i]), uint64(renderTargets[i])}
-			if names[i] == "vertex" || names[i] == "fragment" {
-				if group, ok := groupsMap[key]; ok {
-					groupId = group.Id
-				} else if indices, ok := syncData.SubmissionIndices[key]; ok {
-					parent := utils.FindParentGroup(ctx, subOrder, cb, groupsMap, syncData.SubmissionIndices, capture)
-					groupId = int32(len(groupsMap))
-					group := &service.ProfilingData_GpuSlices_Group{
-						Id:     groupId,
-						Name:   fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(renderPasses[i]), uint64(renderTargets[i])),
-						Parent: parent,
-						Link:   &path.Command{Capture: capture, Indices: indices[0]},
-					}
-					groupsMap[key] = group
-					names[i] = fmt.Sprintf("%v %v", groupsMap[key].Link.Indices, names[i])
+			// Create a new group for each main renderPass slice.
+			if indices, ok := syncData.SubmissionIndices[key]; ok && (names[i] == "vertex" || names[i] == "fragment") {
+				parent := utils.FindParentGroup(ctx, subOrder, cb, groupParentLookup, &groups, syncData.SubmissionIndices, capture)
+				group := &service.ProfilingData_GpuSlices_Group{
+					Id:     int32(len(groups)),
+					Name:   fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(renderPasses[i]), uint64(renderTargets[i])),
+					Parent: parent,
+					Link:   &path.Command{Capture: capture, Indices: indices[0]},
 				}
+				groups = append(groups, group)
+				names[i] = fmt.Sprintf("%v %v", indices[0], names[i])
 			}
 		} else {
 			log.W(ctx, "Encountered submission ID mismatch %v", v)
 		}
-
-		groupIds[i] = groupId
-	}
-	groups := []*service.ProfilingData_GpuSlices_Group{}
-	for _, group := range groupsMap {
-		groups = append(groups, group)
+		// Find the group that the current slice belongs to and mark down group id.
+		if len(groups) > 0 {
+			groupIds[i] = groups[len(groups)-1].Id // Slices were sorted by time.
+		} else {
+			groupIds[i] = -1
+			log.W(ctx, "Group missing for slice %v at submission %v, commandBuffer %v, renderPass %v, renderTarget %v", names[i], submissionIds[i], commandBuffers[i], renderPasses[i], renderTargets[i])
+		}
 	}
 
 	for i := uint64(0); i < numSliceRows; i++ {

@@ -26,32 +26,34 @@ import (
 // Helper function in the process of grouping GPU slices.
 // For a renderPass leafy group, find its parent group and return it.
 // If the parent groups are not created yet, create them and store them in map.
-func FindParentGroup(ctx context.Context, subOrder, cb uint64, groupsMap map[api.CmdSubmissionKey]*service.ProfilingData_GpuSlices_Group, links map[api.CmdSubmissionKey][]api.SubCmdIdx, capture *path.Capture) *service.ProfilingData_GpuSlices_Group {
+func FindParentGroup(ctx context.Context, subOrder, cb uint64, parentLookup map[api.CmdSubmissionKey]*service.ProfilingData_GpuSlices_Group, groups *[]*service.ProfilingData_GpuSlices_Group, links map[api.CmdSubmissionKey][]api.SubCmdIdx, capture *path.Capture) *service.ProfilingData_GpuSlices_Group {
 	commandBufferKey := api.CmdSubmissionKey{subOrder, cb, 0, 0}
-	if group, ok := groupsMap[commandBufferKey]; ok {
+	if group, ok := parentLookup[commandBufferKey]; ok {
 		return group
 	} else {
 		submissionKey := api.CmdSubmissionKey{subOrder, 0, 0, 0}
 		var submissionGroup *service.ProfilingData_GpuSlices_Group
-		if g, ok := groupsMap[submissionKey]; ok {
+		if g, ok := parentLookup[submissionKey]; ok {
 			submissionGroup = g
 		} else {
 			submissionGroup = &service.ProfilingData_GpuSlices_Group{
-				Id:     int32(len(groupsMap)),
+				Id:     int32(len(*groups)),
 				Name:   fmt.Sprintf("Submission: %v", subOrder),
 				Parent: nil,
 				Link:   &path.Command{Capture: capture, Indices: links[submissionKey][0]},
 			}
-			groupsMap[submissionKey] = submissionGroup
+			parentLookup[submissionKey] = submissionGroup
+			*groups = append(*groups, submissionGroup)
 		}
 
 		commandBufferGroup := &service.ProfilingData_GpuSlices_Group{
-			Id:     int32(len(groupsMap)),
+			Id:     int32(len(*groups)),
 			Name:   fmt.Sprintf("Command Buffer: %v", cb),
 			Parent: submissionGroup,
 			Link:   &path.Command{Capture: capture, Indices: links[commandBufferKey][0]},
 		}
-		groupsMap[commandBufferKey] = commandBufferGroup
+		parentLookup[commandBufferKey] = commandBufferGroup
+		*groups = append(*groups, commandBufferGroup)
 		return commandBufferGroup
 	}
 }
