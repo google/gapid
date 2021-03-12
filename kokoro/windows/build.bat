@@ -23,7 +23,9 @@ REM Install WiX (https://wixtoolset.org/, used in package.bat to create ".msi")
 mkdir wix
 cd wix
 wget -q https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip
-echo "2c1888d5d1dba377fc7fa14444cf556963747ff9a0a289a3599cf09da03b9e2e  wix311-binaries.zip" | sha256sum --check
+REM Using 'set /p' prints without CRLF newline characters, which sha256sum can't handle.
+REM If sha256sum fails, 'exit /b 1' will terminate batch with error code 1.
+echo | set /p dummy="2c1888d5d1dba377fc7fa14444cf556963747ff9a0a289a3599cf09da03b9e2e wix311-binaries.zip" | sha256sum --check || exit /b 1
 unzip -q wix311-binaries.zip
 set WIX=%cd%
 cd ..
@@ -81,12 +83,12 @@ set JDK_VERSION=8.0.252
 set JDK_NAME=%JDK_BUILD%-jdk%JDK_VERSION%-win_x64
 set JRE_NAME=%JDK_BUILD%-jre%JDK_VERSION%-win_x64
 wget -q https://storage.googleapis.com/jdk-mirror/%JDK_BUILD%/%JDK_NAME%.zip
-echo "993ef31276d18446ef8b0c249b40aa2dfcea221a5725d9466cbea1ba22686f6b  %JDK_NAME%.zip" | sha256sum --check
+echo | set /p dummy="993ef31276d18446ef8b0c249b40aa2dfcea221a5725d9466cbea1ba22686f6b %JDK_NAME%.zip" | sha256sum --check || exit /b 1
 unzip -q %JDK_NAME%.zip
 set JAVA_HOME=%CD%\%JDK_NAME%
 
 wget -q https://storage.googleapis.com/jdk-mirror/%JDK_BUILD%/%JRE_NAME%.zip
-echo "cf5cc2b5bf1206ace9b035dee129a144eda3059f43f204a4ba5e6911d95f0d0c  %JRE_NAME%.zip" | sha256sum --check
+echo | set /p dummy="cf5cc2b5bf1206ace9b035dee129a144eda3059f43f204a4ba5e6911d95f0d0c %JRE_NAME%.zip" | sha256sum --check || exit /b 1
 unzip -q %JRE_NAME%.zip
 set JRE_HOME=%CD%\%JRE_NAME%
 
