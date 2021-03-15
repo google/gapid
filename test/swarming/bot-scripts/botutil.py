@@ -92,6 +92,10 @@ def install_apk(test_params):
     install_flags = ['-g', '-t']
     if 'install_flags' in test_params.keys():
         install_flags = test_params['install_flags']
+    if force and is_package_installed(test_params['package']):
+        cmd = ['adb', 'uninstall', test_params['package']]
+        log('Force install, start by uninstalling: ' + ' '.join(cmd))
+        subprocess.run(cmd, timeout=20, check=True, stdout=sys.stdout, stderr=sys.stderr)
     if force or not is_package_installed(test_params['package']):
         cmd = ['adb', 'install']
         cmd += install_flags
