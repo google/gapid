@@ -413,6 +413,12 @@ type (
 		CommandFilterFlags
 		CaptureFileFlags
 	}
+	TrimStateFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Out   string `help:"gfxtrace file to save the trimmed capture"`
+		CaptureFileFlags
+	}
 	GetTimestampsFlags struct {
 		Gapis     GapisFlags
 		Gapir     GapirFlags

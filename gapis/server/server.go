@@ -303,6 +303,26 @@ func (s *server) SplitCapture(ctx context.Context, rng *path.Commands) (*path.Ca
 	}
 }
 
+func (s *server) TrimCaptureInitialState(ctx context.Context, p *path.Capture) (*path.Capture, error) {
+	ctx = log.Enter(ctx, "TrimCaptureInitialState")
+	c, err := capture.ResolveGraphicsFromPath(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	initialState := c.CloneInitialState()
+	for _, state := range initialState.APIs {
+		state.TrimInitialState(ctx, p)
+	}
+
+	newCapture, err := capture.NewGraphicsCapture(ctx, c.Name(), c.Header, initialState, c.Commands)
+	if err != nil {
+		return nil, err
+	}
+
+	return newCapture.Path(ctx)
+}
+
 func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture, format service.GraphFormat) ([]byte, error) {
 	ctx = status.Start(ctx, "RPC GetGraphVisualization")
 	defer status.Finish(ctx)

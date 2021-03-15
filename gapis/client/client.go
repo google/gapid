@@ -505,6 +505,19 @@ func (c *client) SplitCapture(ctx context.Context, rng *path.Commands) (*path.Ca
 	return res.GetCapture(), nil
 }
 
+func (c *client) TrimCaptureInitialState(ctx context.Context, p *path.Capture) (*path.Capture, error) {
+	res, err := c.client.TrimCaptureInitialState(ctx, &service.TrimCaptureInitialStateRequest{
+		Capture: p,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetCapture(), nil
+}
+
 func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettingsRequest) error {
 	res, err := c.client.UpdateSettings(ctx, req)
 	if err != nil {

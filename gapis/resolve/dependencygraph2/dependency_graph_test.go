@@ -77,6 +77,8 @@ func (TestRef) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (
 
 func (TestRef) SetupInitialState(ctx context.Context, state *api.GlobalState) {}
 
+func (TestRef) TrimInitialState(ctx context.Context, p *path.Capture) error { return nil }
+
 func newTestRef() TestRef {
 	return TestRef{api.NewRefID()}
 }

@@ -84,6 +84,10 @@ type State interface {
 	// It can fill in any derived data which we choose not to serialize,
 	// or it can apply backward-compatibility fixes for older traces.
 	SetupInitialState(ctx context.Context, state *GlobalState)
+
+	// TrimInitialState removes some parts of the state that are
+	// not used by the capture commands.
+	TrimInitialState(ctx context.Context, p *path.Capture) error
 }
 
 // NewStateWithEmptyAllocator returns a new, default-initialized State object,

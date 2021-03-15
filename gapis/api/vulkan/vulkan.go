@@ -78,6 +78,155 @@ func (s *State) SetupInitialState(ctx context.Context, state *api.GlobalState) {
 	}
 }
 
+// TrimInitialState scans the capture commands to see which parts of the initial
+// state are actually used, and removes some unused parts from it.
+//
+// Note: the current approach consists in "manually" monitoring which Vulkan
+// objects are being used in callbacks passed to sync.MutateWithSubcommands,
+// however this basically re-encode some state tracking logic found in the API
+// files. A better way would be to use an api.StateWatcher and rely on api.RefID
+// to track which objects are accessed: this would avoid to re-encode state
+// tracking logic here. There might be some pitfalls though, e.g. when a command
+// just reads the handle of an object, the state watcher would not mark an
+// access to that object. For instance, when creating a derivate pipeline, a
+// VkPipeline handle is used in BasePipelineHandle, the API implementation reads
+// this handle, but does not access the corresponding object. So using
+// api.StateWatcher might need some wider design considerations.
+func (s *State) TrimInitialState(ctx context.Context, capturePath *path.Capture) error {
+	// Parts of the state we want to record the usage of.
+	descriptorSets := map[VkDescriptorSet]struct{}{}
+	pipelines := map[VkPipeline]struct{}{}
+
+	// Record usage in initial state.
+	for _, ci := range s.LastComputeInfos().All() {
+		pipelines[ci.ComputePipeline().VulkanHandle()] = struct{}{}
+	}
+	for _, di := range s.LastDrawInfos().All() {
+		for _, d := range di.DescriptorSets().All() {
+			descriptorSets[d.VulkanHandle()] = struct{}{}
+		}
+		pipelines[di.GraphicsPipeline().VulkanHandle()] = struct{}{}
+	}
+
+	// Record usage in the trace commands
+	// top-level commands
+	postCmdCb := func(s *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd) {
+		switch cmd := cmd.(type) {
+		case *VkFreeDescriptorSets:
+			ds, err := cmd.PDescriptorSets().Slice(0, (uint64)(cmd.DescriptorSetCount()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err != nil {
+				panic(err)
+			}
+			for _, d := range ds {
+				descriptorSets[d] = struct{}{}
+			}
+
+		case *VkUpdateDescriptorSets:
+			// VkWriteDescriptorSet
+			writeinfos, err := cmd.PDescriptorWrites().Slice(0, (uint64)(cmd.DescriptorWriteCount()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err != nil {
+				panic(err)
+			}
+			for _, wi := range writeinfos {
+				descriptorSets[wi.DstSet()] = struct{}{}
+			}
+			// VkCopyDescriptorSet
+			copyinfos, err := cmd.PDescriptorCopies().Slice(0, (uint64)(cmd.DescriptorCopyCount()), s.MemoryLayout).Read(ctx, cmd, s, nil)
+			if err != nil {
+				panic(err)
+			}
+			for _, ci := range copyinfos {
+				descriptorSets[ci.SrcSet()] = struct{}{}
+				descriptorSets[ci.DstSet()] = struct{}{}
+			}
+
+		case *VkDestroyPipeline:
+			pipelines[cmd.Pipeline()] = struct{}{}
+		}
+
+	}
+	// sub-commands
+	postSubCmdCb := func(state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
+		vkState := GetState(state)
+		cmdRef, ok := i.(CommandReferenceʳ)
+		if !ok {
+			panic("In Vulkan, MutateWithSubcommands' postSubCmdCb 'interface{}' is not a CommandReferenceʳ")
+		}
+		cmdArgs := GetCommandArgs(ctx, cmdRef, vkState)
+
+		switch args := cmdArgs.(type) {
+		case VkCmdBindDescriptorSetsArgsʳ:
+			for _, d := range args.DescriptorSets().All() {
+				descriptorSets[d] = struct{}{}
+			}
+
+		case VkCmdBindPipelineArgsʳ:
+			pipelines[args.Pipeline()] = struct{}{}
+		}
+	}
+	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
+	if err != nil {
+		return err
+	}
+	if err := sync.MutateWithSubcommands(ctx, capturePath, c.Commands, postCmdCb, nil, postSubCmdCb); err != nil {
+		return err
+	}
+
+	// Transitive dependencies
+
+	// Each pipeline may be derived from a base pipeline, in which case this
+	// base pipeline must be added to the list of used pipelines. Loop on this
+	// until we have a stable number of pipelines.
+	for numPipelines := 0; numPipelines != len(pipelines); {
+		numPipelines = len(pipelines)
+		for p := range pipelines {
+			// For both graphics and compute derivative pipelines which are
+			// created using BasePipelineIndex, our API implementation makes
+			// sure that the relevant pipeline handle is set in BasePipeline.
+			// Thus, we can safely use the value in BasePipeline. See the
+			// post-fence code in vkCreate*Pipelines in
+			// gapis/api/vulkan/api/pipeline.api
+			g := s.GraphicsPipelines().Get(p)
+			if !g.IsNil() && (VkPipelineCreateFlagBits(g.Flags())&VkPipelineCreateFlagBits_VK_PIPELINE_CREATE_DERIVATIVE_BIT) != 0 {
+				pipelines[g.BasePipeline()] = struct{}{}
+			}
+			c := s.ComputePipelines().Get(p)
+			if !c.IsNil() && (VkPipelineCreateFlagBits(c.Flags())&VkPipelineCreateFlagBits_VK_PIPELINE_CREATE_DERIVATIVE_BIT) != 0 {
+				pipelines[c.BasePipeline()] = struct{}{}
+			}
+		}
+	}
+
+	// Remove unused parts.
+	var startSize int
+
+	startSize = s.DescriptorSets().Len()
+	for h := range s.DescriptorSets().All() {
+		if _, ok := descriptorSets[h]; !ok {
+			s.DescriptorSets().Remove(h)
+		}
+	}
+	log.I(ctx, "Trim initial state: DescriptorSets: %v/%v kept", s.DescriptorSets().Len(), startSize)
+
+	startSize = s.GraphicsPipelines().Len()
+	for h := range s.GraphicsPipelines().All() {
+		if _, ok := pipelines[h]; !ok {
+			s.GraphicsPipelines().Remove(h)
+		}
+	}
+	log.I(ctx, "Trim initial state: GraphicsPipelines: %v/%v kept", s.GraphicsPipelines().Len(), startSize)
+
+	startSize = s.ComputePipelines().Len()
+	for h := range s.ComputePipelines().All() {
+		if _, ok := pipelines[h]; !ok {
+			s.ComputePipelines().Remove(h)
+		}
+	}
+	log.I(ctx, "Trim initial state: ComputePipelines: %v/%v kept", s.ComputePipelines().Len(), startSize)
+
+	return nil
+}
+
 func (API) GetFramebufferAttachmentInfos(
 	ctx context.Context,
 	state *api.GlobalState) (info []api.FramebufferAttachmentInfo, err error) {

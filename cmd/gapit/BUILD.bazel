@@ -50,6 +50,7 @@ go_library(
         "sxs_video.go",
         "trace.go",
         "trim.go",
+        "trim_state.go",
         "unpack.go",
         "validate_gpu_profiling.go",
         "video.go",

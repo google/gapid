@@ -638,6 +638,12 @@ service Gapid {
   rpc SplitCapture(SplitCaptureRequest) returns (SplitCaptureResponse) {
   }
 
+  // TrimCaptureInitialState returns a new capture with an initial state trimmed
+  // from resources not needed by the capture commands.
+  rpc TrimCaptureInitialState(TrimCaptureInitialStateRequest)
+      returns (TrimCaptureInitialStateResponse) {
+  }
+
   ///////////////////////////////////////////////////////////////
   // Below are debugging APIs which may be removed in the future.
   ///////////////////////////////////////////////////////////////
@@ -1317,6 +1323,17 @@ message SplitCaptureRequest {
 }
 
 message SplitCaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
+}
+
+message TrimCaptureInitialStateRequest {
+  path.Capture capture = 1;
+}
+
+message TrimCaptureInitialStateResponse {
   oneof res {
     path.Capture capture = 1;
     Error error = 2;

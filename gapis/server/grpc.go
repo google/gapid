@@ -591,6 +591,15 @@ func (s *grpcServer) SplitCapture(ctx xctx.Context, req *service.SplitCaptureReq
 	return &service.SplitCaptureResponse{Res: &service.SplitCaptureResponse_Capture{Capture: res}}, nil
 }
 
+func (s *grpcServer) TrimCaptureInitialState(ctx xctx.Context, req *service.TrimCaptureInitialStateRequest) (*service.TrimCaptureInitialStateResponse, error) {
+	defer s.inRPC()()
+	res, err := s.handler.TrimCaptureInitialState(s.bindCtx(ctx), req.Capture)
+	if err := service.NewError(err); err != nil {
+		return &service.TrimCaptureInitialStateResponse{Res: &service.TrimCaptureInitialStateResponse_Error{Error: err}}, nil
+	}
+	return &service.TrimCaptureInitialStateResponse{Res: &service.TrimCaptureInitialStateResponse_Capture{Capture: res}}, nil
+}
+
 func (s *grpcServer) TraceTargetTreeNode(ctx xctx.Context, req *service.TraceTargetTreeNodeRequest) (*service.TraceTargetTreeNodeResponse, error) {
 	defer s.inRPC()()
 	res, err := s.handler.TraceTargetTreeNode(s.bindCtx(ctx), req)

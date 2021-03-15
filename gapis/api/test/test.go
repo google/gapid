@@ -54,6 +54,11 @@ func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) 
 // or it can apply backward-compatibility fixes for older traces.
 func (*State) SetupInitialState(ctx context.Context, state *api.GlobalState) {}
 
+// TrimInitialState is needed to implement the State interface.
+func (*State) TrimInitialState(ctx context.Context, capturePath *path.Capture) error {
+	return nil
+}
+
 func (i Remapped) remap(cmd api.Cmd, s *api.GlobalState) (interface{}, bool) {
 	return i, true
 }

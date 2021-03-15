@@ -184,6 +184,10 @@ type Service interface {
 	// Split out a new capture containing a subset of another capture's commands.
 	SplitCapture(ctx context.Context, rng *path.Commands) (*path.Capture, error)
 
+	// TrimCaptureInitialState returns a new capture with an initial state
+	// trimmed from resources not needed by the capture commands.
+	TrimCaptureInitialState(ctx context.Context, p *path.Capture) (*path.Capture, error)
+
 	// ValidateDevice validates the GPU profiling capabilities of the given device and returns
 	// an error if validation failed or the GPU profiling data is invalid.
 	ValidateDevice(ctx context.Context, d *path.Device) error
