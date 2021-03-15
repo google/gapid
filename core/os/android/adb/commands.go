@@ -412,22 +412,21 @@ func (b *binding) QueryAngle(ctx context.Context) (*device.ANGLE, error) {
 		return nil, fmt.Errorf("ANGLE not supported on this device")
 	}
 	// ANGLE supported, so check for installed ANGLE package
-	// Favor custom installed package first, followed by default system package
-	custom := "org.chromium.angle"
-	system := "com.google.android.angle"
+	// Favor custom installed packages first, followed by default system package
+	supported := []string{
+		"org.chromium.angle.agi",
+		"org.chromium.angle",
+		"com.google.android.angle",
+	}
 	// Check installed packages for ANGLE package
 	packages, _ := b.InstalledPackages(ctx)
-	if pkg := packages.FindByName(custom); pkg != nil {
-		return &device.ANGLE{
-			Package: custom,
-			Version: int32(pkg.VersionCode),
-		}, nil
-	}
-	if pkg := packages.FindByName(system); pkg != nil {
-		return &device.ANGLE{
-			Package: system,
-			Version: int32(pkg.VersionCode),
-		}, nil
+	for _, angle := range supported {
+		if pkg := packages.FindByName(angle); pkg != nil {
+			return &device.ANGLE{
+				Package: angle,
+				Version: int32(pkg.VersionCode),
+			}, nil
+		}
 	}
 	return nil, fmt.Errorf("No ANGLE packages installed on this device")
 }
