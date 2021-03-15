@@ -46,6 +46,7 @@
 #if TARGET_OS == GAPID_OS_ANDROID
 #include <android/window.h>
 #include <sys/stat.h>
+#include <sys/system_properties.h>
 #include "android_native_app_glue.h"
 #include "gapir/cc/android/asset_replay_service.h"
 #include "gapir/cc/android/asset_resource_cache.h"
@@ -68,6 +69,15 @@ std::shared_ptr<MemoryAllocator> createAllocator() {
   size_t size = 16ull * 1024ull * 1024ull * 1024ull;
 #else
   size_t size = 2ull * 1024ull * 1024ull * 1024ull;
+#endif
+
+#if TARGET_OS == GAPID_OS_ANDROID
+  // On Hardware ASAN builds, limit ourselves to 1G, so the sanitizer is happy.
+  char abis[PROP_VALUE_MAX] = {0};
+  if ((__system_property_get("ro.product.cpu.abilist", abis) != 0) &&
+      (strstr(abis, "-hwasan") != nullptr)) {
+    size = 1ull * 1024ull * 1024ull * 1024ull;
+  }
 #endif
 
   return std::shared_ptr<MemoryAllocator>(new MemoryAllocator(size));
