@@ -52,8 +52,8 @@ set ANDROID_NDK_HOME=%CD%\android-ndk-r21d
 
 REM Download and install MSYS2, because the pre-installed version is too old.
 REM Do NOT do a system update (pacman -Syu) because it is a moving target.
-wget -q https://github.com/msys2/msys2-installer/releases/download/2020-11-09/msys2-base-x86_64-20201109.sfx.exe
-.\msys2-base-x86_64-20201109.sfx.exe -y -o%BUILD_ROOT%\
+wget -q http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-20210228.sfx.exe
+.\msys2-base-x86_64-20210228.sfx.exe -y -o%BUILD_ROOT%\
 
 REM Start empty shell to initialize MSYS2.
 %BUILD_ROOT%\msys64\usr\bin\bash --login -c " "
@@ -61,17 +61,13 @@ REM Start empty shell to initialize MSYS2.
 REM Uncomment the following line to list all packages and versions installed in MSYS2.
 REM %BUILD_ROOT%\msys64\usr\bin\bash --login -c "pacman -Q"
 
-REM Download and install packages required by the build process.
-wget -q http://repo.msys2.org/msys/x86_64/git-2.29.2-1-x86_64.pkg.tar.zst
-wget -q http://repo.msys2.org/msys/x86_64/patch-2.7.6-1-x86_64.pkg.tar.xz
-wget -q http://repo.msys2.org/msys/x86_64/unzip-6.0-2-x86_64.pkg.tar.xz
-wget -q http://repo.msys2.org/msys/x86_64/zip-3.0-3-x86_64.pkg.tar.xz
-%BUILD_ROOT%\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/git-2.29.2-1-x86_64.pkg.tar.zst /t/src/patch-2.7.6-1-x86_64.pkg.tar.xz /t/src/unzip-6.0-2-x86_64.pkg.tar.xz /t/src/zip-3.0-3-x86_64.pkg.tar.xz"
+REM Install packages required by the build process.
+%BUILD_ROOT%\msys64\usr\bin\bash --login -c "pacman -S --noconfirm git patch zip unzip"
 
 REM Download and install specific compiler version.
-wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-10.2.0-5-any.pkg.tar.zst
-wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-libs-10.2.0-5-any.pkg.tar.zst
-%BUILD_ROOT%\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-gcc-10.2.0-5-any.pkg.tar.zst /t/src/mingw-w64-x86_64-gcc-libs-10.2.0-5-any.pkg.tar.zst"
+wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-10.2.0-9-any.pkg.tar.zst
+wget -q http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-libs-10.2.0-9-any.pkg.tar.zst
+%BUILD_ROOT%\msys64\usr\bin\bash --login -c "pacman -U --noconfirm /t/src/mingw-w64-x86_64-gcc-10.2.0-9-any.pkg.tar.zst /t/src/mingw-w64-x86_64-gcc-libs-10.2.0-9-any.pkg.tar.zst"
 
 REM Configure build process to use the now installed MSYS2.
 set PATH=%BUILD_ROOT%\msys64\mingw64\bin;%BUILD_ROOT%\msys64\usr\bin;%PATH%
