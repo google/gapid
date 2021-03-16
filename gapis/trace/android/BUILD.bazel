@@ -35,6 +35,7 @@ go_library(
         "//gapidapk/pkginfo:go_default_library",
         "//gapii/client:go_default_library",
         "//gapis/api/sync:go_default_library",
+        "//gapis/config:go_default_library",
         "//gapis/perfetto:go_default_library",
         "//gapis/perfetto/android:go_default_library",
         "//gapis/service:go_default_library",

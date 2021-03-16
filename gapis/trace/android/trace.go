@@ -47,6 +47,7 @@ import (
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapidapk/pkginfo"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/perfetto"
 	perfetto_android "github.com/google/gapid/gapis/perfetto/android"
 	"github.com/google/gapid/gapis/service"
@@ -225,9 +226,13 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 	var processor *perfetto.Processor
 	status.Do(ctx, "Trace loading", func(ctx context.Context) {
 		// Load Perfetto trace and create trace processor.
-		rawData := make([]byte, written)
-		_, err = buf.Read(rawData)
-		processor, err = perfetto.NewProcessor(ctx, rawData)
+		if config.DumpValidationTrace {
+			if out, err := os.Create("validate.perfetto"); err == nil {
+				out.Write(buf.Bytes())
+				out.Close()
+			}
+		}
+		processor, err = perfetto.NewProcessor(ctx, buf.Bytes())
 	})
 	if err != nil {
 		return err
