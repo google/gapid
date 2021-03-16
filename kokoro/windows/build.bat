@@ -104,14 +104,26 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
   set BUILD_SHA=%DEV_PREFIX%%KOKORO_GITHUB_COMMIT%
 )
 
-%BUILD_ROOT%\bazel build -c opt --config symbols ^
+REM Make Bazel operate under BUILD_ROOT (T:\src), where files are less
+REM likely to be locked by system checks.
+set BAZEL_OUTPUT_USER_ROOT=%BUILD_ROOT%\build
+mkdir %BAZEL_OUTPUT_USER_ROOT%
+
+REM Build in several steps in order to avoid running out of memory.
+
+REM Build GAPIS api modules.
+%BUILD_ROOT%\bazel ^
+    --output_user_root=%BAZEL_OUTPUT_USER_ROOT% ^
+    build -c opt --config symbols ^
     --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define AGI_BUILD_SHA="%BUILD_SHA%" ^
     //gapis/api/vulkan:go_default_library
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 
 REM Build everything else.
-%BUILD_ROOT%\bazel build -c opt --config symbols ^
+%BUILD_ROOT%\bazel ^
+    --output_user_root=%BAZEL_OUTPUT_USER_ROOT% ^
+    build -c opt --config symbols ^
     --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define AGI_BUILD_SHA="%BUILD_SHA%" ^
     //:pkg //:symbols //cmd/vulkan_sample:vulkan_sample //tools/logo:agi_ico
@@ -119,7 +131,9 @@ if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 
 REM Smoketests
-%BUILD_ROOT%\bazel run -c opt --config symbols ^
+%BUILD_ROOT%\bazel ^
+    --output_user_root=%BAZEL_OUTPUT_USER_ROOT% ^
+    run -c opt --config symbols ^
     --define AGI_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define AGI_BUILD_SHA="%BUILD_SHA%" ^
     //cmd/smoketests -- --traces test/traces
