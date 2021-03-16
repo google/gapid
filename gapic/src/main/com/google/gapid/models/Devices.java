@@ -410,10 +410,6 @@ public class Devices {
     public boolean isAndroid() {
       return device.getConfiguration().getOS().getKind() == Device.OSKind.Android;
     }
-
-    public boolean isStadia() {
-      return device.getConfiguration().getOS().getKind() == Device.OSKind.Stadia;
-    }
   }
 
   public static class DeviceValidationResult {

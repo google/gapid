@@ -119,7 +119,6 @@ import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
 import "windows/vulkan_windows.api"
 import "mac/vulkan_mac.api"
-import "ggp/vulkan_ggp.api"
 import "synthetic.api"
 import "errors.api"
 
@@ -225,7 +224,6 @@ sub ref!ExtensionSet supportedInstanceExtensions() {
   supported.ExtensionNames["VK_KHR_external_memory_capabilities"] = true
   supported.ExtensionNames["VK_KHR_external_semaphore_capabilities"] = true
   supported.ExtensionNames["VK_KHR_external_fence_capabilities"] = true
-  supported.ExtensionNames["VK_GGP_stream_descriptor_surface"] = true
   supported.ExtensionNames["VK_EXT_swapchain_colorspace"] = true
   supported.ExtensionNames["VK_KHR_device_group_creation"] = true
   return supported
@@ -249,7 +247,6 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_maintenance1"] = true
   supported.ExtensionNames["VK_KHR_maintenance2"] = true
   supported.ExtensionNames["VK_KHR_maintenance3"] = true
-  supported.ExtensionNames["VK_GGP_frame_token"] = true
   supported.ExtensionNames["VK_AMD_draw_indirect_count"] = true
   supported.ExtensionNames["VK_KHR_draw_indirect_count"] = true
   supported.ExtensionNames["VK_AMD_buffer_marker"] = true

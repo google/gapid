@@ -52,8 +52,6 @@ func TargetTriple(dev *device.ABI) Triple {
 		out.vendor, out.os = "apple", "darwin"
 	case device.Linux:
 		out.os = "linux"
-	case device.Stadia:
-		out.os = "linux"
 	case device.Android:
 		out.os, out.abi = "linux", "androideabi"
 	}

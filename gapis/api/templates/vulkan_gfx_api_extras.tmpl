@@ -397,7 +397,6 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
     VkAndroidSurfaceCreateInfoKHR androidInfo = {};
 #elif TARGET_OS == GAPID_OS_LINUX
     VkXcbSurfaceCreateInfoKHR xcbInfo = {};
-    VkStreamDescriptorSurfaceCreateInfoGGP ggpInfo = {};
 #elif TARGET_OS == GAPID_OS_WINDOWS
     VkWin32SurfaceCreateInfoKHR win32Info = {};
 #endif
@@ -420,9 +419,6 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
             case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
             case VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR:
               target = gapir::SurfaceType::Xcb;
-              break;
-            case VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP:
-              target = gapir::SurfaceType::Ggp;
               break;
             case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
               target = gapir::SurfaceType::Win32;
@@ -448,11 +444,6 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
                     xcbInfo.connection = info->connection;
                     xcbInfo.window = info->window;
                   }
-                  break;
-                case gapir::SurfaceType::Ggp:
-                  createInfo = &ggpInfo;
-                  ggpInfo.sType = VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP;
-                  ggpInfo.streamDescriptor = *(const uint32_t*)data;
                   break;
 #elif TARGET_OS == GAPID_OS_WINDOWS
                 case gapir::SurfaceType::Win32:

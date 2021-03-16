@@ -126,13 +126,6 @@ func (surfaceTransform *displayToSurface) modifySurface(ctx context.Context, cmd
 			return nil, err
 		}
 		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK)
-	case *VkCreateStreamDescriptorSurfaceGGP:
-		cmd.Extras().Observations().ApplyWrites(inputState.Memory.ApplicationPool())
-		surface, err := c.PSurface().Read(ctx, cmd, inputState, nil)
-		if err != nil {
-			return nil, err
-		}
-		surfaceTransform.surfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP)
 	default:
 		return nil, nil
 	}

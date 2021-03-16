@@ -32,7 +32,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/device/ggp"
 	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/core/os/file"
@@ -127,9 +126,6 @@ func run(ctx context.Context) error {
 		crash.Go(func() { monitorRemoteSSHDevices(ctx, r, wg.Done) })
 	}
 
-	wg.Add(1)
-	crash.Go(func() { monitorGGPDevices(ctx, r, wg.Done) })
-
 	deviceScanDone, onDeviceScanDone := task.NewSignal()
 	crash.Go(func() {
 		wg.Wait()
@@ -202,25 +198,6 @@ func monitorRemoteSSHDevices(ctx context.Context, r *bind.Registry, scanDone fun
 
 	if err := remotessh.Monitor(ctx, r, time.Second*15, getRemoteSSHConfig); err != nil {
 		log.W(ctx, "Could not scan for remote SSH devices. Error: %v", err)
-	}
-}
-
-func monitorGGPDevices(ctx context.Context, r *bind.Registry, scanDone func()) {
-
-	func() {
-		// Populate the registry with all the existing devices.
-		defer scanDone() // Signal that we have a primed registry.
-
-		if devs, err := ggp.Devices(ctx); err == nil {
-			for _, d := range devs {
-				r.AddDevice(ctx, d)
-				r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
-			}
-		}
-	}()
-
-	if err := ggp.Monitor(ctx, r, time.Second*15); err != nil {
-		log.W(ctx, "Could not scan for remote GGP devices. Error: %v", err)
 	}
 }
 

@@ -28,7 +28,6 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/android/adb:go_default_library",
         "//core/os/device/bind:go_default_library",
-        "//core/os/device/ggp:go_default_library",
         "//core/os/device/host:go_default_library",
         "//core/os/device/remotessh:go_default_library",
         "//core/os/file:go_default_library",

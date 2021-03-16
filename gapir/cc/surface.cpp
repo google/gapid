@@ -257,8 +257,6 @@ const void* CreateSurface(uint32_t width, uint32_t height, SurfaceType& type) {
     case SurfaceType::Unknown:
       type = SurfaceType::Xcb;
       return createXcbWindow(width, height);
-    case SurfaceType::Ggp:
-      return (const void*)&stream_index;
 #elif TARGET_OS == GAPID_OS_WINDOWS
     case SurfaceType::Win32:
     case SurfaceType::Unknown:

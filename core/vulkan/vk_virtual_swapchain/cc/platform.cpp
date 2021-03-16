@@ -59,21 +59,6 @@ void CreateSurface(const InstanceData* functions, VkInstance instance,
     }
   }
 #endif
-#ifdef VK_USE_PLATFORM_GGP
-  {
-    auto pCreateInfo =
-        static_cast<const VkStreamDescriptorSurfaceCreateInfoGGP*>(data);
-    if (pCreateInfo->sType ==
-        VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP) {
-      // Attempt to create ggp surface
-      if (functions->vkCreateStreamDescriptorSurfaceGGP(
-              instance, pCreateInfo, pAllocator, pSurface) != VK_SUCCESS) {
-        *pSurface = 0;
-      }
-      return;
-    }
-  }
-#endif
 }
 
 }  // namespace swapchain

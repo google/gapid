@@ -179,16 +179,16 @@ func (l pkgLayout) Gapit(ctx context.Context) (file.Path, error) {
 }
 
 func osToDir(k device.OSKind) string {
-	if device.IsLinuxLike(k) {
+	switch k {
+	case device.Linux:
 		return "linux"
-	}
-	if k == device.OSX {
+	case device.OSX:
 		return "macos"
-	}
-	if k == device.Windows {
+	case device.Windows:
 		return "windows"
+	default:
+		return ""
 	}
-	return ""
 }
 
 func (l pkgLayout) Gapir(ctx context.Context, abi *device.ABI) (file.Path, error) {

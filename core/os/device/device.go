@@ -40,12 +40,7 @@ const (
 	OSX       = OSKind_OSX
 	Linux     = OSKind_Linux
 	Android   = OSKind_Android
-	Stadia    = OSKind_Stadia
 )
-
-func IsLinuxLike(k OSKind) bool {
-	return k == OSKind_Linux || k == OSKind_Stadia
-}
 
 var (
 	// ARMv7aLayout is the memory layout for the armv7a ABI.

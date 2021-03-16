@@ -46,8 +46,6 @@ func UserAgent(d *device.Configuration, ai ApplicationInfo) string {
 
 	case device.Linux:
 		info = append(info, "Linux")
-	case device.Stadia:
-		info = append(info, "Stadia")
 
 	case device.Android:
 		info = append(info, "Linux", "U", fmt.Sprintf("Android %v.%v.%v", os.MajorVersion, os.MinorVersion, os.PointVersion))

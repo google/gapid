@@ -191,9 +191,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
 #ifdef VK_USE_PLATFORM_ANDROID_KHR
   GET_PROC(vkCreateAndroidSurfaceKHR);
 #endif
-#ifdef VK_USE_PLATFORM_GGP
-  GET_PROC(vkCreateStreamDescriptorSurfaceGGP);
-#endif
 #ifdef VK_USE_PLATFORM_XCB_KHR
   GET_PROC(vkCreateXcbSurfaceKHR);
 #endif
@@ -552,7 +549,6 @@ vkGetInstanceProcAddr(VkInstance instance, const char* funcName) {
   INTERCEPT_SURFACE(vkCreateWin32SurfaceKHR);
   INTERCEPT_SURFACE(vkCreateXcbSurfaceKHR);
   INTERCEPT_SURFACE(vkCreateXlibSurfaceKHR);
-  INTERCEPT_SURFACE(vkCreateStreamDescriptorSurfaceGGP);
   INTERCEPT_SURFACE(vkCreateMacOSSurfaceMVK);
 
 #undef INTERCEPT_SURFACE

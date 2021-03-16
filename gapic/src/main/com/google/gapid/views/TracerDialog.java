@@ -750,12 +750,6 @@ public class TracerDialog {
               if (firstIsAndroid != secondIsAndroid) {
                 return firstIsAndroid ? devices.get(0) : devices.get(1);
               }
-              // Same reasoning for Stadia instances.
-              boolean firstIsStadia = devices.get(0).isStadia();
-              boolean secondIsStadia = devices.get(1).isStadia();
-              if (firstIsStadia != secondIsStadia) {
-                return firstIsStadia ? devices.get(0) : devices.get(1);
-              }
             }
             return null;
           });

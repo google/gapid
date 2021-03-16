@@ -55,13 +55,6 @@ func (m *Manager) createTracer(ctx context.Context, dev bind.Device) {
 	defer m.mutex.Unlock()
 	if dev.Instance().GetConfiguration().GetOS().GetKind() == device.Android {
 		m.tracers[deviceID] = android.NewTracer(dev)
-	} else if dev.Instance().GetConfiguration().GetOS().GetKind() == device.Stadia {
-		if tracer, err := desktop.NewGGPTracer(ctx, dev); err == nil {
-			m.tracers[deviceID] = tracer
-		} else {
-			log.E(ctx, "Could not resolve GGP device %+v, trying as desktop", err)
-			m.tracers[deviceID] = desktop.NewTracer(dev)
-		}
 	} else {
 		m.tracers[deviceID] = desktop.NewTracer(dev)
 	}

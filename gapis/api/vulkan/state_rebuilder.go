@@ -637,19 +637,6 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
 			VkResult_VK_SUCCESS,
 		))
-	case SurfaceType_SURFACE_TYPE_GGP:
-		sb.write(sb.cb.VkCreateStreamDescriptorSurfaceGGP(
-			s.Instance(),
-			sb.MustAllocReadData(NewVkStreamDescriptorSurfaceCreateInfoGGP(
-				VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP,
-				0, // pNext
-				0, // flags
-				0, // streamDescriptor
-			)).Ptr(),
-			memory.Nullptr,
-			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
-			VkResult_VK_SUCCESS,
-		))
 	case SurfaceType_SURFACE_TYPE_MACOS_MVK:
 		sb.write(sb.cb.VkCreateMacOSSurfaceMVK(
 			s.Instance(),

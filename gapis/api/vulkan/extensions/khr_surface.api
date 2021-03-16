@@ -262,7 +262,7 @@ enum SurfaceType {
   SURFACE_TYPE_XLIB    = 5
   SURFACE_TYPE_MIR     = 6
   // RESERVED          = 7
-  SURFACE_TYPE_GGP     = 8
+  // RESERVED          = 8
   SURFACE_TYPE_MACOS_MVK   = 9
 }
 
