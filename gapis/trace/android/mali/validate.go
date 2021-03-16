@@ -24,14 +24,18 @@ import (
 var (
 	// All counters must be inside this array.
 	counters = []validate.GpuCounter{
-		{6, "GPU active cycles", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
-		{8, "Fragment jobs", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
-		{196, "Fragment active cycles", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
-		{65536, "GPU utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
-		{65538, "Fragment queue utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
-		{65579, "Execution core utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero())},
+		{6, "GPU active cycles", counterChecker()},
+		{8, "Fragment jobs", counterChecker()},
+		{196, "Fragment active cycles", counterChecker()},
+		{65536, "GPU utilization", counterChecker()},
+		{65538, "Fragment queue utilization", counterChecker()},
+		{65579, "Execution core utilization", counterChecker()},
 	}
 )
+
+func counterChecker() validate.Checker {
+	return validate.And(validate.IsNumber, validate.CheckNonNegative(), validate.Not(validate.CheckAllEqualTo(0)))
+}
 
 type MaliValidator struct {
 }

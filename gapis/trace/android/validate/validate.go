@@ -64,10 +64,22 @@ type Validator interface {
 	GetCounters() []GpuCounter
 }
 
-// And returns a checker that is only valid if both of its arguments are.
-func And(c1, c2 Checker) Checker {
+// And returns a checker that is only valid if all of its arguments are.
+func And(cs ...Checker) Checker {
 	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
-		return c1(column, columnType) && c2(column, columnType)
+		for _, c := range cs {
+			if !c(column, columnType) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// Not returns a checker that returns the inverse of the given checker.
+func Not(c Checker) Checker {
+	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
+		return !c(column, columnType)
 	}
 }
 
@@ -122,8 +134,15 @@ func CheckLargerThanZero() Checker {
 	})
 }
 
-// CheckEqualTo returns a checker that checks that all returned value equal the given value.
-func CheckEqualTo(num float64) Checker {
+// CheckNonNegative is a checker that checks that no value is less than zero.
+func CheckNonNegative() Checker {
+	return ForeachValue(func(v float64) bool {
+		return v >= 0.0
+	})
+}
+
+// CheckAllEqualTo returns a checker that checks that all returned value equal the given value.
+func CheckAllEqualTo(num float64) Checker {
 	return ForeachValue(func(v float64) bool {
 		return v == num
 	})
