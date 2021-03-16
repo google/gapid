@@ -66,7 +66,7 @@ func NewWithListener(ctx context.Context, l net.Listener, cfg Config, srvChan ch
 		done <- grpcutil.ServeWithListener(ctx, l, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
 			if addr, ok := listener.Addr().(*net.TCPAddr); ok {
 				// The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
-				fmt.Printf("Bound on port '%d'\n", addr.Port)
+				fmt.Printf("\nBound on port '%d'\n", addr.Port)
 			}
 			service.RegisterGapidServer(server, s)
 			if srvChan != nil {
