@@ -75,13 +75,16 @@ def main():
     botutil.adb(['shell', 'am', 'force-stop', test_params['package']])
 
     #### Replay
-    videofile = os.path.join(out_dir, test_params['package'] + '.mp4')
+    # Use the 'sxs-frames' mode that generates a series of PNGs rather
+    # than an mp4 video. This makes inspection easier, and removes the
+    # dependency on ffmpeg on the running hosts.
+    videooutfile = os.path.join(out_dir, test_params['package'] + '.frame.png')
     cmd = [
         gapit, 'video',
         '-gapir-nofallback',
-        '-type', 'sxs',
+        '-type', 'sxs-frames',
         '-frames-minimum', test_params['numframes'],
-        '-out', videofile,
+        '-out', videooutfile,
         gfxtrace
     ]
     p = botutil.runcmd(cmd)
