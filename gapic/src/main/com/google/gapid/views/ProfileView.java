@@ -200,6 +200,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
     }
 
     public void update(Profile.Data data) {
+      tracks.clear();
       panels.clear();
 
       Service.ProfilingData.GpuSlices slices = data.getSlices();
