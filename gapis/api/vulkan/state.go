@@ -87,7 +87,7 @@ func (st *State) getSubmitAttachmentInfo(attachment uint32) (w, h uint32,
 	for _, attIndex := range subpassDesc.ColorAttachments().Keys() {
 		attRef := subpassDesc.ColorAttachments().Get(attIndex)
 		if attachment == attRef.Attachment() {
-			if colorAttachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attachment); ok {
+			if colorAttachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attachment); ok && !colorAttachment.IsNil() {
 				colorImg := colorAttachment.Image()
 
 				// This can occur if we destroy the image-view, we remove it from the framebuffer,
@@ -107,7 +107,7 @@ func (st *State) getSubmitAttachmentInfo(attachment uint32) (w, h uint32,
 	for _, attIndex := range subpassDesc.InputAttachments().Keys() {
 		attRef := subpassDesc.InputAttachments().Get(attIndex)
 		if attachment == attRef.Attachment() {
-			if inputAttachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attachment); ok {
+			if inputAttachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attachment); ok && !inputAttachment.IsNil() {
 				inputImg := inputAttachment.Image()
 
 				if (VkImageAspectFlagBits(inputImg.ImageAspect()) & VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT) != 0 {
@@ -135,7 +135,7 @@ func (st *State) getSubmitAttachmentInfo(attachment uint32) (w, h uint32,
 
 	// See if index corresponds to depth attachment
 	if !subpassDesc.DepthStencilAttachment().IsNil() && attachment == subpassDesc.DepthStencilAttachment().Attachment() {
-		if depthAttachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attachment); ok {
+		if depthAttachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attachment); ok && !depthAttachment.IsNil() {
 			depthImg := depthAttachment.Image()
 
 			// This can occur if we destroy the image-view, we remove it from the framebuffer,
