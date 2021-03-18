@@ -24,6 +24,7 @@ import static com.google.gapid.util.Loadable.MessageType.Loading;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
@@ -398,7 +399,16 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
             data.depths[i] = s.getDepth();
             data.titles[i] = s.getLabel();
             data.categories[i] = "";
-            data.args[i] = ArgSet.EMPTY;
+            ImmutableMap.Builder<String, Object> map = ImmutableMap.builder();
+            for (Service.ProfilingData.GpuSlices.Slice.Extra extra: s.getExtrasList()) {
+              switch (extra.getValueCase()) {
+                case INT_VALUE: map.put(extra.getName(), extra.getIntValue()); break;
+                case DOUBLE_VALUE: map.put(extra.getName(), extra.getDoubleValue()); break;
+                case STRING_VALUE: map.put(extra.getName(), extra.getStringValue()); break;
+                case VALUE_NOT_SET: break;
+              }
+            }
+            data.args[i] = new ArgSet(map.build());
           }
           return data;
         });
