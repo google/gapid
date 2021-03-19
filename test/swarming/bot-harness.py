@@ -138,8 +138,10 @@ def main():
 
     #### Turn off the device screen
     # Key "power" (26) toggle between screen off and on, so first make sure to
-    # have the screen on with key "wake up" (224), then press "power" (26)
-    botutil.adb(['shell', 'input', 'keyevent', '224'])
+    # have the screen on with key "wake up" (224), then press "power" (26).
+    # The screen wakeup (224) call sometimes takes more than a second to return,
+    # hence the extended timeout.
+    botutil.adb(['shell', 'input', 'keyevent', '224'], timeout=2)
     # Wait a bit to let any kind of device wake up animation terminate
     time.sleep(2)
     botutil.adb(['shell', 'input', 'keyevent', '26'])
