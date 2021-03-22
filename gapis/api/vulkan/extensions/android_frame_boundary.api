@@ -36,6 +36,7 @@
 @indirect("VkDevice")
 @override
 @frame_end
+@no_replay
 cmd void vkFrameBoundaryANDROID(
     VkDevice                device,
     VkSemaphore             semaphore,
