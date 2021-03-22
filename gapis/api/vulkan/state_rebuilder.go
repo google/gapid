@@ -1096,8 +1096,8 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 	}
 }
 
-func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedicatedNV bool) {
-	if !allowDedicatedNV && !mem.DedicatedAllocationNV().IsNil() {
+func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedicated bool) {
+	if !allowDedicated && (!mem.DedicatedAllocationNV().IsNil() || !mem.DedicatedAllocationKHR().IsNil()) {
 		return
 	}
 
@@ -1110,6 +1110,17 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 				pNext,                                // pNext
 				mem.DedicatedAllocationNV().Image(),  // image
 				mem.DedicatedAllocationNV().Buffer(), // buffer
+			),
+		).Ptr())
+	}
+
+	if !mem.DedicatedAllocationKHR().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkMemoryDedicatedAllocationInfoKHR(
+				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR, // sType
+				pNext,                                 // pNext
+				mem.DedicatedAllocationKHR().Image(),  // image
+				mem.DedicatedAllocationKHR().Buffer(), // buffer
 			),
 		).Ptr())
 	}
@@ -1500,7 +1511,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 			srcState, GetState(srcState), 0, nil, nil, "VkDeviceMemory", uint64(planeMemInfo.BoundMemory().VulkanHandle()))
 	}
 
-	if dedicatedMemoryNV {
+	if dedicatedMemoryNV || (!planeMemInfo.BoundMemory().IsNil() && !planeMemInfo.BoundMemory().DedicatedAllocationKHR().IsNil()) {
 		sb.createDeviceMemory(planeMemInfo.BoundMemory(), true)
 	}
 
@@ -3194,7 +3205,7 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(src.Memory().VulkanHandle()))
 	}
 
-	if dedicatedMemoryNV {
+	if dedicatedMemoryNV || (!src.Memory().IsNil() && !src.Memory().DedicatedAllocationKHR().IsNil()) {
 		sb.createDeviceMemory(mem, true)
 	}
 
