@@ -42,17 +42,22 @@ var (
 // GetInitialPayload creates a replay that emits instructions for
 // state priming of a capture.
 func (a API) GetInitialPayload(ctx context.Context,
-	capture *path.Capture,
+	c *path.Capture,
 	device *device.Instance,
 	out transform.Writer) error {
 
-	initialCmds, im, _ := initialcmds.InitialCommands(ctx, capture)
+	initialCmds, im, _ := initialcmds.InitialCommands(ctx, c)
 	out.State().Allocator.ReserveRanges(im)
 	cmdGenerator := commandGenerator.NewLinearCommandGenerator(initialCmds, nil)
 
 	transforms := make([]transform.Transform, 0)
 	transforms = append(transforms, newMakeAttachmentReadable(false))
 	transforms = append(transforms, newDropInvalidDestroy("GetInitialPayload"))
+	if config.LogInitialCmdsToCapture {
+		if c, err := capture.ResolveGraphicsFromPath(ctx, c); err == nil {
+			transforms = append(transforms, newCaptureLog(ctx, c, "initial_cmds.gfxtrace"))
+		}
+	}
 
 	chain := transform.CreateTransformChain(ctx, cmdGenerator, transforms, out)
 	controlFlow := controlFlowGenerator.NewLinearControlFlowGenerator(chain)
