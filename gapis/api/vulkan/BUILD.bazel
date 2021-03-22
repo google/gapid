@@ -96,6 +96,7 @@ go_library(
         "transform_display_to_surface.go",
         "transform_drop_invalid_destroy.go",
         "transform_end_of_replay.go",
+        "transform_external_memory.go",
         "transform_file_log.go",
         "transform_find_issues.go",
         "transform_make_attachment_readable.go",

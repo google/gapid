@@ -64,6 +64,22 @@ func (e *CmdExtras) MustClone(es ...CmdExtra) {
 	}
 }
 
+// CloneObservations makes a shallow clone of the extras, except for the
+// observations, which are cloned.
+func (e *CmdExtras) CloneObservations() {
+	if e != nil {
+		r := CmdExtras{}
+		for _, x := range *e {
+			if o, ok := x.(*CmdObservations); ok {
+				r = append(r, &CmdObservations{o.Reads, o.Writes})
+			} else {
+				r = append(r, x)
+			}
+		}
+		*e = r
+	}
+}
+
 // Aborted returns a pointer to the ErrCmdAborted structure in the CmdExtras, or
 // nil if not found.
 func (e *CmdExtras) Aborted() *ErrCmdAborted {
