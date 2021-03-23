@@ -177,6 +177,8 @@ message Perfetto {
   }
   Vulkan vulkan = 5;
 
+  bool force_tracing_to_file = 8;
+
   perfetto.protos.TraceConfig custom_config = 6;
   bool use_custom = 7;
 }

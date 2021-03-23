@@ -354,7 +354,8 @@ public class TraceConfigDialog extends DialogBase {
     config.setFlushPeriodMs(FLUSH_PERIOD);
     config.setDurationMs(duration);
 
-    if (duration > MAX_IN_MEM_DURATION && !caps.getCanDownloadWhileTracing()) {
+    if ((duration > MAX_IN_MEM_DURATION && !caps.getCanDownloadWhileTracing()) ||
+        p.getForceTracingToFile()) {
       config.setWriteIntoFile(true);
       config.setFileWritePeriodMs(WRITE_PERIOD);
       config.setMaxFileSizeBytes(MAX_FILE_SIZE);
@@ -611,6 +612,8 @@ public class TraceConfigDialog extends DialogBase {
     private final Button vulkanMemoryTrackingDevice;
     private final Button vulkanMemoryTrackingDriver;
 
+    private final Button forceTraceToFile;
+
     public BasicInputArea(Composite parent, Settings settings, Theme theme,
         Device.PerfettoCapability caps, Runnable toAdvanced) {
       super(parent, SWT.NONE);
@@ -810,6 +813,16 @@ public class TraceConfigDialog extends DialogBase {
         vulkanMemoryTrackingDriver = null;
       }
 
+      if (caps.getCanDownloadWhileTracing()) {
+        addSeparator();
+        forceTraceToFile = createCheckbox(this, "Force tracing to a file on the device",
+            settings.perfetto().getForceTracingToFile());
+        forceTraceToFile.setToolTipText("Only use this if the USB throughput is too low, causing " +
+            "buffer stalls and loss of tracing data.");
+      } else {
+        forceTraceToFile = null;
+      }
+
       withLayoutData(createLink(this, "<a>Switch to advanced mode</a>", e -> {
         // Remember the input thus far and turn it into a proto to be modified by the user.
         update(settings);
@@ -890,6 +903,9 @@ public class TraceConfigDialog extends DialogBase {
         addCategory(vulkanMemoryTrackingDevice, sVk, MEMORY_TRACKING_DEVICE);
         addCategory(vulkanMemoryTrackingDriver, sVk, MEMORY_TRACKING_DRIVER);
       }
+
+      settings.writePerfetto().setForceTracingToFile(
+          forceTraceToFile != null && forceTraceToFile.getSelection());
     }
 
     private static void addCategory(Button checkbox, SettingsProto.Perfetto.Vulkan.Builder vk,
