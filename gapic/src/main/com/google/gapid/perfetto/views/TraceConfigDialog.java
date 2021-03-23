@@ -38,6 +38,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
+import static perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy.RING_BUFFER;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
@@ -88,7 +89,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import perfetto.protos.PerfettoConfig;
-import perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy;
 
 public class TraceConfigDialog extends DialogBase {
   protected static final Logger LOG = Logger.getLogger(TraceConfigDialog.class.getName());
@@ -345,11 +345,11 @@ public class TraceConfigDialog extends DialogBase {
     // Buffer 0 (default): main buffer.
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
         .setSizeKb(MAIN_BUFFER_SIZE)
-        .setFillPolicy(FillPolicy.DISCARD));
+        .setFillPolicy(RING_BUFFER));
     // Buffer 1: Initial process metadata.
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
         .setSizeKb(PROC_BUFFER_SIZE)
-        .setFillPolicy(FillPolicy.DISCARD));
+        .setFillPolicy(RING_BUFFER));
 
     config.setFlushPeriodMs(FLUSH_PERIOD);
     config.setDurationMs(duration);
