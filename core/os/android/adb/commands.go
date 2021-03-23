@@ -400,10 +400,13 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 	}
 	result.GpuProfiling = gpu
 
-	// SurfaceFlinger frame lifecycle perfetto producer is mandated by Android 11 CTS, hence it will
-	// always exist.
 	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 {
+		// SurfaceFlinger frame lifecycle perfetto producer is mandated by Android 11 CTS, hence it will
+		// always exist.
 		result.HasFrameLifecycle = true
+
+		// This has anecdotally not worked well in Q, but appears to be fine in R.
+		result.CanDownloadWhileTracing = true
 	}
 
 	services, err := b.Shell("service", "list").Call(ctx)

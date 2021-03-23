@@ -48,6 +48,7 @@ const (
 	// to store the trace data while tracing.
 	perfettoTraceFile          = "/data/misc/perfetto-traces/gapis-trace"
 	renderStageVulkanLayerName = "VkRenderStagesProducer"
+	readInterval               = 100 * time.Millisecond
 )
 
 // Process represents a running Perfetto capture.
@@ -179,9 +180,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		return nil, cleanup.Invoke(ctx), err
 	}
 
-	// With the comsumer protocol, in Android 10 it causes a stall when
-	// traced_pros writes into file. In this case, don't create perfetto client,
-	// instead fall back to CLI.
+	// Use the direct client if we are not writting into a file on the device.
 	var c *perfetto.Client
 	if !opts.PerfettoConfig.GetWriteIntoFile() {
 		c, err = d.ConnectPerfetto(ctx)
@@ -202,7 +201,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 // Capture starts the perfetto capture.
 func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (int64, error) {
 	if p.perfettoClient != nil {
-		return p.captureWithClientApi(ctx, start, stop, ready, w, written)
+		return p.captureWithClientApi(ctx, start, stop, ready, w, written, p.device.Instance().GetConfiguration().GetPerfettoCapability().GetCanDownloadWhileTracing())
 	}
 
 	tmp, err := file.Temp()
@@ -238,12 +237,32 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	return io.Copy(w, fh)
 }
 
-func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (int64, error) {
+type trackingWriter struct {
+	out     io.Writer
+	done    int64
+	written *int64
+}
+
+// Write implements the io.Writer interface.
+func (w *trackingWriter) Write(p []byte) (int, error) {
+	n, err := w.out.Write(p)
+	w.done += int64(n)
+	atomic.StoreInt64(w.written, w.done)
+	return n, err
+}
+
+func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64, downloadWhileTracing bool) (int64, error) {
 	defer p.perfettoClient.Close(ctx)
 
 	p.config.DeferredStart = proto.Bool(true)
 	var buf bytes.Buffer
-	ts, err := p.perfettoClient.Trace(ctx, p.config, &buf)
+	var out io.Writer
+	if downloadWhileTracing {
+		out = &trackingWriter{w, 0, written}
+	} else {
+		out = &buf
+	}
+	ts, err := p.perfettoClient.Trace(ctx, p.config, out)
 	if err != nil {
 		return 0, log.Err(ctx, err, "Failed to setup Perfetto trace")
 	}
@@ -301,10 +320,30 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 	}
 	delayedReady(ctx)
 	ts.Start(ctx)
+
 	wait := make(chan error, 1)
 	crash.Go(func() {
 		wait <- ts.Wait(ctx)
 	})
+
+	if downloadWhileTracing {
+		crash.Go(func() {
+			ticker := time.NewTicker(readInterval)
+			for {
+				<-ticker.C
+				if err := ts.Read(ctx); err != nil {
+					if err != perfetto.ErrDone {
+						// This error will likely also be returned by ts.Wait, so just log it
+						// here, in case there's also another error.
+						log.W(ctx, "Perfetto client read error: %v", err)
+					}
+					ticker.Stop()
+					break
+				}
+			}
+		})
+	}
+
 	select {
 	case err = <-wait:
 	case <-stop:
@@ -316,7 +355,12 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 		return 0, log.Err(ctx, err, "Failed during tracing session")
 	}
 
-	numWritten, err := io.Copy(w, &buf)
-	atomic.StoreInt64(written, numWritten)
+	var numWritten int64
+	if downloadWhileTracing {
+		numWritten = atomic.LoadInt64(written)
+	} else {
+		numWritten, err = io.Copy(w, &buf)
+		atomic.StoreInt64(written, numWritten)
+	}
 	return numWritten, err
 }

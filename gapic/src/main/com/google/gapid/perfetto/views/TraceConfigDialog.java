@@ -353,7 +353,8 @@ public class TraceConfigDialog extends DialogBase {
 
     config.setFlushPeriodMs(FLUSH_PERIOD);
     config.setDurationMs(duration);
-    if (duration > MAX_IN_MEM_DURATION) {
+
+    if (duration > MAX_IN_MEM_DURATION && !caps.getCanDownloadWhileTracing()) {
       config.setWriteIntoFile(true);
       config.setFileWritePeriodMs(WRITE_PERIOD);
       config.setMaxFileSizeBytes(MAX_FILE_SIZE);

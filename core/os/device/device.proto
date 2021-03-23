@@ -187,6 +187,7 @@ message PerfettoCapability {
   bool can_specify_atrace_apps = 3;
   bool has_frame_lifecycle = 4;
   bool has_power_rail = 5;
+  bool can_download_while_tracing = 6;
 }
 
 message GPUProfiling {
