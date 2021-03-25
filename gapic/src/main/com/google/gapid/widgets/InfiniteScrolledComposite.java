@@ -70,7 +70,7 @@ public class InfiniteScrolledComposite extends ScrolledComposite {
 
     updateMinSize();
     addListener(SWT.Resize, e -> updateMinSize());
-    canvas.addListener(SWT.Paint, e -> contents.paint(xHandler.offset, yHandler.offset, e.gc));
+    canvas.addListener(SWT.Paint, e -> contents.paint(xHandler.offset, yHandler.offset, e.gc, e.getBounds()));
   }
 
   public BigPoint getLocation(Event e) {
@@ -160,7 +160,7 @@ public class InfiniteScrolledComposite extends ScrolledComposite {
     /**
      * Paints the contents at the given location using the given graphics context.
      */
-    public void paint(BigInteger xOffset, BigInteger yOffset, GC gc);
+    public void paint(BigInteger xOffset, BigInteger yOffset, GC gc, Rectangle area);
   }
 
   /**

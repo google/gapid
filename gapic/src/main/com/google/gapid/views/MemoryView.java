@@ -676,17 +676,16 @@ public class MemoryView extends Composite
     }
 
     @Override
-    public void paint(BigInteger xOffset, BigInteger yOffset, GC gc) {
+    public void paint(BigInteger xOffset, BigInteger yOffset, GC gc, Rectangle area) {
       if (model == null) {
         return;
       }
 
       gc.setFont(font);
-      Rectangle clip = gc.getClipping();
-      BigInteger startY = yOffset.add(BigInteger.valueOf(top(clip)));
+      BigInteger startY = yOffset.add(BigInteger.valueOf(top(area)));
       long startRow = startY.divide(lineHeightBig)
           .max(BigInteger.ZERO).min(BigInteger.valueOf(model.getLineCount() - 1)).longValueExact();
-      long endRow = startY.add(BigInteger.valueOf(clip.height + lineHeight - 1))
+      long endRow = startY.add(BigInteger.valueOf(area.height + lineHeight - 1))
           .divide(lineHeightBig)
           .max(BigInteger.ZERO).min(BigInteger.valueOf(model.getLineCount())).longValueExact();
 
