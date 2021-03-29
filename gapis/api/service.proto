@@ -145,6 +145,14 @@ message Shader {
   string source_language = 3;
   string spirv_source = 4;
   bool cross_compiled = 5;
+
+  message StaticAnalysis {
+    uint32 alu_instructions = 1;
+    uint32 texture_instructions = 2;
+    uint32 branch_instructions = 3;
+    uint32 temp_registers = 4;
+  }
+  StaticAnalysis static_analysis = 6;
 }
 
 // Program represents a shader resource.

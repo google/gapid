@@ -840,7 +840,17 @@ func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalSta
 		log.E(ctx, "Error decompiling shader: %v", err)
 	}
 	spirv := shadertools.DisassembleSpirvBinary(words)
-	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross}), nil
+
+	counters, _ := shadertools.Analyze(words)
+
+	analysis_stats := &api.Shader_StaticAnalysis{
+		AluInstructions:     counters.ALUInstructions,
+		TextureInstructions: counters.TexInstructions,
+		BranchInstructions:  counters.BranchInstructions,
+		TempRegisters:       counters.TempRegisters,
+	}
+
+	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross, StaticAnalysis: analysis_stats}), nil
 }
 
 func (shader ShaderModuleObjectʳ) SetResourceData(
