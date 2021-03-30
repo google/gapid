@@ -131,10 +131,15 @@ func CommandTreeNodeThumbnail(
 	switch item := item.(type) {
 	case api.CmdIDGroup:
 		thumbnail := []uint64{uint64(item.Range.Last())}
+
 		if userData, ok := item.UserData.(*CmdGroupData); ok {
 			thumbnail = []uint64{uint64(userData.Representation)}
 		} else if len(absID) > 0 {
-			thumbnail = append(absID, uint64(item.Range.Last()))
+			if aliasRepId := getOpenGLAliasRepresentation(p.Indices, &item, cmdTree); aliasRepId != api.CmdNoID {
+				thumbnail = append(absID, uint64(aliasRepId))
+			} else {
+				thumbnail = append(absID, uint64(item.Range.Last()))
+			}
 		}
 		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(thumbnail[0], thumbnail[1:]...), r)
 	case api.SubCmdIdx:

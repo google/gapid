@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -140,6 +141,12 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode, r *path.Resol
 		startID := append(absID, uint64(item.Range.First()))
 		endID := append(absID, uint64(item.Range.Last()))
 		representation = cmdTree.path.Capture.Command(endID[0], endID[1:]...)
+
+		if aliasRepId := getOpenGLAliasRepresentation(c.Indices, &item, cmdTree); aliasRepId != api.CmdNoID {
+			aliasId := append(absID, uint64(aliasRepId))
+			representation = cmdTree.path.Capture.Command(aliasId[0], aliasId[1:]...)
+		}
+
 		return &service.CommandTreeNode{
 			Representation: representation,
 			NumChildren:    item.Count(),
@@ -472,6 +479,7 @@ func (f frame) addGroup(t *commandTree) {
 func addFrameGroups(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
 	frameCount := 0
 	firstFrame, curFrame := frame{}, frame{}
+
 	for _, e := range events.List {
 		i := api.CmdID(e.Command.Indices[0])
 		switch e.Kind {
@@ -545,4 +553,27 @@ func setRepresentations(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds 
 			setRepresentations(ctx, subgroup, drawOrClearCmds)
 		}
 	}
+}
+
+func getOpenGLAliasRepresentation(indices []uint64, item *api.CmdIDGroup, cmdTree *commandTree) api.CmdID {
+	aliasRepId := api.CmdNoID
+	if item.Name == "OpenGL ES Commands" {
+		parentIndices := indices[:len(indices)-1]
+		pItem, _ := cmdTree.index(parentIndices)
+		parentItem := pItem.(api.CmdIDGroup)
+		aliasRepId = parentItem.Range.Last()
+	} else if strings.HasPrefix(item.Name, "glDraw") || strings.HasPrefix(item.Name, "glMultiDraw") {
+		pindices := indices[:len(indices)-1]
+		pItem, _ := cmdTree.index(pindices)
+		if parentItem, ok := pItem.(api.CmdIDGroup); ok {
+			if parentItem.Name == "OpenGL ES Commands" {
+				grandparentIndices := indices[:len(indices)-2]
+				gpItem, _ := cmdTree.index(grandparentIndices)
+				if gparentItem, ok := gpItem.(api.CmdIDGroup); ok {
+					aliasRepId = gparentItem.Range.Last()
+				}
+			}
+		}
+	}
+	return aliasRepId
 }
