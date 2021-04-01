@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import time
+from shutil import which
 
 # Load our own botutil
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bot-scripts'))
@@ -47,6 +48,10 @@ def main():
     # agi/ contains the AGI build
     assert os.path.isdir('agi')
     agi_dir = os.path.abspath('agi')
+
+    #### Create BotUtil object with adb path
+    adb_path = os.path.abspath(which('adb'))
+    bu = botutil.BotUtil(adb_path)
 
     #### Print AGI build properties (AGI version, build commit SHA)
     cmd = ['cat', os.path.join(agi_dir, 'build.properties')]
@@ -72,42 +77,42 @@ def main():
 
     #### Check Android device access
     # This first adb command may take a while if the adb deamon has to launch
-    p = botutil.adb(['shell', 'true'], timeout=10)
+    p = bu.adb(['shell', 'true'], timeout=10)
     if p.returncode != 0:
         print('Error: zero or more than one device connected')
         return 1
     # Print device fingerprint
-    p = botutil.adb(['shell', 'getprop', 'ro.build.fingerprint'])
+    p = bu.adb(['shell', 'getprop', 'ro.build.fingerprint'])
     print('Device fingerprint: ' + p.stdout)
 
     #### Prepare device
     # Wake up (224) and unlock (82) screen, sleep to pass any kind of animation
     # The screen wakeup (224) call sometimes takes more than a second to return,
     # hence the extended timeout.
-    botutil.adb(['shell', 'input', 'keyevent', '224'], timeout=2)
+    bu.adb(['shell', 'input', 'keyevent', '224'], timeout=2)
     time.sleep(2)
     # TODO(b/157444640): Temporary workaround: touch the screen before unlocking it to bypass a possible "Android preview" notification
-    botutil.adb(['shell', 'input', 'touchscreen', 'tap', '100', '100'])
+    bu.adb(['shell', 'input', 'touchscreen', 'tap', '100', '100'])
     time.sleep(1)
-    botutil.adb(['shell', 'input', 'keyevent', '82'])
+    bu.adb(['shell', 'input', 'keyevent', '82'])
     time.sleep(1)
     # Turn brightness to a minimum, to prevent device to get too hot
-    botutil.adb(['shell', 'settings', 'put', 'system', 'screen_brightness', '0'])
+    bu.adb(['shell', 'settings', 'put', 'system', 'screen_brightness', '0'])
     # Make sure to have the screen "stay awake" during the test, we turn off the screen ourselves at the end
-    botutil.adb(['shell', 'settings', 'put', 'global', 'stay_on_while_plugged_in', '7'])
+    bu.adb(['shell', 'settings', 'put', 'global', 'stay_on_while_plugged_in', '7'])
     # Avoid "Viewing full screen" notifications that makes app loose focus
-    botutil.adb(['shell', 'settings', 'put', 'secure', 'immersive_mode_confirmations', 'confirmed'])
+    bu.adb(['shell', 'settings', 'put', 'secure', 'immersive_mode_confirmations', 'confirmed'])
     # Remove any implicit vulkan layers
-    botutil.adb(['shell', 'settings', 'delete', 'global', 'enable_gpu_debug_layers'])
-    botutil.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_app'])
-    botutil.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_layers'])
-    botutil.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_layer_app'])
+    bu.adb(['shell', 'settings', 'delete', 'global', 'enable_gpu_debug_layers'])
+    bu.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_app'])
+    bu.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_layers'])
+    bu.adb(['shell', 'settings', 'delete', 'global', 'gpu_debug_layer_app'])
     # Clean up logcat, can take a few seconds
-    botutil.adb(['logcat', '-c'], timeout=5)
+    bu.adb(['logcat', '-c'], timeout=5)
 
     #### Launch test script
     print('Start test script "{}" with timeout of {} seconds'.format(test_script, test_timeout))
-    cmd = [test_script, agi_dir, out_dir]
+    cmd = [test_script, adb_path, agi_dir, out_dir]
     test_returncode = None
     stdout_filename = os.path.abspath(os.path.join(out_dir, 'stdout.txt'))
     stderr_filename = os.path.abspath(os.path.join(out_dir, 'stderr.txt'))
@@ -123,7 +128,7 @@ def main():
     #### Dump the logcat
     logcat_file = os.path.join(out_dir, 'logcat.txt')
     with open(logcat_file, 'w') as f:
-        cmd = ['adb', 'logcat', '-d']
+        cmd = [adb_path, 'logcat', '-d']
         p = subprocess.run(cmd, timeout=5, check=True, stdout=f)
 
     #### Dump test outputs
@@ -141,16 +146,16 @@ def main():
     # have the screen on with key "wake up" (224), then press "power" (26).
     # The screen wakeup (224) call sometimes takes more than a second to return,
     # hence the extended timeout.
-    botutil.adb(['shell', 'input', 'keyevent', '224'], timeout=2)
+    bu.adb(['shell', 'input', 'keyevent', '224'], timeout=2)
     # Wait a bit to let any kind of device wake up animation terminate
     time.sleep(2)
-    botutil.adb(['shell', 'input', 'keyevent', '26'])
+    bu.adb(['shell', 'input', 'keyevent', '26'])
 
     #### Force-stop AGI and test app
     for abi in ['armeabiv7a', 'arm64v8a']:
-        botutil.adb(['shell', 'am', 'force-stop', 'com.google.android.gapid.' + abi])
+        bu.adb(['shell', 'am', 'force-stop', 'com.google.android.gapid.' + abi])
     if 'package' in test_params.keys():
-        botutil.adb(['shell', 'am', 'force-stop', test_params['package']])
+        bu.adb(['shell', 'am', 'force-stop', test_params['package']])
 
     #### Test may fail halfway through, salvage any gfxtrace
     gfxtraces = glob.glob(os.path.join(test_dir, '*.gfxtrace'))

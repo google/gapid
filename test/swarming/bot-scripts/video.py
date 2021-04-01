@@ -23,19 +23,26 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('adb_path', help='Path to adb command')
     parser.add_argument('agi_dir', help='Path to AGI build')
     parser.add_argument('out_dir', help='Path to output directory')
     args = parser.parse_args()
 
     #### Early checks and sanitization
+    assert os.path.isfile(args.adb_path)
+    adb_path = os.path.abspath(args.adb_path)
     assert os.path.isdir(args.agi_dir)
-    agi_dir = os.path.normpath(args.agi_dir)
+    agi_dir = os.path.abspath(args.agi_dir)
     assert os.path.isdir(args.out_dir)
-    out_dir = os.path.normpath(args.out_dir)
+    out_dir = os.path.abspath(args.out_dir)
+    gapit_path = os.path.join(agi_dir, 'gapit')
+
+    #### Create BotUtil with relevant adb and gapit paths
+    bu = botutil.BotUtil(adb_path)
+    bu.set_gapit_path(gapit_path)
 
     #### Test parameters
     test_params = {
@@ -48,13 +55,11 @@ def main():
     botutil.load_params(test_params, required_keys=required_keys)
 
     #### Install APK
-    botutil.install_apk(test_params)
+    bu.install_apk(test_params)
 
     #### Trace the app
-    gapit = os.path.join(agi_dir, 'gapit')
     gfxtrace = os.path.join(out_dir, test_params['package'] + '.gfxtrace')
-    cmd = [
-        gapit, 'trace',
+    args = [
         '-api', test_params['api'],
         '-start-at-frame', test_params['startframe'],
         '-capture-frames', test_params['numframes'],
@@ -63,56 +68,53 @@ def main():
     ]
 
     if 'additionalargs' in test_params.keys():
-        cmd += ['-additionalargs', test_params['additionalargs']]
+        args += ['-additionalargs', test_params['additionalargs']]
 
-    cmd += [test_params['package'] + '/' + test_params['activity']]
+    args += [test_params['package'] + '/' + test_params['activity']]
 
-    p = botutil.runcmd(cmd)
+    p = bu.gapit('trace', args)
     if p.returncode != 0:
         return 1
 
     #### Stop the app asap for device cool-down
-    botutil.adb(['shell', 'am', 'force-stop', test_params['package']])
+    bu.adb(['shell', 'am', 'force-stop', test_params['package']])
 
     #### Replay
     # Use the 'sxs-frames' mode that generates a series of PNGs rather
     # than an mp4 video. This makes inspection easier, and removes the
     # dependency on ffmpeg on the running hosts.
     videooutfile = os.path.join(out_dir, test_params['package'] + '.frame.png')
-    cmd = [
-        gapit, 'video',
+    gapit_args = [
         '-gapir-nofallback',
         '-type', 'sxs-frames',
         '-frames-minimum', test_params['numframes'],
         '-out', videooutfile,
         gfxtrace
     ]
-    p = botutil.runcmd(cmd)
+    p = bu.gapit('video', gapit_args)
     if p.returncode != 0:
         return p.returncode
 
     #### Screenshot test to retrieve mid-frame resources
     screenshotfile = os.path.join(out_dir, test_params['package'] + '.png')
-    cmd = [
-        gapit, 'screenshot',
+    gapit_args = [
         '-executeddraws', '5',
         '-out', screenshotfile,
         gfxtrace
     ]
-    p = botutil.runcmd(cmd)
+    p = bu.gapit('screenshot', gapit_args)
     if p.returncode != 0:
         return p.returncode
 
     #### Frame profiler
     # Check that frame profiling generates valid JSON
     profile_json = os.path.join(out_dir, test_params['package'] + '.profiling.json')
-    cmd = [
-        gapit, 'profile',
+    gapit_args = [
         '-json',
         '-out', profile_json,
         gfxtrace
     ]
-    p = botutil.runcmd(cmd)
+    p = bu.gapit('profile', gapit_args)
     if p.returncode != 0:
         return p.returncode
     assert botutil.is_valid_json(profile_json)
@@ -120,12 +122,11 @@ def main():
     #### Frame graph
     # Check that framegraph generates valid JSON
     framegraph_json = os.path.join(out_dir, test_params['package'] + '.framegraph.json')
-    cmd = [
-        gapit, 'framegraph',
+    gapit_args = [
         '-json', framegraph_json,
         gfxtrace
     ]
-    p = botutil.runcmd(cmd)
+    p = bu.gapit('framegraph', gapit_args)
     if p.returncode != 0:
         return p.returncode
     assert botutil.is_valid_json(framegraph_json)

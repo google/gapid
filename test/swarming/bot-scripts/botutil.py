@@ -22,6 +22,7 @@ import tempfile
 import subprocess
 import sys
 import time
+from shutil import which
 
 def log(msg):
     '''Log the message, making sure to force flushing to stdout'''
@@ -32,13 +33,6 @@ def runcmd(cmd):
     '''Log and run a command, redirecting output to the system stdout and stderr.'''
     print('Run command: ' + ' '.join(cmd), flush=True)
     return subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
-
-
-def adb(args, timeout=1):
-    '''Log and run an ADB command, returning a subprocess.CompletedProcess with output captured'''
-    cmd = ['adb'] + args
-    print('ADB command: ' + ' '.join(cmd), flush=True)
-    return subprocess.run(cmd, timeout=timeout, check=True, capture_output=True, text=True)
 
 
 def load_params(test_params, params_file='params.json', required_keys=[]):
@@ -56,60 +50,6 @@ def load_params(test_params, params_file='params.json', required_keys=[]):
         test_params[k] = j[k]
 
 
-def is_package_installed(package):
-    '''Check if package is installed on the device.'''
-    line_to_match = 'package:' + package
-    cmd = ['adb', 'shell', 'pm', 'list', 'packages']
-    with tempfile.TemporaryFile(mode='w+') as tmp:
-        subprocess.run(cmd, timeout=2, check=True, stdout=tmp)
-        tmp.seek(0)
-        for line in tmp.readlines():
-            line = line.rstrip()
-            if line == line_to_match:
-                return True
-    return False
-
-
-def install_apk(test_params):
-    '''Install the test APK
-
-    test_params is a dict where:
-    {
-      "apk": "foobar.apk", # APK file
-      "package": "com.example.foobar", # Package name
-      "force_install": true|false, # (Optional): force APK installation,
-                                  # even if the package is already found
-                                  # on the device
-      "install_flags": ["-g", "-t"], # (Opriotnal) list of flags to pass
-                                     # to adb install
-      ...
-    }
-'''
-    force = False
-    if 'force_install' in test_params.keys():
-        force = test_params['force_install']
-    # -g: grant all needed permissions, -t: accept test APK
-    install_flags = ['-g', '-t']
-    if 'install_flags' in test_params.keys():
-        install_flags = test_params['install_flags']
-    if force and is_package_installed(test_params['package']):
-        cmd = ['adb', 'uninstall', test_params['package']]
-        log('Force install, start by uninstalling: ' + ' '.join(cmd))
-        subprocess.run(cmd, timeout=20, check=True, stdout=sys.stdout, stderr=sys.stderr)
-    if force or not is_package_installed(test_params['package']):
-        cmd = ['adb', 'install']
-        cmd += install_flags
-        cmd += [test_params['apk']]
-        log('Install APK with command: ' + ' '.join(cmd))
-        # Installing big APKs can take more than a minute, but get also get
-        # stuck, so give a big timeout to this command.
-        subprocess.run(cmd, timeout=120, check=True, stdout=sys.stdout, stderr=sys.stderr)
-        # Sleep a bit, as the app may not be listed right after install
-        time.sleep(1)
-    else:
-        log('Skip install of {} because package {} is already installed.'.format(test_params['apk'], test_params['package']))
-
-
 def is_valid_json(filename):
     '''Return true if filename contains valid JSON, false otherwise'''
     with open(filename, 'r') as f:
@@ -119,3 +59,85 @@ def is_valid_json(filename):
             log('Invalid JSON: {}'.format(err))
             return False
     return True
+
+
+class BotUtil:
+    '''Various utilities that rely on ADB. Since using different ADB commands
+    can lead to loosing device connection, this class takes a path to ADB in its
+    constructor, and makes sure to use this ADB across all commands.'''
+
+    def __init__(self, adb_path):
+        assert(os.path.isfile(adb_path))
+        self.adb_path = adb_path
+        self.gapit_path = ''
+
+    def adb(self, args, timeout=1):
+        '''Log and run an ADB command, r_patheturning a subprocess.CompletedProcess with output captured'''
+        cmd = [self.adb_path] + args
+        print('ADB command: ' + ' '.join(cmd), flush=True)
+        return subprocess.run(cmd, timeout=timeout, check=True, capture_output=True, text=True)
+
+    def set_gapit_path(self, gapit_path):
+        '''Set path to gapit, must be called once before gapit() can be used.'''
+        self.gapit_path = gapit_path
+
+    def gapit(self, verb, args, stdout=sys.stdout, stderr=sys.stderr):
+        '''Build and run gapit command. Requires gapit path to be set.'''
+        assert(self.gapit_path != '')
+        cmd = [self.gapit_path, verb]
+        cmd += ['-gapis-args=-adb ' + self.adb_path]
+        cmd += args
+        print('GAPIT command: ' + ' '.join(cmd), flush=True)
+        return subprocess.run(cmd, stdout=stdout, stderr=stderr)
+
+    def is_package_installed(self, package):
+        '''Check if package is installed on the device.'''
+        line_to_match = 'package:' + package
+        cmd = [self.adb_path, 'shell', 'pm', 'list', 'packages']
+        with tempfile.TemporaryFile(mode='w+') as tmp:
+            subprocess.run(cmd, timeout=2, check=True, stdout=tmp)
+            tmp.seek(0)
+            for line in tmp.readlines():
+                line = line.rstrip()
+                if line == line_to_match:
+                    return True
+        return False
+
+    def install_apk(self, test_params):
+        '''Install the test APK
+
+        test_params is a dict where:
+        {
+        "apk": "foobar.apk", # APK file
+        "package": "com.example.foobar", # Package name
+        "force_install": true|false, # (Optional): force APK installation,
+                                    # even if the package is already found
+                                    # on the device
+        "install_flags": ["-g", "-t"], # (Opriotnal) list of flags to pass
+                                        # to adb install
+        ...
+        }
+        '''
+        force = False
+        if 'force_install' in test_params.keys():
+            force = test_params['force_install']
+        # -g: grant all needed permissions, -t: accept test APK
+        install_flags = ['-g', '-t']
+        if 'install_flags' in test_params.keys():
+            install_flags = test_params['install_flags']
+        if force and self.is_package_installed(test_params['package']):
+            cmd = [self.adb_path, 'uninstall', test_params['package']]
+            log('Force install, start by uninstalling: ' + ' '.join(cmd))
+            subprocess.run(cmd, timeout=20, check=True, stdout=sys.stdout, stderr=sys.stderr)
+        if force or not self.is_package_installed(test_params['package']):
+            cmd = [self.adb_path, 'install']
+            cmd += install_flags
+            cmd += [test_params['apk']]
+            log('Install APK with command: ' + ' '.join(cmd))
+            # Installing big APKs can take more than a minute, but get also get
+            # stuck, so give a big timeout to this command.
+            subprocess.run(cmd, timeout=120, check=True, stdout=sys.stdout, stderr=sys.stderr)
+            # Sleep a bit, as the app may not be listed right after install
+            time.sleep(1)
+        else:
+            log('Skip install of {} because package {} is already installed.'.format(test_params['apk'], test_params['package']))
