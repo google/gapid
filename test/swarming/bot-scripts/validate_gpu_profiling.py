@@ -25,15 +25,23 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('adb_path', help='Path to adb command')
     parser.add_argument('agi_dir', help='Path to AGI build')
     parser.add_argument('out_dir', help='Path to output directory')
     args = parser.parse_args()
 
     #### Early checks and sanitization
+    assert os.path.isfile(args.adb_path)
+    adb_path = os.path.abspath(args.adb_path)
     assert os.path.isdir(args.agi_dir)
-    agi_dir = os.path.normpath(args.agi_dir)
+    agi_dir = os.path.abspath(args.agi_dir)
     assert os.path.isdir(args.out_dir)
-    out_dir = os.path.normpath(args.out_dir)
+    out_dir = os.path.abspath(args.out_dir)
+    gapit_path = os.path.join(agi_dir, 'gapit')
+
+    #### Create BotUtil with relevant adb and gapit paths
+    bu = botutil.BotUtil(adb_path)
+    bu.set_gapit_path(gapit_path)
 
     #### Load test parameters
     test_params = {}
@@ -41,20 +49,16 @@ def main():
     # obtained by system update.
     botutil.load_params(test_params)
 
-    #### Install APK
+    #### Install APK if need be
     if 'apk' in test_params.keys():
         if not 'package' in test_params.keys():
             botutil.log('Error: have "apk" but no "package" in params.json')
             return 1
-        botutil.install_apk(test_params)
+        bu.install_apk(test_params)
 
     #### Call gapit command
-    gapit = os.path.join(agi_dir, 'gapit')
-    cmd = [
-        gapit, 'validate_gpu_profiling',
-        '-os', 'android'
-    ]
-    p = botutil.runcmd(cmd)
+    gapit_args = ['-os', 'android']
+    p = bu.gapit('validate_gpu_profiling', gapit_args)
     return p.returncode
 
 
