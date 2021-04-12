@@ -475,20 +475,6 @@ void VulkanSpy::recordPresentSwapchainImage(CallObserver*, uint64_t, uint32_t) {
 void VulkanSpy::recordBeginCommandBuffer(CallObserver*, VkCommandBuffer) {}
 void VulkanSpy::recordEndCommandBuffer(CallObserver*, VkCommandBuffer) {}
 
-bool VulkanSpy::hasDynamicProperty(CallObserver* observer,
-                                   const VkPipelineDynamicStateCreateInfo* info,
-                                   uint32_t state) {
-  if (!info) {
-    return false;
-  }
-  for (size_t i = 0; i < info->mdynamicStateCount; ++i) {
-    if (info->mpDynamicStates[i] == state) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void VulkanSpy::resetCmd(CallObserver* observer, VkCommandBuffer cmdBuf) {}
 void VulkanSpy::enterSubcontext(CallObserver*) {}
 void VulkanSpy::leaveSubcontext(CallObserver*) {}

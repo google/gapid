@@ -408,6 +408,30 @@ cmd VkResult vkCreateGraphicsPipelines(
       }
     }
 
+    // Register dynamic states early on as we need to know which ones are
+    // enabled when handling viewport state.
+    if (create_info.pDynamicState != null) {
+      dynamic_state_info := create_info.pDynamicState[0]
+      dynamic_data := new!DynamicData()
+      // handle dynamic_state_info.pNext
+      if dynamic_state_info.pNext != null {
+        numPNext := numberOfPNext(dynamic_state_info.pNext)
+        next := MutableVoidPtr(as!void*(dynamic_state_info.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0]
+          switch (sType) {
+          }
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+        }
+      }
+      states := dynamic_state_info.pDynamicStates[0:dynamic_state_info.dynamicStateCount]
+      for k in (0 .. dynamic_state_info.dynamicStateCount) {
+        dynamic_data.DynamicStates[k] = states[k]
+        dynamic_data.Contains[states[k]] = true
+      }
+      obj.DynamicState = dynamic_data
+    }
+
     if (create_info.pViewportState != null) {
       pipeline_viewport_state_create_info := create_info.pViewportState[0]
       // viewport state pNext
@@ -422,7 +446,6 @@ cmd VkResult vkCreateGraphicsPipelines(
         }
       }
 
-
       viewport_data := new!ViewportData()
 
       // Even if the viewports and scissors are set dynamically, the number of
@@ -431,18 +454,14 @@ cmd VkResult vkCreateGraphicsPipelines(
       viewport_data.ViewportCount = pipeline_viewport_state_create_info.viewportCount
       viewport_data.ScissorCount = pipeline_viewport_state_create_info.scissorCount
 
-      if (!hasDynamicProperty(
-            create_info.pDynamicState,
-            VK_DYNAMIC_STATE_VIEWPORT)) {
+      if (!hasDynamicState(obj, VK_DYNAMIC_STATE_VIEWPORT)) {
         viewports := pipeline_viewport_state_create_info.pViewports[0:viewport_data.ViewportCount]
         for k in (0 .. viewport_data.ViewportCount) {
           viewport_data.Viewports[k] = viewports[k]
         }
       }
 
-      if (!hasDynamicProperty(
-            create_info.pDynamicState,
-            VK_DYNAMIC_STATE_SCISSOR)) {
+      if (!hasDynamicState(obj, VK_DYNAMIC_STATE_SCISSOR)) {
         scissors := pipeline_viewport_state_create_info.pScissors[0:viewport_data.ScissorCount]
         for k in (0 .. viewport_data.ScissorCount) {
           viewport_data.Scissors[k] = scissors[k]
@@ -555,27 +574,6 @@ cmd VkResult vkCreateGraphicsPipelines(
         color_blend_data.Attachments[k] = attachments[k]
       }
       obj.ColorBlendState = color_blend_data
-    }
-    if (create_info.pDynamicState != null) {
-      dynamic_state_info := create_info.pDynamicState[0]
-      dynamic_data := new!DynamicData()
-      // handle dynamic_state_info.pNext
-      if dynamic_state_info.pNext != null {
-        numPNext := numberOfPNext(dynamic_state_info.pNext)
-        next := MutableVoidPtr(as!void*(dynamic_state_info.pNext))
-        for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0]
-          switch (sType) {
-          }
-          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
-        }
-      }
-      states := dynamic_state_info.pDynamicStates[0:dynamic_state_info.dynamicStateCount]
-      for k in (0 .. dynamic_state_info.dynamicStateCount) {
-        dynamic_data.DynamicStates[k] = states[k]
-        dynamic_data.Contains[states[k]] = true
-      }
-      obj.DynamicState = dynamic_data
     }
 
     obj.RenderPass = RenderPasses[create_info.renderPass]

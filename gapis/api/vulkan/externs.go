@@ -38,22 +38,6 @@ type externs struct {
 	w     api.StateWatcher
 }
 
-func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
-	state VkDynamicState) bool {
-	if info == 0 {
-		return false
-	}
-	l := e.s.MemoryLayout
-	dynamicStateInfo := info.Slice(0, 1, l).MustReadʷ(e.ctx, e.cmd, e.s, e.b, e.w)[0]
-	states := dynamicStateInfo.PDynamicStatesʷ(e.ctx, e.w, true).Slice(0, uint64(dynamicStateInfo.DynamicStateCountʷ(e.ctx, e.w, true)), l).MustReadʷ(e.ctx, e.cmd, e.s, e.b, e.w)
-	for _, s := range states {
-		if s == state {
-			return true
-		}
-	}
-	return false
-}
-
 type mappedMemory VkDeviceMemory
 
 func (e externs) mapMemory(handle VkDeviceMemory, value Voidᵖᵖ, slice memory.Slice) {
