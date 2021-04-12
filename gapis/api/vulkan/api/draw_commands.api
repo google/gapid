@@ -482,25 +482,13 @@ sub void readWriteMemoryInBoundComputeDescriptorSets() {
     lci.BufferBindingOffsets)
 }
 
-@internal class DynamicStateSet {
-  bool[9] contains
-}
-
-sub  ref!DynamicStateSet unpackDynamicState(ref!DynamicData data) {
-  obj := new!DynamicStateSet()
-  if data != null {
-    for _, _, s in data.DynamicStates {
-      if as!s32(s) < 9 {
-        obj.contains[as!s32(s)] = true
-      }
-    }
-  }
-  return obj
-}
-
 @spy_disabled
 sub void readComputeState() {
   readPushConstants(VK_PIPELINE_BIND_POINT_COMPUTE)
+}
+
+sub bool hasDynamicState(ref!GraphicsPipelineObject pipeline, VkDynamicState dynamicState) {
+  return (pipeline.DynamicState != null) && pipeline.DynamicState.Contains[dynamicState]
 }
 
 @spy_disabled
@@ -508,11 +496,10 @@ sub void readDrawState() {
   info := lastDrawInfo()
   pipeline := info.GraphicsPipeline
 
-  dynamicState := unpackDynamicState(pipeline.DynamicState)
   dyn := lastDynamicPipelineState()
 
   // read all viewports
-  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_VIEWPORT)] {
+  if hasDynamicState(pipeline, VK_DYNAMIC_STATE_VIEWPORT) {
     _ = len(dyn.Viewports)
   } else {
     if pipeline.ViewportState != null {
@@ -521,7 +508,7 @@ sub void readDrawState() {
   }
 
   // read all scissors
-  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_SCISSOR)] {
+  if hasDynamicState(pipeline, VK_DYNAMIC_STATE_SCISSOR) {
     _ = len(dyn.Scissors)
   } else {
     if pipeline.ViewportState != null {
@@ -530,14 +517,14 @@ sub void readDrawState() {
   }
 
   // read line width
-  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_LINE_WIDTH)] {
+  if hasDynamicState(pipeline, VK_DYNAMIC_STATE_LINE_WIDTH) {
     _ = dyn.LineWidth
   } else {
     _ = pipeline.RasterizationState.LineWidth
   }
 
   // read depth bias
-  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_DEPTH_BIAS)] {
+  if hasDynamicState(pipeline, VK_DYNAMIC_STATE_DEPTH_BIAS) {
     _ = dyn.DepthBiasConstantFactor
     _ = dyn.DepthBiasClamp
     _ = dyn.DepthBiasSlopeFactor
@@ -548,7 +535,7 @@ sub void readDrawState() {
   }
 
   // read blend constants
-  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_BLEND_CONSTANTS)] {
+  if hasDynamicState(pipeline, VK_DYNAMIC_STATE_BLEND_CONSTANTS) {
     _ = dyn.BlendConstants[0]
     _ = dyn.BlendConstants[1]
     _ = dyn.BlendConstants[2]
@@ -563,7 +550,7 @@ sub void readDrawState() {
   }
 
   // read depth bounds
-  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_BLEND_CONSTANTS)] {
+  if hasDynamicState(pipeline, VK_DYNAMIC_STATE_BLEND_CONSTANTS) {
     _ = dyn.MinDepthBounds
     _ = dyn.MaxDepthBounds
   } else {
@@ -574,7 +561,7 @@ sub void readDrawState() {
   }
 
   // read stencil state
-  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_BLEND_CONSTANTS)] {
+  if hasDynamicState(pipeline, VK_DYNAMIC_STATE_BLEND_CONSTANTS) {
     _ = dyn.StencilFront.compareMask
     _ = dyn.StencilFront.writeMask
     _ = dyn.StencilFront.reference

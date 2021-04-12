@@ -176,7 +176,12 @@ cmd void vkDestroyPipelineLayout(
 }
 
 @internal class DynamicData {
+  // A map(u32,<value>) is needed for state rebuilder
   @unused map!(u32, VkDynamicState) DynamicStates
+  // At every draw call we need to lookup if a particular dynamic state is
+  // enabled, rather than iterating on the DynamicStates map, we use this
+  // helper map for simple lookup.
+  @unused map!(VkDynamicState, bool) Contains
 }
 
 @resource
@@ -565,10 +570,10 @@ cmd VkResult vkCreateGraphicsPipelines(
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
       }
-      states := dynamic_state_info.pDynamicStates[0:
-      dynamic_state_info.dynamicStateCount]
+      states := dynamic_state_info.pDynamicStates[0:dynamic_state_info.dynamicStateCount]
       for k in (0 .. dynamic_state_info.dynamicStateCount) {
         dynamic_data.DynamicStates[k] = states[k]
+        dynamic_data.Contains[states[k]] = true
       }
       obj.DynamicState = dynamic_data
     }

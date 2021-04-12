@@ -1025,9 +1025,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	var boundDsets map[uint32]DescriptorSetObjectʳ
 	var renderpass RenderPassObjectʳ
 	var dynamicOffsets map[uint32]U32ːU32ːVkDeviceSizeᵐᵐ
-	// Convert the DynamicStates map to have VkDynamicState be the key
-	// for quick lookup (i.e. make it a set)
-	dynamicStates := make(map[VkDynamicState]bool)
+	var dynamicStates map[VkDynamicState]bool
 	// Use LastDrawInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1046,9 +1044,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		}
 
 		if !p.DynamicState().IsNil() {
-			for _, k := range p.DynamicState().DynamicStates().Keys() {
-				dynamicStates[p.DynamicState().DynamicStates().Get(k)] = true
-			}
+			dynamicStates = p.DynamicState().Contains().All()
 		}
 	}
 
