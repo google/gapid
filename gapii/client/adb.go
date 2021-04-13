@@ -143,7 +143,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	}
 
 	log.I(ctx, "Setting up Layer")
-	cu, err := android.SetupLayers(ctx, d, p.Name, []string{gapidapk.PackageName(abi)}, []string{gapidapk.LayerName(true)})
+	cu, err := android.SetupLayers(ctx, d, p.Name, []string{gapidapk.PackageName(abi)}, []string{gapidapk.GraphicsSpyLayerName})
 	if err != nil {
 		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Failed when setting up layers")
 	}
