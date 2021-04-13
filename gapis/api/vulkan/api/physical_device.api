@@ -58,6 +58,7 @@
   @unused ref!PhysicalDeviceShaderCorePropertiesAMD PhysicalDeviceShaderCorePropertiesAMD
   @unused ref!PhysicalDeviceFloatControlsPropertiesKHR PhysicalDeviceFloatControlsPropertiesKHR
   @unused ref!PhysicalDeviceDriverPropertiesKHR PhysicalDeviceDriverPropertiesKHR
+  @unused ref!PhysicalDeviceLineRasterizationPropertiesEXT PhysicalDeviceLineRasterizationPropertiesEXT
 }
 
 @internal class PhysicalDevicesAndProperties {

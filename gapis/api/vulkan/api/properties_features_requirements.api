@@ -384,6 +384,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
             _ = as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceLineRasterizationFeaturesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -435,6 +438,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
             write(as!VkPhysicalDeviceShaderAtomicInt64FeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceLineRasterizationFeaturesEXT*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
@@ -586,6 +592,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
             _ = as!VkPhysicalDeviceDriverPropertiesKHR*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+            _ = as!VkPhysicalDeviceLineRasterizationPropertiesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -695,6 +704,12 @@ sub void GetPhysicalDeviceProperties2(
                 DriverName: ext.driverName,
                 DriverInfo: ext.driverInfo,
                 ConformanceVersion: ext.conformanceVersion,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+              ext := as!VkPhysicalDeviceLineRasterizationPropertiesEXT*(next.Ptr)[0]
+              phyDev.PhysicalDeviceLineRasterizationPropertiesEXT = new!PhysicalDeviceLineRasterizationPropertiesEXT(
+                LineSubPixelPrecisionBits: ext.lineSubPixelPrecisionBits,
               )
             }
           }

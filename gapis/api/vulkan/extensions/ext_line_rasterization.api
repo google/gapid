@@ -1,0 +1,146 @@
+// Copyright (C) 2021 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_EXT_line_rasterization") define VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME "VK_EXT_line_rasterization"
+@extension("VK_EXT_line_rasterization") define VK_EXT_LINE_RASTERIZATION_SPEC_VERSION 1
+
+///////////
+// Enums //
+///////////
+
+@extension("VK_EXT_line_rasterization")
+enum VkLineRasterizationModeEXT: u32 {
+    VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT            = 0,
+    VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT        = 1,
+    VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT          = 2,
+    VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT = 3,
+}
+
+// Also added entries in api/enums.api (VkStructureType and VkDynamicState)
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_EXT_line_rasterization")
+class VkPhysicalDeviceLineRasterizationFeaturesEXT {
+  VkStructureType sType
+  const void*     pNext
+  VkBool32        rectangularLines
+  VkBool32        bresenhamLines
+  VkBool32        smoothLines
+  VkBool32        stippledRectangularLines
+  VkBool32        stippledBresenhamLines
+  VkBool32        stippledSmoothLines
+}
+
+@internal
+class PhysicalDeviceLineRasterizationFeaturesEXT {
+  VkBool32        RectangularLines
+  VkBool32        BresenhamLines
+  VkBool32        SmoothLines
+  VkBool32        StippledRectangularLines
+  VkBool32        StippledBresenhamLines
+  VkBool32        StippledSmoothLines
+}
+
+@extension("VK_EXT_line_rasterization")
+class VkPhysicalDeviceLineRasterizationPropertiesEXT {
+  VkStructureType sType
+  void*           pNext
+  u32             lineSubPixelPrecisionBits
+}
+
+@internal
+class PhysicalDeviceLineRasterizationPropertiesEXT {
+  u32             LineSubPixelPrecisionBits
+}
+
+@extension("VK_EXT_line_rasterization")
+class VkPipelineRasterizationLineStateCreateInfoEXT {
+  VkStructureType            sType
+  const void*                pNext
+  VkLineRasterizationModeEXT lineRasterizationMode
+  VkBool32                   stippledLineEnable
+  u32                        lineStippleFactor
+  u16                        lineStipplePattern
+}
+
+//////////////
+// Commands //
+//////////////
+
+@extension("VK_EXT_line_rasterization")
+@internal class
+vkCmdSetLineStippleEXTArgs {
+  u32 LineStippleFactor
+  u16 LineStipplePattern
+}
+
+@extension("VK_EXT_line_rasterization")
+sub void dovkCmdSetLineStippleEXT(ref!vkCmdSetLineStippleEXTArgs args) {
+  ldps := lastDynamicPipelineState()
+  ldps.LineStippleFactor = args.LineStippleFactor
+  ldps.LineStipplePattern = args.LineStipplePattern
+}
+
+@extension("VK_EXT_line_rasterization")
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
+cmd void vkCmdSetLineStippleEXT(
+    VkCommandBuffer commandBuffer,
+    u32             lineStippleFactor,
+    u16             lineStipplePattern) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdSetLineStippleEXTArgs(
+      LineStippleFactor:  lineStippleFactor,
+      LineStipplePattern: lineStipplePattern,
+    )
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdSetLineStippleEXT))
+    cmdBuf.BufferCommands.vkCmdSetLineStippleEXT[mapPos] = args
+    AddCommand(commandBuffer, cmd_vkCmdSetLineStippleEXT, mapPos)
+  }
+}

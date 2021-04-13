@@ -300,6 +300,8 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdDispatchBaseKHR(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatchBaseKHR[reference.MapIndex])
     case cmd_vkCmdDispatchBase:
       dovkCmdDispatchBase(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatchBase[reference.MapIndex])
+    case cmd_vkCmdSetLineStippleEXT:
+      dovkCmdSetLineStippleEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetLineStippleEXT[reference.MapIndex])
     default:
       vkErrorInvalidCommandBuffer(reference.Buffer)
   }

@@ -145,6 +145,12 @@ cmd void vkDestroyPipelineLayout(
   @unused f32             DepthBiasClamp
   @unused f32             DepthBiasSlopeFactor
   @unused f32             LineWidth
+
+  // @extension("VK_EXT_line_rasterization")
+  @unused VkLineRasterizationModeEXT LineRasterizationMode
+  @unused VkBool32                   StippledLineEnable
+  @unused u32                        LineStippleFactor
+  @unused u16                        LineStipplePattern
 }
 
 @internal class MultisampleData {
@@ -490,6 +496,13 @@ cmd VkResult vkCreateGraphicsPipelines(
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
+          case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT: {
+            ext := as!VkPipelineRasterizationLineStateCreateInfoEXT*(next.Ptr)[0]
+            obj.RasterizationState.LineRasterizationMode = ext.lineRasterizationMode
+            obj.RasterizationState.StippledLineEnable = ext.stippledLineEnable
+            obj.RasterizationState.LineStippleFactor = ext.lineStippleFactor
+            obj.RasterizationState.LineStipplePattern = ext.lineStipplePattern
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }

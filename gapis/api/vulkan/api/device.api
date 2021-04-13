@@ -67,6 +67,9 @@
   @unused ref!PhysicalDeviceVulkanMemoryModelFeaturesKHR PhysicalDeviceVulkanMemoryModelFeaturesKHR
   @unused ref!PhysicalDeviceShaderFloat16Int8FeaturesKHR PhysicalDeviceShaderFloat16Int8FeaturesKHR
   @unused ref!PhysicalDeviceFloatControlsPropertiesKHR PhysicalDeviceFloatControlsPropertiesKHR
+
+  // @extension("VK_EXT_line_rasterization")
+  @unused ref!PhysicalDeviceLineRasterizationFeaturesEXT PhysicalDeviceLineRasterizationFeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -262,6 +265,17 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
         }
         case VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO: {
           // Ignore.
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceLineRasterizationFeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceLineRasterizationFeaturesEXT = new!PhysicalDeviceLineRasterizationFeaturesEXT(
+              RectangularLines: ext.rectangularLines,
+              BresenhamLines: ext.bresenhamLines,
+              SmoothLines: ext.smoothLines,
+              StippledRectangularLines: ext.stippledRectangularLines,
+              StippledBresenhamLines: ext.stippledBresenhamLines,
+              StippledSmoothLines: ext.stippledSmoothLines,
+          )
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext

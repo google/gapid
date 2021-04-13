@@ -116,6 +116,7 @@ import "extensions/khr_shader_float16_int8.api"
 import "extensions/khr_shader_atomic_int64.api"
 import "extensions/khr_driver_properties.api"
 import "extensions/khr_timeline_semaphore.api"
+import "extensions/ext_line_rasterization.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -285,6 +286,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_external_semaphore_fd"] = true
   supported.ExtensionNames["VK_KHR_external_memory"] = true
   supported.ExtensionNames["VK_ANDROID_external_memory_android_hardware_buffer"] = true
+  supported.ExtensionNames["VK_EXT_line_rasterization"] = true
   return supported
 }
 
@@ -337,6 +339,9 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   dense_map!(u32, VkRect2D) Scissors
   // The value set by vkCmdSetLineWidth
   f32 LineWidth
+  // The values set by vkCmdSetLineStippleEXT
+  u32 LineStippleFactor
+  u16 LineStipplePattern
   // The constant factor set by vkCmdSetDepthBias
   f32 DepthBiasConstantFactor
   // The clamp set by vkCmdSetDepthBias
