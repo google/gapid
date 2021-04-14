@@ -20,13 +20,11 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/flock"
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapidapk"
 	"github.com/pkg/errors"
@@ -36,9 +34,6 @@ const (
 	// getPidRetries is the number of retries for getting the pid of the process
 	// our newly-started activity runs in.
 	getPidRetries = 7
-	// vkImplicitLayersProp is the name of the system property that contains implicit
-	// Vulkan layers to be loaded by Vulkan loader on Android
-	vkImplicitLayersProp = "debug.vulkan.layers"
 )
 
 // Process represents a running process to capture.
@@ -214,29 +209,4 @@ func Connect(ctx context.Context, d adb.Device, abi *device.ABI, pipe string, o 
 		return nil, err
 	}
 	return process, nil
-}
-
-// reserveVulkanDevice reserves the given device for starting Vulkan trace and
-// set the implicit Vulkan layers property to let the Vulkan loader loads
-// GraphicsSpy layer. It returns the mutex which reserves the device and error.
-func reserveVulkanDevice(ctx context.Context, d adb.Device) (*flock.Mutex, error) {
-	m := flock.Lock(d.Instance().GetSerial())
-	if err := d.SetSystemProperty(ctx, vkImplicitLayersProp, "GraphicsSpy"); err != nil {
-		return nil, log.Err(ctx, err, "Setting up vulkan layer")
-	}
-	return m, nil
-}
-
-// releaseVulkanDevice checks if the given mutex is nil, and if not, unsets the
-// implicit Vulkan layers property on the given Android device and release the
-// lock in the given mutex.
-func releaseVulkanDevice(ctx context.Context, d adb.Device, m *flock.Mutex) error {
-	if m != nil {
-		ctx = keys.Clone(context.Background(), ctx)
-		if err := d.SetSystemProperty(ctx, vkImplicitLayersProp, ""); err != nil {
-			return err
-		}
-		m.Unlock()
-	}
-	return nil
 }
