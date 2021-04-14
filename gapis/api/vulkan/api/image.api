@@ -613,7 +613,7 @@ cmd void vkDestroyImageView(
   @unused f32                       MinLod
   @unused f32                       MaxLod
   @unused VkBorderColor             BorderColor
-  @unsued VkBool32                  UnnormalizedCoordinates
+  @unused VkBool32                  UnnormalizedCoordinates
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   // Do not track dependency for the following back-references.
   @hidden @untrackedMap @untracked

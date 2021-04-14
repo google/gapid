@@ -43,7 +43,7 @@
 @internal class CommandPoolObject {
   @unused VkDevice                                       Device
   @unused VkCommandPool                                  VulkanHandle
-  @unsued VkCommandPoolCreateFlags                       Flags
+  @unused VkCommandPoolCreateFlags                       Flags
   @unused u32                                            QueueFamilyIndex
   @unused map!(VkCommandBuffer, ref!CommandBufferObject) CommandBuffers
   @unused ref!VulkanDebugMarkerInfo                      DebugInfo

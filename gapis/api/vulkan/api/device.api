@@ -36,7 +36,7 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
-@intenral class QueueInfo {
+@internal class QueueInfo {
   u32 QueueFamilyIndex
   u32 QueueIndex
   f32 Priority

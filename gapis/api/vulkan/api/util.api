@@ -28,7 +28,7 @@ extern u32 numberOfPNext(const void* pNext)
   u32 Val
 }
 
-@interal class MutableVkDeviceSize {
+@internal class MutableVkDeviceSize {
   VkDeviceSize Val
 }
 

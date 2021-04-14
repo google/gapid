@@ -110,7 +110,7 @@ bitfield VkImageCreateFlagBits {
   VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT_KHR = 0x00000080,
   VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR              = 0x00000100,
 
-  //@extesion("VK_KHR_sampler_ycbcr_conversion")
+  //@extension("VK_KHR_sampler_ycbcr_conversion")
   VK_IMAGE_CREATE_DISJOINT_BIT_KHR = 0x00000200,
 
   // Vulkan 1.1 core
