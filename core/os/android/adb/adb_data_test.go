@@ -53,6 +53,7 @@ screen_off_locked_device    offline
 screen_off_unlocked_device  offline
 screen_on_locked_device     offline
 screen_on_unlocked_device   device
+serial_do_match             device
 `)
 	emptyDevices = stub.RespondTo(adbPath.System()+` devices`, `
 List of devices attached

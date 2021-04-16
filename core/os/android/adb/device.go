@@ -57,9 +57,22 @@ var (
 	cache      = map[string]*binding{}
 	cacheMutex sync.Mutex // Guards cache.
 
+	// devSerial is an Android device serial id. If it is not empty, then device
+	// scanning will only consider the device with that particular id.
+	devSerial      string
+	devSerialMutex sync.Mutex
+
 	// Registry of all the discovered devices.
 	registry = bind.NewRegistry()
 )
+
+// LimitToSerial restricts the device lookup to only scan and operate on the
+// device with the given serial id.
+func LimitToSerial(serial string) {
+	devSerialMutex.Lock()
+	defer devSerialMutex.Unlock()
+	devSerial = serial
+}
 
 // DeviceInfoProvider is a function that adds additional information to a
 // Device.
@@ -287,7 +300,8 @@ func allZero(bytes []byte) bool {
 	return false
 }
 
-// scanDevices returns the list of attached Android devices.
+// scanDevices returns the list of attached Android devices. It is impacted by
+// previous calls to LimitToSerial().
 func scanDevices(ctx context.Context) error {
 	exe, err := adb()
 	if err != nil {
@@ -306,6 +320,9 @@ func scanDevices(ctx context.Context) error {
 	defer cacheMutex.Unlock()
 
 	for serial, status := range parsed {
+		if (devSerial != "") && (serial != devSerial) {
+			continue
+		}
 		cached, ok := cache[serial]
 		if !ok || status != cached.Status(ctx) {
 			device, err := newDevice(ctx, serial, status)
@@ -320,9 +337,11 @@ func scanDevices(ctx context.Context) error {
 		}
 	}
 
-	// Remove cached results for removed devices.
+	// Remove cached results for removed devices. If we're limited to a single
+	// serial, make sure to remove any device that doesn't match it.
 	for serial, cached := range cache {
-		if _, found := parsed[serial]; !found {
+		notTheSerialDevice := (devSerial != "") && (serial != devSerial)
+		if _, found := parsed[serial]; !found || notTheSerialDevice {
 			delete(cache, serial)
 			registry.RemoveDevice(ctx, cached)
 		}

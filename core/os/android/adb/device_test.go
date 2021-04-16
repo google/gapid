@@ -74,3 +74,25 @@ func TestParseDevices(t_ *testing.T) {
 	assert.For(ctx, "not connected").ThatError(err).HasMessage(`Process returned error
    Cause: Not connected`)
 }
+
+func TestLimitToSerial(t_ *testing.T) {
+	ctx := log.Testing(t_)
+
+	// Make sure to remove the limitation so further tests work fine
+	defer adb.LimitToSerial("")
+
+	got, err := adb.Devices(ctx)
+	assert.For(ctx, "No serial limitation").ThatError(err).Succeeded()
+	assert.For(ctx, "No serial limitation").ThatInteger(len(got)).IsAtLeast(2)
+
+	adb.LimitToSerial("serial_do_match")
+	got, err = adb.Devices(ctx)
+	assert.For(ctx, "LimitToSerial do match").ThatError(err).Succeeded()
+	assert.For(ctx, "LimitToSerial do match").ThatInteger(len(got)).Equals(1)
+	assert.For(ctx, "LimitToSerial do match").ThatString(got.FindBySerial("serial_do_match").Instance().Serial).Equals("serial_do_match")
+
+	adb.LimitToSerial("serial_do_not_match")
+	got, err = adb.Devices(ctx)
+	assert.For(ctx, "LimitToSerial do not match").ThatError(err).Succeeded()
+	assert.For(ctx, "LimitToSerial do not match").ThatSlice(got).IsEmpty()
+}
