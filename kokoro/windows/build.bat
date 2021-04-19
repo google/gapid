@@ -92,7 +92,7 @@ REM Install Bazel.
 set BAZEL_VERSION=2.0.0
 wget -q https://github.com/bazelbuild/bazel/releases/download/%BAZEL_VERSION%/bazel-%BAZEL_VERSION%-windows-x86_64.zip
 unzip -q bazel-%BAZEL_VERSION%-windows-x86_64.zip
-set PATH=C:\python27;%PATH%
+set PATH=C:\python35;%PATH%
 
 cd %SRC%
 

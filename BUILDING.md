@@ -44,21 +44,21 @@ Start a console, with administrator privilege, and type:
 
 `choco install bazel --version 2.0.0`
 
-In the same console, install Python 2.7 and MSYS2 as well:
+In the same console, install Python and MSYS2 as well:
 
-`choco install python2`
+`choco install python`  
 `choco install msys2`
 
 ### Install additional tools
 
-Using the msys64 shell (installed by choco at `C:\tools\msys64\mingw64`):
-1. Update MSYS with: `pacman -Syu`.
+From the Start Menu select the `MSYS2 64bit / MSYS2 MinGW 64-bit` shell:
+1. Update MSYS2 with: `pacman -Syu`.
 2. If the update ends with “close the window and run it again”, close and reopen the window and repeat 1.
 3. Fetch required tools with: `pacman -S curl git zip unzip patch`
-4. Download gcc with: `curl -O http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-10.2.0-5-any.pkg.tar.zst`
-5. Download gcc-libs with: `curl -O http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-libs-10.2.0-5-any.pkg.tar.zst`
-6. Install gcc with: `pacman -U mingw-w64-x86_64-gcc*-10.2.0-5-any.pkg.tar.zst`
-7. Close the MSYS terminal
+4. Download gcc with: `curl -O http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-10.2.0-10-any.pkg.tar.zst`
+5. Download gcc-libs with: `curl -O http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-gcc-libs-10.2.0-10-any.pkg.tar.zst`
+6. Install the downloaded packages with: `pacman -U mingw-w64-x86_64-gcc*-10.2.0-10-any.pkg.tar.zst`
+7. Close the MSYS2 terminal
 
 ### Install Java Development Kit 1.8
 
@@ -70,25 +70,29 @@ Make sure the `JAVA_HOME` environment variable points to the JDK.
 
 ### Install Android SDK and NDK
 
-Unzip the [Android SDK](https://dl.google.com/android/repository/sdk-tools-windows-3859397.zip) to a directory of your choosing.
+If you have Android Studio installed, use it to install:
+* SDK Platform: `Android 8.0 (Oreo) - API Level 26`
+* SDK Tools: `NDK (Side by side) - 21.3.6528147`
 
-To fetch the required packages, using a console type:
+Otherwise you can use the basic Android command line tools:
+1. Create a directory for the Android SDK, for example `C:\Android\sdk\`.
+1. Create the subdirectories `<sdk-path>\cmdline-tools\latest\`. This exact name allows the tools to determine the SDK directory.
+1. Download the tools from [Android Studio downloads](https://developer.android.com/studio/#downloads).
+1. Extract the tools somewhere and move the contents of `cmdline-tools\` to the created `<sdk-path>\cmdline-tools\latest\`.
+1. Use a console to fetch the required packages:
 
-```
-cd <sdk-path>
-tools\bin\sdkmanager.bat "platforms;android-26" "build-tools;29.0.2"
-```
+    ```
+    cd <sdk-path>
+    cmdline-tools\latest\bin\sdkmanager.bat "platforms;android-26"
+    cmdline-tools\latest\bin\sdkmanager.bat "build-tools;30.0.3"
+    cmdline-tools\latest\bin\sdkmanager.bat "ndk;21.3.6528147"
+    ```
 
-If you do not have adb installed you can do so with:
-```
-cd <sdk-path>
-tools\bin\sdkmanager.bat platform-tools
-```
-
-Unzip the
-[Android NDK **r21d**](https://dl.google.com/android/repository/android-ndk-r21d-windows-x86_64.zip)
-into a directory of your choosing, and set the `ANDROID_NDK_HOME` environment
-variable to point to this directory.
+1. If you do not have adb installed you can do so with:
+    ```
+    cd <sdk-path>
+    cmdline-tools\latest\bin\sdkmanager.bat platform-tools
+    ```
 
 ### Configure the environment
 
@@ -96,23 +100,20 @@ Either do this globally or in your shell every time.
 
 Make sure the environment is setup before you run bazel (`bazel shutdown` will shut it down).
 
-1. Add `C:\tools\msys64\mingw64` to the PATH:
-   `set PATH=C:\tools\msys64\mingw64\bin;%PATH%`
+1. Add MSYS2 binary directories to the PATH:  
+   `set PATH=C:\tools\msys64\usr\bin;C:\tools\msys64\mingw64\bin;%PATH%`  
    Running `where gcc` should now find mingw’s gcc.
-
-1. Add `C:\tools\python27` to the PATH:
-   `set PATH=C:\tools\python27;%PATH%`
 
 1. Set TMP to something very short. `C:\tmp` is known to work. For faster builds, add this folder to the excemptions of the Windows Defender anti-malware scanner.
 
 The following environment variables will need to be set prior to building:
 
-| Variable            | Target                             |
-| ------------------- | ---------------------------------- |
-| `ANDROID_HOME`      | Path to Android SDK                |
-| `ANDROID_NDK_HOME`  | Path to Android NDK                |
-| `BAZEL_SH`          | `C:\tools\msys64\usr\bin\bash.exe` |
-| `TMP`               | `C:\tmp`                           |
+| Variable            | Target                                                      |
+| ------------------- | ----------------------------------------------------------- |
+| `ANDROID_HOME`      | Path to Android SDK, e.g. `C:\Android\sdk`                  |
+| `ANDROID_NDK_HOME`  | Path to Android NDK, e.g. `%ANDROID_HOME%\ndk\21.3.6528147` |
+| `BAZEL_SH`          | `C:\tools\msys64\usr\bin\bash.exe`                          |
+| `TMP`               | `C:\tmp`                                                    |
 
 ---
 

@@ -35,9 +35,6 @@ build --define AGI_BUILD_NUMBER=0 --define AGI_BUILD_SHA=developer
 # linker when building the dynamic library, which leads to over-bloated libs.
 build --incompatible_remove_legacy_whole_archive
 
-# Makes bazel use Python 2 for genrules using Python executable targets.
-build --host_force_python=PY2
-
 # Sets the go +build tags to use during compilation.
 build --define gotags=analytics,crashreporting
 
