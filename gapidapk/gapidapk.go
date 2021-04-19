@@ -128,7 +128,10 @@ func ensureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 
 		apkPath, err := gapid.Path(ctx)
 		if err != nil {
-			return nil, log.Err(ctx, err, "Obtaining GAPID package path")
+			// This might happen if gapid is installed only for the work profile
+			log.I(ctx, "Uninstalling existing gapid.apk as path not queryable.")
+			gapid.Uninstall(ctx)
+			continue
 		}
 		log.I(ctx, "Found gapid package...")
 
