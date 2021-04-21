@@ -50,6 +50,7 @@
 
 #include <jni.h>
 #include <sys/prctl.h>
+#include <sys/system_properties.h>
 
 extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   GAPID_INFO("JNI_OnLoad() was called. vm = %p", vm);
@@ -64,6 +65,16 @@ const uint32_t kMaxFramebufferObservationWidth = 3840;
 const uint32_t kMaxFramebufferObservationHeight = 2560;
 
 const int32_t kSuspendIndefinitely = -1;
+
+#if TARGET_OS == GAPID_OS_ANDROID
+// Android: system property holding the name of the process to capture.
+// Mirrored in gapii/client/adb.go
+const char* kCaptureProcessNameSystemProperty = "debug.agi.procname";
+#else
+// Desktop: environment variable holding the name of the process to capture.
+// Mirrored in gapis/trace/desktop/trace.go
+const char* kCaptureProcessNameEnvVar = "GAPID_CAPTURE_PROCESS_NAME";
+#endif  // TARGET_OS == GAPID_OS_ANDROID
 
 thread_local gapii::CallObserver* gContext = nullptr;
 
@@ -97,12 +108,34 @@ Spy::Spy()
       mObserveFrameFrequency(0),
       mObserveDrawFrequency(0),
       mFrameNumber(0) {
+  // Start by checking whether to capture the current process: compare the
+  // current process name with the "capture_proc_name" that we get from the
+  // environment. An empty "capture_proc_name" means capture any process. This
+  // is useful for games where the process initially started by AGI creates an
+  // other process where the actual game rendering happens.
   bool this_executable = true;
-  char* pn = getenv("GAPID_CAPTURE_PROCESS_NAME");
-  if (pn) {
-    auto proc_name = core::get_process_name();
-    this_executable = (proc_name == pn);
+  auto this_proc_name = core::get_process_name();
+  GAPID_INFO("this process name: %s", this_proc_name.c_str());
+
+#if TARGET_OS == GAPID_OS_ANDROID
+  // PROP_VALUE_MAX is defined in <sys/system_properties.h>
+  char capture_proc_name[PROP_VALUE_MAX];
+  __system_property_get(kCaptureProcessNameSystemProperty, capture_proc_name);
+#else
+  const char* capture_proc_name = getenv(kCaptureProcessNameEnvVar);
+#endif
+
+  // The cast to (const char*) is necessary for Android, where capture_proc_name
+  // is declared as a char array, such that comparing it (without cast) to
+  // nullptr raises a compilation warning that is treated as an error.
+  if (((const char*)capture_proc_name != nullptr) &&
+      (capture_proc_name[0] != '\0')) {
+    this_executable = (!this_proc_name.compare(capture_proc_name));
+    GAPID_INFO("capture process name: %s (%s this process name)",
+               capture_proc_name,
+               this_executable ? "same as" : "different from");
   }
+
   if (this_executable) {
 #if TARGET_OS == GAPID_OS_ANDROID
     // Use a "localabstract" pipe on Android to prevent depending on the traced

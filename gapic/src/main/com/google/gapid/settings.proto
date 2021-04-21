@@ -119,6 +119,7 @@ message Trace {
   string friendly_name = 16;
   Duration gfx_duration = 17;
   Duration profile_duration = 18;
+  string process_name = 19;
 }
 
 message Perfetto {

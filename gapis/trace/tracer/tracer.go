@@ -145,5 +145,6 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 		o.AdditionalCommandLineArgs,
 		enableAngle,
 		o.PipeName,
+		o.ProcessName,
 	}
 }

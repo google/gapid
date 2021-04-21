@@ -431,6 +431,8 @@ message TraceTypeCapabilities {
   bool can_enable_unsupported_extensions = 4;
   // Does this trace require starting an application.
   bool requires_application = 6;
+  // Can select a specific process name
+  bool can_select_process_name = 7;
 }
 
 // MultiResourceData represents the state of resources at a single point in a
@@ -1408,6 +1410,8 @@ message TraceOptions {
   bool wait_for_debugger = 26;
   // The config to use if doing a Perfetto trace.
   perfetto.protos.TraceConfig perfetto_config = 24;
+  // The name of the process to capture (empty for capturing any process).
+  string process_name = 27;
 }
 
 enum TraceEvent {

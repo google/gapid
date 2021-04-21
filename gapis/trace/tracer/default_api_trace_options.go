@@ -25,6 +25,7 @@ func VulkanTraceOptions() *service.TraceTypeCapabilities {
 		Api:                            "Vulkan",
 		CanEnableUnsupportedExtensions: true,
 		RequiresApplication:            true,
+		CanSelectProcessName:           true,
 	}
 }
 
@@ -35,6 +36,7 @@ func AngleTraceOptions() *service.TraceTypeCapabilities {
 		Api:                            "OpenGL on ANGLE",
 		CanEnableUnsupportedExtensions: true,
 		RequiresApplication:            true,
+		CanSelectProcessName:           true,
 	}
 }
 
@@ -44,5 +46,6 @@ func PerfettoTraceOptions() *service.TraceTypeCapabilities {
 		Type:                           service.TraceType_Perfetto,
 		CanEnableUnsupportedExtensions: false,
 		RequiresApplication:            false,
+		CanSelectProcessName:           false,
 	}
 }

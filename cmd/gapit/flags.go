@@ -334,6 +334,7 @@ type (
 		PipeName        string `help:"The name of the pipe to connect/listen to."`
 		Perfetto        string `help:"File containing the Perfetto configuration proto."`
 		WaitForDebugger bool   `help:"Make GAPII wait for a debugger to attach"`
+		ProcessName     string `help:"Name of the process to capture. Default to empty, i.e. capture any process. Useful for games that fork processes."`
 	}
 	BenchmarkFlags struct {
 		Gapis      GapisFlags

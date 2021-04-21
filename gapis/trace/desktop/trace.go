@@ -39,6 +39,12 @@ import (
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
+const (
+	// captureProcessNameEnvVar is the environment variable holding the name of
+	// the process to capture. Mirrored in gapii/cc/spy.cpp.
+	captureProcessNameEnvVar = "GAPID_CAPTURE_PROCESS_NAME"
+)
+
 type DesktopTracer struct {
 	b bind.Device
 }
@@ -240,6 +246,9 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 
 	for _, x := range o.Environment {
 		env.Add(x)
+	}
+	if o.ProcessName != "" {
+		env.Add(captureProcessNameEnvVar + "=" + o.ProcessName)
 	}
 	var p tracer.Process
 	var boundPort int

@@ -24,8 +24,15 @@ static const size_t MAX_PATH = 4096;
 
 std::string get_process_name() {
   std::ifstream t("/proc/self/cmdline");
-  return std::string((std::istreambuf_iterator<char>(t)),
-                     std::istreambuf_iterator<char>());
+  std::string name;
+  // Watch out: the string returned by reading /proc/self/cmdline contains '\0'
+  // characters to delimit the command line arguments (see man proc), make sure
+  // to stop at the first '\0' to only extract the process name.
+  auto it = std::istreambuf_iterator<char>(t);
+  while (it != std::istreambuf_iterator<char>() && *it != '\0') {
+    name += *it++;
+  }
+  return name;
 }
 
 uint64_t get_process_id() { return static_cast<uint64_t>(getpid()); }

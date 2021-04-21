@@ -34,6 +34,10 @@ const (
 	// getPidRetries is the number of retries for getting the pid of the process
 	// our newly-started activity runs in.
 	getPidRetries = 7
+
+	// captureProcessNameProperty is the Android system property holding the
+	// name of the process to capture. Mirrored in gapii/cc/spy.cpp.
+	captureProcessNameProperty = "debug.agi.procname"
 )
 
 // Process represents a running process to capture.
@@ -147,6 +151,18 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	var additionalArgs []android.ActionExtra
 	if o.AdditionalFlags != "" {
 		additionalArgs = append(additionalArgs, android.CustomExtras(text.Quote(text.SplitArgs(o.AdditionalFlags))))
+	}
+
+	log.I(ctx, "Setting capture process name")
+	procNameBackup, err := d.SystemProperty(ctx, captureProcessNameProperty)
+	if err != nil {
+		return nil, cleanup.Invoke(ctx), err
+	}
+	cleanup = cleanup.Then(func(ctx context.Context) {
+		d.SetSystemProperty(ctx, captureProcessNameProperty, procNameBackup)
+	})
+	if err := d.SetSystemProperty(ctx, captureProcessNameProperty, o.ProcessName); err != nil {
+		return nil, cleanup.Invoke(ctx), err
 	}
 
 	if a != nil {

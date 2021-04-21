@@ -308,6 +308,7 @@ public class TracerDialog {
       private final Label targetLabel;
       private final Text arguments;
       private final Text cwd;
+      private final Text processName;
       private final Text envVars;
       private final Combo startType;
       private final Spinner startFrame;
@@ -405,6 +406,11 @@ public class TracerDialog {
         createLabel(appGroup, "Additional Arguments:");
         arguments = withLayoutData(createTextbox(appGroup, trace.getArguments()),
             new GridData(SWT.FILL, SWT.FILL, true, false));
+
+        createLabel(appGroup, "Process name:");
+        processName = withLayoutData(createTextbox(appGroup, trace.getProcessName()),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        processName.setEnabled(false);
 
         createLabel(appGroup, "Working Directory:");
         cwd = withLayoutData(createTextbox(appGroup, trace.getCwd()),
@@ -677,6 +683,9 @@ public class TracerDialog {
         boolean appRequired = config != null && config.getRequiresApplication();
         targetLabel.setText(TARGET_LABEL + (appRequired ? "*:" : ":"));
         targetLabel.requestLayout();
+
+        boolean canSelectProcessName = config != null && config.getCanSelectProcessName();
+        processName.setEnabled(canSelectProcessName);
 
         boolean isPerfetto = isPerfetto(config);
         SettingsProto.Trace.DurationOrBuilder dur = isPerfetto ?
@@ -952,6 +961,7 @@ public class TracerDialog {
         trace.setHideUnknownExtensions(hideUnknownExtensions.getSelection());
         trace.setOutDir(directory.getText());
         trace.setFriendlyName(friendlyName);
+        trace.setProcessName(processName.getText());
 
         Service.TraceOptions.Builder options = Service.TraceOptions.newBuilder()
             .setDevice(dev.path)
@@ -962,7 +972,8 @@ public class TracerDialog {
             .setFramesToCapture(duration.getSelection())
             .setNoBuffer(withoutBuffering.getSelection())
             .setHideUnknownExtensions(hideUnknownExtensions.getSelection())
-            .setServerLocalSavePath(output.getAbsolutePath());
+            .setServerLocalSavePath(output.getAbsolutePath())
+            .setProcessName(processName.getText());
 
         if (dev.config.getCanSpecifyCwd()) {
           trace.setCwd(cwd.getText());

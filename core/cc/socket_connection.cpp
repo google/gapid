@@ -370,6 +370,7 @@ std::unique_ptr<Connection> SocketConnection::createPipe(const char* pipename,
   }
 #endif
 
+  // Rely on zero-initialization here to assume pipe.sun_path is zeroed.
   struct sockaddr_un pipe {};
   pipe.sun_family = AF_UNIX;
   strncpy(pipe.sun_path + (abstract ? 1 : 0), pipename,
