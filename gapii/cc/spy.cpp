@@ -47,16 +47,7 @@
 #endif  //  TARGET_OS == GAPID_OS_WINDOWS
 
 #if TARGET_OS == GAPID_OS_ANDROID
-
-#include <jni.h>
-#include <sys/prctl.h>
 #include <sys/system_properties.h>
-
-extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
-  GAPID_INFO("JNI_OnLoad() was called. vm = %p", vm);
-  gapii::Spy::get();  // Construct the spy.
-  return JNI_VERSION_1_6;
-}
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
 namespace {
