@@ -129,7 +129,6 @@ go_library(
         "//core/event/task:go_default_library",  # keep
         "//core/image:go_default_library",
         "//core/image/astc:go_default_library",
-        "//core/image/etc:go_default_library",
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
         "//core/math/u64:go_default_library",  # keep
