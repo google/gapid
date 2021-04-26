@@ -266,7 +266,7 @@ public class Tracks {
         for (FrameInfo.Event buffer : layer.bufferEvents()) {
           FrameEventsTrack track = FrameEventsTrack.forFrameEvent(data.qe, layer.layerName, buffer);
           data.tracks.addTrack(buffersGroup, track.getId(), buffer.getDisplay(),
-              single(state -> new FrameEventsPanel(state, buffer, track), true, false));
+              single(state -> new FrameEventsPanel(state, buffer, track), true, true));
         }
       }
     }

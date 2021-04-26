@@ -41,6 +41,7 @@ go_proto_library(
         "@perfetto//:protos_perfetto_config_ftrace_protos",
         "@perfetto//:protos_perfetto_config_gpu_protos",
         "@perfetto//:protos_perfetto_config_inode_file_protos",
+        "@perfetto//:protos_perfetto_config_interceptors_protos",
         "@perfetto//:protos_perfetto_config_power_protos",
         "@perfetto//:protos_perfetto_config_process_stats_protos",
         "@perfetto//:protos_perfetto_config_profiling_protos",
