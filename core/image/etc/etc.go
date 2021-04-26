@@ -33,21 +33,21 @@ import (
 
 var (
 	// ETC2
-	ETC2_RGB_U8_NORM         = image.NewETC2_RGB_U8_NORM("ETC2_RGB_U8_NORM")
-	ETC2_RGBA_U8_NORM        = image.NewETC2_RGBA_U8_NORM("ETC2_RGBA_U8_NORM")
-	ETC2_RGBA_U8U8U8U1_NORM  = image.NewETC2_RGBA_U8U8U8U1_NORM("ETC2_RGBA_U8U8U8U1_NORM")
-	ETC2_SRGB_U8_NORM        = image.NewETC2_SRGB_U8_NORM("ETC2_SRGB_U8_NORM")
-	ETC2_SRGBA_U8_NORM       = image.NewETC2_SRGBA_U8_NORM("ETC2_SRGBA_U8_NORM")
-	ETC2_SRGBA_U8U8U8U1_NORM = image.NewETC2_SRGBA_U8U8U8U1_NORM("ETC2_SRGBA_U8U8U8U1_NORM")
+	ETC2_RGB_U8_NORM         = NewETC2_RGB_U8_NORM("ETC2_RGB_U8_NORM")
+	ETC2_RGBA_U8_NORM        = NewETC2_RGBA_U8_NORM("ETC2_RGBA_U8_NORM")
+	ETC2_RGBA_U8U8U8U1_NORM  = NewETC2_RGBA_U8U8U8U1_NORM("ETC2_RGBA_U8U8U8U1_NORM")
+	ETC2_SRGB_U8_NORM        = NewETC2_SRGB_U8_NORM("ETC2_SRGB_U8_NORM")
+	ETC2_SRGBA_U8_NORM       = NewETC2_SRGBA_U8_NORM("ETC2_SRGBA_U8_NORM")
+	ETC2_SRGBA_U8U8U8U1_NORM = NewETC2_SRGBA_U8U8U8U1_NORM("ETC2_SRGBA_U8U8U8U1_NORM")
 
 	// EAC
-	ETC2_R_U11_NORM  = image.NewETC2_R_U11_NORM("ETC2_R_U11_NORM")
-	ETC2_RG_U11_NORM = image.NewETC2_RG_U11_NORM("ETC2_RG_U11_NORM")
-	ETC2_R_S11_NORM  = image.NewETC2_R_S11_NORM("ETC2_R_S11_NORM")
-	ETC2_RG_S11_NORM = image.NewETC2_RG_S11_NORM("ETC2_RG_S11_NORM")
+	ETC2_R_U11_NORM  = NewETC2_R_U11_NORM("ETC2_R_U11_NORM")
+	ETC2_RG_U11_NORM = NewETC2_RG_U11_NORM("ETC2_RG_U11_NORM")
+	ETC2_R_S11_NORM  = NewETC2_R_S11_NORM("ETC2_R_S11_NORM")
+	ETC2_RG_S11_NORM = NewETC2_RG_S11_NORM("ETC2_RG_S11_NORM")
 
 	// ETC 1
-	ETC1_RGB_U8_NORM = image.NewETC1_RGB_U8_NORM("ETC1_RGB_U8_NORM")
+	ETC1_RGB_U8_NORM = NewETC1_RGB_U8_NORM("ETC1_RGB_U8_NORM")
 	formatToCEnum    = map[interface{}]C.enum_etc_format{
 		ETC2_RGB_U8_NORM:         C.ETC2_RGB_U8_NORM,
 		ETC2_RGBA_U8_NORM:        C.ETC2_RGBA_U8_NORM,
@@ -62,6 +62,40 @@ var (
 		ETC1_RGB_U8_NORM:         C.ETC1_RGB_U8_NORM,
 	}
 )
+
+func NewETC2_RGB_U8_NORM(name string) *image.Format {
+	return image.NewETC2_RGB_U8_NORM(name)
+}
+func NewETC2_RGBA_U8_NORM(name string) *image.Format {
+	return image.NewETC2_RGBA_U8_NORM(name)
+}
+func NewETC2_RGBA_U8U8U8U1_NORM(name string) *image.Format {
+	return image.NewETC2_RGBA_U8U8U8U1_NORM(name)
+}
+func NewETC2_SRGB_U8_NORM(name string) *image.Format {
+	return image.NewETC2_SRGB_U8_NORM(name)
+}
+func NewETC2_SRGBA_U8_NORM(name string) *image.Format {
+	return image.NewETC2_SRGBA_U8_NORM(name)
+}
+func NewETC2_SRGBA_U8U8U8U1_NORM(name string) *image.Format {
+	return image.NewETC2_SRGBA_U8U8U8U1_NORM(name)
+}
+func NewETC2_R_U11_NORM(name string) *image.Format {
+	return image.NewETC2_R_U11_NORM(name)
+}
+func NewETC2_RG_U11_NORM(name string) *image.Format {
+	return image.NewETC2_RG_U11_NORM(name)
+}
+func NewETC2_R_S11_NORM(name string) *image.Format {
+	return image.NewETC2_R_S11_NORM(name)
+}
+func NewETC2_RG_S11_NORM(name string) *image.Format {
+	return image.NewETC2_RG_S11_NORM(name)
+}
+func NewETC1_RGB_U8_NORM(name string) *image.Format {
+	return image.NewETC1_RGB_U8_NORM(name)
+}
 
 type converterLayout struct {
 	uncompressed *image.Format

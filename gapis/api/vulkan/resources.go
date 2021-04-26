@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
+	"github.com/google/gapid/core/image/etc"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
@@ -364,25 +365,25 @@ func getImageFormatFromVulkanFormat(vkfmt VkFormat) (*image.Format, error) {
 	case VkFormat_VK_FORMAT_BC7_SRGB_BLOCK:
 		return nil, &unsupportedVulkanFormatError{Format: vkfmt}
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
-		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
+		return etc.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
-		return image.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
+		return etc.NewETC2_RGB_U8_NORM("VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
-		return image.NewETC2_RGBA_U8U8U8U1_NORM("VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK"), nil
+		return etc.NewETC2_RGBA_U8U8U8U1_NORM("VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
-		return image.NewETC2_RGBA_U8U8U8U1_NORM("VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK"), nil
+		return etc.NewETC2_RGBA_U8U8U8U1_NORM("VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
-		return image.NewETC2_SRGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
+		return etc.NewETC2_SRGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
-		return image.NewETC2_SRGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
+		return etc.NewETC2_SRGBA_U8_NORM("VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_EAC_R11_UNORM_BLOCK:
-		return image.NewETC2_R_U11_NORM("VK_FORMAT_EAC_R11_UNORM_BLOCK"), nil
+		return etc.NewETC2_R_U11_NORM("VK_FORMAT_EAC_R11_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_EAC_R11_SNORM_BLOCK:
-		return image.NewETC2_R_S11_NORM("VK_FORMAT_EAC_R11_SNORM_BLOCK"), nil
+		return etc.NewETC2_R_S11_NORM("VK_FORMAT_EAC_R11_SNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
-		return image.NewETC2_RG_U11_NORM("VK_FORMAT_EAC_R11G11_UNORM_BLOCK"), nil
+		return etc.NewETC2_RG_U11_NORM("VK_FORMAT_EAC_R11G11_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
-		return image.NewETC2_RG_S11_NORM("VK_FORMAT_EAC_R11G11_SNORM_BLOCK"), nil
+		return etc.NewETC2_RG_S11_NORM("VK_FORMAT_EAC_R11G11_SNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
 		return astc.NewRGBA_4x4("VK_FORMAT_ASTC_4x4_UNORM_BLOCK"), nil
 	case VkFormat_VK_FORMAT_ASTC_4x4_SRGB_BLOCK:
