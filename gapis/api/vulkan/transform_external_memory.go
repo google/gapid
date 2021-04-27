@@ -226,7 +226,7 @@ func (e *externalMemory) vkCmdPipelineBarrier(ctx context.Context, g *api.Global
 		}
 
 		for i, buffer := range buffers {
-			if buffer.SrcQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL || buffer.DstQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+			if isExternalQueue(buffer.SrcQueueFamilyIndex()) || isExternalQueue(buffer.DstQueueFamilyIndex()) {
 				buffersToFix[base.Offset(uint64(i)*base.ElementSize(g.MemoryLayout))] = buffer
 			}
 		}
@@ -241,7 +241,7 @@ func (e *externalMemory) vkCmdPipelineBarrier(ctx context.Context, g *api.Global
 		}
 
 		for i, image := range images {
-			if image.SrcQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL || image.DstQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+			if isExternalQueue(image.SrcQueueFamilyIndex()) || isExternalQueue(image.DstQueueFamilyIndex()) {
 				imagesToFix[base.Offset(uint64(i)*base.ElementSize(g.MemoryLayout))] = image
 			}
 		}
@@ -255,7 +255,7 @@ func (e *externalMemory) vkCmdPipelineBarrier(ctx context.Context, g *api.Global
 	newCmd.Extras().CloneObservations()
 
 	for ptr, buffer := range buffersToFix {
-		if buffer.SrcQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+		if isExternalQueue(buffer.SrcQueueFamilyIndex()) {
 			buffer.SetSrcQueueFamilyIndex(buffer.DstQueueFamilyIndex())
 		} else {
 			buffer.SetDstQueueFamilyIndex(buffer.SrcQueueFamilyIndex())
@@ -266,7 +266,7 @@ func (e *externalMemory) vkCmdPipelineBarrier(ctx context.Context, g *api.Global
 	}
 
 	for ptr, image := range imagesToFix {
-		if image.SrcQueueFamilyIndex() == VK_QUEUE_FAMILY_EXTERNAL {
+		if isExternalQueue(image.SrcQueueFamilyIndex()) {
 			image.SetSrcQueueFamilyIndex(image.DstQueueFamilyIndex())
 		} else {
 			image.SetDstQueueFamilyIndex(image.SrcQueueFamilyIndex())
@@ -342,4 +342,8 @@ func addOverrideObservation(ctx context.Context, g *api.GlobalState, cmd api.Cmd
 	cmd.Extras().GetOrAppendObservations().AddRead(
 		memory.Range{Base: ptr.Address(), Size: uint64(len(buf.Bytes()))}, id)
 	return nil
+}
+
+func isExternalQueue(qf uint32) bool {
+	return qf == VK_QUEUE_FAMILY_EXTERNAL || qf == VK_QUEUE_FAMILY_FOREIGN_EXT
 }

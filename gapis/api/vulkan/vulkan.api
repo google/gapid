@@ -285,6 +285,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_external_semaphore"] = true
   supported.ExtensionNames["VK_KHR_external_semaphore_fd"] = true
   supported.ExtensionNames["VK_KHR_external_memory"] = true
+  supported.ExtensionNames["VK_EXT_queue_family_foreign"] = true
   supported.ExtensionNames["VK_ANDROID_external_memory_android_hardware_buffer"] = true
   supported.ExtensionNames["VK_EXT_line_rasterization"] = true
   return supported
