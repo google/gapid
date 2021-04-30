@@ -150,6 +150,7 @@ message Perfetto {
   message Battery {
     bool enabled = 1;
     int32 rate = 2;
+    bool collectPowerRail = 3;
   }
   Battery battery = 4;
 

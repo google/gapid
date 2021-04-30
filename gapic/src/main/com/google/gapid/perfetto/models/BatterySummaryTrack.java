@@ -16,6 +16,8 @@
 package com.google.gapid.perfetto.models;
 
 import static com.google.gapid.perfetto.models.CounterInfo.needQuantize;
+import static com.google.gapid.perfetto.views.StyleConstants.POWER_RAIL_COUNTER_TRACK_HEIGHT;
+import static com.google.gapid.perfetto.views.TrackContainer.group;
 import static com.google.gapid.perfetto.views.TrackContainer.single;
 
 import com.google.common.collect.ImmutableList;
@@ -24,11 +26,16 @@ import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.models.QueryEngine.Row;
 import com.google.gapid.perfetto.views.BatterySelectionView;
 import com.google.gapid.perfetto.views.BatterySummaryPanel;
+import com.google.gapid.perfetto.views.CounterPanel;
 import com.google.gapid.perfetto.views.State;
+import com.google.gapid.perfetto.views.TitlePanel;
 
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.function.BinaryOperator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class BatterySummaryTrack
     extends CombinedCountersTrack<BatterySummaryTrack.Data, BatterySummaryTrack.Values> {
@@ -53,13 +60,36 @@ public class BatterySummaryTrack
     CounterInfo battCap = onlyOne(counters.get("batt.capacity_pct"));
     CounterInfo battCharge = onlyOne(counters.get("batt.charge_uah"));
     CounterInfo battCurrent = onlyOne(counters.get("batt.current_ua"));
-    if ((battCap == null) || (battCharge  == null) || (battCurrent  == null)) {
+    List<CounterInfo> powerRails = counters.entries().stream()
+        .filter(entry -> entry.getKey().startsWith("power.rails"))
+        .map(Map.Entry::getValue)
+        .collect(Collectors.toList());
+    if (((battCap == null) || (battCharge  == null) || (battCurrent  == null))
+        && powerRails.size() == 0) {
       return data;
     }
-
-    BatterySummaryTrack track = new BatterySummaryTrack(data.qe, battCap, battCharge, battCurrent);
-    data.tracks.addTrack(null, track.getId(), "Battery Usage",
-        single(state -> new BatterySummaryPanel(state, track), true, false));
+    // Battery Group
+    String batteryGroup = "battery_group";
+    data.tracks.addLabelGroup(null, batteryGroup, "Battery",
+        group(state -> new TitlePanel("Battery"), true));
+    // Battery Usage track.
+    if ((battCap != null) && (battCharge  != null) && (battCurrent  != null)) {
+      BatterySummaryTrack track = new BatterySummaryTrack(data.qe, battCap, battCharge, battCurrent);
+      data.tracks.addTrack(batteryGroup, track.getId(), "Battery Usage",
+          single(state -> new BatterySummaryPanel(state, track), true, false));
+    }
+    // Power Rails tracks.
+    if (powerRails.size() > 0) {
+      String powerRailsGroup = "power_rails_group";
+      data.tracks.addLabelGroup(batteryGroup, powerRailsGroup, "Power Rails",
+          group(state -> new TitlePanel("Power Rails"), false));
+      for (CounterInfo powerRail : powerRails) {
+        CounterTrack powerRailTrack = new CounterTrack(data.qe, powerRail);
+        data.tracks.addTrack(powerRailsGroup, powerRailTrack.getId(), powerRail.name,
+            single(state -> new CounterPanel(state, powerRailTrack, POWER_RAIL_COUNTER_TRACK_HEIGHT),
+                true, true));
+      }
+    }
     return data;
   }
 

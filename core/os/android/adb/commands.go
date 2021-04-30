@@ -354,6 +354,14 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 30 {
 		result.HasFrameLifecycle = true
 	}
+
+	services, err := b.Shell("service", "list").Call(ctx)
+	if err != nil {
+		return result, log.Errf(ctx, err, "Failed to query service list when trying to know power rail capability.")
+	}
+	if strings.Contains(services, "android.hardware.power.stats.IPowerStats/default") {
+		result.HasPowerRail = true
+	}
 	return result, nil
 }
 

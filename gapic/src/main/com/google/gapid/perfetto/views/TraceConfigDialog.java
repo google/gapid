@@ -321,7 +321,8 @@ public class TraceConfigDialog extends DialogBase {
               .setName("android.power")
               .getAndroidPowerConfigBuilder()
                   .setBatteryPollMs(p.getBatteryOrBuilder().getRate())
-                  .addAllBatteryCounters(Arrays.asList(BAT_COUNTERS));
+                  .addAllBatteryCounters(Arrays.asList(BAT_COUNTERS))
+                  .setCollectPowerRails(p.getBatteryOrBuilder().getCollectPowerRail());
     }
 
     if (p.getVulkanOrBuilder().getEnabled()) {
@@ -596,6 +597,8 @@ public class TraceConfigDialog extends DialogBase {
     private final Button bat;
     private final Label[] batLabels;
     private final Spinner batRate;
+    private Button batPowerRail;
+
     private final Button vulkan;
     private final Button vulkanCPUTiming;
     private final Button vulkanCPUTimingDevice;
@@ -744,6 +747,9 @@ public class TraceConfigDialog extends DialogBase {
       batLabels[0] = createLabel(batGroup, "Poll Rate:");
       batRate = createSpinner(batGroup, sBatt.getRate(), 250, 60000);
       batLabels[1] = createLabel(batGroup, "ms");
+      if (caps.getHasPowerRail()) {
+        batPowerRail = createCheckbox(batGroup, "Collect Power Rails", sBatt.getCollectPowerRail());
+      }
 
       Device.VulkanProfilingLayers vkLayers = caps.getVulkanProfileLayers();
       if (vkLayers.getCpuTiming() || vkLayers.getMemoryTracker()) {
@@ -862,6 +868,9 @@ public class TraceConfigDialog extends DialogBase {
       sMem.setRate(memRate.getSelection());
       sBatt.setEnabled(bat.getSelection());
       sBatt.setRate(batRate.getSelection());
+      if (batPowerRail != null) {
+        sBatt.setCollectPowerRail(batPowerRail.getSelection());
+      }
 
       if (vulkan != null) {
         sVk.setEnabled(vulkan.getSelection());
@@ -966,6 +975,9 @@ public class TraceConfigDialog extends DialogBase {
       batRate.setEnabled(enabled);
       for (Label label : batLabels) {
         label.setEnabled(enabled);
+      }
+      if (batPowerRail != null) {
+        batPowerRail.setEnabled(enabled);
       }
     }
   }
