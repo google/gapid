@@ -248,30 +248,36 @@ cmd VkResult vkGetSwapchainImagesKHR(
     images := pSwapchainImages[0:count]
     for i in (0 .. count) {
       images[i] = ?
-      if !(images[i] in Images) {
+      if (images[i] in Images) {
+        // When we get images from a swapchain created from an "oldSwapchain" (retired but
+        // not yet destroyed), we may get image handles that are already in the state.
+        Images[images[i]].Info = swapchainObject.Info
+        Images[images[i]].ImageAspect = as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
+      } else {
         object := new!ImageObject(
           Device:             device,
           VulkanHandle:       images[i],
           Info:               swapchainObject.Info,
           ImageAspect:        as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
         )
-        object.IsSwapchainImage = true
-        width := swapchainObject.Info.Extent.width
-        height := swapchainObject.Info.Extent.height
-        format := swapchainObject.Info.Format
-        layer := new!ImageLayer()
-        level := new!ImageLevel(Width: width,Height:  height,Depth:  1,Layout:  VK_IMAGE_LAYOUT_UNDEFINED)
-        elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
-        // Roundup the width and height in the number of blocks.
-        widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
-        heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
-        size := widthInBlocks * heightInBlocks * elementAndTexelBlockSize.ElementSize
-        level.Data = make!u8(size)
         object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT] = new!ImageAspect()
-        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0] = layer
-        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0].Levels[0] = level
         Images[images[i]] = object
       }
+      object := Images[images[i]]
+      object.IsSwapchainImage = true
+      width := swapchainObject.Info.Extent.width
+      height := swapchainObject.Info.Extent.height
+      format := swapchainObject.Info.Format
+      layer := new!ImageLayer()
+      level := new!ImageLevel(Width: width,Height:  height,Depth:  1,Layout:  VK_IMAGE_LAYOUT_UNDEFINED)
+      elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
+      // Roundup the width and height in the number of blocks.
+      widthInBlocks := roundUpTo(width, elementAndTexelBlockSize.TexelBlockSize.Width)
+      heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
+      size := widthInBlocks * heightInBlocks * elementAndTexelBlockSize.ElementSize
+      level.Data = make!u8(size)
+      object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0] = layer
+      object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0].Levels[0] = level
       swapchainObject.SwapchainImages[i] = Images[images[i]]
     }
     pSwapchainImageCount[0] = count
