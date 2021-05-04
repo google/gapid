@@ -15,7 +15,9 @@
 cc_library(
     name = "etc2codec_deps",
     srcs = [
+        "EtcLib/Etc/EtcConfig.h",
         "EtcLib/Etc/EtcMath.cpp",
+        "EtcLib/Etc/EtcMath.h",
     ],
     hdrs = [
         "EtcLib/Etc/EtcColor.h",
@@ -33,7 +35,10 @@ cc_library(
     name = "etc2codec",
     srcs = [
         "EtcLib/EtcCodec/EtcBlock4x4.cpp",
+        "EtcLib/EtcCodec/EtcBlock4x4.h",
         "EtcLib/EtcCodec/EtcBlock4x4Encoding.cpp",
+        "EtcLib/EtcCodec/EtcBlock4x4Encoding.h",
+        "EtcLib/EtcCodec/EtcBlock4x4EncodingBits.h",
         "EtcLib/EtcCodec/EtcBlock4x4Encoding_ETC1.cpp",
         "EtcLib/EtcCodec/EtcBlock4x4Encoding_ETC1.h",
         "EtcLib/EtcCodec/EtcBlock4x4Encoding_R11.cpp",
@@ -48,9 +53,11 @@ cc_library(
         "EtcLib/EtcCodec/EtcBlock4x4Encoding_RGBA8.h",
         "EtcLib/EtcCodec/EtcDifferentialTrys.cpp",
         "EtcLib/EtcCodec/EtcDifferentialTrys.h",
+        "EtcLib/EtcCodec/EtcErrorMetric.h",
         "EtcLib/EtcCodec/EtcIndividualTrys.cpp",
         "EtcLib/EtcCodec/EtcIndividualTrys.h",
         "EtcLib/EtcCodec/EtcSortedBlockList.cpp",
+        "EtcLib/EtcCodec/EtcSortedBlockList.h",
     ],
     hdrs = [
         "EtcLib/EtcCodec/EtcBlock4x4.h",

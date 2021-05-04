@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
+	_ "github.com/google/gapid/core/image/etc" // keep for initialization
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
