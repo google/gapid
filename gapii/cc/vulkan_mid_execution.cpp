@@ -931,8 +931,19 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
         device_functions.vkQueueWaitIdle(queue->mVulkanHandle);
       };
 
-      for (auto& family_copies : copies) {
-        copyImageToBuffer(family_copies.second, queues[family_copies.first]);
+      if (image_info.mAndroidExternalFormat) {
+        // We cannot copy from images with an Android external format, it is
+        // forbidden by the spec and in practice it can lead to GPU hangs.
+        // TODO(b/148857112): retrieve the data by sampling the image.
+        // For now, mock support by zeroing image data.
+        GAPID_WARNING(
+            "Mock support of image with Android external format, image data is "
+            "zeroed.");
+        memset(stage.GetMappedMemory(), 0, offset);
+      } else {
+        for (auto& family_copies : copies) {
+          copyImageToBuffer(family_copies.second, queues[family_copies.first]);
+        }
       }
 
       uint8_t* pData = reinterpret_cast<uint8_t*>(stage.GetMappedMemory());
