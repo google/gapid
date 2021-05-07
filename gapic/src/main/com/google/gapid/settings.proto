@@ -120,6 +120,7 @@ message Trace {
   Duration gfx_duration = 17;
   Duration profile_duration = 18;
   string process_name = 19;
+  bool load_validation_layer = 20;
 }
 
 message Perfetto {

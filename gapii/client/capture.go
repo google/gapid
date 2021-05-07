@@ -80,6 +80,8 @@ type Options struct {
 	PipeName string
 	// Name of the process to capture (non-empty to indicate a specific process)
 	ProcessName string
+	// Whether to load the Vulkan validation layer under our Spy layer
+	LoadValidationLayer bool
 }
 
 const sizeGap = 1024 * 1024 * 5

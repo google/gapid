@@ -233,6 +233,11 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 
 	ignorePort := true
 	if o.Type == service.TraceType_Graphics {
+		if o.LoadValidationLayer {
+			// We don't ship desktop builds of the VVL, and we have no guarantee
+			// that they are present on the desktop.
+			log.W(ctx, "Loading Vulkan validation layer at capture time is not supported on desktop")
+		}
 		cleanup, portFile, err = loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
 		if err != nil {
 			cleanup.Invoke(ctx)

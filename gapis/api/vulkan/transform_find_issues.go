@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -31,9 +32,6 @@ import (
 )
 
 const (
-	// Since Android NDK r21, the VK_LAYER_KHRONOS_validation meta layer
-	// is available on both desktop and Android.
-	validationMetaLayer  = "VK_LAYER_KHRONOS_validation"
 	debugReportExtension = "VK_EXT_debug_report"
 )
 
@@ -206,7 +204,7 @@ func (issueTransform *findIssues) modifyVkCreateInstance(ctx context.Context, cm
 	}
 
 	layers := []Charᶜᵖ{}
-	validationMetaLayerData := issueTransform.allocations.AllocDataOrPanic(ctx, validationMetaLayer)
+	validationMetaLayerData := issueTransform.allocations.AllocDataOrPanic(ctx, loader.VulkanValidationLayer)
 	layers = append(layers, NewCharᶜᵖ(validationMetaLayerData.Ptr()))
 	layersData := issueTransform.allocations.AllocDataOrPanic(ctx, layers)
 

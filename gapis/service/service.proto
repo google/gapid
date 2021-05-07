@@ -1412,6 +1412,8 @@ message TraceOptions {
   perfetto.protos.TraceConfig perfetto_config = 24;
   // The name of the process to capture (empty for capturing any process).
   string process_name = 27;
+  // Load the Vulkan validation layer during capture
+  bool load_validation_layer = 28;
 }
 
 enum TraceEvent {

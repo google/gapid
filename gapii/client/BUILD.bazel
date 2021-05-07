@@ -37,6 +37,7 @@ go_library(
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//core/text:go_default_library",
+        "//core/vulkan/loader:go_default_library",
         "//gapidapk:go_default_library",
         "@com_github_pkg_errors//:go_default_library",
     ],

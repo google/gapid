@@ -146,5 +146,6 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 		enableAngle,
 		o.PipeName,
 		o.ProcessName,
+		o.LoadValidationLayer,
 	}
 }

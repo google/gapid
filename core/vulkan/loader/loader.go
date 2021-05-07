@@ -30,6 +30,12 @@ import (
 	"github.com/google/gapid/core/os/shell"
 )
 
+const (
+	// Since Android NDK r21, the VK_LAYER_KHRONOS_validation meta layer
+	// is available on both desktop and Android.
+	VulkanValidationLayer = "VK_LAYER_KHRONOS_validation"
+)
+
 // setupHelper describes setting up the files on the device
 type setupHelper struct {
 	device bind.Device

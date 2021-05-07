@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/text"
+	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
 	"github.com/pkg/errors"
 )
@@ -142,7 +143,12 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	}
 
 	log.I(ctx, "Setting up Layer")
-	cu, err := android.SetupLayers(ctx, d, p.Name, []string{gapidapk.PackageName(abi)}, []string{gapidapk.GraphicsSpyLayerName})
+	layerNames := []string{gapidapk.GraphicsSpyLayerName}
+	if o.LoadValidationLayer {
+		log.I(ctx, "Also loading Vulkan validation layer")
+		layerNames = append(layerNames, loader.VulkanValidationLayer)
+	}
+	cu, err := android.SetupLayers(ctx, d, p.Name, []string{gapidapk.PackageName(abi)}, layerNames)
 	if err != nil {
 		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Failed when setting up layers")
 	}

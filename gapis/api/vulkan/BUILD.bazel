@@ -136,6 +136,7 @@ go_library(
         "//core/os/device:go_default_library",
         "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",
+        "//core/vulkan/loader:go_default_library",
         "//gapil/constset:go_default_library",  # keep
         "//gapir:go_default_library",
         "//gapis/api:go_default_library",

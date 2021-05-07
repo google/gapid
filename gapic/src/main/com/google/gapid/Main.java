@@ -259,5 +259,6 @@ public class Main {
     PanelCanvas.showRedraws,
     TracerDialog.maxFrames,
     TracerDialog.maxPerfetto,
+    TracerDialog.enableLoadValidationLayer,
   };
 }

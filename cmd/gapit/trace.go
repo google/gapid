@@ -247,6 +247,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		DisableCoherentMemoryTracker: verb.Disable.CoherentMemoryTracker,
 		WaitForDebugger:              verb.WaitForDebugger,
 		ProcessName:                  verb.ProcessName,
+		LoadValidationLayer:          verb.LoadValidationLayer,
 	}
 	target(options)
 

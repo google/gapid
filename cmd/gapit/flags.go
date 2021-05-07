@@ -331,10 +331,11 @@ type (
 		Local struct {
 			Port int `help:"connect to an application already running on the server using this port"`
 		}
-		PipeName        string `help:"The name of the pipe to connect/listen to."`
-		Perfetto        string `help:"File containing the Perfetto configuration proto."`
-		WaitForDebugger bool   `help:"Make GAPII wait for a debugger to attach"`
-		ProcessName     string `help:"Name of the process to capture. Default to empty, i.e. capture any process. Useful for games that fork processes."`
+		PipeName            string `help:"The name of the pipe to connect/listen to."`
+		Perfetto            string `help:"File containing the Perfetto configuration proto."`
+		WaitForDebugger     bool   `help:"Make GAPII wait for a debugger to attach"`
+		ProcessName         string `help:"Name of the process to capture. Default to empty, i.e. capture any process. Useful for games that fork processes."`
+		LoadValidationLayer bool   `help:"Load Vulkan validation layer at capture time, under the spy layer, to debug spy bugs. Android only."`
 	}
 	BenchmarkFlags struct {
 		Gapis      GapisFlags
