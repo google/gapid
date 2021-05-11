@@ -360,6 +360,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	resolveSrcLayer := layer
 	blitSrcLayer := layer
 	copySrcLayer := layer
+	copySrcLevel := level
 	if imageObject.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
 		resolveSrcLayer = layer
 		blitSrcDepth = 0
@@ -371,6 +372,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	if doBlit {
 		copySrcDepth = 0
 		copySrcLayer = 0
+		copySrcLevel = 0
 	}
 
 	origLayout := t.getLayout(ctx, inputState, cmdBuff, pendingCommandBuffers, aspect, layer, level, imageObject)
@@ -611,7 +613,7 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 		0, // bufferImageHeight
 		NewVkImageSubresourceLayers( // imageSubresource
 			VkImageAspectFlags(aspect), // aspectMask
-			level,                      // mipLevel
+			copySrcLevel,               // mipLevel
 			copySrcLayer,               // baseArrayLayer
 			1,                          // layerCount
 		),
