@@ -370,6 +370,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		refs := make([]sync.SubcommandReference, 0)
 		subgroups := make([]api.SubCmdIdx, 0)
 		nextSubpass := 0
+		var currentRenderpassCmdSubmissionKey api.CmdSubmissionKey // For subpasses' reference.
 		nCommands := uint64(cb.CommandReferences().Len())
 		canStartDrawGrouping := true
 
@@ -448,20 +449,6 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				}
 			case VkCmdBeginRenderPassArgsʳ:
 				rp := st.RenderPasses().Get(args.RenderPass())
-				if id.IsReal() {
-					submissionKey := api.CmdSubmissionKey{order, 0, 0, 0}
-					commandBufferKey := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), 0, 0}
-					d.SubmissionIndices[submissionKey] = []api.SubCmdIdx{idx[:len(idx)-1]}
-					d.SubmissionIndices[commandBufferKey] = []api.SubCmdIdx{idx}
-
-					key := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), uint64(rp.VulkanHandle()), uint64(args.Framebuffer())}
-					if _, ok := d.SubmissionIndices[key]; ok {
-						d.SubmissionIndices[key] = append(d.SubmissionIndices[key], append(idx, uint64(i)))
-					} else {
-						d.SubmissionIndices[key] = []api.SubCmdIdx{append(idx, uint64(i))}
-					}
-				}
-
 				name := fmt.Sprintf("RenderPass: %v", rp.VulkanHandle())
 				if !rp.DebugInfo().IsNil() && len(rp.DebugInfo().ObjectName()) > 0 {
 					name = rp.DebugInfo().ObjectName()
@@ -529,6 +516,34 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				popMarker(DebugMarker, uint64(i), nCommands)
 			case VkCmdDebugMarkerEndEXTArgsʳ:
 				popMarker(DebugMarker, uint64(i), nCommands)
+			}
+
+			// Markdown RenderPasses' ans SubPasses' command index, for helping
+			// connect a command and its correlated GPU slices.
+			switch args := GetCommandArgs(ctx, cb.CommandReferences().Get(uint32(i)), st).(type) {
+			case VkCmdBeginRenderPassArgsʳ:
+				rp := st.RenderPasses().Get(args.RenderPass())
+				if id.IsReal() {
+					submissionKey := api.CmdSubmissionKey{order, 0, 0, 0}
+					commandBufferKey := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), 0, 0}
+					d.SubmissionIndices[submissionKey] = []api.SubCmdIdx{idx[:len(idx)-1]}
+					d.SubmissionIndices[commandBufferKey] = []api.SubCmdIdx{idx}
+
+					key := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), uint64(rp.VulkanHandle()), uint64(args.Framebuffer())}
+					currentRenderpassCmdSubmissionKey = key
+					if _, ok := d.SubmissionIndices[key]; ok {
+						d.SubmissionIndices[key] = append(d.SubmissionIndices[key], append(idx, uint64(i)))
+					} else {
+						d.SubmissionIndices[key] = []api.SubCmdIdx{append(idx, uint64(i))}
+					}
+				}
+			case VkCmdNextSubpassArgsʳ:
+				key := currentRenderpassCmdSubmissionKey
+				if _, ok := d.SubmissionIndices[key]; ok {
+					d.SubmissionIndices[key] = append(d.SubmissionIndices[key], append(idx, uint64(i)))
+				} else {
+					d.SubmissionIndices[key] = []api.SubCmdIdx{append(idx, uint64(i))}
+				}
 			}
 		}
 
