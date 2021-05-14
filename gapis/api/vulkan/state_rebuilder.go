@@ -1313,8 +1313,7 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		buffer.LastBoundQueue())
 	newBuffer := buffer.VulkanHandle()
 
-	mem := GetState(sb.newState).DeviceMemories().Get(buffer.Memory().VulkanHandle())
-	if err := sb.createSameBuffer(buffer, newBuffer, mem, buffer.MemoryOffset()); err != nil {
+	if err := sb.createSameBuffer(buffer, newBuffer, buffer.Memory(), buffer.MemoryOffset()); err != nil {
 		log.E(sb.ctx, "create buffer %v failed", buffer)
 		return
 	}
