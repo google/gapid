@@ -52,8 +52,8 @@ public class Formatter {
   public static void format(API.Command command,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver,
       Function<String, Path.Any> followResolver,
-      StylingString string, Style style) {
-    string.append(command.getName(), string.labelStyle());
+      StylingString string, Style cmdStyle, Style infoStyle) {
+    string.append(command.getName(), cmdStyle);
     string.append("(", string.structureStyle());
     boolean needComma = false;
 
@@ -64,7 +64,7 @@ public class Formatter {
       }
       needComma = true;
       Path.Any follow = followResolver.apply(field.getName());
-      Style paramStyle = (follow == null) ? style : string.linkStyle();
+      Style paramStyle = (follow == null) ? infoStyle : string.linkStyle();
       string.startLink(follow);
       string.append(field.getName(), paramStyle);
       string.append(":", (follow == null) ? string.structureStyle() : string.linkStyle());
@@ -82,7 +82,7 @@ public class Formatter {
       Path.Any follow = followResolver.apply(Follower.RESULT_NAME);
       string.startLink(follow);
       format(command.getResult(), constantResolver, string,
-          (follow == null) ? style : string.linkStyle());
+          (follow == null) ? infoStyle : string.linkStyle());
       string.endLink();
     }
   }
@@ -90,7 +90,7 @@ public class Formatter {
   public static String toString(API.Command command,
       Function<Path.ConstantSet, Service.ConstantSet> constantResolver) {
     NoStyleStylingString string = new NoStyleStylingString();
-    format(command, constantResolver, s -> null, string, null);
+    format(command, constantResolver, s -> null, string, null, null);
     return string.toString();
   }
 
@@ -529,6 +529,16 @@ public class Formatter {
     public Style labelStyle();
 
     /**
+     * @return the style to use for disabled labels.
+     */
+    public Style disabledLabelStyle();
+
+    /**
+     * @return the style to use for partially disabled labels.
+     */
+    public Style semiDisabledLabelStyle();
+
+    /**
      * @return the style to use for links.
      */
     public Style linkStyle();
@@ -621,6 +631,16 @@ public class Formatter {
     }
 
     @Override
+    public Style disabledLabelStyle() {
+      return null;
+    }
+
+    @Override
+    public Style semiDisabledLabelStyle() {
+      return null;
+    }
+
+    @Override
     public Style linkStyle() {
       return null;
     }
@@ -644,6 +664,8 @@ public class Formatter {
     private final StylerStyle structure;
     private final StylerStyle identifier;
     private final StylerStyle label;
+    private final StylerStyle disabledLabel;
+    private final StylerStyle semiDisabledLabel;
     private final StylerStyle link;
     private final StylerStyle error;
     private final StylerStyle warning;
@@ -653,6 +675,8 @@ public class Formatter {
       structure = new StylerStyle(theme.structureStyler());
       identifier = new StylerStyle(theme.identifierStyler());
       label = new StylerStyle(theme.labelStyler());
+      disabledLabel = new StylerStyle(theme.disabledlabelStyler());
+      semiDisabledLabel = new StylerStyle(theme.semiDisabledlabelStyler());
       link = new StylerStyle(theme.linkStyler());
       error = new StylerStyle(theme.errorStyler());
       warning = new StylerStyle(theme.warningStyler());
@@ -676,6 +700,16 @@ public class Formatter {
     @Override
     public Style labelStyle() {
       return label;
+    }
+
+    @Override
+    public Style disabledLabelStyle() {
+      return disabledLabel;
+    }
+
+    @Override
+    public Style semiDisabledLabelStyle() {
+      return semiDisabledLabel;
     }
 
     @Override

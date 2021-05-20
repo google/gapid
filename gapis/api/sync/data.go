@@ -104,7 +104,7 @@ type subCommandMarkerGroupTrie struct {
 // NewMarkerGroup creates a new CmdIDGroup for the marker group in the marker
 // group trie with the specified name and parent SubCmdIdx, and returns a
 // pointer to the created CmdIDGroup.
-func (t *subCommandMarkerGroupTrie) NewMarkerGroup(parent api.SubCmdIdx, name string, start, end uint64) *api.CmdIDGroup {
+func (t *subCommandMarkerGroupTrie) NewMarkerGroup(parent api.SubCmdIdx, name string, start, end uint64, experimentalCmds []api.SubCmdIdx) *api.CmdIDGroup {
 	l := []*api.CmdIDGroup{}
 	if o, ok := t.Value(parent).([]*api.CmdIDGroup); ok {
 		l = o
@@ -112,6 +112,7 @@ func (t *subCommandMarkerGroupTrie) NewMarkerGroup(parent api.SubCmdIdx, name st
 	group := &api.CmdIDGroup{Name: name}
 	group.Range.Start = api.CmdID(start)
 	group.Range.End = api.CmdID(end)
+	group.ExperimentableCmds = experimentalCmds
 	l = append(l, group)
 	t.SetValue(parent, l)
 	return group

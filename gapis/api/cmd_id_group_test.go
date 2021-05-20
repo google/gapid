@@ -57,30 +57,30 @@ func buildTestGroup(end uint64) api.CmdIDGroup {
 			&api.CmdIDRange{0, 100},
 			&api.CmdIDGroup{"Sub-group 0", api.CmdIDRange{100, 200}, api.Spans{
 				&api.CmdIDRange{100, 200},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{200, 300},
 			&api.CmdIDGroup{"Sub-group 1", api.CmdIDRange{300, 400}, api.Spans{
 				&api.CmdIDRange{310, 320},
 				&api.CmdIDGroup{"Sub-group 1.0", api.CmdIDRange{340, 360}, api.Spans{
 					&api.CmdIDRange{350, 351},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDGroup{"Sub-group 1.1", api.CmdIDRange{360, 370}, api.Spans{
 					&api.CmdIDGroup{"Sub-group 1.1.0", api.CmdIDRange{360, 362}, api.Spans{
 						&api.CmdIDRange{360, 362},
-					}, nil},
+					}, []api.SubCmdIdx{}, nil},
 					&api.CmdIDGroup{"Sub-group 1.1.1", api.CmdIDRange{362, 365}, api.Spans{
 						&api.CmdIDRange{362, 365},
-					}, nil},
-				}, nil},
+					}, []api.SubCmdIdx{}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{370, 380},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{400, 500},
 			&api.CmdIDGroup{"Sub-group 2", api.CmdIDRange{500, 600}, api.Spans{
 				&api.CmdIDRange{500, 600},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{600, api.CmdID(end - 100)},
 		},
-		nil}
+		[]api.SubCmdIdx{}, nil}
 }
 
 func TestGroupFormat(t *testing.T) {
@@ -172,22 +172,22 @@ func TestGroupIndexOf(t *testing.T) {
 
 func TestAddGroupTopDown(t *testing.T) {
 	ctx := log.Testing(t)
-	got := api.CmdIDGroup{UserData: nil}
+	got := api.CmdIDGroup{ExperimentableCmds: []api.SubCmdIdx{}, UserData: nil}
 	got.Range = api.CmdIDRange{0, 1000}
 
-	got.AddGroup(0, 1000, "R")
+	got.AddGroup(0, 1000, "R", []api.SubCmdIdx{})
 
-	got.AddGroup(100, 200, "A0")
-	got.AddGroup(300, 400, "B0")
-	got.AddGroup(500, 600, "C0")
+	got.AddGroup(100, 200, "A0", []api.SubCmdIdx{})
+	got.AddGroup(300, 400, "B0", []api.SubCmdIdx{})
+	got.AddGroup(500, 600, "C0", []api.SubCmdIdx{})
 
-	got.AddGroup(120, 180, "A1")
-	got.AddGroup(310, 390, "B1")
-	got.AddGroup(500, 600, "C1")
+	got.AddGroup(120, 180, "A1", []api.SubCmdIdx{})
+	got.AddGroup(310, 390, "B1", []api.SubCmdIdx{})
+	got.AddGroup(500, 600, "C1", []api.SubCmdIdx{})
 
-	got.AddGroup(140, 160, "A2")
-	got.AddGroup(320, 380, "B2")
-	got.AddGroup(500, 600, "C2")
+	got.AddGroup(140, 160, "A2", []api.SubCmdIdx{{150, 0, 5}})
+	got.AddGroup(320, 380, "B2", []api.SubCmdIdx{{360, 0, 6}})
+	got.AddGroup(500, 600, "C2", []api.SubCmdIdx{{550, 0, 7}})
 
 	expected := api.CmdIDGroup{
 		Range: api.CmdIDRange{0, 1000},
@@ -205,15 +205,18 @@ func TestAddGroupTopDown(t *testing.T) {
 								Name:  "A1",
 								Spans: api.Spans{
 									&api.CmdIDGroup{
-										Range:    api.CmdIDRange{140, 160},
-										Name:     "A2",
-										UserData: nil,
+										Range:              api.CmdIDRange{140, 160},
+										Name:               "A2",
+										ExperimentableCmds: []api.SubCmdIdx{{150, 0, 5}},
+										UserData:           nil,
 									},
 								},
-								UserData: nil,
+								ExperimentableCmds: []api.SubCmdIdx{},
+								UserData:           nil,
 							},
 						},
-						UserData: nil,
+						ExperimentableCmds: []api.SubCmdIdx{},
+						UserData:           nil,
 					},
 					&api.CmdIDGroup{
 						Range: api.CmdIDRange{300, 400},
@@ -224,15 +227,18 @@ func TestAddGroupTopDown(t *testing.T) {
 								Name:  "B1",
 								Spans: api.Spans{
 									&api.CmdIDGroup{
-										Range:    api.CmdIDRange{320, 380},
-										Name:     "B2",
-										UserData: nil,
+										Range:              api.CmdIDRange{320, 380},
+										Name:               "B2",
+										ExperimentableCmds: []api.SubCmdIdx{{360, 0, 6}},
+										UserData:           nil,
 									},
 								},
-								UserData: nil,
+								ExperimentableCmds: []api.SubCmdIdx{},
+								UserData:           nil,
 							},
 						},
-						UserData: nil,
+						ExperimentableCmds: []api.SubCmdIdx{},
+						UserData:           nil,
 					},
 					&api.CmdIDGroup{
 						Range: api.CmdIDRange{500, 600},
@@ -243,21 +249,26 @@ func TestAddGroupTopDown(t *testing.T) {
 								Name:  "C1",
 								Spans: api.Spans{
 									&api.CmdIDGroup{
-										Range:    api.CmdIDRange{500, 600},
-										Name:     "C0",
-										UserData: nil,
+										Range:              api.CmdIDRange{500, 600},
+										Name:               "C0",
+										ExperimentableCmds: []api.SubCmdIdx{},
+										UserData:           nil,
 									},
 								},
-								UserData: nil,
+								ExperimentableCmds: []api.SubCmdIdx{},
+								UserData:           nil,
 							},
 						},
-						UserData: nil,
+						ExperimentableCmds: []api.SubCmdIdx{{550, 0, 7}},
+						UserData:           nil,
 					},
 				},
-				UserData: nil,
+				ExperimentableCmds: []api.SubCmdIdx{},
+				UserData:           nil,
 			},
 		},
-		UserData: nil,
+		ExperimentableCmds: []api.SubCmdIdx{},
+		UserData:           nil,
 	}
 
 	assert.For(ctx, "got").That(got).DeepEquals(expected)
@@ -265,22 +276,22 @@ func TestAddGroupTopDown(t *testing.T) {
 
 func TestAddGroupBottomUp(t *testing.T) {
 	ctx := log.Testing(t)
-	got := api.CmdIDGroup{UserData: nil}
+	got := api.CmdIDGroup{ExperimentableCmds: []api.SubCmdIdx{}, UserData: nil}
 	got.Range = api.CmdIDRange{0, 1000}
 
-	got.AddGroup(140, 160, "A2")
-	got.AddGroup(320, 380, "B2")
-	got.AddGroup(500, 600, "C2")
+	got.AddGroup(140, 160, "A2", []api.SubCmdIdx{{150, 0, 5}})
+	got.AddGroup(320, 380, "B2", []api.SubCmdIdx{{360, 0, 6}})
+	got.AddGroup(500, 600, "C2", []api.SubCmdIdx{{550, 0, 7}})
 
-	got.AddGroup(120, 180, "A1")
-	got.AddGroup(310, 390, "B1")
-	got.AddGroup(500, 600, "C1")
+	got.AddGroup(120, 180, "A1", []api.SubCmdIdx{})
+	got.AddGroup(310, 390, "B1", []api.SubCmdIdx{})
+	got.AddGroup(500, 600, "C1", []api.SubCmdIdx{})
 
-	got.AddGroup(100, 200, "A0")
-	got.AddGroup(300, 400, "B0")
-	got.AddGroup(500, 600, "C0")
+	got.AddGroup(100, 200, "A0", []api.SubCmdIdx{})
+	got.AddGroup(300, 400, "B0", []api.SubCmdIdx{})
+	got.AddGroup(500, 600, "C0", []api.SubCmdIdx{})
 
-	got.AddGroup(0, 1000, "R")
+	got.AddGroup(0, 1000, "R", []api.SubCmdIdx{})
 
 	expected := api.CmdIDGroup{
 		Range: api.CmdIDRange{0, 1000},
@@ -298,15 +309,18 @@ func TestAddGroupBottomUp(t *testing.T) {
 								Name:  "A1",
 								Spans: api.Spans{
 									&api.CmdIDGroup{
-										Range:    api.CmdIDRange{140, 160},
-										Name:     "A2",
-										UserData: nil,
+										Range:              api.CmdIDRange{140, 160},
+										Name:               "A2",
+										ExperimentableCmds: []api.SubCmdIdx{{150, 0, 5}},
+										UserData:           nil,
 									},
 								},
-								UserData: nil,
+								ExperimentableCmds: []api.SubCmdIdx{},
+								UserData:           nil,
 							},
 						},
-						UserData: nil,
+						ExperimentableCmds: []api.SubCmdIdx{},
+						UserData:           nil,
 					},
 					&api.CmdIDGroup{
 						Range: api.CmdIDRange{300, 400},
@@ -317,15 +331,18 @@ func TestAddGroupBottomUp(t *testing.T) {
 								Name:  "B1",
 								Spans: api.Spans{
 									&api.CmdIDGroup{
-										Range:    api.CmdIDRange{320, 380},
-										Name:     "B2",
-										UserData: nil,
+										Range:              api.CmdIDRange{320, 380},
+										Name:               "B2",
+										ExperimentableCmds: []api.SubCmdIdx{{360, 0, 6}},
+										UserData:           nil,
 									},
 								},
-								UserData: nil,
+								ExperimentableCmds: []api.SubCmdIdx{},
+								UserData:           nil,
 							},
 						},
-						UserData: nil,
+						ExperimentableCmds: []api.SubCmdIdx{},
+						UserData:           nil,
 					},
 					&api.CmdIDGroup{
 						Range: api.CmdIDRange{500, 600},
@@ -336,21 +353,26 @@ func TestAddGroupBottomUp(t *testing.T) {
 								Name:  "C1",
 								Spans: api.Spans{
 									&api.CmdIDGroup{
-										Range:    api.CmdIDRange{500, 600},
-										Name:     "C2",
-										UserData: nil,
+										Range:              api.CmdIDRange{500, 600},
+										Name:               "C2",
+										ExperimentableCmds: []api.SubCmdIdx{{550, 0, 7}},
+										UserData:           nil,
 									},
 								},
-								UserData: nil,
+								ExperimentableCmds: []api.SubCmdIdx{},
+								UserData:           nil,
 							},
 						},
-						UserData: nil,
+						ExperimentableCmds: []api.SubCmdIdx{},
+						UserData:           nil,
 					},
 				},
-				UserData: nil,
+				ExperimentableCmds: []api.SubCmdIdx{},
+				UserData:           nil,
 			},
 		},
-		UserData: nil,
+		ExperimentableCmds: []api.SubCmdIdx{},
+		UserData:           nil,
 	}
 
 	assert.For(ctx, "got").That(got).DeepEquals(expected)
@@ -358,12 +380,12 @@ func TestAddGroupBottomUp(t *testing.T) {
 
 func TestAddGroupMixed(t *testing.T) {
 	ctx := log.Testing(t)
-	got := api.CmdIDGroup{UserData: nil}
+	got := api.CmdIDGroup{ExperimentableCmds: []api.SubCmdIdx{}, UserData: nil}
 	got.Range = api.CmdIDRange{0, 1000}
 
-	got.AddGroup(100, 500, "A")
-	got.AddGroup(400, 500, "C")
-	got.AddGroup(200, 500, "B")
+	got.AddGroup(100, 500, "A", []api.SubCmdIdx{})
+	got.AddGroup(400, 500, "C", []api.SubCmdIdx{})
+	got.AddGroup(200, 500, "B", []api.SubCmdIdx{})
 
 	expected := api.CmdIDGroup{
 		Range: api.CmdIDRange{0, 1000},
@@ -377,18 +399,22 @@ func TestAddGroupMixed(t *testing.T) {
 						Name:  "B",
 						Spans: api.Spans{
 							&api.CmdIDGroup{
-								Range:    api.CmdIDRange{400, 500},
-								Name:     "C",
-								UserData: nil,
+								Range:              api.CmdIDRange{400, 500},
+								Name:               "C",
+								ExperimentableCmds: []api.SubCmdIdx{},
+								UserData:           nil,
 							},
 						},
-						UserData: nil,
+						ExperimentableCmds: []api.SubCmdIdx{},
+						UserData:           nil,
 					},
 				},
-				UserData: nil,
+				ExperimentableCmds: []api.SubCmdIdx{},
+				UserData:           nil,
 			},
 		},
-		UserData: nil,
+		ExperimentableCmds: []api.SubCmdIdx{},
+		UserData:           nil,
 	}
 
 	assert.For(ctx, "got").That(got).DeepEquals(expected)
@@ -434,31 +460,31 @@ func TestAddCommandsFill(t *testing.T) {
 			&api.CmdIDRange{0, 100},
 			&api.CmdIDGroup{"Sub-group 0", api.CmdIDRange{100, 200}, api.Spans{
 				&api.CmdIDRange{100, 200},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{200, 300},
 			&api.CmdIDGroup{"Sub-group 1", api.CmdIDRange{300, 400}, api.Spans{
 				&api.CmdIDRange{300, 340},
 				&api.CmdIDGroup{"Sub-group 1.0", api.CmdIDRange{340, 360}, api.Spans{
 					&api.CmdIDRange{340, 360},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDGroup{"Sub-group 1.1", api.CmdIDRange{360, 370}, api.Spans{
 					&api.CmdIDGroup{"Sub-group 1.1.0", api.CmdIDRange{360, 362}, api.Spans{
 						&api.CmdIDRange{360, 362},
-					}, nil},
+					}, []api.SubCmdIdx{}, nil},
 					&api.CmdIDGroup{"Sub-group 1.1.1", api.CmdIDRange{362, 365}, api.Spans{
 						&api.CmdIDRange{362, 365},
-					}, nil},
+					}, []api.SubCmdIdx{}, nil},
 					&api.CmdIDRange{365, 370},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{370, 400},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{400, 500},
 			&api.CmdIDGroup{"Sub-group 2", api.CmdIDRange{500, 600}, api.Spans{
 				&api.CmdIDRange{500, 600},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{600, 1100},
 		},
-		nil}
+		[]api.SubCmdIdx{}, nil}
 
 	if !assert.For(ctx, "got").That(got).DeepEquals(expected) {
 		fmt.Printf("Got: %+v\n", got)
@@ -471,16 +497,16 @@ func TestAddCommandsSparse(t *testing.T) {
 	ctx := log.Testing(t)
 	got := api.CmdIDGroup{
 		"root", api.CmdIDRange{0, 1100}, api.Spans{
-			&api.CmdIDGroup{"Sub-group 0", api.CmdIDRange{100, 200}, api.Spans{}, nil},
+			&api.CmdIDGroup{"Sub-group 0", api.CmdIDRange{100, 200}, api.Spans{}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Sub-group 1", api.CmdIDRange{300, 400}, api.Spans{
-				&api.CmdIDGroup{"Sub-group 1.0", api.CmdIDRange{340, 360}, api.Spans{}, nil},
+				&api.CmdIDGroup{"Sub-group 1.0", api.CmdIDRange{340, 360}, api.Spans{}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDGroup{"Sub-group 1.1", api.CmdIDRange{360, 370}, api.Spans{
-					&api.CmdIDGroup{"Sub-group 1.1.0", api.CmdIDRange{360, 362}, api.Spans{}, nil},
-					&api.CmdIDGroup{"Sub-group 1.1.1", api.CmdIDRange{362, 365}, api.Spans{}, nil},
-				}, nil},
-			}, nil},
-			&api.CmdIDGroup{"Sub-group 2", api.CmdIDRange{500, 600}, api.Spans{}, nil},
-		}, nil,
+					&api.CmdIDGroup{"Sub-group 1.1.0", api.CmdIDRange{360, 362}, api.Spans{}, []api.SubCmdIdx{}, nil},
+					&api.CmdIDGroup{"Sub-group 1.1.1", api.CmdIDRange{362, 365}, api.Spans{}, []api.SubCmdIdx{}, nil},
+				}, []api.SubCmdIdx{}, nil},
+			}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub-group 2", api.CmdIDRange{500, 600}, api.Spans{}, []api.SubCmdIdx{}, nil},
+		}, []api.SubCmdIdx{}, nil,
 	}
 
 	addCommandsAndCluster(&got, 0, 0, func(id api.CmdID) bool { return (id/50)&1 == 0 })
@@ -490,29 +516,29 @@ func TestAddCommandsSparse(t *testing.T) {
 			&api.CmdIDRange{0, 50},
 			&api.CmdIDGroup{"Sub-group 0", api.CmdIDRange{100, 200}, api.Spans{
 				&api.CmdIDRange{100, 150},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{200, 250},
 			&api.CmdIDGroup{"Sub-group 1", api.CmdIDRange{300, 400}, api.Spans{
 				&api.CmdIDRange{300, 340},
 				&api.CmdIDGroup{"Sub-group 1.0", api.CmdIDRange{340, 360}, api.Spans{
 					&api.CmdIDRange{340, 350},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDGroup{"Sub-group 1.1", api.CmdIDRange{360, 370}, api.Spans{
-					&api.CmdIDGroup{"Sub-group 1.1.0", api.CmdIDRange{360, 362}, api.Spans{}, nil},
-					&api.CmdIDGroup{"Sub-group 1.1.1", api.CmdIDRange{362, 365}, api.Spans{}, nil},
-				}, nil},
-			}, nil},
+					&api.CmdIDGroup{"Sub-group 1.1.0", api.CmdIDRange{360, 362}, api.Spans{}, []api.SubCmdIdx{}, nil},
+					&api.CmdIDGroup{"Sub-group 1.1.1", api.CmdIDRange{362, 365}, api.Spans{}, []api.SubCmdIdx{}, nil},
+				}, []api.SubCmdIdx{}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{400, 450},
 			&api.CmdIDGroup{"Sub-group 2", api.CmdIDRange{500, 600}, api.Spans{
 				&api.CmdIDRange{500, 550},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDRange{600, 650},
 			&api.CmdIDRange{700, 750},
 			&api.CmdIDRange{800, 850},
 			&api.CmdIDRange{900, 950},
 			&api.CmdIDRange{1000, 1050},
 		},
-		nil}
+		[]api.SubCmdIdx{}, nil}
 
 	if !assert.For(ctx, "got").That(got).DeepEquals(expected) {
 		fmt.Printf("Got: %+v\n", got)
@@ -529,18 +555,18 @@ func TestAddCommandsWithSplitting(t *testing.T) {
 
 	expected := api.CmdIDGroup{
 		"root", api.CmdIDRange{0, 700}, api.Spans{
-			&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{0, 45}, api.Spans{&api.CmdIDRange{0, 45}}, nil},
-			&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{45, 90}, api.Spans{&api.CmdIDRange{45, 90}}, nil},
+			&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{0, 45}, api.Spans{&api.CmdIDRange{0, 45}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{45, 90}, api.Spans{&api.CmdIDRange{45, 90}}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Sub Group 3", api.CmdIDRange{90, 234}, api.Spans{
 				&api.CmdIDRange{90, 100},
 				&api.CmdIDGroup{"Sub-group 0", api.CmdIDRange{100, 200}, api.Spans{
-					&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{100, 145}, api.Spans{&api.CmdIDRange{100, 145}}, nil},
-					&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{145, 190}, api.Spans{&api.CmdIDRange{145, 190}}, nil},
-					&api.CmdIDGroup{"Sub Group 3", api.CmdIDRange{190, 200}, api.Spans{&api.CmdIDRange{190, 200}}, nil},
-				}, nil},
+					&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{100, 145}, api.Spans{&api.CmdIDRange{100, 145}}, []api.SubCmdIdx{}, nil},
+					&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{145, 190}, api.Spans{&api.CmdIDRange{145, 190}}, []api.SubCmdIdx{}, nil},
+					&api.CmdIDGroup{"Sub Group 3", api.CmdIDRange{190, 200}, api.Spans{&api.CmdIDRange{190, 200}}, []api.SubCmdIdx{}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{200, 234},
-			}, nil},
-			&api.CmdIDGroup{"Sub Group 4", api.CmdIDRange{234, 279}, api.Spans{&api.CmdIDRange{234, 279}}, nil},
+			}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 4", api.CmdIDRange{234, 279}, api.Spans{&api.CmdIDRange{234, 279}}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Sub Group 5", api.CmdIDRange{279, 423}, api.Spans{
 				&api.CmdIDRange{279, 300},
 				&api.CmdIDGroup{"Sub-group 1", api.CmdIDRange{300, 400}, api.Spans{
@@ -548,36 +574,36 @@ func TestAddCommandsWithSplitting(t *testing.T) {
 						&api.CmdIDRange{300, 340},
 						&api.CmdIDGroup{"Sub-group 1.0", api.CmdIDRange{340, 360}, api.Spans{
 							&api.CmdIDRange{340, 360},
-						}, nil},
+						}, []api.SubCmdIdx{}, nil},
 						&api.CmdIDGroup{"Sub-group 1.1", api.CmdIDRange{360, 370}, api.Spans{
 							&api.CmdIDGroup{"Sub-group 1.1.0", api.CmdIDRange{360, 362}, api.Spans{
 								&api.CmdIDRange{360, 362},
-							}, nil},
+							}, []api.SubCmdIdx{}, nil},
 							&api.CmdIDGroup{"Sub-group 1.1.1", api.CmdIDRange{362, 365}, api.Spans{
 								&api.CmdIDRange{362, 365},
-							}, nil},
+							}, []api.SubCmdIdx{}, nil},
 							&api.CmdIDRange{365, 370},
-						}, nil},
+						}, []api.SubCmdIdx{}, nil},
 						&api.CmdIDRange{370, 373},
-					}, nil},
-					&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{373, 400}, api.Spans{&api.CmdIDRange{373, 400}}, nil},
-				}, nil},
+					}, []api.SubCmdIdx{}, nil},
+					&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{373, 400}, api.Spans{&api.CmdIDRange{373, 400}}, []api.SubCmdIdx{}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{400, 423},
-			}, nil},
-			&api.CmdIDGroup{"Sub Group 6", api.CmdIDRange{423, 468}, api.Spans{&api.CmdIDRange{423, 468}}, nil},
+			}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 6", api.CmdIDRange{423, 468}, api.Spans{&api.CmdIDRange{423, 468}}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Sub Group 7", api.CmdIDRange{468, 612}, api.Spans{
 				&api.CmdIDRange{468, 500},
 				&api.CmdIDGroup{"Sub-group 2", api.CmdIDRange{500, 600}, api.Spans{
-					&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{500, 545}, api.Spans{&api.CmdIDRange{500, 545}}, nil},
-					&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{545, 590}, api.Spans{&api.CmdIDRange{545, 590}}, nil},
-					&api.CmdIDGroup{"Sub Group 3", api.CmdIDRange{590, 600}, api.Spans{&api.CmdIDRange{590, 600}}, nil},
-				}, nil},
+					&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{500, 545}, api.Spans{&api.CmdIDRange{500, 545}}, []api.SubCmdIdx{}, nil},
+					&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{545, 590}, api.Spans{&api.CmdIDRange{545, 590}}, []api.SubCmdIdx{}, nil},
+					&api.CmdIDGroup{"Sub Group 3", api.CmdIDRange{590, 600}, api.Spans{&api.CmdIDRange{590, 600}}, []api.SubCmdIdx{}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{600, 612},
-			}, nil},
-			&api.CmdIDGroup{"Sub Group 8", api.CmdIDRange{612, 657}, api.Spans{&api.CmdIDRange{612, 657}}, nil},
-			&api.CmdIDGroup{"Sub Group 9", api.CmdIDRange{657, 700}, api.Spans{&api.CmdIDRange{657, 700}}, nil},
+			}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 8", api.CmdIDRange{612, 657}, api.Spans{&api.CmdIDRange{612, 657}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 9", api.CmdIDRange{657, 700}, api.Spans{&api.CmdIDRange{657, 700}}, []api.SubCmdIdx{}, nil},
 		},
-		nil}
+		[]api.SubCmdIdx{}, nil}
 
 	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }
@@ -587,9 +613,10 @@ func TestAddCommandsWithNeighbours(t *testing.T) {
 	{
 		got := api.CmdIDGroup{
 			"root", api.CmdIDRange{0, 52}, api.Spans{
-				&api.CmdIDGroup{"Child 1", api.CmdIDRange{10, 20}, api.Spans{&api.CmdIDRange{10, 20}}, nil},
-				&api.CmdIDGroup{"Child 2", api.CmdIDRange{31, 50}, api.Spans{&api.CmdIDRange{31, 50}}, nil},
+				&api.CmdIDGroup{"Child 1", api.CmdIDRange{10, 20}, api.Spans{&api.CmdIDRange{10, 20}}, []api.SubCmdIdx{}, nil},
+				&api.CmdIDGroup{"Child 2", api.CmdIDRange{31, 50}, api.Spans{&api.CmdIDRange{31, 50}}, []api.SubCmdIdx{}, nil},
 			},
+			[]api.SubCmdIdx{},
 			nil,
 		}
 
@@ -598,11 +625,12 @@ func TestAddCommandsWithNeighbours(t *testing.T) {
 		expected := api.CmdIDGroup{
 			"root", api.CmdIDRange{0, 52}, api.Spans{
 				&api.CmdIDRange{0, 10},
-				&api.CmdIDGroup{"Child 1", api.CmdIDRange{10, 20}, api.Spans{&api.CmdIDRange{10, 20}}, nil},
-				&api.CmdIDGroup{"Sub Group", api.CmdIDRange{20, 31}, api.Spans{&api.CmdIDRange{20, 31}}, nil},
-				&api.CmdIDGroup{"Child 2", api.CmdIDRange{31, 50}, api.Spans{&api.CmdIDRange{31, 50}}, nil},
+				&api.CmdIDGroup{"Child 1", api.CmdIDRange{10, 20}, api.Spans{&api.CmdIDRange{10, 20}}, []api.SubCmdIdx{}, nil},
+				&api.CmdIDGroup{"Sub Group", api.CmdIDRange{20, 31}, api.Spans{&api.CmdIDRange{20, 31}}, []api.SubCmdIdx{}, nil},
+				&api.CmdIDGroup{"Child 2", api.CmdIDRange{31, 50}, api.Spans{&api.CmdIDRange{31, 50}}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{50, 52},
 			},
+			[]api.SubCmdIdx{},
 			nil,
 		}
 
@@ -621,40 +649,41 @@ func TestSpansSplit(t *testing.T) {
 			&api.CmdIDRange{9, 11},
 			&api.CmdIDRange{11, 14},
 			&api.CmdIDRange{14, 15},
-			&api.CmdIDGroup{"Child 1", api.CmdIDRange{15, 16}, api.Spans{&api.CmdIDRange{15, 16}}, nil},
-			&api.CmdIDGroup{"Child 2", api.CmdIDRange{16, 17}, api.Spans{&api.CmdIDRange{16, 17}}, nil},
-			&api.CmdIDGroup{"Child 3", api.CmdIDRange{17, 18}, api.Spans{&api.CmdIDRange{17, 18}}, nil},
-			&api.CmdIDGroup{"Child 4", api.CmdIDRange{18, 19}, api.Spans{&api.CmdIDRange{18, 19}}, nil},
-			&api.CmdIDGroup{"Child 5", api.CmdIDRange{19, 20}, api.Spans{&api.CmdIDRange{19, 20}}, nil},
-			&api.CmdIDGroup{"Child 6", api.CmdIDRange{20, 21}, api.Spans{&api.CmdIDRange{20, 21}}, nil},
-			&api.CmdIDGroup{"Child 7", api.CmdIDRange{21, 22}, api.Spans{&api.CmdIDRange{21, 22}}, nil},
+			&api.CmdIDGroup{"Child 1", api.CmdIDRange{15, 16}, api.Spans{&api.CmdIDRange{15, 16}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Child 2", api.CmdIDRange{16, 17}, api.Spans{&api.CmdIDRange{16, 17}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Child 3", api.CmdIDRange{17, 18}, api.Spans{&api.CmdIDRange{17, 18}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Child 4", api.CmdIDRange{18, 19}, api.Spans{&api.CmdIDRange{18, 19}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Child 5", api.CmdIDRange{19, 20}, api.Spans{&api.CmdIDRange{19, 20}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Child 6", api.CmdIDRange{20, 21}, api.Spans{&api.CmdIDRange{20, 21}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Child 7", api.CmdIDRange{21, 22}, api.Spans{&api.CmdIDRange{21, 22}}, []api.SubCmdIdx{}, nil},
 		},
+		[]api.SubCmdIdx{},
 		nil}
 
 	got.Spans = got.Spans.Split(3)
 
 	expected := api.CmdIDGroup{
 		"root", api.CmdIDRange{0, 22}, api.Spans{
-			&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{0, 3}, api.Spans{&api.CmdIDRange{0, 3}}, nil},
-			&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{3, 6}, api.Spans{&api.CmdIDRange{3, 4}, &api.CmdIDRange{4, 6}}, nil},
-			&api.CmdIDGroup{"Sub Group 3", api.CmdIDRange{6, 9}, api.Spans{&api.CmdIDRange{6, 7}, &api.CmdIDRange{7, 9}}, nil},
-			&api.CmdIDGroup{"Sub Group 4", api.CmdIDRange{9, 12}, api.Spans{&api.CmdIDRange{9, 11}, &api.CmdIDRange{11, 12}}, nil},
-			&api.CmdIDGroup{"Sub Group 5", api.CmdIDRange{12, 15}, api.Spans{&api.CmdIDRange{12, 14}, &api.CmdIDRange{14, 15}}, nil},
+			&api.CmdIDGroup{"Sub Group 1", api.CmdIDRange{0, 3}, api.Spans{&api.CmdIDRange{0, 3}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 2", api.CmdIDRange{3, 6}, api.Spans{&api.CmdIDRange{3, 4}, &api.CmdIDRange{4, 6}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 3", api.CmdIDRange{6, 9}, api.Spans{&api.CmdIDRange{6, 7}, &api.CmdIDRange{7, 9}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 4", api.CmdIDRange{9, 12}, api.Spans{&api.CmdIDRange{9, 11}, &api.CmdIDRange{11, 12}}, []api.SubCmdIdx{}, nil},
+			&api.CmdIDGroup{"Sub Group 5", api.CmdIDRange{12, 15}, api.Spans{&api.CmdIDRange{12, 14}, &api.CmdIDRange{14, 15}}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Sub Group 6", api.CmdIDRange{15, 18}, api.Spans{
-				&api.CmdIDGroup{"Child 1", api.CmdIDRange{15, 16}, api.Spans{&api.CmdIDRange{15, 16}}, nil},
-				&api.CmdIDGroup{"Child 2", api.CmdIDRange{16, 17}, api.Spans{&api.CmdIDRange{16, 17}}, nil},
-				&api.CmdIDGroup{"Child 3", api.CmdIDRange{17, 18}, api.Spans{&api.CmdIDRange{17, 18}}, nil},
-			}, nil},
+				&api.CmdIDGroup{"Child 1", api.CmdIDRange{15, 16}, api.Spans{&api.CmdIDRange{15, 16}}, []api.SubCmdIdx{}, nil},
+				&api.CmdIDGroup{"Child 2", api.CmdIDRange{16, 17}, api.Spans{&api.CmdIDRange{16, 17}}, []api.SubCmdIdx{}, nil},
+				&api.CmdIDGroup{"Child 3", api.CmdIDRange{17, 18}, api.Spans{&api.CmdIDRange{17, 18}}, []api.SubCmdIdx{}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Sub Group 7", api.CmdIDRange{18, 21}, api.Spans{
-				&api.CmdIDGroup{"Child 4", api.CmdIDRange{18, 19}, api.Spans{&api.CmdIDRange{18, 19}}, nil},
-				&api.CmdIDGroup{"Child 5", api.CmdIDRange{19, 20}, api.Spans{&api.CmdIDRange{19, 20}}, nil},
-				&api.CmdIDGroup{"Child 6", api.CmdIDRange{20, 21}, api.Spans{&api.CmdIDRange{20, 21}}, nil},
-			}, nil},
+				&api.CmdIDGroup{"Child 4", api.CmdIDRange{18, 19}, api.Spans{&api.CmdIDRange{18, 19}}, []api.SubCmdIdx{}, nil},
+				&api.CmdIDGroup{"Child 5", api.CmdIDRange{19, 20}, api.Spans{&api.CmdIDRange{19, 20}}, []api.SubCmdIdx{}, nil},
+				&api.CmdIDGroup{"Child 6", api.CmdIDRange{20, 21}, api.Spans{&api.CmdIDRange{20, 21}}, []api.SubCmdIdx{}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Sub Group 8", api.CmdIDRange{21, 22}, api.Spans{
-				&api.CmdIDGroup{"Child 7", api.CmdIDRange{21, 22}, api.Spans{&api.CmdIDRange{21, 22}}, nil},
-			}, nil},
+				&api.CmdIDGroup{"Child 7", api.CmdIDRange{21, 22}, api.Spans{&api.CmdIDRange{21, 22}}, []api.SubCmdIdx{}, nil},
+			}, []api.SubCmdIdx{}, nil},
 		},
-		nil}
+		[]api.SubCmdIdx{}, nil}
 
 	assert.For(ctx, "got").That(got).DeepEquals(expected)
 }
@@ -868,23 +897,23 @@ func TestTraverseBackwards(t *testing.T) {
 			&api.CmdIDGroup{"Frame 1", api.CmdIDRange{0, 5}, api.Spans{
 				&api.CmdIDGroup{"Draw 1", api.CmdIDRange{0, 2}, api.Spans{
 					&api.CmdIDRange{0, 2},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDGroup{"Draw 2", api.CmdIDRange{2, 4}, api.Spans{
 					&api.CmdIDRange{2, 4},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{4, 5},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 			&api.CmdIDGroup{"Frame 2", api.CmdIDRange{5, 10}, api.Spans{
 				&api.CmdIDGroup{"Draw 1", api.CmdIDRange{5, 7}, api.Spans{
 					&api.CmdIDRange{5, 7},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDGroup{"Draw 2", api.CmdIDRange{7, 9}, api.Spans{
 					&api.CmdIDRange{7, 9},
-				}, nil},
+				}, []api.SubCmdIdx{}, nil},
 				&api.CmdIDRange{9, 10},
-			}, nil},
+			}, []api.SubCmdIdx{}, nil},
 		},
-		nil}
+		[]api.SubCmdIdx{}, nil}
 
 	for ti, test := range []struct {
 		root     api.CmdIDGroup

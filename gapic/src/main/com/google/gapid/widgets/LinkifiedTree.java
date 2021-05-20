@@ -59,6 +59,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -190,9 +191,17 @@ public abstract class LinkifiedTree<T, F> extends Composite {
     return viewer.getControl();
   }
 
-  public T getSelection() {
+  public TreeItem getSelectionItem() {
     if (viewer.getTree().getSelectionCount() >= 1) {
-      return getElement(last(viewer.getTree().getSelection()));
+      return last(viewer.getTree().getSelection());
+    }
+    return null;
+  }
+
+  public T getSelection() {
+    TreeItem selectionItem = getSelectionItem();
+    if (selectionItem != null) {
+      return getElement(selectionItem);
     }
     return null;
   }
@@ -411,9 +420,28 @@ public abstract class LinkifiedTree<T, F> extends Composite {
       return (event.detail & SWT.SELECTED) != 0;
     }
 
+    public void updateHierarchy(TreeItem item) {
+      TreeItem parentItem = item.getParentItem();
+      Arrays.asList(parentItem.getItems()).forEach(child -> updateWithChildren(child));
+
+      while (parentItem != null) {
+        update(parentItem);
+        parentItem = parentItem.getParentItem();
+      }
+    }
+
+    private void updateWithChildren(TreeItem item) {
+      update(item);
+      Arrays.asList(item.getItems()).forEach(child -> updateWithChildren(child));
+    }
+
     private void update(TreeItem item) {
-      Label label = getLabelNoUpdate(item);
       T element = getElement(item);
+      if (element == null) {
+        return;
+      }
+
+      Label label = getLabelNoUpdate(item);
 
       label.background = getBackgroundColor(element);
       updateText(item, label, element);

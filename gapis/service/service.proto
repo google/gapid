@@ -179,6 +179,8 @@ message CommandTreeNode {
   path.Commands commands = 4;
   // Number of commands encapsulated by this group.
   uint64 num_commands = 5;
+  // these commands can be disabled for experiments.
+  repeated path.Command experimental_commands = 6;
 }
 
 message Commands {
@@ -782,7 +784,8 @@ enum ClientAction {
   ClosePinned = 57;
   ShowExperiments = 58;
   UpdateExperiments = 59;
-  DisableAnisotropicFiltering = 60;
+  DisableCommand = 60;
+  EnableCommand = 61;
 }
 
 message DCECaptureRequest {

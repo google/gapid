@@ -27,6 +27,7 @@ const (
 	UserMarker
 	ExecutedDraw
 	ExecutedDispatch
+	ExecutedCommandBuffer
 	Submission
 )
 
@@ -63,6 +64,10 @@ func (f CmdFlags) IsExecutedDraw() bool { return (f & ExecutedDraw) != 0 }
 // IsExecutedDispatch returns true if the command is a dispatch that gets executed
 // as a subcommand.
 func (f CmdFlags) IsExecutedDispatch() bool { return (f & ExecutedDispatch) != 0 }
+
+// IsExecutedCommandBuffer returns true if the command executes a prerecorded command
+// buffer.
+func (f CmdFlags) IsExecutedCommandBuffer() bool { return (f & ExecutedCommandBuffer) != 0 }
 
 // IsSubmission returns true if the command is a submission
 func (f CmdFlags) IsSubmission() bool { return (f & Submission) != 0 }

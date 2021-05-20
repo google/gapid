@@ -265,7 +265,7 @@ func (disablerTransform *commandDisabler) rewriteCommandBuffer(ctx context.Conte
 
 			// Skip the disabled command and do not copy it to the new command buffer
 			disablerTransform.removeFromDisabledList(currentSubCmdID)
-			log.I(ctx, "Command %v disabled", currentSubCmdID)
+			log.I(ctx, "Command %v disabled", append(api.SubCmdIdx{currentSubCmdID[0] - disablerTransform.cmdsOffset}, currentSubCmdID[1:]...))
 			continue
 		}
 

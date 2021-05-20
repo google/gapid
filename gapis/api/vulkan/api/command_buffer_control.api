@@ -645,6 +645,7 @@ sub void dovkCmdExecuteCommands(ref!vkCmdExecuteCommandsArgs cmds) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
+@executed_command_buffer
 cmd void vkCmdExecuteCommands(
     VkCommandBuffer        commandBuffer,
     u32                    commandBufferCount,

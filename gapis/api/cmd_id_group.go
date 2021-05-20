@@ -33,10 +33,11 @@ import (
 // or a command range that is within this group's span but outside of any
 // sub-group.
 type CmdIDGroup struct {
-	Name     string     // Name of this group.
-	Range    CmdIDRange // The range of commands this group (and items) represents.
-	Spans    Spans      // All sub-groups and sub-ranges of this group.
-	UserData interface{}
+	Name               string      // Name of this group.
+	Range              CmdIDRange  // The range of commands this group (and items) represents.
+	Spans              Spans       // All sub-groups and sub-ranges of this group.
+	ExperimentableCmds []SubCmdIdx // Indices of commands under this group that can be disabled for experiments.
+	UserData           interface{}
 }
 
 // SubCmdRoot is a new namespace under which subcommands live.
@@ -308,7 +309,7 @@ func (g CmdIDGroup) IterateBackwards(index uint64, cb func(childIdx uint64, item
 // All groups must be added before commands.
 // Attemping to call this function after commands have been added may result in
 // panics!
-func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error) {
+func (g *CmdIDGroup) AddGroup(start, end CmdID, name string, experimentableCmds []SubCmdIdx) (*CmdIDGroup, error) {
 	if start > end {
 		return nil, fmt.Errorf("sub-group start (%d) is greater than end (%v)", start, end)
 	}
@@ -327,7 +328,7 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 		i := sort.Search(len(g.Spans), func(i int) bool {
 			return g.Spans[i].Bounds().Start > start
 		})
-		out = &CmdIDGroup{Name: name, Range: r}
+		out = &CmdIDGroup{Name: name, Range: r, ExperimentableCmds: append(g.ExperimentableCmds, experimentableCmds...)}
 		slice.InsertBefore(&g.Spans, i, out)
 	} else {
 		// At least one overlap
@@ -337,11 +338,11 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 		switch {
 		case c == 1 && g.Spans[s].Bounds() == r:
 			// New group exactly matches already existing group. Wrap the exiting group.
-			out = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}}
+			out = &CmdIDGroup{Name: name, Range: r, Spans: Spans{g.Spans[s]}, ExperimentableCmds: append(g.ExperimentableCmds, experimentableCmds...)}
 			g.Spans[s] = out
 		case c == 1 && sIn && eIn:
 			// New group fits entirely within an existing group. Add as subgroup.
-			out, err = first.AddGroup(start, end, name)
+			out, err = first.AddGroup(start, end, name, append(g.ExperimentableCmds, experimentableCmds...))
 		case sIn && start != first.Range.Start:
 			return nil, fmt.Errorf("New group '%v' %v overlaps with existing group '%v'", name, r, first)
 		case eIn && end != last.Range.End:
@@ -349,7 +350,7 @@ func (g *CmdIDGroup) AddGroup(start, end CmdID, name string) (*CmdIDGroup, error
 		default:
 			// New group completely wraps one or more existing groups. Add the
 			// existing group(s) as subgroups to the new group, and add to the list.
-			out = &CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c)}
+			out = &CmdIDGroup{Name: name, Range: r, Spans: make(Spans, c), ExperimentableCmds: append(g.ExperimentableCmds, experimentableCmds...)}
 			copy(out.Spans, g.Spans[s:s+c])
 			slice.Replace(&g.Spans, s, c, out)
 		}
@@ -467,7 +468,7 @@ func (c *SubCmdRoot) AddSubCmdMarkerGroups(r []uint64, groups []*CmdIDGroup, nam
 		if g.Range.End > childRoot.SubGroup.Range.End {
 			childRoot.SubGroup.Range.End = g.Range.End
 		}
-		_, err := childRoot.SubGroup.AddGroup(g.Range.Start, g.Range.End, g.Name)
+		_, err := childRoot.SubGroup.AddGroup(g.Range.Start, g.Range.End, g.Name, g.ExperimentableCmds)
 		if err != nil {
 			return err
 		}
@@ -561,7 +562,7 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 		flush := func() {
 			if len(accum) > 0 {
 				rng := CmdIDRange{accum[0].Bounds().Start, accum[len(accum)-1].Bounds().End}
-				group := CmdIDGroup{"Sub Group", rng, accum, nil}
+				group := CmdIDGroup{"Sub Group", rng, accum, []SubCmdIdx{}, nil}
 				if group.Count() > maxNeighbours {
 					spans = append(spans, &group)
 				} else {
@@ -618,6 +619,7 @@ outer:
 				fmt.Sprintf("Sub Group %d", idx),
 				CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 				current,
+				[]SubCmdIdx{},
 				nil,
 			})
 			current, idx, count, space, span = nil, idx+1, 0, max, tail
@@ -634,6 +636,7 @@ outer:
 			fmt.Sprintf("Sub Group %d", idx),
 			CmdIDRange{current[0].Bounds().Start, current[len(current)-1].Bounds().End},
 			current,
+			[]SubCmdIdx{},
 			nil,
 		})
 	}

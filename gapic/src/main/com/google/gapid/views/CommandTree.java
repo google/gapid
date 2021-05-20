@@ -47,6 +47,7 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.SelectionHandler;
+import com.google.gapid.views.Formatter.Style;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.LinkifiedTreeWithImages;
 import com.google.gapid.widgets.LoadableImage;
@@ -69,7 +70,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TreeItem;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
@@ -301,6 +304,10 @@ public class CommandTree extends Composite
       refresher.refresh();
     }
 
+    public void updateTree(TreeItem item) {
+      labelProvider.updateHierarchy(item);
+    }
+
     @Override
     protected ContentProvider<Node> createContentProvider() {
       return new ContentProvider<CommandStream.Node>() {
@@ -331,6 +338,23 @@ public class CommandTree extends Composite
       };
     }
 
+    private Style getCommandStyle(Service.CommandTreeNode node, StylingString string) {
+      if (node.getExperimentalCommandsCount() == 0) {
+        return string.labelStyle();
+      }
+
+      final List<Path.Command> experimentCommands = node.getExperimentalCommandsList();
+      if (widgets.experiments.areAllCommandsDisabled(experimentCommands)) {
+        return string.disabledLabelStyle();
+      }
+
+      if (widgets.experiments.isAnyCommandDisabled(experimentCommands)) {
+        return string.semiDisabledLabelStyle();
+      }
+
+      return string.labelStyle();
+    }
+
     @Override
     protected <S extends StylingString> S format(
         CommandStream.Node element, S string, Follower.Prefetcher<String> follower) {
@@ -344,10 +368,10 @@ public class CommandTree extends Composite
             string.append("Loading...", string.structureStyle());
           } else {
             Formatter.format(cmd, models.constants::getConstants, follower::canFollow,
-                string, string.identifierStyle());
+                string, getCommandStyle(data, string), string.identifierStyle());
           }
         } else {
-          string.append(data.getGroup(), string.labelStyle());
+          string.append(data.getGroup(), getCommandStyle(data, string));
           long count = data.getNumCommands();
           string.append(
               " (" + count + " command" + (count != 1 ? "s" : "") + ")", string.structureStyle());

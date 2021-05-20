@@ -19,6 +19,7 @@ import static com.google.gapid.util.Paths.lastCommand;
 
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Experimental;
 import com.google.gapid.views.CommandTree.Tree;
 import com.google.gapid.widgets.Widgets;
@@ -28,13 +29,15 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class CommandOptions {
   private CommandOptions() {
   }
 
   public static void CreateCommandOptionsMenu(Control parent, Widgets widgets, Tree tree, Models models) {
     final Menu optionsMenu = new Menu(parent);
-    final Menu experimentsMenu = new Menu(optionsMenu);
 
     MenuItem editMenuItem = Widgets.createMenuItem(optionsMenu , "&Edit", SWT.MOD1 + 'E', e -> {
       CommandStream.Node node = tree.getSelection();
@@ -44,24 +47,76 @@ public class CommandOptions {
       }
     });
 
+    MenuItem disableMenuItem;
+    MenuItem enableMenuItem;
+    MenuItem isolateMenuItem;
     if (Experimental.enableProfileExperiments(models.settings)) {
-      MenuItem experimentMenuItem = Widgets.createMenuItem(optionsMenu, "Ex&periments", SWT.MOD1 + 'P', e -> {
+      disableMenuItem = Widgets.createMenuItem(optionsMenu, "Disable Drawcall", SWT.MOD1 + 'D', e -> {
         CommandStream.Node node = tree.getSelection();
         if (node != null && node.getData() != null) {
-          widgets.experiments.showExperimentsPopup(experimentsMenu.getShell());
+          widgets.experiments.disableCommands(node.getData().getExperimentalCommandsList());
         }
+        tree.updateTree(tree.getSelectionItem());
       });
+
+      enableMenuItem = Widgets.createMenuItem(optionsMenu, "Enable Drawcall", SWT.MOD1 + 'E', e -> {
+        CommandStream.Node node = tree.getSelection();
+        if (node != null && node.getData() != null) {
+          widgets.experiments.enableCommands(node.getData().getExperimentalCommandsList());
+        }
+        tree.updateTree(tree.getSelectionItem());
+      });
+
+      isolateMenuItem = Widgets.createMenuItem(optionsMenu, "Disable Other Drawcalls", SWT.MOD1 + 'I', e -> {
+        CommandStream.Node node = tree.getSelection();
+        if (node != null && node.getData() != null) {
+          widgets.experiments.disableCommands(getSiblings(node));
+        }
+        tree.updateTree(tree.getSelectionItem());
+      });
+    } else {
+      disableMenuItem = null;
+      enableMenuItem = null;
+      isolateMenuItem = null;
     }
 
     tree.setPopupMenu(optionsMenu, node -> {
       if (node.getData() == null) {
         return false;
       }
+
       editMenuItem.setEnabled(false);
       if (node.getCommand() != null && CommandEditor.shouldShowEditPopup(node.getCommand())) {
         editMenuItem.setEnabled(true);
       }
+
+      boolean canBeDisabled = node.getData().getExperimentalCommandsCount() > 0;
+      boolean canBeIsolated = node.getParent().getData().getExperimentalCommandsCount() > 1;
+
+      if (disableMenuItem != null) {
+        boolean disabled = widgets.experiments.areAllCommandsDisabled(
+            node.getData().getExperimentalCommandsList());
+        disableMenuItem.setEnabled(canBeDisabled && !disabled);
+      }
+
+      if (enableMenuItem != null) {
+        boolean hasDisabledChildren = widgets.experiments.isAnyCommandDisabled(
+            node.getData().getExperimentalCommandsList());
+        enableMenuItem.setEnabled(canBeDisabled && hasDisabledChildren);
+      }
+
+      if (isolateMenuItem != null) {
+        isolateMenuItem.setEnabled(canBeDisabled && canBeIsolated);
+      }
       return true;
     });
+  }
+
+  private static List<Path.Command> getSiblings(CommandStream.Node node) {
+    List<Path.Command> experimentalCommands = node.getData().getExperimentalCommandsList();
+    return node.getParent().getData().getExperimentalCommandsList()
+      .stream()
+      .filter(cmd -> !experimentalCommands.contains(cmd))
+      .collect(Collectors.toList());
   }
 }

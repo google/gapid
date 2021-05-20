@@ -207,6 +207,8 @@ public interface Theme {
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();
   @TextStyle(bold = true) public Styler labelStyler();
+  @TextStyle(bold = true, strikeout = true) public Styler disabledlabelStyler();
+  @TextStyle(bold = true, foreground = 0xa9a9a9) public Styler semiDisabledlabelStyler();
   @TextStyle(foreground = 0x0000ee, underline = true) public Styler linkStyler();
   @TextStyle(foreground = 0xee0000) public Styler errorStyler();
   @TextStyle(foreground = 0xffc800) public Styler warningStyler();
@@ -304,6 +306,7 @@ public interface Theme {
     public int foreground() default -1;
     public int background() default -1;
     public boolean underline() default false;
+    public boolean strikeout() default false;
     public boolean bold() default false;
   }
 
@@ -334,19 +337,20 @@ public interface Theme {
    */
   public static class DisposableStyler extends Styler {
     private final Color foreground, background;
-    private final boolean underline, bold;
+    private final boolean underline, strikeout, bold;
 
-    public DisposableStyler(Color foreground, Color background, boolean underline, boolean bold) {
+    public DisposableStyler(Color foreground, Color background, boolean underline, boolean strikeout, boolean bold) {
       this.foreground = foreground;
       this.background = background;
       this.underline = underline;
+      this.strikeout = strikeout;
       this.bold = bold;
     }
 
     public DisposableStyler(Display display, TextStyle style) {
       this(style.foreground() >= 0 ? new Color(display, Colors.fromRGB(style.foreground())) : null,
           style.background() >= 0 ? new Color(display, Colors.fromRGB(style.background())) : null,
-          style.underline(), style.bold());
+          style.underline(), style.strikeout(), style.bold());
     }
 
     public void dispose() {
@@ -363,6 +367,7 @@ public interface Theme {
       textStyle.foreground = foreground;
       textStyle.background = background;
       textStyle.underline = underline;
+      textStyle.strikeout = strikeout;
       if (bold) {
         textStyle.font = JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT);
       }

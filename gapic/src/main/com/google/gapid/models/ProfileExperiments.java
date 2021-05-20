@@ -15,22 +15,31 @@
  */
 package com.google.gapid.models;
 
+import com.google.common.collect.ImmutableList;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.path.Path;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public final class ProfileExperiments {
   public final boolean disableAnisotropicFiltering;
+  public final ImmutableList<Path.Command> disabledCommands;
 
   public ProfileExperiments() {
-    this(false);
+    this(false, Collections.emptyList());
   }
 
-  public ProfileExperiments(boolean disableAnisotropicFiltering) {
+  public ProfileExperiments(boolean disableAnisotropicFiltering, List<Path.Command> disabledCommands) {
     this.disableAnisotropicFiltering = disableAnisotropicFiltering;
+    this.disabledCommands = ImmutableList.copyOf(disabledCommands);
   }
 
   public final Service.ProfileExperiments toProto() {
     return Service.ProfileExperiments.newBuilder()
       .setDisableAnisotropicFiltering(disableAnisotropicFiltering)
+      .addAllDisabledCommands(disabledCommands)
       .build();
   }
 }
