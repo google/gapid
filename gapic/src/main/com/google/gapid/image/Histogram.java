@@ -18,12 +18,15 @@ package com.google.gapid.image;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toSet;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.gapid.image.Image.PixelInfo;
 import com.google.gapid.proto.stream.Stream;
 import com.google.gapid.proto.stream.Stream.Channel;
 import com.google.gapid.util.Range;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -87,13 +90,25 @@ public class Histogram {
 
   /**
    * @param percentile the percentile value ranging from 0 to 100.
-   * @param high if true, return the upper limit on the percentile's bin, otherwise the lower limit.
+   * @param lastBin if true, for all the percentile bins from different channels, choose the last
+   * bin, otherwise choose the first bin.
    * @return the absolute pixel value at the specified percentile in the histogram.
    */
-  private double getPercentile(int percentile, boolean high) {
-    int bin = bins.getPercentileBin(percentile, channels);
-    return (bin < 0) ? mapper.limits.max :
-        getValueFromNormalizedX((bin + (high ? 1 : 0)) / (double)bins.count());
+  private double getPercentile(int percentile, boolean lastBin) {
+    List<Integer> percentileBins = Lists.newArrayList();
+    for (Stream.Channel c : channels) {
+      int bin = bins.getPercentileBin(percentile, c);
+      if (bin >= 0) {
+        percentileBins.add(bin);
+      }
+    }
+    if (percentileBins.isEmpty()) {
+      return mapper.limits.max;
+    } else {
+      int chosenBin = lastBin ? Collections.max(percentileBins) : Collections.min(percentileBins);
+      // If to choose lastBin, return the upper limit of the bin, otherwise the lower limit.
+      return getValueFromNormalizedX((chosenBin + (lastBin ? 1 : 0)) / (double)bins.count());
+    }
   }
 
   /**
@@ -353,21 +368,14 @@ public class Histogram {
     /**
      * Returns the index of the bin which matches the given percentile, or -1.
      */
-    public int getPercentileBin(int percentile, Set<Stream.Channel> channels) {
-      int highestCount = 0;
-      for (Stream.Channel c : channels) {
-        highestCount = Math.max(highestCount, total[getChannelIdx(c)]);
-      }
-
-      int threshold = percentile * highestCount / 100;
-      int[] sum = new int[Stream.Channel.values().length];
+    public int getPercentileBin(int percentile, Stream.Channel channel) {
+      int cIdx = getChannelIdx(channel);
+      int threshold = percentile * total[getChannelIdx(channel)] / 100;
+      int sum = 0;
       for (int b = 0; b < bins.length; b++) {
-        for (Stream.Channel c : channels) {
-          int cIdx = getChannelIdx(c);
-          int s = sum[cIdx] += bins[b][cIdx];
-          if (s >= threshold) {
-            return b;
-          }
+        sum += bins[b][cIdx];
+        if (sum >= threshold) {
+          return b;
         }
       }
       return -1;
