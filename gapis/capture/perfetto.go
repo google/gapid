@@ -39,6 +39,11 @@ var perfettoUUID = []byte{
 	0x82, 0x47, 0x7a, 0x76, 0xb2, 0x8d, 0x42, 0xba, 0x81, 0xdc, 0x33, 0x32, 0x6d, 0x57, 0xa0, 0x79,
 }
 
+// fuchsiaMagic is the magic constant found near the beginning of Fuchsia traces.
+var fuchsiaMagic = []byte{
+	0x10, 0x00, 0x04, 0x46, 0x78, 0x54, 0x16, 0x00,
+}
+
 type PerfettoCapture struct {
 	name      string
 	Processor *perfetto.Processor
@@ -61,7 +66,7 @@ func (c *PerfettoCapture) Export(ctx context.Context, w io.Writer) error {
 
 func isPerfettoTraceFormat(in *bufio.Reader) bool {
 	buf, _ := in.Peek(maxSearchBytes)
-	return bytes.Contains(buf, perfettoUUID)
+	return bytes.Contains(buf, perfettoUUID) || bytes.Contains(buf, fuchsiaMagic)
 }
 
 func deserializePerfettoTrace(ctx context.Context, r *Record, in io.Reader) (Capture, error) {

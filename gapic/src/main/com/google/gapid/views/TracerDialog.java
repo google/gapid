@@ -140,15 +140,15 @@ public class TracerDialog {
     models.analytics.postInteraction(View.Main, ClientAction.Open);
     FileDialog dialog = new FileDialog(shell, SWT.OPEN);
     dialog.setFilterNames(new String[] {
-        "Trace Files (*.gfxtrace, *.perfetto)",
+        "Trace Files (*.gfxtrace, *.perfetto, *.fxt)",
         "Graphics Traces (*.gfxtrace)",
-        "System Profile (*.perfetto)",
+        "System Profile (*.perfetto, *.fxt)",
         "All Files"
     });
     dialog.setFilterExtensions(new String[] {
-        "*.gfxtrace;*.perfetto",
+        "*.gfxtrace;*.perfetto;*.fxt",
         "*.gfxtrace",
-        "*.perfetto",
+        "*.perfetto;*.fxt",
         "*"
     });
     dialog.setFilterPath(models.settings.files().getLastOpenDir());

@@ -14,6 +14,7 @@
 # General patterns
 *.gfxtrace
 *.perfetto
+*.fxt
 *ycm_extra_conf.py*
 gapir.log
 gapis.log
