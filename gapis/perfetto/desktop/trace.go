@@ -44,7 +44,7 @@ import (
 
 // Process represents a running Perfetto capture.
 type Process struct {
-	device      bind.Device
+	device      bind.DeviceWithShell
 	config      *perfetto_pb.TraceConfig
 	deferred    bool
 	tracefile   string
@@ -142,7 +142,7 @@ func (l *remoteSetup) pullTrace(ctx context.Context, source string, dest string)
 	return dest, nil
 }
 
-func startPerfettoTrace(ctx context.Context, perfettocmd string, b bind.Device, ready task.Task, opts *perfetto_pb.TraceConfig, fileLoc string) (shell.Process, chan error, error) {
+func startPerfettoTrace(ctx context.Context, perfettocmd string, b bind.DeviceWithShell, ready task.Task, opts *perfetto_pb.TraceConfig, fileLoc string) (shell.Process, chan error, error) {
 	reader, stdout := io.Pipe()
 	data, err := proto.Marshal(opts)
 	readyOnce := task.Once(ready)
@@ -185,7 +185,7 @@ func startPerfettoTrace(ctx context.Context, perfettocmd string, b bind.Device, 
 }
 
 // Start sets up a Perfetto trace
-func Start(ctx context.Context, d bind.Device, abi *device.ABI, opts *service.TraceOptions) (*Process, error) {
+func Start(ctx context.Context, d bind.DeviceWithShell, abi *device.ABI, opts *service.TraceOptions) (*Process, error) {
 	ctx = log.Enter(ctx, "start")
 
 	var setup perfettoDeviceSetup

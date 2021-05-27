@@ -23,11 +23,11 @@ import (
 
 var (
 	hostMutex sync.Mutex
-	hostDev   Device
+	hostDev   DeviceWithShell
 )
 
 // Host returns the Device to the host.
-func Host(ctx context.Context) Device {
+func Host(ctx context.Context) DeviceWithShell {
 	hostMutex.Lock()
 	defer hostMutex.Unlock()
 	if hostDev == nil {

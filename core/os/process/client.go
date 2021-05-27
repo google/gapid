@@ -144,7 +144,7 @@ type StartOptions struct {
 	IgnorePort bool
 
 	// Device, which device should this be started on
-	Device bind.Device
+	Device bind.DeviceWithShell
 }
 
 // StartOnDevice runs the application on the given remote device,

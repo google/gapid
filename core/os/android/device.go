@@ -29,7 +29,7 @@ import (
 
 // Device extends the bind.Device interface with capabilities specific to android devices.
 type Device interface {
-	bind.Device
+	bind.DeviceWithShell
 	// InstallAPK installs the specified APK to the device. If reinstall is true
 	// and the package is already installed on the device then it will be replaced.
 	InstallAPK(ctx context.Context, path string, reinstall bool, grantPermissions bool) error

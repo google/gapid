@@ -31,8 +31,6 @@ type Device interface {
 	Instance() *device.Instance
 	// State returns the last known connected status of the device.
 	Status(ctx context.Context) Status
-	// Shell is a helper that builds a shell.Cmd with d.ShellTarget() as its target
-	Shell(name string, args ...string) shell.Cmd
 	// TempFile creates a temporary file on the given Device. It returns the
 	// path to the file, and a function that can be called to clean it up.
 	TempFile(ctx context.Context) (string, func(ctx context.Context), error)
@@ -78,4 +76,10 @@ type Device interface {
 	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
 	// InstallApp installs the given application to this device
 	InstallApp(ctx context.Context, app string) error
+}
+
+type DeviceWithShell interface {
+	Device
+	// Shell is a helper that builds a shell.Cmd with d.ShellTarget() as its target
+	Shell(name string, args ...string) shell.Cmd
 }

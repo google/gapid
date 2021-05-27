@@ -35,11 +35,6 @@ type Simple struct {
 	LastStatus Status
 }
 
-const (
-	// ErrShellNotSupported may be returned by Start if the target does not support a shell.
-	ErrShellNotSupported = fault.Const("bind.Simple does not support shell commands")
-)
-
 func (b *Simple) String() string {
 	if len(b.To.Name) > 0 {
 		return b.To.Name

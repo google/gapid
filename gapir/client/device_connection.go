@@ -56,7 +56,7 @@ type deviceConnectionInfo struct {
 
 func initDeviceConnection(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	if host.Instance(ctx).SameAs(d.Instance()) {
-		return newHost(ctx, d, abi, launchArgs)
+		return newHost(ctx, bind.Host(ctx), abi, launchArgs)
 	} else if adbd, ok := d.(adb.Device); ok {
 		return newADB(ctx, adbd, abi, launchArgs)
 	} else if remoted, ok := d.(remotessh.Device); ok {
@@ -168,7 +168,7 @@ func newRemote(ctx context.Context, d remotessh.Device, abi *device.ABI, launchA
 }
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
-func newHost(ctx context.Context, d bind.Device, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
+func newHost(ctx context.Context, d bind.DeviceWithShell, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	authTokenFile, authToken := auth.GenTokenFile()
 	defer os.Remove(authTokenFile)
 

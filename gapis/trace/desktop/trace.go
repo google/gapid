@@ -46,11 +46,11 @@ const (
 )
 
 type DesktopTracer struct {
-	b bind.Device
+	b bind.DeviceWithShell
 }
 
 func NewTracer(dev bind.Device) *DesktopTracer {
-	return &DesktopTracer{dev.(bind.Device)}
+	return &DesktopTracer{dev.(bind.DeviceWithShell)}
 }
 
 func (t *DesktopTracer) GetDevice() bind.Device {
