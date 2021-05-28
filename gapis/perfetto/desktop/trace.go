@@ -44,7 +44,7 @@ import (
 
 // Process represents a running Perfetto capture.
 type Process struct {
-	device      bind.DeviceWithShell
+	device      bind.Desktop
 	config      *perfetto_pb.TraceConfig
 	deferred    bool
 	tracefile   string
@@ -75,7 +75,7 @@ type perfettoDeviceSetup interface {
 }
 
 type localSetup struct {
-	device bind.Device
+	device bind.Desktop
 	abi    *device.ABI
 }
 
@@ -185,7 +185,7 @@ func startPerfettoTrace(ctx context.Context, perfettocmd string, b bind.DeviceWi
 }
 
 // Start sets up a Perfetto trace
-func Start(ctx context.Context, d bind.DeviceWithShell, abi *device.ABI, opts *service.TraceOptions) (*Process, error) {
+func Start(ctx context.Context, d bind.Desktop, abi *device.ABI, opts *service.TraceOptions) (*Process, error) {
 	ctx = log.Enter(ctx, "start")
 
 	var setup perfettoDeviceSetup

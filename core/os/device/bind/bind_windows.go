@@ -24,12 +24,10 @@ import (
 	"strings"
 	"syscall"
 	"unsafe"
-
-	"github.com/google/gapid/gapis/perfetto"
 )
 
 // ListExecutables returns the executables in a particular directory as given by path
-func (b *Simple) ListExecutables(ctx context.Context, path string) ([]string, error) {
+func (b *binding) ListExecutables(ctx context.Context, path string) ([]string, error) {
 	rets := []string{}
 	if path == "" {
 		return rets, nil
@@ -46,7 +44,7 @@ func (b *Simple) ListExecutables(ctx context.Context, path string) ([]string, er
 	return rets, nil
 }
 
-func (b *Simple) drives(ctx context.Context) ([]string, error) {
+func (b *binding) drives(ctx context.Context) ([]string, error) {
 	drives := []string{}
 
 	kernel32, err := syscall.LoadDLL("kernel32.dll")
@@ -93,12 +91,12 @@ func (b *Simple) drives(ctx context.Context) ([]string, error) {
 }
 
 // GetURIRoot returns the root URI for the entire system
-func (b *Simple) GetURIRoot() string {
+func (b *binding) GetURIRoot() string {
 	return ""
 }
 
 // ListDirectories returns a list of directories rooted at a particular path
-func (b *Simple) ListDirectories(ctx context.Context, path string) ([]string, error) {
+func (b *binding) ListDirectories(ctx context.Context, path string) ([]string, error) {
 	if path == "" {
 		return b.drives(ctx)
 	}
@@ -115,16 +113,4 @@ func (b *Simple) ListDirectories(ctx context.Context, path string) ([]string, er
 		}
 	}
 	return rets, nil
-}
-
-// SupportsPerfetto returns true if the given device supports taking a
-// Perfetto trace.
-func (b *Simple) SupportsPerfetto(ctx context.Context) bool {
-	return false
-}
-
-// ConnectPerfetto connects to a Perfetto service running on this device
-// and returns an open socket connection to the service.
-func (b *Simple) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
-	return nil, fmt.Errorf("Perfetto is not supported on this device")
 }

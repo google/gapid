@@ -31,7 +31,7 @@ const (
 )
 
 // ListExecutables returns the executables in a particular directory as given by path
-func (b *Simple) ListExecutables(ctx context.Context, path string) ([]string, error) {
+func (b *binding) ListExecutables(ctx context.Context, path string) ([]string, error) {
 	if path == "" {
 		path = "/"
 	}
@@ -49,12 +49,12 @@ func (b *Simple) ListExecutables(ctx context.Context, path string) ([]string, er
 }
 
 // GetURIRoot returns the root URI for the entire system
-func (b *Simple) GetURIRoot() string {
+func (b *binding) GetURIRoot() string {
 	return "/"
 }
 
 // ListDirectories returns a list of directories rooted at a particular path
-func (b *Simple) ListDirectories(ctx context.Context, path string) ([]string, error) {
+func (b *binding) ListDirectories(ctx context.Context, path string) ([]string, error) {
 	rets := []string{}
 	infos, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -72,7 +72,7 @@ func (b *Simple) ListDirectories(ctx context.Context, path string) ([]string, er
 
 // SupportsPerfetto returns true if the given device supports taking a
 // Perfetto trace.
-func (b *Simple) SupportsPerfetto(ctx context.Context) bool {
+func (b *binding) SupportsPerfetto(ctx context.Context) bool {
 	if support, err := b.IsFile(ctx, perfettoSocket); err == nil {
 		return support
 	}
@@ -81,7 +81,7 @@ func (b *Simple) SupportsPerfetto(ctx context.Context) bool {
 
 // ConnectPerfetto connects to a Perfetto service running on this device
 // and returns an open socket connection to the service.
-func (b *Simple) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
+func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
 	if !b.SupportsPerfetto(ctx) {
 		return nil, fmt.Errorf("Perfetto is not supported on this device")
 	}

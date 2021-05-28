@@ -51,7 +51,7 @@ type PortWatcher struct {
 	fragment string
 	done     bool
 	portFile string
-	device   bind.Device
+	device   bind.Desktop
 }
 
 func (w *PortWatcher) getPortFromFile(ctx context.Context) (string, bool) {
@@ -144,7 +144,7 @@ type StartOptions struct {
 	IgnorePort bool
 
 	// Device, which device should this be started on
-	Device bind.DeviceWithShell
+	Device bind.Desktop
 }
 
 // StartOnDevice runs the application on the given remote device,

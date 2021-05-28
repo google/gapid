@@ -15,7 +15,6 @@
 package adb
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -30,7 +29,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/gapis/perfetto"
 
 	common_pb "protos/perfetto/common"
@@ -299,41 +297,10 @@ func (b *binding) DeleteSystemSetting(ctx context.Context, namespace, key string
 	return nil
 }
 
-// TempFile creates a temporary file on the given Device. It returns the
-// path to the file, and a function that can be called to clean it up.
-func (b *binding) TempFile(ctx context.Context) (string, func(ctx context.Context), error) {
-	res, err := b.Shell("mktemp").Call(ctx)
-	if err != nil {
-		return "", nil, err
-	}
-	return res, func(ctx context.Context) {
-		b.Shell("rm", "-f", res).Call(ctx)
-	}, nil
-}
-
-// FileContents returns the contents of a given file on the Device.
-func (b *binding) FileContents(ctx context.Context, path string) (string, error) {
-	return b.Shell("cat", path).Call(ctx)
-}
-
 // RemoveFile removes the given file from the device
 func (b *binding) RemoveFile(ctx context.Context, path string) error {
 	_, err := b.Shell("rm", "-f", path).Call(ctx)
 	return err
-}
-
-// GetEnv returns the default environment for the Device.
-func (b *binding) GetEnv(ctx context.Context) (*shell.Env, error) {
-	env, err := b.Shell("env").Call(ctx)
-	if err != nil {
-		return nil, err
-	}
-	scanner := bufio.NewScanner(strings.NewReader(env))
-	e := &shell.Env{}
-	for scanner.Scan() {
-		e.Add(scanner.Text())
-	}
-	return e, nil
 }
 
 func (b *binding) SupportsPerfetto(ctx context.Context) bool {

@@ -49,6 +49,8 @@ type Device interface {
 	Push(ctx context.Context, local, remote string) error
 	// Pulls the remote file to the local one.
 	Pull(ctx context.Context, remote, local string) error
+	// RemoveFile removes the given file from the device
+	RemoveFile(ctx context.Context, path string) error
 	// KeyEvent simulates a key-event on the device.
 	KeyEvent(ctx context.Context, key KeyCode) error
 	// SendEvent simulates low-level user-input to the device.

@@ -41,7 +41,7 @@ import (
 // Device extends the bind.Device interface with capabilities specific to
 // remote SSH clients
 type Device interface {
-	bind.DeviceWithShell
+	bind.Desktop
 	// PullFile will transfer the remote file at sourcePath to the local
 	// machine at destPath
 	PullFile(ctx context.Context, sourcePath, destPath string) error

@@ -168,7 +168,7 @@ func newRemote(ctx context.Context, d remotessh.Device, abi *device.ABI, launchA
 }
 
 // newHost spawns and returns a new GAPIR instance on the host machine.
-func newHost(ctx context.Context, d bind.DeviceWithShell, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
+func newHost(ctx context.Context, d bind.Desktop, abi *device.ABI, launchArgs []string) (*deviceConnectionInfo, error) {
 	authTokenFile, authToken := auth.GenTokenFile()
 	defer os.Remove(authTokenFile)
 

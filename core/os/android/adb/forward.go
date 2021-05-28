@@ -84,13 +84,3 @@ func (b *binding) RemoveForward(ctx context.Context, local Port) error {
 	ctx = keys.Clone(context.Background(), ctx)
 	return b.Command("forward", "--remove", local.adbForwardString()).Run(ctx)
 }
-
-// SetupLocalPort makes sure that the given port can be accessed on localhost
-// It returns a new port number to connect to on localhost
-func (b *binding) SetupLocalPort(ctx context.Context, port int) (int, error) {
-	localPort, err := LocalFreeTCPPort()
-	if err != nil {
-		return 0, err
-	}
-	return int(localPort), b.Forward(ctx, localPort, TCPPort(port))
-}

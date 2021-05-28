@@ -38,7 +38,7 @@ const (
 
 // setupHelper describes setting up the files on the device
 type setupHelper struct {
-	device bind.Device
+	device bind.Desktop
 	abi    *device.ABI
 }
 
@@ -67,7 +67,7 @@ func (r *setupHelper) finalizeJSON(ctx context.Context, jsonName string, content
 
 // SetupLayers sets up the environment so that the correct layers are enabled
 // for the application.
-func SetupLayers(ctx context.Context, layers []string, skipMissingLayers bool, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, error) {
+func SetupLayers(ctx context.Context, layers []string, skipMissingLayers bool, d bind.Desktop, abi *device.ABI, env *shell.Env) (app.Cleanup, error) {
 	if len(layers) == 0 {
 		return nil, nil
 	}
@@ -112,7 +112,7 @@ func SetupLayers(ctx context.Context, layers []string, skipMissingLayers bool, d
 // SetupTrace sets up the environment for tracing a local app. Returns a
 // clean-up function to be called after the trace completes, and a temporary
 // filename that can be used to find the port if stdout fails, or an error.
-func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, string, error) {
+func SetupTrace(ctx context.Context, d bind.Desktop, abi *device.ABI, env *shell.Env) (app.Cleanup, string, error) {
 	setup := &setupHelper{d, abi}
 
 	tempdir, cleanup, err := setup.makeTempDir(ctx)
@@ -154,7 +154,7 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 
 // SetupReplay sets up the environment for a desktop. Returns a clean-up
 // function to be called after replay completes, or an error.
-func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, error) {
+func SetupReplay(ctx context.Context, d bind.Desktop, abi *device.ABI, env *shell.Env) (app.Cleanup, error) {
 	setup := &setupHelper{d, abi}
 
 	tempdir, cleanup, err := setup.makeTempDir(ctx)
