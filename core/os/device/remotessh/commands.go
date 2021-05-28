@@ -142,6 +142,10 @@ func (b binding) Status(ctx context.Context) bind.Status {
 	return bind.Status_Online
 }
 
+func (b binding) IsLocal(ctx context.Context) (bool, error) {
+	return false, nil
+}
+
 // Shell implements the Device interface returning commands that will error if run.
 func (b binding) Shell(name string, args ...string) shell.Cmd {
 	return shell.Command(name, args...).On(sshShellTarget{&b})
