@@ -64,8 +64,6 @@ type Device interface {
 	CanTrace() bool
 	// SupportsPerfetto returns true if this device will work with perfetto
 	SupportsPerfetto(ctx context.Context) bool
-	// SupportsAngle returns true if this device will work with ANGLE
-	SupportsAngle(ctx context.Context) bool
 	// ConnectPerfetto connects to a Perfetto service running on this device
 	// and returns an open socket connection to the service.
 	ConnectPerfetto(ctx context.Context) (*perfetto.Client, error)

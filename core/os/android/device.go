@@ -90,6 +90,8 @@ type Device interface {
 	DeleteSystemSetting(ctx context.Context, namespace, key string) error
 	// StartPerfettoTrace starts a perfetto trace.
 	StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal, ready task.Task) error
+	// SupportsAngle returns true if this device will work with ANGLE
+	SupportsAngle(ctx context.Context) bool
 }
 
 // LogcatMessage represents a single logcat message.

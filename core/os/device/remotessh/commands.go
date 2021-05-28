@@ -364,11 +364,6 @@ func (b binding) SupportsPerfetto(ctx context.Context) bool {
 	return false
 }
 
-// SupportsAngle can only return true on Android currently.
-func (b binding) SupportsAngle(ctx context.Context) bool {
-	return false
-}
-
 // ConnectPerfetto connects to a Perfetto service running on this device
 // and returns an open socket connection to the service.
 func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
