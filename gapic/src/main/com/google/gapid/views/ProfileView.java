@@ -21,7 +21,6 @@ import static com.google.gapid.perfetto.views.StyleConstants.TITLE_HEIGHT;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Loading;
-import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.ImmutableMap;
@@ -31,8 +30,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Capture;
-import com.google.gapid.models.CommandStream;
-import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.models.Profile;
@@ -57,18 +54,13 @@ import com.google.gapid.perfetto.views.State;
 import com.google.gapid.perfetto.views.TraceComposite;
 import com.google.gapid.perfetto.views.TrackPanel;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
-import java.util.concurrent.ExecutionException;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -78,7 +70,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
-import java.util.logging.Level;
 
 public class ProfileView extends Composite implements Tab, Capture.Listener, Profile.Listener, State.Listener {
   private final Models models;
@@ -337,7 +328,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       private final List<Service.ProfilingData.GpuSlices.Slice> slices;
 
       protected GpuSliceTrack(long trackId, List<Service.ProfilingData.GpuSlices.Slice> slices) {
-        super(trackId);
+        super("slices_" + trackId);
         this.slices = slices;
       }
 

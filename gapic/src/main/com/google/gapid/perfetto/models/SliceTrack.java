@@ -51,12 +51,12 @@ import java.util.function.Consumer;
  * {@link Track} containing slices.
  */
 public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track.WithQueryEngine<SliceTrack.Data>*/
-  protected SliceTrack(long trackId) {
-    super("slices_" + trackId);
+  protected SliceTrack(String id) {
+    super(id);
   }
 
   public static SliceTrack forThread(QueryEngine qe, ThreadInfo thread) {
-    return new WithQueryEngine(qe, "slice", thread.trackId) {
+    return new SingleTrackWithQueryEngine(qe, "slice", thread.trackId) {
       @Override
       protected Slices buildSlices(Row row, ArgSet args) {
         return new ThreadSlices(row, args, thread);
@@ -70,75 +70,45 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
   }
 
   public static SliceTrack forGpuQueue(QueryEngine qe, GpuInfo.Queue queue) {
-    return new WithQueryEngine(qe, "gpu_slice", queue.trackId) {
-      // TODO(b/148540258): Remove the copy pasted SliceTrack code and clean up
-      private final String GPU_COLUMNS = "render_target, render_target_name, render_pass, render_pass_name, command_buffer, command_buffer_name, submission_id";
-      private final String GPU_SLICES_QUANT_SQL =
-          "select min(start_ts), max(end_ts), depth, label, max(cnt), " +
-          "    group_concat(id) id, first_value(submission_id) over (partition by depth, label, i) from (" +
-          "  select quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
-          "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i, " +
-          "      group_concat(id) id, submission_id from (" +
-          "    select quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
-          "        substr(group_concat(name) over win1, 0, 101) label, " +
-          "        id, first_value(submission_id) over win1 submission_id " +
-          "    from %s" +
-          "    window win1 as (partition by quantum_ts, depth order by dur desc" +
-          "    range between unbounded preceding and unbounded following))" +
-          "  group by quantum_ts, depth)" +
-          "group by depth, label, i";
+    return new SingleTrackWithQueryEngine(qe, "gpu_slice", queue.trackId) {
+      private final QuantizedColumn[] QUANTIZED_COLUMNS = new QuantizedColumn[] {
+          QuantizedColumn.firstValue("submission_id"),
+      };
+      private final String[] DATA_COLUMNS = new String[] {
+          "render_target", "render_target_name", "render_pass", "render_pass_name",
+          "command_buffer", "command_buffer_name", "submission_id"
+      };
 
       @Override
-      protected String baseColumns() {
-        return BASE_COLUMNS + ", " + GPU_COLUMNS;
+      protected QuantizedColumn[] getExtraQuantizedColumns() {
+        return QUANTIZED_COLUMNS;
       }
 
       @Override
-      protected String slicesQuantSql() {
-        return format(GPU_SLICES_QUANT_SQL, tableName("span"));
+      protected String[] getExtraDataColumns() {
+        return DATA_COLUMNS;
       }
 
       @Override
       protected void appendForQuant(Data data, QueryEngine.Result res) {
-        super.appendForQuant(data, res);
         data.putExtraLongs("submissionIds", res.stream().mapToLong(r -> r.getLong(6)).toArray());
       }
 
       @Override
-      protected ListenableFuture<Data> computeData(DataRequest req) {
-        Window window = Window.compute(req, 5);
-        return transformAsync(window.update(qe, tableName("window")), $ ->
-            window.quantized ? computeQuantSlices(req) : computeSlices(req));
-      }
-
-      private ListenableFuture<Data> computeSlices(DataRequest req) {
-        return transformAsync(qe.query(slicesSql(req)), res ->
-          transform(qe.getAllArgs(res.stream().mapToLong(r -> r.getLong(8))), args -> {
-            int rows = res.getNumRows();
-            Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
-                new String[rows], new String[rows], new ArgSet[rows]);
-            long[] submissionIds = new long[rows];
-            res.forEachRow((i, row) -> {
-              long start = row.getLong(1);
-              data.ids[i] = row.getLong(0);
-              data.starts[i] = start;
-              data.ends[i] = start + row.getLong(2);
-              data.categories[i] = row.getString(3);
-              data.titles[i] = row.getString(4);
-              data.depths[i] = row.getInt(5);
-              // Add debug marker to title if it exists
-              if (data.depths[i] == 0) {
-                String debugMarker = row.getString(10);
-                if (!debugMarker.isEmpty()) {
-                  data.titles[i] += "[" + debugMarker + "]";
-                }
-              }
-              data.args[i] = args.getOrDefault(row.getLong(8), ArgSet.EMPTY);
-              submissionIds[i] = row.getLong(15);
-            });
-            data.putExtraLongs("submissionIds", submissionIds);
-            return data;
-          }));
+      protected void appendForSlices(Data data, Result res) {
+        int rows = res.getNumRows();
+        long[] submissionIds = new long[rows];
+        res.forEachRow((i, row) -> {
+          submissionIds[i] = row.getLong(15);
+          // Add debug marker to title if it exists
+          if (data.depths[i] == 0) {
+            String debugMarker = row.getString(10);
+            if (!debugMarker.isEmpty()) {
+              data.titles[i] += "[" + debugMarker + "]";
+            }
+          }
+        });
+        data.putExtraLongs("submissionIds", submissionIds);
       }
 
       @Override
@@ -377,7 +347,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
     Set<Long> roots = Sets.newHashSet();
 
-    for (int i = 0; i < slices.count; i++) {
+    for (int i = 0; i < slices.getCount(); i++) {
       String name = slices.names.get(i);
       long stackId = slices.stackIds.get(i);
       long parentId = slices.parentIds.get(i);
@@ -446,51 +416,21 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
   }
 
   public abstract static class WithQueryEngine extends SliceTrack {
-    protected static final String BASE_COLUMNS =
-        "id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
-    protected final String table;
-    protected final long trackId;
+    private static final String SLICES_SQL =
+        "select %s from %s where ts >= %d - dur and ts <= %d order by ts";
+    private static final String SLICE_SQL = "select %s from %s where id = %d";
+    private static final String SLICES_BY_ID_SQL = "select %s from %s where id in (%s)";
+    private static final String SLICE_RANGE_SQL =
+        "select %s from %s where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
 
-    private final String SLICES_VIEW =
-        "select " + baseColumns() + " from %s where track_id = %d";
-    private final String SLICES_SQL =
-        "select " + baseColumns() + " from %s " +
-        "where ts >= %d - dur and ts <= %d order by ts";
-    private static final String SLICES_QUANT_SQL =
-        "select min(start_ts), max(end_ts), depth, label, max(cnt), group_concat(id) id from (" +
-        "  select quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
-        "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i, " +
-        "      group_concat(id) id from (" +
-        "    select quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
-        "        substr(group_concat(name) over win1, 0, 101) label, id" +
-        "    from %s" +
-        "    window win1 as (partition by quantum_ts, depth order by dur desc" +
-        "        range between unbounded preceding and unbounded following))" +
-        "  group by quantum_ts, depth) " +
-        "group by depth, label, i";
+    protected static final QuantizedColumn[] NO_QUANTIZED_COLUMNS = new QuantizedColumn[0];
+    protected static final String[] NO_DATA_COLUMNS = new String[0];
 
-    private final String SLICE_SQL =
-        "select " + baseColumns() + " from %s where id = %d";
-    private final String SLICE_RANGE_SQL =
-        "select " + baseColumns() + " from %s " +
-        "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
-    private final String SLICES_BY_ID_SQL =
-        "select " + baseColumns() + " from %s where id in (%s)";
-    private final QueryEngine qe;
+    protected final QueryEngine qe;
 
-    protected String baseColumns() {
-      return BASE_COLUMNS;
-    }
-
-    protected void appendForQuant(Data data, QueryEngine.Result res) {
-      data.putExtraStrings("concatedIds", res.stream().map(r -> r.getString(5)).toArray(String[]::new));
-    }
-
-    protected WithQueryEngine(QueryEngine qe, String table, long trackId) {
-      super(trackId);
+    public WithQueryEngine(QueryEngine qe, String id) {
+      super(id);
       this.qe = qe;
-      this.table = table;
-      this.trackId = trackId;
     }
 
     @Override
@@ -503,9 +443,11 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
           dropView(slices),
           dropTable(window),
           createWindow(window),
-          createView(slices, format(SLICES_VIEW, table, trackId)),
+          createView(slices, getViewSql()),
           createSpan(span, window + ", " + slices + " PARTITIONED depth"));
     }
+
+    protected abstract String getViewSql();
 
     @Override
     protected ListenableFuture<Data> computeData(DataRequest req) {
@@ -519,6 +461,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         int rows = res.getNumRows();
         Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
             new String[rows], new String[rows], new ArgSet[rows]);
+        String[] concatedIds = new String[rows];
         res.forEachRow((i, row) -> {
           data.ids[i] = -1;
           data.starts[i] = row.getLong(0);
@@ -530,15 +473,51 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
             data.titles[i] += "...";
           }
           data.args[i] = ArgSet.EMPTY;
+          concatedIds[i] = row.getString(5);
         });
+        data.putExtraStrings("concatedIds", concatedIds);
         appendForQuant(data, res);
         return data;
       });
     }
 
-    protected String slicesQuantSql() {
-      return format(SLICES_QUANT_SQL, tableName("span"));
+    private String slicesQuantSql() {
+      QuantizedColumn[] extras = getExtraQuantizedColumns();
+
+      StringBuilder level2 = new StringBuilder().append("select " +
+          "quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
+          "substr(group_concat(name) over win1, 0, 101) label, id");
+      for (QuantizedColumn qc : extras) {
+        level2.append(", ").append(qc.windowed("win1")).append(" ").append(qc.name);
+      }
+      level2.append(" from ").append(tableName("span"))
+          .append(" window win1 as (partition by quantum_ts, depth order by dur desc " +
+              "range between unbounded preceding and unbounded following)");
+
+      StringBuilder level1 = new StringBuilder().append("select " +
+          "quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
+          "quantum_ts - row_number() over win2 i, group_concat(id) id");
+      for (QuantizedColumn qc : extras) {
+        level1.append(", ").append(qc.name);
+      }
+      level1.append(" from (").append(level2).append(")")
+          .append(" group by quantum_ts, depth ")
+          .append(" window win2 as (partition by depth, label order by quantum_ts)");
+
+      StringBuilder outer = new StringBuilder().append("select " +
+          "min(start_ts), max(end_ts), depth, label, max(cnt), group_concat(id) id");
+      for (QuantizedColumn qc : extras) {
+        outer.append(", ").append(qc.windowed("win3"));
+      }
+      outer.append(" from (").append(level1).append(")")
+          .append(" group by depth, label, i")
+          .append(" window win3 as (partition by depth, label, i)");
+
+      return outer.toString();
     }
+
+    protected abstract QuantizedColumn[] getExtraQuantizedColumns();
+    protected abstract void appendForQuant(Data data, QueryEngine.Result res);
 
     private ListenableFuture<Data> computeSlices(DataRequest req) {
       return transformAsync(qe.query(slicesSql(req)), res ->
@@ -556,25 +535,35 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
             data.depths[i] = row.getInt(5);
             data.args[i] = args.getOrDefault(row.getLong(8), ArgSet.EMPTY);
           });
+          appendForSlices(data, res);
           return data;
         }));
     }
 
-    protected String slicesSql(DataRequest req) {
-      return format(SLICES_SQL, tableName("slices"), req.range.start, req.range.end);
+    private String slicesSql(DataRequest req) {
+      return format(SLICES_SQL, columns(), tableName("slices"), req.range.start, req.range.end);
     }
+
+    protected final String columns() {
+      StringBuilder sb = new StringBuilder(
+          "id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id");
+      for (String dc : getExtraDataColumns()) {
+        sb.append(", ").append(dc);
+      }
+      return sb.toString();
+    }
+
+    protected abstract String[] getExtraDataColumns();
+    protected abstract void appendForSlices(Data data, QueryEngine.Result res);
 
     @Override
     public ListenableFuture<Slices> getSlice(long id) {
       return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
-          transform(qe.getArgs(r.getLong(8)), args -> buildSlices(r, args)));
+        transform(qe.getArgs(r.getLong(8)), args -> buildSlices(r, args)));
     }
 
-    protected abstract Slices buildSlices(QueryEngine.Row row, ArgSet args);
-    protected abstract Slices buildSlices(QueryEngine.Result result);
-
     private String sliceSql(long id) {
-      return format(SLICE_SQL, tableName("slices"), id);
+      return format(SLICE_SQL, columns(), tableName("slices"), id);
     }
 
     @Override
@@ -583,7 +572,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     private String slicesByIdSql(String concatedId) {
-      return format(SLICES_BY_ID_SQL, tableName("slices"), concatedId);
+      return format(SLICES_BY_ID_SQL, columns(), tableName("slices"), concatedId);
     }
 
     @Override
@@ -592,7 +581,69 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     }
 
     private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {
-      return format(SLICE_RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
+      return format(SLICE_RANGE_SQL,
+          columns(), tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
+    }
+
+    protected abstract Slices buildSlices(QueryEngine.Row row, ArgSet args);
+    protected abstract Slices buildSlices(QueryEngine.Result result);
+
+    protected static abstract class QuantizedColumn {
+      public final String name;
+
+      public QuantizedColumn(String name) {
+        this.name = name;
+      }
+
+      public static QuantizedColumn firstValue(String name) {
+        return new QuantizedColumn(name) {
+          @Override
+          public String windowed(String window) {
+            return "first_value(" + name + ") over " + window;
+          }
+        };
+      }
+
+      public abstract String windowed(String window);
+    }
+  }
+
+
+  public abstract static class SingleTrackWithQueryEngine extends WithQueryEngine {
+    private static final String VIEW_SQL = "select %s from %s where track_id = %d";
+
+    private final String table;
+    private final long trackId;
+
+    public SingleTrackWithQueryEngine(QueryEngine qe, String table, long trackId) {
+      super(qe, "slices_" + trackId);
+      this.table = table;
+      this.trackId = trackId;
+    }
+
+    @Override
+    protected String getViewSql() {
+      return format(VIEW_SQL, columns(), table, trackId);
+    }
+
+    @Override
+    protected QuantizedColumn[] getExtraQuantizedColumns() {
+      return NO_QUANTIZED_COLUMNS;
+    }
+
+    @Override
+    protected void appendForQuant(Data data, Result res) {
+      // Do nothing.
+    }
+
+    @Override
+    protected String[] getExtraDataColumns() {
+      return NO_DATA_COLUMNS;
+    }
+
+    @Override
+    protected void appendForSlices(Data data, Result res) {
+      // Do nothing.
     }
   }
 }
