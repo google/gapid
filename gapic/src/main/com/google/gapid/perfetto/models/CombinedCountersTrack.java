@@ -77,7 +77,7 @@ public abstract class CombinedCountersTrack
         .append("lead(ts, 1, (select end_ts from trace_bounds)) over win - ts dur");
     for (int i = 0; i < columns.length; i++) {
       if (columns[i].isNil()) {
-        sb.append(", ").append(columns[i].sqlDefault);
+        sb.append(", ").append(columns[i].sqlDefault).append(" v_").append(i);
       } else {
         sb.append(", last_non_null(v_").append(i).append(") over win v_").append(i);
       }
