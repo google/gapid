@@ -140,7 +140,7 @@ func ensureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 		return out, nil
 	}
 
-	return nil, log.Err(ctx, nil, "Unable to install GAPID")
+	return nil, log.Err(ctx, nil, "Unable to install AGI's APK")
 }
 
 // EnsureInstalled ensures that gapid.apk with the specified ABI is installed on
@@ -168,7 +168,7 @@ func EnsureInstalled(ctx context.Context, d adb.Device, abi *device.ABI) (*APK, 
 	} else {
 		return ensureInstalled(ctx, d, abi)
 	}
-	return nil, log.Err(ctx, nil, "Unable to install GAPID")
+	return nil, log.Err(ctx, nil, "Unable to install AGI's APK")
 }
 
 // LibsPath returns the path on the Android device to the GAPID libs directory.
