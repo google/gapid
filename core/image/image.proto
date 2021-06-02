@@ -63,22 +63,16 @@ message Format {
     FmtATC_RGBA_EXPLICIT_ALPHA_AMD atc_rgba_explicit_alpha_amd = 5;
     FmtATC_RGBA_INTERPOLATED_ALPHA_AMD atc_rgba_interpolated_alpha_amd = 6;
     FmtETC1_RGB_U8_NORM etc1_rgb_u8_norm = 7;
-    FmtETC2_RGB_U8_NORM etc2_rgb_u8_norm = 8;
-    FmtETC2_RGBA_U8_NORM etc2_rgba_u8_norm = 9;
-    FmtETC2_RGBA_U8U8U8U1_NORM etc2_rgba_u8u8u8u1_norm = 10;
-    FmtETC2_R_U11_NORM etc2_r_u11_norm = 11;
-    FmtETC2_RG_U11_NORM etc2_rg_u11_norm = 12;
-    FmtETC2_R_S11_NORM etc2_r_s11_norm = 13;
-    FmtETC2_RG_S11_NORM etc2_rg_s11_norm = 14;
-    FmtS3_DXT1_RGB s3_dxt1_rgb = 15;
-    FmtS3_DXT1_RGBA s3_dxt1_rgba = 16;
-    FmtS3_DXT3_RGBA s3_dxt3_rgba = 17;
-    FmtS3_DXT5_RGBA s3_dxt5_rgba = 18;
-    FmtASTC astc = 19;
-    FmtRGTC1_BC4_R_U8_NORM rgtc1_bc4_r_u8_norm = 20;
-    FmtRGTC1_BC4_R_S8_NORM rgtc1_bc4_r_s8_norm = 21;
-    FmtRGTC2_BC5_RG_U8_NORM rgtc2_bc5_rg_u8_norm = 22;
-    FmtRGTC2_BC5_RG_S8_NORM rgtc2_bc5_rg_s8_norm = 23;
+    FmtETC2 etc2 = 8;
+    FmtS3_DXT1_RGB s3_dxt1_rgb = 9;
+    FmtS3_DXT1_RGBA s3_dxt1_rgba = 10;
+    FmtS3_DXT3_RGBA s3_dxt3_rgba = 11;
+    FmtS3_DXT5_RGBA s3_dxt5_rgba = 12;
+    FmtASTC astc = 13;
+    FmtRGTC1_BC4_R_U8_NORM rgtc1_bc4_r_u8_norm = 14;
+    FmtRGTC1_BC4_R_S8_NORM rgtc1_bc4_r_s8_norm = 15;
+    FmtRGTC2_BC5_RG_U8_NORM rgtc2_bc5_rg_u8_norm = 16;
+    FmtRGTC2_BC5_RG_S8_NORM rgtc2_bc5_rg_s8_norm = 17;
   }
 }
 
@@ -93,25 +87,30 @@ message FmtATC_RGBA_EXPLICIT_ALPHA_AMD {
 }
 message FmtATC_RGBA_INTERPOLATED_ALPHA_AMD {
 }
+
 message FmtETC1_RGB_U8_NORM {
 }
-message FmtETC2_RGB_U8_NORM {
-  bool srgb = 1;
+
+message FmtETC2 {
+  enum ColorMode {
+    R = 0;
+    R_SIGNED = 1;
+    RG = 2;
+    RG_SIGNED = 3;
+    RGB = 4;
+    SRGB = 5;
+  }
+
+  enum AlphaMode {
+    ALPHA_NONE = 0;
+    ALPHA_8BIT = 1;
+    ALPHA_1BIT = 2;
+  }
+
+  ColorMode colorMode = 1;
+  AlphaMode alphaMode = 2;
 }
-message FmtETC2_RGBA_U8_NORM {
-  bool srgb = 1;
-}
-message FmtETC2_RGBA_U8U8U8U1_NORM {
-  bool srgb = 1;
-}
-message FmtETC2_R_U11_NORM {
-}
-message FmtETC2_RG_U11_NORM {
-}
-message FmtETC2_R_S11_NORM {
-}
-message FmtETC2_RG_S11_NORM {
-}
+
 message FmtS3_DXT1_RGB {
 }
 message FmtS3_DXT1_RGBA {

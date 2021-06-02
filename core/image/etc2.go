@@ -19,153 +19,58 @@ import (
 	"github.com/google/gapid/core/stream"
 )
 
-// NewETC2_RGB_U8_NORM returns a format representing the COMPRESSED_RGB8_ETC2
-// block texture compression format.
-func NewETC2_RGB_U8_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{}}}
+func NewETC2(name string, colorMode FmtETC2_ColorMode, alphaMode FmtETC2_AlphaMode) *Format {
+	return &Format{
+		Name: name,
+		Format: &Format_Etc2{
+			&FmtETC2{
+				ColorMode: colorMode,
+				AlphaMode: alphaMode,
+			},
+		},
+	}
 }
 
-// NewETC2_SRGB_U8_NORM returns a format representing the COMPRESSED_SRGB8_ETC2
-// block texture compression format.
-func NewETC2_SRGB_U8_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgbU8Norm{&FmtETC2_RGB_U8_NORM{Srgb: true}}}
+func (f *FmtETC2) key() interface{} {
+	return f.String()
 }
 
-func (f *FmtETC2_RGB_U8_NORM) key() interface{} {
-	return "ETC2_RGB_U8_NORM"
+func (f *FmtETC2) size(w, h, d int) int {
+	baseSize := d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
+
+	// In ETC2 RGBA8 and RG11 compressed with 128 bit per 4x4 block.
+	// All the others have 64 bit. Therefore half the size.
+	if (f.ColorMode == FmtETC2_RGB || f.ColorMode == FmtETC2_SRGB) && f.AlphaMode == FmtETC2_ALPHA_8BIT {
+		return baseSize
+	}
+
+	if f.ColorMode == FmtETC2_RG || f.ColorMode == FmtETC2_RG_SIGNED {
+		return baseSize
+	}
+
+	return baseSize / 2
 }
-func (*FmtETC2_RGB_U8_NORM) size(w, h, d int) int {
-	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
-}
-func (f *FmtETC2_RGB_U8_NORM) check(data []byte, w, h, d int) error {
+
+func (f *FmtETC2) check(data []byte, w, h, d int) error {
 	return checkSize(data, f, w, h, d)
 }
-func (*FmtETC2_RGB_U8_NORM) channels() stream.Channels {
-	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
-}
 
-// NewETC2_RGBA_U8_NORM returns a format representing the
-// COMPRESSED_RGBA8_ETC2_EAC block texture compression format.
-func NewETC2_RGBA_U8_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{}}}
-}
+func (f *FmtETC2) channels() stream.Channels {
+	if f.ColorMode == FmtETC2_R || f.ColorMode == FmtETC2_R_SIGNED {
+		return stream.Channels{stream.Channel_Red}
+	}
 
-// NewETC2_SRGBA_U8_NORM returns a format representing the
-// COMPRESSED_SRGBA8_ETC2_EAC block texture compression format.
-func NewETC2_SRGBA_U8_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgbaU8Norm{&FmtETC2_RGBA_U8_NORM{Srgb: true}}}
-}
+	if f.ColorMode == FmtETC2_RG || f.ColorMode == FmtETC2_RG_SIGNED {
+		return stream.Channels{stream.Channel_Red, stream.Channel_Green}
+	}
 
-func (f *FmtETC2_RGBA_U8_NORM) key() interface{} {
-	return "ETC2_RGBA_U8_NORM"
-}
-func (*FmtETC2_RGBA_U8_NORM) size(w, h, d int) int {
-	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
-}
-func (f *FmtETC2_RGBA_U8_NORM) check(data []byte, w, h, d int) error {
-	return checkSize(data, f, w, h, d)
-}
-func (*FmtETC2_RGBA_U8_NORM) channels() stream.Channels {
-	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
-}
+	if f.ColorMode == FmtETC2_RGB || f.ColorMode == FmtETC2_SRGB {
+		if f.AlphaMode == FmtETC2_ALPHA_NONE {
+			return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue}
+		}
 
-// NewETC2_RGBA_U8U8U8U1_NORM returns a format representing the
-// COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 block texture compression format.
-func NewETC2_RGBA_U8U8U8U1_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{}}}
-}
+		return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
+	}
 
-// NewETC2_SRGBA_U8U8U8U1_NORM returns a format representing the
-// COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2 block texture compression format.
-func NewETC2_SRGBA_U8U8U8U1_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgbaU8U8U8U1Norm{&FmtETC2_RGBA_U8U8U8U1_NORM{Srgb: true}}}
-}
-
-func (f *FmtETC2_RGBA_U8U8U8U1_NORM) key() interface{} {
-	return "ETC2_RGBA_U8U8U8U1_NORM"
-}
-func (*FmtETC2_RGBA_U8U8U8U1_NORM) size(w, h, d int) int {
-	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
-}
-func (f *FmtETC2_RGBA_U8U8U8U1_NORM) check(data []byte, w, h, d int) error {
-	return checkSize(data, f, w, h, d)
-}
-func (*FmtETC2_RGBA_U8U8U8U1_NORM) channels() stream.Channels {
-	return stream.Channels{stream.Channel_Red, stream.Channel_Green, stream.Channel_Blue, stream.Channel_Alpha}
-}
-
-// NewETC2_R_U11_NORM returns a format representing the COMPRESSED_R11_EAC
-// block texture compression format.
-func NewETC2_R_U11_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RU11Norm{&FmtETC2_R_U11_NORM{}}}
-}
-
-func (f *FmtETC2_R_U11_NORM) key() interface{} {
-	return "ETC2_R_U11_NORM"
-}
-func (*FmtETC2_R_U11_NORM) size(w, h, d int) int {
-	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
-}
-func (f *FmtETC2_R_U11_NORM) check(data []byte, w, h, d int) error {
-	return checkSize(data, f, w, h, d)
-}
-func (*FmtETC2_R_U11_NORM) channels() stream.Channels {
-	return stream.Channels{stream.Channel_Red}
-}
-
-// NewETC2_RG_U11_NORM returns a format representing the COMPRESSED_RG11_EAC
-// block texture compression format.
-func NewETC2_RG_U11_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgU11Norm{&FmtETC2_RG_U11_NORM{}}}
-}
-
-func (f *FmtETC2_RG_U11_NORM) key() interface{} {
-	return "ETC2_RG_U11_NORM"
-}
-func (*FmtETC2_RG_U11_NORM) size(w, h, d int) int {
-	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
-}
-func (f *FmtETC2_RG_U11_NORM) check(data []byte, w, h, d int) error {
-	return checkSize(data, f, w, h, d)
-}
-func (*FmtETC2_RG_U11_NORM) channels() stream.Channels {
-	return stream.Channels{stream.Channel_Red, stream.Channel_Green}
-}
-
-// NewETC2_R_S11_NORM returns a format representing the
-// COMPRESSED_SIGNED_R11_EAC block texture compression format.
-func NewETC2_R_S11_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RS11Norm{&FmtETC2_R_S11_NORM{}}}
-}
-
-func (f *FmtETC2_R_S11_NORM) key() interface{} {
-	return "ETC2_R_S11_NORM"
-}
-func (*FmtETC2_R_S11_NORM) size(w, h, d int) int {
-	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4)) / 2
-}
-func (f *FmtETC2_R_S11_NORM) check(data []byte, w, h, d int) error {
-	return checkSize(data, f, w, h, d)
-}
-func (*FmtETC2_R_S11_NORM) channels() stream.Channels {
-	return stream.Channels{stream.Channel_Red}
-}
-
-// NewETC2_RG_S11_NORM returns a format representing the COMPRESSED_RG11_EAC
-// block texture compression format.
-func NewETC2_RG_S11_NORM(name string) *Format {
-	return &Format{Name: name, Format: &Format_Etc2RgS11Norm{&FmtETC2_RG_S11_NORM{}}}
-}
-
-func (f *FmtETC2_RG_S11_NORM) key() interface{} {
-	return "ETC2_RG_S11_NORM"
-}
-func (*FmtETC2_RG_S11_NORM) size(w, h, d int) int {
-	return d * (sint.Max(sint.AlignUp(w, 4), 4) * sint.Max(sint.AlignUp(h, 4), 4))
-}
-func (f *FmtETC2_RG_S11_NORM) check(data []byte, w, h, d int) error {
-	return checkSize(data, f, w, h, d)
-}
-func (*FmtETC2_RG_S11_NORM) channels() stream.Channels {
-	return stream.Channels{stream.Channel_Red, stream.Channel_Green}
+	panic("Unknown ETC color format")
 }

@@ -33,22 +33,23 @@ import (
 
 var (
 	// ETC2
-	ETC2_RGB_U8_NORM         = image.NewETC2_RGB_U8_NORM("ETC2_RGB_U8_NORM")
-	ETC2_RGBA_U8_NORM        = image.NewETC2_RGBA_U8_NORM("ETC2_RGBA_U8_NORM")
-	ETC2_RGBA_U8U8U8U1_NORM  = image.NewETC2_RGBA_U8U8U8U1_NORM("ETC2_RGBA_U8U8U8U1_NORM")
-	ETC2_SRGB_U8_NORM        = image.NewETC2_SRGB_U8_NORM("ETC2_SRGB_U8_NORM")
-	ETC2_SRGBA_U8_NORM       = image.NewETC2_SRGBA_U8_NORM("ETC2_SRGBA_U8_NORM")
-	ETC2_SRGBA_U8U8U8U1_NORM = image.NewETC2_SRGBA_U8U8U8U1_NORM("ETC2_SRGBA_U8U8U8U1_NORM")
+	ETC2_RGB_U8_NORM         = NewETC2_RGB_U8_NORM("ETC2_RGB_U8_NORM")
+	ETC2_RGBA_U8_NORM        = NewETC2_RGBA_U8_NORM("ETC2_RGBA_U8_NORM")
+	ETC2_RGBA_U8U8U8U1_NORM  = NewETC2_RGBA_U8U8U8U1_NORM("ETC2_RGBA_U8U8U8U1_NORM")
+	ETC2_SRGB_U8_NORM        = NewETC2_SRGB_U8_NORM("ETC2_SRGB_U8_NORM")
+	ETC2_SRGBA_U8_NORM       = NewETC2_SRGBA_U8_NORM("ETC2_SRGBA_U8_NORM")
+	ETC2_SRGBA_U8U8U8U1_NORM = NewETC2_SRGBA_U8U8U8U1_NORM("ETC2_SRGBA_U8U8U8U1_NORM")
 
 	// EAC
-	ETC2_R_U11_NORM  = image.NewETC2_R_U11_NORM("ETC2_R_U11_NORM")
-	ETC2_RG_U11_NORM = image.NewETC2_RG_U11_NORM("ETC2_RG_U11_NORM")
-	ETC2_R_S11_NORM  = image.NewETC2_R_S11_NORM("ETC2_R_S11_NORM")
-	ETC2_RG_S11_NORM = image.NewETC2_RG_S11_NORM("ETC2_RG_S11_NORM")
+	ETC2_R_U11_NORM  = NewETC2_R_U11_NORM("ETC2_R_U11_NORM")
+	ETC2_RG_U11_NORM = NewETC2_RG_U11_NORM("ETC2_RG_U11_NORM")
+	ETC2_R_S11_NORM  = NewETC2_R_S11_NORM("ETC2_R_S11_NORM")
+	ETC2_RG_S11_NORM = NewETC2_RG_S11_NORM("ETC2_RG_S11_NORM")
 
 	// ETC 1
-	ETC1_RGB_U8_NORM = image.NewETC1_RGB_U8_NORM("ETC1_RGB_U8_NORM")
-	formatToCEnum    = map[interface{}]C.enum_etc_format{
+	ETC1_RGB_U8_NORM = NewETC1_RGB_U8_NORM("ETC1_RGB_U8_NORM")
+
+	formatToCEnum = map[interface{}]C.enum_etc_format{
 		ETC2_RGB_U8_NORM:         C.ETC2_RGB_U8_NORM,
 		ETC2_RGBA_U8_NORM:        C.ETC2_RGBA_U8_NORM,
 		ETC2_RGBA_U8U8U8U1_NORM:  C.ETC2_RGBA_U8U8U8U1_NORM,
@@ -63,6 +64,40 @@ var (
 	}
 )
 
+func NewETC2_RGB_U8_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_RGB, image.FmtETC2_ALPHA_NONE)
+}
+func NewETC2_RGBA_U8_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_RGB, image.FmtETC2_ALPHA_8BIT)
+}
+func NewETC2_RGBA_U8U8U8U1_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_RGB, image.FmtETC2_ALPHA_1BIT)
+}
+func NewETC2_SRGB_U8_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_SRGB, image.FmtETC2_ALPHA_NONE)
+}
+func NewETC2_SRGBA_U8_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_SRGB, image.FmtETC2_ALPHA_8BIT)
+}
+func NewETC2_SRGBA_U8U8U8U1_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_SRGB, image.FmtETC2_ALPHA_1BIT)
+}
+func NewETC2_R_U11_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_R, image.FmtETC2_ALPHA_NONE)
+}
+func NewETC2_RG_U11_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_RG, image.FmtETC2_ALPHA_NONE)
+}
+func NewETC2_R_S11_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_R_SIGNED, image.FmtETC2_ALPHA_NONE)
+}
+func NewETC2_RG_S11_NORM(name string) *image.Format {
+	return image.NewETC2(name, image.FmtETC2_RG_SIGNED, image.FmtETC2_ALPHA_NONE)
+}
+func NewETC1_RGB_U8_NORM(name string) *image.Format {
+	return image.NewETC1_RGB_U8_NORM(name)
+}
+
 type converterLayout struct {
 	uncompressed *image.Format
 	compressed   *image.Format
@@ -70,7 +105,6 @@ type converterLayout struct {
 
 type etcLayout struct {
 	converterLayout
-	alphaMode etcAlphaMode
 }
 
 type eacLayout struct {
@@ -81,19 +115,23 @@ type eacLayout struct {
 func init() {
 	//ETC2 Formats
 	etc2SupportMap := []etcLayout{
-		{converterLayout{image.RGBA_U8_NORM, ETC2_RGB_U8_NORM}, etcAlphaNone},
-		{converterLayout{image.RGBA_U8_NORM, ETC2_RGBA_U8_NORM}, etcAlpha8Bit},
-		{converterLayout{image.RGBA_U8_NORM, ETC2_RGBA_U8U8U8U1_NORM}, etcAlpha1Bit},
-		{converterLayout{image.SRGBA_U8_NORM, ETC2_SRGB_U8_NORM}, etcAlphaNone},
-		{converterLayout{image.SRGBA_U8_NORM, ETC2_SRGBA_U8_NORM}, etcAlpha8Bit},
-		{converterLayout{image.SRGBA_U8_NORM, ETC2_SRGBA_U8U8U8U1_NORM}, etcAlpha1Bit},
+		{converterLayout{image.RGBA_U8_NORM, ETC2_RGB_U8_NORM}},
+		{converterLayout{image.RGBA_U8_NORM, ETC2_RGBA_U8_NORM}},
+		{converterLayout{image.RGBA_U8_NORM, ETC2_RGBA_U8U8U8U1_NORM}},
+		{converterLayout{image.SRGBA_U8_NORM, ETC2_SRGB_U8_NORM}},
+		{converterLayout{image.SRGBA_U8_NORM, ETC2_SRGBA_U8_NORM}},
+		{converterLayout{image.SRGBA_U8_NORM, ETC2_SRGBA_U8U8U8U1_NORM}},
 	}
 
 	for _, conversion := range etc2SupportMap {
 		// Intentional local copy
 		conv := conversion
 		image.RegisterConverter(conv.compressed, conv.uncompressed, func(src []byte, w, h, d int) ([]byte, error) {
-			return decodeETC(src, w, h, d, conv.alphaMode)
+			compressedFormat, ok := conv.compressed.Format.(*image.Format_Etc2)
+			if !ok {
+				panic("This should always be an ETC2 format")
+			}
+			return decodeETC(src, w, h, d, compressedFormat.Etc2.GetAlphaMode())
 		})
 
 		image.RegisterConverter(conv.uncompressed, conv.compressed, func(src []byte, w, h, d int) ([]byte, error) {

@@ -18,6 +18,7 @@ import (
 	"bytes"
 
 	"github.com/google/gapid/core/data/endian"
+	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/os/device"
@@ -52,15 +53,7 @@ func decodeETCBaseMulModTbl(v uint64) (base, mul int, modTbl [8]int) {
 		alphaModTbl[(v>>48)&15]
 }
 
-type etcAlphaMode int
-
-const (
-	etcAlphaNone = etcAlphaMode(iota)
-	etcAlpha8Bit
-	etcAlpha1Bit
-)
-
-func decodeETC(src []byte, width, height, depth int, alphaMode etcAlphaMode) ([]byte, error) {
+func decodeETC(src []byte, width, height, depth int, alphaMode image.FmtETC2_AlphaMode) ([]byte, error) {
 	dst := make([]byte, width*height*depth*4)
 
 	blockWidth := sint.Max((width+3)/4, 1)
@@ -113,7 +106,7 @@ func decodeETC(src []byte, width, height, depth int, alphaMode etcAlphaMode) ([]
 		dst := dst[z*width*height*4:]
 		for by := 0; by < blockHeight; by++ {
 			for bx := 0; bx < blockWidth; bx++ {
-				if alphaMode == etcAlpha8Bit {
+				if alphaMode == image.FmtETC2_ALPHA_8BIT {
 					v64 := r.Uint64()
 					base, mul, modTbl := decodeETCBaseMulModTbl(v64)
 					for i := uint8(0); i < 16; i++ {
@@ -126,13 +119,13 @@ func decodeETC(src []byte, width, height, depth int, alphaMode etcAlphaMode) ([]
 				flip := (v64 >> 32) & 1
 				diff := (v64 >> 33) & 1
 				opaque := 1
-				if alphaMode == etcAlpha1Bit {
+				if alphaMode == image.FmtETC2_ALPHA_1BIT {
 					opaque = int(diff)
 				}
 
 				mode := uint(0)
 				for i := uint(0); i < 3; i++ {
-					if alphaMode != etcAlpha1Bit && diff == 0 {
+					if alphaMode != image.FmtETC2_ALPHA_1BIT && diff == 0 {
 						// ┏━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━┳━━┓
 						// ┃    R₀     ┃    R₁     ┃    G₀     ┃    G₁     ┃    B₀     ┃    B₁     ┃   C₀   ┃   C₁   ┃df┃fp┃
 						// ┣━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━┯━━╋━━┯━━┯━━╋━━┯━━┯━━╋━━╋━━┫
