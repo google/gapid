@@ -41,6 +41,9 @@ public class Experimental {
   public static final Flag<Boolean> enableProfileExperiments = Flags.value("experimental-enable-profile-experiments",
       false, "Enable Profile Experiments.");
 
+  public static final Flag<Boolean> enableUnstableFeatures = Flags.value("experimental-enable-unstable-features",
+      false, "Enable various unstable features that are not ready for use yet.");
+
   public static List<String> getGapisFlags(boolean enableAllExperimentalFeatures) {
     List<String> args = Lists.newArrayList();
     // The --experimental-enable-all flag is a sugar flag from the UI. GAPIS knows nothing about it.
@@ -76,5 +79,10 @@ public class Experimental {
   public static boolean enableProfileExperiments(Settings settings) {
     return settings.preferences().getEnableAllExperimentalFeatures() ||
         enableAll.get() || enableProfileExperiments.get();
+  }
+
+  public static boolean enableUnstableFeatures(Settings settings) {
+    return settings.preferences().getEnableAllExperimentalFeatures() ||
+        enableAll.get() || enableUnstableFeatures.get();
   }
 }

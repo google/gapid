@@ -42,6 +42,7 @@ import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
+import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
@@ -70,6 +71,7 @@ import org.eclipse.swt.widgets.TabItem;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -94,7 +96,7 @@ public class ShaderView extends Composite
   private final GridData crossCompileGridData;
   private final SourceViewer spirvViewer;
   private final SourceViewer sourceViewer;
-  private final Button pushButton;
+  private final Optional<Button> pushButton;
   private TabItem sourceTab;
 
   protected Service.Resource shaderResource = null;
@@ -117,7 +119,7 @@ public class ShaderView extends Composite
     spirvGroup = createGroup(tabFolder, "");
     spirvViewer =
         new SourceViewer(spirvGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-    spirvViewer.setEditable(true);
+    spirvViewer.setEditable(false);
     spirvViewer.configure(new GlslSourceConfiguration(widgets.theme));
     StyledText spirvTextWidget = spirvViewer.getTextWidget();
     spirvTextWidget.setFont(widgets.theme.monoSpaceFont());
@@ -139,7 +141,7 @@ public class ShaderView extends Composite
     crossCompileLabel.setLayoutData(crossCompileGridData);
     sourceViewer =
         new SourceViewer(sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-    sourceViewer.setEditable(true);
+    sourceViewer.setEditable(false);
     sourceViewer.configure(new GlslSourceConfiguration(widgets.theme));
     sourceViewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     StyledText sourceTextWidget = sourceViewer.getTextWidget();
@@ -153,16 +155,26 @@ public class ShaderView extends Composite
       }
     });
 
-    pushButton = Widgets.createButton(loading.getContents(), "Push Changes", e -> {
-      if (shaderResource != null && shaderMessage != null) {
-        models.analytics.postInteraction(View.ShaderView, ClientAction.Edit);
-        models.resources.updateResource(shaderResource, API.ResourceData.newBuilder()
-            .setShader(shaderMessage.toBuilder().setSource(spirvViewer.getDocument().get()))
-            .build());
-      }
-    });
-    pushButton.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
-    pushButton.setEnabled(false);
+    // TODO(b/188434910): Shader editing is disabled as it doesn't work right
+    // now. Enable it once the issue is fixed.
+    if (!Experimental.enableUnstableFeatures(models.settings)) {
+      pushButton = Optional.empty();
+    } else {
+      pushButton = Optional.of(Widgets.createButton(loading.getContents(), "Push Changes", e -> {
+        if (shaderResource != null && shaderMessage != null) {
+          models.analytics.postInteraction(View.ShaderView, ClientAction.Edit);
+          models.resources.updateResource(shaderResource, API.ResourceData.newBuilder()
+              .setShader(shaderMessage.toBuilder().setSource(spirvViewer.getDocument().get()))
+              .build());
+        }
+      }));
+      pushButton.ifPresent(b -> {
+        b.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
+        b.setEnabled(false);
+      });
+      spirvViewer.setEditable(true);
+      sourceViewer.setEditable(true);
+    }
 
     statGroup = Widgets.createGroup(loading.getContents(), "Static Analysis");
     statGroup.setFont(theme.subTitleFont());
@@ -245,7 +257,7 @@ public class ShaderView extends Composite
   public void setShader(API.Shader shader) {
     loading.stopLoading();
     shaderMessage = shader;
-    pushButton.setEnabled(true);
+    pushButton.ifPresent(b -> b.setEnabled(true));
     String label = shaderResource != null ? shaderResource.getHandle() : "Shader";
     spirvGroup.setText(label);
     String spirvSource = shaderMessage.getSpirvSource();
@@ -282,7 +294,7 @@ public class ShaderView extends Composite
     if (!pinned) {
       shaderMessage = null;
     }
-    pushButton.setEnabled(false);
+    pushButton.ifPresent(b -> b.setEnabled(false));
   }
 
   private void loadShader(Service.Resource shader) {

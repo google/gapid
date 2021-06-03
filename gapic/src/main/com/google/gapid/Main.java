@@ -243,6 +243,7 @@ public class Main {
     Experimental.enableAngleTracing,
     Experimental.enablePerfTab,
     Experimental.enableProfileExperiments,
+    Experimental.enableUnstableFeatures,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,
     GapisProcess.disableGapisTimeout,
