@@ -109,7 +109,7 @@ public class TrackContainer {
 
     public Single(State.ForSystemTrace state, T track, boolean sep,
         BiConsumer<T, Boolean> toggleDetails, boolean showDetails, boolean rightTruncate) {
-      this(track ,sep, toggleDetails, showDetails, new PinState(state), rightTruncate);
+      this(track, sep, toggleDetails, showDetails, new PinState(state), rightTruncate);
     }
 
     private Single(T track, boolean sep, BiConsumer<T, Boolean> toggleDetails, boolean showDetails,

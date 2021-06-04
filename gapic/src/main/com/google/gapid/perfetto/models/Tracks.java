@@ -304,10 +304,12 @@ public class Tracks {
         String groupId = "vulkan_counters_" + process.upid;
         data.tracks.addLabelGroup(summary.getId(), groupId, "Vulkan Memory Usage",
             group(state -> new TitlePanel("Vulkan Memory Usage"), true));
-        for (CounterInfo counter : counters) {
+        for (int i = 0; i < counters.size(); i++) {
+          CounterInfo counter = counters.get(i);
+          boolean last = i == counters.size() - 1;
           CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack(groupId, track.getId(), counter.name,
-              single(state -> new VulkanCounterPanel(state, track), false, false));
+              single(state -> new VulkanCounterPanel(state, track), last, false));
         }
       }
 
@@ -326,11 +328,13 @@ public class Tracks {
           data.tracks.addLabelGroup(summary.getId(), parentId, "Process Counters",
               group(state -> new TitlePanel("Process Counters"), false));
         }
-        for (CounterInfo counter : counters) {
+        for (int i = 0; i < counters.size(); i++) {
+          CounterInfo counter = counters.get(i);
+          boolean last = i == counters.size() - 1;
           CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack(parentId, track.getId(), counter.name,
-              single(state -> new CounterPanel(state, track, PROCESS_COUNTER_TRACK_HEIGHT),false,
-                  false));
+              single(state -> new CounterPanel(
+                  state, track, PROCESS_COUNTER_TRACK_HEIGHT), last, false));
         }
       }
 
