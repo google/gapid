@@ -26,7 +26,7 @@ public class URLs {
       "https://github.com/google/agi/issues/new?template=standard-bug-report-for-gapid.md";
   public static final String DEVICE_COMPATIBILITY_URL = "https://gpuinspector.dev/validation";
   public static final String EXPECTED_ANGLE_PREFIX = "https://agi-angle.storage.googleapis.com/";
-  public static final String ANGLE_DOWNLOAD = EXPECTED_ANGLE_PREFIX + "/index.html";
+  public static final String ANGLE_DOWNLOAD = EXPECTED_ANGLE_PREFIX + "index.html";
 
   private URLs() {
   }
