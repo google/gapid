@@ -32,6 +32,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.models.TrackConfig.Group;
+import com.google.gapid.perfetto.views.AsyncPanel;
 import com.google.gapid.perfetto.views.CounterPanel;
 import com.google.gapid.perfetto.views.CpuFrequencyPanel;
 import com.google.gapid.perfetto.views.CpuPanel;
@@ -335,6 +336,23 @@ public class Tracks {
           data.tracks.addTrack(parentId, track.getId(), counter.name,
               single(state -> new CounterPanel(
                   state, track, PROCESS_COUNTER_TRACK_HEIGHT), last, false));
+        }
+      }
+
+      List<AsyncInfo> asyncs = data.getAsyncs().get(process.upid);
+      if (!asyncs.isEmpty()) {
+        String parentId = summary.getId();
+        if (asyncs.size() > 3) {
+          parentId = "proc_asyncs_" + process.upid;
+          data.tracks.addLabelGroup(summary.getId(), parentId, "Process Async Events",
+              group(state -> new TitlePanel("Process Async Events"), false));
+        }
+        for (int i = 0; i < asyncs.size(); i++) {
+          AsyncInfo async = asyncs.get(i);
+          boolean last = i == asyncs.size() - 1;
+          SliceTrack track = SliceTrack.forAsync(data.qe, async);
+          data.tracks.addTrack(parentId, track.getId(), async.name,
+              single(state -> new AsyncPanel(state, async, track), last, true));
         }
       }
 

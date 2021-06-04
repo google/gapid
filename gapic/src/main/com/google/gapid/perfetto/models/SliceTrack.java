@@ -42,9 +42,11 @@ import com.google.gapid.proto.service.Service;
 
 import org.eclipse.swt.widgets.Composite;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.function.Consumer;
 
 /**
@@ -67,6 +69,10 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         return new ThreadSlices(result);
       }
     };
+  }
+
+  public static SliceTrack forAsync(QueryEngine qe, AsyncInfo async) {
+    return new AsyncSliceTrack(qe, async);
   }
 
   public static SliceTrack forGpuQueue(QueryEngine qe, GpuInfo.Queue queue) {
@@ -644,6 +650,65 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
     @Override
     protected void appendForSlices(Data data, Result res) {
       // Do nothing.
+    }
+  }
+
+  public static class AsyncSliceTrack extends WithQueryEngine {
+    private final AsyncInfo async;
+
+    public AsyncSliceTrack(QueryEngine qe, AsyncInfo async) {
+      super(qe, "proc_async_" + async.upid + "_" + async.tracks[0].trackId);
+      this.async = async;
+    }
+
+    @Override
+    protected String getViewSql() {
+      StringBuilder sb = new StringBuilder().append("select id, ts, dur, category, name, ");
+      sb.append("depth + case track_id");
+      for (AsyncInfo.Track track : async.tracks) {
+        sb.append(" when ").append(track.trackId).append(" then ").append(track.depthOffset);
+      }
+      sb.append(" else 0 end depth, stack_id, parent_stack_id, arg_set_id")
+          .append(" from internal_slice")
+          .append(" where track_id in (")
+          .append(Arrays.stream(async.tracks)
+              .mapToLong(t -> t.trackId)
+              .collect(() -> new StringJoiner(", "),
+                  (sj, id) -> sj.add(Long.toString(id)),
+                  StringJoiner::merge))
+          .append(")");
+
+      return sb.toString();
+    }
+
+    @Override
+    protected QuantizedColumn[] getExtraQuantizedColumns() {
+      return NO_QUANTIZED_COLUMNS;
+    }
+
+    @Override
+    protected void appendForQuant(Data data, Result res) {
+      // Do nothing.
+    }
+
+    @Override
+    protected String[] getExtraDataColumns() {
+      return NO_DATA_COLUMNS;
+    }
+
+    @Override
+    protected void appendForSlices(Data data, Result res) {
+      // Do nothing.
+    }
+
+    @Override
+    protected Slices buildSlices(Row row, ArgSet args) {
+      return new Slices(row, args, "Async Process Events");
+    }
+
+    @Override
+    protected Slices buildSlices(Result result) {
+      return new Slices(result, "Async Process Events");
     }
   }
 }

@@ -179,18 +179,19 @@ public interface Selection<T extends Selection<T>> {
   }
 
   public static class Kind implements Comparable<Kind>{
-    public static final Kind Thread = new Kind(0);
-    public static final Kind ThreadState = new Kind(1);
-    public static final Kind Cpu = new Kind(2);
-    public static final Kind Gpu = new Kind(3);
-    public static final Kind VulkanEvent = new Kind(4);
-    public static final Kind Counter = new Kind(5);
-    public static final Kind FrameEvents = new Kind(6);
-    public static final Kind Memory = new Kind(7);
-    public static final Kind Battery = new Kind(8);
-    public static final Kind ProcessMemory = new Kind(9);
+    public static final Kind Thread = new Kind(1000);
+    public static final Kind ThreadState = new Kind(1010);
+    public static final Kind Cpu = new Kind(1020);
+    public static final Kind Async = new Kind(1030);
+    public static final Kind Gpu = new Kind(1040);
+    public static final Kind VulkanEvent = new Kind(1050);
+    public static final Kind Counter = new Kind(1060);
+    public static final Kind FrameEvents = new Kind(1070);
+    public static final Kind Memory = new Kind(1080);
+    public static final Kind Battery = new Kind(1090);
+    public static final Kind ProcessMemory = new Kind(1100);
 
-    public int priority;
+    private final int priority;
 
     public Kind(int priority) {
       this.priority = priority;
