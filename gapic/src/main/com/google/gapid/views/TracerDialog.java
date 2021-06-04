@@ -745,7 +745,8 @@ public class TracerDialog {
         boolean showAngleWarning = false;
         if (isAngle(config)) {
           DeviceCaptureInfo dev = devices.get(device.getCombo().getSelectionIndex());
-          if (dev.device.getConfiguration().getAngle().getVersion() <
+          if (dev.device.getConfiguration().getAngle().getVersion() == 0 ||
+              dev.device.getConfiguration().getAngle().getVersion() <
               settings.preferences().getLatestAngleRelease().getVersion()) {
             showAngleWarning = true;
           }
