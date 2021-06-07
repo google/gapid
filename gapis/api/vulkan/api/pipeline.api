@@ -265,11 +265,13 @@ cmd VkResult vkCreateGraphicsPipelines(
   createdPipelines := CreatedGraphicsPipelines()
 
   for i in (0 .. createInfoCount) {
+    create_info := infos[i]
+    if !(create_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(create_info.renderPass)}
+
     obj := new!GraphicsPipelineObject(
       PipelineCache: PipelineCaches[pipelineCache]
     )
     obj.Device = device
-    create_info := infos[i]
     obj.Layout = PipelineLayouts[create_info.layout]
     // handle pNext
     if create_info.pNext != null {

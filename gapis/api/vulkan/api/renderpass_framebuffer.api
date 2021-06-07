@@ -70,6 +70,7 @@ cmd VkResult vkCreateFramebuffer(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkFramebufferCreateInfo") }
   create_info := pCreateInfo[0]
+  if !(create_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(create_info.renderPass) }
   // handle pNext
   if create_info.pNext != null {
     numPNext := numberOfPNext(create_info.pNext)
