@@ -51,9 +51,6 @@ public class TimelinePanel extends Panel.Base {
     ctx.trace("TimelinePanel", () -> {
       TimeSpan visible = state.getVisibleTime();
       TimeSpan trace = state.getTraceTime();
-      if (visible.getDuration() == 0) {
-        return;
-      }
 
       // TODO: this should be part of the state - dedupe with below.
       long step = getGridStepSize(
@@ -121,7 +118,7 @@ public class TimelinePanel extends Panel.Base {
 
     ctx.setForegroundColor(colors().gridline);
     ctx.path(path -> {
-      for (long sec = start; step > 0 && sec < visible.end; sec += step) {
+      for (long sec = start; sec < visible.end; sec += step) {
         double xPos = Math.floor(state.timeToPx(sec));
         if (xPos < 0) {
           continue;
@@ -154,7 +151,7 @@ public class TimelinePanel extends Panel.Base {
         result = step;
       }
     }
-    return Math.round(result);
+    return Math.max(1, Math.round(result));
   }
 
   private static String timeToString(long ns, long resolution) {

@@ -328,8 +328,8 @@ public abstract class State {
   private void update() {
     nanosPerPx = visibleTime.getDuration() / width;
     if (width <= 0 || nanosPerPx <= 0) {
-      nanosPerPx = 0;
-      resolution = 0;
+      nanosPerPx = 1;
+      resolution = 1;
     } else {
       resolution = 1l << DoubleMath.log2(nanosPerPx, RoundingMode.FLOOR);
     }
