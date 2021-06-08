@@ -66,8 +66,8 @@ vkEnumerateDeviceExtensionProperties
   {{end}}
 {{end}}
 
-{{Global "Vulkan.OverrideFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL)}}
-{{Global "Vulkan.ImplementedFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL)}}
+{{Global "Vulkan.OverrideFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL | TrimLeft " ")}}
+{{Global "Vulkan.ImplementedFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL | TrimLeft " ")}}
 
 {{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
 
