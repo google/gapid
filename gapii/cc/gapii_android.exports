@@ -1,4 +1,3 @@
-JNI_OnLoad
 gapid_vkGetDeviceProcAddr
 gapid_vkGetInstanceProcAddr
 gapid_vkEnumerateInstanceLayerProperties
