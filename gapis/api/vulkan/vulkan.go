@@ -455,19 +455,21 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 
 			// Handle draw commands grouping.
 			cmdName := cb.CommandReferences().Get(uint32(i)).Type().String()
-			isDrawCmd := strings.HasPrefix(cmdName, "cmd_vkCmdDraw") || strings.HasPrefix(cmdName, "cmd_vkCmdDispatch")
+			isDrawCmd := strings.HasPrefix(cmdName, "cmd_vkCmdDraw") || strings.HasPrefix(cmdName, "cmd_vkCmdDispatch") || strings.HasPrefix(cmdName, "cmd_vkCmdClearAttachments")
 			isStateSettingCmd := (strings.HasPrefix(cmdName, "cmd_vkCmdSet") || strings.HasPrefix(cmdName, "cmd_vkCmdPush") ||
 				strings.HasPrefix(cmdName, "cmd_vkCmdBind")) && !strings.HasPrefix(cmdName, "cmd_vkCmdSetEvent")
 			if isStateSettingCmd && canStartDrawGrouping {
 				pushMarker("State Setting Group",
 					drawGroupMarker, i, append(api.SubCmdIdx{}, idx...))
 				canStartDrawGrouping = false
+			} else if isDrawCmd && canStartDrawGrouping {
+				// When a draw group starts with a draw command it will only contain that single command
+				groupName := strings.TrimPrefix(cmdName, "cmd_vkCmd")
+				pushMarker(groupName, drawGroupMarker, i, append(api.SubCmdIdx{}, idx...))
+				popMarker(drawGroupMarker, uint64(i))
 			} else if isDrawCmd && !canStartDrawGrouping {
-				// When a group is complete with state setting cmds following a draw command, override the group name.
-				groupName := cmdName
-				if strings.HasPrefix(groupName, "cmd_vkCmd") { // Remove "cmd_vkCmd".
-					groupName = groupName[9:len(groupName)]
-				}
+				// When a group is complete with state setting cmds followed by a draw command, override the group name.
+				groupName := strings.TrimPrefix(cmdName, "cmd_vkCmd")
 				popMarkerWithNewGroupName(drawGroupMarker, uint64(i), groupName)
 				canStartDrawGrouping = true
 			} else if !isStateSettingCmd && !isDrawCmd && !canStartDrawGrouping {
