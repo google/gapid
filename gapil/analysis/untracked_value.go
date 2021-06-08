@@ -72,7 +72,7 @@ func (v UntrackedValue) field(s *scope, name string) Value {
 	case *semantic.Reference:
 		return UntrackedValue{ty.To}.field(s, name)
 	}
-	panic(fmt.Errorf("Type %v does not contain fields", v.Ty.Name()))
+	panic(fmt.Errorf("Type %v does not contain a field named \"%v\"", v.Ty.Name(), name))
 }
 
 // setField simply returns a new  a UntrackedValue.
