@@ -577,11 +577,13 @@ int main(int argc, const char** argv) {
       vkEnumerateInstanceExtensionProperties(nullptr, &nExtensions, nullptr));
   uint32_t nRequiredExtensions = sizeof(kRequiredInstanceExtensions) /
                                  sizeof(kRequiredInstanceExtensions[0]);
-
+  std::vector<const char*> instance_extensions;
   {
     std::vector<VkExtensionProperties> extension_properties(nExtensions);
     REQUIRE_SUCCESS(vkEnumerateInstanceExtensionProperties(
         nullptr, &nExtensions, extension_properties.data()));
+
+    // Check and enable required extensions.
     for (uint32_t i = 0; i < nRequiredExtensions; ++i) {
       bool found = false;
       for (auto& prop : extension_properties) {
@@ -591,6 +593,16 @@ int main(int argc, const char** argv) {
       }
       if (!found) {
         write_error(kOutHandle, "Could not find all instance extensions");
+      } else {
+        instance_extensions.push_back(kRequiredInstanceExtensions[i]);
+      }
+    }
+
+    // Enable optional extensions.
+    for (auto& prop : extension_properties) {
+      if (std::string(prop.extensionName) ==
+          VK_EXT_DEBUG_UTILS_EXTENSION_NAME) {
+        instance_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
       }
     }
   }
@@ -604,14 +616,15 @@ int main(int argc, const char** argv) {
                                "sample_engine",
                                0,
                                VK_MAKE_VERSION(1, 0, 0)};
-    VkInstanceCreateInfo create_info{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-                                     nullptr,
-                                     0,
-                                     &app_info,
-                                     0,
-                                     nullptr,
-                                     nRequiredExtensions,
-                                     kRequiredInstanceExtensions};
+    VkInstanceCreateInfo create_info{
+        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        nullptr,
+        0,
+        &app_info,
+        0,
+        nullptr,
+        static_cast<uint32_t>(instance_extensions.size()),
+        instance_extensions.data()};
     REQUIRE_SUCCESS(vkCreateInstance(&create_info, nullptr, &instance));
   }
 
@@ -849,6 +862,7 @@ int main(int argc, const char** argv) {
   LOAD_DEVICE_FUNCTION(vkCreateFramebuffer);
   LOAD_DEVICE_FUNCTION(vkAcquireNextImageKHR);
   LOAD_DEVICE_FUNCTION(vkQueuePresentKHR);
+  LOAD_DEVICE_FUNCTION(vkSetDebugUtilsObjectNameEXT);
 #undef LOAD_DEVICE_FUNCTION
   // Immutable Data
   VkBuffer vertex_buffer;
@@ -1108,6 +1122,16 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(
         vkCreateRenderPass(device, &create_info, nullptr, &render_pass));
+    if (vkSetDebugUtilsObjectNameEXT != nullptr) {
+      VkDebugUtilsObjectNameInfoEXT info{
+          VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+          nullptr,
+          VK_OBJECT_TYPE_RENDER_PASS,
+          reinterpret_cast<uint64_t>(render_pass),
+          "KubieRenderPass",
+      };
+      vkSetDebugUtilsObjectNameEXT(device, &info);
+    }
   }
 
   {
@@ -1448,6 +1472,17 @@ int main(int argc, const char** argv) {
           command_pools[i], VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
       REQUIRE_SUCCESS(vkAllocateCommandBuffers(device, &allocate_info,
                                                &render_command_buffers[i]));
+      if (vkSetDebugUtilsObjectNameEXT != nullptr) {
+        std::string name = "KubieRenderCommandBuffer" + std::to_string(i);
+        VkDebugUtilsObjectNameInfoEXT info{
+            VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            nullptr,
+            VK_OBJECT_TYPE_COMMAND_BUFFER,
+            reinterpret_cast<uint64_t>(render_command_buffers[i]),
+            name.data(),
+        };
+        vkSetDebugUtilsObjectNameEXT(device, &info);
+      }
     }
 
     {
@@ -1557,6 +1592,16 @@ int main(int argc, const char** argv) {
           staging_command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
       REQUIRE_SUCCESS(vkAllocateCommandBuffers(device, &allocate_info,
                                                &staging_command_buffer));
+      if (vkSetDebugUtilsObjectNameEXT != nullptr) {
+        VkDebugUtilsObjectNameInfoEXT info{
+            VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            nullptr,
+            VK_OBJECT_TYPE_COMMAND_BUFFER,
+            reinterpret_cast<uint64_t>(staging_command_buffer),
+            "KubieStagingCommandBuffer",
+        };
+        vkSetDebugUtilsObjectNameEXT(device, &info);
+      }
     }
 
     {
@@ -1681,6 +1726,18 @@ int main(int argc, const char** argv) {
       VkFramebuffer framebuffer;
       REQUIRE_SUCCESS(
           vkCreateFramebuffer(device, &create_info, nullptr, &framebuffer));
+      if (vkSetDebugUtilsObjectNameEXT != nullptr) {
+        std::string name =
+            "KubieFrameBuffer" + std::to_string(i) + "." + std::to_string(j);
+        VkDebugUtilsObjectNameInfoEXT info{
+            VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            nullptr,
+            VK_OBJECT_TYPE_FRAMEBUFFER,
+            reinterpret_cast<uint64_t>(framebuffer),
+            name.data(),
+        };
+        vkSetDebugUtilsObjectNameEXT(device, &info);
+      }
       framebuffers.push_back(framebuffer);
     }
   }
