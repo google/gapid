@@ -35,6 +35,7 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 
 import static java.util.Collections.emptyList;
 
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
@@ -57,6 +58,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client.DataUnavailableException;
+import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MoreFutures;
@@ -207,27 +209,32 @@ public class FramebufferView extends Composite
 
   private ToolBar createToolBar(Theme theme) {
     ToolBar bar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);
-    exclusiveSelection(
-        createToggleToolItem(bar, theme.wireframeNone(), e -> {
-          models.analytics.postInteraction(View.Framebuffer, ClientAction.Shaded);
-          renderSettings = RenderSetting.RENDER_SHADED;
-          updateBuffer();
-        }, "Render shaded geometry"),
-        createToggleToolItem(bar, theme.wireframeOverlay(), e -> {
-          models.analytics.postInteraction(View.Framebuffer, ClientAction.OverlayWireframe);
-          renderSettings = RenderSetting.RENDER_OVERLAY;
-          updateBuffer();
-        }, "Render shaded geometry and overlay wireframe of last draw call"),
-        createToggleToolItem(bar, theme.wireframeAll(), e -> {
-          models.analytics.postInteraction(View.Framebuffer, ClientAction.Wireframe);
-          renderSettings = RenderSetting.RENDER_WIREFRAME;
-          updateBuffer();
-        }, "Render wireframe geometry"),
-        createToggleToolItem(bar, theme.overdraw(), e -> {
-          models.analytics.postInteraction(View.Framebuffer, ClientAction.Overdraw);
-          renderSettings = RenderSetting.RENDER_OVERDRAW;
-          updateBuffer();
-        }, "Render overdraw"));
+    List<ToolItem> items = Lists.newArrayList(
+      createToggleToolItem(bar, theme.wireframeNone(), e -> {
+        models.analytics.postInteraction(View.Framebuffer, ClientAction.Shaded);
+        renderSettings = RenderSetting.RENDER_SHADED;
+        updateBuffer();
+      }, "Render shaded geometry"),
+      createToggleToolItem(bar, theme.wireframeOverlay(), e -> {
+        models.analytics.postInteraction(View.Framebuffer, ClientAction.OverlayWireframe);
+        renderSettings = RenderSetting.RENDER_OVERLAY;
+        updateBuffer();
+      }, "Render shaded geometry and overlay wireframe of last draw call"),
+      createToggleToolItem(bar, theme.wireframeAll(), e -> {
+        models.analytics.postInteraction(View.Framebuffer, ClientAction.Wireframe);
+        renderSettings = RenderSetting.RENDER_WIREFRAME;
+        updateBuffer();
+      }, "Render wireframe geometry"));
+    // The RENDER_OVERDRAW feature can cause crashes right now, disable by default.
+    // TODO(b/188431629): Investigate and fix the overdraw issue.
+    if (Experimental.enableUnstableFeatures(models.settings)) {
+      items.add(createToggleToolItem(bar, theme.overdraw(), e -> {
+        models.analytics.postInteraction(View.Framebuffer, ClientAction.Overdraw);
+        renderSettings = RenderSetting.RENDER_OVERDRAW;
+        updateBuffer();
+      }, "Render overdraw"));
+    }
+    exclusiveSelection(items);
     createSeparator(bar);
     return bar;
   }
