@@ -32,7 +32,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/text"
@@ -137,9 +136,14 @@ func run(ctx context.Context) error {
 		onDeviceScanDone(ctx)
 	})
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		return log.Err(ctx, err, "Failed to retrieve hostname")
+	}
+
 	return server.Listen(ctx, *rpc, server.Config{
 		Info: &service.ServerInfo{
-			Name:              host.Instance(ctx).Name,
+			Name:              hostname,
 			VersionMajor:      uint32(app.Version.Major),
 			VersionMinor:      uint32(app.Version.Minor),
 			VersionPoint:      uint32(app.Version.Point),
