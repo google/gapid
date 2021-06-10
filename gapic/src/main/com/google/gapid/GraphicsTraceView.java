@@ -211,6 +211,10 @@ public class GraphicsTraceView extends Composite
       if (type == MainTab.Type.Performance && !Experimental.enablePerfTab(models.settings)) {
         continue;
       }
+      // TODO(b/188416598): Improve report quality and enable the report tab again.
+      if (type == MainTab.Type.Report && !Experimental.enableUnstableFeatures(models.settings)) {
+        continue;
+      }
       Action action = type.createAction(shown -> {
         if (shown) {
           showTab(type);
@@ -264,6 +268,10 @@ public class GraphicsTraceView extends Composite
       allTabs.removeAll(hidden);
       if (!Experimental.enablePerfTab(models.settings)) {
         allTabs.remove(MainTab.Type.Performance);
+      }
+      // TODO(b/188416598): Improve report quality and enable the report tab again.
+      if (!Experimental.enableUnstableFeatures(models.settings)) {
+        allTabs.remove(MainTab.Type.Report);
       }
       Iterator<String> structs = Splitter.on(';')
           .trimResults()
