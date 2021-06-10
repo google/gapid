@@ -214,17 +214,21 @@ public class FramebufferView extends Composite
         models.analytics.postInteraction(View.Framebuffer, ClientAction.Shaded);
         renderSettings = RenderSetting.RENDER_SHADED;
         updateBuffer();
-      }, "Render shaded geometry"),
-      createToggleToolItem(bar, theme.wireframeOverlay(), e -> {
+      }, "Render shaded geometry"));
+    // The RENDER_OVERLAY feature leads to an error right now.
+    // TODO(b/188417572): Investigate and fix this issue.
+    if (Experimental.enableUnstableFeatures(models.settings)) {
+      items.add(createToggleToolItem(bar, theme.wireframeOverlay(), e -> {
         models.analytics.postInteraction(View.Framebuffer, ClientAction.OverlayWireframe);
         renderSettings = RenderSetting.RENDER_OVERLAY;
         updateBuffer();
-      }, "Render shaded geometry and overlay wireframe of last draw call"),
-      createToggleToolItem(bar, theme.wireframeAll(), e -> {
-        models.analytics.postInteraction(View.Framebuffer, ClientAction.Wireframe);
-        renderSettings = RenderSetting.RENDER_WIREFRAME;
-        updateBuffer();
-      }, "Render wireframe geometry"));
+      }, "Render shaded geometry and overlay wireframe of last draw call"));
+    }
+    items.add(createToggleToolItem(bar, theme.wireframeAll(), e -> {
+      models.analytics.postInteraction(View.Framebuffer, ClientAction.Wireframe);
+      renderSettings = RenderSetting.RENDER_WIREFRAME;
+      updateBuffer();
+    }, "Render wireframe geometry"));
     // The RENDER_OVERDRAW feature can cause crashes right now, disable by default.
     // TODO(b/188431629): Investigate and fix the overdraw issue.
     if (Experimental.enableUnstableFeatures(models.settings)) {
