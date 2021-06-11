@@ -20,6 +20,87 @@
 #include "staticanalysis.h"
 
 #include <cstring>
+#include <map>
+#include <set>
+#include <vector>
+
+struct AnalysisBlock {
+  std::set<uint32_t> def;
+  std::set<uint32_t> use;
+  std::set<uint32_t> in;
+  std::set<uint32_t> out;
+  std::vector<uint32_t> successors;
+  std::map<uint32_t, uint32_t> firstMade;
+  std::map<uint32_t, uint32_t> lastUse;
+};
+
+bool isValidIDForPressure(spirv_cross::ParsedIR pir, uint32_t id,
+                          spirv_cross::Instruction op, uint32_t offset) {
+  if (pir.ids[id].get_type() == spirv_cross::TypeNone) {
+    switch (op.op) {
+      case spv::OpExtInst:
+        return offset != 3;
+
+      case spv::OpVectorShuffle:
+        return offset < 4;
+
+      case spv::OpArrayLength:
+        return offset != 3;
+
+      case spv::OpCompositeExtract:
+        return offset < 3;
+
+      case spv::OpCompositeInsert:
+        return offset < 4;
+
+      default:
+        return true;
+    }
+  }
+
+  return false;
+}
+
+void processInstructionForPressure(spirv_cross::ParsedIR pir,
+                                   spirv_cross::Instruction currentOp,
+                                   AnalysisBlock& analysisBlock,
+                                   uint32_t instructionCounter,
+                                   std::map<uint32_t, uint32_t>& resultSizes,
+                                   bool hasResultID) {
+  if (hasResultID) {
+    uint32_t resultID = pir.spirv[currentOp.offset + 1];
+    if (isValidIDForPressure(pir, resultID, currentOp, 1)) {
+      analysisBlock.def.insert(resultID);
+      analysisBlock.lastUse[resultID] = instructionCounter;
+      analysisBlock.firstMade[resultID] = instructionCounter;
+
+      uint32_t typeID = pir.spirv[currentOp.offset];
+      auto typeInfo =
+          spirv_cross::variant_get<spirv_cross::SPIRType>(pir.ids[typeID]);
+      resultSizes[resultID] = typeInfo.vecsize * typeInfo.columns;
+    }
+
+    for (uint32_t i = 2; i < currentOp.length; ++i) {
+      uint32_t id = pir.spirv[currentOp.offset + i];
+      if (isValidIDForPressure(pir, id, currentOp, i)) {
+        if (analysisBlock.def.find(id) == analysisBlock.def.end()) {
+          analysisBlock.use.insert(id);
+        }
+        analysisBlock.lastUse[id] = instructionCounter;
+      }
+    }
+  } else {
+    for (uint32_t i = 0; i < currentOp.length; ++i) {
+      uint32_t id = pir.spirv[currentOp.offset + i];
+      if (isValidIDForPressure(pir, id, currentOp, i)) {
+        if (analysisBlock.def.find(id) == analysisBlock.def.end()) {
+          analysisBlock.use.insert(id);
+        }
+        analysisBlock.lastUse[id] = instructionCounter;
+      }
+    }
+  }
+}
 
 instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
                                              size_t length) {
@@ -29,16 +110,24 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
 
   instruction_counters_t counters = instruction_counters_t{0, 0, 0, 0};
 
+  std::map<uint32_t, AnalysisBlock> analysisBlocks;
+
+  std::map<uint32_t, uint32_t> idRegSizes;
+
   for (auto& block : pir.ids_for_type[spirv_cross::Types::TypeBlock]) {
     if (pir.ids[block].get_type() ==
         static_cast<spirv_cross::Types>(spirv_cross::Types::TypeBlock)) {
       spirv_cross::SPIRBlock currentBlock =
           spirv_cross::variant_get<spirv_cross::SPIRBlock>(pir.ids[block]);
-      for (auto& currentOp : currentBlock.ops) {
-        uint32_t resultID = 0;
 
+      AnalysisBlock currentAnalysisBlock;
+      uint32_t instructionCounter = 0;
+      for (auto& currentOp : currentBlock.ops) {
         switch (currentOp.op) {
           default:
+            processInstructionForPressure(pir, currentOp, currentAnalysisBlock,
+                                          instructionCounter, idRegSizes,
+                                          false);
             break;
 
           // ALU Instructions
@@ -127,6 +216,12 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpULessThanEqual:
           case spv::OpSLessThanEqual:
           case spv::OpFOrdEqual:
+          case spv::OpFUnordEqual:
+          case spv::OpFOrdNotEqual:
+          case spv::OpFUnordNotEqual:
+          case spv::OpFOrdLessThan:
+          case spv::OpFUnordLessThan:
+          case spv::OpFOrdGreaterThan:
           case spv::OpFUnordGreaterThan:
           case spv::OpFOrdLessThanEqual:
           case spv::OpFUnordLessThanEqual:
@@ -186,12 +281,10 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpGroupNonUniformLogicalAnd:
           case spv::OpGroupNonUniformLogicalOr:
           case spv::OpGroupNonUniformLogicalXor:
+          case spv::OpExtInst:  // Treat OpExtInst as arithmetic for now
             counters.alu_instructions++;
-
-            resultID = pir.spirv[currentOp.offset + 1];
-            if (pir.ids[resultID].get_type() == spirv_cross::TypeNone) {
-              counters.temp_registers++;
-            }
+            processInstructionForPressure(pir, currentOp, currentAnalysisBlock,
+                                          instructionCounter, idRegSizes, true);
             break;
 
           case spv::OpSampledImage:
@@ -231,11 +324,8 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpImageSparseRead:
           case spv::OpImageSampleFootprintNV:
             counters.texture_instructions++;
-
-            resultID = pir.spirv[currentOp.offset + 1];
-            if (pir.ids[resultID].get_type() == spirv_cross::TypeNone) {
-              counters.temp_registers++;
-            }
+            processInstructionForPressure(pir, currentOp, currentAnalysisBlock,
+                                          instructionCounter, idRegSizes, true);
             break;
 
           // Deal with other instructions that have a result ID.
@@ -330,12 +420,12 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
           case spv::OpGroupNonUniformQuadBroadcast:
           case spv::OpGroupNonUniformQuadSwap:
           case spv::OpGroupNonUniformPartitionNV:
-            resultID = pir.spirv[currentOp.offset + 1];
-            if (pir.ids[resultID].get_type() == spirv_cross::TypeNone) {
-              counters.temp_registers++;
-            }
+            processInstructionForPressure(pir, currentOp, currentAnalysisBlock,
+                                          instructionCounter, idRegSizes, true);
             break;
         }
+
+        instructionCounter++;
       }
 
       switch (currentBlock.terminator) {
@@ -344,15 +434,131 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
 
         // OpBranch
         case spirv_cross::SPIRBlock::Direct:
+          counters.branch_instructions++;
+          currentAnalysisBlock.successors.push_back(currentBlock.next_block);
+          break;
         // OpBranchConditional
         case spirv_cross::SPIRBlock::Select:
+          counters.branch_instructions++;
+          currentAnalysisBlock.successors.push_back(currentBlock.true_block);
+          currentAnalysisBlock.successors.push_back(currentBlock.false_block);
+          break;
         // OpSwitch
         case spirv_cross::SPIRBlock::MultiSelect:
           counters.branch_instructions++;
+          for (auto& spirvCase : currentBlock.cases) {
+            currentAnalysisBlock.successors.push_back(spirvCase.block);
+          }
           break;
+      }
+
+      analysisBlocks[block] = currentAnalysisBlock;
+    }
+  }
+
+  // Perform live-range analysis
+  bool inSetChanged = true;
+  while (inSetChanged) {
+    inSetChanged = false;
+
+    for (auto& block : pir.ids_for_type[spirv_cross::Types::TypeBlock]) {
+      AnalysisBlock& currentAnalysisBlock = analysisBlocks[block];
+
+      currentAnalysisBlock.out.clear();
+
+      // out = union of successor ins
+      for (uint32_t i = 0; i < currentAnalysisBlock.successors.size(); ++i) {
+        AnalysisBlock& currentSuccessor =
+            analysisBlocks[currentAnalysisBlock.successors[i]];
+        currentAnalysisBlock.out.insert(currentSuccessor.in.begin(),
+                                        currentSuccessor.in.end());
+      }
+
+      // diff = out - def
+      std::set<uint32_t> diff;
+      for (std::set<uint32_t>::iterator it = currentAnalysisBlock.out.begin();
+           it != currentAnalysisBlock.out.end(); ++it) {
+        if (currentAnalysisBlock.def.find(*it) ==
+            currentAnalysisBlock.def.end()) {
+          diff.insert(*it);
+        }
+      }
+
+      // in = union of use and diff
+      std::set<uint32_t> newIn;
+      newIn.insert(currentAnalysisBlock.use.begin(),
+                   currentAnalysisBlock.use.end());
+      newIn.insert(diff.begin(), diff.end());
+
+      // check for changes
+      for (std::set<uint32_t>::iterator it = newIn.begin(); it != newIn.end();
+           ++it) {
+        if (currentAnalysisBlock.in.find(*it) ==
+            currentAnalysisBlock.in.end()) {
+          inSetChanged = true;
+          currentAnalysisBlock.in.insert(*it);
+        }
       }
     }
   }
+
+  uint32_t maxPressure = 0;
+  for (auto& block : pir.ids_for_type[spirv_cross::Types::TypeBlock]) {
+    if (pir.ids[block].get_type() ==
+        static_cast<spirv_cross::Types>(spirv_cross::Types::TypeBlock)) {
+      auto currentBlock =
+          spirv_cross::variant_get<spirv_cross::SPIRBlock>(pir.ids[block]);
+      const AnalysisBlock& currentAnalysisBlock = analysisBlocks[block];
+
+      uint32_t pressure = 0;
+      for (std::set<uint32_t>::iterator it = currentAnalysisBlock.in.begin();
+           it != currentAnalysisBlock.in.end(); ++it) {
+        pressure += idRegSizes.find(*it)->second;
+      }
+
+      uint32_t instructionCounter = 0;
+      uint32_t pressureToDelete = 0;
+      for (auto& currentOp : currentBlock.ops) {
+        std::set<uint32_t> deletedIDs;  // prevents multi-deletion if an
+                                        // instruction uses an id more than once
+        for (uint32_t i = 0; i < currentOp.length; ++i) {
+          uint32_t currentID = pir.spirv[currentOp.offset + i];
+
+          if (isValidIDForPressure(pir, currentID, currentOp, i)) {
+            std::map<uint32_t, uint32_t>::const_iterator it =
+                currentAnalysisBlock.firstMade.find(currentID);
+            std::map<uint32_t, uint32_t>::const_iterator it2 =
+                currentAnalysisBlock.lastUse.find(currentID);
+
+            if (it != currentAnalysisBlock.firstMade.end() &&
+                it->second == instructionCounter) {
+              pressure += idRegSizes.find(currentID)->second;
+            }
+
+            if (it2 != currentAnalysisBlock.lastUse.end() &&
+                it2->second == instructionCounter &&
+                currentAnalysisBlock.out.find(currentID) ==
+                    currentAnalysisBlock.out.end() &&
+                deletedIDs.find(currentID) == deletedIDs.end()) {
+              pressureToDelete += idRegSizes.find(currentID)->second;
+              deletedIDs.insert(currentID);
+            }
+          }
+        }
+
+        if (pressure > maxPressure) {
+          maxPressure = pressure;
+        }
+
+        pressure -= pressureToDelete;
+        pressureToDelete = 0;
+
+        instructionCounter++;
+      }
+    }
+  }
+
+  counters.temp_registers = maxPressure;
 
   return counters;
 }

@@ -357,7 +357,7 @@ public class ShaderView extends Composite
     createStaticAnalysisStat(contentComposite, "ALU Instructions:", staticAnalysis.getAluInstructions());
     createStaticAnalysisStat(contentComposite, "Texture Instructions:", staticAnalysis.getTextureInstructions());
     createStaticAnalysisStat(contentComposite, "Branch Instructions:", staticAnalysis.getBranchInstructions());
-    createStaticAnalysisStat(contentComposite, "Temporary Registers:", staticAnalysis.getTempRegisters());
+    createStaticAnalysisStat(contentComposite, "Peak Temporary Register Pressure:", staticAnalysis.getTempRegisters());
 
     scrollComposite.setContent(contentComposite);
     scrollComposite.setExpandVertical(true);
