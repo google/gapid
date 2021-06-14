@@ -70,6 +70,9 @@
 
   // @extension("VK_EXT_line_rasterization")
   @unused ref!PhysicalDeviceLineRasterizationFeaturesEXT PhysicalDeviceLineRasterizationFeaturesEXT
+
+  // @extension("VK_EXT_vertex_attribute_divisor")
+  @unused ref!PhysicalDeviceVertexAttributeDivisorFeaturesEXT PhysicalDeviceVertexAttributeDivisorFeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -275,6 +278,13 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
               StippledRectangularLines: ext.stippledRectangularLines,
               StippledBresenhamLines: ext.stippledBresenhamLines,
               StippledSmoothLines: ext.stippledSmoothLines,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceVertexAttributeDivisorFeaturesEXT = new!PhysicalDeviceVertexAttributeDivisorFeaturesEXT(
+            VertexAttributeInstanceRateDivisor: ext.vertexAttributeInstanceRateDivisor,
+            VertexAttributeInstanceRateZeroDivisor: ext.vertexAttributeInstanceRateZeroDivisor,
           )
         }
       }

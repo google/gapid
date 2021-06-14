@@ -484,6 +484,9 @@ sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 inst
 
 @spy_disabled
 sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
+  // For details on how to compute the vertex buffer memory ranges, see the
+  // pseudo-code at the end of section "Vertex Attribute Divisor in Instanced
+  // Rendering" in the Vulkan specification.
   ldi := lastDrawInfo()
   for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {
     if vertex_binding.binding in ldi.BoundVertexBuffers {
@@ -500,7 +503,17 @@ sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 ins
           case VK_VERTEX_INPUT_RATE_VERTEX:
             vertexCount
           case VK_VERTEX_INPUT_RATE_INSTANCE:
-            instanceCount
+            switch vertex_binding.binding in ldi.GraphicsPipeline.VertexInputState.Divisors {
+              case false:
+                instanceCount
+              case true:
+                switch ldi.GraphicsPipeline.VertexInputState.Divisors[vertex_binding.binding] {
+                  case 0:
+                    as!u32(1) // If divisor is zero, use only one instance
+                  default:
+                    (instanceCount / ldi.GraphicsPipeline.VertexInputState.Divisors[vertex_binding.binding])
+                }
+            }
         }
         start_offset := bound_vertex_buffer.Offset + as!VkDeviceSize(start_vertex * vertex_binding.stride)
         num := switch vertexCount == 0xFFFFFFFF {

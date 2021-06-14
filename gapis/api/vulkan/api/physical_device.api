@@ -59,6 +59,7 @@
   @unused ref!PhysicalDeviceFloatControlsPropertiesKHR PhysicalDeviceFloatControlsPropertiesKHR
   @unused ref!PhysicalDeviceDriverPropertiesKHR PhysicalDeviceDriverPropertiesKHR
   @unused ref!PhysicalDeviceLineRasterizationPropertiesEXT PhysicalDeviceLineRasterizationPropertiesEXT
+  @unused ref!PhysicalDeviceVertexAttributeDivisorPropertiesEXT PhysicalDeviceVertexAttributeDivisorPropertiesEXT
 }
 
 @internal class PhysicalDevicesAndProperties {

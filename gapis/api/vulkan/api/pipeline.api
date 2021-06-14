@@ -111,6 +111,7 @@ cmd void vkDestroyPipelineLayout(
 @internal class VertexData {
   @unused map!(u32, VkVertexInputBindingDescription)   BindingDescriptions
   @unused map!(u32, VkVertexInputAttributeDescription) AttributeDescriptions
+  @unused map!(u32, u32)                               Divisors
 }
 
 @internal class InputAssemblyData {
@@ -361,6 +362,15 @@ cmd VkResult vkCreateGraphicsPipelines(
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0]
         switch (sType) {
+          case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
+            divisorInfo := as!VkPipelineVertexInputDivisorStateCreateInfoEXT*(next.Ptr)[0]
+            numDivisors := divisorInfo.vertexBindingDivisorCount
+            divisors := divisorInfo.pVertexBindingDivisors[0:numDivisors]
+            for j in (0 .. numDivisors) {
+              d := divisors[j]
+              obj.VertexInputState.Divisors[d.binding] = d.divisor
+            }
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }

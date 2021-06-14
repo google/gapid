@@ -387,6 +387,10 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
             _ = as!VkPhysicalDeviceLineRasterizationFeaturesEXT*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*(next.Ptr)[0]
+          }
+
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -441,6 +445,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
             write(as!VkPhysicalDeviceLineRasterizationFeaturesEXT*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
@@ -595,6 +602,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
             _ = as!VkPhysicalDeviceLineRasterizationPropertiesEXT*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+            _ = as!VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -710,6 +720,12 @@ sub void GetPhysicalDeviceProperties2(
               ext := as!VkPhysicalDeviceLineRasterizationPropertiesEXT*(next.Ptr)[0]
               phyDev.PhysicalDeviceLineRasterizationPropertiesEXT = new!PhysicalDeviceLineRasterizationPropertiesEXT(
                 LineSubPixelPrecisionBits: ext.lineSubPixelPrecisionBits,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+              ext := as!VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*(next.Ptr)[0]
+              phyDev.PhysicalDeviceVertexAttributeDivisorPropertiesEXT = new!PhysicalDeviceVertexAttributeDivisorPropertiesEXT(
+                maxVertexAttribDivisor: ext.maxVertexAttribDivisor,
               )
             }
           }

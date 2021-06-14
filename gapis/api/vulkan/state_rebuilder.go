@@ -855,6 +855,16 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceVertexAttributeDivisorFeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT,
+				pNext,
+				d.PhysicalDeviceVertexAttributeDivisorFeaturesEXT().VertexAttributeInstanceRateDivisor(),
+				d.PhysicalDeviceVertexAttributeDivisorFeaturesEXT().VertexAttributeInstanceRateZeroDivisor(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
