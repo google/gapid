@@ -25,7 +25,6 @@ import (
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -380,12 +379,6 @@ func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
 	}
 
 	return graph, nil
-}
-
-func (b *dependencyGraphBuilder) debug(ctx context.Context, fmt string, args ...interface{}) {
-	if config.DebugDependencyGraph || (len(b.cmdCtx().subCmdIdx) == 4 && b.cmdCtx().subCmdIdx[0] == 351 && b.cmdCtx().subCmdIdx[3] == 1) {
-		log.D(ctx, fmt, args...)
-	}
 }
 
 func (b *dependencyGraphBuilder) cmdCtx() CmdContext {

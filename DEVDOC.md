@@ -246,6 +246,11 @@ If you want to analyze a replay crash with a debugger, on **64 bits Android** (f
 
 Note that while you attach the debugger and setup the breakpoint, the server might timeout waiting for a gRPC connection. You may increase this timeout by editing the `gapir/client:gRPCConnectTimeout` constant.
 
+## GAPIS build-time options to help with debugging
+
+See `gapis/config/config.go` for a list of various build-time config options
+that can help with debugging.
+
 ## How to profile AGI internals
 
 ### GAPIS

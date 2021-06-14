@@ -16,25 +16,55 @@
 package config
 
 const (
-	DebugReplay                = false
-	DebugReplayBuilder         = false
+	// DebugReplay activates various debug logs related to replay.
+	DebugReplay = false
+
+	// DebugReplayBuilder activates various debug logs and checks related to the
+	// creation of a replay payload.
+	DebugReplayBuilder = false
+
+	// DisableDeadCodeElimination prevents the early computation of the
+	// dependency graph.
 	DisableDeadCodeElimination = false
-	DeadSubCmdElimination      = false
-	DebugDeadCodeElimination   = false
-	DebugDependencyGraph       = false
-	DumpReplayProfile          = false
-	DumpValidationTrace        = true
-	AllInitialCommandsLive     = false
-	LogExtrasInTransforms      = false // Logs all commands' extras together with transforms
-	LogMemoryInExtras          = false // Logs all commands' read/write memory observation together with extras
-	// Logs all mappings at the end of the replay from original trace
-	// handles to replay client handles (if handles are reused in the trace
-	// it will only print the last mapping).  Only works for Vulkan.
-	LogMappingsToFile        = false
-	LogTransformsToFile      = false
-	LogTransformsToCapture   = false
-	LogInitialCmdsIssues     = false
-	LogInitialCmdsToCapture  = false
-	SeparateMutateStates     = false
-	CheckRebuiltStateMatches = false
+
+	// DeadSubCmdElimination prevents the elimination of subcommands in dead
+	// code elimination.
+	DeadSubCmdElimination = false
+
+	// DebugDeadCodeElimination activates various debug logs related to dead
+	// code elimination.
+	DebugDeadCodeElimination = false
+
+	// DumpReplayProfile dumps the perfetto trace of a replay profile.
+	DumpReplayProfile = false
+
+	// DumpValidationTrace dumps the perfetto trace of a validation profile.
+	DumpValidationTrace = false
+
+	// AllInitialCommandsLive forces all initial commands to be considered as
+	// live when computing dead code elimination.
+	AllInitialCommandsLive = false
+
+	// LogExtrasInTransforms logs all commands' extras together with transforms.
+	LogExtrasInTransforms = false
+
+	// LogMemoryInExtras logs all commands' read/write memory observation
+	// together with extras.
+	LogMemoryInExtras = false
+
+	// LogMappingsToFile logs all mappings at the end of the replay from
+	// original trace handles to replay client handles (if handles are reused in
+	// the trace it will only print the last mapping).  Only works for Vulkan.
+	LogMappingsToFile = false
+
+	// LogTransformsToFile logs all commands seen by each transform into a
+	// separate file for each transform.
+	LogTransformsToFile = false
+
+	// LogTransformsToCapture creates a gfxtrace that stores the commands
+	// obtained after all transforms have been applied.
+	LogTransformsToCapture = false
+
+	// LogInitialCmdsToCapture creates a gfxtrace that stores initial commands.
+	LogInitialCmdsToCapture = false
 )
