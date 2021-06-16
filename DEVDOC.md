@@ -94,6 +94,28 @@ If you want to debug a client like gapit, just start it under dlv:
 dlv exec ./bazel-bin/pkg/gapit <verb> <verb args>
 ```
 
+### Debugging a test
+
+You can build a test in debug mode and then start it under dlv.
+
+For instance:
+
+```
+bazel test --cache_test_results=no -c dbg //core/data/slice:go_default_test
+```
+
+In practice, on Linux this builds and runs a test executable that is located at
+`./bazel-out/k8-dbg/bin/core/data/slice/linux_amd64_debug/go_default_test`,
+you will have to adapt the `k8-dbg` part will be different on other platforms.
+To debug a specific test, you can start this executable under dlv:
+
+```
+$ dlv exec ./bazel-out/k8-dbg/bin/core/data/slice/linux_amd64_debug/go_default_test -- -test.run TestReplace
+Type 'help' for list of commands.
+(dlv) break TestReplace
+Breakpoint 1 set at 0x5f5d4b for github.com/google/gapid/core/data/slice_test.TestReplace() core/data/slice/slice_test.go:26
+```
+
 ### Use a Delve init script
 
 To automate a delve startup sequence, you can edit a script of delve commands to
