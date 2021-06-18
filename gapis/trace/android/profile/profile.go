@@ -150,9 +150,11 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 		op := getCounterAggregationMethod(counter)
 		description := ""
 		selectByDefault := false
+		counterGroups := []device.GpuCounterDescriptor_GpuCounterGroup{}
 		if counter.Spec != nil {
 			description = counter.Spec.Description
 			selectByDefault = counter.Spec.SelectByDefault
+			counterGroups = counter.Spec.Groups
 		}
 		*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
 			Id:              metricId,
@@ -162,6 +164,7 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 			Op:              op,
 			Description:     description,
 			SelectByDefault: selectByDefault,
+			CounterGroups:   counterGroups,
 		})
 		if op != service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg {
 			log.E(ctx, "Counter aggregation method not implemented yet. Operation: %v", op)
