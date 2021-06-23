@@ -73,7 +73,8 @@ func Connect(ctx context.Context, cfg Config) (Client, error) {
 
 	conn, err := grpcutil.Dial(ctx, target,
 		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(auth.ClientInterceptor(cfg.Token)))
+		grpc.WithUnaryInterceptor(auth.UnaryClientInterceptor(cfg.Token)),
+		grpc.WithStreamInterceptor(auth.StreamClientInterceptor(cfg.Token)))
 	if err != nil {
 		return nil, log.Err(ctx, err, "Dialing GAPIS")
 	}

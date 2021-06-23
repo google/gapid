@@ -50,7 +50,8 @@ func startServerAndGetGrpcClient(ctx context.Context, config server.Config) (ser
 
 	conn, err := grpcutil.Dial(ctx, "pipe:servicetest",
 		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(auth.ClientInterceptor(config.AuthToken)),
+		grpc.WithUnaryInterceptor(auth.UnaryClientInterceptor(config.AuthToken)),
+		grpc.WithStreamInterceptor(auth.StreamClientInterceptor(config.AuthToken)),
 		grpc.WithDialer(grpcutil.GetDialer(ctx)),
 	)
 	if err != nil {
@@ -105,6 +106,7 @@ var (
 			VersionMinor: 456,
 			Features:     []string{"moo", "meow", "meh"},
 		},
+		AuthToken:    "s3Cr3t",
 		StringTables: stringtables,
 	}
 	testCaptureData []byte

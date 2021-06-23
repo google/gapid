@@ -78,7 +78,8 @@ func NewWithListener(ctx context.Context, l net.Listener, cfg Config, srvChan ch
 				crash.Go(func() { s.stopOnInterrupt(ctx, server, stop) })
 			}
 			return nil
-		}, grpc.UnaryInterceptor(auth.ServerInterceptor(cfg.AuthToken)))
+		}, grpc.UnaryInterceptor(auth.UnaryServerInterceptor(cfg.AuthToken)),
+			grpc.StreamInterceptor(auth.StreamServerInterceptor(cfg.AuthToken)))
 	})
 
 	select {

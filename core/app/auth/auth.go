@@ -91,9 +91,9 @@ func GenTokenFile() (path string, token Token) {
 	return path, token
 }
 
-// ServerInterceptor returns a grpc.UnaryServerInterceptor that checks incoming
-// RPC calls for the given auth token.
-func ServerInterceptor(token Token) grpc.UnaryServerInterceptor {
+// UnaryServerInterceptor returns a grpc.UnaryServerInterceptor that checks
+// incoming RPC calls for the given auth token.
+func UnaryServerInterceptor(token Token) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if token != NoAuth {
 			md, ok := metadata.FromIncomingContext(ctx)
@@ -111,9 +111,29 @@ func ServerInterceptor(token Token) grpc.UnaryServerInterceptor {
 	}
 }
 
-// ClientInterceptor returns a grpc.UnaryClientInterceptor that adds the given
-// auth token to outgoing RPC calls.
-func ClientInterceptor(token Token) grpc.UnaryClientInterceptor {
+// StreamServerInterceptor returns a grpc.StreamServerInterceptor that checks
+// incoming RPC calls for the given auth token.
+func StreamServerInterceptor(token Token) grpc.StreamServerInterceptor {
+	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if token != NoAuth {
+			md, ok := metadata.FromIncomingContext(ss.Context())
+			if !ok {
+				return ErrInvalidToken
+			}
+
+			got, ok := md[rpcHeader]
+			if !ok || len(got) != 1 || Token(got[0]) != token {
+				return ErrInvalidToken
+			}
+		}
+
+		return handler(srv, ss)
+	}
+}
+
+// UnaryClientInterceptor returns a grpc.UnaryClientInterceptor that adds the
+// given auth token to outgoing RPC calls.
+func UnaryClientInterceptor(token Token) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		if token != NoAuth {
 			if md, ok := metadata.FromOutgoingContext(ctx); ok {
@@ -123,5 +143,20 @@ func ClientInterceptor(token Token) grpc.UnaryClientInterceptor {
 			}
 		}
 		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+// StreamClientInterceptor returns a grpc.StreamClientInterceptor that adds the
+// given auth token to outgoing RPC calls.
+func StreamClientInterceptor(token Token) grpc.StreamClientInterceptor {
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		if token != NoAuth {
+			if md, ok := metadata.FromOutgoingContext(ctx); ok {
+				ctx = metadata.NewOutgoingContext(ctx, metadata.Join(md, metadata.Pairs(rpcHeader, string(token))))
+			} else {
+				ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(rpcHeader, string(token)))
+			}
+		}
+		return streamer(ctx, desc, cc, method, opts...)
 	}
 }
