@@ -47,7 +47,7 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 	reader, stdout := io.Pipe()
 	logRing := ring.New(10)
 	// TODO(apbodnar) Find a way to reliably know when Perfetto/producers are ready (b/147388497)
-	readyOnce := task.Once(task.Delay(ready, 250*time.Millisecond))
+	readyOnce := task.Once(task.Delay(ready, 1000*time.Millisecond))
 	data, err := proto.Marshal(config)
 	if err != nil {
 		return err

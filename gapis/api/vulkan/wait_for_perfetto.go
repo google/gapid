@@ -19,6 +19,7 @@ package vulkan
 import (
 	"bytes"
 	"context"
+	"time"
 
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -64,6 +65,10 @@ func getPerfettoLoopCallbacks(traceOptions *service.TraceOptions, signalHandler 
 
 	postLoop := func(ctx context.Context, request *gapir.FenceReadyRequest) {
 		if !signalHandler.StopSignal.Fired() {
+			// Bugs b/188440357 and b/190170108 appear to be caused by a race condition with perfetto not
+			// starting and ending correctly as signaled. This wait matches a wait on startup and works
+			// around the race conditions for now.
+			time.Sleep(1000 * time.Millisecond)
 			signalHandler.StopFunc(ctx)
 		}
 	}
