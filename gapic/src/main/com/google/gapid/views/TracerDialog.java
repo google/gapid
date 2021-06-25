@@ -87,6 +87,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
@@ -331,7 +332,9 @@ public class TracerDialog {
       private final Label fileLabel;
       private final Label requiredFieldMessage;
       private final Label emptyAppWarning;
-      private final Link newAngleAvailableMessage;
+      private final Composite angleBar;
+      private final Label angleMessage;
+      private final Button installAngle;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
@@ -498,28 +501,14 @@ public class TracerDialog {
         requiredFieldMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         requiredFieldMessage.setVisible(false);
 
-        Link adbWarning = withLayoutData(
-            createLink(this, "Path to adb invalid/missing. " +
-                "To trace on Android, please fix it in the <a>preferences</a>.",
-                e -> SettingsDialog.showSettingsDialog(getShell(), models, widgets.theme)),
-            new GridData(SWT.FILL, SWT.FILL, true, false));
-        adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
-        adbWarning.setVisible(!models.settings.isAdbValid());
-
-        newAngleAvailableMessage = createLink(this, "A new ANGLE version is available for this " +
-            "device. Click to <a>download and install</a> the APK.",
-            e -> downloadAndInstallAngle(widgets.theme, models.settings));
-        newAngleAvailableMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
-        newAngleAvailableMessage.setVisible(false);
-
-
-        device.getCombo().addListener(SWT.Selection, e -> {
-          updateOnDeviceChange(models.settings, getSelectedDevice());
-          runValidationCheck(getSelectedDevice());
-        });
-        api.getCombo().addListener(SWT.Selection, e -> {
-          updateOnApiChange(models.settings, trace, getSelectedApi());
-        });
+        if (!models.settings.isAdbValid()) {
+          Link adbWarning = withLayoutData(
+              createLink(this, "Path to adb invalid/missing. " +
+                  "To trace on Android, please fix it in the <a>preferences</a>.",
+                  e -> SettingsDialog.showSettingsDialog(getShell(), models, widgets.theme)),
+              new GridData(SWT.FILL, SWT.FILL, true, false));
+          adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
+        }
 
         emptyAppWarning = withLayoutData(
             createLabel(this, EMPTY_APP_WITH_RENDER_STAGE),
@@ -529,6 +518,25 @@ public class TracerDialog {
         device.getCombo().addListener(SWT.Selection, e -> updateEmptyAppWithRenderStageWarning(models.settings));
         api.getCombo().addListener(SWT.Selection, e -> updateEmptyAppWithRenderStageWarning(models.settings));
         traceTarget.addBoxListener(SWT.Modify, e -> updateEmptyAppWithRenderStageWarning(models.settings));
+
+        RowLayout angleBarLayout = new RowLayout();
+        angleBarLayout.center = true;
+        angleBarLayout.spacing = 10;
+        angleBar = withLayoutData(
+            createComposite(this, angleBarLayout),
+            new GridData(SWT.RIGHT, SWT.FILL, true, false));
+        angleMessage = createLabel(angleBar, "");
+        installAngle = Widgets.createButton(angleBar, "",
+            e -> downloadAndInstallAngle(widgets.theme, models.settings));
+        angleBar.setVisible(false);
+
+        device.getCombo().addListener(SWT.Selection, e -> {
+          updateOnDeviceChange(models.settings, getSelectedDevice());
+          runValidationCheck(getSelectedDevice());
+        });
+        api.getCombo().addListener(SWT.Selection, e -> {
+          updateOnApiChange(models.settings, trace, getSelectedApi());
+        });
 
         Listener mecListener = e -> {
           StartType start = StartType.values()[startType.getSelectionIndex()];
@@ -742,16 +750,25 @@ public class TracerDialog {
           userHasChangedOutputFile = false; // cancel the modify event from set call.
         }
 
-        boolean showAngleWarning = false;
+        boolean showAngleBar = false;
         if (isAngle(config)) {
           DeviceCaptureInfo dev = devices.get(device.getCombo().getSelectionIndex());
-          if (dev.device.getConfiguration().getAngle().getVersion() == 0 ||
-              dev.device.getConfiguration().getAngle().getVersion() <
-              settings.preferences().getLatestAngleRelease().getVersion()) {
-            showAngleWarning = true;
+          int version = dev.device.getConfiguration().getAngle().getVersion();
+          if (version == 0 || version < settings.preferences().getLatestAngleRelease().getVersion())
+          {
+            if (version == 0) {
+              angleMessage.setText("ANGLE is required for this trace type (AGI restart required):");
+              installAngle.setText("Install ANGLE");
+            } else {
+              angleMessage.setText("A recommended update to ANGLE is available (AGI restart required):");
+              installAngle.setText("Update ANGLE");
+            }
+            angleMessage.requestLayout();
+            installAngle.requestLayout();
+            showAngleBar = true;
           }
         }
-        newAngleAvailableMessage.setVisible(showAngleWarning);
+        angleBar.setVisible(showAngleBar);
       }
 
       private void updateDevicesDropDown(SettingsProto.TraceOrBuilder trace) {
@@ -903,7 +920,11 @@ public class TracerDialog {
 
         if (InstallAngleDialog
             .showDialogAndInstallApk(getShell(), models, theme, dev.device, url) == Window.OK) {
-          newAngleAvailableMessage.setVisible(false);
+          Composite comp = this;
+          while (comp.getParent() != null) {
+            comp = comp.getParent();
+          }
+          comp.getShell().close();
         }
       }
 
@@ -922,7 +943,8 @@ public class TracerDialog {
       }
 
       public boolean isReady() {
-        return isInputReady() && validationStatus;
+        return isInputReady() && validationStatus &&
+            (!isAngle(getSelectedApi()) || getSelectedDevice().device.getConfiguration().getAngle().getVersion() > 0);
       }
 
       public boolean isInputReady() {
@@ -1375,7 +1397,6 @@ public class TracerDialog {
 
     public InstallAngleDialog(Shell shell, Theme theme) {
       super(shell, theme);
-      setReturnCode(Window.CANCEL);
     }
 
     @SuppressWarnings("CheckReturnValue")
@@ -1411,7 +1432,20 @@ public class TracerDialog {
     @Override
     public void create() {
       super.create();
+      Button ok = getButton(IDialogConstants.OK_ID);
+      if (ok != null) {
+        ok.setText("Close AGI");
+      }
       updateButtons();
+    }
+
+    @Override
+    protected void handleShellCloseEvent()
+    {
+      if (status != Status.INSTALLING) {
+        super.handleShellCloseEvent();
+        setReturnCode(status == Status.DONE ? Window.OK : Window.CANCEL);
+      }
     }
 
     public void scheduleUpdate(Status newStatus, int progress) {
@@ -1437,12 +1471,12 @@ public class TracerDialog {
     private void updateButtons() {
       Button ok = getButton(IDialogConstants.OK_ID);
       if (ok != null) {
-        ok.setEnabled(status.isDone());
+        ok.setEnabled(status == Status.DONE);
       }
       Button cancel = getButton(IDialogConstants.CANCEL_ID);
       if (cancel != null) {
-        // Only the download can be cancelled.
-        cancel.setEnabled(status == Status.DOWNLOADING);
+        // Can only be cancelled while downloading or when installation failed.
+        cancel.setEnabled(status == Status.DOWNLOADING || status == Status.FAILED);
       }
     }
 
@@ -1481,17 +1515,13 @@ public class TracerDialog {
     private static enum Status {
       DOWNLOADING("Downloading APK..."),
       INSTALLING("Installing APK..."),
-      DONE("All done."),
+      DONE("All done. AGI restart required."),
       FAILED("Download/Install failed.");
 
       public final String message;
 
       private Status(String message) {
         this.message = message;
-      }
-
-      public boolean isDone() {
-        return this == DONE || this == FAILED;
       }
     }
   }
