@@ -414,7 +414,7 @@ public class TracerDialog {
         arguments = withLayoutData(createTextbox(appGroup, trace.getArguments()),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
-        createLabel(appGroup, "Process name:");
+        createLabel(appGroup, "Process Name:");
         processName = withLayoutData(createTextbox(appGroup, trace.getProcessName()),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         processName.setEnabled(false);
@@ -456,13 +456,13 @@ public class TracerDialog {
             optGroup, "Disable Buffering", trace.getWithoutBuffering());
         withoutBuffering.setEnabled(true);
         clearCache = createCheckbox(
-            optGroup, "Clear package cache", trace.getClearCache());
+            optGroup, "Clear Package Cache", trace.getClearCache());
         clearCache.setEnabled(false);
         hideUnknownExtensions = createCheckbox(
             optGroup, "Hide Unknown Extensions", trace.getHideUnknownExtensions());
         hideUnknownExtensions.setEnabled(false);
         loadValidationLayer = createCheckbox(
-            optGroup, "Load Vulkan validation layer", trace.getLoadValidationLayer());
+            optGroup, "Load Vulkan Validation Layer", trace.getLoadValidationLayer());
         loadValidationLayer.setEnabled(false);
         loadValidationLayer.setVisible(enableLoadValidationLayer.get());
 
