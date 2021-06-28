@@ -219,10 +219,10 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		// find latest build tools
 		sdkPath := verb.SdkPath
 		if sdkPath == "" {
-			sdkPath = os.ExpandEnv("${ANDROID_SDK_HOME}")
+			sdkPath = os.ExpandEnv("${ANDROID_SDK_ROOT}")
 		}
 		if _, err := os.Stat(sdkPath); err != nil {
-			return log.Err(ctx, err, "Cannot find Android SDK. Please set ANDROID_SDK_HOME, or use the -sdkpath flag")
+			return log.Err(ctx, err, "Cannot find Android SDK. Please set ANDROID_SDK_ROOT, or use the -sdkpath flag")
 		}
 		toolsPathParent := path.Join(sdkPath, "build-tools")
 		matches, err := filepath.Glob(path.Join(toolsPathParent, "*"))

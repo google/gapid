@@ -193,7 +193,7 @@ type (
 		Out            string     `help:"output directory for commands and assets"`
 		Mode           ExportMode `help:"generate special purposed trace"`
 		Apk            string     `help:"(experimental) name of the stand-alone APK created to perform the replay. This name must be <app_package>.apk (e.g. com.example.replay.apk)"`
-		SdkPath        string     `help:"Path to Android SDK directory (default: ANDROID_SDK_HOME environment variable)"`
+		SdkPath        string     `help:"Path to Android SDK directory (default: ANDROID_SDK_ROOT environment variable)"`
 		LoopCount      int        `help:"_The number of times to loop the trace. (experimental)"`
 		CommandFilterFlags
 		CaptureFileFlags

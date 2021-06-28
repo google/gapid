@@ -345,7 +345,7 @@ public class Settings {
       return;
     }
 
-    String[] sdkVars = { "ANDROID_HOME", "ANDROID_SDK_HOME", "ANDROID_ROOT", "ANDROID_SDK_ROOT" };
+    String[] sdkVars = { "ANDROID_HOME", "ANDROID_ROOT", "ANDROID_SDK_ROOT" };
     for (String sdkVar : sdkVars) {
       File adb = findAdbInSdk(System.getenv(sdkVar));
       if (adb != null) {
