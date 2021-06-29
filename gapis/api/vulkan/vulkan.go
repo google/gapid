@@ -455,24 +455,26 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 
 			// Handle draw commands grouping.
 			cmdName := cb.CommandReferences().Get(uint32(i)).Type().String()
-			isDrawCmd := strings.HasPrefix(cmdName, "cmd_vkCmdDraw") || strings.HasPrefix(cmdName, "cmd_vkCmdDispatch") || strings.HasPrefix(cmdName, "cmd_vkCmdClearAttachments")
+			isDrawGroupEndCmd := strings.HasPrefix(cmdName, "cmd_vkCmdDraw") || strings.HasPrefix(cmdName, "cmd_vkCmdDispatch") ||
+				strings.HasPrefix(cmdName, "cmd_vkCmdClearAttachments") || strings.HasPrefix(cmdName, "cmd_vkCmdBeginQuery") ||
+				strings.HasPrefix(cmdName, "cmd_vkCmdEndQuery")
 			isStateSettingCmd := (strings.HasPrefix(cmdName, "cmd_vkCmdSet") || strings.HasPrefix(cmdName, "cmd_vkCmdPush") ||
 				strings.HasPrefix(cmdName, "cmd_vkCmdBind")) && !strings.HasPrefix(cmdName, "cmd_vkCmdSetEvent")
 			if isStateSettingCmd && canStartDrawGrouping {
 				pushMarker("State Setting Group",
 					drawGroupMarker, i, append(api.SubCmdIdx{}, idx...))
 				canStartDrawGrouping = false
-			} else if isDrawCmd && canStartDrawGrouping {
+			} else if isDrawGroupEndCmd && canStartDrawGrouping {
 				// When a draw group starts with a draw command it will only contain that single command
 				groupName := strings.TrimPrefix(cmdName, "cmd_vkCmd")
 				pushMarker(groupName, drawGroupMarker, i, append(api.SubCmdIdx{}, idx...))
 				popMarker(drawGroupMarker, uint64(i))
-			} else if isDrawCmd && !canStartDrawGrouping {
+			} else if isDrawGroupEndCmd && !canStartDrawGrouping {
 				// When a group is complete with state setting cmds followed by a draw command, override the group name.
 				groupName := strings.TrimPrefix(cmdName, "cmd_vkCmd")
 				popMarkerWithNewGroupName(drawGroupMarker, uint64(i), groupName)
 				canStartDrawGrouping = true
-			} else if !isStateSettingCmd && !isDrawCmd && !canStartDrawGrouping {
+			} else if !isStateSettingCmd && !isDrawGroupEndCmd && !canStartDrawGrouping {
 				// Handle an edge case where a group of state setting commands are
 				// followed by something other than a drawing command.
 				popMarker(invalidDrawGroupMarker, uint64(i-1))
