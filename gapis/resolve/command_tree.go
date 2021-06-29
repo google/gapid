@@ -579,7 +579,7 @@ func getOpenGLAliasRepresentation(indices []uint64, item *api.CmdIDGroup, cmdTre
 		parentIndices := indices[:len(indices)-1]
 		pItem, _ := cmdTree.index(parentIndices)
 		parentItem := pItem.(api.CmdIDGroup)
-		aliasRepId = parentItem.Range.Last()
+		aliasRepId = parentItem.Range.Last() - 1
 	} else if strings.HasPrefix(item.Name, "glDraw") || strings.HasPrefix(item.Name, "glMultiDraw") || strings.HasPrefix(item.Name, "glClear(") {
 		pindices := indices[:len(indices)-1]
 		pItem, _ := cmdTree.index(pindices)
@@ -588,7 +588,7 @@ func getOpenGLAliasRepresentation(indices []uint64, item *api.CmdIDGroup, cmdTre
 				grandparentIndices := indices[:len(indices)-2]
 				gpItem, _ := cmdTree.index(grandparentIndices)
 				if gparentItem, ok := gpItem.(api.CmdIDGroup); ok {
-					aliasRepId = gparentItem.Range.Last()
+					aliasRepId = gparentItem.Range.Last() - 1
 				}
 			}
 		}

@@ -65,6 +65,12 @@ func pipelinesFor(ctx context.Context, o interface{}, p *path.Pipelines, r *path
 			return nil, err
 		}
 
+		representation := o.Representation.Indices
+		p := o.Commands.Capture.Command(representation[0], representation[1:]...).Pipelines()
+		if pl, err := pipelinesFor(ctx, cmds[representation[0]], p, r); err != api.ErrPipelineNotAvailable {
+			return pl, err
+		}
+
 		if len(o.Commands.From) != len(o.Commands.To) {
 			return nil, log.Errf(ctx, nil, "Subcommand indices must be the same length")
 		}

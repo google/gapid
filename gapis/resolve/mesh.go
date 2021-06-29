@@ -51,6 +51,12 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveCo
 			return nil, err
 		}
 
+		representation := o.Representation.Indices
+		p := o.Commands.Capture.Command(representation[0], representation[1:]...).Mesh(p.Options)
+		if mesh, err := meshFor(ctx, cmds[representation[0]], p, r); err != api.ErrMeshNotAvailable {
+			return mesh, err
+		}
+
 		if len(o.Commands.From) != len(o.Commands.To) {
 			return nil, log.Errf(ctx, nil, "Subcommand indices must be the same length")
 		}
