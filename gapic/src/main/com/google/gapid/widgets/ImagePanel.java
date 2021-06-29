@@ -61,6 +61,7 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.MouseAdapter;
+import com.google.gapid.util.OS;
 import com.google.gapid.util.Range;
 
 import org.eclipse.swt.SWT;
@@ -720,14 +721,21 @@ public class ImagePanel extends Composite implements Loadable {
 
     public ImageComponent(Composite parent, Theme theme, Consumer<AlphaWarning> showAlphaWarning,
         boolean naturallyFlipped) {
-      super(parent, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.NO_BACKGROUND);
+      // TODO: b/189382432 Enable scroll bars when compatibility issue between SWT & macOS resolves.
+      super(parent, OS.isMac ? SWT.NO_BACKGROUND :
+          SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.NO_BACKGROUND);
+      if (OS.isMac) {
+        scrollbars = new ScrollBar[0];
+      } else {
+        disableAutoHideScrollbars(this);
+        scrollbars = new ScrollBar[] { getHorizontalBar(), getVerticalBar() };
+        getHorizontalBar().addListener(SWT.Selection, e -> onScroll());
+        getVerticalBar().addListener(SWT.Selection, e -> onScroll());
+      }
       setLayout(new FillLayout(SWT.VERTICAL));
-      disableAutoHideScrollbars(this);
 
       this.showAlphaWarning = showAlphaWarning;
       this.naturallyFlipped = naturallyFlipped;
-
-      scrollbars = new ScrollBar[] { getHorizontalBar(), getVerticalBar() };
 
       data = new SceneData();
       data.flipped = naturallyFlipped;
@@ -763,8 +771,6 @@ public class ImagePanel extends Composite implements Loadable {
       canvas = new ScenePanel<SceneData>(this, new ImageScene());
       canvas.setSceneData(data.copy());
 
-      getHorizontalBar().addListener(SWT.Selection, e -> onScroll());
-      getVerticalBar().addListener(SWT.Selection, e -> onScroll());
       canvas.addListener(SWT.Resize, e -> onResize());
 
       // Prevent the mouse wheel from scrolling the view.
