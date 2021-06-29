@@ -685,3 +685,39 @@ only the (transformed) capture commands needs to be replayed.
 If the user-requested replay does require to transform the initial commands,
 then the pre-warm replay is abandonned and a new replay of the transformed
 inital commands and then the transformed capture commands are executed.
+
+## Life of a perfetto trace (system profile trace)
+
+AGI heavily relies on the [perfetto](https://perfetto.dev/) system profiling
+framework to obtain, store and process profiling data. Hence we often refer to
+system profile traces as "perfetto traces". If you have to deal with perfetto
+code, make sure to refer to the [perfetto
+documentation](https://perfetto.dev/docs/).
+
+Perfetto is built into Android (since Android 9 Pie). In general, to take a
+perfetto trace, you can use the `perfetto` command-line tool on the device. See
+perfetto's web interface at https://ui.perfetto.dev/ and click on "Recording
+command" to see an example of how the `perfetto` command-line tool can be used
+to obtain a profiling trace.
+
+To take a trace, AGI may use either the `perfetto` command-line tool, or
+perfetto's client interface. See e.g.
+`gapis/perfetto/android/trace.go:Capture()` for how a capture is started on
+Android. To see an example of AGI using perfetto's command line interface, see
+`core/os/android/adb/perfetto.go:StartPerfettoTrace()`. Alternatively, AGI may
+interacts via perfetto's client interface by talking to the `traced` deamon
+running on the device. This deamon listens to the `/dev/socket/traced_consumer`,
+and AGI connects directly to this socket. The related AGI code is under
+`gapis/perfetto/client/`.
+
+One specificity of GPU profiling is that some of the perfetto data producers are
+inside GPU drivers, and they need to be started before a trace with these GPU
+data sources can be taken. To start these GPU-specific perfetto data producers,
+AGI has a small `agi_launch_producer` utility (see source in
+`cmd/launch_producer/`). On Android, AGI extracts this utiliy from its own APK
+and invokes it, such that the relevant GPU data producers are started (see
+`gapidapk/gapidapk.go:EnsurePerfettoProducerLaunched()`).
+
+Once a perfetto trace has been collected, AGI uses perfetto's [trace
+processor](https://perfetto.dev/docs/analysis/trace-processor) to retrieve
+profiling data using SQL queries.
