@@ -706,8 +706,6 @@ public class TracerDialog {
         boolean isPerfetto = isPerfetto(config);
         SettingsProto.Trace.DurationOrBuilder dur = isPerfetto ?
             trace.getProfileDurationOrBuilder() : trace.getGfxDurationOrBuilder();
-        getShell().setText(
-            isPerfetto ? Messages.CAPTURE_TRACE_PERFETTO : Messages.CAPTURE_TRACE_GRAPHICS);
         withoutBuffering.setEnabled(!isPerfetto);
         withoutBuffering.setSelection(!isPerfetto && trace.getWithoutBuffering());
         loadValidationLayer.setEnabled(!isPerfetto && getSelectedDevice().isAndroid());
