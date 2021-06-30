@@ -435,7 +435,7 @@ public class GraphicsTraceView extends Composite
       Textures(View.Textures, "Textures", DefaultPosition.Center, TextureList::new),
       Geometry(View.Geometry, "Geometry", DefaultPosition.Center, GeometryView::new),
       Shaders(View.Shaders, "Shaders", DefaultPosition.Center, ShaderList::new),
-      Performance(View.Performance, "Performance(Experimental)", DefaultPosition.Center, PerformanceView::new),
+      Performance(View.Performance, "Performance", DefaultPosition.Center, PerformanceView::new),
       Report(View.Report, "Report", DefaultPosition.Center, ReportView::new),
       Log(View.Log, "Log", DefaultPosition.Center, (p, m, w) -> new LogView(p, w)),
 
