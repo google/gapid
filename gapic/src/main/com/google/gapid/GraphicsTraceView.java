@@ -208,9 +208,6 @@ public class GraphicsTraceView extends Composite
   private MenuManager createViewTabsMenu() {
     MenuManager manager = new MenuManager("&Tabs");
     for (MainTab.Type type : MainTab.Type.values()) {
-      if (type == MainTab.Type.Performance && !Experimental.enablePerfTab(models.settings)) {
-        continue;
-      }
       // TODO(b/188416598): Improve report quality and enable the report tab again.
       if (type == MainTab.Type.Report && !Experimental.enableUnstableFeatures(models.settings)) {
         continue;
@@ -266,9 +263,6 @@ public class GraphicsTraceView extends Composite
       SettingsProto.TabsOrBuilder sTabs = models.settings.tabs();
       Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
       allTabs.removeAll(hidden);
-      if (!Experimental.enablePerfTab(models.settings)) {
-        allTabs.remove(MainTab.Type.Performance);
-      }
       // TODO(b/188416598): Improve report quality and enable the report tab again.
       if (!Experimental.enableUnstableFeatures(models.settings)) {
         allTabs.remove(MainTab.Type.Report);

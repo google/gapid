@@ -29,15 +29,6 @@ public class Experimental {
       "Enable all experimental features. " +
       "Features turned on by this flag are all unstable and under development.");
 
-  public static final Flag<Boolean> enableVulkanTracing = Flags.value("experimental-enable-vulkan-tracing",
-      false, "Enable the experimental feature Vulkan tracing.");
-
-  public static final Flag<Boolean> enableAngleTracing = Flags.value("experimental-enable-angle-tracing",
-      false, "Enable the experimental feature Angle tracing.");
-
-  public static final Flag<Boolean> enablePerfTab = Flags.value("experimental-enable-perf-tab",
-      false, "Enable the experimental feature Counter performance tab.");
-
   public static final Flag<Boolean> enableProfileExperiments = Flags.value("experimental-enable-profile-experiments",
       false, "Enable Profile Experiments.");
 
@@ -48,32 +39,11 @@ public class Experimental {
     List<String> args = Lists.newArrayList();
     // The --experimental-enable-all flag is a sugar flag from the UI. GAPIS knows nothing about it.
     if (enableAllExperimentalFeatures || Experimental.enableAll.get()) {
-      // All --experimental-enable-<feature-name> flags must be added here.
-      args.add("--experimental-enable-vulkan-tracing");
-      args.add("--experimental-enable-angle-tracing");
-      args.add("--experimental-enable-perf-tab");
+      // None at this time.
     } else {
-      if (Experimental.enableVulkanTracing.get()) {
-        args.add("--experimental-enable-vulkan-tracing");
-      }
-      if (Experimental.enableAngleTracing.get()) {
-        args.add("--experimental-enable-angle-tracing");
-      }
-      if (Experimental.enablePerfTab.get()) {
-        args.add("--experimental-enable-perf-tab");
-      }
+      // None at this time.
     }
     return args;
-  }
-
-  public static boolean enableVulkanTracing(Settings settings) {
-    return settings.preferences().getEnableAllExperimentalFeatures() ||
-        enableAll.get() || enableVulkanTracing.get();
-  }
-
-  public static boolean enablePerfTab(Settings settings) {
-    return settings.preferences().getEnableAllExperimentalFeatures() ||
-        enableAll.get() || enablePerfTab.get();
   }
 
   public static boolean enableProfileExperiments(Settings settings) {
