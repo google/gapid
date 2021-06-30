@@ -14,16 +14,10 @@
 
 package flags
 
-import (
-	"flag"
-)
-
 // Experimental features are hidden behind the flags. All experimental feature flags must:
 //     1) be named --experimental-enable-<feature-name>
 //     2) be by default false/off
 //     3) be removed once the feature is no longer in experiment
 var (
-	EnableVulkanTracing = flag.Bool("experimental-enable-vulkan-tracing", false, "Enable the experimental feature Vulkan tracing.")
-	EnableAngleTracing  = flag.Bool("experimental-enable-angle-tracing", false, "Enable the experimental feature ANGLE tracing.")
-	EnablePerfTab       = flag.Bool("experimental-enable-perf-tab", false, "Enable the experimental feature Counter performance tab.")
+// None at this time.
 )
