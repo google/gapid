@@ -137,9 +137,9 @@ func (t sshShellTarget) String() string {
 func (b binding) Status(ctx context.Context) bind.Status {
 	_, err := b.Shell("echo", "Hello World").Call(ctx)
 	if err != nil {
-		return bind.Status_Offline
+		return bind.Offline
 	}
-	return bind.Status_Online
+	return bind.Online
 }
 
 func (b binding) IsLocal(ctx context.Context) (bool, error) {

@@ -22,6 +22,15 @@ import (
 	"github.com/google/gapid/gapis/perfetto"
 )
 
+type Status int
+
+const (
+	UnknownStatus Status = iota
+	Offline
+	Online
+	Unauthorized
+)
+
 // Device represents a connection to an attached device.
 type Device interface {
 	// Instance returns the instance information for this device.

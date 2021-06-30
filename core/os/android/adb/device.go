@@ -372,13 +372,13 @@ func parseDevices(ctx context.Context, out string) (map[string]bind.Status, erro
 			serial, status := fields[0], fields[1]
 			switch status {
 			case "unknown":
-				devices[serial] = bind.Status_Unknown
+				devices[serial] = bind.UnknownStatus
 			case "offline":
-				devices[serial] = bind.Status_Offline
+				devices[serial] = bind.Offline
 			case "device":
-				devices[serial] = bind.Status_Online
+				devices[serial] = bind.Online
 			case "unauthorized":
-				devices[serial] = bind.Status_Unauthorized
+				devices[serial] = bind.Unauthorized
 			default:
 				return nil, log.Errf(ctx, ErrInvalidStatus, "value: %v", status)
 			}

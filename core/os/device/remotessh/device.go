@@ -109,7 +109,7 @@ func newBinding(conn *ssh.Client, conf *Configuration, env *shell.Env) *binding 
 				Serial:        "",
 				Configuration: &device.Configuration{},
 			},
-			LastStatus: bind.Status_Online,
+			LastStatus: bind.Online,
 		},
 	}
 	return b
@@ -250,7 +250,7 @@ func scanDevices(ctx context.Context, configurations []Configuration) error {
 }
 
 func deviceStillConnected(ctx context.Context, d *binding) bool {
-	return d.Status(ctx) == bind.Status_Online
+	return d.Status(ctx) == bind.Online
 }
 
 // getSSHAgent returns a connection to a local SSH agent, if one exists.
