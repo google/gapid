@@ -613,7 +613,7 @@ public class TracerDialog {
           public String getText(Object element) {
             TraceTypeCapabilities ttc = (TraceTypeCapabilities)element;
             switch (ttc.getType()) {
-              case Graphics: return ttc.getApi() + " (Experimental)";
+              case Graphics: return ttc.getApi();
               case Perfetto: return "System Profile";
               default: throw new AssertionError();
             }
