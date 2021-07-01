@@ -73,15 +73,6 @@ public class ImagesModel {
         value ->  FetchedImage.load(client, getReplayDevice(), value.getFramebufferAttachment().getImageInfo()));
   }
 
-  public ListenableFuture<ImageData> getFramebufferImage(CommandIndex command,
-      int attachment, Path.RenderSettings renderSettings, Consumer<Image.Info> onInfo) {
-    Path.Any fbPath = Paths.framebufferAttachmentAfter(command, attachment, renderSettings, PREV_HINTS);
-
-    return MoreFutures.transform(FetchedImage.loadImage(MoreFutures.transformAsync(client.get(fbPath, getReplayDevice()),
-        value -> FetchedImage.load(client, getReplayDevice(), value.getFramebufferAttachment().getImageInfo(), onInfo)), 0, 0),
-        image -> processImage(image, THUMB_SIZE));
-  }
-
   public ListenableFuture<FetchedImage> getResource(Path.ResourceData path) {
     return FetchedImage.load(client, getReplayDevice(), path);
   }

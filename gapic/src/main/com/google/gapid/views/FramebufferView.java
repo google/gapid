@@ -16,27 +16,18 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
-import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
-import static com.google.gapid.util.GeoUtils.right;
-import static com.google.gapid.util.GeoUtils.top;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
-import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
+import static com.google.gapid.widgets.Widgets.createButtonWithImage;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
-import static com.google.gapid.widgets.Widgets.createToolItem;
 import static com.google.gapid.widgets.Widgets.exclusiveSelection;
-import static com.google.gapid.widgets.Widgets.disposeAllChildren;
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 
-import static java.util.Collections.emptyList;
-
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.image.MultiLayerAndLevelImage;
@@ -51,7 +42,6 @@ import com.google.gapid.models.Settings;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
-import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -61,10 +51,8 @@ import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 import com.google.gapid.widgets.Balloon;
-import com.google.gapid.widgets.HorizontalList;
 import com.google.gapid.widgets.ImagePanel;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadingIndicator;
@@ -72,45 +60,42 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.internal.DPIUtil;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
+import org.eclipse.swt.widgets.Widget;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
-import java.util.logging.Level;
 
 /**
  * View that displays the framebuffer at the current selection in an {@link ImagePanel}.
  */
 public class FramebufferView extends Composite
     implements Tab, Capture.Listener, Devices.Listener, CommandStream.Listener, Follower.Listener {
-  private static final Logger LOG = Logger.getLogger(FramebufferView.class.getName());
+  protected static final Logger LOG = Logger.getLogger(FramebufferView.class.getName());
   private static final int MAX_SIZE = 0xffff;
+  protected static final int THUMB_SIZE = DPIUtil.autoScaleUp(42);
 
   private enum RenderSetting {
     RENDER_SHADED(MAX_SIZE, MAX_SIZE, Path.DrawMode.NORMAL),
     RENDER_OVERLAY(MAX_SIZE, MAX_SIZE, Path.DrawMode.WIREFRAME_OVERLAY),
     RENDER_WIREFRAME(MAX_SIZE, MAX_SIZE, Path.DrawMode.WIREFRAME_ALL),
-    RENDER_OVERDRAW(MAX_SIZE, MAX_SIZE, Path.DrawMode.OVERDRAW),
-    RENDER_THUMB(THUMB_SIZE, THUMB_SIZE, Path.DrawMode.NORMAL);
+    RENDER_OVERDRAW(MAX_SIZE, MAX_SIZE, Path.DrawMode.OVERDRAW);
 
     public final int maxWidth;
     public final int maxHeight;
@@ -128,66 +113,28 @@ public class FramebufferView extends Composite
     }
   }
 
-  private final Models models;
-  private final Widgets widgets;
+  protected final Models models;
   private final SingleInFlight rpcController = new SingleInFlight();
+  protected final AttachmentPicker picker;
   protected final ImagePanel imagePanel;
   private RenderSetting renderSettings;
-  private int target = 0;
-  private final AttachmentPicker picker;
-  private final Label pickerLabel;
-  private final Composite splitter;
-
-  private final GridData pickerGridData;
-  private final Button pickerToggle;
-  private boolean showAttachments;
 
   public FramebufferView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
-    this.widgets = widgets;
 
     setLayout(new GridLayout(2, false));
 
-    ToolBar toolBar = createToolBar(widgets.theme);
+    ToolBar toolBar = withLayoutData(createToolBar(widgets.theme),
+        new GridData(SWT.FILL, SWT.FILL, false, true));
+    Composite content = withLayoutData(createComposite(this, new GridLayout(1, false)),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    Composite header = createComposite(this, new GridLayout(2, false));
-
-    splitter = createComposite(this, new GridLayout(1, false));
-
-    picker = new AttachmentPicker(splitter);
-    picker.addContentListener(SWT.MouseDown,
-      e -> picker.selectAttachment(picker.getItemAt(e.x)));
-
-    imagePanel = new ImagePanel(splitter, View.Framebuffer, models.analytics, widgets, true);
-
-    pickerGridData = new GridData(SWT.FILL, SWT.FILL, true, false);
-    showAttachments = models.settings.ui().getFramebufferPicker().getEnabled();
-    pickerGridData.exclude = true;
-    picker.setVisible(false);
-
-    splitter.addListener(SWT.Resize, e -> picker.resize());
-
-    toolBar.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true, 1, 2));
-    header.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-    splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    picker.setLayoutData(pickerGridData);
-    imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-    pickerLabel = withLayoutData(createLabel(header, "Attachment:"),
-      new GridData(SWT.FILL, SWT.CENTER, true, true));
-    pickerToggle = new Button(header, SWT.PUSH);
-    pickerToggle.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
-    pickerToggle.setText(showAttachments ? "Hide Attachments" : "Show Attachments");
-    pickerToggle.addListener(SWT.Selection, e -> {
-      showAttachments = !showAttachments;
-      pickerGridData.exclude = !showAttachments;
-      picker.setVisible(showAttachments);
-      models.settings.writeUi().getFramebufferPickerBuilder().setEnabled(showAttachments);
-      pickerToggle.setText(showAttachments ? "Hide Attachments" : "Show Attachments");
-      splitter.layout();
-    });
-    pickerToggle.setEnabled(false);
+    picker = withLayoutData(new AttachmentPicker(content, widgets, this::updateBuffer),
+        new GridData(SWT.FILL, SWT.TOP, true, false));
+    imagePanel = withLayoutData(
+        new ImagePanel(content, View.Framebuffer, models.analytics, widgets, true),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
 
     imagePanel.createToolbar(toolBar, widgets.theme);
     // Work around for https://bugs.eclipse.org/bugs/show_bug.cgi?id=517480
@@ -250,9 +197,6 @@ public class FramebufferView extends Composite
 
   @Override
   public void reinitialize() {
-    picker.setVisible(false);
-    pickerGridData.exclude = true;
-    pickerToggle.setEnabled(false);
     if (!models.capture.isLoaded()) {
       onCaptureLoadingStart(false);
     } else {
@@ -262,12 +206,8 @@ public class FramebufferView extends Composite
 
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
-    picker.setVisible(false);
-    pickerGridData.exclude = true;
-    pickerToggle.setEnabled(false);
     imagePanel.setImage(null);
     imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
-    target = 0;
     picker.reset();
   }
 
@@ -277,7 +217,6 @@ public class FramebufferView extends Composite
       imagePanel.setImage(null);
       imagePanel.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
-    target = 0;
     picker.reset();
   }
 
@@ -301,27 +240,29 @@ public class FramebufferView extends Composite
     picker.selectAttachment(path.getIndex());
   }
 
-  private void updateRenderTarget(int attachment) {
-    target = attachment;
-    updateBuffer();
-  }
-
   private void loadBuffer() {
     imagePanel.startLoading();
 
-    if (models.commands.getSelectedCommands() == null) {
+    CommandIndex command = models.commands.getSelectedCommands();
+    if (command == null) {
       imagePanel.showMessage(Info, Messages.SELECT_COMMAND);
     } else if (!models.devices.hasReplayDevice()) {
       imagePanel.showMessage(Error, Messages.NO_REPLAY_DEVICE);
     } else if (models.resources.isLoaded()) {
       Rpc.listen(models.resources.loadFramebufferAttachments(),
-          new UiErrorCallback<Service.FramebufferAttachments, Service.FramebufferAttachments, Loadable.Message>(this, LOG) {
+          new UiErrorCallback<Service.FramebufferAttachments, List<Attachment>, Loadable.Message>(this, LOG) {
         @Override
-        protected ResultOrError<Service.FramebufferAttachments, Loadable.Message> onRpcThread(
+        protected ResultOrError<List<Attachment>, Loadable.Message> onRpcThread(
             Rpc.Result<Service.FramebufferAttachments> result) {
           try {
-            return success(result.get());
-          }  catch (DataUnavailableException e) {
+            List<Attachment> attachments = Lists.newArrayList();
+            for (Service.FramebufferAttachment fba : result.get().getAttachmentsList()) {
+              attachments.add(new Attachment(fba.getIndex(), fba.getLabel(), () ->
+                  noAlpha(models.images.getThumbnail(command, fba.getIndex(), THUMB_SIZE,
+                      i -> { /* noop*/ }))));
+            }
+            return success(attachments);
+          } catch (DataUnavailableException e) {
             return error(Loadable.Message.error(e));
           } catch (RpcException e) {
             models.analytics.reportException(e);
@@ -334,29 +275,12 @@ public class FramebufferView extends Composite
         }
 
         @Override
-        protected void onUiThreadSuccess(Service.FramebufferAttachments fbaList) {
-          pickerGridData.exclude = !showAttachments;
-          picker.setVisible(showAttachments);
-          pickerToggle.setEnabled(true);
-
-          if (fbaList.getAttachmentsList().size() <= target) {
-            target = 0;
-          }
-
-          List<Attachment> newAttachments = new ArrayList();
-          for (Service.FramebufferAttachment fba : fbaList.getAttachmentsList()) {
-            newAttachments.add(new Attachment(fba.getIndex(), fba.getType(), fba.getLabel()));
-          }
-
-          picker.setData(newAttachments);
-          picker.selectAttachment(target);
+        protected void onUiThreadSuccess(List<Attachment> attachments) {
+          picker.setAttachments(attachments);
         }
 
         @Override
         protected void onUiThreadError(Loadable.Message message) {
-          pickerGridData.exclude = true;
-          picker.setVisible(false);
-          pickerToggle.setEnabled(false);
           imagePanel.showMessage(message);
         }
       });
@@ -371,7 +295,8 @@ public class FramebufferView extends Composite
       imagePanel.showMessage(Error, Messages.NO_REPLAY_DEVICE);
     } else {
       imagePanel.startLoading();
-      rpcController.start().listen(models.images.getFramebuffer(command, target, renderSettings.getRenderSettings(models.settings)),
+      rpcController.start().listen(models.images.getFramebuffer(
+          command, picker.getSelected(), renderSettings.getRenderSettings(models.settings)),
           new UiErrorCallback<FetchedImage, MultiLayerAndLevelImage, Loadable.Message>(this, LOG) {
         @Override
         protected ResultOrError<MultiLayerAndLevelImage, Loadable.Message> onRpcThread(
@@ -398,42 +323,30 @@ public class FramebufferView extends Composite
     }
   }
 
-  private class Attachment {
+  private static class Attachment {
     public final int index;
-    public final API.FramebufferAttachmentType type;
     public final String label;
+    private final Supplier<ListenableFuture<ImageData>> imageSupplier;
 
-    public LoadableImage image;
+    private LoadableImage image;
 
-    public int width, height;
-
-    public Attachment(int index, API.FramebufferAttachmentType type, String label) {
+    public Attachment(
+        int index, String label, Supplier<ListenableFuture<ImageData>> imageSupplier) {
       this.index = index;
-      this.type = type;
       this.label = label;
+      this.imageSupplier = imageSupplier;
     }
 
-    public void paint(GC gc, Image toDraw, int x, int y, int w, int h, boolean selected) {
-      if (selected) {
-        gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_LIST_SELECTION));
-        gc.drawRectangle(x - 2, y - 2, w + 3, h + 3);
-        gc.drawRectangle(x - 1, y - 1, w + 1, h + 1);
-      } else {
-        gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_WIDGET_BORDER));
-        gc.drawRectangle(x - 1, y - 1, w + 1, h + 1);
+    public Image getImage(
+        Widgets widgets, Widget widget, LoadingIndicator.Repaintable repaintable) {
+      if (image == null) {
+        image = LoadableImage.newBuilder(widgets.loading)
+            .small()
+            .forImageData(imageSupplier)
+            .onErrorShowErrorIcon(widgets.theme)
+            .build(widget, repaintable);
       }
-
-      Rectangle size = toDraw.getBounds();
-      gc.drawImage(toDraw, 0, 0, size.width, size.height,
-          Math.max(x, x + (w - size.width) / 2), Math.max(y, y + (h - size.height) / 2),
-          Math.min(size.width, w), Math.min(size.height, h));
-
-      Point labelSize = gc.stringExtent(label);
-      gc.setForeground(gc.getDevice().getSystemColor(SWT.COLOR_LIST_FOREGROUND));
-      gc.setBackground(gc.getDevice().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-      gc.fillRoundRectangle(x + 4, y + 4, labelSize.x + 4, labelSize.y + 4, 6, 6);
-      gc.drawRoundRectangle(x + 4, y + 4, labelSize.x + 4, labelSize.y + 4, 6, 6);
-      gc.drawString(label, x + 6, y + 6);
+      return image.getImage();
     }
 
     public void dispose() {
@@ -443,129 +356,178 @@ public class FramebufferView extends Composite
     }
   }
 
-  private class AttachmentPicker extends HorizontalList implements LoadingIndicator.Repaintable {
-    private static final int MIN_SIZE = 80;
+  private static class AttachmentPicker extends Composite implements LoadingIndicator.Repaintable {
+    private final Color COLOR_LIST_BACKGROUND =
+        getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND);
+    private final Color COLOR_LIST_SELECTION =
+        getDisplay().getSystemColor(SWT.COLOR_LIST_SELECTION);
+    private final Color COLOR_LIST_SELECTION_TEXT =
+        getDisplay().getSystemColor(SWT.COLOR_LIST_SELECTION_TEXT);
 
-    private List<Attachment> attachments = emptyList();
-    private int selectedIndex = -1;
+    private final Widgets widgets;
+    private final Runnable update;
 
-    public AttachmentPicker(Composite parent) {
+    private final Label image;
+    private final Label label;
+    private List<Attachment> attachments = Collections.emptyList();
+    private int selected;
+
+    public AttachmentPicker(Composite parent, Widgets widgets, Runnable update) {
       super(parent, SWT.BORDER);
+      this.widgets = widgets;
+      this.update = update;
+
+      setLayout(new GridLayout(3, false));
+      setBackground(COLOR_LIST_BACKGROUND);
+
+      image = withLayoutData(createLabel(this, ""),
+          new GridData(SWT.LEFT, SWT.CENTER, false, false));
+      label = withLayoutData(createLabel(this, ""),
+          new GridData(SWT.FILL, SWT.CENTER, true, false));
+      withLayoutData(
+          createButtonWithImage(this, widgets.theme.arrowDropDownLight(), e -> showPopup()),
+          new GridData(SWT.RIGHT, SWT.FILL, false, true));
+
+      image.setBackground(COLOR_LIST_BACKGROUND);
+      label.setBackground(COLOR_LIST_BACKGROUND);
+
+      addListener(SWT.MouseDown, e -> showPopup());
+      image.addListener(SWT.MouseDown, e -> showPopup());
+      label.addListener(SWT.MouseDown, e -> showPopup());
+      addListener(SWT.Dispose, e -> disposeAttachments());
     }
 
-    @Override
-    protected void paint(GC gc, int index, int x, int y, int w, int h) {
-      Attachment attachment = attachments.get(index);
-      if (attachment.image == null) {
-        load(attachment, index);
-      }
-
-      Image toDraw;
-      if (attachment.image != null) {
-        toDraw = attachment.image.getImage();
-      } else {
-        toDraw = widgets.loading.getCurrentFrame();
-        widgets.loading.scheduleForRedraw(this);
-      }
-      attachment.paint(gc, toDraw, x, y, w, h, selectedIndex == index);
+    public int getSelected() {
+      return selected;
     }
 
-    public void resize() {
-      if (!attachments.isEmpty()) {
-        int maxAttachmentHeight = 0;
-        for (Attachment attachment : attachments) {
-          if (attachment.height > maxAttachmentHeight) {
-            maxAttachmentHeight = attachment.height;
-          }
-        }
-
-        int pickerHeight = Math.min(maxAttachmentHeight, (int)(splitter.getBounds().height * 0.2));
-
-        // Note: we will delay repainting until the layout call
-        for (int i = 0; i < attachments.size(); i++) {
-          Attachment attachment = attachments.get(i);
-
-          if (attachment.height > pickerHeight) {
-            float aspectRatio = attachment.width / (float)attachment.height;
-            int imageWidth = (int)(aspectRatio * pickerHeight);
-            setItemSize(i, imageWidth, pickerHeight, false);
-          } else {
-            setItemSize(i, attachment.width, attachment.height, false);
-          }
-        }
-
-        pickerGridData.heightHint = pickerHeight;
-        splitter.layout();
-      }
-    }
-
-    public void load(Attachment attachment, int index) {
-      CommandIndex command = models.commands.getSelectedCommands();
-      if (command == null) {
-        return;
-      }
-
-      attachment.image = LoadableImage.newBuilder(widgets.loading)
-          .forImageData(noAlpha(models.images.getThumbnail(command, attachment.index, THUMB_SIZE,
-              info -> scheduleIfNotDisposed(this, () -> setItemSize(index,
-                      Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getWidth())),
-                      Math.max(MIN_SIZE, DPIUtil.autoScaleDown(info.getHeight())),
-                      true)))))
-          .onErrorShowErrorIcon(widgets.theme)
-          .build(this, this);
-
-      attachment.image.addListener(new LoadableImage.Listener() {
-        @Override
-        public void onLoaded(boolean success) {
-          Rectangle bounds = attachment.image.getImage().getBounds();
-          attachment.width = Math.max(MIN_SIZE, bounds.width);
-          attachment.height = Math.max(MIN_SIZE, bounds.height);
-          setItemSize(index, attachment.width, attachment.height, false);
-          resize();
-        }
-      });
-    }
-
-    public void setData(List<Attachment> newAttachments) {
-      reset();
-      attachments = new ArrayList(newAttachments);
-      setItemCount(attachments.size(), THUMB_SIZE, THUMB_SIZE);
-    }
-
-    public void reset() {
+    private void disposeAttachments() {
       for (Attachment attachment : attachments) {
         attachment.dispose();
       }
+    }
+
+    private void showPopup() {
+      Rectangle size = getClientArea();
+      PopupState state = new PopupState();
+      state.balloon = Balloon.createAndShow(this, shell -> {
+        Composite contents = createComposite(shell, new GridLayout(2, false));
+        contents.setBackground(COLOR_LIST_BACKGROUND);
+
+        Listener clickListener = e -> {
+          if (state.attachment != null) {
+            selectAttachment(state.attachment.index);
+            state.balloon.close();
+            e.doit = false;
+          }
+        };
+
+        for (Attachment attachment : attachments) {
+          Label img = withLayoutData(createLabel(contents, ""),
+              new GridData(SWT.LEFT, SWT.CENTER, false, false));
+          Label txt = withLayoutData(createLabel(contents, attachment.label),
+              new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+          img.setImage(attachment.getImage(widgets, contents, () -> {
+            img.setImage(attachment.getImage(widgets, contents, this));
+            img.requestLayout();
+            shell.setSize(shell.computeSize(size.width, SWT.DEFAULT));
+          }));
+
+          img.setBackground(COLOR_LIST_BACKGROUND);
+          txt.setBackground(COLOR_LIST_BACKGROUND);
+
+          Listener listener = e -> {
+            if (state.hoveredImage != img || state.hoveredLabel != txt) {
+              if (state.hoveredImage != null) {
+                state.hoveredImage.setBackground(COLOR_LIST_BACKGROUND);
+              }
+              if (state.hoveredLabel != null) {
+                state.hoveredLabel.setBackground(COLOR_LIST_BACKGROUND);
+                state.hoveredLabel.setForeground(null);
+              }
+
+              img.setBackground(COLOR_LIST_SELECTION);
+              txt.setBackground(COLOR_LIST_SELECTION);
+              txt.setForeground(COLOR_LIST_SELECTION_TEXT);
+
+	      state.attachment = attachment;
+              state.hoveredLabel = txt;
+              state.hoveredImage = img;
+              contents.redraw();
+            }
+          };
+          img.addListener(SWT.MouseMove, listener);
+          img.addListener(SWT.MouseDown, clickListener);
+          txt.addListener(SWT.MouseMove, listener);
+          txt.addListener(SWT.MouseDown, clickListener);
+        }
+
+        contents.addListener(SWT.Paint, e -> {
+          if (state.hoveredLabel != null && state.hoveredImage != null) {
+            int w = contents.getClientArea().width;
+            Rectangle txtBounds = state.hoveredLabel.getBounds();
+            Rectangle imgBounds = state.hoveredImage.getBounds();
+            int y = Math.min(txtBounds.y, imgBounds.y);
+            int h = Math.max(txtBounds.y + txtBounds.height, imgBounds.y + imgBounds.height) - y;
+            e.gc.setBackground(COLOR_LIST_SELECTION);
+            e.gc.fillRectangle(0, y, w, h);
+          }
+        });
+        contents.addListener(SWT.MouseDown, clickListener);
+        shell.addListener(SWT.MouseDown, clickListener);
+      }, new Point(0, size.height), size.width, SWT.DEFAULT);
+    }
+
+    public void reset() {
+      disposeAttachments();
+
       attachments = Collections.emptyList();
-      selectedIndex = -1;
-      setItemCount(0, THUMB_SIZE, THUMB_SIZE);
-      pickerLabel.setText("Attachment:");
-      resize();
+      selected = 0;
+      updateUi();
+    }
+
+    public void setAttachments(List<Attachment> attachments) {
+      disposeAttachments();
+
+      this.attachments = attachments;
+      this.selected = attachments.isEmpty() ? 0 : Math.min(selected, attachments.size() - 1);
+      updateUi();
+      update.run();
     }
 
     public void selectAttachment(int index) {
-      if (index >= 0 && index < attachments.size()) {
-        selectedIndex = index;
-        Attachment a = attachments.get(index);
-        switch(a.type) {
-          case OutputColor:
-            pickerLabel.setText("Attachment: Color (" + a.index + ")");
-            break;
+      this.selected = attachments.isEmpty() ? 0 : Math.min(index, attachments.size() - 1);
+      updateUi();
+      update.run();
+    }
 
-          case OutputDepth:
-            pickerLabel.setText("Attachment: Depth (" + a.index + ")");
-            break;
+    private void updateUi() {
+      if (attachments.isEmpty()) {
+        image.setImage(null);
+        label.setText("");
+      } else {
+        Attachment attachment = attachments.get(selected);
 
-          case InputColor:
-            pickerLabel.setText("Attachment: Input Color (" + a.index + ")");
-            break;
+        image.setImage(attachment.getImage(widgets, this, this));
+        label.setText(attachment.label);
+        image.requestLayout();
+        label.requestLayout();
+      }
+    }
 
-          case InputDepth:
-            pickerLabel.setText("Attachment: InputDepth (" + a.index + ")");
-            break;
-        }
-        updateRenderTarget(a.index);
-        repaint();
+    @Override
+    public void repaint() {
+      updateUi();
+    }
+
+    private static class PopupState {
+      public Balloon balloon;
+      public Attachment attachment;
+      public Label hoveredImage;
+      public Label hoveredLabel;
+
+      public PopupState() {
       }
     }
   }
