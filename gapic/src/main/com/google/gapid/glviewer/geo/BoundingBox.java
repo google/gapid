@@ -15,8 +15,6 @@
  */
 package com.google.gapid.glviewer.geo;
 
-import static com.google.gapid.glviewer.vec.MatD.makeScaleTranslationZupToYup;
-
 import com.google.gapid.glviewer.vec.MatD;
 import com.google.gapid.glviewer.vec.VecD;
 

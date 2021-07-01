@@ -82,6 +82,7 @@ public class GeometryView extends Composite
   private static final Logger LOG = Logger.getLogger(GeometryView.class.getName());
 
   private final Models models;
+  private final Widgets widgets;
   protected final LoadablePanel<ScenePanel<GeometryScene.Data>> loading;
   protected final ScenePanel<GeometryScene.Data> canvas;
   private final Label statusBar;
@@ -91,12 +92,14 @@ public class GeometryView extends Composite
   private ToolItem originalModelItem, facetedModelItem;
   private Geometry.DisplayMode displayMode = Geometry.DisplayMode.TRIANGLES;
   private Geometry.DisplayMode desiredDisplayMode = Geometry.DisplayMode.TRIANGLES;
+  private ToolItem orientationItem;
   private ToolItem renderAsTriangles, renderAsLines, renderAsPoints;
   private ToolItem configureItem, saveItem;
 
   public GeometryView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
+    this.widgets = widgets;
 
     setLayout(new GridLayout(2, false));
 
@@ -133,25 +136,25 @@ public class GeometryView extends Composite
 
   private ToolBar createToolbar(Theme theme) {
     ToolBar bar = new ToolBar(this, SWT.VERTICAL | SWT.FLAT);
-    createBaloonToolItem(bar, theme.yUp(), shell -> {
+    orientationItem = createBaloonToolItem(bar, theme.yUp(), shell -> {
       Composite c = createComposite(shell, new FillLayout(SWT.VERTICAL), SWT.BORDER);
       ToolBar b = new ToolBar(c, SWT.HORIZONTAL | SWT.FLAT);
       exclusiveSelection(
         createToggleToolItem(b, theme.yUp(), e -> {
           models.analytics.postInteraction(View.Geometry, ClientAction.YUp);
-          setSceneData(data.withGeometry(new Geometry(data.geometry.model, false, false), displayMode));
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, Geometry.Orientation.Y_UP), displayMode));
         }, "Select Y-Up Axis"),
         createToggleToolItem(b, theme.yDown(), e -> {
           models.analytics.postInteraction(View.Geometry, ClientAction.YDown);
-          setSceneData(data.withGeometry(new Geometry(data.geometry.model, false, true), displayMode));
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, Geometry.Orientation.Y_DOWN), displayMode));
         }, "Select Y-Down Axis"),
         createToggleToolItem(b, theme.zUp(), e -> {
           models.analytics.postInteraction(View.Geometry, ClientAction.ZUp);
-          setSceneData(data.withGeometry(new Geometry(data.geometry.model, true, false), displayMode));
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, Geometry.Orientation.Z_UP), displayMode));
         }, "Select Z-Up Axis"),
         createToggleToolItem(b, theme.zDown(), e -> {
           models.analytics.postInteraction(View.Geometry, ClientAction.ZDown);
-          setSceneData(data.withGeometry(new Geometry(data.geometry.model, true, true), displayMode));
+          setSceneData(data.withGeometry(new Geometry(data.geometry.model, Geometry.Orientation.Z_DOWN), displayMode));
         }, "Select Z-Down Axis")
       );
     }, "Choose up axis");
@@ -239,6 +242,23 @@ public class GeometryView extends Composite
       }
     }, "Save model as OBJ");
     return bar;
+  }
+
+  private void updateOrientationIcon() {
+    switch (data.geometry.orientation) {
+      case Y_UP:
+        orientationItem.setImage(widgets.theme.yUp());
+        break;
+      case Y_DOWN:
+        orientationItem.setImage(widgets.theme.yDown());
+        break;
+      case Z_UP:
+        orientationItem.setImage(widgets.theme.zUp());
+        break;
+      case Z_DOWN:
+        orientationItem.setImage(widgets.theme.zDown());
+        break;
+    }
   }
 
   @Override
@@ -365,7 +385,7 @@ public class GeometryView extends Composite
     renderAsPoints.setSelection(newDisplayMode == Geometry.DisplayMode.POINTS);
     displayMode = newDisplayMode;
 
-    setSceneData(data.withGeometry(new Geometry(model, data.geometry.zUp, data.geometry.flipUpAxis), displayMode));
+    setSceneData(data.withGeometry(new Geometry(model, data.geometry.orientation), displayMode));
     statusBar.setText(model.getStatusMessage());
   }
 
@@ -377,6 +397,7 @@ public class GeometryView extends Composite
     this.data = data;
     camera.setEmitter(data.geometry.getEmitter());
     canvas.setSceneData(data);
+    updateOrientationIcon();
   }
 
   private void checkOpenGLAndShowMessage(Loadable.MessageType type, String text) {

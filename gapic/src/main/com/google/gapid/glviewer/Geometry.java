@@ -31,18 +31,17 @@ import org.lwjgl.opengl.GL11;
  * point cloud, wire mesh, or solid.
  */
 public class Geometry {
-  public static final Geometry NULL = new Geometry(null, false, false);
+  public static final Geometry NULL = new Geometry(null, Orientation.Y_UP);
 
   public final Model model;
-  public final boolean zUp;
-  public final boolean flipUpAxis;
+  public final Orientation orientation;
   public final MatD modelMatrix;
 
-  public Geometry(Model model, boolean zUp, boolean flipUpAxis) {
+  public Geometry(Model model, Orientation orientation) {
     this.model = model;
-    this.zUp = zUp;
-    this.flipUpAxis = flipUpAxis;
-    this.modelMatrix = getBounds().getCenteringMatrix(Constants.SCENE_SCALE_FACTOR, zUp, flipUpAxis);
+    this.orientation = orientation;
+    this.modelMatrix = getBounds().getCenteringMatrix(
+        Constants.SCENE_SCALE_FACTOR, orientation.isZ(), orientation.isDown());
   }
 
   public BoundingBox getBounds() {
@@ -180,6 +179,18 @@ public class Geometry {
 
     DisplayMode(int glPolygonMode) {
       this.glPolygonMode = glPolygonMode;
+    }
+  }
+
+  public static enum Orientation {
+    Y_UP, Y_DOWN, Z_UP, Z_DOWN;
+
+    public boolean isDown() {
+      return this == Y_DOWN || this == Z_DOWN;
+    }
+
+    public boolean isZ() {
+      return this == Z_UP || this == Z_DOWN;
     }
   }
 }
