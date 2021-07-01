@@ -280,7 +280,6 @@ public class CommandTree extends Composite
       // The command tree's GPU performances are calculated from client's side.
       setUpStateForColumnAdding();
       addColumn("GPU Time", false);
-      addColumn("Wall Time", true);
     }
 
     private void addColumn(String title, boolean wallTime) {
