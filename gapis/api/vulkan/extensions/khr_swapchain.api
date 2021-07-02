@@ -119,18 +119,6 @@ cmd VkResult vkCreateSwapchainKHR(
   if pCreateInfo == null { vkErrorNullPointer("VkSwapchainCreateInfoKHR") }
   create_info := pCreateInfo[0]
 
-  if create_info.oldSwapchain in Swapchains {
-    old := Swapchains[create_info.oldSwapchain]
-    old.Retired = true
-    // Delete images from the oldSwapchain that is being retired, unless these
-    // images are acquired, in which case they may still be used and presented.
-    for _, i, img in old.SwapchainImages {
-      if !(old.ImagesAcquired[i]) {
-        delete(Images, img.VulkanHandle)
-      }
-    }
-  }
-
   queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
 
   swapchainObject := new!SwapchainObject(Device: device,
@@ -205,7 +193,7 @@ sub bool imageUsedByAnotherSwapchain(
     for _, _, s in Swapchains {
       if (s != null) && (s != swapchainObject) {
         for _, _, i in s.SwapchainImages {
-          if i.VulkanHandle == imageObject.VulkanHandle {
+          if i == imageObject {
             found.b = true
           }
         }
@@ -224,28 +212,12 @@ cmd void vkDestroySwapchainKHR(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
   swapObject := Swapchains[swapchain]
-  for _, _, img in swapObject.SwapchainImages {
-     if !(swapObject.Retired) {
-       // This swapchain has not been retired, so we are sure none of its images
-       // handle may have been reused: we can safely remove them from Images.
-       delete(Images, img.VulkanHandle)
-     } else {
-       // This is a retired swapchain: its images handle may have been reused
-       // for either another swapchain's image, or a regular image created by
-       // vkCreateImage. If the handle has been reused for a fresh image
-       // obtained with vkCreateImage, then Images[handle] will refer to a
-       // different object than img, so we must make sure to retrieve the image
-       // object from Images again.
-       activeImg := Images[img.VulkanHandle]
-       // If this image is not a swapchain image, it means the handle was reused
-       // for a fresh image obtained via vkCreateImage, so we must not remove
-       // it from Images. If this image is a swapchain image, only remove it
-       // from Images if it is not used by another swapchain (which would have
-       // been created by retiring the swapchain that is being destroyed).
-       if activeImg.IsSwapchainImage && !imageUsedByAnotherSwapchain(activeImg, swapObject) {
-         delete(Images, activeImg.VulkanHandle)
-       }
-     }
+  for _ , _ , v in swapObject.SwapchainImages {
+    // Some images may be reused between swapchains via the oldSwapchain
+    // argument of vkCreateSwapchainKHR
+    if !imageUsedByAnotherSwapchain(v, swapObject) {
+      delete(Images, v.VulkanHandle)
+    }
   }
   delete(Swapchains, swapchain)
 }
@@ -434,11 +406,6 @@ cmd VkResult vkQueuePresentKHR(
     _ = swapchain.ImagesAcquired[imageIndices[i]]
     swapchain.ImagesAcquired[imageIndices[i]] = false
     recordPresentSwapchainImage(swapchains[i], imageIndices[i])
-    if swapchain.Retired {
-      // This image was acquired at the time its swapchain was retired, so it
-      // was not removed from Images, do it now.
-      delete(Images, image.VulkanHandle)
-    }
   }
   fence
   if (info.pResults != null) {
@@ -473,7 +440,6 @@ cmd VkResult vkQueuePresentKHR(
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
   @unused ref!ExtHDRMetadata            HDRMetadata
   VkSwapchainCreateFlagsKHR             Flags
-  bool                                  Retired
 }
 
 extern void recordAcquireNextImage(VkSwapchainKHR swapchain, u32 imageIndex)
