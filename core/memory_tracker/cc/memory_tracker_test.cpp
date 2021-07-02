@@ -331,31 +331,6 @@ TEST_F(SignalBlockerTest, BlockerRecursiveSafe) {
 
 using WrapperTest = TestFixture;
 
-// Call the member function: DoTask() without spin lock guard.
-TEST_F(WrapperTest, WithoutSpinLockGuardedWrapper) {
-  Init();
-  uint32_t counter = 0u;
-  RunInTwoThreads(
-      // Initiated first
-      [this, &counter]() {
-        DoTask([this, &counter]() {
-          m_.unlock();
-          usleep(5000);
-          counter++;
-          EXPECT_EQ(2u, counter);
-        });
-      },
-      // Initiated secondly
-      [this, &counter]() {
-        DoTask([this, &counter]() {
-          m_.lock();
-          counter++;
-          EXPECT_EQ(1u, counter);
-        });
-      });
-  EXPECT_EQ(2u, counter);
-}
-
 // Call the member function: DoTask() with spin lock guarded.
 TEST_F(WrapperTest, WithSpinLockGuardedWrapper) {
   Init();
