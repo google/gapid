@@ -865,6 +865,20 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceLineRasterizationFeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceLineRasterizationFeaturesEXT(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT,
+				pNext,
+				d.PhysicalDeviceLineRasterizationFeaturesEXT().RectangularLines(),
+				d.PhysicalDeviceLineRasterizationFeaturesEXT().BresenhamLines(),
+				d.PhysicalDeviceLineRasterizationFeaturesEXT().SmoothLines(),
+				d.PhysicalDeviceLineRasterizationFeaturesEXT().StippledRectangularLines(),
+				d.PhysicalDeviceLineRasterizationFeaturesEXT().StippledBresenhamLines(),
+				d.PhysicalDeviceLineRasterizationFeaturesEXT().StippledSmoothLines(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),

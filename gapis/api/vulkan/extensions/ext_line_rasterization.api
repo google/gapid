@@ -64,7 +64,7 @@ enum VkLineRasterizationModeEXT: u32 {
 @extension("VK_EXT_line_rasterization")
 class VkPhysicalDeviceLineRasterizationFeaturesEXT {
   VkStructureType sType
-  const void*     pNext
+  void*           pNext
   VkBool32        rectangularLines
   VkBool32        bresenhamLines
   VkBool32        smoothLines
