@@ -1,5 +1,36 @@
 # Android GPU Inspector Developer Documentation
 
+## Build instructions
+
+See [BUILDING.md](BUILDING.md).
+
+## Setup to run presubmit tests locally
+
+Before creating a pull-request, check that your code can compile and that the
+presubmit tests pass.
+
+To be able to run the presubmit tests locally, install the following:
+
+```
+# Buildifier
+go get github.com/bazelbuild/buildtools/buildifier
+
+# Buildozer
+go get github.com/bazelbuild/buildtools/buildozer
+
+# Clang format 6.0
+## On Debian-based Linux (see https://releases.llvm.org/download.html for binaries)
+apt-get install clang-format-6.0
+## Make sure to set the CLANG_FORMAT environment variable, e.g. in bash:
+export CLANG_FORMAT=clang-format-6.0
+```
+
+With the above setup, you can run presubmit tests locally with:
+
+```
+./kokoro/presubmit/presubmit.sh
+```
+
 ## Setup Golang development
 
 This project contains Golang code, but it does not have the file hierarchy of
