@@ -41,7 +41,6 @@ enum VkPipelineCacheHeaderVersion : u32 {
   VK_PIPELINE_CACHE_HEADER_VERSION_ONE = 1,
 }
 
-@lastUnused(-11)
 /// Error and return codes
 enum VkResult : u32 {
   // Return codes for successful operation execution (positive values)
