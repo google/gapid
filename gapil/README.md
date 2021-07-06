@@ -247,3 +247,70 @@ Annotations can take the form:
 Annotations are for use by the templates when using the apic [`template`]
 (../cmd/apic/template.go) or [`validate`]
 (../cmd/apic/validate.go) commands, but otherwise have no effect.
+In the `*.tmpl` template files, look for `GetAnnotation` to see where and how
+annotations are used.
+
+Some of the important annotations are documented below.
+
+### `@custom`
+
+For each API command, a `Mutate()` function is generated. For the ones that are
+annotated with `@custom`, you must define you own mutate functions. The
+generated mutate functions is still available as `mutate()` (lowercase), and the
+custom `Mutate()` function is often a wrapper around the generated `mutate()`.
+
+For example:
+
+```
+@custom
+cmd void vkFooBar() {
+  ...
+}
+```
+
+This function must have a custom `Mutate()` function defined, typically in
+`gapis/api/vulkan/custom_replay.go`, e.g.:
+
+```
+func (a *VkFooBar) Mutate(ctx context.Context, ...) error {
+  log.D(ctx, "This is the custom implem of vkFooBar's Mutate function!")
+  // just wrap the generated mutate() function:
+  return a.mutate(ctx, ...)
+}
+```
+
+### `@override`
+
+The `@override` annotation lets you define your own capture-time implementation
+of an API command.
+
+At capture time, AGI shadows the graphics API state by intercepting all
+commands. Each interception function calls the driver implementation of the
+command in order to trigger side effects and get results. When a command is
+annotated with `@override`, then you must redefine the driver implementation of
+the command, often (but not always) with a wrapper around the real driver
+implementation.
+
+For example:
+
+```
+@override
+cmd VkResult vkFooBar(VkDevice device, ...) {
+  ...
+}
+```
+
+This will interception functions that eventually call `SpyOverride_vkFooBar()`,
+typically in `gapii/cc/vulkan_extras.cpp`:
+
+```
+uint32_t VulkanSpy::SpyOverride_vkFooBar(..., VkDevice device, ...) {
+  GAPID_DEBUG("This is the capture-time implementation of vkFooBar");
+  // just call the underlying driver implementation:
+  return mImports.mVkDeviceFunctions[device].vkFooBar(...);
+}
+```
+
+Note that this function does not need to reimplement API state tracking, as this
+is already done in the generated function that calls the SpyOverride version of
+the command.
