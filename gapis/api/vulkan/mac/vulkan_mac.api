@@ -22,7 +22,6 @@
 // ----------------------------------------------------------------------------
 
 @extension("VK_MVK_macos_surface")
-@reserved_flags
 type VkFlags VkMacOSSurfaceCreateFlagsMVK
 
 @platform("VK_USE_PLATFORM_MACOS_MVK")

@@ -24,7 +24,6 @@
 @internal type size HWND
 
 @extension("VK_KHR_win32_surface")
-@reserved_flags
 type VkFlags VkWin32SurfaceCreateFlagsKHR
 
 @platform("VK_USE_PLATFORM_WIN32_KHR")

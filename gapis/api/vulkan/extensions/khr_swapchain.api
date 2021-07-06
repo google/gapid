@@ -61,7 +61,6 @@ bitfield VkSwapchainCreateFlagBitsKHR {
 }
 
 @extension("VK_KHR_swapchain")
-@reserved_flags
 type VkFlags VkSwapchainCreateFlagsKHR
 
 /////////////

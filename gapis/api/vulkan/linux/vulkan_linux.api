@@ -28,7 +28,6 @@
 // ----------------------------------------------------------------------------
 
 @extension("VK_KHR_xlib_surface")
-@reserved_flags
 type VkFlags VkXlibSurfaceCreateFlagsKHR
 
 @extension("VK_KHR_xlib_surface") @forwarddecl class Display {}
@@ -88,7 +87,6 @@ cmd VkBool32 vkGetPhysicalDeviceXlibPresentationSupportKHR(
 // ----------------------------------------------------------------------------
 
 @extension("VK_KHR_xcb_surface")
-@reserved_flags
 type VkFlags VkXcbSurfaceCreateFlagsKHR
 
 @extension("VK_KHR_xcb_surface") @forwarddecl class xcb_connection_t {}
@@ -148,7 +146,6 @@ cmd VkBool32 vkGetPhysicalDeviceXcbPresentationSupportKHR(
 // ----------------------------------------------------------------------------
 
 @extension("VK_KHR_wayland_surface")
-@reserved_flags
 type VkFlags VkWaylandSurfaceCreateFlagsKHR
 
 @extension("VK_KHR_wayland_surface") @forwarddecl class wl_display {}

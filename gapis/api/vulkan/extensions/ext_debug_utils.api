@@ -55,11 +55,9 @@
 ///////////
 
 @extension("VK_EXT_debug_utils")
-@reserved_flags
 type VkFlags VkDebugUtilsMessengerCallbackDataFlagsEXT
 
 @extension("VK_EXT_debug_utils")
-@reserved_flags
 type VkFlags VkDebugUtilsMessengerCreateFlagsEXT
 
 @extension("VK_EXT_debug_utils")
@@ -72,7 +70,6 @@ enum VkDebugUtilsMessageSeverityFlagBitsEXT: u32 {
 }
 
 @extension("VK_EXT_debug_utils")
-@reserved_flags
 type VkFlags VkDebugUtilsMessageSeverityFlagsEXT
 
 @extension("VK_EXT_debug_utils")
@@ -84,7 +81,6 @@ enum VkDebugUtilsMessageTypeFlagBitsEXT: u32 {
 }
 
 @extension("VK_EXT_debug_utils")
-@reserved_flags
 type VkFlags VkDebugUtilsMessageTypeFlagsEXT
 
 /////////////

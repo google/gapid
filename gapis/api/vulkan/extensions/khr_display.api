@@ -65,11 +65,9 @@ bitfield VkDisplayPlaneAlphaFlagBitsKHR {
 type VkFlags VkDisplayPlaneAlphaFlagsKHR
 
 @extension("VK_KHR_display")
-@reserved_flags
 type VkFlags VkDisplayModeCreateFlagsKHR
 
 @extension("VK_KHR_display")
-@reserved_flags
 type VkFlags VkDisplaySurfaceCreateFlagsKHR
 
 /////////////

@@ -48,7 +48,6 @@ enum VkPipelineCreationFeedbackFlagBitsEXT: u32 {
     VK_PIPELINE_CREATION_FEEDBACK_FLAG_BITS_MAX_ENUM_EXT = 0x7FFFFFFF
 }
 
-@reserved_flags
 type VkFlags VkPipelineCreationFeedbackFlagsEXT
 
 @extension("VK_EXT_pipeline_creation_feedback")

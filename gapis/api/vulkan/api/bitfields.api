@@ -36,7 +36,6 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
-@reserved_flags
 type VkFlags VkInstanceCreateFlags
 
 /// Format capability flags
@@ -163,7 +162,6 @@ bitfield VkMemoryHeapFlagBits {
 }
 type VkFlags VkMemoryHeapFlags
 
-@reserved_flags
 type VkFlags VkDeviceCreateFlags
 
 @unused
@@ -194,7 +192,6 @@ bitfield VkPipelineStageFlagBits {
 }
 type VkFlags VkPipelineStageFlags
 
-@reserved_flags
 type VkFlags VkMemoryMapFlags
 
 bitfield VkImageAspectFlagBits {
@@ -232,13 +229,10 @@ bitfield VkFenceCreateFlagBits {
 }
 type VkFlags VkFenceCreateFlags
 
-@reserved_flags
 type VkFlags VkSemaphoreCreateFlags
 
-@reserved_flags
 type VkFlags VkEventCreateFlags
 
-@reserved_flags
 type VkFlags VkQueryPoolCreateFlags
 
 @unused
@@ -290,16 +284,12 @@ bitfield VkBufferUsageFlagBits {
 }
 type VkFlags VkBufferUsageFlags
 
-@reserved_flags
 type VkFlags VkBufferViewCreateFlags
 
-@reserved_flags
 type VkFlags VkImageViewCreateFlags
 
-@reserved_flags
 type VkFlags VkShaderModuleCreateFlags
 
-@reserved_flags
 type VkFlags VkPipelineCacheCreateFlags
 
 @unused
@@ -313,7 +303,6 @@ bitfield VkPipelineCreateFlagBits {
 }
 type VkFlags VkPipelineCreateFlags
 
-@reserved_flags
 type VkFlags VkPipelineShaderStageCreateFlags
 
 
@@ -329,19 +318,14 @@ bitfield VkShaderStageFlagBits {
 }
 type VkFlags VkShaderStageFlags
 
-@reserved_flags
 type VkFlags VkPipelineVertexInputStateCreateFlags
 
-@reserved_flags
 type VkFlags VkPipelineInputAssemblyStateCreateFlags
 
-@reserved_flags
 type VkFlags VkPipelineTessellationStateCreateFlags
 
-@reserved_flags
 type VkFlags VkPipelineViewportStateCreateFlags
 
-@reserved_flags
 type VkFlags VkPipelineRasterizationStateCreateFlags
 
 @unused
@@ -353,11 +337,8 @@ bitfield VkCullModeFlagBits {
 }
 type VkFlags VkCullModeFlags
 
-@reserved_flags
 type VkFlags VkPipelineMultisampleStateCreateFlags
-@reserved_flags
 type VkFlags VkPipelineDepthStencilStateCreateFlags
-@reserved_flags
 type VkFlags VkPipelineColorBlendStateCreateFlags
 
 @unused
@@ -369,16 +350,12 @@ bitfield VkColorComponentFlagBits {
 }
 type VkFlags VkColorComponentFlags
 
-@reserved_flags
 type VkFlags VkPipelineDynamicStateCreateFlags
 
-@reserved_flags
 type VkFlags VkPipelineLayoutCreateFlags
 
-@reserved_flags
 type VkFlags VkSamplerCreateFlags
 
-@reserved_flags
 type VkFlags VkDescriptorSetLayoutCreateFlags
 
 @unused
@@ -387,13 +364,10 @@ bitfield VkDescriptorPoolCreateFlagBits {
 }
 type VkFlags VkDescriptorPoolCreateFlags
 
-@reserved_flags
 type VkFlags VkDescriptorPoolResetFlags
 
-@reserved_flags
 type VkFlags VkFramebufferCreateFlags
 
-@reserved_flags
 type VkFlags VkRenderPassCreateFlags
 
 @unused
@@ -402,7 +376,6 @@ bitfield VkAttachmentDescriptionFlagBits {
 }
 type VkFlags VkAttachmentDescriptionFlags
 
-@reserved_flags
 type VkFlags VkSubpassDescriptionFlags
 
 @unused
@@ -578,10 +551,8 @@ bitfield VkSubgroupFeatureFlagBits {
 }
 type VkFlags VkSubgroupFeatureFlags
 
-@reserved_flags
 type VkFlags VkCommandPoolTrimFlags // reserved for future use
 
-@reserved_flags
 type VkFlags VkDescriptorUpdateTemplateCreateFlags // reserved for future use
 
 @unused
