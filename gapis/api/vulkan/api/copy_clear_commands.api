@@ -177,7 +177,6 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
         }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdCopyBuffer(
@@ -358,7 +357,6 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   trackVkCmdCopyImage(args)
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdCopyImage(
@@ -529,7 +527,6 @@ sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   trackVkCmdBlitImage(args)
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdBlitImage(
@@ -735,7 +732,6 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdCopyBufferToImage(
@@ -788,7 +784,6 @@ sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdCopyImageToBuffer(
@@ -849,7 +844,6 @@ sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdUpdateBuffer(
@@ -901,7 +895,6 @@ sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdFillBuffer(
@@ -950,7 +943,6 @@ sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdClearColorImage(
@@ -1007,7 +999,6 @@ sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args)
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdClearDepthStencilImage(
@@ -1058,7 +1049,6 @@ sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
   useRenderPass()
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdClearAttachments(
@@ -1125,7 +1115,6 @@ sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdResolveImage(

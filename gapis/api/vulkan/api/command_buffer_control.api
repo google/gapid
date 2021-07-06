@@ -377,7 +377,6 @@ sub void AddCommand(
   onCommandAdded(commandBuffer)
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @custom
 cmd VkResult vkAllocateCommandBuffers(
@@ -419,7 +418,6 @@ cmd VkResult vkAllocateCommandBuffers(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @custom
 cmd void vkFreeCommandBuffers(
@@ -450,7 +448,6 @@ cmd void vkFreeCommandBuffers(
 extern void recordBeginCommandBuffer(VkCommandBuffer commandBuffer)
 extern void recordEndCommandBuffer(VkCommandBuffer commandBuffer)
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkBeginCommandBuffer(
     VkCommandBuffer                 commandBuffer,
@@ -513,7 +510,6 @@ cmd VkResult vkBeginCommandBuffer(
   return ?
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkEndCommandBuffer(
     VkCommandBuffer commandBuffer) {
@@ -530,7 +526,6 @@ cmd VkResult vkEndCommandBuffer(
   return ?
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkResetCommandBuffer(
     VkCommandBuffer           commandBuffer,

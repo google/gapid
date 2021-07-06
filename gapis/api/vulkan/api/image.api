@@ -162,7 +162,6 @@
   map!(u32, ref!VkSubresourceLayout) LevelLayouts
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @override
 cmd VkResult vkCreateImage(
@@ -310,7 +309,6 @@ cmd VkResult vkCreateImage(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyImage(
     VkDevice            device,
@@ -453,7 +451,6 @@ cmd VkResult vkBindImageMemory(
   @unused ref!SamplerYcbcrConversionObject YcbcrConversion
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateImageView(
     VkDevice                     device,
@@ -528,7 +525,6 @@ cmd VkResult vkCreateImageView(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyImageView(
     VkDevice            device,
@@ -623,7 +619,6 @@ cmd void vkDestroyImageView(
   @unused ref!SamplerYcbcrConversionObject YcbcrConversion
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateSampler(
     VkDevice                   device,
@@ -677,7 +672,6 @@ cmd VkResult vkCreateSampler(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroySampler(
     VkDevice            device,
@@ -956,7 +950,6 @@ sub void CreateSamplerYcbcrConversion(
 }
 
 @since("1.1")
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateSamplerYcbcrConversion(
     VkDevice                                    device,
@@ -979,7 +972,6 @@ sub void DestroySamplerYcbcrConversion(
 }
 
 @since("1.1")
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroySamplerYcbcrConversion(
     VkDevice                                    device,

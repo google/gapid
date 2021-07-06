@@ -54,7 +54,6 @@
 }
 
 @custom
-@threadSafety("system")
 @override
 cmd VkResult vkCreateInstance(
     const VkInstanceCreateInfo*  pCreateInfo,
@@ -72,7 +71,6 @@ cmd VkResult vkCreateInstance(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkInstance")
 @override
 @custom

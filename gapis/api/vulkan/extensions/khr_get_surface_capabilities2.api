@@ -65,7 +65,6 @@ class VkSurfaceFormat2KHR {
 // Commands //
 //////////////
 
-@threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 @extension("VK_KHR_get_surface_capabilities2")
 cmd VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
@@ -95,7 +94,6 @@ cmd VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
 
 }
 
-@threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 @extension("VK_KHR_get_surface_capabilities2")
 cmd VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(

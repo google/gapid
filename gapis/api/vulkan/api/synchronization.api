@@ -47,7 +47,6 @@
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateFence(
     VkDevice                     device,
@@ -85,7 +84,6 @@ cmd VkResult vkCreateFence(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyFence(
     VkDevice                     device,
@@ -95,7 +93,6 @@ cmd void vkDestroyFence(
   delete(Fences, fence)
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkResetFences(
     VkDevice       device,
@@ -112,7 +109,6 @@ cmd VkResult vkResetFences(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @custom
 cmd VkResult vkGetFenceStatus(
@@ -133,7 +129,6 @@ cmd VkResult vkGetFenceStatus(
   return res
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
 @alive
@@ -176,7 +171,6 @@ cmd VkResult vkWaitForFences(
   @unused VkExternalSemaphoreHandleTypeFlags ExternalHandleTypeFlags
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateSemaphore(
     VkDevice                     device,
@@ -213,7 +207,6 @@ cmd VkResult vkCreateSemaphore(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroySemaphore(
     VkDevice                     device,
@@ -225,7 +218,6 @@ cmd void vkDestroySemaphore(
 
 // Partial implementation
 @since("1.2")
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkSignalSemaphore(
     VkDevice                                    device,
@@ -235,7 +227,6 @@ cmd VkResult vkSignalSemaphore(
 
 // Partial implementation
 @since("1.2")
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkWaitSemaphores(
     VkDevice                                    device,
@@ -246,7 +237,6 @@ cmd VkResult vkWaitSemaphores(
 
 // Partial implementation
 @since("1.2")
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkGetSemaphoreCounterValue(
     VkDevice                                    device,
@@ -267,7 +257,6 @@ cmd VkResult vkGetSemaphoreCounterValue(
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateEvent(
     VkDevice                     device,
@@ -301,7 +290,6 @@ cmd VkResult vkCreateEvent(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyEvent(
     VkDevice                     device,
@@ -310,7 +298,6 @@ cmd void vkDestroyEvent(
   delete(Events, event)
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @custom
 cmd VkResult vkGetEventStatus(
@@ -321,7 +308,6 @@ cmd VkResult vkGetEventStatus(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkSetEvent(
     VkDevice device,
@@ -342,7 +328,6 @@ cmd VkResult vkSetEvent(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkResetEvent(
     VkDevice device,
@@ -368,7 +353,6 @@ sub void dovkCmdSetEvent(ref!vkCmdSetEventArgs event) {
   evt.SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
@@ -402,7 +386,6 @@ sub void dovkCmdResetEvent(ref!vkCmdResetEventArgs event) {
   evt.SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
@@ -452,7 +435,6 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdWaitEvents(
     VkCommandBuffer              commandBuffer,
@@ -582,7 +564,6 @@ sub void handleImageMemoryBarriersPNext(const VkImageMemoryBarrier* pBarriers, u
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdPipelineBarrier(
     VkCommandBuffer              commandBuffer,

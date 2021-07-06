@@ -149,7 +149,6 @@ class VkDebugUtilsMessengerCallbackDataEXT {
 // Commands //
 //////////////
 
-@threadSafety("app")
 @extension("VK_EXT_debug_utils")
 @indirect("VkDevice")
 @override
@@ -163,7 +162,6 @@ cmd VkResult vkSetDebugUtilsObjectNameEXT(
   return ?
 }
 
-@threadSafety("app")
 @extension("VK_EXT_debug_utils")
 @indirect("VkDevice")
 @override
@@ -186,7 +184,6 @@ vkCmdBeginDebugUtilsLabelEXTArgs {
 sub void dovkCmdBeginDebugUtilsLabelEXT(ref!vkCmdBeginDebugUtilsLabelEXTArgs args) {
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_EXT_debug_utils")
 @override
@@ -218,7 +215,6 @@ vkCmdEndDebugUtilsLabelEXTArgs {}
 sub void dovkCmdEndDebugUtilsLabelEXT(ref!vkCmdEndDebugUtilsLabelEXTArgs args) {
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_EXT_debug_utils")
 @override
@@ -245,7 +241,6 @@ vkCmdInsertDebugUtilsLabelEXTArgs {
 sub void dovkCmdInsertDebugUtilsLabelEXT(ref!vkCmdInsertDebugUtilsLabelEXTArgs args) {
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_EXT_debug_utils")
 @override
@@ -270,7 +265,6 @@ cmd void vkCmdInsertDebugUtilsLabelEXT(
   AddCommand(commandBuffer, cmd_vkCmdInsertDebugUtilsLabelEXT, mapPos)
 }
 
-@threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 @extension("VK_EXT_debug_utils")
 @override
@@ -281,7 +275,6 @@ cmd void vkQueueBeginDebugUtilsLabelEXT(
 {
 }
 
-@threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 @extension("VK_EXT_debug_utils")
 @override
@@ -291,7 +284,6 @@ cmd void vkQueueEndDebugUtilsLabelEXT(
 {
 }
 
-@threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 @extension("VK_EXT_debug_utils")
 @override
@@ -302,7 +294,6 @@ cmd void vkQueueInsertDebugUtilsLabelEXT(
 {
 }
 
-@threadSafety("app")
 @indirect("VkInstance")
 @extension("VK_EXT_debug_utils")
 @override
@@ -316,7 +307,6 @@ cmd VkResult vkCreateDebugUtilsMessengerEXT(
   return ?
 }
 
-@threadSafety("app")
 @indirect("VkInstance")
 @extension("VK_EXT_debug_utils")
 @override
@@ -328,7 +318,6 @@ cmd void vkDestroyDebugUtilsMessengerEXT(
 {
 }
 
-@threadSafety("app")
 @indirect("VkInstance")
 @extension("VK_EXT_debug_utils")
 @override

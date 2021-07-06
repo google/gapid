@@ -107,7 +107,6 @@ class VkImportAndroidHardwareBufferInfoANDROID {
 
 @platform("VK_USE_PLATFORM_ANDROID_KHR")
 @extension("VK_ANDROID_external_memory_android_hardware_buffer")
-@threadSafety("system")
 @indirect("VkDevice")
 @no_replay
 cmd VkResult vkGetAndroidHardwareBufferPropertiesANDROID(
@@ -156,7 +155,6 @@ cmd VkResult vkGetAndroidHardwareBufferPropertiesANDROID(
 
 @platform("VK_USE_PLATFORM_ANDROID_KHR")
 @extension("VK_ANDROID_external_memory_android_hardware_buffer")
-@threadSafety("system")
 @indirect("VkDevice")
 @no_replay
 cmd VkResult vkGetMemoryAndroidHardwareBufferANDROID(

@@ -56,7 +56,6 @@
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateDescriptorSetLayout(
     VkDevice                               device,
@@ -113,7 +112,6 @@ cmd VkResult vkCreateDescriptorSetLayout(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyDescriptorSetLayout(
     VkDevice                     device,
@@ -137,7 +135,6 @@ cmd void vkDestroyDescriptorSetLayout(
   @unused ref!VulkanDebugMarkerInfo                      DebugInfo
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateDescriptorPool(
     VkDevice                          device,
@@ -177,7 +174,6 @@ cmd VkResult vkCreateDescriptorPool(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyDescriptorPool(
     VkDevice                     device,
@@ -194,7 +190,6 @@ cmd void vkDestroyDescriptorPool(
   }
 }
 
-@threadSafety("app")
 @indirect("VkDevice")
 cmd VkResult vkResetDescriptorPool(
     VkDevice                   device,
@@ -252,7 +247,6 @@ cmd VkResult vkResetDescriptorPool(
   map!(VkCommandBuffer, bool)           CommandBufferUsers
 }
 
-@threadSafety("app")
 @indirect("VkDevice")
 cmd VkResult vkAllocateDescriptorSets(
     VkDevice                           device,
@@ -836,7 +830,6 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
   updateDescriptorBufferBindingOffsets(args)
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdBindDescriptorSets(

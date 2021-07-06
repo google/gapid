@@ -48,7 +48,6 @@
   @unused ref!VulkanDebugMarkerInfo                DebugInfo
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
 cmd VkResult vkCreatePipelineLayout(
@@ -81,7 +80,6 @@ cmd VkResult vkCreatePipelineLayout(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyPipelineLayout(
     VkDevice                     device,
@@ -781,7 +779,6 @@ cmd VkResult vkCreateComputePipelines(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyPipeline(
     VkDevice                     device,
@@ -967,7 +964,6 @@ sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdBindPipeline(
@@ -998,7 +994,6 @@ sub void dovkCmdSetViewport(ref!vkCmdSetViewportArgs args) {
       }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetViewport(
@@ -1036,7 +1031,6 @@ sub void dovkCmdSetScissor(ref!vkCmdSetScissorArgs args) {
       }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetScissor(
@@ -1070,7 +1064,6 @@ sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
   ldps.LineWidth = args.LineWidth
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetLineWidth(
@@ -1099,7 +1092,6 @@ sub void dovkCmdSetDepthBias(ref!vkCmdSetDepthBiasArgs args) {
   dyn.DepthBiasSlopeFactor = args.DepthBiasSlopeFactor
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetDepthBias(
@@ -1136,7 +1128,6 @@ sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
   dyn.BlendConstants[3] = args.A
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetBlendConstants(
@@ -1167,7 +1158,6 @@ sub void dovkCmdSetDepthBounds(ref!vkCmdSetDepthBoundsArgs args) {
   dyn.MaxDepthBounds = args.MaxDepthBounds
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetDepthBounds(
@@ -1201,7 +1191,6 @@ sub void dovkCmdSetStencilCompareMask(ref!vkCmdSetStencilCompareMaskArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetStencilCompareMask(
@@ -1236,7 +1225,6 @@ sub void dovkCmdSetStencilWriteMask(ref!vkCmdSetStencilWriteMaskArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetStencilWriteMask(
@@ -1271,7 +1259,6 @@ sub void dovkCmdSetStencilReference(ref!vkCmdSetStencilReferenceArgs args) {
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetStencilReference(

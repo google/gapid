@@ -59,7 +59,6 @@
   ref!QueuedSparseBinds  SparseBinds
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkGetDeviceQueue(
     VkDevice device,
@@ -82,7 +81,6 @@ cmd void vkGetDeviceQueue(
   pQueue[0] = id
 }
 
-@threadSafety("app")
 @indirect("VkQueue", "VkDevice")
 @submission
 cmd VkResult vkQueueSubmit(
@@ -192,7 +190,6 @@ cmd VkResult vkQueueSubmit(
 }
 
 
-@threadSafety("system")
 @indirect("VkQueue", "VkDevice")
 @threadsafe
 @alive

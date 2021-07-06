@@ -44,7 +44,6 @@ sub void dovkCmdDrawIndexedIndirectCountAMD(ref!vkCmdDrawIndexedIndirectCountAMD
   }
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
 @threadsafe
@@ -88,7 +87,6 @@ cmd void vkCmdDrawIndirectCountAMD(
   u32          Stride
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @executed_draw
 @threadsafe

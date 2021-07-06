@@ -79,7 +79,6 @@ class VkDebugMarkerMarkerInfoEXT {
 // Commands //
 //////////////
 
-@threadSafety("app")
 @extension("VK_EXT_debug_marker")
 @extension("VK_EXT_debug_report")
 @indirect("VkDevice")
@@ -94,7 +93,6 @@ cmd VkResult vkDebugMarkerSetObjectTagEXT(
   return ?
 }
 
-@threadSafety("app")
 @extension("VK_EXT_debug_marker")
 @extension("VK_EXT_debug_report")
 @indirect("VkDevice")
@@ -118,7 +116,6 @@ vkCmdDebugMarkerBeginEXTArgs {
 sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_EXT_debug_marker")
 @extension("VK_EXT_debug_report")
@@ -153,7 +150,6 @@ vkCmdDebugMarkerEndEXTArgs {}
 sub void dovkCmdDebugMarkerEndEXT(ref!vkCmdDebugMarkerEndEXTArgs draw) {
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_EXT_debug_marker")
 @extension("VK_EXT_debug_report")
@@ -183,7 +179,6 @@ vkCmdDebugMarkerInsertEXTArgs {
 sub void dovkCmdDebugMarkerInsertEXT(ref!vkCmdDebugMarkerInsertEXTArgs draw) {
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_EXT_debug_marker")
 @extension("VK_EXT_debug_report")

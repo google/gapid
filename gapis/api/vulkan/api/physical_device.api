@@ -78,7 +78,6 @@
   map!(VkPhysicalDevice, map!(VkFormat, VkFormatProperties)) PhyDevToFormatProperties
 }
 
-@threadSafety("system")
 @indirect("VkInstance")
 cmd VkResult vkEnumeratePhysicalDevices(
     VkInstance        instance,

@@ -60,7 +60,6 @@ sub void registerFramebufferUser(ref!ImageViewObject view, VkFramebuffer vkFb, u
   view.FramebufferUsers[vkFb][attachment] = true
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateFramebuffer(
     VkDevice                       device,
@@ -109,7 +108,6 @@ cmd VkResult vkCreateFramebuffer(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyFramebuffer(
     VkDevice                     device,
@@ -144,7 +142,6 @@ cmd void vkDestroyFramebuffer(
   @unused ref!InputAttachmentAspectInfo      InputAttachmentAspectInfo
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateRenderPass(
     VkDevice                      device,
@@ -237,7 +234,6 @@ cmd VkResult vkCreateRenderPass(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkDestroyRenderPass(
     VkDevice                     device,
@@ -320,7 +316,6 @@ sub void RecordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
 }
 
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdBeginRenderPass(
     VkCommandBuffer              commandBuffer,
@@ -452,7 +447,6 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
   ldi.InRenderPass = false
 }
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {

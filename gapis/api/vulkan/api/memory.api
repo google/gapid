@@ -71,7 +71,6 @@
   VkBuffer Buffer
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @override
 cmd VkResult vkAllocateMemory(
@@ -144,7 +143,6 @@ cmd VkResult vkAllocateMemory(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 cmd void vkFreeMemory(
     VkDevice                     device,
@@ -162,7 +160,6 @@ cmd void vkFreeMemory(
   }
 }
 
-@threadSafety("app")
 @indirect("VkDevice")
 cmd VkResult vkMapMemory(
     VkDevice         device,
@@ -196,7 +193,6 @@ cmd VkResult vkMapMemory(
   return ?
 }
 
-@threadSafety("app")
 @indirect("VkDevice")
 cmd void vkUnmapMemory(
     VkDevice       device,

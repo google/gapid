@@ -124,7 +124,6 @@ sub void dovkCmdSetLineStippleEXT(ref!vkCmdSetLineStippleEXTArgs args) {
 }
 
 @extension("VK_EXT_line_rasterization")
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
 cmd void vkCmdSetLineStippleEXT(

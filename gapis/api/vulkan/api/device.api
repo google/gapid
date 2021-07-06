@@ -85,7 +85,6 @@ cmd PFN_vkVoidFunction vkGetDeviceProcAddr(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")
 @override
 @custom
@@ -112,7 +111,6 @@ cmd VkResult vkCreateDevice(
   return ?
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @override
 @custom
@@ -139,7 +137,6 @@ cmd void vkDestroyDevice(
   delete(Devices, device)
 }
 
-@threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
 @alive

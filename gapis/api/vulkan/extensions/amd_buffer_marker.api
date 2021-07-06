@@ -48,7 +48,6 @@
 // Commands //
 //////////////
 
-@threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @extension("VK_AMD_buffer_marker")
 @override
