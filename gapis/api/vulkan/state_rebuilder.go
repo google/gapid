@@ -763,6 +763,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceProtectedMemoryFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceProtectedMemoryFeatures(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES, // sType
+				pNext, // pNext
+				d.PhysicalDeviceProtectedMemoryFeatures().ProtectedMemory(),
+			),
+		).Ptr())
+	}
 	if !d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
 			NewVkPhysicalDeviceScalarBlockLayoutFeaturesEXT(

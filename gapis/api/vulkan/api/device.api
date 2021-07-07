@@ -58,6 +58,7 @@
   @unused ref!VariablePointerFeatures VariablePointerFeatures
   @unused ref!HalfPrecisionStorageFeatures HalfPrecisionStorageFeatures
   @unused ref!SamplerYcbcrConversionFeatures SamplerYcbcrConversionFeatures
+  @unused ref!PhysicalDeviceProtectedMemoryFeatures PhysicalDeviceProtectedMemoryFeatures
   @unused ref!PhysicalDeviceScalarBlockLayoutFeaturesEXT PhysicalDeviceScalarBlockLayoutFeaturesEXT
 
   @unused ref!Vk8BitStorageFeatures Vk8BitStorageFeatures
@@ -180,6 +181,11 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           ext := as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
           object.SamplerYcbcrConversionFeatures = new!SamplerYcbcrConversionFeatures(
             SamplerYcbcrConversion: ext.samplerYcbcrConversion)
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
+          ext := as!VkPhysicalDeviceProtectedMemoryFeatures*(next.Ptr)[0]
+          object.PhysicalDeviceProtectedMemoryFeatures = new!PhysicalDeviceProtectedMemoryFeatures(
+            ProtectedMemory: ext.protectedMemory)
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
           ext := as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0]
@@ -358,4 +364,8 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
 
 @internal class SamplerYcbcrConversionFeatures {
   VkBool32        SamplerYcbcrConversion
+}
+
+@internal class PhysicalDeviceProtectedMemoryFeatures {
+  VkBool32        ProtectedMemory
 }
