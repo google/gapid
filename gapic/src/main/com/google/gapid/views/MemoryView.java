@@ -143,10 +143,10 @@ public class MemoryView extends Composite
 
     loading = LoadablePanel.create(this, widgets, panel -> createStandardTabFolder(panel));
     folder = loading.getContents();
-    blockPanel = new BlockMemoryPanel(folder);
     structPanel = new StructMemoryPanel(folder);
-    createStandardTabItem(folder, Messages.MEMORY_BLOCK_TAB_TEXT, blockPanel);
+    blockPanel = new BlockMemoryPanel(folder);
     createStandardTabItem(folder, Messages.MEMORY_STRUCT_TAB_TEXT, structPanel);
+    createStandardTabItem(folder, Messages.MEMORY_BLOCK_TAB_TEXT, blockPanel);
 
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     folder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
