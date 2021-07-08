@@ -24,16 +24,18 @@ public class Version {
   public final int minor;
   public final int point;
   public final String build;
+  public final int year;
 
-  public Version(int major, int minor, int point, String build) {
+  public Version(int major, int minor, int point, String build, int year) {
     this.major = major;
     this.minor = minor;
     this.point = point;
     this.build = build;
+    this.year = year;
   }
 
   public static Version fromProto(Service.ServerInfo info) {
-    return new Version(info.getVersionMajor(), info.getVersionMinor(), info.getVersionPoint(), "");
+    return new Version(info.getVersionMajor(), info.getVersionMinor(), info.getVersionPoint(), "", 0);
   }
 
   public int getDevVersion() {
@@ -99,6 +101,11 @@ public class Version {
 
   public String toFriendlyString() {
     return major + "." + minor + "." + point;
+  }
+
+  public String toStringWithYear(boolean includeBuild) {
+    return (year == 0 ? "" : year + "-") + major + "." + minor + "." + point +
+        (!includeBuild || build.isEmpty() ? "" : ":" + build);
   }
 
   public String toPatternString() {

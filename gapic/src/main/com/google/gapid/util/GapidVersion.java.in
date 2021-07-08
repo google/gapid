@@ -19,5 +19,5 @@ package com.google.gapid.util;
  */
 @javax.annotation.Generated("by AGI bazel")
 public interface GapidVersion {
-  public static final Version GAPID_VERSION = new Version(@AGI_VERSION_MAJOR@, @AGI_VERSION_MINOR@, @AGI_VERSION_POINT@, "@AGI_BUILD_SHA@");
+  public static final Version GAPID_VERSION = new Version(@AGI_VERSION_MAJOR@, @AGI_VERSION_MINOR@, @AGI_VERSION_POINT@, "@AGI_BUILD_SHA@", @AGI_BUILD_YEAR@);
 }

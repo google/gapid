@@ -81,7 +81,7 @@ public class LoadingScreen extends Composite {
     titleLabel.setFont(theme.bigBoldFont());
     titleLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-    Label versionLabel = createLabel(container, "Version " + GAPID_VERSION.toFriendlyString());
+    Label versionLabel = createLabel(container, "Version " + GAPID_VERSION.toStringWithYear(false));
     versionLabel.setForeground(theme.welcomeVersionColor());
     versionLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 

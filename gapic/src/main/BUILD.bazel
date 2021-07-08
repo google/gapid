@@ -37,7 +37,19 @@ java_library(
 agi_version(
     name = "version",
     out = "com/google/gapid/util/GapidVersion.java",
-    template = "com/google/gapid/util/GapidVersion.java.in",
+    template = ":version_with_build_year",
+)
+
+genrule(
+    name = "version_with_build_year",
+    srcs = ["com/google/gapid/util/GapidVersion.java.in"],
+    outs = ["com/google/gapid/util/GapidVersion.java.out"],
+    cmd = ";".join([
+        "V=$$(grep BUILD_TIMESTAMP bazel-out/volatile-status.txt | cut -d ' ' -f 2)",
+        "Y=$$([ $$(uname) = 'Darwin' ] && date -jf %s $$V +%Y || date -d @$$V +%Y)",
+        "sed -e s/@AGI_BUILD_YEAR@/$$Y/ $< > $@",
+    ]),
+    stamp = 1,
 )
 
 java_grpc_library(

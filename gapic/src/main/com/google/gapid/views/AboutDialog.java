@@ -95,14 +95,14 @@ public class AboutDialog {
 
         createLabel(container, "").setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true, 2, 1));
         Button clipboard = Widgets.createButton(container, "", e -> {
-          String textData = "Version " + GAPID_VERSION;
+          String textData = "Version " + GAPID_VERSION.toStringWithYear(true);
           widgets.copypaste.setContents(textData);
         });
 
         clipboard.setImage(theme.clipboard());
         clipboard.setLayoutData(new GridData(SWT.CENTER, SWT.BEGINNING, true, true, 1, 3));
 
-        createSelectableLabel(container, "Version " + GAPID_VERSION);
+        createSelectableLabel(container, "Version " + GAPID_VERSION.toStringWithYear(true));
         createSelectableLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
         createSelectableLabel(container, Messages.ABOUT_COPY);
