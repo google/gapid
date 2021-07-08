@@ -31,8 +31,7 @@ genrule(
     outs = ["build.properties.out"],
     cmd = "(" + ";".join([
         "echo Build.Host=$$(grep BUILD_HOST bazel-out/stable-status.txt | cut -d ' ' -f 2)",
-        # The timestamp is in millis, but date -d @timestamp, expects the timestamp to be in seconds.
-        "V=$$((($$(grep BUILD_TIMESTAMP bazel-out/volatile-status.txt | cut -d ' ' -f 2)+500)/1000))",
+        "V=$$(grep BUILD_TIMESTAMP bazel-out/volatile-status.txt | cut -d ' ' -f 2)",
         "echo Build.Date=$$([ $$(uname) = 'Darwin' ] && date -jf %s $$V || date -d @$$V)",
     ]) + ") | cat $< - > $@",
     stamp = 1,
