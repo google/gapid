@@ -18,7 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createTextbox;
+import static com.google.gapid.widgets.Widgets.createSelectableLabel;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.logging.Level.SEVERE;
 
@@ -34,6 +34,7 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
@@ -42,7 +43,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -89,7 +89,7 @@ public class AboutDialog {
         Label logo = createLabel(container, "", theme.dialogLogo());
         logo.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
 
-        Text title = createForegroundLabel(container, Messages.WINDOW_TITLE);
+        StyledText title = createSelectableLabel(container, Messages.WINDOW_TITLE);
         title.setFont(theme.bigBoldFont());
         title.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
 
@@ -102,10 +102,10 @@ public class AboutDialog {
         clipboard.setImage(theme.clipboard());
         clipboard.setLayoutData(new GridData(SWT.CENTER, SWT.BEGINNING, true, true, 1, 3));
 
-        createForegroundLabel(container, "Version " + GAPID_VERSION);
-        createForegroundLabel(
+        createSelectableLabel(container, "Version " + GAPID_VERSION);
+        createSelectableLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
-        createForegroundLabel(container, Messages.ABOUT_COPY);
+        createSelectableLabel(container, Messages.ABOUT_COPY);
 
         return area;
       }
@@ -113,15 +113,6 @@ public class AboutDialog {
       @Override
       protected void createButtonsForButtonBar(Composite parent) {
         createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
-      }
-
-      public Text createForegroundLabel(Composite parent, String text) {
-        Text label = createTextbox(parent, SWT.READ_ONLY, text);
-        label.setBackground(parent.getBackground());
-
-        // SWT will weirdly select the entire content of the first textbox. No thanks.
-        label.setSelection(0, 0);
-        return label;
       }
     }.open();
   }
