@@ -105,18 +105,17 @@ func (b *binding) UnlockScreen(ctx context.Context) (bool, error) {
 		// Devices may do unexpected transitions between screen
 		// states, so this code does not try to be smart about
 		// expected state changes: unless screenOnUnlocked, apply the
-		// wakeup (put screen on) and menu (unlock screen if no
-		// credentials required) key event sequence.
+		// wakeup (put screen on) and dismiss-keyguard (unlock screen
+		// if no credentials required) sequence.
 		if err := b.KeyEvent(ctx, android.KeyCode_Wakeup); err != nil {
 			return false, err
 		}
-		if err := b.KeyEvent(ctx, android.KeyCode_Menu); err != nil {
+		if err := b.Shell("wm", "dismiss-keyguard").Run(ctx); err != nil {
 			return false, err
 		}
-		// A sleep here is necessary to make sure the key events had
-		// enough time to affect the screen state.
+		// A sleep here is necessary to make sure the above commands had enough
+		// time to affect the screen state.
 		time.Sleep(keyEventEffectDelay)
 		return b.isScreenUnlocked(ctx)
 	}
-	return false, log.Err(ctx, ErrScreenState, "")
 }

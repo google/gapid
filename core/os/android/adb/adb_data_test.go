@@ -141,6 +141,13 @@ mShowingDream=false mShowingLockscreen=false mDreamingSleepToken=null
 mStatusBar=Window{5033a83 u0 StatusBar} isStatusBarKeyguard=false
 ...`),
 
+		// The 'wm dismiss-keyguard' command is used to unlock the screen, it
+		// doesn't return anything
+		stub.RespondTo(adbPath.System()+` -s screen_off_locked_device shell wm dismiss-keyguard`, ""),
+		stub.RespondTo(adbPath.System()+` -s screen_off_unlocked_device shell wm dismiss-keyguard`, ""),
+		stub.RespondTo(adbPath.System()+` -s screen_on_locked_device shell wm dismiss-keyguard`, ""),
+		stub.RespondTo(adbPath.System()+` -s screen_on_unlocked_device shell wm dismiss-keyguard`, ""),
+
 		// Pid queries.
 		stub.Regex(`adb -s ok_pgrep_\S*device shell pgrep .* com.google.foo`, stub.Respond("")),
 		stub.Regex(`adb -s ok_pgrep\S*device shell pgrep -n -f com.google.bar`, stub.Respond("2778")),
