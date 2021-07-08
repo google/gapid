@@ -318,7 +318,7 @@ public class PerformanceView extends Composite
   }
 
   private void addColumnForMetric(Service.ProfilingData.GpuCounters.Metric metric) {
-    Unit unit = CounterInfo.unitFromString(metric.getUnit());
+    Unit unit = CounterInfo.unitFromString(metric.getUnit()).withFixedScale(metric.getAverage());
     TreeViewerColumn column = createTreeColumn(tree, metric.getName() + "(" + unit.name + ")", e -> {
       Profile.PerfNode node = (Profile.PerfNode)e;
       if (node == null || node.getPerfs() == null) {

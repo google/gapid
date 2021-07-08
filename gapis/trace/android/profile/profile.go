@@ -87,24 +87,30 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 // Create GPU time metric metadata, calculate time performance for each GPU
 // slice group, and append the result to corresponding entries.
 func setTimeMetrics(ctx context.Context, groupToSlices map[int32][]*service.ProfilingData_GpuSlices_Slice, metrics *[]*service.ProfilingData_GpuCounters_Metric, groupToEntry map[int32]*service.ProfilingData_GpuCounters_Entry) {
-	*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
+	gpuTimeMetric := &service.ProfilingData_GpuCounters_Metric{
 		Id:              gpuTimeMetricId,
 		Name:            "GPU Time",
 		Unit:            strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
 		Op:              service.ProfilingData_GpuCounters_Metric_Summation,
 		Description:     "GPU Time",
 		SelectByDefault: true,
-	})
-	*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
+	}
+	*metrics = append(*metrics, gpuTimeMetric)
+	wallTimeMetric := &service.ProfilingData_GpuCounters_Metric{
 		Id:              gpuWallTimeMetricId,
 		Name:            "GPU Wall Time",
 		Unit:            strconv.Itoa(int(device.GpuCounterDescriptor_NANOSECOND)),
 		Op:              service.ProfilingData_GpuCounters_Metric_Summation,
 		Description:     "GPU Wall Time",
 		SelectByDefault: true,
-	})
+	}
+	*metrics = append(*metrics, wallTimeMetric)
+	gpuTimeSum, wallTimeSum := float64(0), float64(0)
+	gpuTimeAvg, wallTimeAvg := float64(-1), float64(-1)
 	for groupId, slices := range groupToSlices {
 		gpuTime, wallTime := gpuTimeForGroup(slices)
+		gpuTimeSum += float64(gpuTime)
+		wallTimeSum += float64(wallTime)
 		entry := groupToEntry[groupId]
 		if entry == nil {
 			log.W(ctx, "Didn't find corresponding counter performance entry for GPU slice group %v.", groupId)
@@ -121,6 +127,12 @@ func setTimeMetrics(ctx context.Context, groupToSlices map[int32][]*service.Prof
 			Max:      float64(wallTime),
 		}
 	}
+	if len(groupToSlices) > 0 {
+		gpuTimeAvg = gpuTimeSum / float64(len(groupToSlices))
+		wallTimeAvg = wallTimeSum / float64(len(groupToSlices))
+	}
+	gpuTimeMetric.Average = gpuTimeAvg
+	wallTimeMetric.Average = wallTimeAvg
 }
 
 // Calculate GPU-time and wall-time for a specific GPU slice group.
@@ -156,7 +168,7 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 			selectByDefault = counter.Spec.SelectByDefault
 			counterGroups = counter.Spec.Groups
 		}
-		*metrics = append(*metrics, &service.ProfilingData_GpuCounters_Metric{
+		counterMetric := &service.ProfilingData_GpuCounters_Metric{
 			Id:              metricId,
 			CounterId:       counter.Id,
 			Name:            counter.Name,
@@ -165,15 +177,18 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 			Description:     description,
 			SelectByDefault: selectByDefault,
 			CounterGroups:   counterGroups,
-		})
+		}
+		*metrics = append(*metrics, counterMetric)
 		if op != service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg {
 			log.E(ctx, "Counter aggregation method not implemented yet. Operation: %v", op)
 			continue
 		}
 		concurrentSlicesCount := scanConcurrency(globalSlices, counter)
+		counterPerfSum, counterPerfAvg := float64(0), float64(-1)
 		for groupId, slices := range groupToSlices {
 			estimateSet, minSet, maxSet := mapCounterSamples(slices, counter, concurrentSlicesCount)
 			estimate := aggregateCounterSamples(estimateSet, counter)
+			counterPerfSum += estimate
 			// Extra comparison here because minSet/maxSet only denote minimal/maximal
 			// number of counter samples inclusion strategy, the aggregation result
 			// may not be the smallest/largest actually.
@@ -195,6 +210,10 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*servic
 				MaxSamples:      maxSet,
 			}
 		}
+		if len(groupToSlices) > 0 {
+			counterPerfAvg = counterPerfSum / float64(len(groupToSlices))
+		}
+		counterMetric.Average = counterPerfAvg
 	}
 }
 
