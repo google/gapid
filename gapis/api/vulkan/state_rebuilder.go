@@ -832,7 +832,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	if !d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
 			NewVkPhysicalDeviceShaderFloat16Int8FeaturesKHR(
-				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR, // sType
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR, // sType
 				pNext, // pNext
 				d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().ShaderFloat16(), // shaderFloat16
 				d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().ShaderInt8(),    // shaderInt8
