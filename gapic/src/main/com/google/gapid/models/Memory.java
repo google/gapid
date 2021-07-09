@@ -23,6 +23,7 @@ import static com.google.gapid.util.Ranges.memory;
 import static com.google.gapid.util.Ranges.merge;
 import static com.google.gapid.util.Ranges.relative;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -44,8 +45,6 @@ import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
 import com.google.gapid.util.TypeInfos;
 
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.eclipse.swt.widgets.Shell;
 
 import java.lang.ref.SoftReference;
@@ -56,7 +55,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Model responsible for loading memory pool data. This model requests segments as equally sized
@@ -149,7 +150,7 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
         return false;
       }
       Source s = (Source)obj;
-      return command.equals(s.command) && pool == s.pool;
+      return Objects.equal(command, s.command) && pool == s.pool;
     }
 
     @Override
