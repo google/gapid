@@ -16,20 +16,31 @@ package mali
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/gapid/gapis/perfetto"
 	"github.com/google/gapid/gapis/trace/android/validate"
 )
 
 var (
-	// All counters must be inside this array.
-	counters = []validate.GpuCounter{
+	// jmCounters are the hardware counters found on JM based GPUs.
+	jmCounters = []validate.GpuCounter{
 		{6, "GPU active cycles", counterChecker()},
 		{8, "Fragment jobs", counterChecker()},
 		{196, "Fragment active cycles", counterChecker()},
 		{65536, "GPU utilization", counterChecker()},
 		{65538, "Fragment queue utilization", counterChecker()},
 		{65579, "Execution core utilization", counterChecker()},
+	}
+
+	// csfCounters are the hardware counters found on CSF based GPUs.
+	csfCounters = []validate.GpuCounter{
+		{4, "GPU active cycles", counterChecker()},
+		{6, "Any iterator active cycles", counterChecker()},
+		{33, "Fragment jobs", counterChecker()},
+		{196, "Fragment active cycles", counterChecker()},
+		{65536, "GPU utilization", counterChecker()},
+		{65581, "Execution core utilization", counterChecker()},
 	}
 )
 
@@ -38,6 +49,11 @@ func counterChecker() validate.Checker {
 }
 
 type MaliValidator struct {
+	gpuName string
+}
+
+func NewMaliValidator(gpuName string) *MaliValidator {
+	return &MaliValidator{gpuName}
 }
 
 func (v *MaliValidator) Validate(ctx context.Context, processor *perfetto.Processor) error {
@@ -55,5 +71,20 @@ func (v *MaliValidator) Validate(ctx context.Context, processor *perfetto.Proces
 }
 
 func (v *MaliValidator) GetCounters() []validate.GpuCounter {
-	return counters
+	gpuName := v.gpuName
+	if strings.HasSuffix(gpuName, "G31") ||
+		strings.HasSuffix(gpuName, "G51") ||
+		strings.HasSuffix(gpuName, "G52") ||
+		strings.HasSuffix(gpuName, "G71") ||
+		strings.HasSuffix(gpuName, "G72") ||
+		strings.HasSuffix(gpuName, "G76") ||
+		strings.HasSuffix(gpuName, "G57") ||
+		strings.HasSuffix(gpuName, "G68") ||
+		strings.HasSuffix(gpuName, "G77") ||
+		strings.HasSuffix(gpuName, "G78") ||
+		strings.HasSuffix(gpuName, "G78AE") {
+		return jmCounters
+	} else {
+		return csfCounters
+	}
 }
