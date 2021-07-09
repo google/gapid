@@ -253,24 +253,6 @@ TEST_F(SpinLockTest, WithSpinLockGuard) {
 
 using SignalBlockerTest = TestFixture;
 
-// A thread acquires the a lock first, then a signal interrupts the thread and
-// acquires the lock again. This results into a deadlock.
-TEST_F(SignalBlockerTest, WithoutBlocker) {
-  Init();
-  auto normal_thread_func = [](void*) -> void* {
-    unique_test_->DoTask([]() { usleep(5000); });
-    return nullptr;
-  };
-
-  std::thread start_normal_thread_and_send_signal(
-      [this, &normal_thread_func]() {
-        RegisterHandlerAndTriggerSignal(normal_thread_func);
-      });
-  start_normal_thread_and_send_signal.join();
-  // Expect dead locked
-  EXPECT_TRUE(deadlocked_.load(std::memory_order_seq_cst));
-}
-
 // A thread acquires the a lock first, then a signal tries to interrupt the
 // thread. But the signal is blocked, signal handler is called after the thread
 // finishes its job. This avoids dead lock.
@@ -360,22 +342,6 @@ TEST_F(WrapperTest, WithSpinLockGuardedWrapper) {
         });
       });
   EXPECT_EQ(2u, counter);
-}
-
-// Without a signal safe wrapper, spin lock acquired in function may cause
-// deadlock.
-TEST_F(WrapperTest, WithoutSignalSafeWrapper) {
-  Init();
-  auto normal_thread_func = [](void*) -> void* {
-    unique_test_->DoTask([]() { usleep(5000); });
-    return nullptr;
-  };
-  std::thread start_normal_thread_and_send_signal(
-      [this, &normal_thread_func]() {
-        RegisterHandlerAndTriggerSignal(normal_thread_func);
-      });
-  start_normal_thread_and_send_signal.join();
-  EXPECT_TRUE(deadlocked_.load(std::memory_order_seq_cst));
 }
 
 // With a signal safe wrapper, signal interrupt will be blocked, so signal
