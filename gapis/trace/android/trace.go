@@ -28,9 +28,10 @@ import (
 	"strings"
 	"time"
 
+	perfetto_pb "protos/perfetto/config"
+
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/service/path"
-	perfetto_pb "protos/perfetto/config"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
@@ -284,11 +285,6 @@ func NewTracer(dev bind.Device) tracer.Tracer {
 // TraceConfiguration returns the device's supported trace configuration.
 func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
 	apis := make([]*service.TraceTypeCapabilities, 0, 3)
-	/* Disabled in AGI. Use GAPID instead.
-	if t.b.Instance().GetConfiguration().GetDrivers().GetOpengl().GetVersion() != "" {
-		apis = append(apis, tracer.GLESTraceOptions())
-	}
-	*/
 	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
 		apis = append(apis, tracer.VulkanTraceOptions())
 		// If ANGLE is enabled and available, need to also append ANGLE trace mode
