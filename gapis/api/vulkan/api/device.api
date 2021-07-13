@@ -74,6 +74,9 @@
 
   // @extension("VK_EXT_vertex_attribute_divisor")
   @unused ref!PhysicalDeviceVertexAttributeDivisorFeaturesEXT PhysicalDeviceVertexAttributeDivisorFeaturesEXT
+
+  // @extension("VK_EXT_image_robustness")
+  @unused ref!PhysicalDeviceImageRobustnessFeaturesEXT PhysicalDeviceImageRobustnessFeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -288,6 +291,12 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           object.PhysicalDeviceVertexAttributeDivisorFeaturesEXT = new!PhysicalDeviceVertexAttributeDivisorFeaturesEXT(
             VertexAttributeInstanceRateDivisor: ext.vertexAttributeInstanceRateDivisor,
             VertexAttributeInstanceRateZeroDivisor: ext.vertexAttributeInstanceRateZeroDivisor,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceImageRobustnessFeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceImageRobustnessFeaturesEXT = new!PhysicalDeviceImageRobustnessFeaturesEXT(
+            RobustImageAccess: ext.robustImageAccess,
           )
         }
       }
