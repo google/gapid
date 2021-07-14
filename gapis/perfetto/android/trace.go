@@ -51,12 +51,21 @@ const (
 	readInterval               = 100 * time.Millisecond
 )
 
+type traceMode int
+
+const (
+	traceIntoFile traceMode = iota
+	traceDownloadAtEnd
+	traceDownloadWhileTracing
+)
+
 // Process represents a running Perfetto capture.
 type Process struct {
 	device         adb.Device
 	config         *perfetto_pb.TraceConfig
 	deferred       bool
 	perfettoClient *perfetto.Client
+	mode           traceMode
 }
 
 func hasDataSourceEnabled(perfettoConfig *perfetto_pb.TraceConfig, ds string) bool {
@@ -180,9 +189,20 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		return nil, cleanup.Invoke(ctx), err
 	}
 
-	// Use the direct client if we are not writting into a file on the device.
+	caps := d.Instance().GetConfiguration().GetPerfettoCapability()
+	var mode traceMode
+	if opts.PerfettoConfig.GetWriteIntoFile() {
+		mode = traceIntoFile
+	} else if caps.GetCanDownloadWhileTracing() {
+		mode = traceDownloadWhileTracing
+	} else {
+		mode = traceDownloadAtEnd
+	}
+
+	// Use the direct client if we are not writting into a file on the device, or
+	// if the API supports providing the path.
 	var c *perfetto.Client
-	if !opts.PerfettoConfig.GetWriteIntoFile() {
+	if mode != traceIntoFile || caps.GetCanProvideTraceFilePath() {
 		c, err = d.ConnectPerfetto(ctx)
 		if err != nil {
 			log.W(ctx, "Failed to connect Perfetto through client API: %v, fall back to CLI.", err)
@@ -195,13 +215,14 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		config:         opts.PerfettoConfig,
 		deferred:       opts.DeferStart,
 		perfettoClient: c,
+		mode:           mode,
 	}, cleanup, nil
 }
 
 // Capture starts the perfetto capture.
 func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (int64, error) {
 	if p.perfettoClient != nil {
-		return p.captureWithClientApi(ctx, start, stop, ready, w, written, p.device.Instance().GetConfiguration().GetPerfettoCapability().GetCanDownloadWhileTracing())
+		return p.captureWithClientApi(ctx, start, stop, ready, w, written)
 	}
 
 	tmp, err := file.Temp()
@@ -251,15 +272,18 @@ func (w *trackingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64, downloadWhileTracing bool) (int64, error) {
+func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (int64, error) {
 	defer p.perfettoClient.Close(ctx)
 
 	p.config.DeferredStart = proto.Bool(true)
+
 	var buf bytes.Buffer
 	var out io.Writer
-	if downloadWhileTracing {
+	if p.mode == traceIntoFile {
+		p.config.OutputPath = proto.String(perfettoTraceFile)
+	} else if p.mode == traceDownloadWhileTracing {
 		out = &trackingWriter{w, 0, written}
-	} else {
+	} else if p.mode == traceDownloadAtEnd {
 		out = &buf
 	}
 	ts, err := p.perfettoClient.Trace(ctx, p.config, out)
@@ -326,7 +350,7 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 		wait <- ts.Wait(ctx)
 	})
 
-	if downloadWhileTracing {
+	if p.mode == traceDownloadWhileTracing {
 		crash.Go(func() {
 			ticker := time.NewTicker(readInterval)
 			for {
@@ -356,7 +380,26 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 	}
 
 	var numWritten int64
-	if downloadWhileTracing {
+	if p.mode == traceIntoFile {
+		tmp, err := file.Temp()
+		if err != nil {
+			return 0, log.Err(ctx, err, "Failed to create a temp file")
+		}
+		if err := p.device.Pull(ctx, perfettoTraceFile, tmp.System()); err != nil {
+			return 0, err
+		}
+		if err := p.device.RemoveFile(ctx, perfettoTraceFile); err != nil {
+			log.E(ctx, "Failed to delete perfetto trace file %v", err)
+		}
+
+		size := tmp.Info().Size()
+		atomic.StoreInt64(written, size)
+		fh, err := os.Open(tmp.System())
+		if err != nil {
+			return 0, log.Err(ctx, err, fmt.Sprintf("Failed to open %s", tmp))
+		}
+		return io.Copy(w, fh)
+	} else if p.mode == traceDownloadWhileTracing {
 		numWritten = atomic.LoadInt64(written)
 	} else {
 		numWritten, err = io.Copy(w, &buf)

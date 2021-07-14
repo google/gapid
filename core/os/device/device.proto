@@ -188,6 +188,9 @@ message PerfettoCapability {
   bool has_frame_lifecycle = 4;
   bool has_power_rail = 5;
   bool can_download_while_tracing = 6;
+  // Whether the Perfetto tracing API supports tracing to a file on the device
+  // given a path, rather than a file descriptor.
+  bool can_provide_trace_file_path = 7;
 }
 
 message GPUProfiling {

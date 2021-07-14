@@ -33,6 +33,8 @@ import (
 const (
 	// ErrDone is returned for calls on a trace session that is already stopped.
 	ErrDone = fault.Const("Trace already stopped")
+	// ErrTracingToFile is returned for read calls on a trace session that is writting to a file on the device.
+	ErrTracingToFile = fault.Const("Cannot read buffers, when tracing to a file")
 
 	consumerService = "ConsumerPort"
 	queryMethod     = "QueryServiceState"
@@ -119,6 +121,9 @@ func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writ
 	if !cfg.GetDeferredStart() {
 		start = nil
 	}
+	if cfg.GetWriteIntoFile() {
+		read = nil
+	}
 
 	wait, done := task.NewSignal()
 	s := &TraceSession{
@@ -133,11 +138,15 @@ func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writ
 
 	h := client.NewTraceHandler(ctx, func(r *ipc.EnableTracingResponse, err error) {
 		if !s.onResult(ctx, err) {
-			s.readBuffers(ctx, func(err error) {
-				if !s.onResult(ctx, err) {
-					s.done(ctx)
-				}
-			})
+			if s.read == nil {
+				s.done(ctx)
+			} else {
+				s.readBuffers(ctx, func(err error) {
+					if !s.onResult(ctx, err) {
+						s.done(ctx)
+					}
+				})
+			}
 		}
 	})
 
@@ -168,7 +177,9 @@ func (s *TraceSession) Start(ctx context.Context) {
 // the output writer. This is a synchronous call that blocks until the service
 // is done sending data and it has been written.
 func (s *TraceSession) Read(ctx context.Context) error {
-	if s.wait.Fired() {
+	if s.read == nil {
+		return ErrTracingToFile
+	} else if s.wait.Fired() {
 		// Ignore any reads after we've already marked this session as done.
 		return ErrDone
 	}

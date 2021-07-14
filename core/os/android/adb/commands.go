@@ -371,6 +371,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		// SurfaceFlinger frame lifecycle perfetto producer is mandated by Android 11 CTS, hence it will
 		// always exist.
 		result.HasFrameLifecycle = true
+		result.CanProvideTraceFilePath = true
 
 		// This has anecdotally not worked well in Q, but appears to be fine in R.
 		result.CanDownloadWhileTracing = true
