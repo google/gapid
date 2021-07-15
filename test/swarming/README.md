@@ -78,7 +78,13 @@ script:
   "package": "com.example.myApp",
   "activity": "com.example.myApp.myActivity",
   "startframe": "5",
-  "numframe": "2"
+  "numframe": "2",
+  "setprop": [
+    {
+      "name": "debug.myApp.foobar",
+      "value": "42"
+    }
+  ]
 }
 ```
 

@@ -113,7 +113,7 @@ class BotUtil:
         "force_install": true|false, # (Optional): force APK installation,
                                     # even if the package is already found
                                     # on the device
-        "install_flags": ["-g", "-t"], # (Opriotnal) list of flags to pass
+        "install_flags": ["-g", "-t"], # (Optional) list of flags to pass
                                         # to adb install
         ...
         }
@@ -141,3 +141,7 @@ class BotUtil:
             time.sleep(1)
         else:
             log('Skip install of {} because package {} is already installed.'.format(test_params['apk'], test_params['package']))
+        # Set Android properties specific to this APK.
+        if 'setprop' in test_params.keys():
+            for prop in test_params['setprop']:
+                self.adb(['shell',  'setprop', prop['name'], prop['value']])
