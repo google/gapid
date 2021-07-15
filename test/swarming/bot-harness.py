@@ -86,15 +86,15 @@ def main():
     print('Device fingerprint: ' + p.stdout)
 
     #### Prepare device
-    # Wake up (224) and unlock (82) screen, sleep to pass any kind of animation
-    # The screen wakeup (224) call sometimes takes more than a second to return,
-    # hence the extended timeout.
+    # Wake up and unlock screen: use the "wakeup keyevent + wm dismiss-keyguard"
+    # sequence to unlock the device. The wakeup keyevent (224) call may take
+    # more than a second to return, hence the extended timeout.
     bu.adb(['shell', 'input', 'keyevent', '224'], timeout=2)
     time.sleep(2)
     # TODO(b/157444640): Temporary workaround: touch the screen before unlocking it to bypass a possible "Android preview" notification
     bu.adb(['shell', 'input', 'touchscreen', 'tap', '100', '100'])
     time.sleep(1)
-    bu.adb(['shell', 'input', 'keyevent', '82'])
+    bu.adb(['shell', 'wm', 'dismiss-keyguard'])
     time.sleep(1)
     # Turn brightness to a minimum, to prevent device to get too hot
     bu.adb(['shell', 'settings', 'put', 'system', 'screen_brightness', '0'])
