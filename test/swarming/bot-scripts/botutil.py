@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This is a  library of utilies for Swarming bot scripts
+# This is a library of utilies for Swarming bot scripts
 
 import json
 import os
@@ -72,7 +72,7 @@ class BotUtil:
         self.gapit_path = ''
 
     def adb(self, args, timeout=1):
-        '''Log and run an ADB command, r_patheturning a subprocess.CompletedProcess with output captured'''
+        '''Log and run an ADB command, returning a subprocess.CompletedProcess with output captured'''
         cmd = [self.adb_path] + args
         print('ADB command: ' + ' '.join(cmd), flush=True)
         return subprocess.run(cmd, timeout=timeout, check=True, capture_output=True, text=True)

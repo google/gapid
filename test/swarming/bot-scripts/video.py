@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This Swarming bot test script uses gapit to perform a capture-replay test,
-# checking whether the replay output matches the app frames.
+# This Swarming bot test script uses gapit to perform various tests on a given
+# workload.
 
 import argparse
 import botutil
@@ -96,6 +96,13 @@ def main():
         return p.returncode
 
     #### Screenshot test to retrieve mid-frame resources
+    # This is meant to test the command buffer splitter, which is invoked to be
+    # able to retrieve the framebuffer in the middle of a render pass. We ask
+    # for the framebuffer at the 5th draw call, this number was choosen because:
+    # it is low enough to be present in most frames (i.e. we expect frames to
+    # have at least 5 draw calls), and it hopefully falls in the middle of a
+    # renderpass. Also, we don't want to have a random number here, as we want
+    # to keep the tests as reproducible as feasible.
     screenshotfile = os.path.join(out_dir, test_params['package'] + '.png')
     gapit_args = [
         '-executeddraws', '5',

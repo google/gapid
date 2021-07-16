@@ -1,22 +1,25 @@
-# Swarming: capture-replay tests on real Android devices
+# Swarming: integration tests on real Android devices
 
 This is a collection of scripts to run AGI tests on real Android devices.
 
 We can access devices through Swarming, which is part of
 [LUCI](https://chromium.googlesource.com/infra/infra/+/master/doc/users/services/about_luci.md),
-hence the name "swarming tests".
+hence the name "Swarming tests".
 
-A swarming test typically consists in installing an APK using Vulkan, and
-running some `gapit` commands to capture-replay this APK. As we don't want to
-include APKs in this repo, we store them on x20.
+A Swarming test typically consists in installing the APK containing some GPU
+workloads (e.g. a Vulkan demo), and running some `gapit` commands to test AGI
+features on this workload. As we don't want to include APKs in this repo, we
+store them on x20.
+
+Googlers: see also [go/agi-doc-swarming](https://go/agi-doc-swarming).
 
 ## Scripts running order
 
 The scripts are primarly designed to run as part of Kokoro Linux builds. The
 running order is:
 
-1. The Kokoro build script `kokoro/linux/build.sh` uses `test/swarming/trigger.py` to
-   schedule Swarming tests.
+1. The Kokoro build script `kokoro/linux/build.sh` uses
+   `test/swarming/trigger.py` to schedule Swarming tests.
 
 2. The Swarming bot runs `test/swarming/bot-harness.py`, which wraps one of the
    scripts unders `test/swarming/bot-scripts/` and makes sure to **always** turn
@@ -41,9 +44,10 @@ and `${LUCI_ROOT}/isolate whoami` to check your local credentials.
 
 You can trigger a Swarming test manually with:
 
-1. Grab tests from x20:
-   `x20/teams/android-graphics-tools/agi/kokoro/swarming`. Copy the `tests`
-   folder under `test/swarming/`.
+1. Grab tests from x20: `x20/teams/android-graphics-tools/agi/kokoro/swarming`.
+   Copy the `tests` folder under `test/swarming/`. For instance, a "foobar" test
+   folder (typically containing an APK and a `params.json` file) should be under
+   `test/swarming/tests/foobar`.
 
 2. Use `./manual-run.sh tests/foobar` to trigger the foobar test in Swarming and
    collect its results.
@@ -68,12 +72,12 @@ the name of the script to use, this script being found under
 `test/swarming/bot-scripts`. Moreover, this JSON typically defines additional
 parameters used by the test script.
 
-As an example, this is a possible params.json file to use the `test/swarming/bot-scripts/benchmark.py`
-script:
+As an example, this is a possible `params.json` file to use the
+`test/swarming/bot-scripts/video.py` script:
 
 ```
 {
-  "script": "benchmark.py",
+  "script": "video.py",
   "apk": "com.example.myApp.apk",
   "package": "com.example.myApp",
   "activity": "com.example.myApp.myActivity",
@@ -110,9 +114,9 @@ code. Some noteworthy parameters:
 ## Nightly results
 
 Nightly results are accumulated over nightly runs. To achieve this, the results
-file is receieved as a build input from the latest build on x20, new results are
-added to it, and the new results are produced as an artifact of the nightly
-build.
+are stored on x20, and used as both input and output of a given nightly run: a
+nightly run receives the exiting results as an input, adds their own results to
+it, and returns this as a result artifact that is stored on x20 again.
 
-The results are stored in the `results.json` file. The precise format of this
-JSON is defined in `test/swarming/collect.py`.
+Results are stored in a `results.json` file. The precise format of this JSON is
+defined in `test/swarming/collect.py`.
