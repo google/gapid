@@ -897,6 +897,16 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceProvokingVertexFeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceProvokingVertexFeaturesEXT(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT,
+				pNext,
+				d.PhysicalDeviceProvokingVertexFeaturesEXT().ProvokingVertexLast(),
+				d.PhysicalDeviceProvokingVertexFeaturesEXT().TransformFeedbackPreservesProvokingVertex(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
@@ -2637,6 +2647,37 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 			)).Ptr())
 	}
 
+	rasterizationState := NewVkPipelineRasterizationStateCreateInfoᶜᵖ(memory.Nullptr)
+	{
+		pNext := NewVoidᶜᵖ(memory.Nullptr)
+		if !gp.RasterizationState().PipelineRasterizationProvokingVertexStateCreateInfoEXT().IsNil() {
+			pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+				NewVkPipelineRasterizationProvokingVertexStateCreateInfoEXT(
+					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT,
+					pNext,
+					gp.RasterizationState().PipelineRasterizationProvokingVertexStateCreateInfoEXT().ProvokingVertexMode(),
+				),
+			).Ptr())
+		}
+		rasterizationState = NewVkPipelineRasterizationStateCreateInfoᶜᵖ(sb.MustAllocReadData(
+			NewVkPipelineRasterizationStateCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, // sType
+				NewVoidᶜᵖ(pNext), // pNext
+				0,                // flags
+				gp.RasterizationState().DepthClampEnable(),        // depthClampEnable
+				gp.RasterizationState().RasterizerDiscardEnable(), // rasterizerDiscardEnable
+				gp.RasterizationState().PolygonMode(),             // polygonMode
+				gp.RasterizationState().CullMode(),                // cullMode
+				gp.RasterizationState().FrontFace(),               // frontFace
+				gp.RasterizationState().DepthBiasEnable(),         // depthBiasEnable
+				gp.RasterizationState().DepthBiasConstantFactor(), // depthBiasConstantFactor
+				gp.RasterizationState().DepthBiasClamp(),          // depthBiasClamp
+				gp.RasterizationState().DepthBiasSlopeFactor(),    // depthBiasSlopeFactor
+				gp.RasterizationState().LineWidth(),               // lineWidth
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkCreateGraphicsPipelines(
 		gp.Device(),
 		cache,
@@ -2665,24 +2706,9 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 					gp.InputAssemblyState().Topology(), // topology
 					gp.InputAssemblyState().PrimitiveRestartEnable(), // primitiveRestartEnable
 				)).Ptr()),
-			tessellationState, // pTessellationState
-			viewportState,     // pViewportState
-			NewVkPipelineRasterizationStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pRasterizationState
-				NewVkPipelineRasterizationStateCreateInfo(
-					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, // sType
-					0, // pNext
-					0, // flags
-					gp.RasterizationState().DepthClampEnable(),        // depthClampEnable
-					gp.RasterizationState().RasterizerDiscardEnable(), // rasterizerDiscardEnable
-					gp.RasterizationState().PolygonMode(),             // polygonMode
-					gp.RasterizationState().CullMode(),                // cullMode
-					gp.RasterizationState().FrontFace(),               // frontFace
-					gp.RasterizationState().DepthBiasEnable(),         // depthBiasEnable
-					gp.RasterizationState().DepthBiasConstantFactor(), // depthBiasConstantFactor
-					gp.RasterizationState().DepthBiasClamp(),          // depthBiasClamp
-					gp.RasterizationState().DepthBiasSlopeFactor(),    // depthBiasSlopeFactor
-					gp.RasterizationState().LineWidth(),               // lineWidth
-				)).Ptr()),
+			tessellationState,              // pTessellationState
+			viewportState,                  // pViewportState
+			rasterizationState,             // pRasterizationState
 			multisampleState,               // pMultisampleState
 			depthState,                     // pDepthStencilState
 			colorBlendState,                // pColorBlendState

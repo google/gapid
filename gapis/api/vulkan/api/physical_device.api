@@ -60,6 +60,7 @@
   @unused ref!PhysicalDeviceDriverPropertiesKHR PhysicalDeviceDriverPropertiesKHR
   @unused ref!PhysicalDeviceLineRasterizationPropertiesEXT PhysicalDeviceLineRasterizationPropertiesEXT
   @unused ref!PhysicalDeviceVertexAttributeDivisorPropertiesEXT PhysicalDeviceVertexAttributeDivisorPropertiesEXT
+  @unused ref!PhysicalDeviceProvokingVertexPropertiesEXT PhysicalDeviceProvokingVertexPropertiesEXT
 }
 
 @internal class PhysicalDevicesAndProperties {

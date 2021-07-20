@@ -119,6 +119,7 @@ import "extensions/khr_timeline_semaphore.api"
 import "extensions/ext_line_rasterization.api"
 import "extensions/ext_vertex_attribute_divisor.api"
 import "extensions/ext_image_robustness.api"
+import "extensions/ext_provoking_vertex.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -292,6 +293,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_line_rasterization"] = true
   supported.ExtensionNames["VK_EXT_vertex_attribute_divisor"] = true
   supported.ExtensionNames["VK_EXT_image_robustness"] = true
+  supported.ExtensionNames["VK_EXT_provoking_vertex"] = true
   return supported
 }
 

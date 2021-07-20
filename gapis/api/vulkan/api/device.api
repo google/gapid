@@ -77,6 +77,9 @@
 
   // @extension("VK_EXT_image_robustness")
   @unused ref!PhysicalDeviceImageRobustnessFeaturesEXT PhysicalDeviceImageRobustnessFeaturesEXT
+
+  // @extension("VK_EXT_provoking_vertex")
+  @unused ref!PhysicalDeviceProvokingVertexFeaturesEXT PhysicalDeviceProvokingVertexFeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -297,6 +300,13 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           ext := as!VkPhysicalDeviceImageRobustnessFeaturesEXT*(next.Ptr)[0]
           object.PhysicalDeviceImageRobustnessFeaturesEXT = new!PhysicalDeviceImageRobustnessFeaturesEXT(
             RobustImageAccess: ext.robustImageAccess,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceProvokingVertexFeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceProvokingVertexFeaturesEXT = new!PhysicalDeviceProvokingVertexFeaturesEXT(
+            ProvokingVertexLast: ext.provokingVertexLast,
+            TransformFeedbackPreservesProvokingVertex: ext.transformFeedbackPreservesProvokingVertex,
           )
         }
       }

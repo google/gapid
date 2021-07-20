@@ -150,6 +150,9 @@ cmd void vkDestroyPipelineLayout(
   @unused VkBool32                   StippledLineEnable
   @unused u32                        LineStippleFactor
   @unused u16                        LineStipplePattern
+
+  // @extension("VK_EXT_provoking_vertex")
+  @unused ref!PipelineRasterizationProvokingVertexStateCreateInfoEXT PipelineRasterizationProvokingVertexStateCreateInfoEXT
 }
 
 @internal class MultisampleData {
@@ -512,6 +515,12 @@ cmd VkResult vkCreateGraphicsPipelines(
             obj.RasterizationState.StippledLineEnable = ext.stippledLineEnable
             obj.RasterizationState.LineStippleFactor = ext.lineStippleFactor
             obj.RasterizationState.LineStipplePattern = ext.lineStipplePattern
+          }
+          case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT: {
+            ext := as!VkPipelineRasterizationProvokingVertexStateCreateInfoEXT*(next.Ptr)[0]
+            obj.RasterizationState.PipelineRasterizationProvokingVertexStateCreateInfoEXT = new!PipelineRasterizationProvokingVertexStateCreateInfoEXT(
+              ProvokingVertexMode: ext.provokingVertexMode
+            )
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
