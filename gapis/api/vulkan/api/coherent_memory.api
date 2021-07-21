@@ -515,14 +515,18 @@ sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 ins
                 }
             }
         }
-        start_offset := bound_vertex_buffer.Offset + as!VkDeviceSize(start_vertex * vertex_binding.stride)
-        num := switch vertexCount == 0xFFFFFFFF {
-          case true:
-            backing_buf.Info.Size - start_offset
-          case false:
-            as!VkDeviceSize(num_vertices * vertex_binding.stride)
+        if num_vertices > 0 {
+          vertex_attrib := ldi.GraphicsPipeline.VertexInputState.AttributeDescriptions[vertex_binding.binding]
+          vertex_attrib_size := getElementAndTexelBlockSize(vertex_attrib.format).ElementSize
+          start_offset := bound_vertex_buffer.Offset + as!VkDeviceSize((start_vertex * vertex_binding.stride) + vertex_attrib.offset)
+          num := switch vertexCount == 0xFFFFFFFF {
+            case true:
+              backing_buf.Info.Size - start_offset
+            case false:
+              as!VkDeviceSize(((num_vertices - 1) * vertex_binding.stride) + vertex_attrib_size)
+          }
+          readMemoryInBuffer(backing_buf, start_offset, num)
         }
-        readMemoryInBuffer(backing_buf, start_offset, num)
       }
     }
   }
