@@ -67,8 +67,6 @@
   @unused ref!PhysicalDeviceShaderClockFeaturesKHR PhysicalDeviceShaderClockFeaturesKHR
   @unused ref!PhysicalDeviceVulkanMemoryModelFeaturesKHR PhysicalDeviceVulkanMemoryModelFeaturesKHR
   @unused ref!PhysicalDeviceShaderFloat16Int8FeaturesKHR PhysicalDeviceShaderFloat16Int8FeaturesKHR
-  @unused ref!PhysicalDeviceFloatControlsPropertiesKHR PhysicalDeviceFloatControlsPropertiesKHR
-
   // @extension("VK_EXT_line_rasterization")
   @unused ref!PhysicalDeviceLineRasterizationFeaturesEXT PhysicalDeviceLineRasterizationFeaturesEXT
 
@@ -244,28 +242,6 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             VulkanMemoryModel: ext.vulkanMemoryModel,
             VulkanMemoryModelDeviceScope: ext.vulkanMemoryModelDeviceScope,
             VulkanMemoryModelAvailabilityVisibilityChains: ext.vulkanMemoryModelAvailabilityVisibilityChains,
-          )
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR :{
-          ext := as!VkPhysicalDeviceFloatControlsPropertiesKHR*(next.Ptr)[0]
-          object.PhysicalDeviceFloatControlsPropertiesKHR = new!PhysicalDeviceFloatControlsPropertiesKHR(
-            DenormBehaviorIndependence: ext.denormBehaviorIndependence,
-            RoundingModeIndependence: ext.roundingModeIndependence,
-            ShaderSignedZeroInfNanPreserveFloat16: ext.shaderSignedZeroInfNanPreserveFloat16,
-            ShaderSignedZeroInfNanPreserveFloat32: ext.shaderSignedZeroInfNanPreserveFloat32,
-            ShaderSignedZeroInfNanPreserveFloat64: ext.shaderSignedZeroInfNanPreserveFloat64,
-            ShaderDenormPreserveFloat16: ext.shaderDenormPreserveFloat16,
-            ShaderDenormPreserveFloat32: ext.shaderDenormPreserveFloat32,
-            ShaderDenormPreserveFloat64: ext.shaderDenormPreserveFloat64,
-            ShaderDenormFlushToZeroFloat16: ext.shaderDenormFlushToZeroFloat16,
-            ShaderDenormFlushToZeroFloat32: ext.shaderDenormFlushToZeroFloat32,
-            ShaderDenormFlushToZeroFloat64: ext.shaderDenormFlushToZeroFloat64,
-            ShaderRoundingModeRTEFloat16: ext.shaderRoundingModeRTEFloat16,
-            ShaderRoundingModeRTEFloat32: ext.shaderRoundingModeRTEFloat32,
-            ShaderRoundingModeRTEFloat64: ext.shaderRoundingModeRTEFloat64,
-            ShaderRoundingModeRTZFloat16: ext.shaderRoundingModeRTZFloat16,
-            ShaderRoundingModeRTZFloat32: ext.shaderRoundingModeRTZFloat32,
-            ShaderRoundingModeRTZFloat64: ext.shaderRoundingModeRTZFloat64,
           )
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR: {
