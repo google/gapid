@@ -102,8 +102,8 @@ void processInstructionForPressure(spirv_cross::ParsedIR pir,
   }
 }
 
-instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
-                                             size_t length) {
+instruction_counters_t performStaticAnalysisInternal(
+    const uint32_t* spirv_binary, size_t length) {
   spirv_cross::Parser parser(spirv_binary, length);
   parser.parse();
   spirv_cross::ParsedIR pir = parser.get_parsed_ir();
@@ -561,4 +561,14 @@ instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
   counters.temp_registers = maxPressure;
 
   return counters;
+}
+
+instruction_counters_t performStaticAnalysis(const uint32_t* spirv_binary,
+                                             size_t length) {
+  try {
+    return performStaticAnalysisInternal(spirv_binary, length);
+  } catch (...) {
+    // TODO: do proper error handling and reporting.
+    return instruction_counters_t{0, 0, 0, 0};
+  }
 }
