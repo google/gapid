@@ -2634,6 +2634,18 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 				),
 			).Ptr())
 		}
+		if !gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().IsNil() {
+			pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+				NewVkPipelineRasterizationLineStateCreateInfoEXT(
+					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT,
+					pNext,
+					gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().LineRasterizationMode(),
+					gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().StippledLineEnable(),
+					gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().LineStippleFactor(),
+					gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().LineStipplePattern(),
+				),
+			).Ptr())
+		}
 		rasterizationState = NewVkPipelineRasterizationStateCreateInfoᶜᵖ(sb.MustAllocReadData(
 			NewVkPipelineRasterizationStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, // sType

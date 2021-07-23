@@ -519,9 +519,9 @@ sub void readDrawState() {
   if hasDynamicState(pipeline, VK_DYNAMIC_STATE_LINE_STIPPLE_EXT) {
     _ = dyn.LineStippleFactor
     _ = dyn.LineStipplePattern
-  } else {
-    _ = pipeline.RasterizationState.LineStippleFactor
-    _ = pipeline.RasterizationState.LineStipplePattern
+  } else if pipeline.RasterizationState.PipelineRasterizationLineStateCreateInfoEXT != null {
+    _ = pipeline.RasterizationState.PipelineRasterizationLineStateCreateInfoEXT.LineStippleFactor
+    _ = pipeline.RasterizationState.PipelineRasterizationLineStateCreateInfoEXT.LineStipplePattern
   }
 
   // read depth bias

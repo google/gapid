@@ -146,10 +146,7 @@ cmd void vkDestroyPipelineLayout(
   @unused f32             LineWidth
 
   // @extension("VK_EXT_line_rasterization")
-  @unused VkLineRasterizationModeEXT LineRasterizationMode
-  @unused VkBool32                   StippledLineEnable
-  @unused u32                        LineStippleFactor
-  @unused u16                        LineStipplePattern
+  @unsued ref!PipelineRasterizationLineStateCreateInfoEXT PipelineRasterizationLineStateCreateInfoEXT
 
   // @extension("VK_EXT_provoking_vertex")
   @unused ref!PipelineRasterizationProvokingVertexStateCreateInfoEXT PipelineRasterizationProvokingVertexStateCreateInfoEXT
@@ -511,10 +508,12 @@ cmd VkResult vkCreateGraphicsPipelines(
         switch (sType) {
           case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT: {
             ext := as!VkPipelineRasterizationLineStateCreateInfoEXT*(next.Ptr)[0]
-            obj.RasterizationState.LineRasterizationMode = ext.lineRasterizationMode
-            obj.RasterizationState.StippledLineEnable = ext.stippledLineEnable
-            obj.RasterizationState.LineStippleFactor = ext.lineStippleFactor
-            obj.RasterizationState.LineStipplePattern = ext.lineStipplePattern
+            obj.RasterizationState.PipelineRasterizationLineStateCreateInfoEXT = new!PipelineRasterizationLineStateCreateInfoEXT(
+              LineRasterizationMode: ext.lineRasterizationMode,
+              StippledLineEnable: ext.stippledLineEnable,
+              LineStippleFactor: ext.lineStippleFactor,
+              LineStipplePattern: ext.lineStipplePattern,
+            )
           }
           case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT: {
             ext := as!VkPipelineRasterizationProvokingVertexStateCreateInfoEXT*(next.Ptr)[0]

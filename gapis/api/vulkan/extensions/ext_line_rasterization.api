@@ -105,6 +105,14 @@ class VkPipelineRasterizationLineStateCreateInfoEXT {
   u16                        lineStipplePattern
 }
 
+@internal
+class PipelineRasterizationLineStateCreateInfoEXT {
+  VkLineRasterizationModeEXT LineRasterizationMode
+  VkBool32                   StippledLineEnable
+  u32                        LineStippleFactor
+  u16                        LineStipplePattern
+}
+
 //////////////
 // Commands //
 //////////////
