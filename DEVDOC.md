@@ -680,7 +680,7 @@ At a high-level, this can be compared to a series of unix pipes:
 cat commands | transform1 | transform2 | ... | replay_builder > replay_payload
 ```
 
-To see examples of Vulkan transforms, look at the `gapis/vulkan/transform_*.go`
+To see examples of Vulkan transforms, look at `gapis/api/vulkan/transform_*.go`
 files.
 
 ### GAPIR executes the replay instructions
@@ -718,7 +718,7 @@ only the (transformed) capture commands needs to be replayed.
 
 If the user-requested replay does require to transform the initial commands,
 then the pre-warm replay is abandonned and a new replay of the transformed
-inital commands and then the transformed capture commands are executed.
+initial and capture commands is executed.
 
 ## Life of a perfetto trace (system profile trace)
 
@@ -728,7 +728,7 @@ system profile traces as "perfetto traces". If you have to deal with perfetto
 code, make sure to refer to the [perfetto
 documentation](https://perfetto.dev/docs/).
 
-Perfetto is built into Android (since Android 9 Pie). In general, to take a
+Perfetto is built into Android since Android 9 Pie. In general, to take a
 perfetto trace, you can use the `perfetto` command-line tool on the device. See
 perfetto's web interface at https://ui.perfetto.dev/ and click on "Recording
 command" to see an example of how the `perfetto` command-line tool can be used
@@ -739,7 +739,7 @@ perfetto's client interface. See e.g.
 `gapis/perfetto/android/trace.go:Capture()` for how a capture is started on
 Android. To see an example of AGI using perfetto's command line interface, see
 `core/os/android/adb/perfetto.go:StartPerfettoTrace()`. Alternatively, AGI may
-interacts via perfetto's client interface by talking to the `traced` deamon
+interact via perfetto's client interface by talking to the `traced` deamon
 running on the device. This deamon listens to the `/dev/socket/traced_consumer`,
 and AGI connects directly to this socket. The related AGI code is under
 `gapis/perfetto/client/`.

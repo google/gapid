@@ -82,7 +82,7 @@
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!DedicatedRequirements                                     DedicatedRequirements
 
-  // If ever layer/level is set to the same queue, then set it here instead.
+  // If every layer/level is set to the same queue, then set it here instead.
   // This can save expensive looping through Aspects/Layers/Levels
   @untracked @unused ref!QueueObject                            LastBoundQueue
   map!(VkImageView, ref!ImageViewObject)                        Views
