@@ -685,7 +685,34 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 }
 
 // GetFramegraph creates the framegraph of the given capture.
+//
+// A framegraph is a graph where nodes are "workloads" (renderpasses or
+// compute), and edges are dependencies between these nodes. The framegraph
+// types are defined in gapis/api/service.proto. There is a dependency between
+// workload A and B when B reads memory that was last written by A. These pieces
+// of memory are typically image and buffer contents, but it may also be
+// e.g. dynamic parts of a pipeline: for instance vkCmdSetScissor() updates the
+// dynamic scissor values. We rely on the dependency graph module to get these
+// read-write dependencies between all commands and subcommands (the dependency
+// graph itself obtains them by analyzing the reads and writes specified in the
+// GAPIL files). For each workload, the framegraph records all the dependency
+// graph nodes corresponding to commands of that workload. Then, it explores the
+// dependency graph to establish dependencies between workloads, see
+// updateDependencies() for details.
+//
+// Besides dependencies, the framegraph also reports which images and buffers
+// are read and written by each workload. Unfortunately, the memory accesses
+// stored in the dependency graph only relate to "raw memory": we have no idea
+// whether the accessed memory stores the content of a buffer, an image, or
+// something else. In order to correlate a memory access with buffer or image
+// contents, we look up in the Vulkan state (at the point of the subcommand)
+// whether this memory span is contained in a buffer or image content
+// memory. Doing this check on all buffers and images at each relevant
+// subcommand takes a lot of time, so we use temporary lookup tables to speed up
+// this process.
 func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph, error) {
+	// Start with getting the dependencygraph, from which we will
+	// extract dependencies between workloads.
 	config := dependencygraph2.DependencyGraphConfig{
 		SaveNodeAccesses:    true,
 		ReverseDependencies: true,
@@ -695,8 +722,7 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 		return nil, err
 	}
 
-	// postSubCmdCb effectively processes each subcommand to extract renderpass
-	// info, while recording information into the helpers.
+	// helpers collects information about the framegraph workloads.
 	helpers := &framegraphInfoHelpers{
 		workloadInfos:     []*workloadInfo{},
 		wlInfo:            nil,
@@ -704,6 +730,9 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 		parentCmdIdx:      uint64(0),
 		lookupInitialized: false,
 	}
+
+	// postSubCmdCb effectively processes a subcommand to extract
+	// framegraph information and stores it into helpers.
 	postSubCmdCb := func(state *api.GlobalState, subCmdIdx api.SubCmdIdx, cmd api.Cmd, i interface{}) {
 		helpers.processSubCommand(ctx, dependencyGraph, state, subCmdIdx, cmd, i)
 	}
