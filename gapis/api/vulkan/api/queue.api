@@ -44,6 +44,7 @@
   @unused VkDevice                                               Device
   @unused u32                                                    Family
   @unused u32                                                    Index
+  @unused VkDeviceQueueCreateFlags                               Flags
   @unused VkQueue                                                VulkanHandle
   map!(VkEvent, ref!EventObject)                                 PendingEvents
   map!(VkSemaphore, ref!SemaphoreObject)                         PendingSemaphores
@@ -76,6 +77,30 @@ cmd void vkGetDeviceQueue(
     dev := Devices[device]
     dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
     _ = PhysicalDevices[dev.PhysicalDevice].QueueFamilyProperties[queueFamilyIndex]
+  }
+  if pQueue == null { vkErrorNullPointer("VkQueue") }
+  pQueue[0] = id
+}
+
+@since("1.1")
+@indirect("VkDevice")
+cmd void vkGetDeviceQueue2(
+    VkDevice                  device,
+    const VkDeviceQueueInfo2* pQueueInfo,
+    VkQueue*                  pQueue) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  info := pQueueInfo[0]
+  id := ?
+  if !(id in Queues) {
+    Queues[id] = new!QueueObject(
+      Device: device,
+      Family: info.queueFamilyIndex,
+      Index:  info.queueIndex,
+      Flags:  info.flags,
+      VulkanHandle:  id)
+    dev := Devices[device]
+    dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
+    _ = PhysicalDevices[dev.PhysicalDevice].QueueFamilyProperties[info.queueFamilyIndex]
   }
   if pQueue == null { vkErrorNullPointer("VkQueue") }
   pQueue[0] = id

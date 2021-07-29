@@ -24,7 +24,7 @@
 
 // CurrentCaptureVersion is incremented on breaking changes to the capture
 // format. NB: Also update equally named field in gapis/capture/grahics.go
-static const int CurrentCaptureVersion = 3;
+static const int CurrentCaptureVersion = 4;
 
 using core::Interval;
 

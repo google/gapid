@@ -904,12 +904,29 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 }
 
 func (sb *stateBuilder) createQueue(q QueueObjectʳ) {
-	sb.write(sb.cb.VkGetDeviceQueue(
-		q.Device(),
-		q.Family(),
-		q.Index(),
-		sb.MustAllocWriteData(q.VulkanHandle()).Ptr(),
-	))
+	// Use vkGetDeviceQueue unless the queue has non-zero flags, in which case
+	// we can assume that vkGetDeviceQueue2 (introduced in Vulkan 1.1) is
+	// available at replay time since it was used by the application.
+	if q.Flags() != 0 {
+		sb.write(sb.cb.VkGetDeviceQueue2(
+			q.Device(),
+			sb.MustAllocReadData(NewVkDeviceQueueInfo2(
+				VkStructureType_VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+				0, // pNext
+				q.Flags(),
+				q.Family(),
+				q.Index(),
+			)).Ptr(),
+			sb.MustAllocWriteData(q.VulkanHandle()).Ptr(),
+		))
+	} else {
+		sb.write(sb.cb.VkGetDeviceQueue(
+			q.Device(),
+			q.Family(),
+			q.Index(),
+			sb.MustAllocWriteData(q.VulkanHandle()).Ptr(),
+		))
+	}
 }
 
 type imageQueueFamilyTransferInfo struct {
