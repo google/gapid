@@ -49,8 +49,11 @@ mkdir <path-outside-agi-source>/agi-gofuse
 # Run gofuse with the previous directory as a target
 bazel run //cmd/gofuse -- -dir <path-to-agi-gofuse>
 
-# If you build with bazel build -c dbg pkg, the <path-to-bazelout> is `k8-dbg` on Linux.
-bazel run //cmd/gofuse -- -dir <path-to-agi-gofuse> -bazelout <path-to-bazelout>
+# If the previous command fails to correctly guess the sub-directory under `bazel-out`,
+# please pass it with the command below. For example if you build on Windows, the
+# standard <bazelout-subdir> is `x64_windows-fastbuild`. If you build on Linux with
+# `bazel build -c dbg pkg`, the <bazelout-subdir> is `k8-dbg`.
+bazel run //cmd/gofuse -- -dir <path-to-agi-gofuse> -bazelout <bazelout-subdir>
 
 # Build the package again to output the original compile-time generated files again.
 bazel build pkg
