@@ -321,7 +321,7 @@ public class TracerDialog {
       private final Label durationUnit;
       private final Label startUnit;
       private final Button withoutBuffering;
-      private final Button hideUnknownExtensions;
+      private final Button includeUnsupportedExtensions;
       private final Button loadValidationLayer;
       private final Button clearCache;
       private final Composite perfettoConfig;
@@ -458,9 +458,8 @@ public class TracerDialog {
         clearCache = createCheckbox(
             optGroup, "Clear Package Cache", trace.getClearCache());
         clearCache.setEnabled(false);
-        hideUnknownExtensions = createCheckbox(
-            optGroup, "Hide Unknown Extensions", trace.getHideUnknownExtensions());
-        hideUnknownExtensions.setEnabled(false);
+        includeUnsupportedExtensions = createCheckbox(optGroup, "Include Unsupported Extensions", false);
+        includeUnsupportedExtensions.setEnabled(false);
         loadValidationLayer = createCheckbox(
             optGroup, "Load Vulkan Validation Layer", trace.getLoadValidationLayer());
         loadValidationLayer.setEnabled(false);
@@ -693,8 +692,7 @@ public class TracerDialog {
           Settings settings, SettingsProto.TraceOrBuilder trace, TraceTypeCapabilities config) {
 
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
-        hideUnknownExtensions.setEnabled(ext);
-        hideUnknownExtensions.setSelection(!ext || trace.getHideUnknownExtensions());
+        includeUnsupportedExtensions.setEnabled(ext);
 
         boolean appRequired = config != null && config.getRequiresApplication();
         targetLabel.setText(TARGET_LABEL + (appRequired ? "*:" : ":"));
@@ -989,7 +987,6 @@ public class TracerDialog {
         }
         dur.setDuration(duration.getSelection());
         trace.setWithoutBuffering(withoutBuffering.getSelection());
-        trace.setHideUnknownExtensions(hideUnknownExtensions.getSelection());
         trace.setOutDir(directory.getText());
         trace.setFriendlyName(friendlyName);
         trace.setProcessName(processName.getText());
@@ -1002,7 +999,7 @@ public class TracerDialog {
             .setAdditionalCommandLineArgs(arguments.getText())
             .setFramesToCapture(duration.getSelection())
             .setNoBuffer(withoutBuffering.getSelection())
-            .setHideUnknownExtensions(hideUnknownExtensions.getSelection())
+            .setHideUnknownExtensions(!includeUnsupportedExtensions.getSelection())
             .setServerLocalSavePath(output.getAbsolutePath())
             .setProcessName(processName.getText());
 

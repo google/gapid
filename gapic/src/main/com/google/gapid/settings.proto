@@ -112,7 +112,7 @@ message Trace {
   reserved 9;
   reserved 10;
   bool without_buffering = 11;
-  bool hide_unknown_extensions = 12;
+  reserved 12;
   bool clear_cache = 13;
   reserved 14;
   string out_dir = 15;
