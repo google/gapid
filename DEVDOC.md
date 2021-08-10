@@ -31,10 +31,10 @@ With the above setup, you can run presubmit tests locally with:
 ./kokoro/presubmit/presubmit.sh
 ```
 
-## Setup Golang development
+## Setup Go development
 
-This project contains Golang code, but it does not have the file hierarchy of
-regular Golang projects (this is due to the use of Bazel as a build system).
+This project contains Go code, but it does not have the file hierarchy of
+regular Go projects (this is due to the use of Bazel as a build system).
 The `cmd/gofuse` utility enables to re-create the file hierarchy expected by Go
 tools:
 
@@ -85,9 +85,9 @@ With the GOPATH setup to gofuse and opening the `<path-to-agi-gofuse>` directory
 as the root of your workspace, you should get some jump-to-definition and autocomplete
 features working. Make sure to edit the files through their link found under the gofuse directory.
 
-## How to debug / breakpoint in Golang code
+## How to debug / breakpoint in Go code
 
-The recommended Golang debugger is
+The recommended Go debugger is
 [delve](https://github.com/go-delve/delve). You can start a **debug** build of
 gapis or a client under this debugger. To build in debug mode, use the `-c dbg`
 Bazel flag, e.g.:
@@ -192,13 +192,13 @@ See the workaround for VSCode below, any help to fix it for other IDEs is very w
 
 Follow these steps to use the delve debugger for Go with VSCode to debug `gapis`.
 
-1. Make sure to complete the Golang setup above for AGI.
+1. Make sure to complete the Go setup above for AGI.
 
 2. Settings file: There are two settings file(`settings.json`) that can be written.
-	- Global one that applies to all projects that can be opened with `Ctrl + Shift + P` and `Preferences: Open Settings (JSON)`. 
+	- Global one that applies to all projects that can be opened with `Ctrl + Shift + P` and `Preferences: Open Settings (JSON)`.
 	Add this line to ensure that you have a stable tools directory:
 	`"go.toolsGopath": "<path-to-go-plugin-tools-folder>",`
-	
+
 	- Local one is under `.vscode` folder in your project folder. Create one if it does not already exist and add this line to your local settings to be able to search source code in AGI:
 	`"go.gopath": "<path-to-agi-gofuse>"`,
 
@@ -254,7 +254,7 @@ This allows you to put breakpoint at any line in AGI Go source code regardless i
 
 You can use the built-in logging functions to place debug prints.
 
-In Golang:
+In Go:
 
 ```go
 import (
@@ -380,7 +380,7 @@ bazel test tests
 bazel test //core/log:go_default_test
 ```
 
-### Golang
+### Go
 
 Following the [regular Go test](https://golang.org/doc/code.html#Testing) setup,
 tests are written as `func TestXXX(t *testing.T)` functions in `*_test.go`
