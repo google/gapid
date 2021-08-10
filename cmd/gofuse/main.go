@@ -62,6 +62,8 @@ var (
 
 	bazelOutDirectory = flag.String("bazelout", "",
 		"The bazel-out/X directory name from which to include .go files. E.g. k8-fastbuild, darwin-fastbuild, k8-dbg, etc.")
+
+	runOnWindows = flag.Bool("force-run-on-windows", false, "Don't fail to run on Windows, even though it's unsupported.")
 )
 
 func main() {
@@ -74,6 +76,9 @@ func main() {
 }
 
 func run() error {
+	if runtime.GOOS == "windows" && !*runOnWindows {
+		return fmt.Errorf("cmd/gofuse is not supported on Windows")
+	}
 
 	if len(*bazelOutDirectory) == 0 {
 		switch runtime.GOOS {

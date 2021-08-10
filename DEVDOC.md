@@ -36,7 +36,10 @@ With the above setup, you can run presubmit tests locally with:
 This project contains Go code, but it does not have the file hierarchy of
 regular Go projects (this is due to the use of Bazel as a build system).
 The `cmd/gofuse` utility enables to re-create the file hierarchy expected by Go
-tools:
+tools. Note, however, `cmd/gofuse` is not supported on Windows, but it is not
+required to build/develop AGI either. The steps described here are optional and
+are only intended to facilitate working on the AGI codebase using an IDE or
+other Go tooling.
 
 ```sh
 # Make sure to build to have all compile-time generated files
@@ -63,11 +66,6 @@ bazel build pkg
 export GOPATH="${GOPATH:+${GOPATH}:}<path-to-agi-gofuse>"
 # On other configurations, please search online how to add/edit environment variables.
 ```
-
-If you encounter a symlink error on Windows like 'a required privilege is not held by the client',
-you have to use a command prompt with administrator privileges or enable
-[Developer Mode](https://docs.microsoft.com/en-us/windows/uwp/get-started/enable-your-device-for-development)
-as described [here](https://blogs.windows.com/windowsdeveloper/2016/12/02/symlinks-windows-10/).
 
 After adding the gofuse directory to your GOPATH, Go tools should work as
 expected. You can edit files under the newly populated gofuse directory. You
