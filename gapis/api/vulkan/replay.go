@@ -56,7 +56,7 @@ func (a API) GetInitialPayload(ctx context.Context,
 	transforms = append(transforms, newExternalMemory())
 	if config.LogInitialCmdsToCapture {
 		if c, err := capture.ResolveGraphicsFromPath(ctx, c); err == nil {
-			transforms = append(transforms, newCaptureLog(ctx, c, "initial_cmds.gfxtrace"))
+			transforms = append(transforms, newCaptureLog(ctx, c, "initial_cmds.gfxtrace", false))
 		}
 	}
 
@@ -354,7 +354,7 @@ func appendLogTransforms(ctx context.Context, tag string, capture *capture.Graph
 	}
 
 	if config.LogTransformsToCapture {
-		transforms = append(transforms, newCaptureLog(ctx, capture, tag+"_replay_log.gfxtrace"))
+		transforms = append(transforms, newCaptureLog(ctx, capture, tag+"_replay_log.gfxtrace", true))
 	}
 
 	if config.LogMappingsToFile {

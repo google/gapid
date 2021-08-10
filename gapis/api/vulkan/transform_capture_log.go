@@ -27,21 +27,27 @@ import (
 var _ transform.Transform = &captureLog{}
 
 type captureLog struct {
-	file   *os.File
-	header *capture.Header
-	cmds   []api.Cmd
+	file         *os.File
+	header       *capture.Header
+	initialState *capture.InitialState
+	cmds         []api.Cmd
 }
 
-func newCaptureLog(ctx context.Context, sourceCapture *capture.GraphicsCapture, path string) *captureLog {
+func newCaptureLog(ctx context.Context, sourceCapture *capture.GraphicsCapture, path string, keepState bool) *captureLog {
 	f, err := os.Create(path)
 	if err != nil {
 		log.E(ctx, "Failed to create replay capture file %v: %v", path, err)
 		return nil
 	}
+	var state *capture.InitialState
+	if keepState {
+		state = sourceCapture.InitialState
+	}
 	return &captureLog{
-		file:   f,
-		header: sourceCapture.Header,
-		cmds:   []api.Cmd{},
+		file:         f,
+		header:       sourceCapture.Header,
+		initialState: state,
+		cmds:         []api.Cmd{},
 	}
 }
 
@@ -81,7 +87,7 @@ func (logTransform *captureLog) EndTransform(ctx context.Context, inputState *ap
 		logTransform.cmds[idx] = cmd
 	}
 
-	c, err := capture.NewGraphicsCapture(ctx, "capturelog", logTransform.header, nil, logTransform.cmds)
+	c, err := capture.NewGraphicsCapture(ctx, "capturelog", logTransform.header, logTransform.initialState, logTransform.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)
 		return nil, err
