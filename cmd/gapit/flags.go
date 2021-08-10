@@ -380,7 +380,8 @@ type (
 		Max           struct {
 			Overdraw int `help:"the amount of overdraw to map to white in the output"`
 		}
-		DisplayToSurface bool `help:"display the frames rendered in the replay back to the surface"`
+		Size             string `help:"requested framebuffer size (scales output). Either a single integer used as width and height, or <w>x<h>"`
+		DisplayToSurface bool   `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
 		CaptureFileFlags
 	}

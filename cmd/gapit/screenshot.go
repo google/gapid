@@ -139,9 +139,13 @@ func (verb *screenshotVerb) writeSingleFrame(frame image.Image, fn string) error
 
 func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Command, device *path.Device, client service.Service) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
+	reqW, reqH, err := verb.getSize(ctx)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Invalid size flag")
+	}
 	settings := &path.RenderSettings{
-		MaxWidth:                  uint32(0xFFFFFFFF),
-		MaxHeight:                 uint32(0xFFFFFFFF),
+		MaxWidth:                  reqW,
+		MaxHeight:                 reqH,
 		DisableReplayOptimization: verb.NoOpt,
 		DisplayToSurface:          verb.DisplayToSurface,
 	}
@@ -342,4 +346,27 @@ func (verb *screenshotVerb) getAttachment(ctx context.Context, cmd *path.Command
 		return 0, log.Errf(ctx, nil, "Invalid attachment %v", verb.Attachment)
 	}
 	return uint32(i), nil
+}
+
+func (verb *screenshotVerb) getSize(ctx context.Context) (w, h uint32, err error) {
+	if verb.Size == "" {
+		w = uint32(0xFFFFFFFF)
+		h = uint32(0xFFFFFFFF)
+		return
+	}
+	var s int
+	if p := strings.Index(verb.Size, "x"); p != -1 {
+		s, err = strconv.Atoi(verb.Size[0:p])
+		w = uint32(s)
+		if err == nil {
+			s, err = strconv.Atoi(verb.Size[p+1:])
+			h = uint32(s)
+		}
+		return
+	} else {
+		s, err = strconv.Atoi(verb.Size)
+		w = uint32(s)
+		h = uint32(s)
+		return
+	}
 }
