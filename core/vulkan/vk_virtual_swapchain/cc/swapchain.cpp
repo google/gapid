@@ -468,10 +468,14 @@ VKAPI_ATTR void VKAPI_CALL vkCmdPipelineBarrier(
     if (imageBarriers[i].oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
       imageBarriers[i].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
       imageBarriers[i].srcAccessMask |= VK_ACCESS_TRANSFER_READ_BIT;
+      // Ensure the stage mask supports the transfer read access.
+      srcStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
     }
     if (imageBarriers[i].newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
       imageBarriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
       imageBarriers[i].dstAccessMask |= VK_ACCESS_TRANSFER_READ_BIT;
+      // Ensure the stage mask supports the transfer read access.
+      dstStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
     }
   }
   PFN_vkCmdPipelineBarrier func = GetGlobalContext()
