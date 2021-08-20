@@ -819,6 +819,19 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 	)
 	imageResolveData := t.allocations.AllocDataOrPanic(ctx, imageResolve)
 
+	stagingBufferBarrier := NewVkBufferMemoryBarrier(
+		VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+		0, // pNext
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_HOST_READ_BIT),      // dstAccessMask
+		0xFFFFFFFF,    // srcQueueFamilyIndex
+		0xFFFFFFFF,    // dstQueueFamilyIndex
+		bufferID,      // buffer
+		0,             // offset
+		VK_WHOLE_SIZE, // size
+	)
+	stagingBufferBarrierData := t.allocations.AllocDataOrPanic(ctx, stagingBufferBarrier)
+
 	// Write commands to writer
 	// Create staging image, allocate and bind memory
 	if err = t.writeCommands(
@@ -1089,6 +1102,25 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 			attachmentImageResetLayoutBarrierData.Ptr(),
 		).AddRead(
 			attachmentImageResetLayoutBarrierData.Data(),
+		),
+	); err != nil {
+		return err
+	}
+
+	if err = t.writeCommands(
+		cb.VkCmdPipelineBarrier(
+			commandBufferID,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_TRANSFER_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_HOST_BIT),
+			VkDependencyFlags(0),
+			0,
+			memory.Nullptr,
+			1,
+			stagingBufferBarrierData.Ptr(),
+			0,
+			memory.Nullptr,
+		).AddRead(
+			stagingBufferBarrierData.Data(),
 		),
 	); err != nil {
 		return err
