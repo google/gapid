@@ -377,23 +377,29 @@ func (t *readFramebuffer) postImageData(ctx context.Context,
 
 	origLayout := t.getLayout(ctx, inputState, cmdBuff, pendingCommandBuffers, aspect, layer, level, imageObject)
 
+	// We need to find a queue to execute work on.
 	queue := NilQueueObjectʳ
 	if cmdBuff != VkCommandBuffer(0) {
+		// Find a queue with the same family in the same device as our command buffer's pool.
 		cbo := st.CommandBuffers().Get(cmdBuff)
 		cp := st.CommandPools().Get(cbo.Pool())
-		for _, v := range st.Queues().All() {
+		dev := st.Devices().Get(cbo.Device())
+		for _, v := range dev.QueueObjects().All() {
 			if v.Family() == cp.QueueFamilyIndex() {
 				queue = v
 			}
 		}
 	}
 	if queue.IsNil() {
+		// Haven't found a queue yet, use the one the image's level was last bound to.
 		queue = imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).LastBoundQueue()
 	}
 
 	if queue.IsNil() {
+		// Still no queue found, use the one the image was last bound to.
 		queue = imageObject.LastBoundQueue()
 		if queue.IsNil() {
+			// No queue found, abort.
 			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
 			return nil
 		}
