@@ -1237,10 +1237,10 @@ func (t *readFramebuffer) FlushPending(ctx context.Context, inputState *api.Glob
 
 		mappedMemoryRange := NewVkMappedMemoryRange(
 			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
-			0,                                // pNext
-			r.bufferMemory,                   // memory
-			VkDeviceSize(0),                  // offset
-			VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
+			0,               // pNext
+			r.bufferMemory,  // memory
+			VkDeviceSize(0), // offset
+			VK_WHOLE_SIZE,   // size
 		)
 		mappedMemoryRangeData := t.allocations.AllocDataOrPanic(ctx, mappedMemoryRange)
 		at, err := t.allocations.Alloc(ctx, r.bufferSize)
