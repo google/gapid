@@ -136,7 +136,7 @@ copy_tree(
     srcs = [
         "@vscode-languageclient//:vscode-languageclient",
     ],
-    strip = "external/vscode-languageclient/package",
+    strip = "package",
     to = "gfxapi-ls-0.0.1/node_modules/vscode-languageclient",
 )
 
@@ -145,7 +145,7 @@ copy_tree(
     srcs = [
         "@vscode-jsonrpc//:vscode-jsonrpc",
     ],
-    strip = "external/vscode-jsonrpc/package",
+    strip = "package",
     to = "gfxapi-ls-0.0.1/node_modules/vscode-jsonrpc",
 )
 
@@ -154,7 +154,7 @@ copy_tree(
     srcs = [
         "@vscode-languageserver-types//:vscode-languageserver-types",
     ],
-    strip = "external/vscode-languageserver-types/package",
+    strip = "package",
     to = "gfxapi-ls-0.0.1/node_modules/vscode-languageserver-types",
 )
 
