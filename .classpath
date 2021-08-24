@@ -10,9 +10,21 @@
 	<classpathentry kind="lib" path="bazel-bin/core/log/log_pb/liblog_pb_proto-speed.jar" sourcepath="bazel-bin/core/log/log_pb/log_pb_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/core/os/device/libdevice_proto-speed.jar" sourcepath="bazel-bin/core/os/device/device_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/core/stream/libstream_proto-speed.jar" sourcepath="bazel-bin/core/stream/stream_proto-speed-src.jar"/>
-	<classpathentry kind="lib" path="bazel-bin/external/com_google_protobuf/libprotobuf_java.jar" sourcepath="bazel-external/com_google_protobuf/java"/>
-	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_merged_config_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/protos_perfetto_config_merged_config_protos-speed-src.jar"/>
-	<classpathentry kind="lib" path="bazel-bin/gapidapk/pkginfo/libpkginfo_proto-speed.jar" sourcepath="bazel-bin/gapidapk/pkginfo/pkginfo_proto-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/com_google_protobuf/java/core/libcore.jar" sourcepath="bazel-external/com_google_protobuf/java/core/src/main/java"/>
+	<classpathentry kind="lib" path="bazel-bin/external/com_google_protobuf/java/core/liblite_runtime_only.jar" sourcepath="bazel-external/com_google_protobuf/java/core/src/main/java"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_process_stats_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_process_stats_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_android_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_android_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_common_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_common_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_gpu_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_gpu_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_sys_stats_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_sys_stats_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_ftrace_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_ftrace_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_inode_file_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_inode_file_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_track_event_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_track_event_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_interceptors_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_interceptors_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_power_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_power_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_profiling_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_profiling_protos-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/gapidapk/pkginfo/libpkginfo_proto-speed.jar" sourcepath="bazel-bin/gapidapk/pkginfo/pkginfo_proto-speed-src.jar"/>/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/api/libapi_proto-speed.jar" sourcepath="bazel-bin/gapis/api/api_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/memory/libmemory_proto-speed.jar" sourcepath="bazel-bin/gapis/memory/memory_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/perfetto/service/libservice_proto-speed.jar" sourcepath="bazel-bin/gapis/perfetto/service/service_proto-speed-src.jar"/>
