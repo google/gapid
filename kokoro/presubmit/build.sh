@@ -42,6 +42,9 @@ sudo apt-key add llvm-snapshot.gpg.key
 sudo apt-get update
 sudo apt-get install -y clang-format-6.0
 
+# Get recent Android build tools.
+echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;30.0.3'
+
 # Setup environment.
 export ANDROID_NDK_HOME=/opt/android-ndk-r16b
 export BAZEL=$BUILD_ROOT/bazel/bin/bazel

@@ -46,7 +46,7 @@ Start a console, with administrator privilege, and type:
 
 In the same console, install Python and MSYS2 as well:
 
-`choco install python`  
+`choco install python`
 `choco install msys2`
 
 ### Install additional tools
@@ -100,8 +100,8 @@ Either do this globally or in your shell every time.
 
 Make sure the environment is setup before you run bazel (`bazel shutdown` will shut it down).
 
-1. Add MSYS2 binary directories to the PATH:  
-   `set PATH=C:\tools\msys64\usr\bin;C:\tools\msys64\mingw64\bin;%PATH%`  
+1. Add MSYS2 binary directories to the PATH:
+   `set PATH=C:\tools\msys64\usr\bin;C:\tools\msys64\mingw64\bin;%PATH%`
    Running `where gcc` should now find mingw’s gcc.
 
 1. Set TMP to something very short. `C:\tmp` is known to work. For faster builds, add this folder to the excemptions of the Windows Defender anti-malware scanner.
@@ -143,7 +143,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2"
+tools/bin/sdkmanager "platforms;android-26" "build-tools;30.0.3"
 ```
 
 If you do not have adb installed you can do so with:
@@ -218,7 +218,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2"
+tools/bin/sdkmanager "platforms;android-26" "build-tools;30.0.3"
 ```
 
 If you do not have adb installed you can do so with:

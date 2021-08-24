@@ -27,12 +27,21 @@ echo "2fbdc9c0e3d376697caf0ee3673b7c9475214068c55a01b9744891e131f90b87  bazel-${
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
-# Get GCC 8
+# Get GCC 8.
 sudo rm /etc/apt/sources.list.d/cuda.list*
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 sudo apt-get -q update
 sudo apt-get -qy install gcc-8 g++-8
 export CC=/usr/bin/gcc-8
+
+# Get the Android NDK.
+$CURL -O https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip
+echo "dd6dc090b6e2580206c64bcee499bc16509a5d017c6952dcd2bed9072af67cbd  android-ndk-r21d-linux-x86_64.zip" | sha256sum --check
+unzip -q android-ndk-r21d-linux-x86_64.zip
+export ANDROID_NDK_HOME=$PWD/android-ndk-r21d
+
+# Get recent build tools.
+echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;30.0.3'
 
 cd $SRC
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
