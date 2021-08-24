@@ -159,8 +159,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "glslang",
-        commit = "740ae9f60b009196662bad811924788cee56133a",  # 10-11.0.0
-        sha256 = "c015e7d81c0a248562c25a1e484fb8528eb6a765312cf5de3bdb658b03562b3f",
+        commit = "ae2a562936cc8504c9ef2757cceaff163147834f",  # 11.5.0
+        sha256 = "a89149cd3ed0938fc53f39778b12ecf7326e52ca0ca30179f747db042893fb98",
     )
 
     maybe_repository(
@@ -244,8 +244,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Headers",
-        commit = "f8bf11a0253a32375c32cad92c841237b96696c0",
-        sha256 = "2ca7c37db06ab526c8c5c31767a0bbdbd30de74909dc1a4900302d7a8f537de7",
+        commit = "449bc986ba6f4c5e10e32828783f9daef2a77644",
+        sha256 = "5624978c0788b06fc66a23ab3066bf99d5d9f421a1698b509417163bb169ac33",
     )
 
     maybe_repository(
@@ -254,9 +254,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Cross",
-        commit = "871c85d7f0edc6b613e3959bc51d13bfbc2fe2df",
+        commit = "9acb9ec31f5a8ef80ea6b994bb77be787b08d3d1",  # 2021-01-15
         build_file = "@gapid//tools/build/third_party:spirv-cross.BUILD",
-        sha256 = "6aba055d6a9a7c33ec2761c4883b21c9d67c7fef2550797cea677a77fd65055a",
+        sha256 = "222af32a8a809612dffb67abf3530863dcdb224dba8babf742f7c754413cfc60",
     )
 
     maybe_repository(
@@ -265,8 +265,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Tools",
-        commit = "60104cd97446877dad8ed1010a635218937a2f18",
-        sha256 = "6050c012fec919087ebc3b083b24f874648fc1593b55ac8e3742df760aec19fc",
+        commit = "3d4246b4aaa65a4b901abd04e7d5bc1822c582bb",
+        sha256 = "3eaefd42e6d34be6cade456ac41cba6e1f955d0f67875f2cd6ef488b9cd9440f",
     )
 
     maybe_repository(
@@ -275,8 +275,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "KhronosGroup",
         project = "SPIRV-Reflect",
-        commit = "974d7c97be3329732da3aa6b770fbe87805148cb",
-        sha256 = "1b2852cffd75ac401f54e21c2786f6c0da9c7199111d8fc55cce17e4ff2b66ce",
+        commit = "272e050728de8d4a4ce9e7101c1244e6ff56e5b0",
+        sha256 = "3812779f02cc1860adfebd6f2be11b0253781a552a1fc7ebc4eefec8914c6918",
     )
 
     maybe_repository(
