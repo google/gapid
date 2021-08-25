@@ -177,7 +177,7 @@ func (b *binding) parsePackages(str string) (android.InstalledPackages, error) {
 					if splits[1] == "null" {
 						break // This means the package manager will select the platform ABI
 					}
-					ip.ABI = device.ABIByName(splits[1])
+					ip.ABI = device.AndroidABIByName(splits[1])
 				}
 			}
 		}

@@ -34,8 +34,10 @@ var (
 	WindowsX86_64 = abi("windows_x64", Windows, X86_64, Little64)
 )
 
-var abiByName = map[string]*ABI{}
+var androidAbiByName = map[string]*ABI{}
 
+// abi is the private helper constructor used by the constants above. It also
+// registers the Android ABIs in a map for AndroidABIByName.
 func abi(name string, os OSKind, arch Architecture, ml *MemoryLayout) *ABI {
 	abi := &ABI{
 		Name:         name,
@@ -43,15 +45,21 @@ func abi(name string, os OSKind, arch Architecture, ml *MemoryLayout) *ABI {
 		Architecture: arch,
 		MemoryLayout: ml,
 	}
-	abiByName[name] = abi
+
+	if os == Android {
+		if _, ok := androidAbiByName[name]; ok {
+			panic("Duplicate Android ABI name: " + name)
+		}
+		androidAbiByName[name] = abi
+	}
 	return abi
 }
 
-// ABIByName returns the ABI that matches the provided human name.
+// AndroidABIByName returns the Android ABI that matches the provided human name.
 // If there is no standard ABI that matches the name, then the returned ABI will have an UnknownOS and
 // UnknownArchitecture.
-func ABIByName(name string) *ABI {
-	abi, ok := abiByName[name]
+func AndroidABIByName(name string) *ABI {
+	abi, ok := androidAbiByName[name]
 	if !ok {
 		abi = &ABI{
 			Name:         name,

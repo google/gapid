@@ -223,7 +223,7 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 			if seen[abi] {
 				continue
 			}
-			d.To.Configuration.ABIs = append(d.To.Configuration.ABIs, device.ABIByName(abi))
+			d.To.Configuration.ABIs = append(d.To.Configuration.ABIs, device.AndroidABIByName(abi))
 			seen[abi] = true
 		}
 	}

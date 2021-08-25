@@ -21,9 +21,9 @@ import (
 	"github.com/google/gapid/core/os/device"
 )
 
-func TestABIByName(t *testing.T) {
+func TestAndroidABIByName(t *testing.T) {
 	assert := assert.To(t)
-	abi := device.ABIByName("invalid")
+	abi := device.AndroidABIByName("invalid")
 	assert.For("ABI.Name").That(abi.Name).Equals("invalid")
 	assert.For("ABI.Architecture").That(abi.Architecture).Equals(device.UnknownArchitecture)
 	assert.For("ABI.OS").That(abi.OS).Equals(device.UnknownOS)

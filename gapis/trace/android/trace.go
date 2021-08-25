@@ -607,7 +607,7 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 	match := re.FindStringSubmatch(o.GetUri())
 
 	if len(match) == 3 {
-		process, err := gapii.Connect(ctx, t.b, device.ABIByName(match[2]), match[1], tracer.GapiiOptions(o))
+		process, err := gapii.Connect(ctx, t.b, device.AndroidABIByName(match[2]), match[1], tracer.GapiiOptions(o))
 		if err != nil {
 			return ret, cleanup.Invoke(ctx), err
 		}

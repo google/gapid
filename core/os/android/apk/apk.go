@@ -85,7 +85,7 @@ func GatherABIs(files []*zip.File) []*device.ABI {
 		if len(parts) >= 2 && parts[0] == "lib" {
 			abiName := parts[1]
 			if _, existing := seen[abiName]; !existing {
-				abis = append(abis, device.ABIByName(abiName))
+				abis = append(abis, device.AndroidABIByName(abiName))
 				seen[abiName] = struct{}{}
 			}
 		}
