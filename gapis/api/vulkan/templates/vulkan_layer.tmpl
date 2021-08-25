@@ -129,6 +129,7 @@ struct DeviceData {
   PFN_vkGetDeviceProcAddr get_device_proc_addr;
   PFN_vkAllocateCommandBuffers allocate_command_buffers;
   PFN_vkGetDeviceQueue get_device_queue;
+  PFN_vkGetDeviceQueue2 get_device_queue2;
   PFN_vkDestroyDevice destroy_device;
   PFN_vkFreeCommandBuffers free_command_buffers;
   PFN_vkDestroyCommandPool destroy_command_pool;
@@ -545,6 +546,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
   data.get_device_proc_addr = get_device_proc_addr;
   data.allocate_command_buffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_device_proc_addr(*pDevice, "vkAllocateCommandBuffers"));
   data.get_device_queue = reinterpret_cast<PFN_vkGetDeviceQueue>(get_device_proc_addr(*pDevice, "vkGetDeviceQueue"));
+  data.get_device_queue2 = reinterpret_cast<PFN_vkGetDeviceQueue2>(get_device_proc_addr(*pDevice, "vkGetDeviceQueue2"));
   data.destroy_device = reinterpret_cast<PFN_vkDestroyDevice>(get_device_proc_addr(*pDevice, "vkDestroyDevice"));
   data.free_command_buffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(get_device_proc_addr(*pDevice, "vkFreeCommandBuffers"));
   data.destroy_command_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_device_proc_addr(*pDevice, "vkDestroyCommandPool"));
@@ -693,6 +695,31 @@ VKAPI_ATTR void VKAPI_CALL vkGetDeviceQueue(
      {{(Global "Vulkan.LayerNamespace")}}::vkGetDeviceQueue(next, device, queueFamilyIndex, queueIndex, pQueue);
    {{else}}
      next(device, queueFamilyIndex, queueIndex, pQueue);
+  {{end}}
+
+  {
+    auto deviceFunctions = GetGlobalContext().GetVkDeviceData(device)->functions;
+    auto queues = GetGlobalContext().GetVkQueueMap();
+    QueueData dat;
+    dat.functions = deviceFunctions;
+    dat.device = device;
+    (*queues)[*pQueue] = dat;
+  }
+}
+
+
+VKAPI_ATTR void VKAPI_CALL vkGetDeviceQueue2(
+    VkDevice                                    device,
+    const VkDeviceQueueInfo2*                   pQueueInfo,
+    VkQueue*                                    pQueue) {
+
+  PFN_vkGetDeviceQueue2 next =
+    GetGlobalContext().GetVkDeviceData(device)->get_device_queue2;
+
+  {{if Macro "NameInOverrides" "vkGetDeviceQueue2"}}
+     {{(Global "Vulkan.LayerNamespace")}}::vkGetDeviceQueue2(next, device, pQueueInfo, pQueue);
+   {{else}}
+     next(device, pQueueInfo, pQueue);
   {{end}}
 
   {
@@ -885,6 +912,9 @@ vkGetDeviceProcAddr(VkDevice device, const char *pName) {
   }
   if (strcmp(pName, "vkGetDeviceQueue") == 0) {
     return (PFN_vkVoidFunction)internal::vkGetDeviceQueue;
+  }
+  if (strcmp(pName, "vkGetDeviceQueue2") == 0) {
+    return (PFN_vkVoidFunction)internal::vkGetDeviceQueue2;
   }
   if (strcmp(pName, "vkDestroyCommandPool") == 0) {
     return (PFN_vkVoidFunction)internal::vkDestroyCommandPool;
