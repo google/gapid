@@ -1501,6 +1501,17 @@ import (
     {{$name := Macro "Go.TypeName" $}}
     {{$to := Macro "Go.Type" $.To}}
     type {{$name}} {{$to}}
+
+    {{if or (GetAnnotation $ "dispatchHandle") (GetAnnotation $ "nonDispatchHandle")}}
+      // Ensure that {{$name}} implements the api.Handle interface.
+      var _ ϟapi.Handle = {{$name}}(0)
+
+      // Handle implements the api.Handle interface returning this handle as a plain int.
+      func (h {{$name}}) Handle() uint64 {
+        return uint64(h)
+      }
+    {{end}}
+
     {{if IsSize $ty}}
       // Placeholder function to make {{$name}} implement SizeTy interface
       func ({{$name}}) IsMemorySize() {}
@@ -1514,6 +1525,7 @@ import (
       // Placeholder function to make {{$name}} implement UintTy interface
       func ({{$name}}) IsUint() {}
     {{end}}
+
     func Decode{{$name}}(ϟd *ϟmem.Decoder) {{$name}} {
       return {{$name}}({{Template "Go.Decode" $ty}})
     }
