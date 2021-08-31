@@ -864,6 +864,30 @@ int main(int argc, const char** argv) {
   LOAD_DEVICE_FUNCTION(vkQueuePresentKHR);
   LOAD_DEVICE_FUNCTION(vkSetDebugUtilsObjectNameEXT);
 #undef LOAD_DEVICE_FUNCTION
+
+#define SET_DEBUG_LABEL(handle, type, label)                  \
+  do {                                                        \
+    if (vkSetDebugUtilsObjectNameEXT) {                       \
+      VkDebugUtilsObjectNameInfoEXT info{                     \
+          VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, \
+          nullptr,                                            \
+          type,                                               \
+          reinterpret_cast<uint64_t>(handle),                 \
+          label,                                              \
+      };                                                      \
+      vkSetDebugUtilsObjectNameEXT(device, &info);            \
+    }                                                         \
+  } while (false)
+
+  // Set debug labels of objects created before the device.
+  SET_DEBUG_LABEL(instance, VK_OBJECT_TYPE_INSTANCE, "KubieInstance");
+  SET_DEBUG_LABEL(physical_device, VK_OBJECT_TYPE_PHYSICAL_DEVICE,
+                  "KubiePhysDevice");
+  SET_DEBUG_LABEL(device, VK_OBJECT_TYPE_DEVICE, "KubieDevice");
+  SET_DEBUG_LABEL(queue, VK_OBJECT_TYPE_QUEUE, "KubieQueue");
+  SET_DEBUG_LABEL(surface, VK_OBJECT_TYPE_SURFACE_KHR, "KubieSurface");
+  SET_DEBUG_LABEL(swapchain, VK_OBJECT_TYPE_SWAPCHAIN_KHR, "KubieSwapchain");
+
   // Immutable Data
   VkBuffer vertex_buffer;
   VkDeviceMemory vertex_buffer_memory;
@@ -914,6 +938,7 @@ int main(int argc, const char** argv) {
         nullptr};
     REQUIRE_SUCCESS(
         vkCreateBuffer(device, &create_info, nullptr, &vertex_buffer));
+    SET_DEBUG_LABEL(vertex_buffer, VK_OBJECT_TYPE_BUFFER, "KubieVertices");
 
     VkMemoryRequirements memory_requirements;
     vkGetBufferMemoryRequirements(device, vertex_buffer, &memory_requirements);
@@ -932,6 +957,8 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkAllocateMemory(device, &allocate_info, nullptr,
                                      &vertex_buffer_memory));
+    SET_DEBUG_LABEL(vertex_buffer_memory, VK_OBJECT_TYPE_DEVICE_MEMORY,
+                    "KubieVerticesMem");
     REQUIRE_SUCCESS(
         vkBindBufferMemory(device, vertex_buffer, vertex_buffer_memory, 0));
   }
@@ -949,6 +976,7 @@ int main(int argc, const char** argv) {
         nullptr};
     REQUIRE_SUCCESS(
         vkCreateBuffer(device, &create_info, nullptr, &index_buffer));
+    SET_DEBUG_LABEL(index_buffer, VK_OBJECT_TYPE_BUFFER, "KubieIndices");
 
     VkMemoryRequirements memory_requirements;
     vkGetBufferMemoryRequirements(device, index_buffer, &memory_requirements);
@@ -967,6 +995,8 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkAllocateMemory(device, &allocate_info, nullptr,
                                      &index_buffer_memory));
+    SET_DEBUG_LABEL(index_buffer_memory, VK_OBJECT_TYPE_DEVICE_MEMORY,
+                    "KubieIndicesMem");
     REQUIRE_SUCCESS(
         vkBindBufferMemory(device, index_buffer, index_buffer_memory, 0));
   }
@@ -991,6 +1021,7 @@ int main(int argc, const char** argv) {
         VK_IMAGE_LAYOUT_UNDEFINED};
 
     REQUIRE_SUCCESS(vkCreateImage(device, &create_info, nullptr, &texture));
+    SET_DEBUG_LABEL(texture, VK_OBJECT_TYPE_IMAGE, "KubieTexture");
 
     VkMemoryRequirements memory_requirements;
     vkGetImageMemoryRequirements(device, texture, &memory_requirements);
@@ -1009,6 +1040,8 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(
         vkAllocateMemory(device, &allocate_info, nullptr, &texture_memory));
+    SET_DEBUG_LABEL(texture_memory, VK_OBJECT_TYPE_DEVICE_MEMORY,
+                    "KubieTextureMem");
     REQUIRE_SUCCESS(vkBindImageMemory(device, texture, texture_memory, 0));
   }
 
@@ -1032,6 +1065,7 @@ int main(int argc, const char** argv) {
                                     VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
                                     false};
     REQUIRE_SUCCESS(vkCreateSampler(device, &create_info, nullptr, &sampler));
+    SET_DEBUG_LABEL(sampler, VK_OBJECT_TYPE_SAMPLER, "KubieSampler");
   }
 
   {
@@ -1048,6 +1082,7 @@ int main(int argc, const char** argv) {
         VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
     REQUIRE_SUCCESS(
         vkCreateImageView(device, &create_info, nullptr, &image_view));
+    SET_DEBUG_LABEL(image_view, VK_OBJECT_TYPE_IMAGE_VIEW, "KubieTextureView");
   }
 
   {
@@ -1064,6 +1099,8 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkCreateDescriptorSetLayout(device, &create_info, nullptr,
                                                 &descriptor_set_layout));
+    SET_DEBUG_LABEL(descriptor_set_layout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
+                    "KubieDescLayout");
   }
 
   {
@@ -1077,6 +1114,8 @@ int main(int argc, const char** argv) {
         nullptr};
     REQUIRE_SUCCESS(vkCreatePipelineLayout(device, &create_info, nullptr,
                                            &pipeline_layout));
+    SET_DEBUG_LABEL(pipeline_layout, VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+                    "KubiePipelineLayout");
   }
 
   {
@@ -1122,16 +1161,7 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(
         vkCreateRenderPass(device, &create_info, nullptr, &render_pass));
-    if (vkSetDebugUtilsObjectNameEXT != nullptr) {
-      VkDebugUtilsObjectNameInfoEXT info{
-          VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-          nullptr,
-          VK_OBJECT_TYPE_RENDER_PASS,
-          reinterpret_cast<uint64_t>(render_pass),
-          "KubieRenderPass",
-      };
-      vkSetDebugUtilsObjectNameEXT(device, &info);
-    }
+    SET_DEBUG_LABEL(render_pass, VK_OBJECT_TYPE_RENDER_PASS, "KubieRenderPass");
   }
 
   {
@@ -1141,6 +1171,8 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkCreateShaderModule(device, &create_info, nullptr,
                                          &vertex_shader_module));
+    SET_DEBUG_LABEL(vertex_shader_module, VK_OBJECT_TYPE_SHADER_MODULE,
+                    "KubieVertexShader");
   }
 
   {
@@ -1150,6 +1182,8 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkCreateShaderModule(device, &create_info, nullptr,
                                          &fragment_shader_module));
+    SET_DEBUG_LABEL(fragment_shader_module, VK_OBJECT_TYPE_SHADER_MODULE,
+                    "KubieFragmentShader");
   }
 
   {
@@ -1297,6 +1331,8 @@ int main(int argc, const char** argv) {
 
     REQUIRE_SUCCESS(vkCreateGraphicsPipelines(
         device, VK_NULL_HANDLE, 1, &create_info, nullptr, &graphics_pipeline));
+    SET_DEBUG_LABEL(graphics_pipeline, VK_OBJECT_TYPE_PIPELINE,
+                    "KubiePipeline");
   }
 
   {
@@ -1321,6 +1357,8 @@ int main(int argc, const char** argv) {
         sizes};
     REQUIRE_SUCCESS(vkCreateDescriptorPool(device, &create_info, nullptr,
                                            &descriptor_pool));
+    SET_DEBUG_LABEL(descriptor_pool, VK_OBJECT_TYPE_DESCRIPTOR_POOL,
+                    "KubieDescPool");
   }
 
   // Create the per-buffer resources
@@ -1336,6 +1374,8 @@ int main(int argc, const char** argv) {
                                      nullptr};
       REQUIRE_SUCCESS(
           vkCreateBuffer(device, &create_info, nullptr, &uniform_buffers[i]));
+      std::string name = "KubieUniformBuffer" + std::to_string(i);
+      SET_DEBUG_LABEL(uniform_buffers[i], VK_OBJECT_TYPE_BUFFER, name.data());
 
       VkMemoryRequirements memory_requirements;
       vkGetBufferMemoryRequirements(device, uniform_buffers[i],
@@ -1356,6 +1396,9 @@ int main(int argc, const char** argv) {
 
       REQUIRE_SUCCESS(vkAllocateMemory(device, &allocate_info, nullptr,
                                        &uniform_buffer_memories[i]));
+      name += "Mem";
+      SET_DEBUG_LABEL(uniform_buffer_memories[i], VK_OBJECT_TYPE_DEVICE_MEMORY,
+                      name.data());
       REQUIRE_SUCCESS(vkBindBufferMemory(device, uniform_buffers[i],
                                          uniform_buffer_memories[i], 0));
     }
@@ -1380,6 +1423,8 @@ int main(int argc, const char** argv) {
 
       REQUIRE_SUCCESS(
           vkCreateImage(device, &create_info, nullptr, &depth_buffers[i]));
+      std::string name = "KubieDepthBuffer" + std::to_string(i);
+      SET_DEBUG_LABEL(depth_buffers[i], VK_OBJECT_TYPE_IMAGE, name.data());
 
       VkMemoryRequirements memory_requirements;
       vkGetImageMemoryRequirements(device, depth_buffers[i],
@@ -1400,6 +1445,9 @@ int main(int argc, const char** argv) {
 
       REQUIRE_SUCCESS(vkAllocateMemory(device, &allocate_info, nullptr,
                                        &depth_buffer_memories[i]));
+      name += "Mem";
+      SET_DEBUG_LABEL(depth_buffer_memories[i], VK_OBJECT_TYPE_DEVICE_MEMORY,
+                      name.data());
       REQUIRE_SUCCESS(vkBindImageMemory(device, depth_buffers[i],
                                         depth_buffer_memories[i], 0));
     }
@@ -1417,6 +1465,9 @@ int main(int argc, const char** argv) {
           VkImageSubresourceRange{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}};
       REQUIRE_SUCCESS(vkCreateImageView(device, &create_info, nullptr,
                                         &depth_buffer_views[i]));
+      std::string name = "KubieDepthBuffer" + std::to_string(i) + "View";
+      SET_DEBUG_LABEL(depth_buffer_views[i], VK_OBJECT_TYPE_IMAGE_VIEW,
+                      name.data());
     }
     {
       VkDescriptorSetAllocateInfo allocate_info{
@@ -1424,6 +1475,9 @@ int main(int argc, const char** argv) {
           descriptor_pool, 1, &descriptor_set_layout};
       REQUIRE_SUCCESS(vkAllocateDescriptorSets(device, &allocate_info,
                                                &descriptor_sets[i]));
+      std::string name = "KubieDescSet" + std::to_string(i);
+      SET_DEBUG_LABEL(descriptor_sets[i], VK_OBJECT_TYPE_DESCRIPTOR_SET,
+                      name.data());
 
       VkDescriptorBufferInfo buffer_info{uniform_buffers[i], 0, VK_WHOLE_SIZE};
 
@@ -1464,6 +1518,9 @@ int main(int argc, const char** argv) {
 
       REQUIRE_SUCCESS(vkCreateCommandPool(device, &create_info, nullptr,
                                           &command_pools[i]));
+      std::string name = "KubieCmdPool" + std::to_string(i);
+      SET_DEBUG_LABEL(command_pools[i], VK_OBJECT_TYPE_COMMAND_POOL,
+                      name.data());
     }
 
     {
@@ -1472,17 +1529,9 @@ int main(int argc, const char** argv) {
           command_pools[i], VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
       REQUIRE_SUCCESS(vkAllocateCommandBuffers(device, &allocate_info,
                                                &render_command_buffers[i]));
-      if (vkSetDebugUtilsObjectNameEXT != nullptr) {
-        std::string name = "KubieRenderCommandBuffer" + std::to_string(i);
-        VkDebugUtilsObjectNameInfoEXT info{
-            VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-            nullptr,
-            VK_OBJECT_TYPE_COMMAND_BUFFER,
-            reinterpret_cast<uint64_t>(render_command_buffers[i]),
-            name.data(),
-        };
-        vkSetDebugUtilsObjectNameEXT(device, &info);
-      }
+      std::string name = "KubieRenderCmdBuffer" + std::to_string(i);
+      SET_DEBUG_LABEL(render_command_buffers[i], VK_OBJECT_TYPE_COMMAND_BUFFER,
+                      name.data());
     }
 
     {
@@ -1490,6 +1539,8 @@ int main(int argc, const char** argv) {
                                     nullptr, VK_FENCE_CREATE_SIGNALED_BIT};
       REQUIRE_SUCCESS(
           vkCreateFence(device, &create_info, nullptr, &ready_fences[i]));
+      std::string name = "KubieFence" + std::to_string(i);
+      SET_DEBUG_LABEL(ready_fences[i], VK_OBJECT_TYPE_FENCE, name.data());
     }
 
     {
@@ -1497,8 +1548,14 @@ int main(int argc, const char** argv) {
                                         nullptr, 0};
       REQUIRE_SUCCESS(vkCreateSemaphore(device, &create_info, nullptr,
                                         &swapchain_image_ready_semaphores[i]));
+      std::string name = "KubieReadySem" + std::to_string(i);
+      SET_DEBUG_LABEL(swapchain_image_ready_semaphores[i],
+                      VK_OBJECT_TYPE_SEMAPHORE, name.data());
       REQUIRE_SUCCESS(vkCreateSemaphore(device, &create_info, nullptr,
                                         &render_done_semaphores[i]));
+      name = "KubieDoneSem" + std::to_string(i);
+      SET_DEBUG_LABEL(render_done_semaphores[i], VK_OBJECT_TYPE_SEMAPHORE,
+                      name.data());
     }
   }
 
@@ -1521,6 +1578,8 @@ int main(int argc, const char** argv) {
           nullptr};
       REQUIRE_SUCCESS(
           vkCreateBuffer(device, &create_info, nullptr, &staging_buffer));
+      SET_DEBUG_LABEL(staging_buffer, VK_OBJECT_TYPE_BUFFER,
+                      "KubieStagingBuffer");
 
       VkMemoryRequirements memory_requirements;
       vkGetBufferMemoryRequirements(device, staging_buffer,
@@ -1541,6 +1600,8 @@ int main(int argc, const char** argv) {
 
       REQUIRE_SUCCESS(vkAllocateMemory(device, &allocate_info, nullptr,
                                        &staging_buffer_memory));
+      SET_DEBUG_LABEL(staging_buffer_memory, VK_OBJECT_TYPE_DEVICE_MEMORY,
+                      "KubieStagingBufferMem");
       REQUIRE_SUCCESS(
           vkBindBufferMemory(device, staging_buffer, staging_buffer_memory, 0));
     }
@@ -1584,6 +1645,8 @@ int main(int argc, const char** argv) {
 
       REQUIRE_SUCCESS(vkCreateCommandPool(device, &create_info, nullptr,
                                           &staging_command_pool));
+      SET_DEBUG_LABEL(staging_command_pool, VK_OBJECT_TYPE_COMMAND_POOL,
+                      "KubieStagingCmdPool");
     }
 
     {
@@ -1592,16 +1655,8 @@ int main(int argc, const char** argv) {
           staging_command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1};
       REQUIRE_SUCCESS(vkAllocateCommandBuffers(device, &allocate_info,
                                                &staging_command_buffer));
-      if (vkSetDebugUtilsObjectNameEXT != nullptr) {
-        VkDebugUtilsObjectNameInfoEXT info{
-            VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-            nullptr,
-            VK_OBJECT_TYPE_COMMAND_BUFFER,
-            reinterpret_cast<uint64_t>(staging_command_buffer),
-            "KubieStagingCommandBuffer",
-        };
-        vkSetDebugUtilsObjectNameEXT(device, &info);
-      }
+      SET_DEBUG_LABEL(staging_command_buffer, VK_OBJECT_TYPE_COMMAND_BUFFER,
+                      "KubieStagingCmdBuffer");
     }
 
     {
@@ -1710,6 +1765,8 @@ int main(int argc, const char** argv) {
     REQUIRE_SUCCESS(
         vkCreateImageView(device, &create_info, nullptr, &swapchain_view));
     swapchain_views.push_back(swapchain_view);
+    std::string name = "KubieSwapchainView" + std::to_string(i);
+    SET_DEBUG_LABEL(swapchain_view, VK_OBJECT_TYPE_IMAGE_VIEW, name.data());
 
     for (size_t j = 0; j < kBufferingCount; j++) {
       VkImageView views[2] = {swapchain_views[i], depth_buffer_views[j]};
@@ -1726,18 +1783,9 @@ int main(int argc, const char** argv) {
       VkFramebuffer framebuffer;
       REQUIRE_SUCCESS(
           vkCreateFramebuffer(device, &create_info, nullptr, &framebuffer));
-      if (vkSetDebugUtilsObjectNameEXT != nullptr) {
-        std::string name =
-            "KubieFrameBuffer" + std::to_string(i) + "." + std::to_string(j);
-        VkDebugUtilsObjectNameInfoEXT info{
-            VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-            nullptr,
-            VK_OBJECT_TYPE_FRAMEBUFFER,
-            reinterpret_cast<uint64_t>(framebuffer),
-            name.data(),
-        };
-        vkSetDebugUtilsObjectNameEXT(device, &info);
-      }
+      std::string name =
+          "KubieFrameBuffer" + std::to_string(i) + "." + std::to_string(j);
+      SET_DEBUG_LABEL(framebuffer, VK_OBJECT_TYPE_FRAMEBUFFER, name.data());
       framebuffers.push_back(framebuffer);
     }
   }
