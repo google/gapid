@@ -14,10 +14,13 @@
 
 package api
 
+import "fmt"
+
 // Handle is an interface implemented by every handle type in the API. Handles
 // can be represented by a uint64 as per the Vulkan spec
 // (https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/chap3.html#fundamentals-objectmodel-overview).
 type Handle interface {
+	fmt.Formatter
 	Labeled
 
 	// Handle returns this handle's value as a uint64 for display.

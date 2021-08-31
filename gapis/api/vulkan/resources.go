@@ -50,7 +50,7 @@ func (t ImageObjectʳ) IsResource() bool {
 
 // ResourceHandle returns the UI identity for the resource.
 func (t ImageObjectʳ) ResourceHandle() string {
-	return fmt.Sprintf("Image<%d>", t.VulkanHandle())
+	return fmt.Sprintf("Image<%v>", t.VulkanHandle())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
@@ -805,7 +805,7 @@ func (s ShaderModuleObjectʳ) IsResource() bool {
 
 // ResourceHandle returns the UI identity for the resource.
 func (s ShaderModuleObjectʳ) ResourceHandle() string {
-	return fmt.Sprintf("Shader<0x%x>", s.VulkanHandle())
+	return fmt.Sprintf("Shader<%v>", s.VulkanHandle())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
@@ -993,7 +993,7 @@ func (p GraphicsPipelineObjectʳ) IsResource() bool {
 
 // ResourceHandle returns the UI identity for the resource.
 func (p GraphicsPipelineObjectʳ) ResourceHandle() string {
-	return fmt.Sprintf("GraphicsPipeline<%d>", p.VulkanHandle())
+	return fmt.Sprintf("GraphicsPipeline<%v>", p.VulkanHandle())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
@@ -2022,7 +2022,7 @@ func (p ComputePipelineObjectʳ) IsResource() bool {
 
 // ResourceHandle returns the UI identity for the resource.
 func (p ComputePipelineObjectʳ) ResourceHandle() string {
-	return fmt.Sprintf("ComputePipeline<%d>", p.VulkanHandle())
+	return fmt.Sprintf("ComputePipeline<%v>", p.VulkanHandle())
 }
 
 // ResourceLabel returns an optional debug label for the resource.

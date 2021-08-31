@@ -1522,6 +1522,11 @@ import (
       func (h {{$name}}) Handle() uint64 {
         return uint64(h)
       }
+
+      // Format implements fmt.Formatter to print this handle.
+      func (h {{$name}}) Format(f fmt.State, c rune) {
+        fmt.Fprintf(f, "0x%x", uint64(h))
+      }
     {{end}}
 
     {{if IsSize $ty}}
