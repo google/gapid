@@ -494,15 +494,19 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					subgroups = append(subgroups, newSubgroups...)
 					if cbo.CommandReferences().Len() > 0 {
 						subgroups = append(subgroups, append(idx, uint64(i), uint64(j), uint64(cbo.CommandReferences().Len())))
-						d.SubcommandNames.SetValue(append(idx, uint64(i), j), fmt.Sprintf("Command Buffer: %v", cbo.VulkanHandle()))
+						name := fmt.Sprintf("Command Buffer: %v", cbo.VulkanHandle())
+						if label := cbo.Label(ctx, s); len(label) > 0 {
+							name = label
+						}
+						d.SubcommandNames.SetValue(append(idx, uint64(i), j), name)
 					}
 					mergeExperimentalCmds(append(idx, uint64(i)))
 				}
 			case VkCmdBeginRenderPassArgsʳ:
 				rp := st.RenderPasses().Get(args.RenderPass())
 				name := fmt.Sprintf("RenderPass: %v", rp.VulkanHandle())
-				if !rp.DebugInfo().IsNil() && len(rp.DebugInfo().ObjectName()) > 0 {
-					name = rp.DebugInfo().ObjectName()
+				if label := rp.Label(ctx, s); len(label) > 0 {
+					name = label
 				}
 				pushMarker(name, renderPassMarker, i, append(api.SubCmdIdx{}, idx...))
 
@@ -599,8 +603,12 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				}
 				d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx)}, fmt.Sprintf("pSubmits[%v]: ", submitIdx))
 				for j, buff := range buffers {
-					d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx), uint64(j)}, fmt.Sprintf("Command Buffer: %v", buff))
 					cmdBuff := st.CommandBuffers().Get(buff)
+					name := fmt.Sprintf("Command Buffer: %v", buff)
+					if label := cmdBuff.Label(ctx, s); len(label) > 0 {
+						name = label
+					}
+					d.SubcommandNames.SetValue(api.SubCmdIdx{uint64(id), uint64(submitIdx), uint64(j)}, name)
 					if cmdBuff.CommandReferences().Len() >= 0 {
 						additionalRefs, additionalSubgroups := walkCommandBuffer(cmdBuff, api.SubCmdIdx{uint64(i), uint64(submitIdx), uint64(j)}, i, order)
 						for _, sg := range additionalSubgroups {
