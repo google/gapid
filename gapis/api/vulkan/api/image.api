@@ -903,6 +903,7 @@ cmd VkResult vkBindImageMemory2(
   @unused VkBool32                      ForceExplicitReconstruction
   @unused bool                          IsFromExtension
   @unused u64                           AndroidExternalFormat
+  @unused ref!VulkanDebugMarkerInfo     DebugInfo
 }
 
 sub void CreateSamplerYcbcrConversion(

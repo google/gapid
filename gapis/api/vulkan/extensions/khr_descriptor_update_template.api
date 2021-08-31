@@ -114,6 +114,7 @@ class DescriptorUpdateTemplateObject {
     VkPipelineLayout                           PipelineLayout
     u32                                        SetNumber
     bool                                       FromKHR
+    @unused ref!VulkanDebugMarkerInfo          DebugInfo
 }
 
 sub ref!DescriptorUpdateTemplateObject createDescriptorUpdateTemplate(

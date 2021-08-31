@@ -376,6 +376,26 @@ sub void setDebugMarkerObjectTag(VkDebugMarkerObjectTagInfoEXT tagInfo) {
         Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
           Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, tagInfo)
       }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT:
+      if (as!VkDebugReportCallbackEXT(obj) in DebugReportCallbacks) {
+        DebugReportCallbacks[as!VkDebugReportCallbackEXT(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DebugReportCallbacks[as!VkDebugReportCallbackEXT(obj)].DebugInfo, tagInfo)
+      }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT:
+      if (as!VkDisplayModeKHR(obj) in DisplayModes) {
+        DisplayModes[as!VkDisplayModeKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DisplayModes[as!VkDisplayModeKHR(obj)].DebugInfo, tagInfo)
+      }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT:
+      if (as!VkSamplerYcbcrConversion(obj) in SamplerYcbcrConversions) {
+        SamplerYcbcrConversions[as!VkSamplerYcbcrConversion(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          SamplerYcbcrConversions[as!VkSamplerYcbcrConversion(obj)].DebugInfo, tagInfo)
+      }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT:
+      if (as!VkDescriptorUpdateTemplate(obj) in DescriptorUpdateTemplates) {
+        DescriptorUpdateTemplates[as!VkDescriptorUpdateTemplate(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DescriptorUpdateTemplates[as!VkDescriptorUpdateTemplate(obj)].DebugInfo, tagInfo)
+      }
   }
 }
 
@@ -478,9 +498,9 @@ sub void setDebugMarkerObjectName(VkDebugMarkerObjectNameInfoEXT nameInfo) {
         GraphicsPipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectName(
           GraphicsPipelines[as!VkPipeline(obj)].DebugInfo, nameInfo)
       } else if (as!VkPipeline(obj) in ComputePipelines) {
-          ComputePipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectName(
-            ComputePipelines[as!VkPipeline(obj)].DebugInfo, nameInfo)
-        }
+        ComputePipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectName(
+          ComputePipelines[as!VkPipeline(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT:
       if (as!VkDescriptorSetLayout(obj) in DescriptorSetLayouts) {
         DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo = updateDebugMarkerObjectName(
@@ -520,6 +540,26 @@ sub void setDebugMarkerObjectName(VkDebugMarkerObjectNameInfoEXT nameInfo) {
       if (as!VkSwapchainKHR(obj) in Swapchains) {
         Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
           Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, nameInfo)
+      }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT:
+      if (as!VkDebugReportCallbackEXT(obj) in DebugReportCallbacks) {
+        DebugReportCallbacks[as!VkDebugReportCallbackEXT(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DebugReportCallbacks[as!VkDebugReportCallbackEXT(obj)].DebugInfo, nameInfo)
+      }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT:
+      if (as!VkDisplayModeKHR(obj) in DisplayModes) {
+        DisplayModes[as!VkDisplayModeKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DisplayModes[as!VkDisplayModeKHR(obj)].DebugInfo, nameInfo)
+      }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT:
+      if (as!VkSamplerYcbcrConversion(obj) in SamplerYcbcrConversions) {
+        SamplerYcbcrConversions[as!VkSamplerYcbcrConversion(obj)].DebugInfo = updateDebugMarkerObjectName(
+          SamplerYcbcrConversions[as!VkSamplerYcbcrConversion(obj)].DebugInfo, nameInfo)
+      }
+    case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT:
+      if (as!VkDescriptorUpdateTemplate(obj) in DescriptorUpdateTemplates) {
+        DescriptorUpdateTemplates[as!VkDescriptorUpdateTemplate(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DescriptorUpdateTemplates[as!VkDescriptorUpdateTemplate(obj)].DebugInfo, nameInfo)
       }
   }
 }
