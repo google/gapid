@@ -137,7 +137,6 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	// the old pools. This is especially useful for things that are internal
 	// pools, (Shader words for example)
 
-	// TODO: Debug Info
 	out := newInitialStateOutput(oldState)
 	sb := s.newStateBuilder(ctx, out)
 
@@ -453,6 +452,32 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 	sb.readMemories = []*api.AllocResult{}
 	sb.writeMemories = []*api.AllocResult{}
 	sb.extraReadIDsAndRanges = []idAndRng{}
+}
+
+func (sb *stateBuilder) addDebugInfo(device VkDevice, handle api.Handle, objType VkObjectType, info VulkanDebugMarkerInfoʳ) {
+	if info.IsNil() {
+		// Nothing to do.
+		return
+	}
+
+	if info.ObjectName() != "" {
+		name := NewCharᶜᵖ(sb.MustAllocReadData(info.ObjectName()).Ptr())
+		sb.write(sb.cb.VkSetDebugUtilsObjectNameEXT(
+			device,
+			sb.MustAllocReadData(
+				NewVkDebugUtilsObjectNameInfoEXT(
+					VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, // sType
+					0,               // pNext
+					objType,         // objectType
+					handle.Handle(), // objectHandle
+					name,            // pObjectName
+				)).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+	}
+
+	// TODO(pmuetschard): also set the tag if it was present at capture time.
+	// At this point, this doesn't seem like it would get us anything and would just waste resources.
 }
 
 func (sb *stateBuilder) createInstance(vk VkInstance, inst InstanceObjectʳ) {
@@ -901,6 +926,30 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 		sb.MustAllocWriteData(d.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+
+	dev := d.VulkanHandle()
+	state := sb.s
+	sb.addDebugInfo(dev, dev, VkObjectType_VK_OBJECT_TYPE_DEVICE, d.DebugInfo())
+
+	// Update the debug info for things created before the device.
+	instance := state.Instances().Get(state.PhysicalDevices().Get(d.PhysicalDevice()).Instance())
+	sb.addDebugInfo(dev, instance.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_INSTANCE, instance.DebugInfo())
+
+	// Our API currently shares debug info across devices for these objects, so if
+	// multiple devices are created per instance (very rare) this will set the debug
+	// info for these objects on each device.
+	for _, handle := range state.PhysicalDevices().Keys() {
+		physDev := state.PhysicalDevices().Get(handle)
+		if physDev.Instance() == instance.VulkanHandle() {
+			sb.addDebugInfo(dev, handle, VkObjectType_VK_OBJECT_TYPE_PHYSICAL_DEVICE, physDev.DebugInfo())
+		}
+	}
+	for _, handle := range state.Surfaces().Keys() {
+		surface := state.Surfaces().Get(handle)
+		if surface.Instance() == instance.VulkanHandle() {
+			sb.addDebugInfo(dev, handle, VkObjectType_VK_OBJECT_TYPE_SURFACE_KHR, surface.DebugInfo())
+		}
+	}
 }
 
 func (sb *stateBuilder) createQueue(q QueueObjectʳ) {
@@ -927,6 +976,8 @@ func (sb *stateBuilder) createQueue(q QueueObjectʳ) {
 			sb.MustAllocWriteData(q.VulkanHandle()).Ptr(),
 		))
 	}
+
+	sb.addDebugInfo(q.Device(), q.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_QUEUE, q.DebugInfo())
 }
 
 type imageQueueFamilyTransferInfo struct {
@@ -1068,6 +1119,7 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		sb.MustAllocWriteData(swp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(swp.Device(), swp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_SWAPCHAIN_KHR, swp.DebugInfo())
 
 	if !swp.HDRMetadata().IsNil() {
 		sb.write(sb.cb.VkSetHdrMetadataEXT(
@@ -1214,6 +1266,7 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 		sb.MustAllocWriteData(mem.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(mem.Device(), mem.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_DEVICE_MEMORY, mem.DebugInfo())
 
 	if mem.MappedLocation().Address() != 0 {
 		sb.write(sb.cb.VkMapMemory(
@@ -1540,6 +1593,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 	}
 
 	vkCreateImage(sb, img.Device(), img.Info(), vkImage)
+	sb.addDebugInfo(img.Device(), vkImage, VkObjectType_VK_OBJECT_TYPE_IMAGE, img.DebugInfo())
 	planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, srcState, GetState(srcState), 0, nil, nil, img, VkImageAspectFlagBits(0))
 	planeMemRequirements := planeMemInfo.MemoryRequirements()
 	vkGetImageMemoryRequirements(sb, img.Device(), vkImage, planeMemRequirements)
@@ -1918,6 +1972,8 @@ func (sb *stateBuilder) createSamplerYcbcrConversion(conv SamplerYcbcrConversion
 			VkResult_VK_SUCCESS,
 		))
 	}
+
+	sb.addDebugInfo(conv.Device(), conv.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION, conv.DebugInfo())
 }
 
 func (sb *stateBuilder) createSampler(smp SamplerObjectʳ) {
@@ -1958,6 +2014,7 @@ func (sb *stateBuilder) createSampler(smp SamplerObjectʳ) {
 		sb.MustAllocWriteData(smp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(smp.Device(), smp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_SAMPLER, smp.DebugInfo())
 }
 
 func (sb *stateBuilder) createFence(fnc FenceObjectʳ) {
@@ -1976,6 +2033,7 @@ func (sb *stateBuilder) createFence(fnc FenceObjectʳ) {
 		sb.MustAllocWriteData(fnc.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(fnc.Device(), fnc.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_FENCE, fnc.DebugInfo())
 }
 
 func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
@@ -2000,6 +2058,7 @@ func (sb *stateBuilder) createSemaphore(sem SemaphoreObjectʳ) {
 		sb.MustAllocWriteData(sem.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(sem.Device(), sem.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_SEMAPHORE, sem.DebugInfo())
 
 	if !sem.Signaled() {
 		return
@@ -2047,6 +2106,7 @@ func (sb *stateBuilder) createEvent(evt EventObjectʳ) {
 		sb.MustAllocWriteData(evt.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(evt.Device(), evt.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_EVENT, evt.DebugInfo())
 
 	if evt.Signaled() {
 		sb.write(sb.cb.VkSetEvent(
@@ -2070,6 +2130,7 @@ func (sb *stateBuilder) createCommandPool(cp CommandPoolObjectʳ) {
 		sb.MustAllocWriteData(cp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(cp.Device(), cp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_COMMAND_POOL, cp.DebugInfo())
 }
 
 func (sb *stateBuilder) createPipelineCache(pc PipelineCacheObjectʳ) {
@@ -2086,6 +2147,7 @@ func (sb *stateBuilder) createPipelineCache(pc PipelineCacheObjectʳ) {
 		sb.MustAllocWriteData(pc.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(pc.Device(), pc.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_PIPELINE_CACHE, pc.DebugInfo())
 }
 
 func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObjectʳ) {
@@ -2126,6 +2188,7 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 		sb.MustAllocWriteData(dsl.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(dsl.Device(), dsl.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, dsl.DebugInfo())
 }
 
 func (sb *stateBuilder) createDescriptorUpdateTemplate(dut DescriptorUpdateTemplateObjectʳ) {
@@ -2167,10 +2230,10 @@ func (sb *stateBuilder) createDescriptorUpdateTemplate(dut DescriptorUpdateTempl
 			VkResult_VK_SUCCESS,
 		))
 	}
+	sb.addDebugInfo(dut.Device(), dut.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE, dut.DebugInfo())
 }
 
 func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
-
 	temporaryDescriptorSetLayouts := []VkDescriptorSetLayout{}
 	descriptorSets := []VkDescriptorSetLayout{}
 	for _, k := range pl.SetLayouts().Keys() {
@@ -2205,6 +2268,7 @@ func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
 		sb.MustAllocWriteData(pl.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(pl.Device(), pl.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_PIPELINE_LAYOUT, pl.DebugInfo())
 
 	for _, td := range temporaryDescriptorSetLayouts {
 		sb.write(sb.cb.VkDestroyDescriptorSetLayout(
@@ -2275,6 +2339,7 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 		sb.MustAllocWriteData(rp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(rp.Device(), rp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_RENDER_PASS, rp.DebugInfo())
 }
 
 func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
@@ -2296,6 +2361,7 @@ func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
 		csm.Extras().Add(sbExtra)
 	}
 	sb.write(csm)
+	sb.addDebugInfo(sm.Device(), sm.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_SHADER_MODULE, sm.DebugInfo())
 }
 
 func isShaderModuleInState(sm ShaderModuleObjectʳ, st *api.GlobalState) bool {
@@ -2416,6 +2482,7 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 		sb.MustAllocWriteData(cp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(cp.Device(), cp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_PIPELINE, cp.DebugInfo())
 
 	if !temporaryShaderModule.IsNil() {
 		sb.write(sb.cb.VkDestroyShaderModule(
@@ -2727,6 +2794,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		sb.MustAllocWriteData(gp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(gp.Device(), gp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_PIPELINE, gp.DebugInfo())
 
 	for _, m := range temporaryShaderModules {
 		sb.write(sb.cb.VkDestroyShaderModule(
@@ -2798,6 +2866,7 @@ func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
 		sb.MustAllocWriteData(iv.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(iv.Device(), iv.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_IMAGE_VIEW, iv.DebugInfo())
 }
 
 func (sb *stateBuilder) createBufferView(bv BufferViewObjectʳ) {
@@ -2823,6 +2892,7 @@ func (sb *stateBuilder) createBufferView(bv BufferViewObjectʳ) {
 		sb.MustAllocWriteData(bv.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(bv.Device(), bv.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_BUFFER_VIEW, bv.DebugInfo())
 }
 
 func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp DescriptorPoolObjectʳ) {
@@ -2840,6 +2910,7 @@ func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp Descrip
 		sb.MustAllocWriteData(dp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(dp.Device(), dp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_DESCRIPTOR_POOL, dp.DebugInfo())
 
 	descSetHandles := make([]VkDescriptorSet, 0, dp.DescriptorSets().Len())
 	descSetLayoutHandles := make([]VkDescriptorSetLayout, 0, dp.DescriptorSets().Len())
@@ -2868,6 +2939,7 @@ func (sb *stateBuilder) allocateDescriptorSets(dp DescriptorPoolObjectʳ, descSe
 			sb.MustAllocWriteData(descSetHandles).Ptr(),
 			VkResult_VK_SUCCESS,
 		))
+		sb.addDebugInfo(dp.Device(), dp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_DESCRIPTOR_SET, dp.DebugInfo())
 	}
 }
 
@@ -2908,6 +2980,7 @@ func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 		sb.MustAllocWriteData(fb.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(fb.Device(), fb.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_FRAMEBUFFER, fb.DebugInfo())
 
 	if !temporaryRenderPass.IsNil() {
 		sb.write(sb.cb.VkDestroyRenderPass(
@@ -3078,6 +3151,7 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 		sb.MustAllocWriteData(qp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+	sb.addDebugInfo(qp.Device(), qp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_QUERY_POOL, qp.DebugInfo())
 
 	anyInitialized := false
 	for _, k := range qp.Status().Keys() {
@@ -3140,7 +3214,7 @@ func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 		sb.MustAllocWriteData(cb.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
-
+	sb.addDebugInfo(cb.Device(), cb.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_COMMAND_BUFFER, cb.DebugInfo())
 }
 
 func (sb *stateBuilder) recordCommandBuffer(cb CommandBufferObjectʳ, level VkCommandBufferLevel, srcState *api.GlobalState) {
@@ -3274,6 +3348,7 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 	)
 	createWithMemReq.Extras().Add(memReq)
 	sb.write(createWithMemReq)
+	sb.addDebugInfo(src.Device(), buffer, VkObjectType_VK_OBJECT_TYPE_BUFFER, src.DebugInfo())
 
 	dst := os.Buffers().Get(buffer)
 	sb.write(sb.cb.VkGetBufferMemoryRequirements(
