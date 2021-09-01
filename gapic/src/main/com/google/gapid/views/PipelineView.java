@@ -722,6 +722,10 @@ public class PipelineView extends Composite
         }
         break;
 
+      case HANDLEVAL:
+        dv.displayValue = "0x" + Long.toHexString(val.getHandleVal().getValue());
+        break;
+
       case ENUMVAL:
         dv.displayValue = val.getEnumVal().getDisplayValue();
         dv.tooltipValue = val.getEnumVal().getStringValue();

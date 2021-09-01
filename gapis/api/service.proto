@@ -269,6 +269,7 @@ message DataValue {
   string type_name = 1;
   oneof val {
     pod.Value value = 2;
+    HandleValue handleVal = 7;
     EnumValue enumVal = 3;
     BitfieldValue bitfield = 4;
     LinkedValue link = 5;
@@ -276,6 +277,10 @@ message DataValue {
 
   // An optional debug label for this value.
   string label = 6;
+}
+
+message HandleValue {
+  uint64 value = 1;
 }
 
 message EnumValue {

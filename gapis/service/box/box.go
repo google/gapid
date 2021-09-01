@@ -63,11 +63,20 @@ type BoxedArray interface {
 	GetArrayValues() interface{}
 }
 
+// The part of the api.Handle interface we care about here.
+// TODO(pmuetschard): there are some tricky dependencies that need to be cleaned
+// up so that we can refer to the actual interface from here without circular
+// dependencies.
+type handle interface {
+	Handle() uint64
+}
+
 var (
 	tyEmptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
 	tyMemoryPointer  = reflect.TypeOf((*memory.Pointer)(nil)).Elem()
 	tyMemorySlice    = reflect.TypeOf((*memory.Slice)(nil)).Elem()
 	tyBoxedArray     = reflect.TypeOf((*BoxedArray)(nil)).Elem()
+	tyHandle         = reflect.TypeOf((*handle)(nil)).Elem()
 	noValue          = reflect.Value{}
 )
 
@@ -84,6 +93,11 @@ func IsMemorySlice(t reflect.Type) bool {
 // IsBoxedArray returns true if t implements memory.Slice.
 func IsBoxedArray(t reflect.Type) bool {
 	return t.Implements(tyBoxedArray)
+}
+
+// IsHandle returns true if t implements api.Handle.
+func IsHandle(t reflect.Type) bool {
+	return t.Implements(tyHandle)
 }
 
 // AsMemoryPointer returns v cast to a memory.Pointer. IsMemoryPointer must
@@ -108,13 +122,12 @@ func newBoxer() *boxer {
 }
 
 func (b *boxer) val(v reflect.Value) *Value {
-	if b := pod.NewValue(v.Interface()); b != nil {
-		return &Value{Val: &Value_Pod{b}}
-	}
-
 	t := v.Type()
 
 	switch {
+	case IsHandle(t):
+		h := v.Interface().(handle).Handle()
+		return &Value{Val: &Value_Handle{&Handle{Value: h}}}
 	case IsMemoryPointer(t):
 		p := AsMemoryPointer(v)
 		return &Value{Val: &Value_Pointer{&Pointer{Address: p.Address()}}}
@@ -136,6 +149,10 @@ func (b *boxer) val(v reflect.Value) *Value {
 		s := v.Interface().(BoxedArray)
 		v = reflect.ValueOf(s.GetArrayValues())
 		return b.val(v)
+	}
+
+	if b := pod.NewValue(v.Interface()); b != nil {
+		return &Value{Val: &Value_Pod{b}}
 	}
 
 	switch t.Kind() {
@@ -205,15 +222,17 @@ func (b *boxer) val(v reflect.Value) *Value {
 }
 
 func (b *boxer) ty(t reflect.Type) *Type {
-	if podTy, ok := pod.TypeOf(t); ok {
-		return &Type{Ty: &Type_Pod{podTy}}
-	}
-
 	switch {
+	case IsHandle(t):
+		return &Type{Ty: &Type_Handle{true}}
 	case IsMemoryPointer(t):
 		return &Type{Ty: &Type_Pointer{true}}
 	case IsMemorySlice(t):
 		return &Type{Ty: &Type_Slice{true}}
+	}
+
+	if podTy, ok := pod.TypeOf(t); ok {
+		return &Type{Ty: &Type_Pod{podTy}}
 	}
 
 	switch t.Kind() {
@@ -285,6 +304,8 @@ func (b *unboxer) val(v *Value) (out reflect.Value) {
 			return reflect.ValueOf(v)
 		}
 		panic(fmt.Errorf("Unsupported POD Value %+v", v))
+	case *Value_Handle:
+		return reflect.ValueOf(v.Handle.Value)
 	case *Value_Pointer:
 		p := memory.BytePtr(v.Pointer.Address)
 		return reflect.ValueOf(p)
@@ -367,6 +388,9 @@ func (b *unboxer) ty(t *Type) (out reflect.Type) {
 
 	case *Type_Any:
 		return tyEmptyInterface
+
+	case *Type_Handle:
+		return tyHandle
 
 	case *Type_Pointer:
 		return tyMemoryPointer

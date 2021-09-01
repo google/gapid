@@ -31,6 +31,7 @@ message Value {
     // value with the same id.
     bool back_reference = 2;
     pod.Value pod = 3;
+    Handle handle = 11;
     Pointer pointer = 4;
     Slice slice = 5;
     Reference reference = 6;
@@ -40,6 +41,12 @@ message Value {
   }
   // An optional debug label for this object.
   string label = 10;
+}
+
+// A handle to an API object (e.g. VkInstance)
+message Handle {
+  // The raw value of the handle.
+  uint64 value = 1;
 }
 
 message Pointer {
@@ -81,6 +88,7 @@ message Type {
     // type with the same id.
     bool back_reference = 2;
     pod.Type pod = 3;
+    bool handle = 11;
     bool pointer = 4;
     bool slice = 5;
     Type reference = 6;

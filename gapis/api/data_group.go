@@ -81,9 +81,12 @@ func CreateEnumDataValue(typeName string, value fmt.Stringer) *DataValue {
 func CreatePoDDataValue(ctx context.Context, s *GlobalState, typeName string, val interface{}) *DataValue {
 	dv := &DataValue{
 		TypeName: typeName,
-		Val: &DataValue_Value{
-			pod.NewValue(val),
-		},
+	}
+
+	if handle, ok := val.(Handle); ok {
+		dv.Val = &DataValue_HandleVal{&HandleValue{Value: handle.Handle()}}
+	} else {
+		dv.Val = &DataValue_Value{pod.NewValue(val)}
 	}
 
 	if labeled, ok := val.(Labeled); ok {

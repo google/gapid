@@ -177,6 +177,9 @@ public class Formatter {
       case POD:
         format(value.getPod(), isComplete, string, style);
         break;
+      case HANDLE:
+        format(value.getHandle(), string, style);
+        break;
       case POINTER:
         format(value.getPointer(), string, style);
         break;
@@ -341,6 +344,11 @@ public class Formatter {
       }
     }
     string.append("]", string.structureStyle());
+  }
+
+  private static void format(Box.Handle handle, StylingString string, Style style) {
+    string.append("0x", string.structureStyle());
+    string.append(Long.toHexString(handle.getValue()), style);
   }
 
   private static void format(Box.Pointer pointer, StylingString string, Style style) {
