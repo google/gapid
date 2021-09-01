@@ -163,6 +163,7 @@ func (e errIndexOOB) Error() string { return fmt.Sprintf("index %d out of bounds
 type stn struct {
 	mutex          sync.Mutex
 	name           string
+	label          string
 	value          reflect.Value
 	path           path.Node
 	consts         *path.ConstantSet
@@ -211,11 +212,15 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 	switch {
 	case dict != nil:
 		for _, key := range dict.Keys() {
-			children = append(children, &stn{
+			child := &stn{
 				name:  fmt.Sprint(key),
 				value: deref(reflect.ValueOf(dict.Get(key))),
 				path:  path.NewMapIndex(key, n.path),
-			})
+			}
+			if labeled, ok := dict.Get(key).(api.Labeled); ok {
+				child.label = labeled.Label(ctx, tree.globalState)
+			}
+			children = append(children, child)
 		}
 
 	case box.IsMemorySlice(t):
@@ -318,9 +323,15 @@ func isNil(v reflect.Value) bool {
 func (n *stn) service(ctx context.Context, tree *stateTree) *service.StateTreeNode {
 	n.buildChildren(ctx, tree)
 	preview, previewIsValue := stateValuePreview(n.value)
+	if preview != nil && n.value.CanInterface() {
+		if labeled, ok := n.value.Interface().(api.Labeled); ok {
+			preview.Label = labeled.Label(ctx, tree.globalState)
+		}
+	}
 	return &service.StateTreeNode{
 		NumChildren:    uint64(len(n.children)),
 		Name:           n.name,
+		Label:          n.label,
 		ValuePath:      n.path.Path(),
 		Preview:        preview,
 		PreviewIsValue: previewIsValue,

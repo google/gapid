@@ -38,6 +38,8 @@ message Value {
     Map map = 8;
     Array array = 9;
   }
+  // An optional debug label for this object.
+  string label = 10;
 }
 
 message Pointer {

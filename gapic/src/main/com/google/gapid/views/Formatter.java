@@ -108,6 +108,10 @@ public class Formatter {
     } else {
       format(value, new Boxes.Context(), isComplete, string, style);
     }
+
+    if (!value.getLabel().isEmpty()) {
+      string.append(" " + value.getLabel(), string.labelStyle());
+    }
   }
 
   public static String toString(

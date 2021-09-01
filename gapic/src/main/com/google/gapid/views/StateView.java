@@ -378,6 +378,9 @@ public class StateView extends Composite
         string.append("Loading...", string.structureStyle());
       } else {
         string.append(data.getName(), string.defaultStyle());
+        if (!data.getLabel().isEmpty()) {
+          string.append(" " + data.getLabel(), string.labelStyle());
+        }
         if (data.hasPreview()) {
           string.append(": ", string.structureStyle());
           Path.Any follow = follower.canFollow(null);

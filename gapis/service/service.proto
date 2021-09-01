@@ -371,6 +371,8 @@ message StateTreeNode {
   uint64 num_children = 1;
   // The name of the field or group.
   string name = 2;
+  // An optional additional label for this group, typically the debug name.
+  string label = 7;
   // The path to the value.
   path.Any value_path = 3;
   // The 'preview' value of the field.
