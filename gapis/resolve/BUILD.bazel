@@ -102,6 +102,7 @@ go_test(
         "delete_test.go",
         "get_set_test.go",
         "requests_test.go",
+        "service_test.go",
         "state_tree_test.go",
     ],
     embed = [":go_default_library"],

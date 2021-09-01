@@ -31,7 +31,6 @@ go_library(
         "cmd_id_range.go",
         "cmd_id_set.go",
         "cmd_observations.go",
-        "cmd_service.go",
         "data_group.go",
         "doc.go",
         "graph_visualization.go",
@@ -81,9 +80,7 @@ go_library(
         "//gapis/memory/memory_pb:go_default_library",
         "//gapis/replay/builder:go_default_library",
         "//gapis/replay/value:go_default_library",
-        "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",
-        "//gapis/service/types:go_default_library",
         "//gapis/stringtable:go_default_library",
         "//gapis/vertex:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
@@ -95,7 +92,6 @@ go_test(
     name = "go_default_test",
     srcs = [
         "cmd_id_group_test.go",
-        "cmd_service_test.go",
         "graph_visualization_test.go",
         "subcmd_idx_test.go",
         "subcmd_idx_trie_test.go",
@@ -106,7 +102,6 @@ go_test(
         "//core/data/slice:go_default_library",
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
-        "//gapis/api/test:go_default_library",
     ],
 )
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2021 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package api_test
+
+package resolve
 
 import (
 	"testing"
@@ -25,11 +26,11 @@ import (
 func TestToServiceToCmd(t *testing.T) {
 	ctx := log.Testing(t)
 	for n, cmd := range map[string]api.Cmd{"A": test.Cmds.A, "B": test.Cmds.B} {
-		s, err := api.CmdToService(cmd)
+		s, err := cmdToService(cmd)
 		if !assert.For(ctx, "CmdToService(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
-		g, err := api.ServiceToCmd(s)
+		g, err := serviceToCmd(s)
 		if !assert.For(ctx, "ServiceToCmd(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
