@@ -772,6 +772,18 @@ import (
     fmt.Fprintf(f, "{{$name}}<%p>", c.data)
   }
 
+  {{range $f := $.To.Fields}}
+    {{if eq (GoPublicName $f.Name) "DebugInfo"}}
+      // Label implements the Labeled interface.
+      func (c {{$name}}) Label(ctx context.Context, s *ϟapi.GlobalState) string {
+        if !c.DebugInfo().IsNil() {
+          return c.DebugInfo().ObjectName()
+        }
+        return ""
+      }
+    {{end}}
+  {{end}}
+
   // IsNil returns true if the {{$name}} is a nil pointer.
   func (c {{$name}}) IsNil() bool { return c.data == nil }
 
@@ -1564,6 +1576,18 @@ import (
     {{end}}
     fmt.Fprintln(f, "}")
   }
+
+  {{range $f := $.Fields}}
+    {{if eq (GoPublicName $f.Name) "DebugInfo"}}
+      // Label implements the Labeled interface.
+      func (c {{$name}}) Label(ctx context.Context, s *ϟapi.GlobalState) string {
+        if !c.DebugInfo().IsNil() {
+          return c.DebugInfo().ObjectName()
+        }
+        return ""
+      }
+    {{end}}
+  {{end}}
 
   {{range $i, $f := $.Fields}}
     {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type "Watch" true}}

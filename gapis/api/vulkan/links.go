@@ -22,6 +22,12 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+// This file contains Link functions for each VkHandle (VkInstenace, VkDevice,
+// etc). Adding this function to each handle type ensures that it implements the
+// path.Linker (path/linker.go) interface.
+// When updating this file, you probably also want to update labels.go as it
+// ensures the handles implement the Labeled interface.
+
 // state returns the state at p.
 func state(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, *State, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {

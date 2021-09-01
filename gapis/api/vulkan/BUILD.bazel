@@ -76,6 +76,7 @@ go_library(
         "image_primer_shaders.go",
         "image_primer_store.go",
         "insertion_command.go",
+        "labels.go",
         "links.go",
         "looping_vulkan_control_flow_generator.go",
         "mem_binding_list.go",

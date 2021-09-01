@@ -18,6 +18,8 @@ package api
 // can be represented by a uint64 as per the Vulkan spec
 // (https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/chap3.html#fundamentals-objectmodel-overview).
 type Handle interface {
+	Labeled
+
 	// Handle returns this handle's value as a uint64 for display.
 	Handle() uint64
 }
