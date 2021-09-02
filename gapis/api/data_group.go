@@ -15,6 +15,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -77,13 +78,19 @@ func CreateEnumDataValue(typeName string, value fmt.Stringer) *DataValue {
 	}
 }
 
-func CreatePoDDataValue(typeName string, val interface{}) *DataValue {
-	return &DataValue{
+func CreatePoDDataValue(ctx context.Context, s *GlobalState, typeName string, val interface{}) *DataValue {
+	dv := &DataValue{
 		TypeName: typeName,
 		Val: &DataValue_Value{
 			pod.NewValue(val),
 		},
 	}
+
+	if labeled, ok := val.(Labeled); ok {
+		dv.Label = labeled.Label(ctx, s)
+	}
+
+	return dv
 }
 
 func CreateBitfieldDataValue(typeName string, val interface{}, index int32, a API) *DataValue {

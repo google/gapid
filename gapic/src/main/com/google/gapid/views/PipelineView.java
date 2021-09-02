@@ -233,7 +233,7 @@ public class PipelineView extends Composite
       stripLayout.wrap = true;
       Composite stripComposite = withLayoutData( createComposite(folder, stripLayout),
           new GridData(SWT.FILL, SWT.TOP, true, false));
-      Label separator = withLayoutData( new Label(folder, SWT.SEPARATOR | SWT.HORIZONTAL),
+      withLayoutData( new Label(folder, SWT.SEPARATOR | SWT.HORIZONTAL),
           new GridData(SWT.FILL, SWT.TOP, true, false));
 
       StackLayout stageStack = new StackLayout();
@@ -401,13 +401,13 @@ public class PipelineView extends Composite
 
             DataValue dv = convertDataValue(kvp.getValue());
             if (dv.link != null) {
-              withLayoutData( createLink(valueComposite,"<a>" + dv.displayValue + "</a>", e -> {
+              withLayoutData( createLink(valueComposite,"<a>" + dv.getDisplay() + "</a>", e -> {
                   for (Path.Any p : dv.link) {
                     models.follower.onFollow(p);
                   }}),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
             } else {
-              Label valueLabel = withLayoutData( createLabel(valueComposite, dv.displayValue),
+              Label valueLabel = withLayoutData( createLabel(valueComposite, dv.getDisplay()),
                   new GridData(SWT.LEFT, SWT.CENTER, true, true));
 
               if (dv.tooltipValue == null && !kvp.getDependee().equals("")) {
@@ -475,8 +475,9 @@ public class PipelineView extends Composite
               @Override
               public void update(ViewerCell cell) {
                 DataValue dv = convertDataValue(((API.Row)cell.getElement()).getRowValues(col));
+                String display = dv.getDisplay();
 
-                cell.setText(dv.displayValue);
+                cell.setText(display);
                 if (!dataTable.getActive()) {
                   cell.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
                 }
@@ -484,7 +485,7 @@ public class PipelineView extends Composite
                 if (dv.link != null) {
                   StyleRange style = new StyleRange();
                   theme.linkStyler().applyStyles(style);
-                  style.length = dv.displayValue.length();
+                  style.length = display.length();
                   cell.setStyleRanges(new StyleRange[] { style });
                 }
 
@@ -554,7 +555,7 @@ public class PipelineView extends Composite
             if (dataGroup.getShader().getCrossCompiled()) {
               createBoldLabel(sourceGroup, "Source code was decompiled using SPIRV-Cross");
             }
-  
+
             SourceViewer viewer2 = new SourceViewer(
               sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
             StyledText textWidget2 = viewer2.getTextWidget();
@@ -565,7 +566,7 @@ public class PipelineView extends Composite
             viewer2.setDocument(
                 GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
             viewer2.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-  
+
             sourceTab.setControl(sourceGroup);
           }
 
@@ -587,6 +588,7 @@ public class PipelineView extends Composite
   }
 
   protected static DataValue convertDataValue(API.DataValue val) {
+    DataValue.Builder dv = new DataValue.Builder();
     switch (val.getValCase()) {
       case VALUE:
         Joiner valueJoiner = Joiner.on(", ");
@@ -594,168 +596,194 @@ public class PipelineView extends Composite
 
         switch (val.getValue().getValCase()) {
           case FLOAT32:
-            return new DataValue(Float.toString(val.getValue().getFloat32()));
-
+            dv.displayValue = Float.toString(val.getValue().getFloat32());
+            break;
           case FLOAT64:
-            return new DataValue(Double.toString(val.getValue().getFloat64()));
-
+            dv.displayValue = Double.toString(val.getValue().getFloat64());
+            break;
           case UINT:
-            return new DataValue(Long.toString(val.getValue().getUint()));
-
+            dv.displayValue = Long.toString(val.getValue().getUint());
+            break;
           case SINT:
-            return new DataValue(Long.toString(val.getValue().getSint()));
-
+            dv.displayValue = Long.toString(val.getValue().getSint());
+            break;
           case UINT8:
-            return new DataValue(Integer.toString(val.getValue().getUint8()));
-
+            dv.displayValue = Integer.toString(val.getValue().getUint8());
+            break;
           case SINT8:
-            return new DataValue(Integer.toString(val.getValue().getSint8()));
-
+            dv.displayValue = Integer.toString(val.getValue().getSint8());
+            break;
           case UINT16:
-            return new DataValue(Integer.toString(val.getValue().getUint16()));
-
+            dv.displayValue = Integer.toString(val.getValue().getUint16());
+            break;
           case SINT16:
-            return new DataValue(Integer.toString(val.getValue().getSint16()));
-
+            dv.displayValue = Integer.toString(val.getValue().getSint16());
+            break;
           case UINT32:
-            return new DataValue(Integer.toString(val.getValue().getUint32()));
-
+            dv.displayValue = Integer.toString(val.getValue().getUint32());
+            break;
           case SINT32:
-            return new DataValue(Integer.toString(val.getValue().getSint32()));
-
+            dv.displayValue = Integer.toString(val.getValue().getSint32());
+            break;
           case UINT64:
-            return new DataValue(Long.toString(val.getValue().getUint64()));
-
+            dv.displayValue = Long.toString(val.getValue().getUint64());
+            break;
           case SINT64:
-            return new DataValue(Long.toString(val.getValue().getSint64()));
-
+            dv.displayValue = Long.toString(val.getValue().getSint64());
+            break;
           case BOOL:
-            return new DataValue(Boolean.toString(val.getValue().getBool()));
-
+            dv.displayValue = Boolean.toString(val.getValue().getBool());
+            break;
           case STRING:
-            return new DataValue(val.getValue().getString());
-
+            dv.displayValue = val.getValue().getString();
+            break;
           case FLOAT32_ARRAY:
             for (float value : val.getValue().getFloat32Array().getValList()) {
               values.add(Float.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case FLOAT64_ARRAY:
             for (double value : val.getValue().getFloat64Array().getValList()) {
               values.add(Double.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case UINT_ARRAY:
             for (long value : val.getValue().getUintArray().getValList()) {
               values.add(Long.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case SINT_ARRAY:
             for (long value : val.getValue().getSintArray().getValList()) {
               values.add(Long.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case UINT8_ARRAY:
             for (byte value : val.getValue().getUint8Array()) {
               values.add(Byte.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case SINT8_ARRAY:
             for (int value : val.getValue().getSint8Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case UINT16_ARRAY:
             for (int value : val.getValue().getUint16Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case SINT16_ARRAY:
             for (int value : val.getValue().getSint16Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case UINT32_ARRAY:
             for (int value : val.getValue().getUint32Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case SINT32_ARRAY:
             for (int value : val.getValue().getSint32Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case UINT64_ARRAY:
             for (long value : val.getValue().getUint64Array().getValList()) {
               values.add(Long.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case SINT64_ARRAY:
             for (long value : val.getValue().getSint64Array().getValList()) {
               values.add(Long.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case BOOL_ARRAY:
             for (boolean value : val.getValue().getBoolArray().getValList()) {
               values.add(Boolean.toString(value));
             }
-            return new DataValue(valueJoiner.join(values));
-
+            dv.displayValue = valueJoiner.join(values);
+            break;
           case STRING_ARRAY:
-            return new DataValue(valueJoiner.join(val.getValue().getStringArray().getValList()));
-
+            dv.displayValue = valueJoiner.join(val.getValue().getStringArray().getValList());
+            break;
           default:
-            return new DataValue("???");
         }
+        break;
 
       case ENUMVAL:
-        DataValue enumDV = new DataValue(val.getEnumVal().getDisplayValue());
-        enumDV.tooltipValue = val.getEnumVal().getStringValue();
-        return enumDV;
-
-
+        dv.displayValue = val.getEnumVal().getDisplayValue();
+        dv.tooltipValue = val.getEnumVal().getStringValue();
+        break;
       case BITFIELD:
         Joiner joiner = Joiner.on((val.getBitfield().getCombined()) ? "" : " | ");
-        DataValue bitDV = new DataValue(joiner.join(val.getBitfield().getSetDisplayNamesList()));
+        dv.displayValue = joiner.join(val.getBitfield().getSetDisplayNamesList());
         if (val.getBitfield().getCombined()) {
           joiner = Joiner.on(" | ");
         }
-        bitDV.tooltipValue = joiner.join(val.getBitfield().getSetBitnamesList());
-        return bitDV;
-
-
+        dv.tooltipValue = joiner.join(val.getBitfield().getSetBitnamesList());
+        break;
       case LINK:
-        DataValue dv = convertDataValue(val.getLink().getDisplayVal());
+        dv.from(convertDataValue(val.getLink().getDisplayVal()));
         dv.link = val.getLink().getLinkList();
-        return dv;
-
-
+        break;
       default:
-        return new DataValue("???");
     }
+
+    if (!val.getLabel().isEmpty()) {
+      dv.displayLabel = val.getLabel();
+    }
+    return dv.build();
   }
 
   private static class DataValue {
-    public String displayValue;
-    public String tooltipValue;
-    public List<Path.Any> link;
+    public final String displayValue;
+    public final String displayLabel;
+    public final String tooltipValue;
+    public final List<Path.Any> link;
 
-    public DataValue(String displayValue) {
-      this.link = null;
+    public DataValue(
+        String displayValue, String displayLabel, String tooltipValue, List<Path.Any> link) {
       this.displayValue = displayValue;
-      this.tooltipValue = null;
+      this.displayLabel = displayLabel;
+      this.tooltipValue = tooltipValue;
+      this.link = link;
+    }
+
+    public String getDisplay() {
+      if (displayLabel == null || displayLabel.isEmpty()) {
+        return displayValue;
+      }
+      return displayValue + " (" + displayLabel + ")";
+    }
+
+    public static class Builder {
+      public String displayValue = "???";
+      public String displayLabel;
+      public String tooltipValue;
+      public List<Path.Any> link;
+
+      public void from(DataValue dv) {
+        displayValue = dv.displayValue;
+        displayLabel = dv.displayLabel;
+        tooltipValue = dv.tooltipValue;
+        link = dv.link;
+      }
+
+      public DataValue build() {
+        return new DataValue(displayValue, displayLabel, tooltipValue, link);
+      }
     }
   }
 

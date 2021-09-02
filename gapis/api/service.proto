@@ -273,6 +273,9 @@ message DataValue {
     BitfieldValue bitfield = 4;
     LinkedValue link = 5;
   }
+
+  // An optional debug label for this value.
+  string label = 6;
 }
 
 message EnumValue {
