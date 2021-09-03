@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2021 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,30 +17,27 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "doc.go",
-        "file.go",
-        "list.go",
-        "path.go",
-        "rooted.go",
-        "set.go",
-        "unix.go",
-        "windows.go",
-        "zip.go",
+        "bind.go",
+        "device.go",
     ],
-    importpath = "github.com/google/gapid/core/os/file",
+    importpath = "github.com/google/gapid/core/os/fuchsia/ffx",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/event/task:go_default_library",
+        "//core/fault:go_default_library",
         "//core/log:go_default_library",
+        "//core/os/device:go_default_library",
+        "//core/os/device/bind:go_default_library",
+        "//core/os/file:go_default_library",
+        "//core/os/fuchsia:go_default_library",
+        "//core/os/shell:go_default_library",
     ],
 )
 
 go_test(
     name = "go_default_test",
     size = "small",
-    srcs = [
-        "path_test.go",
-        "windows_test.go",
-    ],
+    srcs = ["device_test.go"],
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",

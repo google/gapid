@@ -30,6 +30,7 @@ go_library(
         "//core/os/device/bind:go_default_library",
         "//core/os/device/remotessh:go_default_library",
         "//core/os/file:go_default_library",
+        "//core/os/fuchsia/ffx:go_default_library",
         "//core/text:go_default_library",
         "//gapir/client:go_default_library",
         "//gapis/database:go_default_library",

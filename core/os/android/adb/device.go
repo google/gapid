@@ -121,11 +121,11 @@ func Devices(ctx context.Context) (DeviceList, error) {
 		return nil, err
 	}
 	devs := registry.Devices()
-	out := make(DeviceList, len(devs))
+	deviceList := make(DeviceList, len(devs))
 	for i, d := range devs {
-		out[i] = d.(Device)
+		deviceList[i] = d.(Device)
 	}
-	return out, nil
+	return deviceList, nil
 }
 
 func SetupPrereleaseDriver(ctx context.Context, d Device, p *android.InstalledPackage) (app.Cleanup, error) {

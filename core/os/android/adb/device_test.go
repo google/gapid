@@ -28,7 +28,7 @@ import (
 func TestParseDevices(t_ *testing.T) {
 	ctx := log.Testing(t_)
 	defer func() { devices.Handlers[0] = validDevices }()
-	expected := &device.Instance{
+	deviceInstance := &device.Instance{
 		Serial: "production_device",
 		Name:   "flame",
 		Configuration: &device.Configuration{
@@ -47,15 +47,16 @@ func TestParseDevices(t_ *testing.T) {
 			ABIs: []*device.ABI{device.AndroidARM64v8a},
 		},
 	}
-	expected.GenID()
-	got, err := adb.Devices(ctx)
+	deviceInstance.GenID()
+	adbDevices, err := adb.Devices(ctx)
 	assert.For(ctx, "Normal devices").ThatError(err).Succeeded()
-	assert.For(ctx, "Normal devices").That(got.FindBySerial(expected.Serial).Instance()).DeepEquals(expected)
+	matchedDeviceInstance := adbDevices.FindBySerial(deviceInstance.Serial).Instance()
+	assert.For(ctx, "Normal devices").That(matchedDeviceInstance).DeepEquals(deviceInstance)
 
 	devices.Handlers[0] = emptyDevices
-	got, err = adb.Devices(ctx)
+	adbDevices, err = adb.Devices(ctx)
 	assert.For(ctx, "Empty devices").ThatError(err).Succeeded()
-	assert.For(ctx, "Empty devices").ThatSlice(got).IsEmpty()
+	assert.For(ctx, "Empty devices").ThatSlice(adbDevices).IsEmpty()
 
 	devices.Handlers[0] = invalidDevices
 	_, err = adb.Devices(ctx)

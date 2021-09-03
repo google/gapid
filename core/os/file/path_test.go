@@ -15,9 +15,13 @@
 package file_test
 
 import (
+	"io/ioutil"
+	"os"
+	"runtime"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 )
 
@@ -49,4 +53,37 @@ func TestPathContains(t *testing.T) {
 		assert.For("").Compare(test.dir, "contains", test.file).
 			Test(test.dir.Contains(test.file) == test.expected)
 	}
+}
+
+func TestIsExecutable(t *testing.T) {
+	ctx := log.Testing(t)
+	var (
+		tmpdir  string
+		err     error
+		tmpfile *os.File
+	)
+	tmpdir, err = ioutil.TempDir("", "path_test-")
+	assert.For(ctx, "Temp directory").ThatError(err).Succeeded()
+
+	path := file.Abs(tmpdir)
+	assert.For(ctx, "Temp directory").ThatBoolean(path.IsExecutable()).IsFalse()
+
+	tmpfile, err = ioutil.TempFile(tmpdir, "path_test_file-")
+	tmpfile.Close()
+
+	if runtime.GOOS == "windows" {
+		assert.For(ctx, "Windows IsExecutable").ThatBoolean(path.IsExecutable()).IsTrue()
+	} else {
+		err = os.Chmod(tmpfile.Name(), 0600)
+		assert.For(ctx, "Chmod temp file").ThatError(err).Succeeded()
+		assert.For(ctx, "Chmod temp file").ThatBoolean(path.IsExecutable()).IsFalse()
+
+		err = os.Chmod(tmpfile.Name(), 0755)
+		assert.For(ctx, "Chmod temp file executable").ThatError(err).Succeeded()
+		path = file.Abs(tmpfile.Name())
+		assert.For(ctx, "Chmod temp file executable").ThatBoolean(path.IsExecutable()).IsTrue()
+	}
+
+	os.Remove(tmpfile.Name())
+	os.Remove(tmpdir)
 }

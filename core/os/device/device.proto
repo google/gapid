@@ -53,6 +53,7 @@ enum OSKind {
   OSX = 2;
   Linux = 3;
   Android = 4;
+  Fuchsia = 5;
 }
 
 // MemoryLayout holds information about how memory is fundamentally laid out for

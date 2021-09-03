@@ -40,6 +40,7 @@ const (
 	OSX       = OSKind_OSX
 	Linux     = OSKind_Linux
 	Android   = OSKind_Android
+	Fuchsia   = OSKind_Fuchsia
 )
 
 var (

@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -86,6 +87,16 @@ func (p Path) IsEmpty() bool { return p.value == "" }
 func (p Path) IsDir() bool {
 	info := p.Info()
 	return info != nil && info.IsDir()
+}
+
+// IsExecutable returns true if the file at p.value exists, is executable
+// and is not a directory.
+func (p Path) IsExecutable() bool {
+	if runtime.GOOS == "windows" {
+		return true
+	}
+	info := p.Info()
+	return info != nil && !info.IsDir() && (info.Mode().Perm()&0111) != 0
 }
 
 // System returns the full absolute path using the system separator.

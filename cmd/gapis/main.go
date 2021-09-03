@@ -34,6 +34,7 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/core/os/fuchsia/ffx"
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/database"
@@ -53,6 +54,7 @@ var (
 	gapirAuthToken   = flag.String("gapir-auth-token", "", "_The connection authorization token for gapir")
 	gapirArgStr      = flag.String("gapir-args", "", "_The arguments to be passed to the host-run gapir")
 	scanAndroidDevs  = flag.Bool("monitor-android-devices", true, "Server will scan for locally connected Android devices")
+	scanFuchsiaDevs  = flag.Bool("monitor-fuchsia-device", true, "Server will scan for locally connected Fuchsia devices")
 	androidSerial    = flag.String("android-serial", "", "Server will only consider the Android device with this serial id")
 	addLocalDevice   = flag.Bool("add-local-device", true, "Server can trace and replay locally")
 	idleTimeout      = flag.Duration("idle-timeout", 0, "_Closes GAPIS if the server is not repeatedly pinged within this duration (e.g. '30s', '2m'). Default: 0 (no timeout).")
@@ -125,6 +127,11 @@ func run(ctx context.Context) error {
 		crash.Go(func() { monitorAndroidDevices(ctx, r, wg.Done) })
 	}
 
+	if *scanFuchsiaDevs {
+		wg.Add(1)
+		crash.Go(func() { monitorFuchsiaDevices(ctx, r, wg.Done) })
+	}
+
 	if *remoteSSHConfig != "" {
 		wg.Add(1)
 		crash.Go(func() { monitorRemoteSSHDevices(ctx, r, wg.Done) })
@@ -175,6 +182,23 @@ func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone func(
 
 	if err := adb.Monitor(ctx, r, time.Second*3); err != nil {
 		log.W(ctx, "Could not scan for local Android devices. Error: %v", err)
+	}
+}
+
+func monitorFuchsiaDevices(ctx context.Context, r *bind.Registry, scanDone func()) {
+	// Populate the registry with all the existing devices.
+	func() {
+		defer scanDone() // Signal that we have a primed registry.
+
+		if devs, err := ffx.Devices(ctx); err == nil {
+			for _, d := range devs {
+				r.AddDevice(ctx, d)
+			}
+		}
+	}()
+
+	if err := ffx.Monitor(ctx, r, time.Second*3); err != nil {
+		log.W(ctx, "Could not scan for local Fuchsia devices. Error: %v", err)
 	}
 }
 
