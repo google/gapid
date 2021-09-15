@@ -17,6 +17,7 @@ package status
 import (
 	"context"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/google/gapid/core/log"
@@ -34,19 +35,28 @@ func RegisterLogger(progressUpdateFreq time.Duration) Unregister {
 }
 
 type statusLogger struct {
-	lastProgressUpdate map[*Task]time.Time
-	progressUpdateFreq time.Duration
+	lastProgressUpdate     map[*Task]time.Time
+	lastProgressUpdateLock sync.Mutex
+	progressUpdateFreq     time.Duration
 }
 
 func (l statusLogger) OnTaskStart(ctx context.Context, t *Task) {
-	log.I(ctx, "%v Started", t)
+	l.lastProgressUpdateLock.Lock()
 	l.lastProgressUpdate[t] = time.Now()
+	l.lastProgressUpdateLock.Unlock()
+	log.I(ctx, "%v Started", t)
 }
 
 func (l statusLogger) OnTaskProgress(ctx context.Context, t *Task) {
-	if time.Since(l.lastProgressUpdate[t]) > l.progressUpdateFreq {
-		log.I(ctx, "%v (%v%%) %v", t, t.Completion(), t.TimeSinceStart())
+	l.lastProgressUpdateLock.Lock()
+	update := time.Since(l.lastProgressUpdate[t]) > l.progressUpdateFreq
+	if update {
 		l.lastProgressUpdate[t] = time.Now()
+	}
+	l.lastProgressUpdateLock.Unlock()
+
+	if update {
+		log.I(ctx, "%v (%v%%) %v", t, t.Completion(), t.TimeSinceStart())
 	}
 }
 
@@ -60,7 +70,9 @@ func (l statusLogger) OnTaskUnblock(ctx context.Context, t *Task) {
 
 func (l statusLogger) OnTaskFinish(ctx context.Context, t *Task) {
 	log.I(ctx, "%v Finished in %v", t, t.TimeSinceStart())
+	l.lastProgressUpdateLock.Lock()
 	delete(l.lastProgressUpdate, t)
+	l.lastProgressUpdateLock.Unlock()
 }
 
 func (l statusLogger) OnEvent(ctx context.Context, t *Task, n string, s EventScope) {
