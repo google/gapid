@@ -17,6 +17,7 @@ package android
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -290,6 +291,10 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 	if err != nil {
 		return 0, log.Err(ctx, err, "Failed to setup Perfetto trace")
 	}
+	wait := make(chan error, 1)
+	crash.Go(func() {
+		wait <- ts.Wait(ctx)
+	})
 
 	// Setting up ftrace trace points takes time, hence sometimes there's
 	// a gap at the beginning of the trace. In order to avoid this issue, we
@@ -325,12 +330,19 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 			}
 		})
 
-		// Signal that we are ready to start.
-		if !sessionReadySignal.Wait(ctx) {
-			return 0, log.Err(ctx, nil, "Cancelled")
-		}
-		if timeout {
-			return 0, log.Err(ctx, nil, "Timed out in waiting for trace session ready")
+		select {
+		case err = <-wait:
+			if err != nil {
+				return 0, log.Err(ctx, err, "Trace session failed during setup")
+			} else {
+				return 0, errors.New("Trace sessions exited prematurely during setup")
+			}
+		case <-sessionReadySignal:
+			if timeout {
+				return 0, errors.New("Timed out in waiting for trace session ready")
+			}
+		case <-task.ShouldStop(ctx):
+			return 0, errors.New("Cancelled")
 		}
 	}
 
@@ -340,15 +352,10 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 	atomic.StoreInt64(written, 1)
 	if p.deferred && !start.Wait(ctx) {
 		ts.Stop(ctx)
-		return 0, log.Err(ctx, nil, "Cancelled")
+		return 0, errors.New("Cancelled")
 	}
 	delayedReady(ctx)
 	ts.Start(ctx)
-
-	wait := make(chan error, 1)
-	crash.Go(func() {
-		wait <- ts.Wait(ctx)
-	})
 
 	if p.mode == traceDownloadWhileTracing {
 		crash.Go(func() {
@@ -373,6 +380,9 @@ func (p *Process) captureWithClientApi(ctx context.Context, start task.Signal, s
 	case <-stop:
 		ts.Stop(ctx)
 		err = <-wait
+	case <-task.ShouldStop(ctx):
+		ts.Stop(ctx)
+		return 0, errors.New("Cancelled")
 	}
 
 	if err != nil {
