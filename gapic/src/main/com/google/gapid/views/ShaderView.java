@@ -20,12 +20,10 @@ import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createButton;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createGroup;
-import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createScrolledComposite;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
-import static com.google.gapid.widgets.Widgets.disposeAllChildren;
-import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.createTableViewer;
+import static com.google.gapid.widgets.Widgets.packColumns;
 
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Analytics.View;
@@ -47,12 +45,11 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.text.ITextOperationTarget;
 import org.eclipse.jface.text.source.SourceViewer;
+import org.eclipse.jface.viewers.IStructuredContentProvider;
+import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
-import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -175,6 +172,7 @@ public class ShaderView extends Composite
     private final Group spirvGroup;
     private final Group sourceGroup;
     private final Group statGroup;
+    private final TableViewer statTable;
     private final Label crossCompileLabel;
     private final GridData crossCompileGridData;
     private final SourceViewer spirvViewer;
@@ -258,9 +256,30 @@ public class ShaderView extends Composite
       }
 
       statGroup = createGroup(loading.getContents(), "Static Analysis");
-      statGroup.setFont(widgets.theme.subTitleFont());
-      statGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-      statGroup.setLayout(new GridLayout(1, false));
+      statGroup.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
+      statGroup.setLayout(new FillLayout());
+
+      statTable = createTableViewer(statGroup, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+      Widgets.<Object[]>createTableColumn(statTable, "Statistic", (val) -> String.valueOf(val[0]));
+      Widgets.<Object[]>createTableColumn(statTable, "Value", (val) -> String.valueOf(val[1]));
+      statTable.setContentProvider(new IStructuredContentProvider() {
+        @Override
+        public Object[] getElements(Object inputElement) {
+          if (!(inputElement instanceof API.Shader.StaticAnalysis)) {
+            return null;
+          }
+
+          API.Shader.StaticAnalysis analysis = (API.Shader.StaticAnalysis)inputElement;
+          return new Object[] {
+              new Object[] { "ALU Instructions", analysis.getAluInstructions() },
+              new Object[] { "Texture Instructions", analysis.getTextureInstructions() },
+              new Object[] { "Branch Instructions", analysis.getBranchInstructions() },
+              new Object[] { "Peak Temporary Register Pressure", analysis.getTempRegisters() },
+          };
+        }
+      });
+      statTable.setInput(API.Shader.StaticAnalysis.getDefaultInstance());
+      packColumns(statTable.getTable());
     }
 
     public void clear() {
@@ -325,82 +344,7 @@ public class ShaderView extends Composite
         }
       }
 
-      disposeAllChildren(statGroup);
-      createStaticAnalysisGroup(statGroup, shaderMessage.getStaticAnalysis());
-      statGroup.requestLayout();
-    }
-
-    private static void createStaticAnalysisGroup(
-        Group dataGroupComposite, API.Shader.StaticAnalysis staticAnalysis) {
-      ScrolledComposite scrollComposite = withLayoutData(createScrolledComposite(dataGroupComposite,
-          new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL),
-          new GridData(SWT.FILL, SWT.FILL, true, true));
-
-      GridLayout gridLayout = new GridLayout(2, false);
-      gridLayout.marginWidth = 5;
-      gridLayout.marginHeight = 5;
-      gridLayout.horizontalSpacing = -1;
-      gridLayout.verticalSpacing = -1;
-      Composite contentComposite = createComposite(scrollComposite, gridLayout);
-
-      createStaticAnalysisStat(
-          contentComposite, "ALU Instructions:", staticAnalysis.getAluInstructions());
-      createStaticAnalysisStat(
-          contentComposite, "Texture Instructions:", staticAnalysis.getTextureInstructions());
-      createStaticAnalysisStat(
-          contentComposite, "Branch Instructions:", staticAnalysis.getBranchInstructions());
-      createStaticAnalysisStat(
-          contentComposite, "Peak Temporary Register Pressure:", staticAnalysis.getTempRegisters());
-
-      scrollComposite.setContent(contentComposite);
-      scrollComposite.setExpandVertical(true);
-      scrollComposite.setExpandHorizontal(true);
-      scrollComposite.addListener(SWT.Resize, event -> {
-        Rectangle scrollArea = scrollComposite.getClientArea();
-
-        int currentNumColumns = gridLayout.numColumns;
-        int numChildren = contentComposite.getChildren().length;
-        Point tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
-
-        if (tableSize.x < scrollArea.width) {
-          while (tableSize.x < scrollArea.width && gridLayout.numColumns < numChildren) {
-            gridLayout.numColumns += 2;
-            tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
-          }
-
-          if (tableSize.x > scrollArea.width) {
-            gridLayout.numColumns -= 2;
-          }
-        } else {
-          while (tableSize.x > scrollArea.width && gridLayout.numColumns >= 4) {
-            gridLayout.numColumns -= 2;
-            tableSize = contentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
-          }
-        }
-
-        if (gridLayout.numColumns != currentNumColumns) {
-          scrollComposite.layout();
-        }
-
-        scrollComposite.setMinHeight(contentComposite.computeSize(scrollArea.width, SWT.DEFAULT).y);
-      });
-    }
-
-    private static void createStaticAnalysisStat(Composite parent, String statText, int statData) {
-      GridLayout statsLayout = new GridLayout(1, false);
-      statsLayout.marginHeight = 5;
-      statsLayout.marginWidth = 5;
-
-      Composite keyComposite = withLayoutData(createComposite(parent, statsLayout, SWT.BORDER),
-          new GridData(SWT.FILL, SWT.TOP, false, false));
-
-      withLayoutData( createBoldLabel(keyComposite, statText),
-          new GridData(SWT.RIGHT, SWT.CENTER, true, true));
-
-      Composite valueComposite = withLayoutData(createComposite(parent, statsLayout, SWT.BORDER),
-          new GridData(SWT.FILL, SWT.TOP, false, false));
-      withLayoutData(createLabel(valueComposite, Integer.toString(statData)),
-          new GridData(SWT.LEFT, SWT.CENTER, true, true));
+      statTable.setInput(shader.getStaticAnalysis());
     }
 
     private static boolean isKey(Event e, int stateMask, int keyCode) {
