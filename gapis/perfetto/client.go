@@ -137,6 +137,9 @@ func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writ
 	}
 
 	h := client.NewTraceHandler(ctx, func(r *ipc.EnableTracingResponse, err error) {
+		if err == nil && r.GetError() != "" {
+			err = errors.New(r.GetError())
+		}
 		if !s.onResult(ctx, err) {
 			if s.read == nil {
 				s.done(ctx)
