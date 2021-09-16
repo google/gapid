@@ -24,6 +24,9 @@ import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
+import static com.google.gapid.widgets.Widgets.withIndents;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Analytics.View;
@@ -58,7 +61,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 
@@ -168,12 +170,11 @@ public class ShaderView extends Composite
     private final SingleInFlight rpcController = new SingleInFlight();
     private final Models models;
     private final LoadablePanel<Composite> loading;
+    private final Group shaderGroup;
     private final TabFolder tabFolder;
-    private final Group spirvGroup;
-    private final Group sourceGroup;
+    private final Composite sourceContainer;
     private final Group statGroup;
     private final TableViewer statTable;
-    private final Label crossCompileLabel;
     private final GridData crossCompileGridData;
     private final SourceViewer spirvViewer;
     private final SourceViewer sourceViewer;
@@ -181,7 +182,6 @@ public class ShaderView extends Composite
     private TabItem sourceTab;
     private Service.Resource shaderResource = null;
     private API.Shader shaderMessage = null;
-
 
     public ShaderWidget(Composite parent, Models models, Widgets widgets) {
       super(parent, SWT.NONE);
@@ -192,12 +192,14 @@ public class ShaderView extends Composite
       loading = LoadablePanel.create(this, widgets,
           panel -> createComposite(panel, new GridLayout(1, false)));
 
-      tabFolder = createStandardTabFolder(loading.getContents());
-      tabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      shaderGroup = withLayoutData(
+          createGroup(loading.getContents(), "Shader", new GridLayout(1, false)),
+          new GridData(SWT.FILL, SWT.FILL, true, true));
+      tabFolder = withLayoutData(createStandardTabFolder(shaderGroup),
+          new GridData(SWT.FILL, SWT.FILL, true, true));
 
-      spirvGroup = createGroup(tabFolder, "");
       spirvViewer =
-          new SourceViewer(spirvGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+          new SourceViewer(tabFolder, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
       spirvViewer.setEditable(false);
       spirvViewer.configure(new GlslSourceConfiguration(widgets.theme));
       StyledText spirvTextWidget = spirvViewer.getTextWidget();
@@ -210,16 +212,16 @@ public class ShaderView extends Composite
           spirvViewer.doOperation(ITextOperationTarget.REDO);
         }
       });
-      TabItem spirvTab = createStandardTabItem(tabFolder, "SPIR-V");
-      spirvTab.setControl(spirvGroup);
+      createStandardTabItem(tabFolder, "SPIR-V", spirvViewer.getControl());
 
-      sourceGroup = createGroup(tabFolder, "", new GridLayout(1, false));
-      crossCompileGridData = new GridData(SWT.LEFT, SWT.TOP, false, false);
-      crossCompileLabel =
-          createBoldLabel(sourceGroup, "Source code was decompiled using SPIRV-Cross");
-      crossCompileLabel.setLayoutData(crossCompileGridData);
+      sourceContainer = createComposite(
+          tabFolder, withMargin(new GridLayout(1, false), 0, 0), SWT.NONE);
+      crossCompileGridData = withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 0, 5);
+      withLayoutData(
+          createBoldLabel(sourceContainer, "Source code was decompiled using SPIRV-Cross"),
+          crossCompileGridData);
       sourceViewer =
-          new SourceViewer(sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+          new SourceViewer(sourceContainer, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
       sourceViewer.setEditable(false);
       sourceViewer.configure(new GlslSourceConfiguration(widgets.theme));
       sourceViewer.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -239,7 +241,7 @@ public class ShaderView extends Composite
       if (!Experimental.enableUnstableFeatures(models.settings)) {
         pushButton = Optional.empty();
       } else {
-        pushButton = Optional.of(createButton(loading.getContents(), "Push Changes", e -> {
+        pushButton = Optional.of(createButton(shaderGroup, "Push Changes", e -> {
           if (shaderResource != null && shaderMessage != null) {
             models.analytics.postInteraction(View.ShaderView, ClientAction.Edit);
             models.resources.updateResource(shaderResource, API.ResourceData.newBuilder()
@@ -255,10 +257,8 @@ public class ShaderView extends Composite
         sourceViewer.setEditable(true);
       }
 
-      statGroup = createGroup(loading.getContents(), "Static Analysis");
-      statGroup.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
-      statGroup.setLayout(new FillLayout());
-
+      statGroup = withLayoutData(createGroup(loading.getContents(), "Static Analysis"),
+          new GridData(SWT.FILL, SWT.BOTTOM, true, false));
       statTable = createTableViewer(statGroup, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
       Widgets.<Object[]>createTableColumn(statTable, "Statistic", (val) -> String.valueOf(val[0]));
       Widgets.<Object[]>createTableColumn(statTable, "Value", (val) -> String.valueOf(val[1]));
@@ -318,8 +318,7 @@ public class ShaderView extends Composite
       shaderMessage = shader;
 
       pushButton.ifPresent(b -> b.setEnabled(true));
-      String label = shaderResource != null ? shaderResource.getHandle() : "Shader";
-      spirvGroup.setText(label);
+      shaderGroup.setText(shaderResource != null ? shaderResource.getHandle() : "Shader");
       String spirvSource = shaderMessage.getSpirvSource();
       if (spirvSource.isEmpty()) {
         spirvSource = EMPTY_SHADER;
@@ -328,20 +327,16 @@ public class ShaderView extends Composite
       String source = shaderMessage.getSource();
       if (!source.isEmpty()) {
         sourceViewer.setDocument(GlslSourceConfiguration.createDocument(source));
-        crossCompileLabel.setVisible(shaderMessage.getCrossCompiled());
         crossCompileGridData.exclude = !shaderMessage.getCrossCompiled();
-        if (sourceTab != null) {
-          sourceTab.setText(shaderMessage.getSourceLanguage());
+        if (sourceTab == null) {
+          sourceTab =
+              createStandardTabItem(tabFolder, shaderMessage.getSourceLanguage(), sourceContainer);
         } else {
-          sourceTab = createStandardTabItem(tabFolder, shaderMessage.getSourceLanguage());
-          sourceTab.setControl(sourceGroup);
+          sourceTab.setText(shaderMessage.getSourceLanguage());
         }
-        sourceGroup.layout();
-      } else {
-        if (sourceTab != null) {
-          sourceTab.dispose();
-          sourceTab = null;
-        }
+      } else if (sourceTab != null) {
+        sourceTab.dispose();
+        sourceTab = null;
       }
 
       statTable.setInput(shader.getStaticAnalysis());
