@@ -26,17 +26,15 @@ import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createScrolledComposite;
-import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
-import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
@@ -52,10 +50,8 @@ import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
-import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.StyledCellLabelProvider;
@@ -63,11 +59,9 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyleRange;
-import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
@@ -81,8 +75,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -98,8 +90,8 @@ public class PipelineView extends Composite
   protected static final Logger LOG = Logger.getLogger(PipelineView.class.getName());
 
   protected final Models models;
+  protected final Widgets widgets;
   protected final LoadablePanel<Composite> loading;
-  protected final Theme theme;
   protected final Composite stagesContainer;
   protected final Color hoverColor;
 
@@ -109,7 +101,7 @@ public class PipelineView extends Composite
   public PipelineView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
-    this.theme = widgets.theme;
+    this.widgets = widgets;
 
     setLayout(new FillLayout());
 
@@ -261,7 +253,7 @@ public class PipelineView extends Composite
           });
 
           stageButton.setBackground(getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
-          stageButton.setFont(theme.bigBoldFont());
+          stageButton.setFont(widgets.theme.bigBoldFont());
           stageButton.setToolTipText(stage.getStageName());
 
           if (!stage.getEnabled()) {
@@ -299,7 +291,7 @@ public class PipelineView extends Composite
           if (stageIndex != stages.size()-1) {
             Label arrowSpace = new Label(stripComposite, SWT.FILL);
             arrowSpace.setText("     ");
-            arrowSpace.setFont(theme.bigBoldFont());
+            arrowSpace.setFont(widgets.theme.bigBoldFont());
             API.Stage nextStage = stages.get(stageIndex+1);
 
             arrowSpace.addListener(SWT.Paint, e -> {
@@ -323,7 +315,7 @@ public class PipelineView extends Composite
         if (pipeIndex != pipelines.size()-1) {
           Label pipeSeparator = new Label(stripComposite, SWT.FILL);
           pipeSeparator.setText("     ");
-          pipeSeparator.setFont(theme.bigBoldFont());
+          pipeSeparator.setFont(widgets.theme.bigBoldFont());
         }
 
         if (selectedStage == null || stageMap.get(selectedStage) == null) {
@@ -343,20 +335,19 @@ public class PipelineView extends Composite
         new GridData(SWT.BEGINNING, SWT.BEGINNING, false, false));
 
     Label stageName = createLabel(nameComposite, currentStage.getStageName() + " (" + currentStage.getDebugName() + ")");
-    stageName.setFont(theme.bigBoldFont());
+    stageName.setFont(widgets.theme.bigBoldFont());
 
-    FillLayout dataLayout = new FillLayout(SWT.VERTICAL);
-    dataLayout.spacing = 5;
-    Composite dataComposite = withLayoutData( createComposite(stageGroup, dataLayout),
+    Composite dataComposite = withLayoutData(
+        createComposite(stageGroup, withMargin(new GridLayout(1, true), 0, 5)),
         new GridData(SWT.FILL, SWT.FILL, true, true));
 
     for (API.DataGroup dataGroup : currentStage.getGroupsList()) {
-      Group dataGroupComposite = createGroup(dataComposite, dataGroup.getGroupName());
-      dataGroupComposite.setFont(theme.subTitleFont());
-
       switch (dataGroup.getDataCase()) {
-        case KEY_VALUES:
-          dataGroupComposite.setLayout(new GridLayout(1, false));
+        case KEY_VALUES: {
+          Group dataGroupComposite = withLayoutData(
+              createGroup(dataComposite, dataGroup.getGroupName(), new GridLayout(1, false)),
+              new GridData(SWT.FILL, SWT.TOP, true, false));
+          dataGroupComposite.setFont(widgets.theme.subTitleFont());
           ScrolledComposite scrollComposite = withLayoutData( createScrolledComposite(dataGroupComposite,
               new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL),
               new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -453,8 +444,13 @@ public class PipelineView extends Composite
           });
 
           break;
-
+        }
         case TABLE:
+          Group dataGroupComposite = withLayoutData(
+              createGroup(dataComposite, dataGroup.getGroupName()),
+              new GridData(SWT.FILL, SWT.TOP, true, false));
+          dataGroupComposite.setFont(widgets.theme.subTitleFont());
+
           API.Table dataTable = dataGroup.getTable();
           if (dataTable.getDynamic()) {
             dataGroupComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
@@ -484,7 +480,7 @@ public class PipelineView extends Composite
 
                 if (dv.link != null) {
                   StyleRange style = new StyleRange();
-                  theme.linkStyler().applyStyles(style);
+                  widgets.theme.linkStyler().applyStyles(style);
                   style.length = display.length();
                   cell.setStyleRanges(new StyleRange[] { style });
                 }
@@ -532,44 +528,10 @@ public class PipelineView extends Composite
           break;
 
         case SHADER:
-          TabFolder tabFolder = createStandardTabFolder(dataGroupComposite);
-          tabFolder.setFont(theme.defaultFont());
-          TabItem spirvTab = createStandardTabItem(tabFolder, "SPIR-V");
-
-          Group spirvGroup = createGroup(tabFolder, "");
-          SourceViewer viewer = new SourceViewer(
-            spirvGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-          StyledText textWidget = viewer.getTextWidget();
-          textWidget.setFont(theme.monoSpaceFont());
-          textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
-          viewer.configure(new GlslSourceConfiguration(theme));
-          viewer.setEditable(false);
-          viewer.setDocument(
-              GlslSourceConfiguration.createDocument(dataGroup.getShader().getSpirvSource()));
-
-          spirvTab.setControl(spirvGroup);
-
-          if (!dataGroup.getShader().getSource().isEmpty()) {
-            TabItem sourceTab = createStandardTabItem(tabFolder, dataGroup.getShader().getSourceLanguage());
-            Group sourceGroup = createGroup(tabFolder, "", new GridLayout(1, false));
-            if (dataGroup.getShader().getCrossCompiled()) {
-              createBoldLabel(sourceGroup, "Source code was decompiled using SPIRV-Cross");
-            }
-
-            SourceViewer viewer2 = new SourceViewer(
-              sourceGroup, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-            StyledText textWidget2 = viewer2.getTextWidget();
-            textWidget2.setFont(theme.monoSpaceFont());
-            textWidget2.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
-            viewer2.configure(new GlslSourceConfiguration(theme));
-            viewer2.setEditable(false);
-            viewer2.setDocument(
-                GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
-            viewer2.getControl().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-            sourceTab.setControl(sourceGroup);
-          }
-
+          ShaderView.ShaderWidget shaderView = withLayoutData(
+              new ShaderView.ShaderWidget(dataComposite, false, models, widgets),
+              new GridData(SWT.FILL, SWT.FILL, true, true));
+          shaderView.setShader(null, dataGroup.getShader());
           break;
 
         case DATA_NOT_SET:

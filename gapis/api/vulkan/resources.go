@@ -1103,6 +1103,14 @@ func commonShaderDataGroups(ctx context.Context,
 			spirv := shadertools.DisassembleSpirvBinary(words)
 			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross}
 
+			counters, _ := shadertools.Analyze(words)
+			shader.StaticAnalysis = &api.Shader_StaticAnalysis{
+				AluInstructions:     counters.ALUInstructions,
+				TextureInstructions: counters.TexInstructions,
+				BranchInstructions:  counters.BranchInstructions,
+				TempRegisters:       counters.TempRegisters,
+			}
+
 			dsetRows := []*api.Row{}
 			for _, usedSet := range usedSets {
 				setInfo, ok := boundDsets[usedSet.Set()]
@@ -1296,14 +1304,6 @@ func commonShaderDataGroups(ctx context.Context,
 				Active:  true,
 			}
 
-			counters, _ := shadertools.Analyze(words)
-
-			counterList := &api.KeyValuePairList{}
-			counterList = counterList.AppendKeyValuePair("ALU Instructions", api.CreatePoDDataValue(ctx, s, "u32", counters.ALUInstructions), false)
-			counterList = counterList.AppendKeyValuePair("Texture Instructions", api.CreatePoDDataValue(ctx, s, "u32", counters.TexInstructions), false)
-			counterList = counterList.AppendKeyValuePair("Branch Instructions", api.CreatePoDDataValue(ctx, s, "u32", counters.BranchInstructions), false)
-			counterList = counterList.AppendKeyValuePair("Peak Temporary Register Pressure", api.CreatePoDDataValue(ctx, s, "u32", counters.TempRegisters), false)
-
 			return []*api.DataGroup{
 				&api.DataGroup{
 					GroupName: "Shader Code",
@@ -1313,11 +1313,6 @@ func commonShaderDataGroups(ctx context.Context,
 				&api.DataGroup{
 					GroupName: "Descriptor Sets",
 					Data:      &api.DataGroup_Table{dsetTable},
-				},
-
-				&api.DataGroup{
-					GroupName: "Static Analysis",
-					Data:      &api.DataGroup_KeyValues{counterList},
 				},
 			}
 		}

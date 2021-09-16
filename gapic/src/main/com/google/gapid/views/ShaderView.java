@@ -86,7 +86,7 @@ public class ShaderView extends Composite
     this.models = models;
 
     setLayout(new FillLayout());
-    shaderView = new ShaderWidget(this, models, widgets);
+    shaderView = new ShaderWidget(this, true, models, widgets);
 
     models.capture.addListener(this);
     models.resources.addListener(this);
@@ -183,7 +183,7 @@ public class ShaderView extends Composite
     private Service.Resource shaderResource = null;
     private API.Shader shaderMessage = null;
 
-    public ShaderWidget(Composite parent, Models models, Widgets widgets) {
+    public ShaderWidget(Composite parent, boolean allowEditing, Models models, Widgets widgets) {
       super(parent, SWT.NONE);
       this.models = models;
 
@@ -238,7 +238,7 @@ public class ShaderView extends Composite
 
       // TODO(b/188434910): Shader editing is disabled as it doesn't work right
       // now. Enable it once the issue is fixed.
-      if (!Experimental.enableUnstableFeatures(models.settings)) {
+      if (!allowEditing || !Experimental.enableUnstableFeatures(models.settings)) {
         pushButton = Optional.empty();
       } else {
         pushButton = Optional.of(createButton(shaderGroup, "Push Changes", e -> {
@@ -317,7 +317,7 @@ public class ShaderView extends Composite
       shaderResource = resource;
       shaderMessage = shader;
 
-      pushButton.ifPresent(b -> b.setEnabled(true));
+      pushButton.ifPresent(b -> b.setEnabled(shaderResource != null));
       shaderGroup.setText(shaderResource != null ? shaderResource.getHandle() : "Shader");
       String spirvSource = shaderMessage.getSpirvSource();
       if (spirvSource.isEmpty()) {
