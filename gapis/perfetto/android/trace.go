@@ -190,6 +190,12 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		return nil, cleanup.Invoke(ctx), err
 	}
 
+	// Remove any left over trace files, as, if tracing to a file on the device is
+	// requested, Perfetto would fail if the file already exists.
+	if err := d.RemoveFile(ctx, perfettoTraceFile); err != nil {
+		log.E(ctx, "Failed to delete previous perfetto trace file %v", err)
+	}
+
 	caps := d.Instance().GetConfiguration().GetPerfettoCapability()
 	var mode traceMode
 	if opts.PerfettoConfig.GetWriteIntoFile() {
