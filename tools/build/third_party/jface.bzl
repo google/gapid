@@ -14,55 +14,55 @@
 
 # Repository rule to download the JFace jars.
 
-_BASE = "https://download.eclipse.org/eclipse/updates/4.18/R-4.18-202012021800/plugins/"
+_BASE = "https://download.eclipse.org/eclipse/updates/4.21/R-4.21-202109060500/plugins/"
 _LIBS = [
     struct(
         name = "org.eclipse.core.commands",
-        version = "3.9.800.v20201021-1339",
-        sha = "6130eed0dec2fc67b7b01fbcec72064dd6ae7ae955b00076e3105a78855f6e5c",
-        sha_src = "af82e080927a405fd0be8d4eff3b6a8fbe256b81c247292e22f05c5d869a8b0d",
+        version = "3.10.100.v20210722-1426",
+        sha = "177c605efd78681e28765b869a2ff5284a79b02d133007a6169a64317cee8633",
+        sha_src = "767ffe3b4c9e345d82666cc27d0453df487fbe69e3df3b871d2eaa33e395da7a",
     ),
     struct(
         name = "org.eclipse.core.runtime",
-        version = "3.20.0.v20201027-1526",
-        sha = "78d3cea9487a2e3a361cfd92baae65bf33f22e0106b41748b6c3e6a33ef4f29a",
-        sha_src = "61257d6221bedfae7fd33ad029b129fa1c275d6b91d066c3e085972e3e968706",
+        version = "3.23.0.v20210730-2035",
+        sha = "c81c0fd5c3cb632c93586c80f31461749f43104e3499f53e0cf33525bd606ce3",
+        sha_src = "c90874b9868149603e4370431db9f87565b47aa566a88001854a9a7cbaad012b",
     ),
     struct(
         name = "org.eclipse.equinox.common",
-        version = "3.14.0.v20201102-2053",
-        sha = "2e4c3ef5bb5b2a610d03944274d4891169f0728d85cd8842233e57f469f0d3b9",
-        sha_src = "0bcd1f2e71cadb05ce3033c0de51d13072345bf3c20b879a2a6f015a4b3774b0",
+        version = "3.15.0.v20210518-0604",
+        sha = "90e1b2a17b6e9256e3bfae0fc12b287cd96bc1481d64d83e0c7c30f4c12b248b",
+        sha_src = "25632e7df81e57696223a844d826323c62e46403e0baa21a2c2546c80578a1c3",
     ),
     struct(
         name = "org.eclipse.jface",
-        version = "3.22.0.v20201106-0834",
-        sha = "750496b3e8b4ed840715ee587daa75337f9d69c935c76f3f8f5a7b44fb2c2889",
-        sha_src = "5ec32308acfccede45c64821ba80e3f48fe725506d2f01c6048c53643ddee971",
+        version = "3.23.0.v20210723-1324",
+        sha = "14150fd90a0b095ee45051c94764e8f9908f58578398055e40adcb33a4242798",
+        sha_src = "6050d1d29f9d76782d3c2afc34895cac77acf23f59e7fc826da4aca0f87516fe",
     ),
     struct(
         name = "org.eclipse.jface.databinding",
-        version = "1.12.100.v20201014-0742",
-        sha = "0f55e83e0784f8262160cd29650502b11b5a8340855c23da58daf8ef9524e221",
-        sha_src = "c5ed08a11e9b67afd8135889c29ecc03da5832fcbc1772ae4f11d7e33a35f3c0",
+        version = "1.13.0.v20210619-1146",
+        sha = "b97d4c975e35fd6e7e785f1c9c42aa6a2540642a9dfcb5145fe2d34758940911",
+        sha_src = "97057ac3770e47144f235c6e7c8cc12c1ce2c668f1386d3ed378b920cf05c028",
     ),
     struct(
         name = "org.eclipse.jface.text",
-        version = "3.16.500.v20201112-1545",
-        sha = "29394d51209ce165af0d2069a9eff6608e96be4eb2f7f629b632e5b9dc80db6c",
-        sha_src = "ea62f314e1cfb8b11bace8b0f214dfe1a773db1bae92fc02d569d04fabe8f37c",
+        version = "3.18.100.v20210820-1651",
+        sha = "bac1aea8eb813eaca2da9212c1079b577611f5010d6f93cd509ae346356bee29",
+        sha_src = "c9ebb5b99ce8a023b4bad86cd1f80fe0be8f3210938eb285c9a7d8510f7b55c3",
     ),
     struct(
         name = "org.eclipse.osgi",
-        version = "3.16.100.v20201030-1916",
-        sha = "b3a99dc58841dc0073c572ecc6ceff926ef127b933dcdd5e8e5105ae0edfec25",
-        sha_src = "04b0b0746a0666b6e31e2c246c3d9279b2538a74ff6dcd5feb46dea6faed8bd6",
+        version = "3.17.0.v20210823-1805",
+        sha = "b9b5cf6bb057b94be55f3510bdd831cdbaef16f2d1cab6b3770b72452811e538",
+        sha_src = "c42096fadeb3367dfdc63fec3ddc1da161310c6f70f16c2e2b30958b9a8e1d30",
     ),
     struct(
         name = "org.eclipse.text",
-        version = "3.10.400.v20200925-0557",
-        sha = "91bf3fa0e1043dd7437eadff0e0a96b980d17d89a02b97e9a5492d1a6eb37c73",
-        sha_src = "257d03d0aab4aa535c26fbb90c6f0881bac2a515331e02e81fe0c78bf032ec5b",
+        version = "3.12.0.v20210512-1644",
+        sha = "56d3c997d0c60916012f71cdb7d4b25245fe1eb82775d2d0dc83e432e71f220a",
+        sha_src = "49067b4537181a43ab2883944d82ec8c102aff72e1b54f77f75179dd8480269b",
     ),
 ]
 

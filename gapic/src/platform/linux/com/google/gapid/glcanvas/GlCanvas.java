@@ -22,7 +22,8 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.internal.gtk.GDK;
 import org.eclipse.swt.internal.gtk.GTK;
-import org.eclipse.swt.internal.gtk.GdkWindowAttr;
+import org.eclipse.swt.internal.gtk3.GTK3;
+import org.eclipse.swt.internal.gtk3.GdkWindowAttr;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.lwjgl.PointerBuffer;
@@ -164,7 +165,7 @@ public abstract class GlCanvas extends Canvas {
       attrs.window_type = GDK.GDK_WINDOW_CHILD;
       attrs.visual =
           GDK.gdk_x11_screen_lookup_visual(GDK.gdk_screen_get_default(), (int)visual.visualid());
-      gdkWindow = GDK.gdk_window_new(GTK.gtk_widget_get_window(handle), attrs, GDK.GDK_WA_VISUAL);
+      gdkWindow = GTK3.gdk_window_new(GTK3.gtk_widget_get_window(handle), attrs, GDK.GDK_WA_VISUAL);
       if (gdkWindow == 0) {
         LOG.log(SEVERE, "Failed to create the GDK window");
         return false;
@@ -212,6 +213,6 @@ public abstract class GlCanvas extends Canvas {
 
   private long getXDisplay() {
     return GDK.gdk_x11_display_get_xdisplay(
-        GDK.gdk_window_get_display(GTK.gtk_widget_get_window(handle)));
+        GDK.gdk_window_get_display(GTK3.gtk_widget_get_window(handle)));
   }
 }

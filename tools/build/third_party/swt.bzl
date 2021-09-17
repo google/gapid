@@ -13,12 +13,12 @@
 # limitations under the License.
 
 # Repository rule to download and extract SWT.
-_URL_LINUX = "https://download.eclipse.org/eclipse/downloads/drops4/R-4.18-202012021800/swt-4.18-gtk-linux-x86_64.zip"
-_SHA_LINUX = "25eb95522f67e68c24965373124776860da29f32b95cec3dc67c666d81f9460f"
-_URL_WIN = "https://download.eclipse.org/eclipse/downloads/drops4/R-4.18-202012021800/swt-4.18-win32-win32-x86_64.zip"
-_SHA_WIN = "89f7cb23c41c5642c35a3039b58abfdbafd6e01b407cea67fa769847446e0dae"
-_URL_OSX = "https://download.eclipse.org/eclipse/downloads/drops4/R-4.18-202012021800/swt-4.18-cocoa-macosx-x86_64.zip"
-_SHA_OSX = "ae37d150caded21e94731a0a6662403d97918df57c36da2a5d257eabf10d76a2"
+_URL_LINUX = "https://download.eclipse.org/eclipse/downloads/drops4/R-4.21-202109060500/swt-4.21-gtk-linux-x86_64.zip"
+_SHA_LINUX = "3e35a4ababf504bcf64df864e4a957aaa2f0dec9696a922d936c7ee224fa4c5f"
+_URL_WIN = "https://download.eclipse.org/eclipse/downloads/drops4/R-4.21-202109060500/swt-4.21-win32-win32-x86_64.zip"
+_SHA_WIN = "efad710dd60476c60bcef2bd5f855d9784cb825ecef1fb8d4c73fd470402ad32"
+_URL_OSX = "https://download.eclipse.org/eclipse/downloads/drops4/R-4.21-202109060500/swt-4.21-cocoa-macosx-x86_64.zip"
+_SHA_OSX = "d1c9afbef014488cc4d768edcdfb726e90228927b7555672199d7931f140ff5d"
 
 def _swt_impl(repository_ctx):
     url = ""
