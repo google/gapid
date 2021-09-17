@@ -263,6 +263,8 @@ message DataGroup {
     Table table = 3;
     Shader shader = 4;
   }
+  // If data is a Shader, this is the path to the shader's data.
+  path.ResourceData resource = 5;
 }
 
 message DataValue {

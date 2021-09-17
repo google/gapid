@@ -318,7 +318,7 @@ public class ShaderView extends Composite
       shaderMessage = shader;
 
       pushButton.ifPresent(b -> b.setEnabled(shaderResource != null));
-      shaderGroup.setText(shaderResource != null ? shaderResource.getHandle() : "Shader");
+      shaderGroup.setText(getLabel(resource));
       String spirvSource = shaderMessage.getSpirvSource();
       if (spirvSource.isEmpty()) {
         spirvSource = EMPTY_SHADER;
@@ -340,6 +340,17 @@ public class ShaderView extends Composite
       }
 
       statTable.setInput(shader.getStaticAnalysis());
+    }
+
+    private static String getLabel(Service.Resource resource) {
+      if (resource == null) {
+        return "Shader";
+      }
+      String label = resource.getHandle();
+      if (!resource.getLabel().isEmpty()) {
+        label += " " + resource.getLabel();
+      }
+      return label;
     }
 
     private static boolean isKey(Event e, int stateMask, int keyCode) {

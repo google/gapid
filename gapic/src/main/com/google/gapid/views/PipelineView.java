@@ -531,7 +531,8 @@ public class PipelineView extends Composite
           ShaderView.ShaderWidget shaderView = withLayoutData(
               new ShaderView.ShaderWidget(dataComposite, false, models, widgets),
               new GridData(SWT.FILL, SWT.FILL, true, true));
-          shaderView.setShader(null, dataGroup.getShader());
+          Resources.Resource res = models.resources.getResource(dataGroup.getResource());
+          shaderView.setShader((res == null) ? null : res.resource, dataGroup.getShader());
           break;
 
         case DATA_NOT_SET:

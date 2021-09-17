@@ -1308,6 +1308,7 @@ func commonShaderDataGroups(ctx context.Context,
 				&api.DataGroup{
 					GroupName: "Shader Code",
 					Data:      &api.DataGroup_Shader{shader},
+					Resource:  cmd.ResourceAfter(path.NewID(resources[module.ResourceHandle()])),
 				},
 
 				&api.DataGroup{
