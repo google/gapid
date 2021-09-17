@@ -19,8 +19,7 @@ import static com.google.gapid.util.Arrays.last;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createComposite;
-import static com.google.gapid.widgets.Widgets.createTreeColumn;
-import static com.google.gapid.widgets.Widgets.createTreeViewer;
+import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 
@@ -39,17 +38,17 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.swt.widgets.TableItem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,7 +63,7 @@ public class ShaderList extends Composite
 
   protected final Models models;
   private final LoadablePanel<Composite> loading;
-  private final TreeViewer shaderViewer;
+  private final TableViewer shaderViewer;
   private boolean lastUpdateContainedAllShaders = false;
 
   public ShaderList(Composite parent, Models models, Widgets widgets) {
@@ -76,44 +75,24 @@ public class ShaderList extends Composite
     loading = LoadablePanel.create(this, widgets,
         panel -> createComposite(panel, new GridLayout(1, false)));
 
-    shaderViewer = createTreeViewer(loading.getContents(), SWT.FILL);
-    shaderViewer.getTree().setHeaderVisible(true);
-    shaderViewer.setContentProvider(new ITreeContentProvider() {
-      @SuppressWarnings("unchecked")
-      @Override
-      public Object[] getElements(Object inputElement) {
-        return ((List<Data>)inputElement).toArray();
-      }
-
-      @Override
-      public boolean hasChildren(Object element) {
-        return false;
-      }
-
-      @Override
-      public Object getParent(Object element) {
-        return null;
-      }
-
-      @Override
-      public Object[] getChildren(Object element) {
-        return null;
-      }
-    });
+    shaderViewer = Widgets.createTableViewer(loading.getContents(), SWT.None);
+    shaderViewer.setContentProvider(new ArrayContentProvider());
     shaderViewer.setLabelProvider(new LabelProvider());
     shaderViewer.getControl().addListener(SWT.Selection, e -> {
       models.analytics.postInteraction(View.Shaders, ClientAction.SelectShader);
       Service.Resource selectedShader = null;
-      if (shaderViewer.getTree().getSelectionCount() >= 1) {
+      if (shaderViewer.getTable().getSelectionCount() >= 1) {
         selectedShader = ((Data)getSelection().getData()).info;
       }
       models.resources.selectShader(selectedShader);
     });
 
     sorting(shaderViewer,
-        createTreeColumn(shaderViewer, "ID", Data::getHandle,
-            (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())));
-    shaderViewer.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        createTableColumn(shaderViewer, "ID", Data::getHandle,
+            (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
+        createTableColumn(shaderViewer, "Label", Data::getLabel,
+            (d1, d2) -> d1.getLabel().compareTo(d2.getLabel())));
+    shaderViewer.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.capture.addListener(this);
     models.resources.addListener(this);
@@ -160,7 +139,7 @@ public class ShaderList extends Composite
   @Override
   public void onShaderSelected(Service.Resource shader) {
     // Do nothing if shader is already selected.
-    TreeItem selection = getSelection();
+    TableItem selection = getSelection();
     if (shader != null && selection != null) {
       if (((Data)selection.getData()).info.getID().equals(shader.getID())) {
         return;
@@ -171,11 +150,11 @@ public class ShaderList extends Composite
 
     if (shader != null) {
       // Find shader in view and select it.
-      TreeItem[] items = shaderViewer.getTree().getItems();
+      TableItem[] items = shaderViewer.getTable().getItems();
       for (int i = 0; i < items.length; i++) {
         Data data = (Data)(items[i].getData());
         if (data.info.getID().equals(shader.getID())) {
-          shaderViewer.getTree().setSelection(items[i]);
+          shaderViewer.getTable().setSelection(items[i]);
           break;
         }
       }
@@ -215,7 +194,7 @@ public class ShaderList extends Composite
         }
         lastUpdateContainedAllShaders = resources.complete;
         shaderViewer.setInput(shaders);
-        packColumns(shaderViewer.getTree());
+        packColumns(shaderViewer.getTable());
 
         if (shaders.isEmpty()) {
           loading.showMessage(Info, Messages.NO_SHADERS);
@@ -227,8 +206,8 @@ public class ShaderList extends Composite
     }
   }
 
-  private TreeItem getSelection() {
-    return last(shaderViewer.getTree().getSelection());
+  private TableItem getSelection() {
+    return last(shaderViewer.getTable().getSelection());
   }
 
   /**
@@ -247,6 +226,10 @@ public class ShaderList extends Composite
 
     public long getSortId() {
       return info.getOrder();
+    }
+
+    public String getLabel() {
+      return info.getLabel();
     }
   }
 }
