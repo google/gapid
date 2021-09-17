@@ -84,9 +84,9 @@ terminal by running the `agi` executable.
 
 A Debian `.deb` package and a `.zip` file with the same contents are built.
 The package installs into `/opt/agi`, while archives can be expanded anywhere.
-The Debian package depends on `openjdk-8-jre` and neither it nor the `.zip`
+The Debian package depends on `openjdk-11-jre` and neither it nor the `.zip`
 archives contain the JRE. The launcher script looks for `java` first at
-`/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java`, which the `openjdk-8-jre`
+`/usr/lib/jvm/java-11-openjdk-amd64/bin/java`, which the `openjdk-11-jre`
 package provides. If not found there, it uses fallbacks and looks for `java`
 in `$JAVA_HOME`, and then on the `$PATH`. The file layout is:
 
