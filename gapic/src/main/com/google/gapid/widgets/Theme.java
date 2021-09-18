@@ -100,6 +100,8 @@ public interface Theme {
   @Icon(file = "pin_inactive.png") public Image pinInactiveLight();
   @Icon(file = "pin_active.png", color = 0xFFFFFF) public Image pinActiveDark();
   @Icon(file = "pin_inactive.png", color = 0xFFFFFF) public Image pinInactiveDark();
+  @Icon(file = "pin_inactive.png", size = 24) public Image pin();
+  @Icon(file = "pin_active.png", size = 24) public Image pinned();
   @Icon(file = "point_cloud.png") public Image pointCloud();
   @Icon(file = "range_start.png") public Image rangeStartLight();
   @Icon(file = "range_end.png") public Image rangeEndLight();
@@ -262,6 +264,7 @@ public interface Theme {
   public static @interface Icon {
     public String file();
     public int color() default -1;
+    public int size() default -1;
   }
 
   /**
@@ -400,8 +403,7 @@ public interface Theme {
     private boolean loadIcon(Method method) {
       Icon icon = method.getDeclaredAnnotation(Icon.class);
       if (icon != null) {
-        int color = icon.color();
-        Image image = (color >= 0) ? loadImage(icon.file(), color) : loadImage(icon.file());
+        Image image = loadImage(icon.file(), icon.color(), icon.size());
         resources.put(method.getName(), image);
         return true;
       }
@@ -427,7 +429,11 @@ public interface Theme {
           ImageDescriptor.createFromURL(Resources.getResource("icons/" + img)).createImage(display);
     }
 
-    private Image loadImage(String img, int color) {
+    private Image loadImage(String img, int color, int size) {
+      if (color < 0 && size < 0) {
+        return loadImage(img);
+      }
+
       ImageDescriptor desc = ImageDescriptor.createFromURL(Resources.getResource("icons/" + img));
       int zoom = DPIUtil.getDeviceZoom();
       ImageData data = desc.getImageData(zoom);
@@ -436,13 +442,43 @@ public interface Theme {
         data = desc.getImageData(100);
       }
 
-      for (int y = 0, o = 0; y < data.height; y++, o += data.bytesPerLine) {
-        for (int x = 0, i = o; x < data.width; x++) {
-          data.data[i++] = (byte)((color >> 16) & 0xFF);
-          data.data[i++] = (byte)((color >> 8) & 0xFF);
-          data.data[i++] = (byte)(color & 0xFF);
+      if (color >= 0) {
+        for (int y = 0, o = 0; y < data.height; y++, o += data.bytesPerLine) {
+          for (int x = 0, i = o; x < data.width; x++) {
+            data.data[i++] = (byte)((color >> 16) & 0xFF);
+            data.data[i++] = (byte)((color >> 8) & 0xFF);
+            data.data[i++] = (byte)(color & 0xFF);
+          }
         }
       }
+
+      if (size >= 0) {
+        size = size * zoom / 100;
+        if (data.height < size || data.width < size) {
+          ImageData scaled = new ImageData(
+              Math.max(data.width, size), Math.max(data.height, size), data.depth, data.palette);
+          scaled.alphaData = new byte[scaled.width * scaled.height];
+          for (int srcY = 0, dstY = (scaled.height - data.height) / 2,
+              srcRGB = 0, dstRGB = dstY * scaled.bytesPerLine,
+              srcA = 0, dstA = dstY * scaled.width;
+              srcY < data.height;
+              srcY++, dstY++,
+              srcRGB += data.bytesPerLine, dstRGB += scaled.bytesPerLine,
+              srcA += data.width, dstA += scaled.width) {
+            for (int srcX = 0, dstX = (scaled.width - data.width) / 2,
+                srcIRGB = srcRGB, dstIRGB = dstRGB + dstX * 3,
+                srcIA = srcA, dstIA = dstA + dstX;
+                srcX < data.width; srcX++) {
+              scaled.data[dstIRGB++] = data.data[srcIRGB++];
+              scaled.data[dstIRGB++] = data.data[srcIRGB++];
+              scaled.data[dstIRGB++] = data.data[srcIRGB++];
+              scaled.alphaData[dstIA++] = data.alphaData[srcIA++];
+            }
+          }
+          data = scaled;
+        }
+      }
+
       return new Image(display, new DPIUtil.AutoScaleImageDataProvider(display, data, zoom));
     }
 

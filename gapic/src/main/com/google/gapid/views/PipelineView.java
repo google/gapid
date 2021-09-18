@@ -529,7 +529,7 @@ public class PipelineView extends Composite
 
         case SHADER:
           ShaderView.ShaderWidget shaderView = withLayoutData(
-              new ShaderView.ShaderWidget(dataComposite, false, models, widgets),
+              ShaderView.createReadOnly(dataComposite, models, widgets),
               new GridData(SWT.FILL, SWT.FILL, true, true));
           Resources.Resource res = models.resources.getResource(dataGroup.getResource());
           shaderView.setShader((res == null) ? null : res.resource, dataGroup.getShader());

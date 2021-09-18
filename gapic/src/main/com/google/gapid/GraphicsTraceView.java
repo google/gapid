@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
+import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
@@ -30,6 +31,7 @@ import com.google.gapid.models.Resources;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.Resource;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Experimental;
 import com.google.gapid.views.CommandTree;
@@ -163,7 +165,24 @@ public class GraphicsTraceView extends Composite
   @Override
   public void onShaderSelected(Service.Resource shader) {
     if (shader != null) {
-      showTab(MainTab.Type.ShaderView);
+      showTab(MainTab.Type.Shaders);
+    }
+  }
+
+  @Override
+  public void onShaderPinned(Resource shader) {
+    if (!tabs.showTab(shader)) {
+      String label = shader.getHandle();
+      if (!shader.getLabel().isEmpty()) {
+        label = "Shader<" + shader.getLabel() + ">";
+      }
+      TabInfo tabInfo = new TabInfo(shader, Analytics.View.ShaderView, label, parent -> {
+        Tab tab = new ShaderView(parent, shader, models, widgets);
+        tab.reinitialize();
+        return tab;
+      });
+      tabs.addTabToLargestFolder(tabInfo);
+      tabs.showTab(shader);
     }
   }
 
@@ -400,7 +419,9 @@ public class GraphicsTraceView extends Composite
       if (folder.tabs != null) {
         structure.append('f').append(folder.tabs.length).append(';');
         for (TabInfo tab : folder.tabs) {
-          tabs.add(((Type)tab.id).name());
+          if (tab.id instanceof Type) {
+            tabs.add(((Type)tab.id).name());
+          }
         }
       }
     }
@@ -440,7 +461,6 @@ public class GraphicsTraceView extends Composite
       Log(View.Log, "Log", DefaultPosition.Center, (p, m, w) -> new LogView(p, w)),
 
       TextureView(View.TextureView, "Texture", DefaultPosition.Right, TextureView::new),
-      ShaderView(View.ShaderView, "Shader", DefaultPosition.Right, ShaderView::new),
       ApiState(View.State, "State", DefaultPosition.Right, StateView::new),
       Memory(View.Memory, "Memory", DefaultPosition.Right, MemoryView::new);
 

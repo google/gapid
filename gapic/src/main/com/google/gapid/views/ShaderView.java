@@ -20,15 +20,18 @@ import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createButton;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createGroup;
+import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
+import static com.google.gapid.widgets.Widgets.createToolItem;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
+import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
@@ -41,7 +44,6 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Experimental;
-import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
@@ -60,10 +62,17 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
@@ -75,25 +84,12 @@ public class ShaderView extends Composite
     implements Tab, Capture.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
 
-  private final Models models;
-  private final ShaderWidget shaderView;
-  private Service.Resource shaderResource = null;
-
-  private boolean pinned = false;
-
-  public ShaderView(Composite parent, Models models, Widgets widgets) {
+  public ShaderView(Composite parent, Service.Resource shader, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
-    this.models = models;
-
     setLayout(new FillLayout());
-    shaderView = new ShaderWidget(this, true, models, widgets);
 
-    models.capture.addListener(this);
-    models.resources.addListener(this);
-    addListener(SWT.Dispose, e -> {
-      models.capture.removeListener(this);
-      models.resources.removeListener(this);
-    });
+    ShaderWidget view = createPinned(this, models, widgets);
+    view.loadShader(shader);
   }
 
   @Override
@@ -101,66 +97,16 @@ public class ShaderView extends Composite
     return this;
   }
 
-  @Override
-  public void reinitialize() {
-    if (!models.capture.isLoaded()) {
-      onCaptureLoadingStart(false);
-    } else {
-      shaderView.loadShader(models.resources.getSelectedShader());
-    }
+  public static ShaderWidget create(Composite parent, Models models, Widgets widgets) {
+    return new ShaderWidget(parent, false, true, models, widgets);
   }
 
-  @Override
-  public boolean supportsPinning() {
-    return true;
+  public static ShaderWidget createPinned(Composite parent, Models models, Widgets widgets) {
+    return new ShaderWidget(parent, true, true, models, widgets);
   }
 
-  @Override
-  public boolean isPinnable() {
-    return !pinned && shaderResource != null;
-  }
-
-  @Override
-  public boolean isPinned() {
-    return pinned;
-  }
-
-  @Override
-  public void pin() {
-    pinned = true;
-  }
-
-  @Override
-  public void onCaptureLoadingStart(boolean maintainState) {
-    shaderView.clear();
-    if (!pinned) {
-      shaderResource = null;
-    }
-  }
-
-  @Override
-  public void onCaptureLoaded(Loadable.Message error) {
-    shaderView.clear();
-    if (!pinned) {
-      shaderResource = null;
-    }
-
-  }
-
-  @Override
-  public void onResourcesLoaded() {
-    shaderView.clear();
-    if (!pinned) {
-      shaderResource = null;
-    }
-  }
-
-  @Override
-  public void onShaderSelected(Service.Resource shader) {
-    if (!pinned) {
-      shaderResource = shader;
-      shaderView.loadShader(shader);
-    }
+  public static ShaderWidget createReadOnly(Composite parent, Models models, Widgets widgets) {
+    return new ShaderWidget(parent, false, false, models, widgets);
   }
 
   public static class ShaderWidget extends Composite {
@@ -168,9 +114,12 @@ public class ShaderView extends Composite
         "// No source attached to this shader at this point in the trace.";
 
     private final SingleInFlight rpcController = new SingleInFlight();
+    private final boolean pinned;
     private final Models models;
     private final LoadablePanel<Composite> loading;
     private final Group shaderGroup;
+    private final ToolItem pinItem;
+    private final ToolItem saveItem;
     private final TabFolder tabFolder;
     private final Composite sourceContainer;
     private final Group statGroup;
@@ -183,8 +132,10 @@ public class ShaderView extends Composite
     private Service.Resource shaderResource = null;
     private API.Shader shaderMessage = null;
 
-    public ShaderWidget(Composite parent, boolean allowEditing, Models models, Widgets widgets) {
+    protected ShaderWidget(
+        Composite parent, boolean pinned, boolean allowEditing, Models models, Widgets widgets) {
       super(parent, SWT.NONE);
+      this.pinned = pinned;
       this.models = models;
 
       setLayout(new FillLayout());
@@ -195,6 +146,19 @@ public class ShaderView extends Composite
       shaderGroup = withLayoutData(
           createGroup(loading.getContents(), "Shader", new GridLayout(1, false)),
           new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      ToolBar toolBar = withLayoutData(new ToolBar(shaderGroup, SWT.HORIZONTAL | SWT.FLAT),
+          new GridData(SWT.FILL, SWT.TOP, true, false));
+      if (pinned) {
+        pinItem = createToolItem(
+            toolBar, widgets.theme.pinned(), e -> { /* ignore */ }, "Pinned shader");
+      } else {
+        pinItem = createToolItem(toolBar, widgets.theme.pin(),
+            e -> models.resources.pinShader(shaderResource), "Pin this shader");
+      }
+      createSeparator(toolBar);
+      saveItem = createToolItem(toolBar, widgets.theme.save(), e -> save(), "Save shader to file");
+
       tabFolder = withLayoutData(createStandardTabFolder(shaderGroup),
           new GridData(SWT.FILL, SWT.FILL, true, true));
 
@@ -280,12 +244,16 @@ public class ShaderView extends Composite
       });
       statTable.setInput(API.Shader.StaticAnalysis.getDefaultInstance());
       packColumns(statTable.getTable());
+
+      clear();
     }
 
     public void clear() {
       shaderResource = null;
       shaderMessage = null;
       pushButton.ifPresent(b -> b.setEnabled(false));
+      pinItem.setEnabled(false);
+      saveItem.setEnabled(false);
       loading.showMessage(Info, Messages.SELECT_SHADER);
     }
 
@@ -318,6 +286,8 @@ public class ShaderView extends Composite
       shaderMessage = shader;
 
       pushButton.ifPresent(b -> b.setEnabled(shaderResource != null));
+      pinItem.setEnabled(!pinned && shaderResource != null);
+      saveItem.setEnabled(shaderMessage != null);
       shaderGroup.setText(getLabel(resource));
       String spirvSource = shaderMessage.getSpirvSource();
       if (spirvSource.isEmpty()) {
@@ -340,6 +310,28 @@ public class ShaderView extends Composite
       }
 
       statTable.setInput(shader.getStaticAnalysis());
+    }
+
+    private void save() {
+      int selection = tabFolder.getSelectionIndex();
+
+      models.analytics.postInteraction(Analytics.View.ShaderView, ClientAction.Save);
+      FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
+      dialog.setText("Save shader to...");
+
+      dialog.setFilterNames(new String[] { "Shaders" });
+      dialog.setFilterExtensions(new String[] {
+          (selection <= 0) ? "*.spirv" : "*." + shaderMessage.getSourceLanguage().toLowerCase(),
+      });
+      dialog.setOverwrite(true);
+      String path = dialog.open();
+      if (path != null) {
+        try (Writer out = new BufferedWriter(new FileWriter(path))) {
+          out.write(selection <= 0 ? shaderMessage.getSpirvSource() : shaderMessage.getSource());
+        } catch (IOException e) {
+          SWT.error(SWT.ERROR_IO, e);
+        }
+      }
     }
 
     private static String getLabel(Service.Resource resource) {

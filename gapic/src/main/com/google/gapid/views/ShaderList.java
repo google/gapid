@@ -18,10 +18,11 @@ package com.google.gapid.views;
 import static com.google.gapid.util.Arrays.last;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
+import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
 
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.models.Analytics.View;
@@ -30,6 +31,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
@@ -43,9 +45,9 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.TableItem;
@@ -62,8 +64,9 @@ public class ShaderList extends Composite
   protected static final Logger LOG = Logger.getLogger(ShaderList.class.getName());
 
   protected final Models models;
-  private final LoadablePanel<Composite> loading;
-  private final TableViewer shaderViewer;
+  private final LoadablePanel<SashForm> loading;
+  private final TableViewer shaderList;
+  private final ShaderView.ShaderWidget shaderView;
   private boolean lastUpdateContainedAllShaders = false;
 
   public ShaderList(Composite parent, Models models, Widgets widgets) {
@@ -72,32 +75,40 @@ public class ShaderList extends Composite
 
     setLayout(new FillLayout());
 
-    loading = LoadablePanel.create(this, widgets,
-        panel -> createComposite(panel, new GridLayout(1, false)));
+    loading = LoadablePanel.create(this, widgets, panel -> new SashForm(panel, SWT.VERTICAL));
+    SashForm splitter = loading.getContents();
 
-    shaderViewer = Widgets.createTableViewer(loading.getContents(), SWT.None);
-    shaderViewer.setContentProvider(new ArrayContentProvider());
-    shaderViewer.setLabelProvider(new LabelProvider());
-    shaderViewer.getControl().addListener(SWT.Selection, e -> {
+    shaderList = createTableViewer(splitter, SWT.BORDER);
+    shaderList.setContentProvider(new ArrayContentProvider());
+    shaderList.setLabelProvider(new LabelProvider());
+    sorting(shaderList,
+        createTableColumn(shaderList, "ID", Data::getHandle,
+            (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
+        createTableColumn(shaderList, "Label", Data::getLabel,
+            (d1, d2) -> d1.getLabel().compareTo(d2.getLabel())));
+    shaderList.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    shaderView = withLayoutData(ShaderView.create(splitter, models, widgets),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Shaders));
+
+    shaderList.getControl().addListener(SWT.Selection, e -> {
       models.analytics.postInteraction(View.Shaders, ClientAction.SelectShader);
       Service.Resource selectedShader = null;
-      if (shaderViewer.getTable().getSelectionCount() >= 1) {
+      if (shaderList.getTable().getSelectionCount() >= 1) {
         selectedShader = ((Data)getSelection().getData()).info;
       }
       models.resources.selectShader(selectedShader);
+      shaderView.loadShader(selectedShader);
     });
-
-    sorting(shaderViewer,
-        createTableColumn(shaderViewer, "ID", Data::getHandle,
-            (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
-        createTableColumn(shaderViewer, "Label", Data::getLabel,
-            (d1, d2) -> d1.getLabel().compareTo(d2.getLabel())));
-    shaderViewer.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.capture.addListener(this);
     models.resources.addListener(this);
     models.commands.addListener(this);
     addListener(SWT.Dispose, e -> {
+      models.settings.setSplitterWeights(Settings.SplitterWeights.Shaders, splitter.getWeights());
+
       models.capture.removeListener(this);
       models.resources.removeListener(this);
       models.commands.removeListener(this);
@@ -150,16 +161,18 @@ public class ShaderList extends Composite
 
     if (shader != null) {
       // Find shader in view and select it.
-      TableItem[] items = shaderViewer.getTable().getItems();
+      TableItem[] items = shaderList.getTable().getItems();
       for (int i = 0; i < items.length; i++) {
         Data data = (Data)(items[i].getData());
         if (data.info.getID().equals(shader.getID())) {
-          shaderViewer.getTable().setSelection(items[i]);
+          shaderList.getTable().setSelection(items[i]);
           break;
         }
       }
+      shaderView.loadShader(shader);
     } else {
-      shaderViewer.setSelection(StructuredSelection.EMPTY);
+      shaderList.setSelection(StructuredSelection.EMPTY);
+      shaderView.clear();
     }
   }
 
@@ -193,8 +206,8 @@ public class ShaderList extends Composite
               .forEach(shaders::add);
         }
         lastUpdateContainedAllShaders = resources.complete;
-        shaderViewer.setInput(shaders);
-        packColumns(shaderViewer.getTable());
+        shaderList.setInput(shaders);
+        packColumns(shaderList.getTable());
 
         if (shaders.isEmpty()) {
           loading.showMessage(Info, Messages.NO_SHADERS);
@@ -207,7 +220,7 @@ public class ShaderList extends Composite
   }
 
   private TableItem getSelection() {
-    return last(shaderViewer.getTable().getSelection());
+    return last(shaderList.getTable().getSelection());
   }
 
   /**

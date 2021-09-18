@@ -229,6 +229,10 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     }
   }
 
+  public void pinShader(Service.Resource shader) {
+    listeners.fire().onShaderPinned(shader);
+  }
+
   public Service.Resource getSelectedTexture() {
     return selectedTexture;
   }
@@ -327,6 +331,11 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
      * Event indicating that a shader resource has been selected.
      */
     public default void onShaderSelected(Service.Resource shader) { /* empty */ }
+
+    /**
+     * Event indicating that a shader has been pinned.
+     */
+    public default void onShaderPinned(Service.Resource shader) { /* empty */ }
 
     /**
      * Event indicating that a texture resource has been selected.
