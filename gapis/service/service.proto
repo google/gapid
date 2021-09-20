@@ -38,8 +38,14 @@ option go_package = "github.com/google/gapid/gapis/service";
 /******************************************************************************/
 
 enum TraceType {
+  // A Frame Profiler Vulkan trace.
   Graphics = 0;
+  // A System Profiler Perfetto trace.
   Perfetto = 1;
+  // A Frame Profiler GLES on ANGLE trace. Note that when opening a trace,
+  // GAPIS currently doesn't distinguish between ANGLE and Vulkan and will not
+  // report this type (i.e. the Capture message's type field).
+  ANGLE = 2;
 }
 
 message Error {
@@ -145,7 +151,8 @@ message Value {
 
 // Capture describes single capture file held by the server.
 message Capture {
-  // The type of this capture.
+  // The type of this capture. Note that this will not distinguish Vulkan
+  // traces from ANGLE traces and report both as "Graphics".
   TraceType type = 7;
   // Name given to the capture. e.g. "KittyWorld"
   string name = 1;
@@ -416,7 +423,7 @@ message DeviceTraceConfiguration {
   // The default URI that should be used for looking at packages.
   string preferred_root_uri = 5;
   // Type and API-specific capabilities.
-  repeated TraceTypeCapabilities apis = 6;
+  repeated TraceTypeCapabilities types = 6;
   // Is there a cache that can be cleared.
   bool has_cache = 7;
 }
@@ -424,12 +431,8 @@ message DeviceTraceConfiguration {
 message TraceTypeCapabilities {
   // The type of trace this describes.
   TraceType type = 5;
-  // What is the API this is for.
-  string api = 1;
+  reserved 1;
   reserved 2;
-  // [deprecated] Does this API support MEC.
-  // This was used only for GLES.
-  // FeatureStatus mid_execution_capture_support = 3;
   reserved 3;
   // Whether unsupported extensions can be enabled.
   bool can_enable_unsupported_extensions = 4;
@@ -1377,8 +1380,8 @@ message TraceOptions {
   }
   // The type of this trace.
   TraceType type = 23;
-  // What APIs should we trace
-  repeated string apis = 5;
+  reserved 5;
+
   // Any additional command-line args to pass to the app
   string additional_command_line_args = 6;
   // What directory should be used for tracing

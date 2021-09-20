@@ -612,8 +612,9 @@ public class TracerDialog {
           public String getText(Object element) {
             TraceTypeCapabilities ttc = (TraceTypeCapabilities)element;
             switch (ttc.getType()) {
-              case Graphics: return ttc.getApi();
+              case Graphics: return "Vulkan";
               case Perfetto: return "System Profile";
+              case ANGLE: return "OpenGL on ANGLE";
               default: throw new AssertionError();
             }
           }
@@ -814,13 +815,12 @@ public class TracerDialog {
       private void updateApiDropdown(
           DeviceTraceConfiguration config, SettingsProto.TraceOrBuilder trace) {
         if (api != null && config != null) {
-          List<TraceTypeCapabilities> caps = config.getApisList();
-          api.setInput(config.getApisList());
+          List<TraceTypeCapabilities> caps = config.getTypesList();
+          api.setInput(config.getTypesList());
           if (!caps.isEmpty()) {
             TraceTypeCapabilities deflt = caps.get(0);
             for (TraceTypeCapabilities c : caps) {
-              if (c.getType().name().equals(trace.getType()) &&
-                  (c.getApi().isEmpty() || c.getApi().equals(trace.getApi()))) {
+              if (c.getType().name().equals(trace.getType())) {
                 deflt = c;
                 break;
               }
@@ -974,7 +974,6 @@ public class TracerDialog {
         trace.setDeviceSerial(dev.device.getSerial());
         trace.setDeviceName(dev.device.getName());
         trace.setType(config.getType().name());
-        trace.setApi(config.getApi());
         trace.setUri(traceTarget.getText());
         trace.setArguments(arguments.getText());
         SettingsProto.Trace.Duration.Builder dur = isPerfetto(config) ?
@@ -994,7 +993,6 @@ public class TracerDialog {
         Service.TraceOptions.Builder options = Service.TraceOptions.newBuilder()
             .setDevice(dev.path)
             .setType(config.getType())
-            .addApis(config.getApi())
             .setUri(traceTarget.getText())
             .setAdditionalCommandLineArgs(arguments.getText())
             .setFramesToCapture(duration.getSelection())
@@ -1105,7 +1103,7 @@ public class TracerDialog {
       }
 
       private static boolean isAngle(TraceTypeCapabilities config) {
-        return config != null && config.getApi().equalsIgnoreCase("OpenGL on ANGLE");
+        return config != null && config.getType() == TraceType.ANGLE;
       }
     }
 

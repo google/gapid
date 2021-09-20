@@ -104,7 +104,7 @@ message Trace {
   string device_serial = 1;
   string device_name = 2;
   string type = 3;
-  string api = 4;
+  string api = 4 [deprecated = true];  // Kept for de-serialization.
   string uri = 5;
   string arguments = 6;
   string cwd = 7;

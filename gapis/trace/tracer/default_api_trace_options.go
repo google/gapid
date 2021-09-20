@@ -22,7 +22,6 @@ import (
 func VulkanTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
 		Type:                           service.TraceType_Graphics,
-		Api:                            "Vulkan",
 		CanEnableUnsupportedExtensions: true,
 		RequiresApplication:            true,
 		CanSelectProcessName:           true,
@@ -32,8 +31,7 @@ func VulkanTraceOptions() *service.TraceTypeCapabilities {
 // AngleTraceOptions returns the default trace options for Angle.
 func AngleTraceOptions() *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
-		Type:                           service.TraceType_Graphics,
-		Api:                            "OpenGL on ANGLE",
+		Type:                           service.TraceType_ANGLE,
 		CanEnableUnsupportedExtensions: true,
 		RequiresApplication:            true,
 		CanSelectProcessName:           true,

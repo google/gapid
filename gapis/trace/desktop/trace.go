@@ -66,9 +66,9 @@ func (t *DesktopTracer) Validate(ctx context.Context) error {
 
 // TraceConfiguration returns the device's supported trace configuration.
 func (t *DesktopTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
-	apis := make([]*service.TraceTypeCapabilities, 0, 1)
+	types := make([]*service.TraceTypeCapabilities, 0, 1)
 	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
-		apis = append(apis, tracer.VulkanTraceOptions())
+		types = append(types, tracer.VulkanTraceOptions())
 	}
 
 	preferredRoot, err := t.b.GetWorkingDirectory(ctx)
@@ -82,11 +82,11 @@ func (t *DesktopTracer) TraceConfiguration(ctx context.Context) (*service.Device
 	}
 
 	if t.b.SupportsPerfetto(ctx) {
-		apis = append(apis, tracer.PerfettoTraceOptions())
+		types = append(types, tracer.PerfettoTraceOptions())
 	}
 
 	return &service.DeviceTraceConfiguration{
-		Apis:                 apis,
+		Types:                types,
 		ServerLocalPath:      isLocal,
 		CanSpecifyCwd:        true,
 		CanUploadApplication: false,

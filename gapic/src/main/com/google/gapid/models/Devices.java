@@ -284,7 +284,7 @@ public class Devices {
 
   public List<DeviceCaptureInfo> getCaptureDevices() {
     return (devices == null) ? null :
-      devices.stream().filter(info -> !info.config.getApisList().isEmpty()).collect(toList());
+      devices.stream().filter(info -> !info.config.getTypesList().isEmpty()).collect(toList());
   }
 
   public void addListener(Listener listener) {

@@ -103,17 +103,8 @@ func LayersFromOptions(ctx context.Context, o *service.TraceOptions) []string {
 
 // GapiiOptions converts the given TraceOptions to gapii.Options.
 func GapiiOptions(o *service.TraceOptions) gapii.Options {
-	apis := uint32(0)
-	enableAngle := bool(false)
-	for _, api := range o.Apis {
-		if api == "Vulkan" {
-			apis |= gapii.VulkanAPI
-		}
-		if api == "OpenGL on ANGLE" {
-			apis |= gapii.VulkanAPI
-			enableAngle = true
-		}
-	}
+	apis := gapii.VulkanAPI
+	enableAngle := o.Type == service.TraceType_ANGLE
 
 	flags := gapii.Flags(0)
 	if o.DeferStart {

@@ -284,20 +284,20 @@ func NewTracer(dev bind.Device) tracer.Tracer {
 
 // TraceConfiguration returns the device's supported trace configuration.
 func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
-	apis := make([]*service.TraceTypeCapabilities, 0, 3)
+	types := make([]*service.TraceTypeCapabilities, 0, 3)
 	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
-		apis = append(apis, tracer.VulkanTraceOptions())
+		types = append(types, tracer.VulkanTraceOptions())
 		// If ANGLE is enabled and available, need to also append ANGLE trace mode
 		if t.b.SupportsAngle(ctx) {
-			apis = append(apis, tracer.AngleTraceOptions())
+			types = append(types, tracer.AngleTraceOptions())
 		}
 	}
 	if t.b.SupportsPerfetto(ctx) {
-		apis = append(apis, tracer.PerfettoTraceOptions())
+		types = append(types, tracer.PerfettoTraceOptions())
 	}
 
 	return &service.DeviceTraceConfiguration{
-		Apis:                 apis,
+		Types:                types,
 		ServerLocalPath:      false,
 		CanSpecifyCwd:        false,
 		CanUploadApplication: true,

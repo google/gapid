@@ -59,7 +59,7 @@ public class Settings {
 
   private static final String SETTINGS_FILE = ".agic";
   private static final int MAX_RECENT_FILES = 16;
-  private static final int CURRENT_VERSION = 2;
+  private static final int CURRENT_VERSION = 3;
 
   // Only set values for fields where the proto zero/false/empty default doesn't make sense.
   private static SettingsProto.Settings DEFAULT_SETTINGS = SettingsProto.Settings.newBuilder()
@@ -120,6 +120,7 @@ public class Settings {
     this.proto = fixup(proto);
   }
 
+  @SuppressWarnings("deprecation")
   private static SettingsProto.Settings.Builder fixup(SettingsProto.Settings.Builder proto) {
     tryFindAdb(proto.getPreferencesBuilder());
     switch (proto.getVersion()) {
@@ -140,6 +141,14 @@ public class Settings {
             proto.getDeviceValidationBuilder().getValidationEntriesBuilderList()) {
           entry.setLastSeen(System.currentTimeMillis());
         }
+        //$FALL-THROUGH$
+      case 2:
+        // Version 3 removed the Trace.api field and expanded the Trace.Type field.
+        if ("Graphics".equals(proto.getTrace().getType()) &&
+            "OpenGL on ANGLE".equals(proto.getTrace().getApi())) {
+          proto.getTraceBuilder().setType("ANGLE");
+        }
+        proto.getTraceBuilder().clearApi();
     }
     return proto.setVersion(CURRENT_VERSION);
   }

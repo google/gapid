@@ -154,15 +154,8 @@ func dumpTrace(ctx context.Context, buffer *bytes.Buffer) {
 }
 
 func isSupported(config *service.DeviceTraceConfiguration, options *service.TraceOptions) bool {
-	numApis := len(options.Apis)
-
-	// We don't support tracing more than one API at this time.
-	if numApis > 1 {
-		return false
-	}
-
-	for _, c := range config.Apis {
-		if c.Type == options.Type && (numApis < 1 || options.Apis[0] == c.Api) {
+	for _, c := range config.Types {
+		if c.Type == options.Type {
 			return true
 		}
 	}

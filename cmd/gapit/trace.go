@@ -62,7 +62,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		app.Usage(ctx, "The API is required.")
 		return nil
 	}
-	api, err := verb.apiAndType()
+	api, err := verb.traceType()
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,6 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	options := &service.TraceOptions{
 		Type:                         api.traceType,
-		Apis:                         api.apis,
 		AdditionalCommandLineArgs:    verb.AdditionalArgs,
 		Cwd:                          verb.WorkingDir,
 		Environment:                  verb.Env,
@@ -323,33 +322,29 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	})
 }
 
-type apiAndType struct {
+type traceType struct {
 	traceType service.TraceType
-	apis      []string
 	traceExt  string
 }
 
-func (verb *traceVerb) apiAndType() (apiAndType, error) {
+func (verb *traceVerb) traceType() (traceType, error) {
 	switch verb.API {
 	case "angle":
-		return apiAndType{
-			service.TraceType_Graphics,
-			[]string{"OpenGL on ANGLE"},
+		return traceType{
+			service.TraceType_ANGLE,
 			".gfxtrace",
 		}, nil
 	case "vulkan":
-		return apiAndType{
+		return traceType{
 			service.TraceType_Graphics,
-			[]string{"Vulkan"},
 			".gfxtrace",
 		}, nil
 	case "perfetto":
-		return apiAndType{
+		return traceType{
 			service.TraceType_Perfetto,
-			[]string{},
 			".perfetto",
 		}, nil
 	default:
-		return apiAndType{}, fmt.Errorf("Unknown API '%s'", verb.API)
+		return traceType{}, fmt.Errorf("Unknown API '%s'", verb.API)
 	}
 }
