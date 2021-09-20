@@ -33,6 +33,7 @@ import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
+import static com.google.gapid.widgets.Widgets.withMarginOnly;
 import static com.google.gapid.widgets.Widgets.withSpans;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -393,14 +394,21 @@ public class TracerDialog {
           logFailure(LOG, Scheduler.EXECUTOR.schedule(refreshDevices, 300, TimeUnit.MILLISECONDS));
         });
 
-        validationStatusLoader = widgets.loading.createWidgetWithImage(mainGroup, widgets.theme.check(), widgets.theme.error());
+        createLabel(mainGroup, "Validation:");
+        Composite validationContainer = withLayoutData(
+            createComposite(mainGroup, withMarginOnly(new GridLayout(2, false), 0, 0)),
+            new GridData(SWT.FILL, SWT.TOP, true, false));
+        validationStatusLoader = widgets.loading.createWidgetWithImage(
+            validationContainer, widgets.theme.check(), widgets.theme.error());
         validationStatusLoader.setLayoutData(
             withIndents(new GridData(SWT.LEFT, SWT.BOTTOM, false, false), 0, 0));
-        validationStatusText = createLink(mainGroup, "", e-> {
+        validationStatusText = createLink(validationContainer, "", e-> {
           Program.launch(URLs.DEVICE_COMPATIBILITY_URL);
         });
         validationStatusText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
         validationStatus = false;
+        validationStatusLoader.setVisible(false);
+        validationStatusText.setVisible(false);
 
         Group appGroup  = withLayoutData(
             createGroup(this, "Application", new GridLayout(2, false)),

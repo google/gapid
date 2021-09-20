@@ -1039,6 +1039,12 @@ public class Widgets {
     return layout;
   }
 
+  public static GridLayout withMarginOnly(GridLayout layout, int marginWidth, int marginHeight) {
+    layout.marginWidth = marginWidth;
+    layout.marginHeight = marginHeight;
+    return layout;
+  }
+
   public static GridLayout withMarginAndSpacing(GridLayout layout,
       int marginWidth, int marginHeight, int horizontalSpacing, int verticalSpacing) {
     layout.marginWidth = marginWidth;
