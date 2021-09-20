@@ -354,6 +354,10 @@ public class FramebufferView extends Composite
         image.dispose();
       }
     }
+
+    public boolean isImageReady() {
+      return (image != null && image.hasFinished());
+    }
   }
 
   private static class AttachmentPicker extends Composite implements LoadingIndicator.Repaintable {
@@ -511,8 +515,11 @@ public class FramebufferView extends Composite
 
         image.setImage(attachment.getImage(widgets, this, this));
         label.setText(attachment.label);
-        image.requestLayout();
         label.requestLayout();
+        // Skip 'loading' image layout changes until attachment selection image is available
+        if (attachment.isImageReady()) {
+          image.requestLayout();
+        }
       }
     }
 
