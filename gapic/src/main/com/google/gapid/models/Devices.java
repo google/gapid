@@ -410,6 +410,19 @@ public class Devices {
     public boolean isAndroid() {
       return device.getConfiguration().getOS().getKind() == Device.OSKind.Android;
     }
+
+    /**
+     * Returns this device's tracing capabilities for the given type. Returns {@code null} if the
+     * given type is not supported by this device.
+     */
+    public final Service.TraceTypeCapabilities getTypeCapabilities(Service.TraceType type) {
+      for (Service.TraceTypeCapabilities cap : config.getTypesList()) {
+        if (cap.getType() == type) {
+          return cap;
+        }
+      }
+      return null;
+    }
   }
 
   public static class DeviceValidationResult {
