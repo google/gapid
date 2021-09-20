@@ -207,7 +207,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       Widgets.createTableColumn(compatibleDeviceTable,
           "GPU", dev -> ((Device.Instance)dev).getConfiguration().getHardware().getGPU().getName());
       Widgets.createTableColumn(compatibleDeviceTable,
-          "Driver version", dev -> Devices.GetDriverVersion((Device.Instance)dev));
+          "Driver version", dev -> Devices.getDriverVersion((Device.Instance)dev));
       Widgets.packColumns(compatibleDeviceTable.getTable());
 
       compatibleDeviceTable.getTable().addListener(SWT.Selection, e -> {
@@ -243,7 +243,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       Widgets.createTableColumn(incompatibleDeviceTable, "Name", dev -> ((ReplayDeviceInfo)dev).instance.getName());
       Widgets.createTableColumn(incompatibleDeviceTable, "Serial", dev -> ((ReplayDeviceInfo)dev).instance.getSerial());
       Widgets.createTableColumn(incompatibleDeviceTable, "GPU", dev -> ((ReplayDeviceInfo)dev).instance.getConfiguration().getHardware().getGPU().getName());
-      Widgets.createTableColumn(incompatibleDeviceTable, "Driver version", dev -> Devices.GetDriverVersion(((ReplayDeviceInfo)dev).instance));
+      Widgets.createTableColumn(incompatibleDeviceTable, "Driver version", dev -> Devices.getDriverVersion(((ReplayDeviceInfo)dev).instance));
       Widgets.createTableColumn(incompatibleDeviceTable, "Incompatibility", dev -> Strings.getMessage(((ReplayDeviceInfo)dev).reason));
       Widgets.packColumns(incompatibleDeviceTable.getTable());
       incompatibleDeviceTable.getTable().setBackground(theme.invalidDeviceBackground());

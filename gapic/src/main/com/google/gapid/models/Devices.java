@@ -105,14 +105,6 @@ public class Devices {
     incompatibleReplayDevices = null;
   }
 
-  public static String GetDriverVersion(Device.Instance device) {
-    Device.VulkanDriver vkDriver = device.getConfiguration().getDrivers().getVulkan();
-    if (vkDriver.getPhysicalDevicesCount() <= 0) {
-      return "no physical device found";
-    }
-    return Integer.toUnsignedString(vkDriver.getPhysicalDevices(0).getDriverVersion());
-  }
-
   public void loadReplayDevices(Path.Capture capturePath) {
     rpcController.start().listen(MoreFutures.transformAsync(client.getDevicesForReplay(capturePath),
           devs -> {
@@ -293,6 +285,14 @@ public class Devices {
 
   public void removeListener(Listener listener) {
     listeners.removeListener(listener);
+  }
+
+  public static String getDriverVersion(Device.Instance device) {
+    Device.VulkanDriver vkDriver = device.getConfiguration().getDrivers().getVulkan();
+    if (vkDriver.getPhysicalDevicesCount() <= 0) {
+      return "no physical device found";
+    }
+    return Integer.toUnsignedString(vkDriver.getPhysicalDevices(0).getDriverVersion());
   }
 
   public static String getVulkanDriverVersions(Device.Instance dev) {
