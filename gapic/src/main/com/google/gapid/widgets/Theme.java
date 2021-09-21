@@ -83,6 +83,7 @@ public interface Theme {
   @Icon(file = "flag_greyed.png") public Image flagGreyed();
   @Icon(file = "flat.png") public Image flat();
   @Icon(file = "flip_vertically.png") public Image flipVertically();
+  @Icon(file = "frame_profiler.png") public Image frameProfiler();
   @Icon(file = "fullscreen.png") public Image fullscreen();
   @Icon(file = "fullscreen_exit.png") public Image fullscreenExit();
   @Icon(file = "jump.png") public Image jump();
@@ -91,6 +92,7 @@ public interface Theme {
   @Icon(file = "info.png") public Image info();
   @Icon(file = "lit.png") public Image lit();
   @Icon(file = "logo_128.png") public Image dialogLogo();
+  @Icon(file = "logo_32.png") public Image dialogLogoSmall();
   @Icon(file = "more.png") public Image more();
   @Icon(file = "normals.png") public Image normals();
   @Icon(file = "open.png") public Image open();
@@ -116,6 +118,7 @@ public interface Theme {
   @Icon(file = "smile.png") public Image smile();
   @Icon(file = "smooth.png") public Image smooth();
   @Icon(file = "swap.png") public Image swap();
+  @Icon(file = "system_profiler.png") public Image systemProfiler();
   @Icon(file = "timing_mode.png") public Image timingMode();
   @Icon(file = "transparency.png") public Image transparency();
   @Icon(file = "unfold_less.png") public Image unfoldLessLight();

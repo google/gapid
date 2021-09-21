@@ -18,17 +18,25 @@ package com.google.gapid;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
+import static com.google.gapid.views.TracerDialog.showFrameTracingDialog;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
+import static com.google.gapid.views.TracerDialog.showSystemTracingDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
+import static com.google.gapid.widgets.Widgets.createSelectableLabel;
 import static com.google.gapid.widgets.Widgets.filling;
 import static com.google.gapid.widgets.Widgets.recursiveAddListener;
+import static com.google.gapid.widgets.Widgets.recursiveSetBackground;
+import static com.google.gapid.widgets.Widgets.recursiveSetForeground;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMarginAndSpacing;
+import static com.google.gapid.widgets.Widgets.withMarginOnly;
+import static com.google.gapid.widgets.Widgets.withSpacing;
+import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
@@ -42,12 +50,15 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyleRange;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
@@ -62,6 +73,7 @@ public class LoadingScreen extends Composite {
 
   private final Theme theme;
   private final Label statusLabel;
+  private final Composite buttonContainer;
   private final Composite optionsContainer;
   private OptionBar recentBar;
   private Models models;
@@ -71,27 +83,51 @@ public class LoadingScreen extends Composite {
   public LoadingScreen(Composite parent, Theme theme) {
     super(parent, SWT.NONE);
     this.theme = theme;
-    setLayout(CenteringLayout.goldenRatio());
+    setLayout(new GridLayout(1, false));
 
-    Composite container = createComposite(this, new GridLayout(1, false));
-    createLabel(container, "", theme.dialogLogo())
-        .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+    Composite logo =
+        createComposite(this, withMarginOnly(new GridLayout(2, false), 10, 5));
+    withLayoutData(createLabel(logo, "", theme.dialogLogoSmall()),
+        new GridData(SWT.LEFT, SWT.CENTER, true, false));
 
-    Label titleLabel = createLabel(container, Messages.WINDOW_TITLE);
-    titleLabel.setFont(theme.bigBoldFont());
-    titleLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+    String version = "Version " + GAPID_VERSION.toStringWithYear(false);
+    StyledText title = withLayoutData(
+        createSelectableLabel(logo, Messages.WINDOW_TITLE + "  " + version),
+        new GridData(SWT.LEFT, SWT.CENTER, true, false));
+    title.setStyleRanges(new StyleRange[] {
+        new StyleRange(0, Messages.WINDOW_TITLE.length() + 2, null, null) {{
+          font = theme.bigBoldFont();
+        }},
+        new StyleRange(Messages.WINDOW_TITLE.length() + 2, version.length(),
+            theme.welcomeVersionColor(), null),
+    });
 
-    Label versionLabel = createLabel(container, "Version " + GAPID_VERSION.toStringWithYear(false));
-    versionLabel.setForeground(theme.welcomeVersionColor());
-    versionLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+    statusLabel = withLayoutData(createLabel(logo, "Starting up..."),
+        withSpans(new GridData(SWT.LEFT, SWT.TOP, true, false), 3, 1));
 
-    statusLabel = createLabel(container, "Starting up...");
-    statusLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+    Composite center = withLayoutData(createComposite(this, CenteringLayout.goldenRatio()),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
+    Composite container = createComposite(center, withSpacing(new GridLayout(1, false), 0, 125));
+
+    buttonContainer = withLayoutData(
+        createComposite(container, withSpacing(new GridLayout(2, false), 150, 5)),
+        new GridData(SWT.CENTER, SWT.TOP, false, false));
+
+    withLayoutData(BigButton.systemProfiler(buttonContainer, theme, e ->
+        showSystemTracingDialog(
+            checkNotNull(client), getShell(), checkNotNull(models), checkNotNull(widgets))),
+        new GridData(SWT.FILL, SWT.TOP, true, false));
+    withLayoutData(BigButton.frameProfiler(buttonContainer, theme, e ->
+        showFrameTracingDialog(
+            checkNotNull(client), getShell(), checkNotNull(models), checkNotNull(widgets))),
+        new GridData(SWT.FILL, SWT.TOP, true, false));
 
     optionsContainer = createComposite(container, filling(new RowLayout(SWT.VERTICAL), true, true));
     optionsContainer.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
-
     createOptions();
+
+    buttonContainer.setVisible(false);
+    optionsContainer.setVisible(false);
   }
 
   public void setText(String status) {
@@ -108,6 +144,7 @@ public class LoadingScreen extends Composite {
     this.widgets = newWidgets;
 
     statusLabel.setVisible(false);
+    buttonContainer.setVisible(true);
     optionsContainer.setVisible(true);
   }
 
@@ -142,8 +179,6 @@ public class LoadingScreen extends Composite {
     OptionBar.simple(optionsContainer, theme.help(), "Help", e -> {
       AboutDialog.showHelp(checkNotNull(models).analytics);
     });
-
-    optionsContainer.setVisible(false);
   }
 
   private static String truncate(String file) {
@@ -161,12 +196,59 @@ public class LoadingScreen extends Composite {
     return "..." + file;
   }
 
+  protected static void addListeners(Composite parent, Listener onClick) {
+    Display display = parent.getDisplay();
+    Color fgColor = display.getSystemColor(SWT.COLOR_LIST_SELECTION_TEXT);
+    Color bgColor = display.getSystemColor(SWT.COLOR_LIST_SELECTION);
+    recursiveAddListener(parent, SWT.MouseEnter, e -> {
+      recursiveSetForeground(parent, fgColor);
+      recursiveSetBackground(parent, bgColor);
+    });
+    recursiveAddListener(parent, SWT.MouseExit, e -> {
+      recursiveSetForeground(parent, null);
+      recursiveSetBackground(parent, null);
+    });
+    recursiveAddListener(parent, SWT.MouseUp, onClick);
+
+    parent.setCursor(display.getSystemCursor(SWT.CURSOR_HAND));
+  }
+
+  private static class BigButton extends Composite {
+    private BigButton(Composite parent, Image icon, String label, String toolTip, Listener onClick) {
+      super(parent, SWT.NONE);
+      setLayout(withMarginOnly(new GridLayout(1, false), 5, 5));
+      setToolTipText(toolTip);
+
+      withLayoutData(createLabel(this, "", icon),
+          new GridData(SWT.CENTER, SWT.TOP, false, false))
+        .setToolTipText(toolTip);
+      withLayoutData(createLabel(this, label),
+          new GridData(SWT.CENTER, SWT.BOTTOM, false, false))
+        .setToolTipText(toolTip);
+
+      addListeners(this, onClick);
+    }
+
+    public static BigButton systemProfiler(Composite parent, Theme theme, Listener onClick) {
+      return new BigButton(parent, theme.systemProfiler(), "Capture System Profiler trace",
+          "Take a trace of the entire system while your app is running.", onClick);
+    }
+
+    public static BigButton frameProfiler(Composite parent, Theme theme, Listener onClick) {
+      return new BigButton(parent, theme.frameProfiler(), "Capture Frame Profiler trace",
+          "Take a trace of a single frame to profile render passes and draw calls.", onClick);
+    }
+  }
+
   private static class OptionBar extends Composite {
-    private OptionBar(Composite parent, Image icon, String label, Image dropDown, String shortcut) {
+    private OptionBar(Composite parent, Image icon, String label, Image dropDown, String shortcut,
+        Listener onClick) {
       super(parent, SWT.NONE);
       setLayout(withMarginAndSpacing(new GridLayout(4, false), 10, 2, 0, 0));
 
-      createLabel(this, "", icon);
+      if (icon != null) {
+        createLabel(this, "", icon);
+      }
       withLayoutData(createLabel(this, label),
           withIndents(new GridData(SWT.LEFT, SWT.CENTER, false, false), 10, 0));
       if (dropDown != null) {
@@ -177,38 +259,21 @@ public class LoadingScreen extends Composite {
             withIndents(new GridData(SWT.RIGHT, SWT.CENTER, true, false), 40, 0));
       }
 
-      setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
-
-      Color fgColor = parent.getDisplay().getSystemColor(SWT.COLOR_LIST_SELECTION_TEXT);
-      Color bgColor = parent.getDisplay().getSystemColor(SWT.COLOR_LIST_SELECTION);
-      recursiveAddListener(this, SWT.MouseEnter, e -> {
-        Widgets.recursiveSetForeground(this, fgColor);
-        Widgets.recursiveSetBackground(this, bgColor);
-      });
-      recursiveAddListener(this, SWT.MouseExit, e -> {
-        Widgets.recursiveSetForeground(this, null);
-        Widgets.recursiveSetBackground(this, null);
-      });
+      addListeners(this, onClick);
     }
 
     public static OptionBar simple(Composite parent, Image icon, String label, Listener onClick) {
-      OptionBar bar = new OptionBar(parent, icon, label, null, null);
-      recursiveAddListener(bar, SWT.MouseUp, onClick);
-      return bar;
+      return new OptionBar(parent, icon, label, null, null, onClick);
     }
 
     public static OptionBar withShortcut(
         Composite parent, Image icon, String label, String shortcut, Listener onClick) {
-      OptionBar bar = new OptionBar(parent, icon, label, null, shortcut);
-      recursiveAddListener(bar, SWT.MouseUp, onClick);
-      return bar;
+      return new OptionBar(parent, icon, label, null, shortcut, onClick);
     }
 
     public static OptionBar withDropDown(
         Theme theme, Composite parent, Image icon, String label, Listener onClick) {
-      OptionBar bar = new OptionBar(parent, icon, label, theme.arrowDropDownLight(), null);
-      recursiveAddListener(bar, SWT.MouseUp, onClick);
-      return bar;
+      return new OptionBar(parent, icon, label, theme.arrowDropDownLight(), null, onClick);
     }
   }
 }
