@@ -651,9 +651,9 @@ public class TracerDialog {
           @Override
           public String getText(Object element) {
             switch ((Service.TraceType)element) {
-              case Graphics: return "Vulkan";
+              case Graphics: return "Frame Profile - Vulkan";
               case Perfetto: return "System Profile";
-              case ANGLE: return "OpenGL on ANGLE";
+              case ANGLE: return "Frame Profile - OpenGL on ANGLE";
               default: throw new AssertionError();
             }
           }
