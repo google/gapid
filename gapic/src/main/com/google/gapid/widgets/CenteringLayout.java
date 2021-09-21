@@ -28,7 +28,7 @@ import org.eclipse.swt.widgets.Layout;
 public class CenteringLayout extends Layout {
   private final Mode mode;
   private int defaultWidth = -1, defaultHeight = -1;
-  private int currentWHint, currentHHint, currentWidth = -1, currentHeight = -1;
+  private int currentWidth = -1, currentHeight = -1;
 
   private CenteringLayout(Mode mode) {
     this.mode = mode;
@@ -89,12 +89,13 @@ public class CenteringLayout extends Layout {
       }
       currentWidth = defaultWidth;
       currentHeight = defaultHeight;
-    } else if (currentWidth == -1 || currentHeight == -1 || wHint != currentWHint || hHint != currentHHint) {
+    } else {
       Point size = control.computeSize(wHint, hHint, flushCache);
-      currentWHint = wHint;
-      currentHHint = hHint;
-      currentWidth = size.x;
-      currentHeight = size.y;
+      if (wHint == SWT.DEFAULT) {
+        currentWidth = size.x;
+      } else {
+        currentHeight = size.y;
+      }
     }
   }
 
