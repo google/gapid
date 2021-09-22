@@ -398,6 +398,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
             _ = as!VkPhysicalDeviceProvokingVertexFeaturesEXT*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceTransformFeedbackFeaturesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -464,6 +467,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
             write(as!VkPhysicalDeviceProvokingVertexFeaturesEXT*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceTransformFeedbackFeaturesEXT*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
@@ -621,6 +627,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
             _ = as!VkPhysicalDeviceProvokingVertexPropertiesEXT*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+            _ = as!VkPhysicalDeviceTransformFeedbackPropertiesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -749,6 +758,21 @@ sub void GetPhysicalDeviceProperties2(
               phyDev.PhysicalDeviceProvokingVertexPropertiesEXT = new!PhysicalDeviceProvokingVertexPropertiesEXT(
                 ProvokingVertexModePerPipeline: ext.provokingVertexModePerPipeline,
                 TransformFeedbackPreservesTriangleFanProvokingVertex: ext.transformFeedbackPreservesTriangleFanProvokingVertex,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+              ext := as!VkPhysicalDeviceTransformFeedbackPropertiesEXT*(next.Ptr)[0]
+              phyDev.PhysicalDeviceTransformFeedbackPropertiesEXT = new!PhysicalDeviceTransformFeedbackPropertiesEXT(
+                MaxTransformFeedbackStreams: ext.maxTransformFeedbackStreams,
+                MaxTransformFeedbackBuffers: ext.maxTransformFeedbackBuffers,
+                MaxTransformFeedbackBufferSize: ext.maxTransformFeedbackBufferSize,
+                MaxTransformFeedbackStreamDataSize: ext.maxTransformFeedbackStreamDataSize,
+                MaxTransformFeedbackBufferDataSize: ext.maxTransformFeedbackBufferDataSize,
+                MaxTransformFeedbackBufferDataStride: ext.maxTransformFeedbackBufferDataStride,
+                TransformFeedbackQueries: ext.transformFeedbackQueries,
+                TransformFeedbackStreamsLinesTriangles: ext.transformFeedbackStreamsLinesTriangles,
+                TransformFeedbackRasterizationStreamSelect: ext.transformFeedbackRasterizationStreamSelect,
+                TransformFeedbackDraw: ext.transformFeedbackDraw,
               )
             }
           }

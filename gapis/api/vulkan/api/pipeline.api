@@ -150,6 +150,9 @@ cmd void vkDestroyPipelineLayout(
 
   // @extension("VK_EXT_provoking_vertex")
   @unused ref!PipelineRasterizationProvokingVertexStateCreateInfoEXT PipelineRasterizationProvokingVertexStateCreateInfoEXT
+
+  // @extension("VK_EXT_transform_feedback")
+  @unused ref!PipelineRasterizationStateStreamCreateInfoEXT PipelineRasterizationStateStreamCreateInfoEXT
 }
 
 @internal class MultisampleData {
@@ -519,6 +522,13 @@ cmd VkResult vkCreateGraphicsPipelines(
             ext := as!VkPipelineRasterizationProvokingVertexStateCreateInfoEXT*(next.Ptr)[0]
             obj.RasterizationState.PipelineRasterizationProvokingVertexStateCreateInfoEXT = new!PipelineRasterizationProvokingVertexStateCreateInfoEXT(
               ProvokingVertexMode: ext.provokingVertexMode
+            )
+          }
+          case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: {
+            ext := as!VkPipelineRasterizationStateStreamCreateInfoEXT*(next.Ptr)[0]
+            obj.RasterizationState.PipelineRasterizationStateStreamCreateInfoEXT = new!PipelineRasterizationStateStreamCreateInfoEXT(
+              Flags: ext.flags,
+              RasterizationStream: ext.rasterizationStream,
             )
           }
         }

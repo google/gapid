@@ -907,6 +907,16 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceTransformFeedbackFeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceTransformFeedbackFeaturesEXT(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT,
+				pNext,
+				d.PhysicalDeviceTransformFeedbackFeaturesEXT().TransformFeedback(),
+				d.PhysicalDeviceTransformFeedbackFeaturesEXT().GeometryStreams(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
@@ -2725,6 +2735,16 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 					gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().StippledLineEnable(),
 					gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().LineStippleFactor(),
 					gp.RasterizationState().PipelineRasterizationLineStateCreateInfoEXT().LineStipplePattern(),
+				),
+			).Ptr())
+		}
+		if !gp.RasterizationState().PipelineRasterizationStateStreamCreateInfoEXT().IsNil() {
+			pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+				NewVkPipelineRasterizationStateStreamCreateInfoEXT(
+					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT,
+					pNext,
+					gp.RasterizationState().PipelineRasterizationStateStreamCreateInfoEXT().Flags(),
+					gp.RasterizationState().PipelineRasterizationStateStreamCreateInfoEXT().RasterizationStream(),
 				),
 			).Ptr())
 		}

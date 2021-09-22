@@ -120,6 +120,7 @@ import "extensions/ext_line_rasterization.api"
 import "extensions/ext_vertex_attribute_divisor.api"
 import "extensions/ext_image_robustness.api"
 import "extensions/ext_provoking_vertex.api"
+import "extensions/ext_transform_feedback.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -294,6 +295,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_vertex_attribute_divisor"] = true
   supported.ExtensionNames["VK_EXT_image_robustness"] = true
   supported.ExtensionNames["VK_EXT_provoking_vertex"] = true
+  supported.ExtensionNames["VK_EXT_transform_feedback"] = true
   return supported
 }
 
@@ -312,6 +314,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   ref!vkCmdDrawIndexedIndirectCountKHRArgs  DrawIndexedIndirectCountKHR
   ref!vkCmdDrawIndirectCountAMDArgs         DrawIndirectCountAMD
   ref!vkCmdDrawIndexedIndirectCountAMDArgs  DrawIndexedIndirectCountAMD
+  ref!vkCmdDrawIndirectByteCountEXTArgs     DrawIndirectByteCountEXT
 }
 
 // This contains the information about a draw
@@ -337,6 +340,11 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   // BufferBindingOffsets[setNum][bindingNum][bufferBindingNum] :=
   //    buffer offset for given descriptor set number, binding number, and index of buffer binding
   map!(u32, map!(u32, map!(u32, VkDeviceSize))) BufferBindingOffsets
+
+  // @extension("VK_EXT_transform_feedback")
+  // Transform Feedback buffers used for the draw. This is a map of binding number to
+  // buffer bound do that binding.
+  map!(u32, BoundBuffer) BoundTransformFeedbackBuffers
 }
 
 @internal class DynamicPipelineState {
@@ -497,6 +505,7 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   ldi.CommandParameters.DrawIndexedIndirectCountKHR = null
   ldi.CommandParameters.DrawIndirectCountAMD = null
   ldi.CommandParameters.DrawIndexedIndirectCountAMD = null
+  ldi.CommandParameters.DrawIndirectByteCountEXT = null
 }
 
 sub ref!ComputeInfo lastComputeInfo() {

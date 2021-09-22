@@ -200,7 +200,16 @@ enum CommandType {
   cmd_vkCmdDispatchBaseKHR               = 56,
   cmd_vkCmdDispatchBase                  = 57,
   cmd_vkCmdSetLineStippleEXT             = 58,
-  cmd_vkNoCommand                        = 0xFFFFFFFF
+
+  // @extension("VK_EXT_transform_feedback")
+  cmd_vkCmdBindTransformFeedbackBuffersEXT  = 59,
+  cmd_vkCmdBeginTransformFeedbackEXT        = 60,
+  cmd_vkCmdEndTransformFeedbackEXT          = 61,
+  cmd_vkCmdBeginQueryIndexedEXT             = 62,
+  cmd_vkCmdEndQueryIndexedEXT               = 63,
+  cmd_vkCmdDrawIndirectByteCountEXT         = 64,
+
+  cmd_vkNoCommand = 0xFFFFFFFF
 }
 
 enum SemaphoreUpdate {
@@ -282,6 +291,14 @@ enum SemaphoreUpdate {
   @untrackedMap dense_map!(u32, ref!vkCmdDispatchBaseKHRArgs)          vkCmdDispatchBaseKHR
   @untrackedMap dense_map!(u32, ref!vkCmdDispatchBaseArgs)             vkCmdDispatchBase
   @untrackedMap dense_map!(u32, ref!vkCmdSetLineStippleEXTArgs)        vkCmdSetLineStippleEXT
+
+  // @extension("VK_EXT_transform_feedback")
+  @untrackedMap dense_map!(u32, ref!vkCmdBindTransformFeedbackBuffersEXTArgs) vkCmdBindTransformFeedbackBuffersEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdBeginTransformFeedbackEXTArgs) vkCmdBeginTransformFeedbackEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdEndTransformFeedbackEXTArgs) vkCmdEndTransformFeedbackEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdBeginQueryIndexedEXTArgs) vkCmdBeginQueryIndexedEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdEndQueryIndexedEXTArgs) vkCmdEndQueryIndexedEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndirectByteCountEXTArgs) vkCmdDrawIndirectByteCountEXT
 }
 
 @internal class AspectImageTransition {
@@ -601,6 +618,14 @@ sub void resetBufferCommands(ref!CommandBufferObject obj) {
   clear(obj.BufferCommands.vkCmdDispatchBaseKHR)
   clear(obj.BufferCommands.vkCmdDispatchBase)
   clear(obj.BufferCommands.vkCmdSetLineStippleEXT)
+
+  // @extension("VK_EXT_transform_feedback")
+  clear(obj.BufferCommands.vkCmdBindTransformFeedbackBuffersEXT)
+  clear(obj.BufferCommands.vkCmdBeginTransformFeedbackEXT)
+  clear(obj.BufferCommands.vkCmdEndTransformFeedbackEXT)
+  clear(obj.BufferCommands.vkCmdBeginQueryIndexedEXT)
+  clear(obj.BufferCommands.vkCmdEndQueryIndexedEXT)
+  clear(obj.BufferCommands.vkCmdDrawIndirectByteCountEXT)
 }
 
 sub void resetCommandBuffer(ref!CommandBufferObject obj) {

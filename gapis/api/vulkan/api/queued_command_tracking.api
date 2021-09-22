@@ -51,7 +51,7 @@ sub void executeSubmit(VkQueue queue, Submission sub) {
   for i in (0 .. len(sub.CommandBuffers)) {
     LastDrawInfos[queue] = new!DrawInfo()
     cb := CommandBuffers[sub.CommandBuffers[as!u32(i)]]
-    if ((cb.BeginInfo != null) && 
+    if ((cb.BeginInfo != null) &&
         (cb.BeginInfo.DeviceGroupBegin != null)) {
       q.DeviceMask = cb.BeginInfo.DeviceGroupBegin.DeviceMask
     }
@@ -302,6 +302,19 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdDispatchBase(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatchBase[reference.MapIndex])
     case cmd_vkCmdSetLineStippleEXT:
       dovkCmdSetLineStippleEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetLineStippleEXT[reference.MapIndex])
+    // @extension("VK_EXT_transform_feedback")
+    case cmd_vkCmdBindTransformFeedbackBuffersEXT:
+      dovkCmdBindTransformFeedbackBuffersEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBindTransformFeedbackBuffersEXT[reference.MapIndex])
+    case cmd_vkCmdBeginTransformFeedbackEXT:
+      dovkCmdBeginTransformFeedbackEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginTransformFeedbackEXT[reference.MapIndex])
+    case cmd_vkCmdEndTransformFeedbackEXT:
+      dovkCmdEndTransformFeedbackEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndTransformFeedbackEXT[reference.MapIndex])
+    case cmd_vkCmdBeginQueryIndexedEXT:
+      dovkCmdBeginQueryIndexedEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginQueryIndexedEXT[reference.MapIndex])
+    case cmd_vkCmdEndQueryIndexedEXT:
+      dovkCmdEndQueryIndexedEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndQueryIndexedEXT[reference.MapIndex])
+    case cmd_vkCmdDrawIndirectByteCountEXT:
+      dovkCmdDrawIndirectByteCountEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndirectByteCountEXT[reference.MapIndex])
     default:
       vkErrorInvalidCommandBuffer(reference.Buffer)
   }

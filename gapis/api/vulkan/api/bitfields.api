@@ -189,6 +189,9 @@ bitfield VkPipelineStageFlagBits {
   VK_PIPELINE_STAGE_HOST_BIT                           = 0x00004000, /// Indicates host (CPU) is a source/sink of the dependency
   VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT                   = 0x00008000, /// All stages of the graphics pipeline
   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT                   = 0x00010000, /// All graphics, compute, copy, and transition commands
+
+  // @extension("VK_EXT_transform_feedback")
+  VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT = 0x01000000,
 }
 type VkFlags VkPipelineStageFlags
 
@@ -397,6 +400,13 @@ bitfield VkAccessFlagBits {
   VK_ACCESS_HOST_WRITE_BIT                     = 0x00004000,
   VK_ACCESS_MEMORY_READ_BIT                    = 0x00008000,
   VK_ACCESS_MEMORY_WRITE_BIT                   = 0x00010000,
+
+  // @extension("VK_EXT_transform_feedback")
+  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT = 0x02000000,
+  // @extension("VK_EXT_transform_feedback")
+  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT = 0x04000000,
+  // @extension("VK_EXT_transform_feedback")
+  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT = 0x08000000,
 }
 type VkFlags VkAccessFlags
 
@@ -429,6 +439,11 @@ bitfield VkCommandBufferUsageFlagBits {
   VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT      = 0x00000001,
   VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT = 0x00000002,
   VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT     = 0x00000004,
+
+  // @extension("VK_EXT_transform_feedback")
+  VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT = 0x00000800,
+  // @extension("VK_EXT_transform_feedback")
+  VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT = 0x00001000,
 }
 type VkFlags VkCommandBufferUsageFlags
 

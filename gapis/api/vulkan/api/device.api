@@ -78,6 +78,9 @@
 
   // @extension("VK_EXT_provoking_vertex")
   @unused ref!PhysicalDeviceProvokingVertexFeaturesEXT PhysicalDeviceProvokingVertexFeaturesEXT
+
+  // @extension("VK_EXT_transform_feedback")
+  @unused ref!PhysicalDeviceTransformFeedbackFeaturesEXT PhysicalDeviceTransformFeedbackFeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -283,6 +286,13 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           object.PhysicalDeviceProvokingVertexFeaturesEXT = new!PhysicalDeviceProvokingVertexFeaturesEXT(
             ProvokingVertexLast: ext.provokingVertexLast,
             TransformFeedbackPreservesProvokingVertex: ext.transformFeedbackPreservesProvokingVertex,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceTransformFeedbackFeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceTransformFeedbackFeaturesEXT = new!PhysicalDeviceTransformFeedbackFeaturesEXT(
+            TransformFeedback: ext.transformFeedback,
+            GeometryStreams: ext.geometryStreams,
           )
         }
       }
