@@ -114,8 +114,7 @@ message ResourceData {
   oneof data {
     Texture texture = 1;
     Shader shader = 2;
-    Program program = 3;
-    Pipeline pipeline = 4;
+    Pipeline pipeline = 3;
   }
 }
 
@@ -153,12 +152,6 @@ message Shader {
     uint32 temp_registers = 4;
   }
   StaticAnalysis static_analysis = 6;
-}
-
-// Program represents a shader resource.
-message Program {
-  repeated Shader shaders = 1;
-  repeated Uniform uniforms = 2;
 }
 
 // Uniform respresents a uniform/active uniform resource.

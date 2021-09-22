@@ -482,10 +482,8 @@ enum ResourceType {
   Texture = 1;
   // Shader represents the Shader resource type
   Shader = 2;
-  // Program represents the Program resource type
-  Program = 3;
   // Pipeline respresents the Pipeline resource type
-  Pipeline = 4;
+  Pipeline = 3;
 }
 
 // Resources is a path to a list of resources used in a capture.
