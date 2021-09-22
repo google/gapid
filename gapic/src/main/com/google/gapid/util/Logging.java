@@ -134,18 +134,38 @@ public class Logging {
     handler.setLevel(Level.ALL);
     rootLogger.addHandler(handler);
 
-    if (!logDir.get().isEmpty()) {
-      try {
-        FileHandler fileHandler = new FileHandler(logDir.get() + File.separator + "gapic.log");
-        fileHandler.setFormatter(new LogFormatter());
-        fileHandler.setLevel(Level.ALL);
-        rootLogger.addHandler(fileHandler);
-      } catch (IOException e) {
-        // Ignore.
-      }
-    }
+    initFileHandler(rootLogger);
 
     Logger.getLogger("com.google.gapid").setLevel(logLevel.get().level);
+  }
+
+  private static void initFileHandler(Logger rootLogger) {
+    if (!logDir.get().isEmpty()) {
+      File dir = new File(logDir.get());
+      dir.mkdirs();
+
+      File file = new File(dir, "gapic.log");
+      for (int i = 0; i < 10; i++) {
+        if (!file.exists() || file.canWrite()) {
+          try {
+            FileHandler fileHandler = new FileHandler(file.getAbsolutePath());
+            fileHandler.setFormatter(new LogFormatter());
+            fileHandler.setLevel(Level.ALL);
+            rootLogger.addHandler(fileHandler);
+            return;
+          } catch (IOException e) {
+            System.err.println("Failed to create log file " + file + ":");
+            e.printStackTrace(System.err);
+          }
+        }
+
+        // Try a different name next.
+        file = new File(dir, "gapic-" + i + ".log");
+      }
+
+      // Give up.
+      System.err.println("Failed to create log file in " + logDir.get());
+    }
   }
 
   public static File getLogDir() {
