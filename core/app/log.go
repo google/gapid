@@ -16,8 +16,8 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
@@ -64,24 +64,46 @@ func updateContext(ctx context.Context, flags *LogFlags) context.Context {
 	if flags.Stacks {
 		ctx = log.PutStacktracer(ctx, log.SeverityStacktracer(log.Error))
 	}
+
 	if flags.File != "" {
-		// Create the server logfile.
-		os.MkdirAll(filepath.Dir(flags.File), 0755)
-		file, err := os.Create(flags.File)
-		if err != nil {
-			panic(err)
-		}
-		log.I(ctx, "Logging to: %v", flags.File)
-		// Build the logging context
-		handler := flags.Style.Handler(func(s string, _ log.Severity) {
-			file.WriteString(s)
-			file.WriteString("\n")
-		})
-		handler = log.OnClosed(handler, func() { file.Close() })
-		handler = wrapHandler(handler)
-		if old, _ := LogHandler.SetTarget(handler, false); old != nil {
-			old.Close()
+		if file := createLogFile(ctx, flags); file != nil {
+			// Build the file logging context.
+			handler := flags.Style.Handler(func(s string, _ log.Severity) {
+				file.WriteString(s)
+				file.WriteString("\n")
+			})
+			handler = log.OnClosed(handler, func() { file.Close() })
+			handler = wrapHandler(handler)
+			if old, _ := LogHandler.SetTarget(handler, false); old != nil {
+				old.Close()
+			}
 		}
 	}
 	return ctx
+}
+
+func createLogFile(ctx context.Context, flags *LogFlags) *os.File {
+	path := file.Abs(flags.File)
+	dir, name, ext := path.Smash()
+
+	if name == "" {
+		name = "gapis"
+		ext = ".log"
+		path = dir.Join(name + ext)
+	}
+
+	os.MkdirAll(dir.System(), 0755)
+	for i := 0; i < 10; i++ {
+		file, err := os.Create(path.System())
+		if err == nil {
+			log.I(ctx, "Logging to: %v", path.System())
+			return file
+		}
+
+		// Try a different path next.
+		path = dir.Join(fmt.Sprintf("%s-%d%s", name, i, ext))
+	}
+
+	log.E(ctx, "Failed to create log file "+flags.File)
+	return nil
 }
