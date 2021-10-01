@@ -100,7 +100,7 @@ public class TextureView extends Composite
       setLayout(new FillLayout(SWT.VERTICAL));
       Composite imageAndToolbar = createComposite(this, new GridLayout(2, false));
       ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
-      imagePanel = new ImagePanel(imageAndToolbar, View.TextureView, models.analytics, widgets, true);
+      imagePanel = new ImagePanel(imageAndToolbar, View.TextureView, models.analytics, widgets);
 
       toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
       imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));

@@ -133,7 +133,7 @@ public class FramebufferView extends Composite
     picker = withLayoutData(new AttachmentPicker(content, widgets, this::updateBuffer),
         new GridData(SWT.FILL, SWT.TOP, true, false));
     imagePanel = withLayoutData(
-        new ImagePanel(content, View.Framebuffer, models.analytics, widgets, true),
+        new ImagePanel(content, View.Framebuffer, models.analytics, widgets),
         new GridData(SWT.FILL, SWT.FILL, true, true));
 
     imagePanel.createToolbar(toolBar, widgets.theme);

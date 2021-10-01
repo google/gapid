@@ -141,8 +141,7 @@ public class ImagePanel extends Composite implements Loadable {
     ZOOM_MANUAL
   }
 
-  public ImagePanel(
-      Composite parent, View view, Analytics analytics, Widgets widgets, boolean naturallyFlipped) {
+  public ImagePanel(Composite parent, View view, Analytics analytics, Widgets widgets) {
     super(parent, SWT.NONE);
     this.analyticsView = view;
     this.analytics = analytics;
@@ -152,7 +151,7 @@ public class ImagePanel extends Composite implements Loadable {
     setLayout(Widgets.withMargin(new GridLayout(1, false), 5, 2));
 
     loading = LoadablePanel.create(this, widgets, panel ->
-        new ImageComponent(panel, widgets.theme, this::showAlphaWarning, naturallyFlipped));
+        new ImageComponent(panel, widgets.theme, this::showAlphaWarning));
     status = new StatusBar(this, widgets.theme, this::loadLevel, this::setAlphaEnabled);
     imageComponent = loading.getContents();
 
@@ -695,7 +694,6 @@ public class ImagePanel extends Composite implements Loadable {
     private static final double HISTOGRAM_SNAP_THRESHOLD = 0.1;
 
     private final Consumer<AlphaWarning> showAlphaWarning;
-    private final boolean naturallyFlipped;
 
     private final ScrollBar scrollbars[];
     private final ScenePanel<SceneData> canvas;
@@ -719,8 +717,7 @@ public class ImagePanel extends Composite implements Loadable {
 
     private boolean alphaWasAutoDisabled = false;
 
-    public ImageComponent(Composite parent, Theme theme, Consumer<AlphaWarning> showAlphaWarning,
-        boolean naturallyFlipped) {
+    public ImageComponent(Composite parent, Theme theme, Consumer<AlphaWarning> showAlphaWarning) {
       // TODO: b/189382432 Enable scroll bars when compatibility issue between SWT & macOS resolves.
       super(parent, OS.isMac ? SWT.NO_BACKGROUND :
           SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.NO_BACKGROUND);
@@ -735,10 +732,9 @@ public class ImagePanel extends Composite implements Loadable {
       setLayout(new FillLayout(SWT.VERTICAL));
 
       this.showAlphaWarning = showAlphaWarning;
-      this.naturallyFlipped = naturallyFlipped;
 
       data = new SceneData();
-      data.flipped = naturallyFlipped;
+      data.flipped = true;
       data.borderWidth = (int)BORDER_SIZE.x;
       data.borderColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_NORMAL_SHADOW);
       data.panelColor = getDisplay().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
@@ -870,7 +866,7 @@ public class ImagePanel extends Composite implements Loadable {
     }
 
     protected void setFlipped(boolean flipped) {
-      data.flipped = flipped ^ naturallyFlipped;
+      data.flipped = !flipped;
       refresh();
     }
 
