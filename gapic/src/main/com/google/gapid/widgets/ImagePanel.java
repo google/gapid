@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
@@ -83,6 +84,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Scale;
 import org.eclipse.swt.widgets.ScrollBar;
@@ -127,8 +129,9 @@ public class ImagePanel extends Composite implements Loadable {
   private final Analytics analytics;
   private final Widgets widgets;
   private final SingleInFlight imageRequestController = new SingleInFlight();
-  protected final LoadablePanel<ImageComponent> loading;
+  protected final LoadablePanel<Composite> loading;
   private final StatusBar status;
+  private final Group group;
   protected final ImageComponent imageComponent;
   private final BackgroundSelection backgroundSelection;
   private ToolItem zoomFitItem, zoomActualItem, backgroundItem, saveItem, colorChanelsItem;
@@ -141,7 +144,8 @@ public class ImagePanel extends Composite implements Loadable {
     ZOOM_MANUAL
   }
 
-  public ImagePanel(Composite parent, View view, Analytics analytics, Widgets widgets) {
+  public ImagePanel(
+      Composite parent, boolean labeled, View view, Analytics analytics, Widgets widgets) {
     super(parent, SWT.NONE);
     this.analyticsView = view;
     this.analytics = analytics;
@@ -150,10 +154,16 @@ public class ImagePanel extends Composite implements Loadable {
 
     setLayout(Widgets.withMargin(new GridLayout(1, false), 5, 2));
 
-    loading = LoadablePanel.create(this, widgets, panel ->
-        new ImageComponent(panel, widgets.theme, this::showAlphaWarning));
+    loading = LoadablePanel.create(this, widgets, p -> createComposite(p, new FillLayout()));
     status = new StatusBar(this, widgets.theme, this::loadLevel, this::setAlphaEnabled);
-    imageComponent = loading.getContents();
+
+    Composite container = loading.getContents();
+    if (labeled) {
+      container = group = createGroup(container, "Image");
+    } else {
+      group = null;
+    }
+    imageComponent = new ImageComponent(container, widgets.theme, this::showAlphaWarning);
 
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     status.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
@@ -502,6 +512,10 @@ public class ImagePanel extends Composite implements Loadable {
     }
     status.setLevelCount(0);
     imageComponent.setImages(layers);
+  }
+
+  public void setLabel(String label) {
+    group.setText(label);
   }
 
   private void loadLevel(int requestedLecel) {
