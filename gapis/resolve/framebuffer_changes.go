@@ -21,7 +21,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
@@ -64,11 +63,6 @@ const errDetached = fault.Const("Attachment detached from Framebuffer")
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, r.Capture, r.Config)
-
-	c, err := capture.ResolveGraphics(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	out := &AttachmentFramebufferChanges{
 		// TODO: Remove hardcoded upper limit
@@ -117,6 +111,6 @@ func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}
 		postCmd(s, idx, cmd)
 	}
 
-	sync.MutateWithSubcommands(ctx, r.Capture, c.Commands, postCmd, nil, postSubCmd)
+	sync.MutateWithSubcommands(ctx, r.Capture, nil, postCmd, nil, postSubCmd)
 	return out, nil
 }

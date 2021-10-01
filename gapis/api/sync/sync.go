@@ -176,6 +176,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 // Cmd, the given post-Cmd callback will be called. And the given
 // pre-subcommand callback and the post-subcommand callback will be called
 // before and after calling each subcommand callback function.
+// If cmds is nil, all commands from the capture are used instead.
 func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	postCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
 	preSubCmdCb func(s *api.GlobalState, idx api.SubCmdIdx, cmd api.Cmd, subCmdRef interface{}),
@@ -192,6 +193,10 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 		return err
 	}
 	s := rc.NewState(ctx)
+
+	if cmds == nil {
+		cmds = rc.Commands
+	}
 
 	return api.ForeachCmd(ctx, cmds, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {

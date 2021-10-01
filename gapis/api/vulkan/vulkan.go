@@ -160,11 +160,7 @@ func (s *State) TrimInitialState(ctx context.Context, capturePath *path.Capture)
 			pipelines[args.Pipeline()] = struct{}{}
 		}
 	}
-	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
-	if err != nil {
-		return err
-	}
-	if err := sync.MutateWithSubcommands(ctx, capturePath, c.Commands, postCmdCb, nil, postSubCmdCb); err != nil {
+	if err := sync.MutateWithSubcommands(ctx, capturePath, nil, postCmdCb, nil, postSubCmdCb); err != nil {
 		return err
 	}
 

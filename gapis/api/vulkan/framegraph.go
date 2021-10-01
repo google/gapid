@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/service/path"
@@ -738,11 +737,7 @@ func (API) GetFramegraph(ctx context.Context, p *path.Capture) (*api.Framegraph,
 	}
 
 	// Iterate on the capture commands to collect information
-	c, err := capture.ResolveGraphicsFromPath(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-	if err := sync.MutateWithSubcommands(ctx, p, c.Commands, nil, nil, postSubCmdCb); err != nil {
+	if err := sync.MutateWithSubcommands(ctx, p, nil, nil, nil, postSubCmdCb); err != nil {
 		return nil, err
 	}
 
