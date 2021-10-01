@@ -16,6 +16,7 @@ package replay
 
 import (
 	"context"
+	"errors"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/log"
@@ -75,62 +76,62 @@ func getPerfettoConfig(ctx context.Context, device *path.Device) (*perfetto_pb.T
 
 // GpuProfile replays the trace and writes a Perfetto trace of the replay
 func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device, experiments *service.ProfileExperiments, loopCount int32) (*service.ProfilingData, error) {
+	if device == nil {
+		return nil, errors.New("Replay device is required.")
+	}
+
 	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return nil, err
 	}
 
-	if device != nil {
-		intent := Intent{
-			Capture: capturePath,
-			Device:  device,
-		}
+	intent := Intent{
+		Capture: capturePath,
+		Device:  device,
+	}
 
-		conf, err := getPerfettoConfig(ctx, device)
-		if err != nil {
-			return nil, err
-		}
-
-		opts := &service.TraceOptions{
-			Device:         device,
-			Type:           service.TraceType_Perfetto,
-			PerfettoConfig: conf,
-		}
-
-		profilingExperiments := ProfileExperiments{
-			DisabledCmds:                nil,
-			DisableAnisotropicFiltering: false,
-		}
-
-		if experiments != nil {
-			var disabledCmdsIndices [][]uint64
-			if experiments.DisabledCommands != nil {
-				disabledCmdsIndices = make([][]uint64, 0, len(experiments.DisabledCommands))
-				for _, cmd := range experiments.DisabledCommands {
-					disabledCmdsIndices = append(disabledCmdsIndices, cmd.Indices)
-				}
-			}
-			profilingExperiments.DisabledCmds = disabledCmdsIndices
-			profilingExperiments.DisableAnisotropicFiltering = experiments.DisableAnisotropicFiltering
-		}
-
-		mgr := GetManager(ctx)
-		hints := &path.UsageHints{Background: true}
-		for _, a := range c.APIs {
-			if pf, ok := a.(Profiler); ok {
-				data, err := pf.QueryProfile(ctx, intent, mgr, hints, opts, profilingExperiments, loopCount)
-				if err != nil {
-					log.E(ctx, "Replay profiling failed.")
-					return nil, err
-				}
-				log.I(ctx, "Replay profiling finished.")
-				return data, nil
-			}
-		}
-	} else {
-		err = log.Err(ctx, nil, "Failed to find replay device.")
+	conf, err := getPerfettoConfig(ctx, device)
+	if err != nil {
 		return nil, err
 	}
-	err = log.Err(ctx, nil, "Failed to profile replay")
+
+	opts := &service.TraceOptions{
+		Device:         device,
+		Type:           service.TraceType_Perfetto,
+		PerfettoConfig: conf,
+	}
+
+	profilingExperiments := ProfileExperiments{
+		DisabledCmds:                nil,
+		DisableAnisotropicFiltering: false,
+	}
+
+	if experiments != nil {
+		var disabledCmdsIndices [][]uint64
+		if experiments.DisabledCommands != nil {
+			disabledCmdsIndices = make([][]uint64, 0, len(experiments.DisabledCommands))
+			for _, cmd := range experiments.DisabledCommands {
+				disabledCmdsIndices = append(disabledCmdsIndices, cmd.Indices)
+			}
+		}
+		profilingExperiments.DisabledCmds = disabledCmdsIndices
+		profilingExperiments.DisableAnisotropicFiltering = experiments.DisableAnisotropicFiltering
+	}
+
+	mgr := GetManager(ctx)
+	hints := &path.UsageHints{Background: true}
+	for _, a := range c.APIs {
+		if pf, ok := a.(Profiler); ok {
+			data, err := pf.QueryProfile(ctx, intent, mgr, hints, opts, profilingExperiments, loopCount)
+			if err != nil {
+				log.E(ctx, "Replay profiling failed:", err)
+				return nil, log.Err(ctx, err, "Failed to profile the replay.")
+			}
+			log.I(ctx, "Replay profiling finished.")
+			return data, nil
+		}
+	}
+
+	err = log.Err(ctx, nil, "No profiling capable API in the trace")
 	return nil, err
 }
