@@ -879,11 +879,36 @@ func (s *server) GpuProfile(ctx context.Context, req *service.GpuProfileRequest)
 	ctx = status.Start(ctx, "RPC GpuProfile")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GpuProfile")
-	res, err := replay.GpuProfile(ctx, req.Capture, req.Device, req.Experiments, req.LoopCount)
-	if err != nil {
-		return nil, err
+
+	var replayErr, analysisErr error
+	var result *service.ProfilingData
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		result, replayErr = replay.GpuProfile(ctx, req.Capture, req.Device, req.Experiments, req.LoopCount)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var analysisResult interface{}
+		analysisResult, analysisErr = resolve.ProfileStaticAnalysis(ctx, req.Capture)
+		if analysisResult != nil {
+			// TODO(pmuetschard): combine the results.
+			log.I(ctx, "Static analysis result: %+v", analysisResult)
+		}
+	}()
+
+	wg.Wait()
+	if replayErr != nil {
+		return nil, replayErr
+	} else if analysisErr != nil {
+		return nil, analysisErr
 	}
-	return res, nil
+
+	return result, nil
 }
 
 func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error) {

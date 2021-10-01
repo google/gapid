@@ -60,6 +60,9 @@ type API interface {
 
 	// GetFramegraph returns the framegraph of the capture.
 	GetFramegraph(ctx context.Context, p *path.Capture) (*Framegraph, error)
+
+	// ProfileStaticAnalysis computes the static analysis profiling data of a capture.
+	ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (interface{}, error)
 }
 
 // FramebufferAttachmentInfo describes a framebuffer at a given point in the trace

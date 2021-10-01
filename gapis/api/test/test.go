@@ -42,6 +42,10 @@ func (API) GetFramebufferAttachmentInfos(
 	return []api.FramebufferAttachmentInfo{}, nil
 }
 
+func (API) ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (interface{}, error) {
+	return nil, nil
+}
+
 // Root returns the path to the root of the state to display. It can vary based
 // on filtering mode. Returning nil, nil indicates there is no state to show at
 // this point in the capture.

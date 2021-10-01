@@ -82,6 +82,7 @@ go_library(
         "mem_binding_list.go",
         "memory_breakdown.go",
         "primeable_image_data.go",
+        "profile_static_analysis.go",
         "queue_task.go",
         "replay.go",
         "replay_types.go",
