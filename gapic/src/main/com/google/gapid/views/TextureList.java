@@ -29,6 +29,7 @@ import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
@@ -40,6 +41,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
@@ -65,6 +67,7 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.layout.FillLayout;
@@ -91,9 +94,10 @@ public class TextureList extends Composite
   protected static final Logger LOG = Logger.getLogger(TextureList.class.getName());
 
   private final Models models;
-  private final LoadablePanel<Composite> loading;
+  private final LoadablePanel<SashForm> loading;
   private final TableViewer textureTable;
   protected final ImageProvider imageProvider;
+  private final TextureView.TextureWidget textureView;
 
   public TextureList(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -101,9 +105,10 @@ public class TextureList extends Composite
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
-    loading = LoadablePanel.create(this, widgets,
-        panel -> createComposite(panel, new GridLayout(1, false), SWT.BORDER));
-    Composite tableAndOption = loading.getContents();
+    loading = LoadablePanel.create(this, widgets, panel -> new SashForm(panel, SWT.VERTICAL));
+    SashForm splitter = loading.getContents();
+
+    Composite tableAndOption = createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
     textureTable = createTableViewer(tableAndOption, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
     textureTable.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     imageProvider = new ImageProvider(models, textureTable, widgets.loading);
@@ -112,10 +117,17 @@ public class TextureList extends Composite
         createComposite(tableAndOption, filling(new RowLayout(SWT.HORIZONTAL), true, false));
     Button showDeleted = createCheckbox(options, "Show deleted textures", true);
 
+    textureView = withLayoutData(new TextureView.TextureWidget(splitter, false, models, widgets),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
+
+    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Shaders));
+
     models.capture.addListener(this);
     models.commands.addListener(this);
     models.resources.addListener(this);
     addListener(SWT.Dispose, e -> {
+      models.settings.setSplitterWeights(Settings.SplitterWeights.Textures, splitter.getWeights());
+
       models.capture.removeListener(this);
       models.commands.removeListener(this);
       models.resources.removeListener(this);
@@ -217,8 +229,10 @@ public class TextureList extends Composite
           break;
         }
       }
+      textureView.loadTexture(texture);
     } else {
       textureTable.setSelection(StructuredSelection.EMPTY);
+      textureView.clear();
     }
   }
 
@@ -332,6 +346,7 @@ public class TextureList extends Composite
       selectedTexture = ((Data)textureTable.getElementAt(selection)).info;
     }
     models.resources.selectTexture(selectedTexture);
+    textureView.loadTexture(selectedTexture);
   }
 
 

@@ -244,6 +244,10 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     }
   }
 
+  public void pinTexture(Service.Resource texture) {
+    listeners.fire().onTexturePinned(texture);
+  }
+
   public static class Data extends DeviceDependentModel.Data {
     public final Service.Resources resources;
 
@@ -341,5 +345,10 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
      * Event indicating that a texture resource has been selected.
      */
     public default void onTextureSelected(Service.Resource texture) { /* empty */ }
+
+    /**
+     * Event indicating that a texture has been pinned.
+     */
+    public default void onTexturePinned(Service.Resource texture) { /* empty */ }
   }
 }

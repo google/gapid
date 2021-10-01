@@ -16,10 +16,11 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.util.GeoUtils.bottomLeft;
-import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
+import static com.google.gapid.widgets.Widgets.createSeparator;
+import static com.google.gapid.widgets.Widgets.createToolItem;
 
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.Analytics.View;
@@ -37,7 +38,6 @@ import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client.DataUnavailableException;
-import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
 import com.google.gapid.widgets.ImagePanel;
@@ -68,40 +68,12 @@ public class TextureView extends Composite
     implements Tab, Capture.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
-  private final Models models;
-  private final SingleInFlight rpcController = new SingleInFlight();
-  private final GotoAction gotoAction;
-  protected final ImagePanel imagePanel;
-  protected boolean pinned = false;
-
-  public TextureView(Composite parent, Models models, Widgets widgets) {
+  public TextureView(Composite parent, Service.Resource texture, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
-    this.models = models;
-    this.gotoAction = new GotoAction(this, models, widgets.theme,
-        a -> models.commands.selectCommands(CommandIndex.forCommand(a), true));
+    setLayout(new FillLayout());
 
-    setLayout(new FillLayout(SWT.VERTICAL));
-    Composite imageAndToolbar = createComposite(this, new GridLayout(2, false));
-    ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
-    imagePanel = new ImagePanel(imageAndToolbar, View.TextureView, models.analytics, widgets, true);
-
-    toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
-    imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-    imagePanel.createToolbar(toolBar, widgets.theme);
-    gotoAction.createToolItem(toolBar);
-
-    models.capture.addListener(this);
-    models.resources.addListener(this);
-    addListener(SWT.Dispose, e -> {
-      models.capture.removeListener(this);
-      models.resources.removeListener(this);
-      gotoAction.dispose();
-    });
-  }
-
-  protected void setImage(FetchedImage result) {
-    imagePanel.setImage(result);
+    TextureWidget view = new TextureWidget(this, true, models, widgets);
+    view.loadTexture(texture);
   }
 
   @Override
@@ -109,205 +81,195 @@ public class TextureView extends Composite
     return this;
   }
 
-  @Override
-  public void reinitialize() {
-    if (!models.capture.isLoaded()) {
-      onCaptureLoadingStart(false);
-    } else {
-      loadTexture(models.resources.getSelectedTexture());
-    }
-  }
+  public static class TextureWidget extends Composite {
+    private final boolean pinned;
+    private final Models models;
+    private final SingleInFlight rpcController = new SingleInFlight();
+    private final ToolItem pinItem;
+    private final GotoAction gotoAction;
+    protected final ImagePanel imagePanel;
+    private Service.Resource textureResource = null;
 
-  @Override
-  public boolean supportsPinning() {
-    return true;
-  }
-
-  @Override
-  public boolean isPinnable() {
-    return !pinned && imagePanel.hasImage();
-  }
-
-  @Override
-  public boolean isPinned() {
-    return pinned;
-  }
-
-  @Override
-  public void pin() {
-    pinned = true;
-  }
-
-  @Override
-  public void onCaptureLoadingStart(boolean maintainState) {
-    if (!pinned) {
-      imagePanel.showMessage(Info, Messages.LOADING_CAPTURE);
-    }
-    clear();
-  }
-
-  @Override
-  public void onCaptureLoaded(Loadable.Message error) {
-    if (!pinned && error != null) {
-      imagePanel.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
-    }
-    clear();
-  }
-
-  @Override
-  public void onResourcesLoaded() {
-    if (!pinned) {
-      imagePanel.showMessage(Info, Messages.SELECT_TEXTURE);
-      clear();
-    }
-  }
-
-  @Override
-  public void onTextureSelected(Service.Resource texture) {
-    if (!pinned) {
-      loadTexture(texture);
-    }
-  }
-
-  private void clear() {
-    gotoAction.clear();
-  }
-
-  private void loadTexture(Service.Resource texture) {
-    if (texture == null) {
-      imagePanel.showMessage(Info, Messages.SELECT_TEXTURE);
-      clear();
-      return;
-    }
-
-    imagePanel.startLoading();
-    Path.ResourceData path = models.resources.getResourcePath(texture);
-    rpcController.start().listen(models.images.getResource(path),
-        new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
-      @Override
-      protected ResultOrError<FetchedImage, String> onRpcThread(Rpc.Result<FetchedImage> result)
-          throws RpcException, ExecutionException {
-        try {
-          return success(result.get());
-        } catch (DataUnavailableException e) {
-          return error(e.getMessage());
-        }
-      }
-
-      @Override
-      protected void onUiThreadSuccess(FetchedImage result) {
-        setImage(result);
-      }
-
-      @Override
-      protected void onUiThreadError(String error) {
-        setImage(null);
-        imagePanel.showMessage(Info, error);
-      }
-    });
-    gotoAction.setCommandIds(texture.getAccessesList(), path.getAfter());
-  }
-
-
-  /**
-   * Action for the {@link ToolItem} that allows the user to jump to references of the currently
-   * displayed texture.
-   */
-  private static class GotoAction {
-    private static final int MAX_ITEMS = 100;
-
-    protected final Models models;
-    private final Theme theme;
-    private final Consumer<Path.Command> listener;
-    private final Menu popupMenu;
-    private ToolItem item;
-    private List<Path.Command> commandIds = Collections.emptyList();
-
-    public GotoAction(
-        Composite parent, Models models, Theme theme, Consumer<Path.Command> listener) {
+    public TextureWidget(Composite parent, boolean pinned, Models models, Widgets widgets) {
+      super(parent, SWT.NONE);
+      this.pinned = pinned;
       this.models = models;
-      this.theme = theme;
-      this.listener = listener;
-      this.popupMenu = new Menu(parent);
-    }
+      this.gotoAction = new GotoAction(this, models, widgets.theme,
+          a -> models.commands.selectCommands(CommandIndex.forCommand(a), true));
 
-    public ToolItem createToolItem(ToolBar bar) {
-      item = Widgets.createToolItem(bar, theme.jump(), e -> {
-        models.analytics.postInteraction(View.TextureView, ClientAction.ShowReferences);
-        popupMenu.setLocation(bar.toDisplay(bottomLeft(((ToolItem)e.widget).getBounds())));
-        popupMenu.setVisible(true);
-        loadAllCommands(models.devices.getReplayDevicePath());
-      }, "Jump to texture reference");
-      item.setEnabled(!commandIds.isEmpty());
-      return item;
-    }
+      setLayout(new FillLayout(SWT.VERTICAL));
+      Composite imageAndToolbar = createComposite(this, new GridLayout(2, false));
+      ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
+      imagePanel = new ImagePanel(imageAndToolbar, View.TextureView, models.analytics, widgets, true);
 
-    public void dispose() {
-      popupMenu.dispose();
+      toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
+      imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
+      if (pinned) {
+        pinItem = createToolItem(
+            toolBar, widgets.theme.pinned(), e -> { /* ignore */ }, "Pinned texture");
+      } else {
+        pinItem = createToolItem(toolBar, widgets.theme.pin(),
+            e -> models.resources.pinTexture(textureResource), "Pin this texture");
+      }
+      createSeparator(toolBar);
+      imagePanel.createToolbar(toolBar, widgets.theme);
+      gotoAction.createToolItem(toolBar);
+
+      addListener(SWT.Dispose, e -> {
+        gotoAction.dispose();
+      });
+
+      clear();
     }
 
     public void clear() {
-      commandIds = Collections.emptyList();
-      update(null);
+      textureResource = null;
+      pinItem.setEnabled(false);
+      gotoAction.clear();
+      imagePanel.showMessage(Info, Messages.SELECT_TEXTURE);
     }
 
-    public void setCommandIds(List<Path.Command> ids, Path.Command selection) {
-      commandIds = ids;
-      update(selection);
-    }
-
-    private void update(Path.Command selection) {
-      for (MenuItem child : popupMenu.getItems()) {
-        child.dispose();
+    public void loadTexture(Service.Resource texture) {
+      if (texture == null) {
+        clear();
+        return;
       }
+      textureResource = texture;
 
-      // If we just have one additional item, simply go above the max, rather than adding the
-      // "one more item not shown" message.
-      int count = (commandIds.size() <= MAX_ITEMS + 1) ? commandIds.size() : MAX_ITEMS;
-      for (int i = 0; i < count; i++) {
-        Path.Command id = commandIds.get(i);
-        MenuItem child = createMenuItem(
-            popupMenu, Formatter.commandIndex(id) + ": Loading...", 0, e -> {
-              models.analytics.postInteraction(View.TextureView, ClientAction.GotoReference);
-              listener.accept(id);
-            });
-        child.setData(id);
-        if ((Paths.compare(id, selection) <= 0) &&
-            (i == commandIds.size() - 1 || (Paths.compare(commandIds.get(i + 1), selection) > 0))) {
-          child.setImage(theme.arrow());
+      imagePanel.startLoading();
+      Path.ResourceData path = models.resources.getResourcePath(texture);
+      rpcController.start().listen(models.images.getResource(path),
+          new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
+        @Override
+        protected ResultOrError<FetchedImage, String> onRpcThread(Rpc.Result<FetchedImage> result)
+            throws RpcException, ExecutionException {
+          try {
+            return success(result.get());
+          } catch (DataUnavailableException e) {
+            return error(e.getMessage());
+          }
         }
-      }
 
-      if (count != commandIds.size()) {
-        // TODO: Instead of using a popup menu, create a custom widget that can handle showing
-        // all the references.
-        MenuItem child = createMenuItem(
-            popupMenu, (commandIds.size() - count) + " more references", 0, e -> { /* do nothing */});
-        child.setEnabled(false);
-     }
+        @Override
+        protected void onUiThreadSuccess(FetchedImage result) {
+          setImage(result);
+        }
 
-      item.setEnabled(!commandIds.isEmpty());
+        @Override
+        protected void onUiThreadError(String error) {
+          setImage(null);
+          imagePanel.showMessage(Info, error);
+        }
+      });
+      gotoAction.setCommandIds(texture.getAccessesList(), path.getAfter());
     }
 
-    private void loadAllCommands(Path.Device device) {
-      for (MenuItem child : popupMenu.getItems()) {
-        if (child.getData() instanceof Path.Command) {
-          Path.Command path = (Path.Command)child.getData();
-          Rpc.listen(models.commands.loadCommand(path, device),
-              new UiCallback<API.Command, String>(child, LOG) {
-            @Override
-            protected String onRpcThread(Rpc.Result<API.Command> result)
-                throws RpcException, ExecutionException {
-              return Formatter.commandIndex(path) + ": " +
-                Formatter.toString(result.get(), models.constants::getConstants);
-            }
+    protected void setImage(FetchedImage result) {
+      imagePanel.setImage(result);
+      pinItem.setEnabled(!pinned);
+    }
 
-            @Override
-            protected void onUiThread(String result) {
-              child.setText(result);
-            }
-          });
-          child.setData(null);
+    /**
+     * Action for the {@link ToolItem} that allows the user to jump to references of the currently
+     * displayed texture.
+     */
+    private static class GotoAction {
+      private static final int MAX_ITEMS = 100;
+
+      protected final Models models;
+      private final Theme theme;
+      private final Consumer<Path.Command> listener;
+      private final Menu popupMenu;
+      private ToolItem item;
+      private List<Path.Command> commandIds = Collections.emptyList();
+
+      public GotoAction(
+          Composite parent, Models models, Theme theme, Consumer<Path.Command> listener) {
+        this.models = models;
+        this.theme = theme;
+        this.listener = listener;
+        this.popupMenu = new Menu(parent);
+      }
+
+      public ToolItem createToolItem(ToolBar bar) {
+        item = Widgets.createToolItem(bar, theme.jump(), e -> {
+          models.analytics.postInteraction(View.TextureView, ClientAction.ShowReferences);
+          popupMenu.setLocation(bar.toDisplay(bottomLeft(((ToolItem)e.widget).getBounds())));
+          popupMenu.setVisible(true);
+          loadAllCommands(models.devices.getReplayDevicePath());
+        }, "Jump to texture reference");
+        item.setEnabled(!commandIds.isEmpty());
+        return item;
+      }
+
+      public void dispose() {
+        popupMenu.dispose();
+      }
+
+      public void clear() {
+        commandIds = Collections.emptyList();
+        update(null);
+      }
+
+      public void setCommandIds(List<Path.Command> ids, Path.Command selection) {
+        commandIds = ids;
+        update(selection);
+      }
+
+      private void update(Path.Command selection) {
+        for (MenuItem child : popupMenu.getItems()) {
+          child.dispose();
+        }
+
+        // If we just have one additional item, simply go above the max, rather than adding the
+        // "one more item not shown" message.
+        int count = (commandIds.size() <= MAX_ITEMS + 1) ? commandIds.size() : MAX_ITEMS;
+        for (int i = 0; i < count; i++) {
+          Path.Command id = commandIds.get(i);
+          MenuItem child = createMenuItem(
+              popupMenu, Formatter.commandIndex(id) + ": Loading...", 0, e -> {
+                models.analytics.postInteraction(View.TextureView, ClientAction.GotoReference);
+                listener.accept(id);
+              });
+          child.setData(id);
+          if ((Paths.compare(id, selection) <= 0) &&
+              (i == commandIds.size() - 1 || (Paths.compare(commandIds.get(i + 1), selection) > 0))) {
+            child.setImage(theme.arrow());
+          }
+        }
+
+        if (count != commandIds.size()) {
+          // TODO: Instead of using a popup menu, create a custom widget that can handle showing
+          // all the references.
+          MenuItem child = createMenuItem(
+              popupMenu, (commandIds.size() - count) + " more references", 0, e -> { /* do nothing */});
+          child.setEnabled(false);
+       }
+
+        item.setEnabled(!commandIds.isEmpty());
+      }
+
+      private void loadAllCommands(Path.Device device) {
+        for (MenuItem child : popupMenu.getItems()) {
+          if (child.getData() instanceof Path.Command) {
+            Path.Command path = (Path.Command)child.getData();
+            Rpc.listen(models.commands.loadCommand(path, device),
+                new UiCallback<API.Command, String>(child, LOG) {
+              @Override
+              protected String onRpcThread(Rpc.Result<API.Command> result)
+                  throws RpcException, ExecutionException {
+                return Formatter.commandIndex(path) + ": " +
+                  Formatter.toString(result.get(), models.constants::getConstants);
+              }
+
+              @Override
+              protected void onUiThread(String result) {
+                child.setText(result);
+              }
+            });
+            child.setData(null);
+          }
         }
       }
     }

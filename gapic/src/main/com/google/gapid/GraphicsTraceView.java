@@ -189,7 +189,24 @@ public class GraphicsTraceView extends Composite
   @Override
   public void onTextureSelected(Service.Resource texture) {
     if (texture != null) {
-      showTab(MainTab.Type.TextureView);
+      showTab(MainTab.Type.Textures);
+    }
+  }
+
+  @Override
+  public void onTexturePinned(Resource texture) {
+    if (!tabs.showTab(texture)) {
+      String label = texture.getHandle();
+      if (!texture.getLabel().isEmpty()) {
+        label = "Image<" + texture.getLabel() + ">";
+      }
+      TabInfo tabInfo = new TabInfo(texture, Analytics.View.TextureView, label, parent -> {
+        Tab tab = new TextureView(parent, texture, models, widgets);
+        tab.reinitialize();
+        return tab;
+      });
+      tabs.addTabToLargestFolder(tabInfo);
+      tabs.showTab(texture);
     }
   }
 
@@ -460,7 +477,6 @@ public class GraphicsTraceView extends Composite
       Report(View.Report, "Report", DefaultPosition.Center, ReportView::new),
       Log(View.Log, "Log", DefaultPosition.Center, (p, m, w) -> new LogView(p, w)),
 
-      TextureView(View.TextureView, "Texture", DefaultPosition.Right, TextureView::new),
       ApiState(View.State, "State", DefaultPosition.Right, StateView::new),
       Memory(View.Memory, "Memory", DefaultPosition.Right, MemoryView::new);
 
