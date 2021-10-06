@@ -15,9 +15,13 @@
 package ffx
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/fuchsia"
@@ -57,10 +61,10 @@ func (b *binding) Command(name string, args ...string) shell.Cmd {
 	return shell.Command(name, args...).On(deviceTarget{b})
 }
 
-func (b *binding) prepareFFXCommand(cmd shell.Cmd) (shell.Process, error) {
+func (b *binding) augmentFFXCommand(cmd shell.Cmd) (shell.Cmd, error) {
 	exe, err := ffx()
 	if err != nil {
-		return nil, err
+		return cmd, err
 	}
 
 	// Adjust the ffx command to use a specific target:
@@ -71,17 +75,100 @@ func (b *binding) prepareFFXCommand(cmd shell.Cmd) (shell.Process, error) {
 	cmd.Args = append(cmd.Args, cmd.Name)
 	cmd.Args = append(cmd.Args, old...)
 	cmd.Name = exe.System()
+	fmt.Println(cmd)
 
 	// And delegate to the normal local target
-	return shell.LocalTarget.Start(cmd)
+	return cmd, nil
 }
 
-func (b *binding) CanTrace() bool { return false }
+func (b *binding) CanTrace() bool { return true }
+
+func (b *binding) TraceProviders(ctx context.Context) ([]string, error) {
+	exe, err := ffx()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd, err := b.augmentFFXCommand(shell.Command(exe.System(), "trace", "list-providers"))
+
+	if err != nil {
+		return nil, err
+	}
+
+	providersStdOut, err := cmd.Call(ctx)
+
+	if strings.Contains(providersStdOut, "No devices found") {
+		return nil, ErrNoDeviceList
+	}
+	lines := strings.Split(providersStdOut, "\n")
+	var providers []string
+	for _, line := range lines {
+		if strings.HasPrefix(line, "- ") {
+			tokens := strings.Split(line, " ")
+			if len(tokens) == 2 {
+				providers = append(providers, tokens[1])
+			} else {
+				return nil, ErrTraceProvidersFormat
+			}
+		}
+	}
+	return providers, nil
+}
+
+// StartTrace starts a Fuchsia trace.
+func (b *binding) StartTrace(ctx context.Context, traceFile file.Path, traceCategories []string, stop task.Signal, ready task.Task) error {
+	var categoriesArg string
+	for _, category := range traceCategories {
+		if len(categoriesArg) > 0 {
+			categoriesArg += ","
+		}
+		categoriesArg += category
+	}
+
+	var cmd shell.Cmd
+	if len(categoriesArg) > 0 {
+		cmd = b.Command("trace", "start", "--output", traceFile.System(), "--categories", categoriesArg)
+	} else {
+		cmd = b.Command("trace", "start", "--output", traceFile.System())
+	}
+
+	stdout, err := cmd.Call(ctx)
+
+	if err != nil {
+		return log.Err(ctx, err, stdout)
+	}
+
+	if strings.Contains(stdout, "No devices found") {
+		return ErrNoDeviceList
+	}
+	return nil
+}
+
+// StopTrace stops a Fuchsia trace.
+func (b *binding) StopTrace(ctx context.Context, traceFile file.Path) error {
+	cmd := b.Command("trace", "stop", "--output", traceFile.System())
+
+	stdout, err := cmd.Call(ctx)
+	if err != nil {
+		return log.Err(ctx, err, stdout)
+	}
+
+	if strings.Contains(stdout, "No devices found") {
+		return ErrNoDeviceList
+	}
+
+	return nil
+}
 
 type deviceTarget struct{ b *binding }
 
 func (t deviceTarget) Start(cmd shell.Cmd) (shell.Process, error) {
-	return t.b.prepareFFXCommand(cmd)
+	cmd, err := t.b.augmentFFXCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return shell.LocalTarget.Start(cmd)
 }
 
 func (t deviceTarget) String() string {

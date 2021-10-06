@@ -46,6 +46,10 @@ enum TraceType {
   // GAPIS currently doesn't distinguish between ANGLE and Vulkan and will not
   // report this type (i.e. the Capture message's type field).
   ANGLE = 2;
+  // A System Profiler Fuchsia trace.  Note that when opening a trace,
+  // GAPIS currently doesn't distinguish between Fuchsia and Perfetto and will
+  // not report this type (i.e. the Capture message's type field).
+  Fuchsia = 3;
 }
 
 message Error {

@@ -47,3 +47,13 @@ func PerfettoTraceOptions() *service.TraceTypeCapabilities {
 		CanSelectProcessName:           false,
 	}
 }
+
+// FuchsiaTraceOptions returns the default trace options for Fuchsia.
+func FuchsiaTraceOptions() *service.TraceTypeCapabilities {
+	return &service.TraceTypeCapabilities{
+		Type:                           service.TraceType_Fuchsia,
+		CanEnableUnsupportedExtensions: false,
+		RequiresApplication:            false,
+		CanSelectProcessName:           false,
+	}
+}

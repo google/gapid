@@ -70,7 +70,8 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	traceURI := verb.URI
 	if traceURI == "" && verb.Local.Port == 0 {
 		if flags.NArg() != 1 {
-			if api.traceType != service.TraceType_Perfetto {
+			if api.traceType != service.TraceType_Perfetto &&
+				api.traceType != service.TraceType_Fuchsia {
 				app.Usage(ctx, "Expected application name.")
 				return nil
 			}
@@ -343,6 +344,11 @@ func (verb *traceVerb) traceType() (traceType, error) {
 		return traceType{
 			service.TraceType_Perfetto,
 			".perfetto",
+		}, nil
+	case "fuchsia":
+		return traceType{
+			service.TraceType_Fuchsia,
+			".fxt",
 		}, nil
 	default:
 		return traceType{}, fmt.Errorf("Unknown API '%s'", verb.API)

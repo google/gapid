@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/trace/android"
 	"github.com/google/gapid/gapis/trace/desktop"
+	"github.com/google/gapid/gapis/trace/fuchsia"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
@@ -55,6 +56,8 @@ func (m *Manager) createTracer(ctx context.Context, dev bind.Device) {
 	defer m.mutex.Unlock()
 	if dev.Instance().GetConfiguration().GetOS().GetKind() == device.Android {
 		m.tracers[deviceID] = android.NewTracer(dev)
+	} else if dev.Instance().GetConfiguration().GetOS().GetKind() == device.Fuchsia {
+		m.tracers[deviceID] = fuchsia.NewTracer(dev)
 	} else {
 		m.tracers[deviceID] = desktop.NewTracer(dev)
 	}

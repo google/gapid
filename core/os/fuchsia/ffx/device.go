@@ -36,6 +36,14 @@ const (
 	ErrNoDeviceList = fault.Const("Device list not returned")
 	// ErrInvalidDeviceList May be returned if the device list could not be parsed.
 	ErrInvalidDeviceList = fault.Const("Could not parse device list")
+	// Tracing file couldn't be written to.
+	ErrTraceFilePermissions = fault.Const("Tracing file permissions")
+	// Start tracing command failed.
+	ErrStartTrace = fault.Const("Start trace failed")
+	// Trace providers command failed.
+	ErrTraceProviders = fault.Const("Trace providers failed")
+	// Trace providers format.
+	ErrTraceProvidersFormat = fault.Const("Trace providers format")
 )
 
 var (
@@ -94,18 +102,22 @@ func Monitor(ctx context.Context, r *bind.Registry, interval time.Duration) erro
 }
 
 func newDevice(ctx context.Context, serial string) (*binding, error) {
+	log.I(ctx, "Fuchsia Serial: %v", serial)
 	d := &binding{
 		Simple: bind.Simple{
 			To: &device.Instance{
-				Serial:        serial,
-				Configuration: &device.Configuration{},
+				Serial: serial,
+				// TODO: change "Fuchsia" to a device-specific name.
+				Name:          "Fuchsia",
+				Configuration: &device.Configuration{OS: &device.OS{Kind: device.Fuchsia}},
 			},
 			LastStatus: bind.Online,
 		},
 	}
 
-	// TODO: fill in d.To.Name and d.To.Configuration
-	// defined in device.proto
+	// TODO: fill in d.To.Configuration defined in device.proto
+
+	d.Instance().GenID()
 
 	return d, nil
 }

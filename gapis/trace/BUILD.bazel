@@ -39,6 +39,7 @@ go_library(
         "//gapis/service/path:go_default_library",
         "//gapis/trace/android:go_default_library",
         "//gapis/trace/desktop:go_default_library",
+        "//gapis/trace/fuchsia:go_default_library",
         "//gapis/trace/tracer:go_default_library",
     ],
 )

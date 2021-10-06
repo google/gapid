@@ -15,7 +15,11 @@
 package fuchsia
 
 import (
+	"context"
+
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 )
 
@@ -24,4 +28,13 @@ type Device interface {
 	bind.Device
 	// Command is a helper that builds a shell.Cmd with the device as its target.
 	Command(name string, args ...string) shell.Cmd
+
+	// Return string array of trace providers.
+	TraceProviders(ctx context.Context) ([]string, error)
+
+	// StartTrace starts a Fuchsia trace.
+	StartTrace(ctx context.Context, traceFile file.Path, traceCategories []string, stop task.Signal, ready task.Task) error
+
+	// StopTrace stops a Fuchsia trace.
+	StopTrace(ctx context.Context, traceFile file.Path) error
 }
