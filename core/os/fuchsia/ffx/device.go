@@ -16,6 +16,7 @@ package ffx
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync"
 	"time"
@@ -128,7 +129,7 @@ func scanDevices(ctx context.Context) error {
 	if err != nil {
 		return log.Err(ctx, err, "")
 	}
-	stdout, err := shell.Command(exe.System(), "target", "list", "-f", "simple").Call(ctx)
+	stdout, err := shell.Command(exe.System(), "target", "list", "-f", "json").Call(ctx)
 	if err != nil {
 		return err
 	}
@@ -165,25 +166,34 @@ func scanDevices(ctx context.Context) error {
 	return nil
 }
 
-func ParseDevices(ctx context.Context, out string) (map[string]bind.Status, error) {
-	lines := strings.Split(out, "\n")
-	devices := make(map[string]bind.Status, len(lines))
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		switch len(fields) {
-		case 0:
-			continue
-		case 2:
-			_, serial := fields[0], fields[1]
-			devices[serial] = bind.Online
-		case 3:
-			if strings.ToUpper(line) != "NO DEVICES FOUND." {
-				return nil, ErrInvalidDeviceList
-			}
-			return devices, nil
-		default:
+// ParseDevices parses the json formatted device list from ffx.
+func ParseDevices(ctx context.Context, stdout string) (map[string]bind.Status, error) {
+	//
+	// Example "ffx target list -f json" output from Fuchsia device list on
+	// emulator:
+	//
+	// [{"nodename":"fuchsia-5254-0063-5e7a","rcs_state":"N","serial":"<unknown>",
+	//   "target_type":"Unknown","target_state":"Product",
+	//   "addresses":["fe80::fe49:e0eb:776f:a2c5%qemu"]}]
+	//
+
+	var targetJSON []map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &targetJSON); err != nil {
+		return nil, err
+	}
+
+	if len(targetJSON) == 0 {
+		return nil, ErrNoDeviceList
+	}
+
+	devices := make(map[string]bind.Status, len(targetJSON))
+	for _, targetMap := range targetJSON {
+		if targetName, ok := targetMap["nodename"].(string); ok {
+			devices[targetName] = bind.Online
+		} else {
 			return nil, ErrInvalidDeviceList
 		}
 	}
+
 	return devices, nil
 }
