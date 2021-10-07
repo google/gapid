@@ -15,12 +15,12 @@
  */
 
 #include "cached_resource_loader.h"
-#include "resource.h"
-
-#include "core/cc/assert.h"
 
 #include <utility>
 #include <vector>
+
+#include "core/cc/assert.h"
+#include "resource.h"
 
 namespace gapir {
 
@@ -36,13 +36,13 @@ bool CachedResourceLoader::loadBatch(const ResourceLoadingBatch& bat) {
     return false;
   }
   size_t readSize = 0;
-  for (const auto r : bat.resources()) {
+  for (const auto& r : bat.resources()) {
     mCache->putCache(r,
                      reinterpret_cast<const uint8_t*>(res->data()) + readSize);
     readSize += r.getSize();
   }
   const uint8_t* src = reinterpret_cast<const uint8_t*>(res->data());
-  for (const auto dsp : bat.dstsAndSizes()) {
+  for (const auto& dsp : bat.dstsAndSizes()) {
     memcpy(dsp.first, src, dsp.second);
     src += dsp.second;
   }

@@ -114,7 +114,7 @@ bool hasVulkanLoader();
 // The functions below are used by getDeviceInstance(), and are implemented
 // in the target-dependent sub-directories.
 
-typedef struct {
+struct PlatformInfo {
   std::string name;
   std::vector<device::ABI> abis;
   std::string hardwareName;
@@ -125,7 +125,7 @@ typedef struct {
   int osMajor = 0;
   int osMinor = 0;
   int osPoint = 0;
-} PlatformInfo;
+};
 
 bool queryPlatform(PlatformInfo* info, std::string* error);
 
@@ -134,11 +134,11 @@ device::MemoryLayout* currentMemoryLayout();
 bool hasAtrace();
 
 // in cpu.cpp
-typedef struct {
+struct CpuInfo {
   std::string name;
   std::string vendor;
   device::Architecture architecture;
-} CpuInfo;
+};
 bool queryCpu(CpuInfo* info, std::string* error);
 
 }  // namespace query
