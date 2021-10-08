@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
@@ -75,10 +74,6 @@ func trace(ctx context.Context, device *path.Device, start task.Signal, stop tas
 			return err
 		}
 		defer writer.(*os.File).Close()
-	}
-
-	if options.Duration > 0 {
-		ctx, _ = task.WithTimeout(ctx, time.Duration(options.Duration)*time.Second)
 	}
 
 	_, err = process.Capture(ctx, start, stop, ready, writer, written)

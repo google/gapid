@@ -68,6 +68,8 @@ type Options struct {
 	StartFrame uint32
 	// If non-zero, then only n frames will be captured.
 	FramesToCapture uint32
+	// If positive, then only capture for this amount of time.
+	Duration time.Duration
 	// A bitmask of the APIs to capture in a trace.
 	APIs uint32
 	// Combination of FlagXX bits.
@@ -202,17 +204,22 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	defer conn.Close()
 
 	writeErr := make(chan error)
-	if (p.Options.Flags & DeferStart) != 0 {
-		go func() {
+	go func() {
+		if (p.Options.Flags & DeferStart) != 0 {
 			if start.Wait(ctx) {
 				if err := writeStartTrace(conn); err != nil {
 					writeErr <- err
+					return
 				}
 			}
-		}()
-	}
-	go func() {
-		if stop.Wait(ctx) {
+		}
+
+		if p.Options.Duration > 0 {
+			stop.TryWait(ctx, p.Options.Duration)
+		} else {
+			stop.Wait(ctx)
+		}
+		if !task.Stopped(ctx) {
 			if err := writeEndTrace(conn); err == nil {
 				time.Sleep(2 * time.Second)
 				writeErr <- errors.New("Traced application is unresponsive.")

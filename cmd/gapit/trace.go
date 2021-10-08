@@ -265,7 +265,6 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			dur = 10 * 60 * 1000
 		}
 		options.PerfettoConfig.DurationMs = proto.Uint32(dur)
-		options.Duration = 0
 	}
 
 	handler, err := client.Trace(ctx)
@@ -284,8 +283,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	log.I(ctx, "Trace Status %+v", status)
 
-	handlerInstalled := options.Duration > 0
-
+	handlerInstalled := false
 	return task.Retry(ctx, 0, time.Second*3, func(ctx context.Context) (retry bool, err error) {
 		status, err = handler.Event(ctx, service.TraceEvent_Status)
 		if err == io.EOF {

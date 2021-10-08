@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/layout"
@@ -131,6 +132,7 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 		o.ObserveDrawFrequency,
 		o.StartFrame,
 		o.FramesToCapture,
+		time.Duration(o.Duration * float32(time.Second)),
 		apis,
 		flags,
 		o.AdditionalCommandLineArgs,

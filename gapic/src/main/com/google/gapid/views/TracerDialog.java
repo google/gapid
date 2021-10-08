@@ -1097,6 +1097,7 @@ public class TracerDialog {
         }
 
         if (type == Service.TraceType.Perfetto) {
+          options.setDuration(duration.getSelection());
           int durationMs = duration.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
           durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
@@ -1205,11 +1206,17 @@ public class TracerDialog {
       this.request = request;
 
       if (request.options.getType() == Service.TraceType.Perfetto) {
-        int durationSec = request.options.getPerfettoConfig().getDurationMs() / 1000;
-        capturingStatusLabel = "Capturing " + durationSec + " second" + (durationSec > 1 ? "s" : "") + "...";
+        int duration = (int)request.options.getDuration();
+        if (duration <= 0) {
+          capturingStatusLabel = "Capturing...";
+        } else {
+          capturingStatusLabel =
+              "Capturing " + duration + " second" + (duration > 1 ? "s" : "") + "...";
+        }
       } else {
         int framesToCapture = request.options.getFramesToCapture();
-        capturingStatusLabel = "Capturing " + framesToCapture + " frame" + (framesToCapture > 1 ? "s" : "") + "...";
+        capturingStatusLabel =
+            "Capturing " + framesToCapture + " frame" + (framesToCapture > 1 ? "s" : "") + "...";
       }
     }
 
