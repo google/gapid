@@ -56,7 +56,6 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.Service.DeviceTraceConfiguration;
 import com.google.gapid.proto.service.Service.StatusResponse;
-import com.google.gapid.proto.service.Service.TraceType;
 import com.google.gapid.proto.service.Service.TraceTypeCapabilities;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -178,10 +177,27 @@ public class TracerDialog {
     }
   }
 
-  public static void showTracingDialog(Client client, Shell shell, Models models, Widgets widgets) {
+  public static void showSystemTracingDialog(
+      Client client, Shell shell, Models models, Widgets widgets) {
+    showTracingDialog(TraceType.System, client, shell, models, widgets);
+  }
+
+  public static void showFrameTracingDialog(
+      Client client, Shell shell, Models models, Widgets widgets) {
+    showTracingDialog(TraceType.Vulkan, client, shell, models, widgets);
+  }
+
+  // Shows the tracing dialog of the previously shown type (or Vulkan by default).
+  public static void showTracingDialog(
+      Client client, Shell shell, Models models, Widgets widgets) {
+    showTracingDialog(null, client, shell, models, widgets);
+  }
+
+  private static void showTracingDialog(
+      TraceType type, Client client, Shell shell, Models models, Widgets widgets) {
     models.analytics.postInteraction(View.Trace, ClientAction.Show);
     TraceInputDialog input =
-        new TraceInputDialog(shell, models, widgets, models.devices::loadDevices);
+        new TraceInputDialog(shell, type, models, widgets, models.devices::loadDevices);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
       TraceProgressDialog progress = new TraceProgressDialog(
           shell, models.analytics, input.getValue(), widgets.theme);
@@ -213,6 +229,7 @@ public class TracerDialog {
    * Dialog to request the information from the user to start a trace (which app, filename, etc.).
    */
   private static class TraceInputDialog extends DialogBase {
+    private final TraceType type;
     private final Models models;
     private final Widgets widgets;
     private final Runnable refreshDevices;
@@ -222,8 +239,10 @@ public class TracerDialog {
 
     private Tracer.TraceRequest value;
 
-    public TraceInputDialog(Shell shell, Models models, Widgets widgets, Runnable refreshDevices) {
+    public TraceInputDialog(Shell shell, TraceType type, Models models, Widgets widgets,
+        Runnable refreshDevices) {
       super(shell, widgets.theme);
+      this.type = type;
       this.models = models;
       this.widgets = widgets;
       this.refreshDevices = refreshDevices;
@@ -246,7 +265,7 @@ public class TracerDialog {
     @Override
     protected Control createDialogArea(Composite parent) {
       Composite area = (Composite)super.createDialogArea(parent);
-      traceInput = new TraceInput(area, models, widgets, refreshDevices);
+      traceInput = new TraceInput(area, type, models, widgets, refreshDevices);
       traceInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
       if (devices != null) {
@@ -348,7 +367,8 @@ public class TracerDialog {
 
       public boolean validationStatus;
 
-      public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
+      public TraceInput(Composite parent, TraceType type, Models models, Widgets widgets,
+          Runnable refreshDevices) {
         super(parent, SWT.NONE);
         this.models = models;
         SettingsProto.TraceOrBuilder trace = models.settings.trace();
@@ -357,11 +377,19 @@ public class TracerDialog {
 
         setLayout(new GridLayout(1, false));
 
-        Service.TraceType type = Service.TraceType.Graphics;
+        Service.TraceType lastType = Service.TraceType.Graphics;
         try {
-          type = Service.TraceType.valueOf(trace.getType());
+          lastType = Service.TraceType.valueOf(trace.getType());
         } catch (IllegalArgumentException e) {
           // The serialized name was invalid, ignore it and use Graphics as the default.
+        }
+
+        if (type == null) {
+          // Use the last used type if no specific type was requested.
+          type = TraceType.from(lastType);
+        } else if (type == TraceType.Vulkan && lastType == Service.TraceType.ANGLE) {
+          // If frame profiler was requested, use ANGLE if the previous trace was an ANGLE trace.
+          type = TraceType.ANGLE;
         }
 
         Group mainGroup = withLayoutData(
@@ -602,7 +630,7 @@ public class TracerDialog {
           return;
         }
 
-        Service.TraceType type = getSelectedType();
+        TraceType type = getSelectedType();
         DeviceCaptureInfo dev = getSelectedDevice();
 
         if (type == null) {
@@ -612,8 +640,7 @@ public class TracerDialog {
         } else {
           apiLabel.setForeground(theme.filledInput());
 
-          Service.TraceTypeCapabilities config =
-              (dev == null) ? null : dev.getTypeCapabilities(type);
+          Service.TraceTypeCapabilities config = (dev == null) ? null : type.getCapabilities(dev);
           if (config == null) {
             deviceLabel.setForeground(theme.missingInput());
             targetLabel.setForeground(theme.filledInput());
@@ -644,29 +671,16 @@ public class TracerDialog {
         return combo;
       }
 
-      private static ComboViewer createApiDropDown(Composite parent, Service.TraceType deflt) {
+      private static ComboViewer createApiDropDown(Composite parent, TraceType deflt) {
         ComboViewer combo = createDropDownViewer(parent);
         combo.setContentProvider(ArrayContentProvider.getInstance());
-        combo.setLabelProvider(new LabelProvider() {
-          @Override
-          public String getText(Object element) {
-            switch ((Service.TraceType)element) {
-              case Graphics: return "Frame Profile - Vulkan";
-              case Perfetto: return "System Profile";
-              case ANGLE: return "Frame Profile - OpenGL on ANGLE";
-              default: throw new AssertionError();
-            }
-          }
-        });
-        combo.setInput(new Service.TraceType[] {
-            Service.TraceType.Graphics, Service.TraceType.ANGLE, Service.TraceType.Perfetto,
-        });
+        combo.setInput(TraceType.values());
         combo.setSelection(new StructuredSelection(deflt));
         return combo;
       }
 
       private void updateOnApiChange(
-          Settings settings, SettingsProto.TraceOrBuilder trace, Service.TraceType type) {
+          Settings settings, SettingsProto.TraceOrBuilder trace, TraceType type) {
         updateDevicesDropDown(trace);
         updateOnConfigChange(settings, trace, type, getSelectedDevice());
       }
@@ -742,12 +756,12 @@ public class TracerDialog {
       }
 
       private void updateOnConfigChange(Settings settings, SettingsProto.TraceOrBuilder trace,
-          Service.TraceType type, DeviceCaptureInfo dev) {
+          TraceType type, DeviceCaptureInfo dev) {
         if (type == null || dev == null) {
           return;
         }
 
-        Service.TraceTypeCapabilities config = dev.getTypeCapabilities(type);
+        Service.TraceTypeCapabilities config = type.getCapabilities(dev);
 
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
         includeUnsupportedExtensions.setEnabled(ext);
@@ -759,16 +773,16 @@ public class TracerDialog {
         boolean canSelectProcessName = config != null && config.getCanSelectProcessName();
         processName.setEnabled(canSelectProcessName);
 
-        boolean isPerfetto = type == Service.TraceType.Perfetto;
-        SettingsProto.Trace.DurationOrBuilder dur = isPerfetto ?
+        boolean isSystem = type == TraceType.System;
+        SettingsProto.Trace.DurationOrBuilder dur = isSystem ?
             trace.getProfileDurationOrBuilder() : trace.getGfxDurationOrBuilder();
-        withoutBuffering.setEnabled(!isPerfetto);
-        withoutBuffering.setSelection(!isPerfetto && trace.getWithoutBuffering());
-        loadValidationLayer.setEnabled(!isPerfetto && getSelectedDevice().isAndroid());
+        withoutBuffering.setEnabled(!isSystem);
+        withoutBuffering.setSelection(!isSystem && trace.getWithoutBuffering());
+        loadValidationLayer.setEnabled(!isSystem && getSelectedDevice().isAndroid());
         loadValidationLayer.setSelection(trace.getLoadValidationLayer());
-        if (isPerfetto && startType.getItemCount() == 4) {
+        if (isSystem && startType.getItemCount() == 4) {
           startType.remove(StartType.Frame.ordinal());
-        } else if (!isPerfetto && startType.getItemCount() == 3) {
+        } else if (!isSystem && startType.getItemCount() == 3) {
           startType.add(StartType.Frame.name(), StartType.Frame.ordinal());
         }
         switch (dur.getType()) {
@@ -788,16 +802,16 @@ public class TracerDialog {
             startType.select(StartType.Manual.ordinal());
         }
 
-        int maxDuration = isPerfetto ? DURATION_PERFETTO_MAX : DURATION_FRAMES_MAX;
-        durationLabel.setText(isPerfetto ? DURATION_LABEL : (maxDuration == 1 ? ONE_FRAME_LABEL : FRAMES_LABEL));
+        int maxDuration = isSystem ? DURATION_PERFETTO_MAX : DURATION_FRAMES_MAX;
+        durationLabel.setText(isSystem ? DURATION_LABEL : (maxDuration == 1 ? ONE_FRAME_LABEL : FRAMES_LABEL));
         duration.setMaximum(maxDuration);
         duration.setSelection(Math.min(dur.getDuration(), maxDuration));
         duration.setVisible(maxDuration > 1);
-        durationUnit.setText(isPerfetto ? DURATION_PERFETTO_UNIT : DURATION_FRAMES_UNIT);
+        durationUnit.setText(isSystem ? DURATION_PERFETTO_UNIT : DURATION_FRAMES_UNIT);
         durationUnit.setVisible(maxDuration > 1);
         durationUnit.requestLayout();
 
-        perfettoConfig.setVisible(isPerfetto);
+        perfettoConfig.setVisible(isSystem);
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
@@ -805,7 +819,7 @@ public class TracerDialog {
         }
 
         boolean showAngleBar = false;
-        if (type == Service.TraceType.ANGLE) {
+        if (type == TraceType.ANGLE) {
           int version = dev.device.getConfiguration().getAngle().getVersion();
           if (version == 0 || version < settings.preferences().getLatestAngleRelease().getVersion())
           {
@@ -828,13 +842,13 @@ public class TracerDialog {
         if (device != null && devices != null) {
           deviceLoader.stopLoading();
 
-          Service.TraceType type = getSelectedType();
+          TraceType type = getSelectedType();
           if (type == null) {
             return;
           }
 
           List<DeviceCaptureInfo> matching = devices.stream()
-              .filter(d -> d.getTypeCapabilities(type) != null)
+              .filter(d -> type.getCapabilities(d) != null)
               .collect(toList());
           device.setInput(matching);
 
@@ -894,7 +908,7 @@ public class TracerDialog {
 
       private void updateEmptyAppWithRenderStageWarning(Settings settings) {
         if (getSelectedDevice() == null || !getSelectedDevice().isAndroid() ||
-            getSelectedType() != TraceType.Perfetto) {
+            getSelectedType() != TraceType.System) {
           emptyAppWarning.setVisible(false);
           return;
         }
@@ -952,10 +966,10 @@ public class TracerDialog {
       }
 
       protected String formatTraceName(String name) {
-        Service.TraceType type = getSelectedType();
-        String ext = (type == Service.TraceType.Perfetto) ? PERFETTO_EXTENSION : TRACE_EXTENSION;
+        TraceType type = getSelectedType();
+        String ext = (type == TraceType.System) ? PERFETTO_EXTENSION : TRACE_EXTENSION;
         // For ANGLE captures include "_angle" in trace name
-        String angle = (type == Service.TraceType.ANGLE) ? ANGLE_STRING : "";
+        String angle = (type == TraceType.ANGLE) ? ANGLE_STRING : "";
         return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + angle + date + ext;
       }
 
@@ -994,18 +1008,17 @@ public class TracerDialog {
       }
 
       public boolean isReady() {
-        Service.TraceType type = getSelectedType();
+        TraceType type = getSelectedType();
         DeviceCaptureInfo dev = getSelectedDevice();
         return isInputReady(type, dev) && validationStatus &&
-            (type != Service.TraceType.ANGLE ||
-                dev.device.getConfiguration().getAngle().getVersion() > 0);
+            (type != TraceType.ANGLE || dev.device.getConfiguration().getAngle().getVersion() > 0);
       }
 
-      public boolean isInputReady(Service.TraceType type, DeviceCaptureInfo dev) {
+      public boolean isInputReady(TraceType type, DeviceCaptureInfo dev) {
         if (type == null || dev == null) {
           return false;
         }
-        Service.TraceTypeCapabilities config = dev.getTypeCapabilities(type);
+        Service.TraceTypeCapabilities config = type.getCapabilities(dev);
 
         return config != null &&
             (!config.getRequiresApplication() || !traceTarget.getText().isEmpty()) &&
@@ -1027,9 +1040,9 @@ public class TracerDialog {
       }
 
       public TraceRequest getTraceRequest(Settings settings) {
-        Service.TraceType type = getSelectedType();
+        TraceType type = getSelectedType();
         DeviceCaptureInfo dev = getSelectedDevice();
-        TraceTypeCapabilities config = dev.getTypeCapabilities(type);
+        TraceTypeCapabilities config = type.getCapabilities(dev);
         File output = getOutputFile();
         SettingsProto.Trace.Builder trace = settings.writeTrace();
         StartType start = StartType.values()[startType.getSelectionIndex()];
@@ -1039,7 +1052,7 @@ public class TracerDialog {
         trace.setType(config.getType().name());
         trace.setUri(traceTarget.getText());
         trace.setArguments(arguments.getText());
-        SettingsProto.Trace.Duration.Builder dur = (type == Service.TraceType.Perfetto) ?
+        SettingsProto.Trace.Duration.Builder dur = (type == TraceType.System) ?
             trace.getProfileDurationBuilder() : trace.getGfxDurationBuilder();
         dur.setType(start.proto);
         if (start == StartType.Frame) {
@@ -1096,7 +1109,7 @@ public class TracerDialog {
           options.setClearCache(clearCache.getSelection());
         }
 
-        if (type == Service.TraceType.Perfetto) {
+        if (type == TraceType.System) {
           options.setDuration(duration.getSelection());
           int durationMs = duration.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
@@ -1142,9 +1155,9 @@ public class TracerDialog {
         return sel.isEmpty() ? null : (DeviceCaptureInfo)sel.getFirstElement();
       }
 
-      protected Service.TraceType getSelectedType() {
+      protected TraceType getSelectedType() {
         IStructuredSelection sel = api.getStructuredSelection();
-        return sel.isEmpty() ? null : ((Service.TraceType)sel.getFirstElement());
+        return sel.isEmpty() ? null : ((TraceType)sel.getFirstElement());
       }
 
       protected Device.PerfettoCapability getPerfettoCaps() {
@@ -1173,6 +1186,41 @@ public class TracerDialog {
 
       private StartType(SettingsProto.Trace.Duration.Type proto) {
         this.proto = proto;
+      }
+    }
+  }
+
+  public static enum TraceType {
+    System("System Profile"),
+    Vulkan("Frame Profile - Vulkan"),
+    ANGLE("Frame Profile - OpenGL on ANGLE");
+
+    public final String label;
+
+    private TraceType(String label) {
+      this.label = label;
+    }
+
+    @Override
+    public String toString() {
+      return label;
+    }
+
+    public static TraceType from(Service.TraceType type) {
+      switch (type) {
+        case Perfetto: return System;
+        case Graphics: return Vulkan;
+        case ANGLE: return ANGLE;
+        default: throw new AssertionError();
+      }
+    }
+
+    public Service.TraceTypeCapabilities getCapabilities(DeviceCaptureInfo dev) {
+      switch (this) {
+        case System: return dev.getTypeCapabilities(Service.TraceType.Perfetto);
+        case Vulkan: return dev.getTypeCapabilities(Service.TraceType.Graphics);
+        case ANGLE:  return dev.getTypeCapabilities(Service.TraceType.ANGLE);
+        default: throw new AssertionError();
       }
     }
   }
