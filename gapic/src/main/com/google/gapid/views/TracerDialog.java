@@ -300,8 +300,6 @@ public class TracerDialog {
 
     private static class TraceInput extends Composite {
       private static final String DEFAULT_TRACE_FILE = "trace";
-      private static final String TRACE_EXTENSION = ".gfxtrace";
-      private static final String PERFETTO_EXTENSION = ".perfetto";
       private static final String ANGLE_STRING = "_angle";
       private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
       private static final String TARGET_LABEL = "Application";
@@ -811,7 +809,7 @@ public class TracerDialog {
         durationUnit.setVisible(maxDuration > 1);
         durationUnit.requestLayout();
 
-        perfettoConfig.setVisible(isSystem);
+        perfettoConfig.setVisible(isSystem && !dev.isFuchsia());
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
@@ -871,6 +869,12 @@ public class TracerDialog {
               boolean secondIsAndroid = matching.get(1).isAndroid();
               if (firstIsAndroid != secondIsAndroid) {
                 return firstIsAndroid ? matching.get(0) : matching.get(1);
+              }
+              // Same for Fuchsia.
+              boolean firstIsFuchsia = matching.get(0).isFuchsia();
+              boolean secondIsFuchsia = matching.get(1).isFuchsia();
+              if (firstIsFuchsia != secondIsFuchsia) {
+                return firstIsFuchsia ? matching.get(0) : matching.get(1);
               }
             }
             return null;
@@ -967,7 +971,8 @@ public class TracerDialog {
 
       protected String formatTraceName(String name) {
         TraceType type = getSelectedType();
-        String ext = (type == TraceType.System) ? PERFETTO_EXTENSION : TRACE_EXTENSION;
+        DeviceCaptureInfo dev = getSelectedDevice();
+        String ext = type.getFileExtension(dev);
         // For ANGLE captures include "_angle" in trace name
         String angle = (type == TraceType.ANGLE) ? ANGLE_STRING : "";
         return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + angle + date + ext;
@@ -1111,11 +1116,13 @@ public class TracerDialog {
 
         if (type == TraceType.System) {
           options.setDuration(duration.getSelection());
-          int durationMs = duration.getSelection() * 1000;
-          // TODO: this isn't really unlimitted.
-          durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
-          options.setPerfettoConfig(
-              getConfig(settings, getPerfettoCaps(), traceTarget.getText(), durationMs));
+          if (!dev.isFuchsia()) {
+            int durationMs = duration.getSelection() * 1000;
+            // TODO: this isn't really unlimited.
+            durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
+            options.setPerfettoConfig(
+                getConfig(settings, getPerfettoCaps(), traceTarget.getText(), durationMs));
+          }
         }
 
         return new TraceRequest(output, options.build(), delay);
@@ -1195,6 +1202,10 @@ public class TracerDialog {
     Vulkan("Frame Profile - Vulkan"),
     ANGLE("Frame Profile - OpenGL on ANGLE");
 
+    private static final String PERFETTO_EXTENSION = ".perfetto";
+    private static final String FUCHSIA_EXTENSION = ".fxt";
+    private static final String VULKAN_EXTENSION = ".gfxtrace";
+
     public final String label;
 
     private TraceType(String label) {
@@ -1209,6 +1220,7 @@ public class TracerDialog {
     public static TraceType from(Service.TraceType type) {
       switch (type) {
         case Perfetto: return System;
+        case Fuchsia: return System;
         case Graphics: return Vulkan;
         case ANGLE: return ANGLE;
         default: throw new AssertionError();
@@ -1217,9 +1229,25 @@ public class TracerDialog {
 
     public Service.TraceTypeCapabilities getCapabilities(DeviceCaptureInfo dev) {
       switch (this) {
-        case System: return dev.getTypeCapabilities(Service.TraceType.Perfetto);
+        case System:
+          if (dev.isFuchsia()) {
+            return dev.getTypeCapabilities(Service.TraceType.Fuchsia);
+          } else {
+            return dev.getTypeCapabilities(Service.TraceType.Perfetto);
+          }
         case Vulkan: return dev.getTypeCapabilities(Service.TraceType.Graphics);
         case ANGLE:  return dev.getTypeCapabilities(Service.TraceType.ANGLE);
+        default: throw new AssertionError();
+      }
+    }
+
+    public String getFileExtension(DeviceCaptureInfo dev) {
+      switch (this) {
+        case System:
+          return (dev != null && dev.isFuchsia()) ? FUCHSIA_EXTENSION : PERFETTO_EXTENSION;
+        case Vulkan:
+        case ANGLE:
+          return VULKAN_EXTENSION;
         default: throw new AssertionError();
       }
     }
@@ -1253,7 +1281,8 @@ public class TracerDialog {
       this.analytics = analytics;
       this.request = request;
 
-      if (request.options.getType() == Service.TraceType.Perfetto) {
+      if (request.options.getType() == Service.TraceType.Perfetto ||
+          request.options.getType() == Service.TraceType.Fuchsia) {
         int duration = (int)request.options.getDuration();
         if (duration <= 0) {
           capturingStatusLabel = "Capturing...";

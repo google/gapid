@@ -411,6 +411,10 @@ public class Devices {
       return device.getConfiguration().getOS().getKind() == Device.OSKind.Android;
     }
 
+    public boolean isFuchsia() {
+      return device.getConfiguration().getOS().getKind() == Device.OSKind.Fuchsia;
+    }
+
     /**
      * Returns this device's tracing capabilities for the given type. Returns {@code null} if the
      * given type is not supported by this device.
