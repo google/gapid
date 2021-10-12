@@ -25,13 +25,11 @@ import (
 var _ transform.Transform = &makeAttachmentReadable{}
 
 type makeAttachmentReadable struct {
-	imagesOnly  bool
 	allocations *allocationTracker
 }
 
-func newMakeAttachmentReadable(imagesOnly bool) *makeAttachmentReadable {
+func newMakeAttachmentReadable() *makeAttachmentReadable {
 	return &makeAttachmentReadable{
-		imagesOnly:  imagesOnly,
 		allocations: nil,
 	}
 }
@@ -79,12 +77,12 @@ func (attachmentTransform *makeAttachmentReadable) TransformCommand(ctx context.
 			if err != nil {
 				return nil, err
 			}
-		} else if createRenderPassCmd, ok := cmd.(*VkCreateRenderPass); ok && !attachmentTransform.imagesOnly {
+		} else if createRenderPassCmd, ok := cmd.(*VkCreateRenderPass); ok {
 			modifiedCmd, err = attachmentTransform.makeRenderPassReadable(ctx, inputState, createRenderPassCmd)
 			if err != nil {
 				return nil, err
 			}
-		} else if enumeratePhysicalDevicesCmd, ok := cmd.(*VkEnumeratePhysicalDevices); ok && !attachmentTransform.imagesOnly {
+		} else if enumeratePhysicalDevicesCmd, ok := cmd.(*VkEnumeratePhysicalDevices); ok {
 			modifiedCmd, err = attachmentTransform.makePhysicalDevicesReadable(ctx, inputState, id.GetID(), enumeratePhysicalDevicesCmd)
 			if err != nil {
 				return nil, err
