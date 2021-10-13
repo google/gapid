@@ -15,12 +15,24 @@
 package ffx_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/fuchsia/ffx"
 )
+
+const deviceJSONPattern = `{
+	"nodename": "%s",
+	"rcs_state": "%s",
+	"serial": "<unknown>",
+	"target_type": "Unknown",
+	"target_state": "Product",
+	"addresses":["%s"]
+}
+`
 
 func TestParseDevices(t_ *testing.T) {
 	ctx := log.Testing(t_)
@@ -30,15 +42,12 @@ func TestParseDevices(t_ *testing.T) {
 	ipAddrs := []string{"fe80::5054:ff:fe63:5e7a%1", "fe80::5054:ff:fe63:5e7a%1", "fe80::5054:ff:fe63:5e7a%1"}
 	deviceNames := []string{"fuchsia-5254-0063-5e7a", "fuchsia-5254-0063-5e7b", "fuchsia-5254-0063-5e7c"}
 
-	var devicesStdOut string
+	var deviceJSON []string
 	for i := range ipAddrs {
-		devicesStdOut += ipAddrs[i]
-		devicesStdOut += " "
-		devicesStdOut += deviceNames[i]
-		devicesStdOut += "\n"
+		deviceJSON = append(deviceJSON, fmt.Sprintf(deviceJSONPattern, deviceNames[i], "Y", ipAddrs[i]))
 	}
 
-	deviceMap, err := ffx.ParseDevices(ctx, devicesStdOut)
+	deviceMap, err := ffx.ParseDevices(ctx, "["+strings.Join(deviceJSON, ",")+"]")
 	if assert.For(ctx, "Valid devices").ThatError(err).Succeeded() {
 		devicesFound := 0
 		for deviceName := range deviceMap {
@@ -52,15 +61,7 @@ func TestParseDevices(t_ *testing.T) {
 		assert.For(ctx, "Valid devices").ThatInteger(devicesFound).Equals(len(ipAddrs))
 	}
 
-	// Verify empty device list.
-	devicesStdOut = "\nNo devices found.\n\n"
-	deviceMap, err = ffx.ParseDevices(ctx, devicesStdOut)
-	assert.For(ctx, "Empty devices").ThatError(err).Succeeded()
-	assert.For(ctx, "Empty devices").ThatSlice(deviceMap).IsEmpty()
-
-	// Verify error state with garbage input.
-	devicesStdOut = "\nFile not found.\n\n"
-	deviceMap, err = ffx.ParseDevices(ctx, devicesStdOut)
+	deviceMap, err = ffx.ParseDevices(ctx, "\nFile not found.\n\n")
 	assert.For(ctx, "Garbage input").ThatError(err).Failed()
 	assert.For(ctx, "Garbage input").ThatSlice(deviceMap).IsEmpty()
 }

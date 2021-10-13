@@ -269,6 +269,7 @@ test_suite(
         "//core/os/device/remotessh:go_default_test",
         "//core/os/file:go_default_test",
         "//core/os/flock:go_default_test",
+        "//core/os/fuchsia/ffx:go_default_test",
         "//core/os/shell:go_default_test",
         "//core/os/shell/stub:go_default_test",
         "//core/stream:go_default_test",
