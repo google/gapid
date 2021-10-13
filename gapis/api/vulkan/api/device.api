@@ -81,6 +81,9 @@
 
   // @extension("VK_EXT_transform_feedback")
   @unused ref!PhysicalDeviceTransformFeedbackFeaturesEXT PhysicalDeviceTransformFeedbackFeaturesEXT
+
+  // @extension("VK_KHR_shader_terminate_invocation")
+  @unused ref!PhysicalDeviceShaderTerminateInvocationFeaturesKHR PhysicalDeviceShaderTerminateInvocationFeaturesKHR
 }
 
 @indirect("VkDevice")
@@ -293,6 +296,12 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           object.PhysicalDeviceTransformFeedbackFeaturesEXT = new!PhysicalDeviceTransformFeedbackFeaturesEXT(
             TransformFeedback: ext.transformFeedback,
             GeometryStreams: ext.geometryStreams,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+          ext := as!VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*(next.Ptr)[0]
+          object.PhysicalDeviceShaderTerminateInvocationFeaturesKHR = new!PhysicalDeviceShaderTerminateInvocationFeaturesKHR(
+            ShaderTerminateInvocation: ext.shaderTerminateInvocation,
           )
         }
       }

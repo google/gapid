@@ -917,6 +917,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceShaderTerminateInvocationFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderTerminateInvocationFeaturesKHR(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR,
+				pNext,
+				d.PhysicalDeviceShaderTerminateInvocationFeaturesKHR().ShaderTerminateInvocation(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),

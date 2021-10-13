@@ -116,6 +116,7 @@ import "extensions/khr_shader_float16_int8.api"
 import "extensions/khr_shader_atomic_int64.api"
 import "extensions/khr_driver_properties.api"
 import "extensions/khr_timeline_semaphore.api"
+import "extensions/khr_shader_terminate_invocation.api"
 import "extensions/ext_line_rasterization.api"
 import "extensions/ext_vertex_attribute_divisor.api"
 import "extensions/ext_image_robustness.api"
@@ -296,6 +297,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_image_robustness"] = true
   supported.ExtensionNames["VK_EXT_provoking_vertex"] = true
   supported.ExtensionNames["VK_EXT_transform_feedback"] = true
+  supported.ExtensionNames["VK_KHR_shader_terminate_invocation"] = true
   return supported
 }
 
