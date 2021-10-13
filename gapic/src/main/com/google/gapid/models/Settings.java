@@ -209,6 +209,10 @@ public class Settings {
     return proto.getPerfettoOrBuilder();
   }
 
+  public SettingsProto.FuchsiaTracingOrBuilder fuchsiaTracing() {
+    return proto.getFuchsiaTracingOrBuilder();
+  }
+
   public SettingsProto.Window.Builder writeWindow() {
     return proto.getWindowBuilder();
   }
@@ -235,6 +239,10 @@ public class Settings {
 
   public SettingsProto.Perfetto.Builder writePerfetto() {
     return proto.getPerfettoBuilder();
+  }
+
+  public SettingsProto.FuchsiaTracing.Builder writeFuchsiaTracing() {
+    return proto.getFuchsiaTracingBuilder();
   }
 
   public SettingsProto.DeviceValidation.Builder writeDeviceValidation() {

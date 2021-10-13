@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.perfetto.views.FuchsiaTraceConfigDialog.showFuchsiaConfigDialog;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfig;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfigSummary;
 import static com.google.gapid.perfetto.views.TraceConfigDialog.showPerfettoConfigDialog;
@@ -50,6 +51,7 @@ import com.google.gapid.models.Devices.DeviceValidationResult;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
+import com.google.gapid.perfetto.views.FuchsiaTraceConfigDialog;
 import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
@@ -312,6 +314,7 @@ public class TracerDialog {
       private static final String DURATION_PERFETTO_UNIT = "Seconds";
       private static final String START_AT_TIME_UNIT = "Seconds";
       private static final String PERFETTO_LABEL = "Profile Config: ";
+      private static final String FUCHSIA_LABEL = "Fuchsia Trace Config: ";
       // Quote 'GPU activity' in the warning message to match the config panel tickbox title.
       private static final String EMPTY_APP_WITH_RENDER_STAGE =
           "Warning: cannot record 'GPU activity' when no application is selected";
@@ -347,8 +350,8 @@ public class TracerDialog {
       private final Button includeUnsupportedExtensions;
       private final Button loadValidationLayer;
       private final Button clearCache;
-      private final Composite perfettoConfig;
-      private final Label perfettoConfigLabel;
+      private final Composite systemTracingConfig;
+      private final Label systemTracingConfigLabel;
       private final FileTextbox.Directory directory;
       private final Label directoryLabel;
       protected final Text file;
@@ -518,19 +521,24 @@ public class TracerDialog {
         loadValidationLayer.setEnabled(false);
         loadValidationLayer.setVisible(enableLoadValidationLayer.get());
 
-        perfettoConfig = withLayoutData(
+        systemTracingConfig = withLayoutData(
             createComposite(optGroup, withMargin(new GridLayout(2, false), 5, 0)),
             withSpans(new GridData(GridData.FILL_HORIZONTAL), 2, 1));
-        perfettoConfigLabel = createLabel(
-            perfettoConfig, PERFETTO_LABEL + getConfigSummary(models.settings, getPerfettoCaps()));
-        Widgets.createButton(perfettoConfig, "Configure", e -> {
-          showPerfettoConfigDialog(getShell(), models, widgets, getPerfettoCaps());
+        systemTracingConfigLabel = createLabel(systemTracingConfig, PERFETTO_LABEL);
+        Widgets.createButton(systemTracingConfig, "Configure", e -> {
+          DeviceCaptureInfo dev = getSelectedDevice();
+          if (dev != null && dev.isFuchsia()) {
+            showFuchsiaConfigDialog(getShell(), models, widgets);
+          } else {
+            showPerfettoConfigDialog(getShell(), models, widgets, getPerfettoCaps(dev));
+          }
+
           if (!isDisposed()) {
-            updatePerfettoConfigLabel(models.settings);
+            updateSystemTracingConfigLabel(models.settings, dev);
             updateEmptyAppWithRenderStageWarning(models.settings);
           }
         });
-        perfettoConfig.setVisible(false);
+        systemTracingConfig.setVisible(false);
 
         Group outGroup = withLayoutData(
             createGroup(this, "Output", new GridLayout(2, false)),
@@ -689,7 +697,7 @@ public class TracerDialog {
         cwd.setEnabled(config != null && config.getCanSpecifyCwd());
         envVars.setEnabled(config != null && config.getCanSpecifyEnv());
         clearCache.setEnabled(config != null && config.getHasCache());
-        updatePerfettoConfigLabel(settings);
+        updateSystemTracingConfigLabel(settings, dev);
 
         if (dev != null) {
           updateOnConfigChange(settings, settings.trace(), getSelectedType(), dev);
@@ -809,7 +817,7 @@ public class TracerDialog {
         durationUnit.setVisible(maxDuration > 1);
         durationUnit.requestLayout();
 
-        perfettoConfig.setVisible(isSystem && !dev.isFuchsia());
+        systemTracingConfig.setVisible(isSystem);
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
@@ -904,10 +912,15 @@ public class TracerDialog {
         }
       }
 
-      private void updatePerfettoConfigLabel(Settings settings) {
-        perfettoConfigLabel.setText(
-            PERFETTO_LABEL + getConfigSummary(settings, getPerfettoCaps()));
-        perfettoConfigLabel.requestLayout();
+      private void updateSystemTracingConfigLabel(Settings settings, DeviceCaptureInfo dev) {
+        if (dev != null && dev.isFuchsia()) {
+          systemTracingConfigLabel.setText(
+              FUCHSIA_LABEL + FuchsiaTraceConfigDialog.getConfigSummary(settings));
+        } else {
+          systemTracingConfigLabel.setText(
+              PERFETTO_LABEL + getConfigSummary(settings, getPerfettoCaps(dev)));
+        }
+        systemTracingConfigLabel.requestLayout();
       }
 
       private void updateEmptyAppWithRenderStageWarning(Settings settings) {
@@ -1116,12 +1129,14 @@ public class TracerDialog {
 
         if (type == TraceType.System) {
           options.setDuration(duration.getSelection());
-          if (!dev.isFuchsia()) {
+          if (dev.isFuchsia()) {
+            options.setFuchsiaTraceConfig(FuchsiaTraceConfigDialog.getConfig(settings));
+          } else {
             int durationMs = duration.getSelection() * 1000;
             // TODO: this isn't really unlimited.
             durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
             options.setPerfettoConfig(
-                getConfig(settings, getPerfettoCaps(), traceTarget.getText(), durationMs));
+                getConfig(settings, getPerfettoCaps(dev), traceTarget.getText(), durationMs));
           }
         }
 
@@ -1167,8 +1182,7 @@ public class TracerDialog {
         return sel.isEmpty() ? null : ((TraceType)sel.getFirstElement());
       }
 
-      protected Device.PerfettoCapability getPerfettoCaps() {
-        DeviceCaptureInfo dev = getSelectedDevice();
+      protected Device.PerfettoCapability getPerfettoCaps(DeviceCaptureInfo dev) {
         return (dev == null) ? Device.PerfettoCapability.getDefaultInstance() :
             dev.device.getConfiguration().getPerfettoCapability();
       }

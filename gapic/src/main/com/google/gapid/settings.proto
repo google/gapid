@@ -183,6 +183,10 @@ message Perfetto {
   bool use_custom = 7;
 }
 
+message FuchsiaTracing {
+  repeated string categories = 1;
+}
+
 message Settings {
   int32 version = 1;
   Window window = 2;
@@ -193,6 +197,7 @@ message Settings {
   Trace trace = 7;
   Perfetto perfetto = 8;
   DeviceValidation device_validation = 9;
+  FuchsiaTracing fuchsia_tracing = 10;
 }
 
 // DeviceValidation contains the list of validated devices.
