@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/gapis/service"
 )
 
 // Device extends the bind.Device interface with capabilities specific to Fuchsia devices.
@@ -33,7 +34,7 @@ type Device interface {
 	TraceProviders(ctx context.Context) ([]string, error)
 
 	// StartTrace starts a Fuchsia trace.
-	StartTrace(ctx context.Context, traceFile file.Path, traceCategories []string, stop task.Signal, ready task.Task) error
+	StartTrace(ctx context.Context, traceOptions *service.TraceOptions, traceFile file.Path, stop task.Signal, ready task.Task) error
 
 	// StopTrace stops a Fuchsia trace.
 	StopTrace(ctx context.Context, traceFile file.Path) error

@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
@@ -49,7 +50,7 @@ func (s *traceSession) Capture(ctx context.Context, start task.Signal, stop task
 	// Create trace file.
 	traceFile, err := file.Temp()
 	if err != nil {
-		return 0, log.Err(ctx, nil, "Temp file creation")
+		return 0, log.Err(ctx, err, "Trace Temp file creation")
 	}
 	defer file.Remove(traceFile)
 
@@ -58,16 +59,21 @@ func (s *traceSession) Capture(ctx context.Context, start task.Signal, stop task
 
 	// Verify defer start option.
 	if s.options.DeferStart && !start.Wait(ctx) {
-		return 0, log.Err(ctx, nil, "Cancelled")
+		return 0, log.Err(ctx, nil, "Trace Cancelled")
 	}
 
 	// Initiate tracing.
-	if err := s.device.StartTrace(ctx, traceFile, nil, stop, ready); err != nil {
+	if err := s.device.StartTrace(ctx, s.options, traceFile, stop, ready); err != nil {
 		return 0, err
 	}
 
 	// Wait for capture to stop.
-	stop.Wait(ctx)
+	duration := time.Duration(float64(s.options.Duration) * float64(time.Second))
+	if duration > 0 {
+		stop.TryWait(ctx, duration)
+	} else {
+		stop.Wait(ctx)
+	}
 
 	// Stop tracing.
 	if err := s.device.StopTrace(ctx, traceFile); err != nil {

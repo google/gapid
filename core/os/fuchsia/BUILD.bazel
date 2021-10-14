@@ -24,5 +24,6 @@ go_library(
         "//core/os/device/bind:go_default_library",
         "//core/os/file:go_default_library",
         "//core/os/shell:go_default_library",
+        "//gapis/service:go_default_library",
     ],
 )

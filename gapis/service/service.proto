@@ -1429,6 +1429,8 @@ message TraceOptions {
   string process_name = 27;
   // Load the Vulkan validation layer during capture
   bool load_validation_layer = 28;
+  // The config options to use if doing a Fuchsia trace.
+  FuchsiaTraceConfig fuchsia_trace_config = 29;
 }
 
 enum TraceEvent {
@@ -1512,4 +1514,9 @@ message ValidateDeviceRequest {
 
 message ValidateDeviceResponse {
   Error error = 1;
+}
+
+message FuchsiaTraceConfig {
+  // Tracing categories per Fuchsia's ffx tool.
+  repeated string categories = 1;
 }

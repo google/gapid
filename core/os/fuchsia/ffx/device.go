@@ -189,7 +189,15 @@ func ParseDevices(ctx context.Context, stdout string) (map[string]bind.Status, e
 	devices := make(map[string]bind.Status, len(targetJSON))
 	for _, targetMap := range targetJSON {
 		if targetName, ok := targetMap["nodename"].(string); ok {
-			devices[targetName] = bind.Online
+			if rcsStatus, ok := targetMap["rcs_state"].(string); ok {
+				if strings.ToUpper(rcsStatus) == "Y" {
+					devices[targetName] = bind.Online
+				} else {
+					log.I(ctx, "Skipping unreachable Fuchsia device: %v", targetName)
+				}
+			} else {
+				return nil, ErrInvalidDeviceList
+			}
 		} else {
 			return nil, ErrInvalidDeviceList
 		}

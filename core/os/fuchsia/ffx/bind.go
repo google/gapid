@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/google/gapid/core/event/task"
@@ -26,6 +27,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/fuchsia"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/gapis/service"
 )
 
 // binding represents an attached Fuchsia device.
@@ -116,20 +118,25 @@ func (b *binding) TraceProviders(ctx context.Context) ([]string, error) {
 }
 
 // StartTrace starts a Fuchsia trace.
-func (b *binding) StartTrace(ctx context.Context, traceFile file.Path, traceCategories []string, stop task.Signal, ready task.Task) error {
+func (b *binding) StartTrace(ctx context.Context, options *service.TraceOptions, traceFile file.Path, stop task.Signal, ready task.Task) error {
 	var categoriesArg string
-	for _, category := range traceCategories {
-		if len(categoriesArg) > 0 {
-			categoriesArg += ","
-		}
-		categoriesArg += category
-	}
 
-	var cmd shell.Cmd
-	if len(categoriesArg) > 0 {
-		cmd = b.Command("trace", "start", "--output", traceFile.System(), "--categories", categoriesArg)
-	} else {
-		cmd = b.Command("trace", "start", "--output", traceFile.System())
+	// Initialize shell command.
+	cmd := b.Command("trace", "start", "--output", traceFile.System())
+
+	// Extract trace options and append arguments to command.
+	if options != nil {
+		if durationSecs := int(options.Duration); durationSecs > 0 {
+			cmd = cmd.With("--duration", strconv.Itoa(durationSecs))
+		}
+
+		// ffx expects a comma delimited list of trace categories.
+		if fuchsiaConfig := options.GetFuchsiaTraceConfig(); fuchsiaConfig != nil {
+			categoriesArg = strings.Join(fuchsiaConfig.Categories, ",")
+			if len(categoriesArg) > 0 {
+				cmd = cmd.With("--categories", categoriesArg)
+			}
+		}
 	}
 
 	stdout, err := cmd.Call(ctx)
