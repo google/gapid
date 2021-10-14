@@ -333,6 +333,7 @@ public class Devices {
       case Linux: sb.append("Linux"); break;
       case Windows: sb.append("Windows"); break;
       case OSX: sb.append("MacOS"); break;
+      case Fuchsia: sb.append("Fuchsia"); break;
       default: sb.append("Unknown OS"); break;
     }
     if (!os.getName().isEmpty()) {
