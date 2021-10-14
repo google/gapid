@@ -78,6 +78,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.widgets.Table;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -95,7 +96,7 @@ public class TextureList extends Composite
 
   private final Models models;
   private final LoadablePanel<SashForm> loading;
-  private final TableViewer textureTable;
+  private final TableViewer tableViewer;
   protected final ImageProvider imageProvider;
   private final TextureView.TextureWidget textureView;
 
@@ -109,10 +110,10 @@ public class TextureList extends Composite
     SashForm splitter = loading.getContents();
 
     Composite tableAndOption = createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
-    textureTable = createTableViewer(tableAndOption, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
-    textureTable.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    imageProvider = new ImageProvider(models, textureTable, widgets.loading);
-    initTextureSelector(textureTable, imageProvider);
+    tableViewer = createTableViewer(tableAndOption, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
+    tableViewer.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    imageProvider = new ImageProvider(models, tableViewer, widgets.loading);
+    initTextureSelector(tableViewer, imageProvider);
     Composite options =
         createComposite(tableAndOption, filling(new RowLayout(SWT.HORIZONTAL), true, false));
     Button showDeleted = createCheckbox(options, "Show deleted textures", true);
@@ -141,12 +142,12 @@ public class TextureList extends Composite
       }
     };
 
-    textureTable.getTable().addListener(SWT.Selection, e -> updateSelection());
+    tableViewer.getTable().addListener(SWT.Selection, e -> updateSelection());
     showDeleted.addListener(SWT.Selection, e -> {
       if (showDeleted.getSelection()) {
-        textureTable.removeFilter(filterDeleted);
+        tableViewer.removeFilter(filterDeleted);
       } else {
-        textureTable.addFilter(filterDeleted);
+        tableViewer.addFilter(filterDeleted);
       }
     });
   }
@@ -207,10 +208,10 @@ public class TextureList extends Composite
 
   @Override
   public void onTextureSelected(Service.Resource texture) {
-    TableItem[] items = textureTable.getTable().getItems();
+    TableItem[] items = tableViewer.getTable().getItems();
 
     // Do nothing if texture is already selected.
-    int selection = textureTable.getTable().getSelectionIndex();
+    int selection = tableViewer.getTable().getSelectionIndex();
     if (texture != null && selection >= 0) {
       Data data = (Data)items[selection].getData();
       if (data.info.getID().equals(texture.getID())) {
@@ -225,13 +226,13 @@ public class TextureList extends Composite
       for (int i = 0; i < items.length; i++) {
         Data data = (Data)(items[i].getData());
         if (data.info.getID().equals(texture.getID())) {
-          textureTable.getTable().setSelection(items[i]);
+          tableViewer.getTable().setSelection(items[i]);
           break;
         }
       }
       textureView.loadTexture(texture);
     } else {
-      textureTable.setSelection(StructuredSelection.EMPTY);
+      tableViewer.setSelection(StructuredSelection.EMPTY);
       textureView.clear();
     }
   }
@@ -250,9 +251,11 @@ public class TextureList extends Composite
       loading.showMessage(Info, Messages.SELECT_COMMAND);
       clear();
     } else {
+      Table table = tableViewer.getTable();
+
       // When comparator is reset, the table is refreshed, and early image disposal will introduce null error.
-      ViewerComparator comparator = textureTable.getComparator();
-      textureTable.setComparator(null);
+      ViewerComparator comparator = tableViewer.getComparator();
+      tableViewer.setComparator(null);
 
       imageProvider.reset();
 
@@ -262,20 +265,19 @@ public class TextureList extends Composite
       Map<String, Data> mapped = textures.stream()
           .collect(toMap(Data::getResourceId, identity()));
 
-      textureTable.setInput(textures);
-      packColumns(textureTable.getTable());
-      textureTable.setComparator(comparator);
+      tableViewer.setInput(textures);
+      tableViewer.setComparator(comparator);
 
       if (textures.isEmpty()) {
         loading.showMessage(Info, Messages.NO_TEXTURES);
       } else {
         loading.stopLoading();
         onTextureSelected(models.resources.getSelectedTexture());
+        Widgets.Refresher refresher = withAsyncRefresh(tableViewer, () -> packColumns(table));
 
-        Widgets.Refresher refresher = withAsyncRefresh(textureTable);
         Rpc.listen(models.resources.loadResources(Path.ResourceType.Texture),
             new UiCallback<Service.MultiResourceData, Map<String, Data.AdditionalInfo>>(
-                textureTable.getTable(), LOG) {
+                table, LOG) {
           @Override
           protected Map<String, Data.AdditionalInfo> onRpcThread(
               Result<Service.MultiResourceData> result) throws RpcException, ExecutionException {
@@ -304,7 +306,7 @@ public class TextureList extends Composite
         });
         Rpc.listen(models.images.getAllTextureThumbnails(command),
             new UiCallback<Service.MultiResourceThumbnail, Map<Data, Image.Info>>(
-                textureTable.getTable(), LOG) {
+                table, LOG) {
           @Override
           protected Map<Data, Image.Info> onRpcThread(
               Result<Service.MultiResourceThumbnail> result) throws RpcException, ExecutionException {
@@ -334,16 +336,16 @@ public class TextureList extends Composite
   }
 
   private void clear() {
-    textureTable.setInput(Collections.emptyList());
-    textureTable.getTable().requestLayout();
+    tableViewer.setInput(Collections.emptyList());
+    tableViewer.getTable().requestLayout();
     imageProvider.reset();
   }
 
   private void updateSelection() {
     Service.Resource selectedTexture = null;
-    int selection = textureTable.getTable().getSelectionIndex();
+    int selection = tableViewer.getTable().getSelectionIndex();
     if (selection >= 0) {
-      selectedTexture = ((Data)textureTable.getElementAt(selection)).info;
+      selectedTexture = ((Data)tableViewer.getElementAt(selection)).info;
     }
     models.resources.selectTexture(selectedTexture);
     textureView.loadTexture(selectedTexture);
