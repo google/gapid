@@ -16,6 +16,7 @@ package ffx
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -59,6 +60,47 @@ func ffx() (file.Path, error) {
 		"The \"ffx\" tool, from the Fuchsia SDK, is required for Fuchsia device profiling.\n")
 }
 
+// DeviceInfo implements the fuchsia.Device interface.
+func (b *binding) DeviceInfo(ctx context.Context) (map[string]string, error) {
+	stdout, err := b.Command("target", "show", "--json").Call(ctx)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "FFX command failed: "+stdout)
+	}
+
+	info := []map[string]interface{}{}
+	if err := json.Unmarshal([]byte(stdout), &info); err != nil {
+		return nil, err
+	}
+
+	properties := map[string]string{}
+	warn := false
+	for _, parent := range info {
+		group, _ := parent["label"].(string)
+		if children, ok := parent["child"].([]interface{}); ok {
+			for _, child := range children {
+				if child, ok := child.(map[string]interface{}); ok {
+					label, _ := child["label"].(string)
+					value, _ := child["value"].(string)
+
+					if value = strings.TrimSpace(value); value != "" {
+						properties[group+"."+label] = value
+					}
+				} else {
+					warn = true
+				}
+			}
+		} else {
+			warn = true
+		}
+	}
+
+	if warn {
+		log.W(ctx, "Unexpected JSON output for device info command: \n%s", stdout)
+	}
+	return properties, nil
+}
+
+// Command implements the fuchsia.Device interface.
 func (b *binding) Command(name string, args ...string) shell.Cmd {
 	return shell.Command(name, args...).On(deviceTarget{b})
 }
@@ -83,8 +125,7 @@ func (b *binding) augmentFFXCommand(cmd shell.Cmd) (shell.Cmd, error) {
 	return cmd, nil
 }
 
-func (b *binding) CanTrace() bool { return true }
-
+// TraceProviders implements the fuchsia.Device interface.
 func (b *binding) TraceProviders(ctx context.Context) ([]string, error) {
 	exe, err := ffx()
 	if err != nil {
@@ -117,7 +158,7 @@ func (b *binding) TraceProviders(ctx context.Context) ([]string, error) {
 	return providers, nil
 }
 
-// StartTrace starts a Fuchsia trace.
+// StartTrace implements the fuchsia.Device interface and starts a Fuchsia trace.
 func (b *binding) StartTrace(ctx context.Context, options *service.TraceOptions, traceFile file.Path, stop task.Signal, ready task.Task) error {
 	var categoriesArg string
 
@@ -151,7 +192,7 @@ func (b *binding) StartTrace(ctx context.Context, options *service.TraceOptions,
 	return nil
 }
 
-// StopTrace stops a Fuchsia trace.
+// StopTrace implements the fuchsia.Device interface and stops a Fuchsia trace.
 func (b *binding) StopTrace(ctx context.Context, traceFile file.Path) error {
 	cmd := b.Command("trace", "stop", "--output", traceFile.System())
 

@@ -107,8 +107,7 @@ func newDevice(ctx context.Context, serial string) (*binding, error) {
 	d := &binding{
 		Simple: bind.Simple{
 			To: &device.Instance{
-				Serial: serial,
-				// TODO: change "Fuchsia" to a device-specific name.
+				Serial:        serial,
 				Name:          "Fuchsia",
 				Configuration: &device.Configuration{OS: &device.OS{Kind: device.Fuchsia}},
 			},
@@ -116,7 +115,36 @@ func newDevice(ctx context.Context, serial string) (*binding, error) {
 		},
 	}
 
-	// TODO: fill in d.To.Configuration defined in device.proto
+	properties, err := d.DeviceInfo(ctx)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed getting device info")
+	}
+
+	product, _ := properties["build.product"]
+	board, _ := properties["build.board"]
+	if product != "" {
+		if board != "" {
+			d.To.Configuration.OS.Name = product + "." + board
+		} else {
+			d.To.Configuration.OS.Name = product
+		}
+	} else if board != "" {
+		d.To.Configuration.OS.Name = board
+	}
+
+	if version, ok := properties["build.version"]; ok {
+		d.To.Configuration.OS.Build = version
+	}
+
+	if name, ok := properties["product.name"]; ok {
+		d.To.Configuration.Hardware = &device.Hardware{Name: name}
+		d.To.Name = name
+	} else if model := properties["product.model"]; ok {
+		d.To.Configuration.Hardware = &device.Hardware{Name: model}
+		d.To.Name = model
+	}
+
+	// TODO: fill in rest of d.To.Configuration defined in device.proto
 
 	d.Instance().GenID()
 

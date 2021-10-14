@@ -27,6 +27,10 @@ import (
 // Device extends the bind.Device interface with capabilities specific to Fuchsia devices.
 type Device interface {
 	bind.Device
+
+	// DeviceInfo returns a map of properties for this device.
+	DeviceInfo(ctx context.Context) (map[string]string, error)
+
 	// Command is a helper that builds a shell.Cmd with the device as its target.
 	Command(name string, args ...string) shell.Cmd
 
