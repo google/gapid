@@ -404,6 +404,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
             _ = as!VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -476,6 +479,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
             write(as!VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
@@ -636,6 +642,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
             _ = as!VkPhysicalDeviceTransformFeedbackPropertiesEXT*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: {
+            _ = as!VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -779,6 +788,17 @@ sub void GetPhysicalDeviceProperties2(
                 TransformFeedbackStreamsLinesTriangles: ext.transformFeedbackStreamsLinesTriangles,
                 TransformFeedbackRasterizationStreamSelect: ext.transformFeedbackRasterizationStreamSelect,
                 TransformFeedbackDraw: ext.transformFeedbackDraw,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: {
+              ext := as!VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT*(next.Ptr)[0]
+              phyDev.PhysicalDeviceBlendOperationAdvancedPropertiesEXT = new!PhysicalDeviceBlendOperationAdvancedPropertiesEXT(
+                AdvancedBlendMaxColorAttachments: ext.advancedBlendMaxColorAttachments,
+                AdvancedBlendIndependentBlend: ext.advancedBlendIndependentBlend,
+                AdvancedBlendNonPremultipliedSrcColor: ext.advancedBlendNonPremultipliedSrcColor,
+                AdvancedBlendNonPremultipliedDstColor: ext.advancedBlendNonPremultipliedDstColor,
+                AdvancedBlendCorrelatedOverlap: ext.advancedBlendCorrelatedOverlap,
+                AdvancedBlendAllOperations: ext.advancedBlendAllOperations,
               )
             }
           }

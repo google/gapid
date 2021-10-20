@@ -926,6 +926,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceBlendOperationAdvancedFeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT,
+				pNext,
+				d.PhysicalDeviceBlendOperationAdvancedFeaturesEXT().AdvancedBlendCoherentOperations(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
@@ -2690,6 +2699,19 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 
 	colorBlendState := NewVkPipelineColorBlendStateCreateInfoᶜᵖ(memory.Nullptr)
 	if !gp.ColorBlendState().IsNil() {
+		pNext := NewVoidᶜᵖ(memory.Nullptr)
+		if !gp.ColorBlendState().AdvancedState().IsNil() {
+			pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+				NewVkPipelineColorBlendAdvancedStateCreateInfoEXT(
+					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT, // sType
+					pNext, // pNext
+					gp.ColorBlendState().AdvancedState().SrcPremultiplied(), // srcPremultiplied
+					gp.ColorBlendState().AdvancedState().DstPremultiplied(), // dstPremultiplied
+					gp.ColorBlendState().AdvancedState().BlendOverlap(),     // blendOverlap
+				),
+			).Ptr())
+		}
+
 		colorblendAttachments := NewVkPipelineColorBlendAttachmentStateᶜᵖ(memory.Nullptr)
 		if gp.ColorBlendState().Attachments().Len() > 0 {
 			colorblendAttachments = NewVkPipelineColorBlendAttachmentStateᶜᵖ(sb.MustUnpackReadMap(gp.ColorBlendState().Attachments().All()).Ptr())
@@ -2697,7 +2719,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		colorBlendState = NewVkPipelineColorBlendStateCreateInfoᶜᵖ(sb.MustAllocReadData(
 			NewVkPipelineColorBlendStateCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, // sType
-				0,                                    // pNext
+				pNext,                                // pNext
 				0,                                    // flags
 				gp.ColorBlendState().LogicOpEnable(), // logicOpEnable
 				gp.ColorBlendState().LogicOp(),       // logicOp

@@ -122,6 +122,7 @@ import "extensions/ext_vertex_attribute_divisor.api"
 import "extensions/ext_image_robustness.api"
 import "extensions/ext_provoking_vertex.api"
 import "extensions/ext_transform_feedback.api"
+import "extensions/ext_blend_operation_advanced.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -298,6 +299,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_provoking_vertex"] = true
   supported.ExtensionNames["VK_EXT_transform_feedback"] = true
   supported.ExtensionNames["VK_KHR_shader_terminate_invocation"] = true
+  supported.ExtensionNames["VK_EXT_blend_operation_advanced"] = true
   return supported
 }
 

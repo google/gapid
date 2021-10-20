@@ -181,6 +181,8 @@ cmd void vkDestroyPipelineLayout(
   @unused VkLogicOp                                      LogicOp
   @unused map!(u32, VkPipelineColorBlendAttachmentState) Attachments
   @unused f32[4]                                         BlendConstants
+
+  @unused ref!PipelineColorBlendAdvancedStateCreateInfoEXT AdvancedState
 }
 
 @internal class DynamicData {
@@ -605,6 +607,14 @@ cmd VkResult vkCreateGraphicsPipelines(
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0]
           switch (sType) {
+            case VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO: {
+              ext := as!VkPipelineColorBlendAdvancedStateCreateInfoEXT*(next.Ptr)[0]
+              color_blend_data.AdvancedState = new!PipelineColorBlendAdvancedStateCreateInfoEXT(
+                SrcPremultiplied: ext.srcPremultiplied,
+                DstPremultiplied: ext.dstPremultiplied,
+                BlendOverlap: ext.blendOverlap,
+              )
+            }
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
