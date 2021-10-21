@@ -210,6 +210,8 @@ sub void readBoundIndexBuffer(u32 indexCount, u32 firstIndex) {
   lastDraw := lastDrawInfo()
   indexBuffer := lastDraw.BoundIndexBuffer.BoundBuffer.Buffer
   indexSize := switch (lastDraw.BoundIndexBuffer.Type) {
+    case VK_INDEX_TYPE_UINT8_EXT:
+      as!VkDeviceSize(1)
     case VK_INDEX_TYPE_UINT16:
       as!VkDeviceSize(2)
     case VK_INDEX_TYPE_UINT32:

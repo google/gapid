@@ -87,6 +87,9 @@
 
   // @extension("VK_EXT_blend_operation_advanced")
   @unused ref!PhysicalDeviceBlendOperationAdvancedFeaturesEXT PhysicalDeviceBlendOperationAdvancedFeaturesEXT
+
+  // @extension("VK_ext_index_type_uint8")
+  @unused ref!PhysicalDeviceIndexTypeUint8FeaturesEXT PhysicalDeviceIndexTypeUint8FeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -311,6 +314,12 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           ext := as!VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*(next.Ptr)[0]
           object.PhysicalDeviceBlendOperationAdvancedFeaturesEXT = new!PhysicalDeviceBlendOperationAdvancedFeaturesEXT(
             AdvancedBlendCoherentOperations: ext.advancedBlendCoherentOperations,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceIndexTypeUint8FeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceIndexTypeUint8FeaturesEXT = new!PhysicalDeviceIndexTypeUint8FeaturesEXT(
+            IndexTypeUint8: ext.indexTypeUint8,
           )
         }
       }

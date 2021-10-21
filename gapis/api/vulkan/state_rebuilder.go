@@ -935,6 +935,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceIndexTypeUint8FeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceIndexTypeUint8FeaturesEXT(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT,
+				pNext,
+				d.PhysicalDeviceIndexTypeUint8FeaturesEXT().IndexTypeUint8(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),

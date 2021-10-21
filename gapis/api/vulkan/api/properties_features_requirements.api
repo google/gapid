@@ -407,6 +407,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
             _ = as!VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceIndexTypeUint8FeaturesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -482,6 +485,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
             write(as!VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceIndexTypeUint8FeaturesEXT*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
