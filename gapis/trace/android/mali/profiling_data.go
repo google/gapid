@@ -66,29 +66,6 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, ca
 	}, nil
 }
 
-func extractTraceHandles(ctx context.Context, replayHandles *[]int64, replayHandleType string, handleMapping map[uint64][]service.VulkanHandleMappingItem) {
-	for i, v := range *replayHandles {
-		handles, ok := handleMapping[uint64(v)]
-		if !ok {
-			log.E(ctx, "%v not found in replay: %v", replayHandleType, v)
-			continue
-		}
-
-		found := false
-		for _, handle := range handles {
-			if handle.HandleType == replayHandleType {
-				(*replayHandles)[i] = int64(handle.TraceValue)
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			log.E(ctx, "Incorrect Handle type for %v: %v", replayHandleType, v)
-		}
-	}
-}
-
 func processGpuSlices(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData_GpuSlices, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
@@ -127,16 +104,16 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 	// Grab all the column values. Depends on the order of columns selected in slicesQuery
 
 	contextIds := slicesColumns[0].GetLongValues()
-	extractTraceHandles(ctx, &contextIds, "VkDevice", handleMapping)
+	profile.ExtractTraceHandles(ctx, &contextIds, "VkDevice", handleMapping)
 
 	renderTargets := slicesColumns[1].GetLongValues()
-	extractTraceHandles(ctx, &renderTargets, "VkFramebuffer", handleMapping)
+	profile.ExtractTraceHandles(ctx, &renderTargets, "VkFramebuffer", handleMapping)
 
 	commandBuffers := slicesColumns[5].GetLongValues()
-	extractTraceHandles(ctx, &commandBuffers, "VkCommandBuffer", handleMapping)
+	profile.ExtractTraceHandles(ctx, &commandBuffers, "VkCommandBuffer", handleMapping)
 
 	renderPasses := slicesColumns[6].GetLongValues()
-	extractTraceHandles(ctx, &renderPasses, "VkRenderPass", handleMapping)
+	profile.ExtractTraceHandles(ctx, &renderPasses, "VkRenderPass", handleMapping)
 
 	frameIds := slicesColumns[2].GetLongValues()
 	submissionIds := slicesColumns[3].GetLongValues()

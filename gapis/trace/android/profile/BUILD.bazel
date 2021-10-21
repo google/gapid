@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["profile.go"],
+    srcs = [
+        "handles.go",
+        "profile.go",
+    ],
     importpath = "github.com/google/gapid/gapis/trace/android/profile",
     visibility = ["//visibility:public"],
     deps = [
