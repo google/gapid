@@ -237,11 +237,11 @@ func (mappingTransform *mappingExporter) processNotification(ctx context.Context
 	mappingTransform.notificationID = 0
 
 	if len(mappingTransform.path) > 0 {
-		printToFile2(ctx, mappingTransform.path, mappingTransform.mappings)
+		printMappingsToFile(ctx, mappingTransform.path, mappingTransform.mappings)
 	}
 }
 
-func printToFile2(ctx context.Context, path string, mappings *map[uint64][]service.VulkanHandleMappingItem) {
+func printMappingsToFile(ctx context.Context, path string, mappings *map[uint64][]service.VulkanHandleMappingItem) {
 	f, err := os.Create(path)
 	if err != nil {
 		log.E(ctx, "Failed to create mapping file %v: %v", path, err)
