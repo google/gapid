@@ -45,7 +45,6 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.StatusWatcher;
 import com.google.gapid.util.URLs;
-import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.views.StatusBar;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.LoadablePanel;
@@ -153,7 +152,7 @@ public class MainWindow extends ApplicationWindow {
       //schedules a periodic check to see if we should check for updates and if so, checks.
       showLoadingMessage("Watching for updates...");
     }
-    watchForUpdates(client, models);
+    models.updateWatcher.watchForUpdates();
 
     showLoadingMessage("Tracking server status...");
     trackServerStatus(client);
@@ -181,17 +180,6 @@ public class MainWindow extends ApplicationWindow {
           seen = 0;
         }
       }
-    });
-  }
-
-
-  private void watchForUpdates(Client client, Models models) {
-    new UpdateWatcher(models.settings, client, (release) -> {
-      scheduleIfNotDisposed(statusBar, () -> {
-        statusBar.setNotification("New update available", () -> {
-          Program.launch(release.getBrowserUrl());
-        });
-      });
     });
   }
 

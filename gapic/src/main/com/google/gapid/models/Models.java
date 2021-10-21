@@ -17,6 +17,7 @@ package com.google.gapid.models;
 
 import com.google.gapid.server.Client;
 import com.google.gapid.util.ExceptionHandler;
+import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.views.StatusBar;
 
 import org.eclipse.swt.widgets.Shell;
@@ -39,11 +40,13 @@ public class Models {
   public final Perfetto perfetto;
   public final Profile profile;
   public final StatusBar status; // The "model" part of this "widget".
+  public final UpdateWatcher updateWatcher;
 
   public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
       Devices devices, CommandStream commands, Resources resources,
       ApiState state, Reports reports, ImagesModel images, ConstantSets constants, Geometries geos,
-      Memory memory, MemoryTypes types, Perfetto perfetto, Profile profile, StatusBar status) {
+      Memory memory, MemoryTypes types, Perfetto perfetto, Profile profile, StatusBar status,
+      UpdateWatcher updateWatcher) {
     this.settings = settings;
     this.analytics = analytics;
     this.follower = follower;
@@ -61,6 +64,7 @@ public class Models {
     this.perfetto = perfetto;
     this.profile = profile;
     this.status = status;
+    this.updateWatcher = updateWatcher;
   }
 
   public static Models create(
@@ -83,8 +87,10 @@ public class Models {
     MemoryTypes types = new MemoryTypes(client, devices, constants);
     Perfetto perfetto = new Perfetto(shell, analytics, client, capture, status);
     Profile profile = new Profile(shell, analytics, client, capture, devices, commands, settings);
+    UpdateWatcher updateWatcher = new UpdateWatcher(settings, client, status);
     return new Models(settings, analytics, follower, capture, devices, commands, resources, state,
-        reports, images, constants, geometries, memory, types, perfetto, profile, status);
+        reports, images, constants, geometries, memory, types, perfetto, profile, status,
+        updateWatcher);
   }
 
   public void reset() {

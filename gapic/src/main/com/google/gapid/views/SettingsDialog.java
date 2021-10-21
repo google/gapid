@@ -202,11 +202,10 @@ public class SettingsDialog extends DialogBase {
       prefs.setReportCrashes(allowCrashReports.getSelection());
       prefs.setCheckForUpdates(allowUpdateChecks.getSelection());
       prefs.setIncludeDevReleases(includeDevReleases.getSelection());
-      // When settings are saved, reset the update timer, to force update check on next start
-      prefs.setLastCheckForUpdates(0);
 
       models.settings.save();
       models.analytics.updateSettings();
+      models.updateWatcher.checkNow();
     }
   }
 }

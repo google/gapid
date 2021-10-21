@@ -67,8 +67,7 @@ public interface Messages {
       "Help improve Android GPU Inspector by sending usage statistics to Google";
   public static final String CRASH_REPORTING_OPTION =
       "Help Android GPU Inspector identify issues by sending crash reports to Google";
-  public static final String UPDATE_CHECK_OPTION = "Automatically check for AGI updates " +
-      "(please restart AGI to force an update check)";
+  public static final String UPDATE_CHECK_OPTION = "Automatically check for AGI updates";
   public static final String UPDATE_CHECK_DEV_RELEASE_OPTION = "Include unstable developer releases";
   public static final String PRIVACY_POLICY =
       "Google's <a href=\"TOS\">APIs Terms of Service</a> and <a href=\"PP\">Privacy Policy</a>" +

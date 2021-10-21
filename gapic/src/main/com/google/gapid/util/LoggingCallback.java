@@ -17,6 +17,7 @@ package com.google.gapid.util;
 
 import com.google.common.util.concurrent.FutureCallback;
 
+import java.util.concurrent.CancellationException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,13 +26,21 @@ import java.util.logging.Logger;
  */
 public abstract class LoggingCallback<T> implements FutureCallback<T> {
   private final Logger log;
+  private final boolean ignoreCancel;
 
   public LoggingCallback(Logger log) {
+    this(log, false);
+  }
+
+  public LoggingCallback(Logger log, boolean ignoreCancel) {
     this.log = log;
+    this.ignoreCancel = ignoreCancel;
   }
 
   @Override
   public void onFailure(Throwable t) {
-    log.log(Level.WARNING, "Unexpected and unhandled exception in async processing.", t);
+    if (!ignoreCancel || !(t instanceof CancellationException)) {
+      log.log(Level.WARNING, "Unexpected and unhandled exception in async processing.", t);
+    }
   }
 }

@@ -50,13 +50,24 @@ public class MoreFutures {
     return Futures.transformAsync(input, function, Scheduler.EXECUTOR);
   }
 
-  public static void logFailure(Logger log, ListenableFuture<?> future) {
-    addCallback(future, new LoggingCallback<Object>(log) {
+  public static <T> ListenableFuture<T> logFailure(Logger log, ListenableFuture<T> future) {
+    return logFailure(log, future, false);
+  }
+
+  public static <T> ListenableFuture<T> logFailureIgnoringCancel(
+      Logger log, ListenableFuture<T> future) {
+    return logFailure(log, future, true);
+  }
+
+  private static <T> ListenableFuture<T> logFailure(
+      Logger log, ListenableFuture<T> future, boolean ignoreCancel) {
+    addCallback(future, new LoggingCallback<Object>(log, ignoreCancel) {
       @Override
       public void onSuccess(Object result) {
         // Ignore.
       }
     });
+    return future;
   }
 
   public static <I, O> ListenableFuture<O> combine(

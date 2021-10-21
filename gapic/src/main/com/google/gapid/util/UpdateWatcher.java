@@ -15,16 +15,23 @@
  */
 package com.google.gapid.util;
 
-import static com.google.gapid.util.MoreFutures.logFailure;
+import static com.google.gapid.util.MoreFutures.logFailureIgnoringCancel;
+import static com.google.gapid.util.Scheduler.EXECUTOR;
+import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.server.Client;
+import com.google.gapid.views.StatusBar;
+
+import org.eclipse.swt.program.Program;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
@@ -37,30 +44,38 @@ public class UpdateWatcher {
 
   private final Settings settings;
   private final Client client;
-  private final Listener listener;
+  private final StatusBar statusBar;
+  private final AtomicBoolean scheduled = new AtomicBoolean(false);
+  private ListenableFuture<?> scheduledCheck;
 
-  /** Callback interface */
-  public interface Listener {
-    /** Called whenever a new release is found. */
-    void onNewReleaseAvailable(Service.Releases.AGIRelease release);
-  }
-
-  public UpdateWatcher(Settings settings, Client client, Listener listener) {
+  public UpdateWatcher(Settings settings, Client client, StatusBar statusBar) {
     this.settings = settings;
     this.client = client;
-    this.listener = listener;
-    if (settings.preferences().getUpdateAvailable()) {
-      logFailure(LOG, Scheduler.EXECUTOR.schedule(this::doCheck, 0, TimeUnit.MILLISECONDS));
-    } else {
-      scheduleCheck();
+    this.statusBar = statusBar;
+  }
+
+  public void watchForUpdates() {
+    if (!scheduled.getAndSet(true)) {
+      scheduleCheck(settings.preferences().getUpdateAvailable());
     }
   }
 
-  private void scheduleCheck() {
-    long now = System.currentTimeMillis();
-    long timeSinceLastUpdateMS = now - settings.preferences().getLastCheckForUpdates();
-    long delay = Math.max(CHECK_INTERVAL_MS - timeSinceLastUpdateMS, 0);
-    logFailure(LOG, Scheduler.EXECUTOR.schedule(this::doCheck, delay, TimeUnit.MILLISECONDS));
+  public void checkNow() {
+    if (scheduled.getAndSet(true)) {
+      scheduledCheck.cancel(false);
+    }
+    scheduleCheck(true);
+  }
+
+  private void scheduleCheck(boolean immediate) {
+    long delay = 0;
+    if (!immediate) {
+      long now = System.currentTimeMillis();
+      long timeSinceLastUpdateMS = now - settings.preferences().getLastCheckForUpdates();
+      delay = Math.max(CHECK_INTERVAL_MS - timeSinceLastUpdateMS, 0);
+    }
+    scheduledCheck =
+        logFailureIgnoringCancel(LOG, EXECUTOR.schedule(this::doCheck, delay, MILLISECONDS));
   }
 
   private void doCheck() {
@@ -73,7 +88,7 @@ public class UpdateWatcher {
         Service.Releases releases = future.get();
         if (GapidVersion.GAPID_VERSION.isOlderThan(releases.getAGI())) {
           prefs.setUpdateAvailable(true);
-          listener.onNewReleaseAvailable(releases.getAGI());
+          onNewReleaseAvailable(releases.getAGI());
         }
         prefs.setLatestAngleRelease(releases.getANGLE());
       } catch (InterruptedException | ExecutionException e) {
@@ -82,6 +97,14 @@ public class UpdateWatcher {
     }
     prefs.setLastCheckForUpdates(System.currentTimeMillis());
     settings.save();
-    scheduleCheck();
+    scheduleCheck(false);
+  }
+
+  private void onNewReleaseAvailable(Service.Releases.AGIRelease release) {
+    scheduleIfNotDisposed(statusBar, () -> {
+      statusBar.setNotification("New update available", () -> {
+        Program.launch(release.getBrowserUrl());
+      });
+    });
   }
 }
