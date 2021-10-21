@@ -91,7 +91,7 @@ type profileRequest struct {
 	traceOptions   *service.TraceOptions
 	handler        *replay.SignalHandler
 	buffer         *bytes.Buffer
-	handleMappings *map[uint64][]service.VulkanHandleMappingItem
+	handleMappings map[uint64][]service.VulkanHandleMappingItem
 	experiments    replay.ProfileExperiments
 	loopCount      int32
 }
@@ -190,8 +190,8 @@ func (a API) QueryProfile(
 	c := uniqueConfig()
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
-	handleMappings := make(map[uint64][]service.VulkanHandleMappingItem)
-	r := profileRequest{traceOptions, handler, &buffer, &handleMappings, experiments, loopCount}
+	handleMappings := map[uint64][]service.VulkanHandleMappingItem{}
+	r := profileRequest{traceOptions, handler, &buffer, handleMappings, experiments, loopCount}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err
@@ -203,6 +203,6 @@ func (a API) QueryProfile(
 		return nil, err
 	}
 
-	d, err := trace.ProcessProfilingData(ctx, intent.Device, intent.Capture, &buffer, &handleMappings, s)
+	d, err := trace.ProcessProfilingData(ctx, intent.Device, intent.Capture, &buffer, handleMappings, s)
 	return d, err
 }

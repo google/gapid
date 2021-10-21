@@ -138,7 +138,7 @@ func (t *fuchsiaTracer) GetDevice() bind.Device {
 
 // ProcessProfilingData takes a buffer for a Perfetto trace and translates it into
 // a ProfilingData
-func (t *fuchsiaTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, capture *path.Capture, handleMapping *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+func (t *fuchsiaTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, capture *path.Capture, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
 	return nil, nil
 }
 

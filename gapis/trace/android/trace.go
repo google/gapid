@@ -126,7 +126,7 @@ func (t *androidTracer) GetDevice() bind.Device {
 	return t.b
 }
 
-func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, capture *path.Capture, handleMappings *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, capture *path.Capture, handleMappings map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
 	// Load Perfetto trace and create trace processor.
 	rawData := make([]byte, buffer.Len())
 	_, err := buffer.Read(rawData)

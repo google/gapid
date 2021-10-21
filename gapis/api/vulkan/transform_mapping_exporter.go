@@ -43,7 +43,7 @@ type mappingHandle struct {
 }
 
 type mappingExporter struct {
-	mappings         *map[uint64][]service.VulkanHandleMappingItem
+	mappings         map[uint64][]service.VulkanHandleMappingItem
 	thread           uint64
 	path             string
 	traceValues      []mappingHandle
@@ -52,7 +52,7 @@ type mappingExporter struct {
 	numOfInitialCmds uint64
 }
 
-func newMappingExporter(ctx context.Context, numOfInitialCmds uint64, mappings *map[uint64][]service.VulkanHandleMappingItem) *mappingExporter {
+func newMappingExporter(ctx context.Context, numOfInitialCmds uint64, mappings map[uint64][]service.VulkanHandleMappingItem) *mappingExporter {
 	return &mappingExporter{
 		mappings:         mappings,
 		usedFrameBuffers: map[uint64]struct{}{},
@@ -61,9 +61,8 @@ func newMappingExporter(ctx context.Context, numOfInitialCmds uint64, mappings *
 }
 
 func newMappingExporterWithPrint(ctx context.Context, path string) *mappingExporter {
-	mapping := make(map[uint64][]service.VulkanHandleMappingItem)
 	return &mappingExporter{
-		mappings:       &mapping,
+		mappings:       map[uint64][]service.VulkanHandleMappingItem{},
 		thread:         0,
 		path:           path,
 		traceValues:    make([]mappingHandle, 0, 0),
@@ -220,8 +219,8 @@ func (mappingTransform *mappingExporter) processNotification(ctx context.Context
 			log.F(ctx, true, "Invalid Handle size %s: %d", handle.name, handle.size)
 		}
 
-		if _, ok := (*mappingTransform.mappings)[replayValue]; !ok {
-			(*mappingTransform.mappings)[replayValue] = make([]service.VulkanHandleMappingItem, 0, 0)
+		if _, ok := mappingTransform.mappings[replayValue]; !ok {
+			mappingTransform.mappings[replayValue] = make([]service.VulkanHandleMappingItem, 0, 0)
 		}
 
 		// Eliminate the framebuffers that are not marked.
@@ -229,8 +228,8 @@ func (mappingTransform *mappingExporter) processNotification(ctx context.Context
 			continue
 		}
 
-		(*mappingTransform.mappings)[replayValue] = append(
-			(*mappingTransform.mappings)[replayValue],
+		mappingTransform.mappings[replayValue] = append(
+			mappingTransform.mappings[replayValue],
 			service.VulkanHandleMappingItem{HandleType: handle.name, TraceValue: handle.traceValue, ReplayValue: replayValue})
 	}
 
@@ -241,7 +240,7 @@ func (mappingTransform *mappingExporter) processNotification(ctx context.Context
 	}
 }
 
-func printMappingsToFile(ctx context.Context, path string, mappings *map[uint64][]service.VulkanHandleMappingItem) {
+func printMappingsToFile(ctx context.Context, path string, mappings map[uint64][]service.VulkanHandleMappingItem) {
 	f, err := os.Create(path)
 	if err != nil {
 		log.E(ctx, "Failed to create mapping file %v: %v", path, err)
@@ -250,7 +249,7 @@ func printMappingsToFile(ctx context.Context, path string, mappings *map[uint64]
 
 	mappingsToFile := make([]string, 0, 0)
 
-	for _, v := range *mappings {
+	for _, v := range mappings {
 		for i := range v {
 			m := v[i]
 			mappingsToFile = append(mappingsToFile, fmt.Sprintf("%v(%v): %v\n", m.HandleType, m.TraceValue, m.ReplayValue))

@@ -102,7 +102,7 @@ func TraceConfiguration(ctx context.Context, device *path.Device) (*service.Devi
 	return t.TraceConfiguration(ctx)
 }
 
-func ProcessProfilingData(ctx context.Context, device *path.Device, capture *path.Capture, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+func ProcessProfilingData(ctx context.Context, device *path.Device, capture *path.Capture, buffer *bytes.Buffer, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
 	t, err := GetTracer(ctx, device)
 	if err != nil {
 		return nil, err

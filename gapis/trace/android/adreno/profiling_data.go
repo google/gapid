@@ -46,7 +46,7 @@ var (
 	renderPassSliceName = "Surface"
 )
 
-func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, desc *device.GpuCounterDescriptor, handleMapping *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, desc *device.GpuCounterDescriptor, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
 	slices, err := processGpuSlices(ctx, processor, capture, handleMapping, syncData)
 	if err != nil {
 		log.Err(ctx, err, "Failed to get GPU slices")
@@ -67,9 +67,9 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, ca
 	}, nil
 }
 
-func extractTraceHandles(ctx context.Context, replayHandles *[]int64, replayHandleType string, handleMapping *map[uint64][]service.VulkanHandleMappingItem) {
+func extractTraceHandles(ctx context.Context, replayHandles *[]int64, replayHandleType string, handleMapping map[uint64][]service.VulkanHandleMappingItem) {
 	for i, v := range *replayHandles {
-		handles, ok := (*handleMapping)[uint64(v)]
+		handles, ok := handleMapping[uint64(v)]
 		if !ok {
 			log.E(ctx, "%v not found in replay: %v", replayHandleType, v)
 			continue
@@ -125,7 +125,7 @@ func fixContextIds(contextIDs []int64) {
 	}
 }
 
-func processGpuSlices(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, handleMapping *map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData_GpuSlices, error) {
+func processGpuSlices(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData_GpuSlices, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "SQL query failed: %v", slicesQuery)
