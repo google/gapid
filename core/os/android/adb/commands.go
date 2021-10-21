@@ -588,7 +588,7 @@ func (b *binding) PrepareGpuProfiling(ctx context.Context, installedPackage *and
 	if err != nil {
 		return false, "", cleanup, err
 	}
-	if supported != "true" {
+	if supported != "true" && supported != "1" {
 		return false, "", cleanup, nil
 	}
 
