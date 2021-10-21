@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "handles.go",
         "profile.go",
+        "slices.go",
     ],
     importpath = "github.com/google/gapid/gapis/trace/android/profile",
     visibility = ["//visibility:public"],
@@ -13,6 +14,9 @@ go_library(
         "//core/math/f64:go_default_library",
         "//core/math/u64:go_default_library",
         "//core/os/device:go_default_library",
+        "//gapis/perfetto:go_default_library",
+        "//gapis/perfetto/service:go_default_library",
         "//gapis/service:go_default_library",
+        "//gapis/service/path:go_default_library",
     ],
 )
