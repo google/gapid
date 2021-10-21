@@ -69,8 +69,6 @@ public class Settings {
           .addAllWeights(Arrays.asList(1, 1, 4, 1, 3, 1))
           .addAllTabs(Arrays.asList("Filmstrip", "ApiCalls", "Framebuffer", "ApiState", "Memory"))
           .addAllHidden(Arrays.asList("Log")))
-      .setPreferences(SettingsProto.Preferences.newBuilder()
-          .setCheckForUpdates(true))
       .setUi(SettingsProto.UI.newBuilder()
           .setPerfetto(SettingsProto.UI.Perfetto.newBuilder()
               .setDrawerHeight(250))
