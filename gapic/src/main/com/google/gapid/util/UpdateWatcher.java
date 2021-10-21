@@ -17,17 +17,22 @@ package com.google.gapid.util;
 
 import static com.google.gapid.util.MoreFutures.logFailureIgnoringCancel;
 import static com.google.gapid.util.Scheduler.EXECUTOR;
+import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.eclipse.jface.dialogs.MessageDialog.openInformation;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.server.Client;
 import com.google.gapid.views.StatusBar;
 
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.program.Program;
+import org.eclipse.swt.widgets.Shell;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -56,31 +61,63 @@ public class UpdateWatcher {
 
   public void watchForUpdates() {
     if (!scheduled.getAndSet(true)) {
-      scheduleCheck(settings.preferences().getUpdateAvailable());
+      scheduleCheck(Listener.NULL_LISTENER, settings.preferences().getUpdateAvailable());
     }
   }
 
-  public void checkNow() {
+  public void checkNow(Listener listener) {
     if (scheduled.getAndSet(true)) {
       scheduledCheck.cancel(false);
     }
-    scheduleCheck(true);
+    scheduleCheck(listener, true);
   }
 
-  private void scheduleCheck(boolean immediate) {
+  public static void manualUpdateCheck(Shell shell, Models models) {
+    models.updateWatcher.checkNow(new Listener() {
+      @Override
+      public boolean forceCheck() {
+        return true;
+      }
+
+      @Override
+      public void onCompleted(Service.Releases releases) {
+        scheduleIfNotDisposed(shell, () -> {
+          if (GapidVersion.GAPID_VERSION.isOlderThan(releases.getAGI())) {
+            MessageDialog dialog = new MessageDialog(shell, Messages.UPDATE_CHECK_TITLE,
+                null, Messages.UPDATE_CHECK_UPDATE, MessageDialog.INFORMATION,
+                new String[] { "Download", "Ignore" }, 0);
+            if (dialog.open() == 0) {
+              // Download was clicked.
+              Program.launch(releases.getAGI().getBrowserUrl());
+            }
+          } else {
+            openInformation(shell, Messages.UPDATE_CHECK_TITLE, Messages.UPDATE_CHECK_NO_UPDATE);
+          }
+        });
+      }
+
+      @Override
+      public void onFailure(Throwable t) {
+        scheduleIfNotDisposed(shell, () ->
+        showErrorDialog(shell, models.analytics, "Failed to check for updates", t));
+      }
+    });
+  }
+
+  private void scheduleCheck(Listener listener, boolean immediate) {
     long delay = 0;
     if (!immediate) {
       long now = System.currentTimeMillis();
       long timeSinceLastUpdateMS = now - settings.preferences().getLastCheckForUpdates();
       delay = Math.max(CHECK_INTERVAL_MS - timeSinceLastUpdateMS, 0);
     }
-    scheduledCheck =
-        logFailureIgnoringCancel(LOG, EXECUTOR.schedule(this::doCheck, delay, MILLISECONDS));
+    scheduledCheck = logFailureIgnoringCancel(
+        LOG, EXECUTOR.schedule(() -> doCheck(listener), delay, MILLISECONDS));
   }
 
-  private void doCheck() {
+  private void doCheck(Listener listener) {
     SettingsProto.Preferences.Builder prefs = settings.writePreferences();
-    if (prefs.getCheckForUpdates()) {
+    if (listener.forceCheck() || prefs.getCheckForUpdates()) {
       ListenableFuture<Service.Releases> future =
           client.checkForUpdates(prefs.getIncludeDevReleases());
       prefs.setUpdateAvailable(false);
@@ -91,13 +128,16 @@ public class UpdateWatcher {
           onNewReleaseAvailable(releases.getAGI());
         }
         prefs.setLatestAngleRelease(releases.getANGLE());
-      } catch (InterruptedException | ExecutionException e) {
+        listener.onCompleted(releases);
+      } catch (InterruptedException e) {
         /* never mind */
+      } catch (ExecutionException e) {
+        listener.onFailure(e.getCause());
       }
     }
     prefs.setLastCheckForUpdates(System.currentTimeMillis());
     settings.save();
-    scheduleCheck(false);
+    scheduleCheck(Listener.NULL_LISTENER, false);
   }
 
   private void onNewReleaseAvailable(Service.Releases.AGIRelease release) {
@@ -106,5 +146,17 @@ public class UpdateWatcher {
         Program.launch(release.getBrowserUrl());
       });
     });
+  }
+
+  /**
+   * Callback interface for manual update checks.
+   */
+  @SuppressWarnings("unused")
+  public static interface Listener {
+    public static final Listener NULL_LISTENER = new Listener() { /* empty */ };
+
+    public default boolean forceCheck() { return false; }
+    public default void onCompleted(Service.Releases releases) { /* do nothing */ }
+    public default void onFailure(Throwable t) { /* do nothing */ }
   }
 }

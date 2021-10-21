@@ -45,6 +45,7 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.StatusWatcher;
 import com.google.gapid.util.URLs;
+import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.views.StatusBar;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.LoadablePanel;
@@ -401,9 +402,11 @@ public class MainWindow extends ApplicationWindow {
     manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp(models.analytics)));
     manager.add(MenuItems.HelpAbout.create(
         () -> showAbout(getShell(), models.analytics, widgets)));
-    manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models.analytics)));
+    manager.add(MenuItems.HelpUpdateCheck.create(
+        () -> UpdateWatcher.manualUpdateCheck(getShell(), models)));
     manager.add(MenuItems.HelpLicenses.create(
         () -> showLicensesDialog(getShell(), models.analytics, widgets.theme)));
+    manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models.analytics)));
     manager.add(MenuItems.HelpFileBug.create(
         () -> Program.launch(URLs.FILE_BUG_URL)));
     return manager;
@@ -480,8 +483,9 @@ public class MainWindow extends ApplicationWindow {
 
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
     HelpAbout("&About"),
-    HelpShowLogs("Open &Log Directory"),
+    HelpUpdateCheck("&Check for Updates"),
     HelpLicenses("&Licenses"),
+    HelpShowLogs("Open &Log Directory"),
     HelpFileBug("File a &Bug");
 
     public static final String FILE_ID = "file";

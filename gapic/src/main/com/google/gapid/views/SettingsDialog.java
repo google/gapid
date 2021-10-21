@@ -29,6 +29,7 @@ import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.Theme;
@@ -205,7 +206,7 @@ public class SettingsDialog extends DialogBase {
 
       models.settings.save();
       models.analytics.updateSettings();
-      models.updateWatcher.checkNow();
+      models.updateWatcher.checkNow(UpdateWatcher.Listener.NULL_LISTENER);
     }
   }
 }
