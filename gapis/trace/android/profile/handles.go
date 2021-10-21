@@ -22,8 +22,8 @@ import (
 )
 
 // ExtractTraceHandles translates the handles in the replayHandles array based on the mappings.
-func ExtractTraceHandles(ctx context.Context, replayHandles *[]int64, replayHandleType string, handleMapping map[uint64][]service.VulkanHandleMappingItem) {
-	for i, v := range *replayHandles {
+func ExtractTraceHandles(ctx context.Context, replayHandles []int64, replayHandleType string, handleMapping map[uint64][]service.VulkanHandleMappingItem) {
+	for i, v := range replayHandles {
 		handles, ok := handleMapping[uint64(v)]
 		if !ok {
 			log.E(ctx, "%v not found in replay: %v", replayHandleType, v)
@@ -33,7 +33,7 @@ func ExtractTraceHandles(ctx context.Context, replayHandles *[]int64, replayHand
 		found := false
 		for _, handle := range handles {
 			if handle.HandleType == replayHandleType {
-				(*replayHandles)[i] = int64(handle.TraceValue)
+				replayHandles[i] = int64(handle.TraceValue)
 				found = true
 				break
 			}

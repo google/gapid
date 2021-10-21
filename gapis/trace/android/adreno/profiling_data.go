@@ -133,16 +133,16 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 
 	contextIds := slicesColumns[0].GetLongValues()
 	fixContextIds(contextIds)
-	profile.ExtractTraceHandles(ctx, &contextIds, "VkDevice", handleMapping)
+	profile.ExtractTraceHandles(ctx, contextIds, "VkDevice", handleMapping)
 
 	renderTargets := slicesColumns[1].GetLongValues()
-	profile.ExtractTraceHandles(ctx, &renderTargets, "VkFramebuffer", handleMapping)
+	profile.ExtractTraceHandles(ctx, renderTargets, "VkFramebuffer", handleMapping)
 
 	commandBuffers := slicesColumns[5].GetLongValues()
-	profile.ExtractTraceHandles(ctx, &commandBuffers, "VkCommandBuffer", handleMapping)
+	profile.ExtractTraceHandles(ctx, commandBuffers, "VkCommandBuffer", handleMapping)
 
 	renderPasses := slicesColumns[6].GetLongValues()
-	profile.ExtractTraceHandles(ctx, &renderPasses, "VkRenderPass", handleMapping)
+	profile.ExtractTraceHandles(ctx, renderPasses, "VkRenderPass", handleMapping)
 
 	frameIds := slicesColumns[2].GetLongValues()
 	submissionIds := slicesColumns[3].GetLongValues()
