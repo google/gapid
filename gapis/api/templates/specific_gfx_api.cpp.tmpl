@@ -158,11 +158,6 @@
         {{if not (IsVoid $.Return.Type)}}
           {{Template "C++.ReturnType" $}} return_value = {{Template "Call" $}};
           GAPID_DEBUG("[%u]{{$name}} returned {{Template "C++.PrintfFormatCode" $.Return.Type}}", cmdLabel, return_value);
-          {{if eq $name "glGetError"}}
-            if (return_value != Gles::GLenum::GL_NO_ERROR) {
-              GAPID_ERROR("[%u]glGetError() returned: 0x%x", cmdLabel, return_value);
-            }
-          {{end}}
           if (pushReturn) {
             {{$ty := TypeOf $.Return.Type | Underlying | Unpack}}
             {{if IsSize $ty}}
