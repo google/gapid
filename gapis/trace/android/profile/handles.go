@@ -26,8 +26,17 @@ func ExtractTraceHandles(ctx context.Context, replayHandles []int64, replayHandl
 	for i, v := range replayHandles {
 		handles, ok := handleMapping[uint64(v)]
 		if !ok {
-			log.E(ctx, "%v not found in replay: %v", replayHandleType, v)
-			continue
+			// On some devices, when running in 32bit app compat mode, the handles
+			// reported through Perfetto have this extra bit set in the last nibble,
+			// which is typically all zeros. I.e. handles in the profiling data are
+			// of the form 0x???????4, while exposed by the API they are 0x???????0.
+			if (v & 0xf) == 4 {
+				handles, ok = handleMapping[uint64(v&^4)]
+			}
+			if !ok {
+				log.E(ctx, "%v not found in replay: %v", replayHandleType, v)
+				continue
+			}
 		}
 
 		found := false
