@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/perfetto"
 	"github.com/google/gapid/gapis/service"
@@ -71,7 +70,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 	queueSubmitColumns := queueSubmitQueryResult.GetColumns()
 	queueSubmitIds := queueSubmitColumns[0].GetLongValues()
 	queueSubmitCommandBuffers := queueSubmitColumns[1].GetLongValues()
-	submissionOrdering := make(map[int64]uint64)
+	submissionOrdering := make(map[int64]int)
 
 	order := 0
 	for i, v := range queueSubmitIds {
@@ -80,7 +79,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			log.W(ctx, "Spurious vkQueueSubmit slice with submission id %v", v)
 			continue
 		}
-		submissionOrdering[v] = uint64(order)
+		submissionOrdering[v] = order
 		order++
 	}
 
@@ -91,16 +90,17 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 		subOrder, ok := submissionOrdering[v]
 		if ok {
 			cb := uint64(sliceData.CommandBuffers[i])
-			key := api.CmdSubmissionKey{
+			key := sync.RenderPassKey{
 				subOrder, cb, uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i]),
 			}
 			// Create a new group for each main renderPass slice.
 			name := sliceData.Names[i]
-			if indices, ok := syncData.SubmissionIndices[key]; ok && (name == "vertex" || name == "fragment") {
-				sliceData.Names[i] = fmt.Sprintf("%v %v", indices[0], name)
+			indices := syncData.RenderPassLookup.Lookup(ctx, key)
+			if indices != nil && (name == "vertex" || name == "fragment") {
+				sliceData.Names[i] = fmt.Sprintf("%v %v", indices, name)
 				groupId = sliceData.NewGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
-					&path.Command{Capture: capture, Indices: indices[0]},
+					&path.Command{Capture: capture, Indices: indices},
 				)
 			}
 		} else {

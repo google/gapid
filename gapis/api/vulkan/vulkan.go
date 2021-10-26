@@ -414,13 +414,14 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		}
 	}
 
-	var walkCommandBuffer func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order uint64) ([]sync.SubcommandReference, []api.SubCmdIdx)
-	walkCommandBuffer = func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order uint64) ([]sync.SubcommandReference, []api.SubCmdIdx) {
+	var walkCommandBuffer func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order int) ([]sync.SubcommandReference, []api.SubCmdIdx)
+	walkCommandBuffer = func(cb CommandBufferObjectʳ, idx api.SubCmdIdx, id api.CmdID, order int) ([]sync.SubcommandReference, []api.SubCmdIdx) {
 		refs := make([]sync.SubcommandReference, 0)
 		subgroups := make([]api.SubCmdIdx, 0)
 		nextSubpass := 0
-		var currentRenderpassCmdSubmissionKey api.CmdSubmissionKey // For subpasses' reference.
 		canStartDrawGrouping := true
+
+		d.RenderPassLookup.AddCommandBuffer(ctx, order, cb.VulkanHandle().Handle(), idx)
 
 		for i := 0; i < cb.CommandReferences().Len(); i++ {
 			initialCommands, ok := st.initialCommands[cb.VulkanHandle()]
@@ -538,27 +539,14 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 			// connect a command and its correlated GPU slices.
 			switch args := GetCommandArgs(ctx, cb.CommandReferences().Get(uint32(i)), st).(type) {
 			case VkCmdBeginRenderPassArgsʳ:
-				rp := st.RenderPasses().Get(args.RenderPass())
 				if id.IsReal() {
-					submissionKey := api.CmdSubmissionKey{order, 0, 0, 0}
-					commandBufferKey := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), 0, 0}
-					d.SubmissionIndices[submissionKey] = []api.SubCmdIdx{idx[:len(idx)-1]}
-					d.SubmissionIndices[commandBufferKey] = []api.SubCmdIdx{idx}
-
-					key := api.CmdSubmissionKey{order, uint64(cb.VulkanHandle()), uint64(rp.VulkanHandle()), uint64(args.Framebuffer())}
-					currentRenderpassCmdSubmissionKey = key
-					if _, ok := d.SubmissionIndices[key]; ok {
-						d.SubmissionIndices[key] = append(d.SubmissionIndices[key], append(idx, uint64(i)))
-					} else {
-						d.SubmissionIndices[key] = []api.SubCmdIdx{append(idx, uint64(i))}
+					key := sync.RenderPassKey{
+						Submission:    order,
+						CommandBuffer: cb.VulkanHandle().Handle(),
+						RenderPass:    args.RenderPass().Handle(),
+						Framebuffer:   args.Framebuffer().Handle(),
 					}
-				}
-			case VkCmdNextSubpassArgsʳ:
-				key := currentRenderpassCmdSubmissionKey
-				if _, ok := d.SubmissionIndices[key]; ok {
-					d.SubmissionIndices[key] = append(d.SubmissionIndices[key], append(idx, uint64(i)))
-				} else {
-					d.SubmissionIndices[key] = []api.SubCmdIdx{append(idx, uint64(i))}
+					d.RenderPassLookup.AddRenderPass(ctx, key, nv)
 				}
 			}
 		}
@@ -575,7 +563,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		return refs, subgroups
 	}
 
-	order := uint64(0)
+	order := 0
 	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
 		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {

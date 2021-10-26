@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/perfetto"
 	"github.com/google/gapid/gapis/service"
@@ -106,39 +105,31 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 	}
 	queueSubmitColumns := queueSubmitQueryResult.GetColumns()
 	queueSubmitIds := queueSubmitColumns[0].GetLongValues()
-	submissionOrdering := make(map[int64]uint64)
+	submissionOrdering := make(map[int64]int)
 
 	for i, v := range queueSubmitIds {
-		submissionOrdering[v] = uint64(i)
+		submissionOrdering[v] = i
 	}
 
 	fixContextIds(sliceData.Contexts)
 	sliceData.MapIdentifiers(ctx, handleMapping)
-	subCommandGroupMap := make(map[api.CmdSubmissionKey]int)
 
 	groupId := int32(-1)
 	for i, v := range sliceData.Submissions {
 		subOrder, ok := submissionOrdering[v]
 		if ok {
 			cb := uint64(sliceData.CommandBuffers[i])
-			key := api.CmdSubmissionKey{
+			key := sync.RenderPassKey{
 				subOrder, cb, uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i]),
 			}
 			// Create a new group for each main renderPass slice.
-			if indices, ok := syncData.SubmissionIndices[key]; ok && sliceData.Names[i] == renderPassSliceName {
-				var idx []uint64
-				if c, ok := subCommandGroupMap[key]; ok { // Sometimes multiple renderPass slices shares the same renderPass and renderTarget.
-					idx = indices[c]
-				} else {
-					idx = indices[0]
-					subCommandGroupMap[key] = 0
-				}
+			idx := syncData.RenderPassLookup.Lookup(ctx, key)
+			if idx != nil && sliceData.Names[i] == renderPassSliceName {
 				sliceData.Names[i] = fmt.Sprintf("%v", idx)
 				groupId = sliceData.NewGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
 					&path.Command{Capture: capture, Indices: idx},
 				)
-				subCommandGroupMap[key]++
 			}
 		} else {
 			log.W(ctx, "Encountered submission ID mismatch %v", v)

@@ -25,7 +25,6 @@ go_library(
     deps = [
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
-        "//gapis/api:go_default_library",
         "//gapis/api/sync:go_default_library",
         "//gapis/perfetto:go_default_library",
         "//gapis/service:go_default_library",

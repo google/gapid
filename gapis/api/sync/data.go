@@ -93,8 +93,8 @@ type Data struct {
 	// SubcommandNames maps a SubCmdIdx to its corresponding string typed name.
 	// The names are especially useful for the virtual SubCmdRoot nodes, which are
 	// created to organize psubmits, command buffers, etc.
-	SubcommandNames   *api.SubCmdIdxTrie
-	SubmissionIndices map[api.CmdSubmissionKey][]api.SubCmdIdx
+	SubcommandNames  *api.SubCmdIdxTrie
+	RenderPassLookup *RenderPassLookup
 }
 
 type subCommandMarkerGroupTrie struct {
@@ -130,7 +130,7 @@ func NewData() *Data {
 		CmdSyncNodes:           map[api.CmdID]SyncNodeIdx{},
 		SubcommandLookup:       new(api.SubCmdIdxTrie),
 		SubcommandNames:        new(api.SubCmdIdxTrie),
-		SubmissionIndices:      map[api.CmdSubmissionKey][]api.SubCmdIdx{},
+		RenderPassLookup:       NewRenderPassLookup(),
 	}
 }
 
