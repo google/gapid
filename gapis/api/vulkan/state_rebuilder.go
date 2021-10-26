@@ -1037,8 +1037,8 @@ func (sb *stateBuilder) transferImageQueueFamilyOwnership(infos ...imageQueueFam
 		return NewVkImageMemoryBarrier(
 			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 			0, // pNext
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 			info.layout, // oldLayout
 			info.layout, // newLayout
 			oldFamily,   // srcQueueFamilyIndex
@@ -3645,8 +3645,8 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 				NewVkBufferMemoryBarrier(
 					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
 					0, // pNext
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 					queueFamilyIgnore,                // srcQueueFamilyIndex
 					queueFamilyIgnore,                // dstQueueFamilyIndex
 					src,                              // buffer
@@ -3676,8 +3676,8 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 				NewVkBufferMemoryBarrier(
 					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
 					0, // pNext
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 					oldFamilyIndex,                   // srcQueueFamilyIndex
 					newFamilyIndex,                   // dstQueueFamilyIndex
 					dst,                              // buffer

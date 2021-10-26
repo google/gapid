@@ -895,7 +895,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
                 img_barriers.push_back(VkImageMemoryBarrier{
                     VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                     nullptr,
-                    (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
+                    VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT |
+                        VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT,
                     VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
                     img_level->mLayout,
                     VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -922,7 +923,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
           img_barriers[i].msrcAccessMask =
               VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
           img_barriers[i].mdstAccessMask =
-              (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
+              VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT |
+              VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT;
           img_barriers[i].moldLayout =
               VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
           img_barriers[i].mnewLayout = old_layouts[i];

@@ -318,8 +318,8 @@ func ipImageSubresourceLayoutTransitionBarrier(sb *stateBuilder, imgObj ImageObj
 	return NewVkImageMemoryBarrier(
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
-		VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-		VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 		oldLayout,             // oldLayout
 		newLayout,             // newLayout
 		^uint32(0),            // srcQueueFamilyIndex

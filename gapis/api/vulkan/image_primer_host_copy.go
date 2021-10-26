@@ -273,8 +273,8 @@ func (kit ipHostCopyKit) BuildHostCopyCommands(sb *stateBuilder) *queueCommandBa
 				NewVkBufferMemoryBarrier(
 					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
 					0, // pNext
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_READ_BIT|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 					queueFamilyIgnore,        // srcQueueFamilyIndex
 					queueFamilyIgnore,        // dstQueueFamilyIndex
 					scratchBuf,               // buffer
