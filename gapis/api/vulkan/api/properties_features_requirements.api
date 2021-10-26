@@ -169,6 +169,7 @@ cmd void vkGetPhysicalDeviceProperties(
 }
 
 @indirect("VkPhysicalDevice", "VkInstance")
+@override
 cmd void vkGetPhysicalDeviceQueueFamilyProperties(
     VkPhysicalDevice         physicalDevice,
     u32*                     pQueueFamilyPropertyCount,
@@ -498,6 +499,7 @@ sub void GetPhysicalDeviceFeatures2(
 
 @since("1.1")
 @indirect("VkPhysicalDevice", "VkInstance")
+@override
 cmd void vkGetPhysicalDeviceFeatures2(
     VkPhysicalDevice           physicalDevice,
     VkPhysicalDeviceFeatures2* pFeatures) {
@@ -650,6 +652,9 @@ sub void GetPhysicalDeviceProperties2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: {
             _ = as!VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT*(next.Ptr)[0]
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+            _ = as!VkPhysicalDeviceProtectedMemoryProperties*(next.Ptr)[0]
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
@@ -807,6 +812,12 @@ sub void GetPhysicalDeviceProperties2(
                 AdvancedBlendAllOperations: ext.advancedBlendAllOperations,
               )
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+              ext := as!VkPhysicalDeviceProtectedMemoryProperties*(next.Ptr)[0]
+              phyDev.ProtectedMemoryProperties = new!PhysicalDeviceProtectedMemoryProperties(
+                ProtectedNoFault: ext.protectedNoFault,
+              )
+            }
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
@@ -926,6 +937,7 @@ sub void GetPhysicalDeviceQueueFamilyProperties2(
 
 @since("1.1")
 @indirect("VkPhysicalDevice", "VkInstance")
+@override
 cmd void vkGetPhysicalDeviceQueueFamilyProperties2(
     VkPhysicalDevice          physicalDevice,
     u32*                      pQueueFamilyPropertyCount,

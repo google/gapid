@@ -46,6 +46,19 @@ uint32_t SpyOverride_vkEnumerateDeviceLayerProperties(
 uint32_t SpyOverride_vkEnumerateDeviceExtensionProperties(
     CallObserver*, VkPhysicalDevice dev, const char* pLayerName, uint32_t* pCount,
     VkExtensionProperties* pProperties);
+void SpyOverride_vkGetPhysicalDeviceFeatures2(
+    CallObserver*, VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures2* pFeatures);
+void SpyOverride_vkGetPhysicalDeviceFeatures2KHR(
+    CallObserver*, VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures2KHR* pFeatures);
+void SpyOverride_vkGetPhysicalDeviceQueueFamilyProperties(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount, VkQueueFamilyProperties* pQueueFamilyProperties);
+void SpyOverride_vkGetPhysicalDeviceQueueFamilyProperties2(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount, VkQueueFamilyProperties2* pQueueFamilyProperties);
+void SpyOverride_vkGetPhysicalDeviceQueueFamilyProperties2KHR(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount, VkQueueFamilyProperties2KHR* pQueueFamilyProperties);
 uint32_t SpyOverride_vkEnumeratePhysicalDeviceGroups(
     CallObserver*, VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
     VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties);

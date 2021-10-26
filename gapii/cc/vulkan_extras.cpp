@@ -869,6 +869,96 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
   return VkResult::VK_SUCCESS;
 }
 
+template <typename T>
+static void SuppressUnsupportedFeatures2(T* pFeatures) {
+  auto next = reinterpret_cast<VulkanStructHeader*>(pFeatures->mpNext);
+  while (next) {
+    // Filter out protected memory device feature
+    if (next->mSType ==
+        VkStructureType::
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES) {
+      reinterpret_cast<VkPhysicalDeviceProtectedMemoryFeatures*>(next)
+          ->mprotectedMemory = 0;
+    }
+    next = reinterpret_cast<VulkanStructHeader*>(next->mPNext);
+  }
+}
+
+void VulkanSpy::SpyOverride_vkGetPhysicalDeviceFeatures2(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    VkPhysicalDeviceFeatures2* pFeatures) {
+  auto instance = mState.PhysicalDevices[physicalDevice]->mInstance;
+  mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceFeatures2(
+      physicalDevice, pFeatures);
+  SuppressUnsupportedFeatures2(pFeatures);
+}
+
+void VulkanSpy::SpyOverride_vkGetPhysicalDeviceFeatures2KHR(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    VkPhysicalDeviceFeatures2KHR* pFeatures) {
+  auto instance = mState.PhysicalDevices[physicalDevice]->mInstance;
+  mImports.mVkInstanceFunctions[instance].vkGetPhysicalDeviceFeatures2KHR(
+      physicalDevice, pFeatures);
+  SuppressUnsupportedFeatures2(pFeatures);
+}
+
+static void SuppressUnsupportedQueueFamilyProperties(
+    VkQueueFamilyProperties& queue_family_props) {
+  // Filter out protected queue property
+  queue_family_props.mqueueFlags &= ~VkQueueFlagBits::VK_QUEUE_PROTECTED_BIT;
+}
+
+template <typename T>
+static void SuppressUnsupportedQueueFamilyProperties2(T& queueFamilyProps2) {
+  SuppressUnsupportedQueueFamilyProperties(
+      queueFamilyProps2.mqueueFamilyProperties);
+}
+
+void VulkanSpy::SpyOverride_vkGetPhysicalDeviceQueueFamilyProperties(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties* pQueueFamilyProperties) {
+  auto instance = mState.PhysicalDevices[physicalDevice]->mInstance;
+  mImports.mVkInstanceFunctions[instance]
+      .vkGetPhysicalDeviceQueueFamilyProperties(
+          physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
+  if (pQueueFamilyProperties != nullptr) {
+    for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++) {
+      SuppressUnsupportedQueueFamilyProperties(pQueueFamilyProperties[i]);
+    }
+  }
+}
+
+void VulkanSpy::SpyOverride_vkGetPhysicalDeviceQueueFamilyProperties2(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2* pQueueFamilyProperties) {
+  auto instance = mState.PhysicalDevices[physicalDevice]->mInstance;
+  mImports.mVkInstanceFunctions[instance]
+      .vkGetPhysicalDeviceQueueFamilyProperties2(
+          physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
+  if (pQueueFamilyProperties != nullptr) {
+    for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++) {
+      SuppressUnsupportedQueueFamilyProperties2(pQueueFamilyProperties[i]);
+    }
+  }
+}
+
+void VulkanSpy::SpyOverride_vkGetPhysicalDeviceQueueFamilyProperties2KHR(
+    CallObserver*, VkPhysicalDevice physicalDevice,
+    uint32_t* pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2KHR* pQueueFamilyProperties) {
+  auto instance = mState.PhysicalDevices[physicalDevice]->mInstance;
+  mImports.mVkInstanceFunctions[instance]
+      .vkGetPhysicalDeviceQueueFamilyProperties2KHR(
+          physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
+  if (pQueueFamilyProperties != nullptr) {
+    for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++) {
+      SuppressUnsupportedQueueFamilyProperties2(pQueueFamilyProperties[i]);
+    }
+  }
+}
+
 void VulkanSpy::SpyOverride_vkDestroyInstance(
     CallObserver*, VkInstance instance,
     const VkAllocationCallbacks* pAllocator) {

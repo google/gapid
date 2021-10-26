@@ -517,6 +517,7 @@ vkGetInstanceProcAddr(VkInstance instance, const char* funcName) {
   INTERCEPT(vkGetPhysicalDeviceSurfaceSupportKHR);
   INTERCEPT(vkGetPhysicalDeviceSurfaceFormatsKHR);
   INTERCEPT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
+  INTERCEPT(vkGetPhysicalDeviceSurfaceCapabilities2KHR);
   INTERCEPT(vkGetPhysicalDeviceSurfacePresentModesKHR);
 
   // From here down it is just functions that have to be overriden for swapchain

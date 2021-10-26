@@ -182,6 +182,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
   return VK_SUCCESS;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+    VkPhysicalDevice physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+    VkSurfaceCapabilities2KHR* pSurfaceCapabilities) {
+  return swapchain::vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+      physicalDevice, pSurfaceInfo->surface,
+      &pSurfaceCapabilities->surfaceCapabilities);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     uint32_t* pSurfaceFormatCount, VkSurfaceFormatKHR* pSurfaceFormats) {
