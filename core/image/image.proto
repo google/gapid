@@ -52,6 +52,8 @@ message Info {
   uint32 depth = 4;
   // The identifier of the image data as bytes.
   ID bytes = 5;
+  // The computed size of the image.
+  uint32 computed_size = 6;
 }
 
 message Format {

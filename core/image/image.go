@@ -47,11 +47,12 @@ func (i *Info) Convert(ctx context.Context, f *Format) (*Info, error) {
 		return nil, fmt.Errorf("Failed to convert ImageInfo to format %v: %v", f, err)
 	}
 	return &Info{
-		Format: f,
-		Width:  i.Width,
-		Height: i.Height,
-		Depth:  i.Depth,
-		Bytes:  NewID(id),
+		Format:       f,
+		Width:        i.Width,
+		Height:       i.Height,
+		Depth:        i.Depth,
+		Bytes:        NewID(id),
+		ComputedSize: uint32(f.Size(int(i.Width), int(i.Height), int(i.Depth))),
 	}, nil
 }
 
@@ -71,11 +72,12 @@ func (i *Info) Resize(ctx context.Context, w, h, d uint32) (*Info, error) {
 		return nil, fmt.Errorf("Failed to resize ImageInfo to %v x %v: %v", w, h, err)
 	}
 	return &Info{
-		Format: i.Format,
-		Width:  w,
-		Height: h,
-		Depth:  d,
-		Bytes:  NewID(id),
+		Format:       i.Format,
+		Width:        w,
+		Height:       h,
+		Depth:        d,
+		Bytes:        NewID(id),
+		ComputedSize: uint32(i.Format.Size(int(w), int(h), int(d))),
 	}, nil
 }
 
@@ -111,11 +113,12 @@ func (b *Data) NewInfo(ctx context.Context) (*Info, error) {
 		return nil, fmt.Errorf("Failed to create imageInfo from imageData %v: %v", b, err)
 	}
 	return &Info{
-		Format: b.Format,
-		Width:  b.Width,
-		Height: b.Height,
-		Depth:  b.Depth,
-		Bytes:  NewID(id),
+		Format:       b.Format,
+		Width:        b.Width,
+		Height:       b.Height,
+		Depth:        b.Depth,
+		Bytes:        NewID(id),
+		ComputedSize: uint32(len(b.Bytes)),
 	}, nil
 }
 
