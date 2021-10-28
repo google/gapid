@@ -98,7 +98,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			indices := syncData.RenderPassLookup.Lookup(ctx, key)
 			if indices != nil && (name == "vertex" || name == "fragment") {
 				sliceData.Names[i] = fmt.Sprintf("%v %v", indices, name)
-				groupId = sliceData.NewGroup(
+				groupId = sliceData.CreateOrGetGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
 					&path.Command{Capture: capture, Indices: indices},
 				)

@@ -52,7 +52,7 @@ type SliceData struct {
 	TrackNames     []string
 	GroupIds       []int32 // To be filled in by caller.
 
-	groups []*service.ProfilingData_GpuSlices_Group
+	groups map[string]*service.ProfilingData_GpuSlices_Group
 }
 
 func ExtractSliceData(ctx context.Context, processor *perfetto.Processor) (*SliceData, error) {
@@ -79,6 +79,7 @@ func ExtractSliceData(ctx context.Context, processor *perfetto.Processor) (*Slic
 		Tracks:         slicesColumns[13].GetLongValues(),
 		TrackNames:     slicesColumns[14].GetStringValues(),
 		GroupIds:       make([]int32, slicesQueryResult.GetNumRecords()),
+		groups:         map[string]*service.ProfilingData_GpuSlices_Group{},
 	}
 
 	return data, nil
@@ -91,13 +92,18 @@ func (d *SliceData) MapIdentifiers(ctx context.Context, handleMapping map[uint64
 	ExtractTraceHandles(ctx, d.RenderPasses, "VkRenderPass", handleMapping)
 }
 
-func (d *SliceData) NewGroup(name string, link *path.Command) int32 {
+func (d *SliceData) CreateOrGetGroup(name string, link *path.Command) int32 {
+	key := fmt.Sprintf("%v", link.Indices)
+	if g, ok := d.groups[key]; ok {
+		return g.Id
+	}
+
 	id := int32(len(d.groups) + 1)
-	d.groups = append(d.groups, &service.ProfilingData_GpuSlices_Group{
+	d.groups[key] = &service.ProfilingData_GpuSlices_Group{
 		Id:   id,
 		Name: name,
 		Link: link,
-	})
+	}
 	return id
 }
 
@@ -131,8 +137,8 @@ func (d *SliceData) ToService(ctx context.Context, processor *perfetto.Processor
 
 	return &service.ProfilingData_GpuSlices{
 		Slices: slices,
-		Tracks: flatten(tracks),
-		Groups: d.groups,
+		Tracks: flattenTracks(tracks),
+		Groups: flattenGroups(d.groups),
 	}
 }
 
@@ -168,9 +174,17 @@ func (d *SliceData) fillInExtras(idx int, extras []*service.ProfilingData_GpuSli
 	return extras
 }
 
-func flatten(tracks map[int64]*service.ProfilingData_GpuSlices_Track) []*service.ProfilingData_GpuSlices_Track {
+func flattenTracks(tracks map[int64]*service.ProfilingData_GpuSlices_Track) []*service.ProfilingData_GpuSlices_Track {
 	flat := make([]*service.ProfilingData_GpuSlices_Track, 0, len(tracks))
 	for _, v := range tracks {
+		flat = append(flat, v)
+	}
+	return flat
+}
+
+func flattenGroups(groups map[string]*service.ProfilingData_GpuSlices_Group) []*service.ProfilingData_GpuSlices_Group {
+	flat := make([]*service.ProfilingData_GpuSlices_Group, 0, len(groups))
+	for _, v := range groups {
 		flat = append(flat, v)
 	}
 	return flat

@@ -126,7 +126,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			idx := syncData.RenderPassLookup.Lookup(ctx, key)
 			if idx != nil && sliceData.Names[i] == renderPassSliceName {
 				sliceData.Names[i] = fmt.Sprintf("%v", idx)
-				groupId = sliceData.NewGroup(
+				groupId = sliceData.CreateOrGetGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
 					&path.Command{Capture: capture, Indices: idx},
 				)
