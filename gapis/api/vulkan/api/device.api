@@ -90,6 +90,9 @@
 
   // @extension("VK_ext_index_type_uint8")
   @unused ref!PhysicalDeviceIndexTypeUint8FeaturesEXT PhysicalDeviceIndexTypeUint8FeaturesEXT
+
+  // @extension("VK_KHR_custom_border_color")
+  @unused ref!PhysicalDeviceCustomBorderColorFeaturesEXT PhysicalDeviceCustomBorderColorFeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -320,6 +323,13 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           ext := as!VkPhysicalDeviceIndexTypeUint8FeaturesEXT*(next.Ptr)[0]
           object.PhysicalDeviceIndexTypeUint8FeaturesEXT = new!PhysicalDeviceIndexTypeUint8FeaturesEXT(
             IndexTypeUint8: ext.indexTypeUint8,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceCustomBorderColorFeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceCustomBorderColorFeaturesEXT = new!PhysicalDeviceCustomBorderColorFeaturesEXT(
+            CustomBorderColors: ext.customBorderColors,
+            CustomBorderColorWithoutFormat: ext.customBorderColorWithoutFormat,
           )
         }
       }

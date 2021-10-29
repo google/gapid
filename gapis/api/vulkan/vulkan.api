@@ -124,6 +124,7 @@ import "extensions/ext_provoking_vertex.api"
 import "extensions/ext_transform_feedback.api"
 import "extensions/ext_blend_operation_advanced.api"
 import "extensions/ext_index_type_uint8.api"
+import "extensions/ext_custom_border_color.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -302,6 +303,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_shader_terminate_invocation"] = true
   supported.ExtensionNames["VK_EXT_blend_operation_advanced"] = true
   supported.ExtensionNames["VK_EXT_index_type_uint8"] = true
+  supported.ExtensionNames["VK_EXT_custom_border_color"] = true
   return supported
 }
 

@@ -617,6 +617,9 @@ cmd void vkDestroyImageView(
 
   // Vulkan 1.1 core
   @unused ref!SamplerYcbcrConversionObject YcbcrConversion
+
+  // @extension("VK_EXT_custom_border_color")
+  @unused ref!SamplerCustomBorderColorCreateInfoEXT CustomBorderColorInfo
 }
 
 @indirect("VkDevice")
@@ -659,6 +662,13 @@ cmd VkResult vkCreateSampler(
           if conversion in SamplerYcbcrConversions {
             sampler.YcbcrConversion = SamplerYcbcrConversions[conversion]
           }
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT: {
+          ext := as!VkSamplerCustomBorderColorCreateInfoEXT*(next.Ptr)[0]
+          sampler.CustomBorderColorInfo = new!SamplerCustomBorderColorCreateInfoEXT(
+            CustomBorderColor: ext.customBorderColor,
+            Format: ext.format,
+          )
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
