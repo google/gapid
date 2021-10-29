@@ -184,6 +184,7 @@ sub void dovkCmdBeginDebugUtilsLabelEXT(ref!vkCmdBeginDebugUtilsLabelEXTArgs arg
 @extension("VK_EXT_debug_utils")
 @override
 @no_replay
+@push_user_marker
 cmd void vkCmdBeginDebugUtilsLabelEXT(
     VkCommandBuffer             commandBuffer,
     const VkDebugUtilsLabelEXT* pLabelInfo) {
@@ -215,6 +216,7 @@ sub void dovkCmdEndDebugUtilsLabelEXT(ref!vkCmdEndDebugUtilsLabelEXTArgs args) {
 @extension("VK_EXT_debug_utils")
 @override
 @no_replay
+@pop_user_marker
 cmd void vkCmdEndDebugUtilsLabelEXT(
     VkCommandBuffer commandBuffer) {
   if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
@@ -241,6 +243,7 @@ sub void dovkCmdInsertDebugUtilsLabelEXT(ref!vkCmdInsertDebugUtilsLabelEXTArgs a
 @extension("VK_EXT_debug_utils")
 @override
 @no_replay
+@user_marker
 cmd void vkCmdInsertDebugUtilsLabelEXT(
     VkCommandBuffer             commandBuffer,
     const VkDebugUtilsLabelEXT* pLabelInfo) {
@@ -318,6 +321,7 @@ cmd void vkDestroyDebugUtilsMessengerEXT(
 @extension("VK_EXT_debug_utils")
 @override
 @no_replay
+@user_marker
 cmd void vkSubmitDebugUtilsMessageEXT(
     VkInstance                                  instance,
     VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,

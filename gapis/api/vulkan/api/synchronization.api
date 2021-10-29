@@ -48,6 +48,7 @@
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd VkResult vkCreateFence(
     VkDevice                     device,
     const VkFenceCreateInfo*     pCreateInfo,
@@ -85,6 +86,7 @@ cmd VkResult vkCreateFence(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd void vkDestroyFence(
     VkDevice                     device,
     VkFence                      fence,
@@ -94,6 +96,7 @@ cmd void vkDestroyFence(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd VkResult vkResetFences(
     VkDevice       device,
     u32            fenceCount,
@@ -110,6 +113,7 @@ cmd VkResult vkResetFences(
 }
 
 @indirect("VkDevice")
+@sync_command
 @custom
 cmd VkResult vkGetFenceStatus(
     VkDevice device,
@@ -130,6 +134,7 @@ cmd VkResult vkGetFenceStatus(
 }
 
 @indirect("VkDevice")
+@sync_command
 @threadsafe
 @alive
 @custom
@@ -172,6 +177,7 @@ cmd VkResult vkWaitForFences(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd VkResult vkCreateSemaphore(
     VkDevice                     device,
     const VkSemaphoreCreateInfo* pCreateInfo,
@@ -208,6 +214,7 @@ cmd VkResult vkCreateSemaphore(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd void vkDestroySemaphore(
     VkDevice                     device,
     VkSemaphore                  semaphore,
@@ -217,6 +224,7 @@ cmd void vkDestroySemaphore(
 }
 
 // Partial implementation
+@sync_command
 @since("1.2")
 @indirect("VkDevice")
 cmd VkResult vkSignalSemaphore(
@@ -226,6 +234,7 @@ cmd VkResult vkSignalSemaphore(
 }
 
 // Partial implementation
+@sync_command
 @since("1.2")
 @indirect("VkDevice")
 cmd VkResult vkWaitSemaphores(
@@ -236,6 +245,7 @@ cmd VkResult vkWaitSemaphores(
 }
 
 // Partial implementation
+@sync_command
 @since("1.2")
 @indirect("VkDevice")
 cmd VkResult vkGetSemaphoreCounterValue(
@@ -258,6 +268,7 @@ cmd VkResult vkGetSemaphoreCounterValue(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd VkResult vkCreateEvent(
     VkDevice                     device,
     const VkEventCreateInfo*     pCreateInfo,
@@ -291,6 +302,7 @@ cmd VkResult vkCreateEvent(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd void vkDestroyEvent(
     VkDevice                     device,
     VkEvent                      event,
@@ -299,6 +311,7 @@ cmd void vkDestroyEvent(
 }
 
 @indirect("VkDevice")
+@sync_command
 @custom
 cmd VkResult vkGetEventStatus(
     VkDevice device,
@@ -309,6 +322,7 @@ cmd VkResult vkGetEventStatus(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd VkResult vkSetEvent(
     VkDevice device,
     VkEvent  event) {
@@ -329,6 +343,7 @@ cmd VkResult vkSetEvent(
 }
 
 @indirect("VkDevice")
+@sync_command
 cmd VkResult vkResetEvent(
     VkDevice device,
     VkEvent  event) {
@@ -354,6 +369,7 @@ sub void dovkCmdSetEvent(ref!vkCmdSetEventArgs event) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
+@sync_command
 cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
@@ -387,6 +403,7 @@ sub void dovkCmdResetEvent(ref!vkCmdResetEventArgs event) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
+@sync_command
 cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
@@ -436,6 +453,7 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
+@sync_command
 cmd void vkCmdWaitEvents(
     VkCommandBuffer              commandBuffer,
     u32                          eventCount,
@@ -565,6 +583,7 @@ sub void handleImageMemoryBarriersPNext(const VkImageMemoryBarrier* pBarriers, u
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
+@sync_command
 cmd void vkCmdPipelineBarrier(
     VkCommandBuffer              commandBuffer,
     VkPipelineStageFlags         srcStageMask,

@@ -317,6 +317,7 @@ sub void RecordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
 
 
 @indirect("VkCommandBuffer", "VkDevice")
+@begin_end_renderpass
 cmd void vkCmdBeginRenderPass(
     VkCommandBuffer              commandBuffer,
     const VkRenderPassBeginInfo* pRenderPassBegin,
@@ -448,6 +449,7 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
+@begin_end_renderpass
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
   if !(commandBuffer in CommandBuffers) {

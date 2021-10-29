@@ -258,10 +258,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			}))
 	}
 
-	if p.GroupByUserMarkers {
-		groupers = append(groupers, cmdgrouper.Marker())
-	}
-
 	// Walk the list of unfiltered commands to build the groups.
 	s := c.NewState(ctx)
 	err = api.ForeachCmd(ctx, c.Commands, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

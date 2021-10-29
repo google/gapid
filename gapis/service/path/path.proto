@@ -305,8 +305,18 @@ message Framegraph {
 message CommandFilter {
   // thread filters the commands to those with the specified threads.
   repeated uint64 threads = 2;
+
   // If true, only shows draw calls from inside a command buffer
   bool only_executed_draws = 3;
+
+  // If true, do not include host commands in results
+  bool suppress_host_commands = 4;
+
+  // If true, do not include begin and end markets in results
+  bool suppress_begin_end_markers = 5;
+
+  // If true, do not include synchronisation commands in results
+  bool suppress_device_side_sync_commands = 6;
 }
 
 // CommandTree is a path to a hierarchy of command tree nodes.
@@ -316,6 +326,7 @@ message CommandTree {
   Capture capture = 1;
   // The command filter used to create the tree.
   CommandFilter filter = 2;
+
   // If true then commands will be grouped by API.
   bool group_by_api = 3;
   // If true then commands will be grouped by thread.

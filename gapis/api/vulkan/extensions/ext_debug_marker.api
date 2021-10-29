@@ -121,6 +121,7 @@ sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
 @extension("VK_EXT_debug_report")
 @override
 @no_replay
+@push_user_marker
 cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer             commandBuffer,
     const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
@@ -155,6 +156,7 @@ sub void dovkCmdDebugMarkerEndEXT(ref!vkCmdDebugMarkerEndEXTArgs draw) {
 @extension("VK_EXT_debug_report")
 @override
 @no_replay
+@pop_user_marker
 cmd void vkCmdDebugMarkerEndEXT(
     VkCommandBuffer commandBuffer) {
   if !(commandBuffer in CommandBuffers) {
@@ -184,6 +186,7 @@ sub void dovkCmdDebugMarkerInsertEXT(ref!vkCmdDebugMarkerInsertEXTArgs draw) {
 @extension("VK_EXT_debug_report")
 @override
 @no_replay
+@user_marker
 cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer             commandBuffer,
     const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {

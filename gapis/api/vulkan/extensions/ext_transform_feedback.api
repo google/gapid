@@ -207,6 +207,7 @@ sub void dovkCmdBeginTransformFeedbackEXT(ref!vkCmdBeginTransformFeedbackEXTArgs
 
 @extension("VK_EXT_transform_feedback")
 @indirect("VkCommandBuffer", "VkDevice")
+@begin_end_transform_feedback
 cmd void vkCmdBeginTransformFeedbackEXT(
     VkCommandBuffer     commandBuffer,
     u32                 firstCounterBuffer,
@@ -262,6 +263,7 @@ sub void dovkCmdEndTransformFeedbackEXT(ref!vkCmdEndTransformFeedbackEXTArgs arg
 
 @extension("VK_EXT_transform_feedback")
 @indirect("VkCommandBuffer", "VkDevice")
+@begin_end_transform_feedback
 cmd void vkCmdEndTransformFeedbackEXT(
     VkCommandBuffer     commandBuffer,
     u32                 firstCounterBuffer,
