@@ -2643,6 +2643,34 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		))
 	}
 
+	vertexInputState := NewVkPipelineVertexInputStateCreateInfoᶜᵖ(memory.Nullptr)
+	if !gp.VertexInputState().IsNil() {
+		pNext := NewVoidᶜᵖ(memory.Nullptr)
+		if !gp.VertexInputState().DivisorDescriptions().IsNil() {
+			pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+				NewVkPipelineVertexInputDivisorStateCreateInfoEXT(
+					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT, // sType
+					pNext, // pNext
+					gp.VertexInputState().DivisorDescriptions().VertexBindingDivisorCount(), // vertexBindingDivisorCount
+					NewVkVertexInputBindingDivisorDescriptionEXTᶜᵖ(sb.MustUnpackReadMap(
+						gp.VertexInputState().DivisorDescriptions().VertexBindingDivisors().All(),
+					).Ptr()), // pVertexBindingDivisors
+				),
+			).Ptr())
+		}
+
+		vertexInputState = NewVkPipelineVertexInputStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pVertexInputState
+			NewVkPipelineVertexInputStateCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // sType
+				pNext, // pNext
+				0,     // flags
+				uint32(gp.VertexInputState().BindingDescriptions().Len()),                                                               // vertexBindingDescriptionCount
+				NewVkVertexInputBindingDescriptionᶜᵖ(sb.MustUnpackReadMap(gp.VertexInputState().BindingDescriptions().All()).Ptr()),     // pVertexBindingDescriptions
+				uint32(gp.VertexInputState().AttributeDescriptions().Len()),                                                             // vertexAttributeDescriptionCount
+				NewVkVertexInputAttributeDescriptionᶜᵖ(sb.MustUnpackReadMap(gp.VertexInputState().AttributeDescriptions().All()).Ptr()), // pVertexAttributeDescriptions
+			)).Ptr())
+	}
+
 	tessellationState := NewVkPipelineTessellationStateCreateInfoᶜᵖ(memory.Nullptr)
 	if !gp.TessellationState().IsNil() {
 		pNext := NewVoidᶜᵖ(memory.Nullptr)
@@ -2837,16 +2865,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 			gp.Flags(),          // flags
 			uint32(len(stages)), // stageCount
 			NewVkPipelineShaderStageCreateInfoᶜᵖ(sb.MustAllocReadData(stages).Ptr()), // pStages
-			NewVkPipelineVertexInputStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pVertexInputState
-				NewVkPipelineVertexInputStateCreateInfo(
-					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // sType
-					0, // pNext
-					0, // flags
-					uint32(gp.VertexInputState().BindingDescriptions().Len()),                                                               // vertexBindingDescriptionCount
-					NewVkVertexInputBindingDescriptionᶜᵖ(sb.MustUnpackReadMap(gp.VertexInputState().BindingDescriptions().All()).Ptr()),     // pVertexBindingDescriptions
-					uint32(gp.VertexInputState().AttributeDescriptions().Len()),                                                             // vertexAttributeDescriptionCount
-					NewVkVertexInputAttributeDescriptionᶜᵖ(sb.MustUnpackReadMap(gp.VertexInputState().AttributeDescriptions().All()).Ptr()), // pVertexAttributeDescriptions
-				)).Ptr()),
+			vertexInputState, // pVertexInputState
 			NewVkPipelineInputAssemblyStateCreateInfoᶜᵖ(sb.MustAllocReadData( // pInputAssemblyState
 				NewVkPipelineInputAssemblyStateCreateInfo(
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, // sType

@@ -106,10 +106,17 @@ cmd void vkDestroyPipelineLayout(
   @unused ref!SpecializationInfo Specialization
 }
 
-@internal class VertexData {
+@internal class DivisorDescriptionData {
+  @unused u32 VertexBindingDivisorCount
+  @unused map!(u32, VkVertexInputBindingDivisorDescriptionEXT) VertexBindingDivisors
+}
+
+@internal class VertexInputData {
   @unused map!(u32, VkVertexInputBindingDescription)   BindingDescriptions
   @unused map!(u32, VkVertexInputAttributeDescription) AttributeDescriptions
-  @unused map!(u32, u32)                               Divisors
+
+  // @extension(ext_vertex_attribute_divisor)
+  @unused ref!DivisorDescriptionData DivisorDescriptions
 }
 
 @internal class InputAssemblyData {
@@ -201,7 +208,7 @@ cmd void vkDestroyPipelineLayout(
   @unused VkPipelineCreateFlags     Flags
   @unused VkPipeline                VulkanHandle
   @unused map!(u32, StageData)      Stages
-  @unused VertexData                VertexInputState
+  @unused ref!VertexInputData       VertexInputState
   @unused InputAssemblyData         InputAssemblyState
   @unused ref!TessellationStateData TessellationState
   @unused ref!ViewportData          ViewportState
@@ -355,40 +362,47 @@ cmd VkResult vkCreateGraphicsPipelines(
       obj.Stages[j] = stage_data
     }
 
-    vertex_input_state := create_info.pVertexInputState[0]
-    vertex_descriptions := vertex_input_state.pVertexBindingDescriptions[0:
-    vertex_input_state.vertexBindingDescriptionCount]
-    // handle vertex input state pNext
-    if vertex_input_state.pNext != null {
-      numPNext := numberOfPNext(vertex_input_state.pNext)
-      next := MutableVoidPtr(as!void*(vertex_input_state.pNext))
-      for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0]
-        switch (sType) {
-          case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
-            divisorInfo := as!VkPipelineVertexInputDivisorStateCreateInfoEXT*(next.Ptr)[0]
-            numDivisors := divisorInfo.vertexBindingDivisorCount
-            divisors := divisorInfo.pVertexBindingDivisors[0:numDivisors]
-            for j in (0 .. numDivisors) {
-              d := divisors[j]
-              obj.VertexInputState.Divisors[d.binding] = d.divisor
+    if (create_info.pVertexInputState != null) {
+      vertex_input_state := create_info.pVertexInputState[0]
+      obj.VertexInputState = new!VertexInputData()
+
+      // handle vertex input state pNext
+      if vertex_input_state.pNext != null {
+        numPNext := numberOfPNext(vertex_input_state.pNext)
+        next := MutableVoidPtr(as!void*(vertex_input_state.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0]
+          switch (sType) {
+            case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
+              ext := as!VkPipelineVertexInputDivisorStateCreateInfoEXT*(next.Ptr)[0]
+              numDivisors := ext.vertexBindingDivisorCount
+              divisors := ext.pVertexBindingDivisors[0:numDivisors]
+              obj.VertexInputState.DivisorDescriptions = new!DivisorDescriptionData(
+                VertexBindingDivisorCount : numDivisors,
+              )
+              for j in (0 .. numDivisors) {
+                obj.VertexInputState.DivisorDescriptions.VertexBindingDivisors[divisors[j].binding] = divisors[j]
+              }
             }
           }
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
         }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
-    }
-    for b in (0 .. vertex_input_state.vertexBindingDescriptionCount) {
-      vertex_binding := vertex_descriptions[b]
-      obj.VertexInputState.BindingDescriptions[b] = vertex_binding
-    }
 
-    vertex_attributes := vertex_input_state.pVertexAttributeDescriptions[0:
-    vertex_input_state.vertexAttributeDescriptionCount]
+      vertex_descriptions := vertex_input_state.pVertexBindingDescriptions[0:
+        vertex_input_state.vertexBindingDescriptionCount]
+      for b in (0 .. vertex_input_state.vertexBindingDescriptionCount) {
+        vertex_binding := vertex_descriptions[b]
+        obj.VertexInputState.BindingDescriptions[b] = vertex_binding
+      }
 
-    for b in (0 .. vertex_input_state.vertexAttributeDescriptionCount) {
-      attribute := vertex_attributes[b]
-      obj.VertexInputState.AttributeDescriptions[b] = attribute
+      vertex_attributes := vertex_input_state.pVertexAttributeDescriptions[0:
+      vertex_input_state.vertexAttributeDescriptionCount]
+
+      for b in (0 .. vertex_input_state.vertexAttributeDescriptionCount) {
+        attribute := vertex_attributes[b]
+        obj.VertexInputState.AttributeDescriptions[b] = attribute
+      }
     }
 
     input_assembly_state := create_info.pInputAssemblyState[0]

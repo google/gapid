@@ -488,44 +488,53 @@ sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 ins
   // pseudo-code at the end of section "Vertex Attribute Divisor in Instanced
   // Rendering" in the Vulkan specification.
   ldi := lastDrawInfo()
-  for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {
-    if vertex_binding.binding in ldi.BoundVertexBuffers {
-      bound_vertex_buffer := ldi.BoundVertexBuffers[vertex_binding.binding]
-      backing_buf := bound_vertex_buffer.Buffer
-      if backing_buf.Memory != null {
-        start_vertex := switch vertex_binding.inputRate {
-          case VK_VERTEX_INPUT_RATE_VERTEX:
-            firstVertex
-          case VK_VERTEX_INPUT_RATE_INSTANCE:
-            firstInstance
-        }
-        num_vertices := switch vertex_binding.inputRate {
-          case VK_VERTEX_INPUT_RATE_VERTEX:
-            vertexCount
-          case VK_VERTEX_INPUT_RATE_INSTANCE:
-            switch vertex_binding.binding in ldi.GraphicsPipeline.VertexInputState.Divisors {
-              case false:
-                instanceCount
-              case true:
-                switch ldi.GraphicsPipeline.VertexInputState.Divisors[vertex_binding.binding] {
-                  case 0:
-                    as!u32(1) // If divisor is zero, use only one instance
-                  default:
-                    (instanceCount / ldi.GraphicsPipeline.VertexInputState.Divisors[vertex_binding.binding])
-                }
-            }
-        }
-        if num_vertices > 0 {
-          vertex_attrib := ldi.GraphicsPipeline.VertexInputState.AttributeDescriptions[vertex_binding.binding]
-          vertex_attrib_size := getElementAndTexelBlockSize(vertex_attrib.format).ElementSize
-          start_offset := bound_vertex_buffer.Offset + as!VkDeviceSize((start_vertex * vertex_binding.stride) + vertex_attrib.offset)
-          num := switch vertexCount == 0xFFFFFFFF {
-            case true:
-              backing_buf.Info.Size - start_offset
-            case false:
-              as!VkDeviceSize(((num_vertices - 1) * vertex_binding.stride) + vertex_attrib_size)
+  vertexInputState := ldi.GraphicsPipeline.VertexInputState
+  if vertexInputState != null {
+    for _ , _ , vertex_binding in vertexInputState.BindingDescriptions {
+      if vertex_binding.binding in ldi.BoundVertexBuffers {
+        bound_vertex_buffer := ldi.BoundVertexBuffers[vertex_binding.binding]
+        backing_buf := bound_vertex_buffer.Buffer
+        if backing_buf.Memory != null {
+          start_vertex := switch vertex_binding.inputRate {
+            case VK_VERTEX_INPUT_RATE_VERTEX:
+              firstVertex
+            case VK_VERTEX_INPUT_RATE_INSTANCE:
+              firstInstance
           }
-          readMemoryInBuffer(backing_buf, start_offset, num)
+
+          num_vertices := switch vertex_binding.inputRate {
+            case VK_VERTEX_INPUT_RATE_VERTEX:
+              vertexCount
+            case VK_VERTEX_INPUT_RATE_INSTANCE:
+              switch vertexInputState.DivisorDescriptions == null {
+                case false:
+                  instanceCount
+                case true:
+                  switch vertex_binding.binding in vertexInputState.DivisorDescriptions.VertexBindingDivisors {
+                  case false:
+                    instanceCount
+                  case true:
+                    switch vertexInputState.DivisorDescriptions.VertexBindingDivisors[vertex_binding.binding].divisor {
+                      case 0:
+                        as!u32(1) // If divisor is zero, use only one instance
+                      default:
+                        (instanceCount / vertexInputState.DivisorDescriptions.VertexBindingDivisors[vertex_binding.binding].divisor)
+                    }
+                }
+              }
+          }
+          if num_vertices > 0 {
+            vertex_attrib := vertexInputState.AttributeDescriptions[vertex_binding.binding]
+            vertex_attrib_size := getElementAndTexelBlockSize(vertex_attrib.format).ElementSize
+            start_offset := bound_vertex_buffer.Offset + as!VkDeviceSize((start_vertex * vertex_binding.stride) + vertex_attrib.offset)
+            num := switch vertexCount == 0xFFFFFFFF {
+              case true:
+                backing_buf.Info.Size - start_offset
+              case false:
+                as!VkDeviceSize(((num_vertices - 1) * vertex_binding.stride) + vertex_attrib_size)
+            }
+            readMemoryInBuffer(backing_buf, start_offset, num)
+          }
         }
       }
     }
