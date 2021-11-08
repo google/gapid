@@ -52,6 +52,7 @@
   @unused ref!Maintenance3Properties                  Maintenance3Properties
   @unused ref!SubgroupProperties                      SubgroupProperties
   @unused ref!PhysicalDeviceIDProperties              IDProperties
+  @unused ref!PhysicalDeviceMultiviewProperties       MultiviewProperties
   @unused ref!PhysicalDeviceProtectedMemoryProperties ProtectedMemoryProperties
 
   // Extensions

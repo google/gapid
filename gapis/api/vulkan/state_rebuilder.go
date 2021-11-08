@@ -797,6 +797,17 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceMultiviewFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceMultiviewFeatures(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES, // sType
+				pNext, // pNext
+				d.PhysicalDeviceMultiviewFeatures().Multiview(),
+				d.PhysicalDeviceMultiviewFeatures().MultiviewGeometryShader(),
+				d.PhysicalDeviceMultiviewFeatures().MultiviewTessellationShader(),
+			),
+		).Ptr())
+	}
 	if !d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
 			NewVkPhysicalDeviceScalarBlockLayoutFeaturesEXT(
@@ -2373,6 +2384,21 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 						rp.InputAttachmentAspectInfo().AspectReferences().All(),
 					).Ptr(),
 				), // pAsepctReferences
+			),
+		).Ptr())
+	}
+
+	if !rp.MultiviewInfo().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkRenderPassMultiviewCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO, // sType
+				pNext, // pNext
+				uint32(rp.MultiviewInfo().PViewMasks().Count()),
+				NewU32ᶜᵖ(sb.mustReadSlice(rp.MultiviewInfo().PViewMasks()).Ptr()),
+				uint32(rp.MultiviewInfo().PViewOffsets().Count()),
+				NewS32ᶜᵖ(sb.mustReadSlice(rp.MultiviewInfo().PViewOffsets()).Ptr()),
+				uint32(rp.MultiviewInfo().PCorrelationMasks().Count()),
+				NewU32ᶜᵖ(sb.mustReadSlice(rp.MultiviewInfo().PCorrelationMasks()).Ptr()),
 			),
 		).Ptr())
 	}

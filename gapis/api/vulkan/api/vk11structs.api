@@ -372,21 +372,6 @@ class VkPhysicalDeviceMemoryProperties2 {
   VkPhysicalDeviceMemoryProperties memoryProperties
 }
 
-class VkPhysicalDeviceMultiviewFeatures {
-  VkStructureType sType
-  void*           pNext
-  VkBool32        multiview
-  VkBool32        multiviewGeometryShader
-  VkBool32        multiviewTessellationShader
-}
-
-class VkPhysicalDeviceMultiviewProperties {
-  VkStructureType sType
-  void*           pNext
-  u32             maxMultiviewViewCount
-  u32             maxMultiviewInstanceIndex
-}
-
 class VkPhysicalDevicePointClippingProperties {
   VkStructureType         sType
   void*                   pNext
@@ -473,17 +458,6 @@ class VkRenderPassInputAttachmentAspectCreateInfo {
   const void*                             pNext
   u32                                     aspectReferenceCount
   const VkInputAttachmentAspectReference* pAspectReferences
-}
-
-class VkRenderPassMultiviewCreateInfo {
-  VkStructureType sType
-  const void*     pNext
-  u32             subpassCount
-  const u32*      pViewMasks
-  u32             dependencyCount
-  const s32*      pViewOffsets
-  u32             correlationMaskCount
-  const u32*      pCorrelationMasks
 }
 
 class VkSamplerYcbcrConversionCreateInfo {

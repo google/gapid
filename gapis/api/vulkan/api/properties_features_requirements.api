@@ -360,6 +360,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
             _ = as!VkPhysicalDeviceProtectedMemoryFeatures*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+            _ = as!VkPhysicalDeviceMultiviewFeatures*(next.Ptr)[0]
+          }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
             _ = as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0]
           }
@@ -441,6 +444,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
             write(as!VkPhysicalDeviceProtectedMemoryFeatures*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+            write(as!VkPhysicalDeviceMultiviewFeatures*(next.Ptr)[0:1])
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
             write(as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0:1])
@@ -632,6 +638,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
             _ = as!VkPhysicalDeviceIDProperties*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+            _ = as!VkPhysicalDeviceMultiviewProperties*(next.Ptr)[0]
+          }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
             _ = as!VkPhysicalDevicePCIBusInfoPropertiesEXT*(next.Ptr)[0]
           }
@@ -715,6 +724,13 @@ sub void GetPhysicalDeviceProperties2(
                 DeviceLUID: ext.deviceLUID,
                 DeviceNodeMask: ext.deviceNodeMask,
                 DeviceLUIDValid: ext.deviceLUIDValid,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+              ext := as!VkPhysicalDeviceMultiviewProperties*(next.Ptr)[0]
+              phyDev.MultiviewProperties = new!PhysicalDeviceMultiviewProperties(
+                MaxMultiviewViewCount: ext.maxMultiviewViewCount,
+                MaxMultiviewInstanceIndex: ext.maxMultiviewInstanceIndex,
               )
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {

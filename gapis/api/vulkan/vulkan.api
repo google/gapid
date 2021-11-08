@@ -120,6 +120,7 @@ import "extensions/khr_shader_terminate_invocation.api"
 import "extensions/ext_line_rasterization.api"
 import "extensions/ext_vertex_attribute_divisor.api"
 import "extensions/ext_image_robustness.api"
+import "extensions/khr_multiview.api"
 import "extensions/ext_provoking_vertex.api"
 import "extensions/ext_transform_feedback.api"
 import "extensions/ext_blend_operation_advanced.api"
@@ -285,6 +286,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_shader_subgroup_extended_types"] = true
   supported.ExtensionNames["VK_KHR_shader_clock"] = true
   supported.ExtensionNames["VK_KHR_vulkan_memory_model"] = true
+  supported.ExtensionNames["VK_KHR_multiview"] = true
   supported.ExtensionNames["VK_KHR_shader_float_controls"] = true
   supported.ExtensionNames["VK_KHR_shader_float16_int8"] = true
   supported.ExtensionNames["VK_KHR_shader_atomic_int64"] = true
