@@ -48,6 +48,7 @@
   @unused map!(u32, u32)                         QueueFamilyIndices
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
   @unused VkExternalMemoryHandleTypeFlags        ExternalHandleTypeFlags
+  @unused u64                                    OpaqueCaptureAddress
 }
 
 @internal class MutableDeviceGroupBinding {
@@ -71,6 +72,9 @@
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!DedicatedRequirements          DedicatedRequirements
   ref!DeviceGroupBinding             DeviceGroupBinding
+
+  // KHR_buffer_device_address
+  VkDeviceAddress                    BufferDeviceAddress
 }
 
 @indirect("VkDevice")
@@ -116,6 +120,10 @@ cmd VkResult vkCreateBuffer(
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
           ext := as!VkExternalMemoryBufferCreateInfo*(next.Ptr)[0]
           bufferInfo.ExternalHandleTypeFlags = ext.handleTypes
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO: {
+          ext := as!VkBufferOpaqueCaptureAddressCreateInfo*(next.Ptr)[0]
+          bufferInfo.OpaqueCaptureAddress = ext.opaqueCaptureAddress
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext

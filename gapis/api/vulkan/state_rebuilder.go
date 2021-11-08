@@ -965,6 +965,17 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceBufferDeviceAddressFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceBufferDeviceAddressFeatures(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+				pNext,
+				d.PhysicalDeviceBufferDeviceAddressFeatures().BufferDeviceAddress(),
+				d.PhysicalDeviceBufferDeviceAddressFeatures().BufferDeviceAddressCaptureReplay(),
+				d.PhysicalDeviceBufferDeviceAddressFeatures().BufferDeviceAddressMultiDevice(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
@@ -1305,6 +1316,15 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 				VkStructureType_VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID, // sType
 				pNext, // pNext
 				AHardwareBufferᵖ(mem.AndroidHardwareBuffer()), // buffer
+			),
+		).Ptr())
+	}
+	if mem.OpaqueCaptureAddress() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkMemoryOpaqueCaptureAddressAllocateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO, // sType
+				pNext,                      // pNext
+				mem.OpaqueCaptureAddress(), // Address
 			),
 		).Ptr())
 	}
@@ -3445,6 +3465,15 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 				VkStructureType_VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO, // sType
 				pNext,                                // pNext
 				src.Info().ExternalHandleTypeFlags(), // handleTypes
+			),
+		).Ptr())
+	}
+	if src.Info().OpaqueCaptureAddress() != 0 {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkBufferOpaqueCaptureAddressCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO, // sType
+				pNext,                             // pNext
+				src.Info().OpaqueCaptureAddress(), // Address
 			),
 		).Ptr())
 	}

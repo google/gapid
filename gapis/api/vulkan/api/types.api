@@ -40,6 +40,7 @@ type u32 VkFlags
 type u32 VkBool32
 type u64 VkDeviceSize
 type u32 VkSampleMask
+type u64 VkDeviceAddress
 
 /// Dispatchable handle types.
 @replay_remap @dispatchHandle type size VkInstance
