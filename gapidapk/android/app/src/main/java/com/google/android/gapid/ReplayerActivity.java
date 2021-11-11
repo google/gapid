@@ -17,8 +17,18 @@
 package com.google.android.gapid;
 
 import android.app.NativeActivity;
+import android.os.Bundle;
+import android.view.Window;
 
 // This class exists to disambiguate activity names between native activities inside the GAPID
 // APK. It just needs to extend NativeActivity.
 public class ReplayerActivity extends NativeActivity {
+    public void onCreate(Bundle savedInstanceState) {
+        getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+        
+        super.onCreate(savedInstanceState);
+        
+        getWindow().takeSurface( /* callback= */null);
+        getWindow().setContentView(R.layout.replayer_main);
+    }
 }

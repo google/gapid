@@ -29,6 +29,9 @@ android_library(
     manifest = "//tools/build/rules:AndroidManifest.xml",
     resource_files = [
         ":logo_resource",
+        ":layout_resource",
+        ":value_resource",
+        ":drawable_resource",
     ],
     visibility = ["//visibility:public"],
 )
@@ -42,4 +45,29 @@ copy_to(
         "logo_256.png": "logo.png",
     },
     to = "res/drawable-xxxhdpi",
+)
+
+copy_to(
+    name = "layout_resource",
+    srcs = [
+        "//gapidapk/android/app/src/main/res/layout:replayer_main.xml",
+    ],
+    to = "res/layout",
+)
+
+copy_to(
+    name = "value_resource",
+    srcs = [
+        "//gapidapk/android/app/src/main/res/values:colors.xml",
+        "//gapidapk/android/app/src/main/res/values:strings.xml",
+    ],
+    to = "res/values",
+)
+
+copy_to(
+    name = "drawable_resource",
+    srcs = [
+        "//tools/logo:logo.xml",
+    ],
+    to = "res/drawable",
 )

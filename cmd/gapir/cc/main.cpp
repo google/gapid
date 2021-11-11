@@ -700,7 +700,8 @@ void android_main(struct android_app* app) {
 
   CrashHandler crashHandler(getCacheDir(app));
 
-  ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
+  ANativeActivity_setWindowFlags(
+      app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON | AWINDOW_FLAG_FULLSCREEN, 0);
 
   std::thread waiting_thread;
   std::atomic<bool> thread_is_done(false);
