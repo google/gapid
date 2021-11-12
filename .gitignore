@@ -4,6 +4,7 @@
 /.vscode
 /bazel-*
 /fused
+/pkg
 
 # Single files
 /.gapid-config
