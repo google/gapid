@@ -98,6 +98,10 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
   @Override
   public void onReplayDevicesLoaded() {
     selectReplayDevice();
+
+    if (dialog != null) {
+      dialog.packColumns();
+    }
   }
 
   @Override
@@ -163,6 +167,16 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       validationPassed = false;
     }
 
+    public void packColumns() {
+      if (compatibleDeviceTable != null) {
+        Widgets.packColumns(compatibleDeviceTable.getTable());
+      }
+
+      if (incompatibleDeviceTable != null) {
+        Widgets.packColumns(incompatibleDeviceTable.getTable());
+      }
+    }
+
     @Override
     public String getTitle() {
       return Messages.SELECT_DEVICE_TITLE;
@@ -208,7 +222,6 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
           "GPU", dev -> ((Device.Instance)dev).getConfiguration().getHardware().getGPU().getName());
       Widgets.createTableColumn(compatibleDeviceTable,
           "Driver version", dev -> Devices.getDriverVersion((Device.Instance)dev));
-      Widgets.packColumns(compatibleDeviceTable.getTable());
 
       compatibleDeviceTable.getTable().addListener(SWT.Selection, e -> {
         runValidationCheck(getSelectedDevice());
@@ -245,7 +258,6 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       Widgets.createTableColumn(incompatibleDeviceTable, "GPU", dev -> ((ReplayDeviceInfo)dev).instance.getConfiguration().getHardware().getGPU().getName());
       Widgets.createTableColumn(incompatibleDeviceTable, "Driver version", dev -> Devices.getDriverVersion(((ReplayDeviceInfo)dev).instance));
       Widgets.createTableColumn(incompatibleDeviceTable, "Incompatibility", dev -> Strings.getMessage(((ReplayDeviceInfo)dev).reason));
-      Widgets.packColumns(incompatibleDeviceTable.getTable());
       incompatibleDeviceTable.getTable().setBackground(theme.invalidDeviceBackground());
 
       // Refresh button
@@ -262,6 +274,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       });
 
       refresh();
+      packColumns();
       return composite;
     }
 
