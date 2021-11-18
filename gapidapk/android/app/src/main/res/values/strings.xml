@@ -16,5 +16,5 @@
 -->
 <resources>
     <string name="logo_desc">AGI logo</string>
-    <string name="status_text">Running replayer...</string>
+    <string name="status_text">Android GPU Inspector</string>
 </resources>
