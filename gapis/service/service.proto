@@ -117,8 +117,6 @@ message Value {
     CommandTreeNode command_tree_node = 3;
     Commands commands = 4;
     ConstantSet constant_set = 7;
-    Event event = 8;
-    Events events = 9;
     Memory memory = 10;
     Messages messages = 11;
     path.Any path = 12;
@@ -211,37 +209,6 @@ message Constant {
   string name = 1;
   // The value of the constant.
   uint64 value = 2;
-}
-
-// Event represents a single event in the capture.
-message Event {
-  EventKind kind = 1;
-  path.Command command = 2;
-  uint64 timestamp = 3;
-}
-
-enum EventKind {
-  Unknown = 0;
-  DrawCall = 1;
-  Submission = 2;
-  TransformFeedback = 3;
-  // All command events should occur between FirstInFrame and LastInFrame
-  // (except FramebufferObservation, which comes last as gapit sxs_video
-  // depends on this).
-  FirstInFrame = 4;
-  LastInFrame = 5;
-  Clear = 6;
-  UserMarker = 7;
-  PushUserMarker = 8;
-  PopUserMarker = 9;
-  FramebufferObservation = 10;
-  // Note you probably only want to use AllCommands for debugging/testing
-  // purposes.
-  AllCommands = 11;
-}
-
-message Events {
-  repeated Event list = 1;
 }
 
 // Memory describes the state of a range of memory at a specific point in

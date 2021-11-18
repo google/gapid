@@ -39,7 +39,6 @@ message Any {
     ConstantSet constant_set = 11;
     Device device = 14;
     DeviceTraceConfiguration traceConfig = 15;
-    Events events = 16;
     FramebufferObservation FBO = 17;
     FramebufferAttachments framebuffer_attachments = 18;
     FramebufferAttachment framebuffer_attachment = 19;
@@ -151,25 +150,6 @@ message Commands {
 message ConstantSet {
   API API = 1;
   int32 index = 2;
-}
-
-// Events is a path to a list of events in a capture.
-// Resolves to a service.Events.
-message Events {
-  Capture capture = 1;
-  CommandFilter filter = 2;
-  bool draw_calls = 3;
-  bool submissions = 4;
-  bool transform_feedbacks = 5;
-  bool first_in_frame = 6;
-  bool last_in_frame = 7;
-  bool clears = 8;
-  bool user_markers = 9;
-  bool push_user_markers = 10;
-  bool pop_user_markers = 11;
-  bool framebuffer_observations = 12;
-  bool all_commands = 13;
-  bool include_timing = 14;
 }
 
 // Parameter is the path to a single parameter on a command.
@@ -301,7 +281,7 @@ message Framegraph {
   Capture capture = 1;
 }
 
-// CommandFilter are the optional filters applied to CommandTrees and Events.
+// CommandFilter are the optional filters applied to CommandTrees.
 message CommandFilter {
   // thread filters the commands to those with the specified threads.
   repeated uint64 threads = 2;
@@ -317,6 +297,12 @@ message CommandFilter {
 
   // If true, do not include synchronisation commands in results
   bool suppress_device_side_sync_commands = 6;
+
+  // If true, only shows end of frame commands
+  bool only_end_of_frames = 7;
+
+  // If true, only show frame buffer observations
+  bool only_framebuffer_observations = 8;
 }
 
 // CommandTree is a path to a hierarchy of command tree nodes.

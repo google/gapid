@@ -113,22 +113,29 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't get filter")
 		}
+		filter.OnlyEndOfFrames = true
 
-		requestEvents := gapidPath.Events{
-			Capture:     capturePath,
-			LastInFrame: true,
-			Filter:      filter,
-		}
+		treePath := capturePath.CommandTree(filter)
 
-		// Get the end-of-frame events.
-		eofEvents, err := getEvents(ctx, client, &requestEvents)
+		boxedTree, err := client.Get(ctx, treePath.Path(), nil)
 		if err != nil {
-			return log.Err(ctx, err, "Couldn't get frame events")
+			return log.Err(ctx, err, "Failed to load the command tree")
 		}
 
-		for _, e := range eofEvents {
+		tree := boxedTree.(*service.CommandTree)
+
+		var allEOFCommands []*gapidPath.Command
+		traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
+			if n.Group != "" {
+				return nil
+			}
+			allEOFCommands = append(allEOFCommands, n.Commands.First())
+			return nil
+		}, "", true)
+
+		for _, e := range allEOFCommands {
 			fbreqs = append(fbreqs, &gapidPath.FramebufferAttachment{
-				After:          e.Command,
+				After:          e,
 				Index:          0,
 				RenderSettings: &gapidPath.RenderSettings{DisableReplayOptimization: true},
 				Hints:          nil,

@@ -27,10 +27,6 @@ message CommandTreeResolvable {
   path.ResolveConfig config = 2;
 }
 
-message EventsResolvable {
-  path.Events path = 1;
-}
-
 message FollowResolvable {
   path.Any path = 1;
   path.ResolveConfig config = 2;

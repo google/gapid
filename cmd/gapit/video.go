@@ -38,6 +38,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/text/reflow"
 	"github.com/google/gapid/core/video"
+	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
@@ -67,13 +68,13 @@ func init() {
 }
 
 type videoFrameWriter func(chan<- image.Image) error
-type videoSource func(ctx context.Context, capture *path.Capture, client service.Service, device *path.Device) (videoFrameWriter, error)
+type videoSource func(ctx context.Context, capture *path.Capture, client client.Client, device *path.Device) (videoFrameWriter, error)
 type videoSink func(ctx context.Context, filepath string, vidFun videoFrameWriter) error
 
 func (verb *videoVerb) regularVideoSource(
 	ctx context.Context,
 	capture *path.Capture,
-	client service.Service,
+	client client.Client,
 	device *path.Device) (videoFrameWriter, error) {
 
 	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
@@ -81,36 +82,41 @@ func (verb *videoVerb) regularVideoSource(
 		return nil, log.Err(ctx, err, "Couldn't get filter")
 	}
 
-	requestEvents := path.Events{
-		Capture:     capture,
-		LastInFrame: true,
-		Filter:      filter,
+	if verb.Commands == false {
+		filter.OnlyEndOfFrames = true
 	}
 
-	if verb.Commands {
-		requestEvents.LastInFrame = false
-		requestEvents.AllCommands = true
-	}
+	treePath := capture.CommandTree(filter)
 
-	// Get the end-of-frame events.
-	eofEvents, err := getEvents(ctx, client, &requestEvents)
+	boxedTree, err := client.Get(ctx, treePath.Path(), nil)
 	if err != nil {
-		return nil, log.Err(ctx, err, "Couldn't get frame events")
+		return nil, log.Err(ctx, err, "Failed to load the command tree")
 	}
 
-	if verb.Frames.Minimum > len(eofEvents) {
-		return nil, log.Errf(ctx, nil, "Captured only %v frames, requires %v frames at minimum", len(eofEvents), verb.Frames.Minimum)
+	tree := boxedTree.(*service.CommandTree)
+
+	var eofCommands []*path.Command
+	traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
+		if n.Group != "" {
+			return nil
+		}
+		eofCommands = append(eofCommands, n.Commands.First())
+		return nil
+	}, "", true)
+
+	if verb.Frames.Minimum > len(eofCommands) {
+		return nil, log.Errf(ctx, nil, "Captured only %v frames, requires %v frames at minimum", len(eofCommands), verb.Frames.Minimum)
 	}
 
-	if verb.Frames.Start < len(eofEvents) {
-		eofEvents = eofEvents[verb.Frames.Start:]
+	if verb.Frames.Start < len(eofCommands) {
+		eofCommands = eofCommands[verb.Frames.Start:]
 	}
 
-	if verb.Frames.Count != allTheWay && verb.Frames.Count < len(eofEvents) {
-		eofEvents = eofEvents[:verb.Frames.Count]
+	if verb.Frames.Count != allTheWay && verb.Frames.Count < len(eofCommands) {
+		eofCommands = eofCommands[:verb.Frames.Count]
 	}
 
-	frameCount := len(eofEvents)
+	frameCount := len(eofCommands)
 
 	log.I(ctx, "Frames: %d", frameCount)
 
@@ -125,10 +131,10 @@ func (verb *videoVerb) regularVideoSource(
 	errors := make([]error, frameCount)
 
 	var errorCount uint32
-	for i, e := range eofEvents {
+	for i, e := range eofCommands {
 		i, e := i, e
 		executor(ctx, func(ctx context.Context) error {
-			if frame, err := getFrame(ctx, verb.Max.Width, verb.Max.Height, e.Command, device, client, verb.NoOpt); err == nil {
+			if frame, err := getFrame(ctx, verb.Max.Width, verb.Max.Height, e, device, client, verb.NoOpt); err == nil {
 				rendered[i] = flipImg(frame)
 			} else {
 				errors[i] = err
@@ -140,7 +146,7 @@ func (verb *videoVerb) regularVideoSource(
 	events.Wait(ctx)
 
 	if errorCount > 0 {
-		log.W(ctx, "%d/%d frames errored", errorCount, len(eofEvents))
+		log.W(ctx, "%d/%d frames errored", errorCount, len(eofCommands))
 	}
 
 	// Get the max width and height
@@ -165,7 +171,7 @@ func (verb *videoVerb) regularVideoSource(
 	return func(frames chan<- image.Image) error {
 		for i, frame := range rendered {
 			if err := errors[i]; err != nil {
-				log.E(ctx, "Error getting frame at %v: %v", eofEvents[i].Command, err)
+				log.E(ctx, "Error getting frame at %v: %v", eofCommands[i], err)
 				continue
 			}
 
@@ -178,7 +184,7 @@ func (verb *videoVerb) regularVideoSource(
 			sb := new(bytes.Buffer)
 			refw := reflow.New(sb)
 			fmt.Fprint(refw, verb.Text)
-			fmt.Fprintf(refw, "Frame: %d, cmd: %v", i, eofEvents[i].Command.Indices)
+			fmt.Fprintf(refw, "Frame: %d, cmd: %v", i, eofCommands[i].Indices)
 			refw.Flush()
 			str := sb.String()
 			font.DrawString(str, frame, image.Pt(4, 4), color.Black)
@@ -208,13 +214,29 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	fboEvents, err := getEvents(ctx, client, &path.Events{
-		Capture:                 capture,
-		FramebufferObservations: true,
-	})
+	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
 	if err != nil {
-		return log.Err(ctx, err, "Couldn't get framebuffer observation events")
+		return log.Err(ctx, err, "Couldn't get filter")
 	}
+	filter.OnlyFramebufferObservations = true
+
+	treePath := capture.CommandTree(filter)
+
+	boxedTree, err := client.Get(ctx, treePath.Path(), nil)
+	if err != nil {
+		return log.Err(ctx, err, "Failed to load the command tree")
+	}
+
+	tree := boxedTree.(*service.CommandTree)
+
+	var fboCommands []*path.Command
+	traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
+		if n.Group != "" {
+			return nil
+		}
+		fboCommands = append(fboCommands, n.Commands.First())
+		return nil
+	}, "", true)
 
 	var vidSrc videoSource
 	var vidFun videoFrameWriter
@@ -230,7 +252,7 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	case SxsFrames:
 		fallthrough
 	case SxsVideo:
-		if len(fboEvents) == 0 {
+		if len(fboCommands) == 0 {
 			return fmt.Errorf("Capture does not contain framebuffer observations")
 		}
 		vidSrc = verb.sxsVideoSource
@@ -240,7 +262,7 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			vidOut = verb.encodeVideo
 		}
 	case AutoVideo:
-		if len(fboEvents) > 0 {
+		if len(fboCommands) > 0 {
 			vidSrc = verb.sxsVideoSource
 		} else {
 			vidSrc = verb.regularVideoSource
@@ -262,6 +284,8 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	return vidOut(ctx, filepath, vidFun)
+
+	return nil
 }
 
 func (verb *videoVerb) writeFrames(ctx context.Context, filepath string, vidFun videoFrameWriter) error {

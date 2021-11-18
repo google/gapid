@@ -60,6 +60,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to build the CommandFilter")
 	}
 	filter.OnlyExecutedDraws = verb.OnlyExecutedDraws
+	filter.OnlyEndOfFrames = verb.OnlyEndOfFrames
 
 	treePath := capture.CommandTree(filter)
 	treePath.GroupByApi = verb.GroupByAPI

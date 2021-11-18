@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
+	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -85,6 +86,20 @@ func buildFilter(
 			return !(cmd.CmdFlags().IsSyncCommand() && len(idx) > 1)
 		})
 	}
-
+	if f.GetOnlyEndOfFrames() {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+			return cmd.CmdFlags().IsEndOfFrame()
+		})
+	}
+	if f.GetOnlyFramebufferObservations() {
+		filters = append(filters, func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+			for _, e := range cmd.Extras().All() {
+				if _, ok := e.(*capture.FramebufferObservation); ok {
+					return true
+				}
+			}
+			return false
+		})
+	}
 	return filters.All, nil
 }

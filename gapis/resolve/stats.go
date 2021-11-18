@@ -59,16 +59,14 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 	}
 	flags := make([]api.CmdFlags, len(cmds))
 
-	// Get the present calls
-	events, err := Events(ctx, &path.Events{
-		Capture:     capt,
-		LastInFrame: true,
-	}, r)
-	if err != nil {
-		return err
+	var events []api.Cmd
+	for _, cmd := range cmds {
+		if cmd.CmdFlags().IsEndOfFrame() {
+			events = append(events, cmd)
+		}
 	}
 
-	drawsPerFrame := make([]uint64, len(events.List))
+	drawsPerFrame := make([]uint64, len(events))
 	drawsSinceLastFrame := uint64(0)
 
 	processed := map[sync.SyncNodeIdx]struct{}{}
@@ -137,31 +135,36 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 	}
 
 	cmdIdx := uint64(0)
-	for i, event := range events.List {
-		limitIdx := event.Command.Indices[0]
-		// Add any draws in the final unfinished frame to the last frame
-		if i == len(events.List)-1 {
-			limitIdx = uint64(len(cmds)) - 1
-		}
-		for cmdIdx <= limitIdx {
-			err := processCmd(cmdIdx)
-			if err != nil {
-				return err
+	frame := 0
+	for i, cmd := range cmds {
+		if cmd.CmdFlags().IsEndOfFrame() {
+			limitIdx := uint64(i)
+			// Add any draws in the final unfinished frame to the last frame
+			if frame == len(events)-1 {
+				limitIdx = uint64(len(cmds)) - 1
 			}
-			cmdIdx += 1
-		}
-		id := api.CmdID(event.Command.Indices[0])
-		cmd := cmds[id]
-		// If the frame boundary was on a synchronized api, process its dependencies
-		if _, ok := cmd.API().(sync.SynchronizedAPI); ok {
-			pt := d.CmdSyncNodes[id]
-			err := process(pt)
-			if err != nil {
-				return err
+			for cmdIdx <= limitIdx {
+				err := processCmd(cmdIdx)
+				if err != nil {
+					return err
+				}
+				cmdIdx += 1
 			}
+			id := api.CmdID(i)
+			cmd := cmds[id]
+			// If the frame boundary was on a synchronized api, process its dependencies
+			if _, ok := cmd.API().(sync.SynchronizedAPI); ok {
+				pt := d.CmdSyncNodes[id]
+				err := process(pt)
+				if err != nil {
+					return err
+				}
+			}
+			drawsPerFrame[frame] = drawsSinceLastFrame
+			drawsSinceLastFrame = 0
+
+			frame++
 		}
-		drawsPerFrame[i] = drawsSinceLastFrame
-		drawsSinceLastFrame = 0
 	}
 
 	stats.DrawCalls = drawsPerFrame

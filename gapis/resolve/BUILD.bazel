@@ -26,7 +26,6 @@ go_library(
         "delete.go",
         "doc.go",
         "errors.go",
-        "events.go",
         "filter.go",
         "find.go",
         "follow.go",

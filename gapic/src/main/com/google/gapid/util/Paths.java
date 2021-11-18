@@ -98,14 +98,6 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any events(Path.Capture capture) {
-    return Path.Any.newBuilder()
-        .setEvents(Path.Events.newBuilder()
-            .setCapture(capture)
-            .setLastInFrame(true))
-        .build();
-  }
-
   public static Path.Any commandTree(Path.CommandTreeNode node) {
     return Path.Any.newBuilder()
         .setCommandTreeNode(node)
@@ -590,7 +582,6 @@ public class Paths {
     R visit(Path.CommandTreeNodeForCommand path, A arg);
     R visit(Path.Device path, A arg);
     R visit(Path.DeviceTraceConfiguration path, A arg);
-    R visit(Path.Events path, A arg);
     R visit(Path.FramebufferObservation path, A arg);
     R visit(Path.Field path, A arg);
     R visit(Path.GlobalState path, A arg);
@@ -644,8 +635,6 @@ public class Paths {
         return visitor.visit(path.getDevice(), arg);
       case TRACECONFIG:
         return visitor.visit(path.getTraceConfig(), arg);
-      case EVENTS:
-        return visitor.visit(path.getEvents(), arg);
       case FBO:
         return visitor.visit(path.getFBO(), arg);
       case FIELD:
@@ -722,8 +711,6 @@ public class Paths {
       return visitor.visit((Path.Device)path, arg);
     } else if (path instanceof Path.DeviceTraceConfiguration) {
       return visitor.visit((Path.DeviceTraceConfiguration)path, arg);
-    } else if (path instanceof Path.Events) {
-      return visitor.visit((Path.Events)path, arg);
     } else if (path instanceof Path.FramebufferObservation) {
       return visitor.visit((Path.FramebufferObservation)path, arg);
     } else if (path instanceof Path.Field) {
@@ -787,7 +774,6 @@ public class Paths {
     @Override public Object visit(Path.CommandTreeNodeForCommand path, Void ignored) { return path; }
     @Override public Object visit(Path.Device path, Void ignored) { return path; }
     @Override public Object visit(Path.DeviceTraceConfiguration path, Void ignored) { return path; }
-    @Override public Object visit(Path.Events path, Void ignored) { return path; }
     @Override public Object visit(Path.FramebufferObservation path, Void ignored) { return path; }
     @Override public Object visit(Path.Field path, Void ignored) { return path; }
     @Override public Object visit(Path.GlobalState path, Void ignored) { return path; }
@@ -882,11 +868,6 @@ public class Paths {
     @Override
     public Path.Any visit(Path.DeviceTraceConfiguration path, Void ignored) {
       return Path.Any.newBuilder().setTraceConfig(path).build();
-    }
-
-    @Override
-    public Path.Any visit(Path.Events path, Void ignored) {
-      return Path.Any.newBuilder().setEvents(path).build();
     }
 
     @Override
@@ -1086,11 +1067,6 @@ public class Paths {
     @Override
     public Object visit(Path.DeviceTraceConfiguration path, Void ignored) {
       return path.getDevice();
-    }
-
-    @Override
-    public Object visit(Path.Events path, Void ignored) {
-      return path.getCapture();
     }
 
     @Override
@@ -1367,15 +1343,6 @@ public class Paths {
     @Override
     public Object visit(Path.Device path, Object parent) {
       throw new RuntimeException("Path.Device has no parent to set");
-    }
-
-    @Override
-    public Object visit(Path.Events path, Object parent) {
-      if (parent instanceof Path.Capture) {
-        return path.toBuilder().setCapture((Path.Capture) parent).build();
-      } else {
-        throw new RuntimeException("Path.Events cannot set parent to " + parent.getClass().getName());
-      }
     }
 
     @Override
@@ -1704,21 +1671,6 @@ public class Paths {
       visit(path.getDevice(), sb);
       sb.append("}");
       return sb;
-    }
-
-    @Override
-    public StringBuilder visit(Path.Events path, StringBuilder sb) {
-      visit(path.getCapture(), sb).append(".events");
-      append(sb, path.getFilter()).append('[');
-      if (path.getFirstInFrame()) sb.append("Fs");
-      if (path.getLastInFrame()) sb.append("Fe");
-      if (path.getClears()) sb.append("C");
-      if (path.getDrawCalls()) sb.append("D");
-      if (path.getUserMarkers()) sb.append("M");
-      if (path.getPushUserMarkers()) sb.append("Ms");
-      if (path.getPopUserMarkers()) sb.append("Me");
-      if (path.getFramebufferObservations()) sb.append("O");
-      return sb.append(']');
     }
 
     @Override

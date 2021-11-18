@@ -70,7 +70,6 @@ func (n *CommandTreeNode) Path() *Any           { return &Any{Path: &Any_Command
 func (n *CommandTreeNodeForCommand) Path() *Any { return &Any{Path: &Any_CommandTreeNodeForCommand{n}} }
 func (n *Device) Path() *Any                    { return &Any{Path: &Any_Device{n}} }
 func (n *DeviceTraceConfiguration) Path() *Any  { return &Any{Path: &Any_TraceConfig{n}} }
-func (n *Events) Path() *Any                    { return &Any{Path: &Any_Events{n}} }
 func (n *FramebufferObservation) Path() *Any    { return &Any{Path: &Any_FBO{n}} }
 func (n *FramebufferAttachments) Path() *Any    { return &Any{Path: &Any_FramebufferAttachments{n}} }
 func (n *FramebufferAttachment) Path() *Any     { return &Any{Path: &Any_FramebufferAttachment{n}} }
@@ -113,7 +112,6 @@ func (n CommandTreeNode) Parent() Node           { return nil }
 func (n CommandTreeNodeForCommand) Parent() Node { return n.Command }
 func (n Device) Parent() Node                    { return nil }
 func (n DeviceTraceConfiguration) Parent() Node  { return n.Device }
-func (n Events) Parent() Node                    { return n.Capture }
 func (n FramebufferObservation) Parent() Node    { return n.Command }
 func (n FramebufferAttachments) Parent() Node    { return n.After }
 func (n FramebufferAttachment) Parent() Node     { return n.After }
@@ -154,7 +152,6 @@ func (n *CommandTreeNode) SetParent(p Node)           {}
 func (n *CommandTreeNodeForCommand) SetParent(p Node) { n.Command, _ = p.(*Command) }
 func (n *Device) SetParent(p Node)                    {}
 func (n *DeviceTraceConfiguration) SetParent(p Node)  { n.Device, _ = p.(*Device) }
-func (n *Events) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *FramebufferObservation) SetParent(p Node)    { n.Command, _ = p.(*Command) }
 func (n *FramebufferAttachments) SetParent(p Node)    { n.After, _ = p.(*Command) }
 func (n *FramebufferAttachment) SetParent(p Node)     { n.After, _ = p.(*Command) }
@@ -227,9 +224,6 @@ func (n CommandTreeNodeForCommand) Format(f fmt.State, c rune) {
 
 // Format implements fmt.Formatter to print the path.
 func (n Device) Format(f fmt.State, c rune) { fmt.Fprintf(f, "device<%x>", n.ID) }
-
-// Format implements fmt.Formatter to print the path.
-func (n Events) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.events", n.Parent()) }
 
 // Format implements fmt.Formatter to print the path.
 func (n Field) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(), n.Name) }

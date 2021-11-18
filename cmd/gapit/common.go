@@ -359,14 +359,6 @@ func getADBDevice(ctx context.Context, pattern string) (adb.Device, error) {
 	return matchingDevices[0], nil
 }
 
-func getEvents(ctx context.Context, client service.Service, p *path.Events) ([]*service.Event, error) {
-	b, err := client.Get(ctx, p.Path(), nil)
-	if err != nil {
-		return nil, log.Errf(ctx, err, "Couldn't get events at: %v", p)
-	}
-	return b.(*service.Events).List, nil
-}
-
 func getCommand(ctx context.Context, client service.Service, p *path.Command) (*api.Command, error) {
 	boxedCmd, err := client.Get(ctx, p.Path(), nil)
 	if err != nil {

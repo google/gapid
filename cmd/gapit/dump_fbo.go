@@ -78,42 +78,37 @@ func (verb *dumpFBOVerb) frameSource(ctx context.Context, client client.Client, 
 	if err != nil {
 		return nil, log.Err(ctx, err, "Couldn't get filter")
 	}
+	filter.OnlyFramebufferObservations = true
+
+	treePath := capture.CommandTree(filter)
+
+	boxedTree, err := client.Get(ctx, treePath.Path(), nil)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to load the command tree")
+	}
+
+	tree := boxedTree.(*service.CommandTree)
+
+	var allFBOCommands []*path.Command
+	traverseCommandTree(ctx, client, tree.Root, func(n *service.CommandTreeNode, prefix string) error {
+		if n.Group != "" {
+			return nil
+		}
+		allFBOCommands = append(allFBOCommands, n.Commands.First())
+		return nil
+	}, "", true)
 
 	return func(ch chan<- image.Image) error {
-		// Get the draw call and end-of-frame events.
-		events, err := getEvents(ctx, client, &path.Events{
-			Capture:                 capture,
-			LastInFrame:             true,
-			FramebufferObservations: true,
-			Filter:                  filter,
-		})
-		if err != nil {
-			return log.Err(ctx, err, "Couldn't get events")
-		}
-
-		var lastFrameEvent *path.Command
-		for _, e := range events {
-			switch e.Kind {
-			case service.EventKind_FramebufferObservation:
-				// Find FBO for all presents.
-				if lastFrameEvent == nil {
-					continue
-				}
-				lastFrameEvent = nil
-
-				fbo, err := getFBO(ctx, client, e.Command)
-				if err != nil {
-					return err
-				}
-
-				ch <- flipImg(&image.NRGBA{
-					Pix:    fbo.Bytes,
-					Stride: int(fbo.Width) * 4,
-					Rect:   image.Rect(0, 0, int(fbo.Width), int(fbo.Height)),
-				})
-			case service.EventKind_LastInFrame:
-				lastFrameEvent = e.Command
+		for _, cmd := range allFBOCommands {
+			fbo, err := getFBO(ctx, client, cmd)
+			if err != nil {
+				return err
 			}
+			ch <- flipImg(&image.NRGBA{
+				Pix:    fbo.Bytes,
+				Stride: int(fbo.Width) * 4,
+				Rect:   image.Rect(0, 0, int(fbo.Width), int(fbo.Height)),
+			})
 		}
 
 		return nil

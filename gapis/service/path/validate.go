@@ -170,11 +170,6 @@ func (n *DeviceTraceConfiguration) Validate() error {
 }
 
 // Validate checks the path is valid.
-func (n *Events) Validate() error {
-	return checkNotNilAndValidate(n, n.Capture, "capture")
-}
-
-// Validate checks the path is valid.
 func (n *FramebufferObservation) Validate() error {
 	return checkNotNilAndValidate(n, n.Command, "command")
 }

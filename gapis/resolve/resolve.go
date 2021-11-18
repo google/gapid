@@ -315,8 +315,6 @@ func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (i
 		return Device(ctx, p, r)
 	case *path.DeviceTraceConfiguration:
 		return DeviceTraceConfiguration(ctx, p, r)
-	case *path.Events:
-		return Events(ctx, p, r)
 	case *path.FramebufferObservation:
 		return FramebufferObservation(ctx, p, r)
 	case *path.FramebufferAttachments:

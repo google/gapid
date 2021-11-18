@@ -255,6 +255,7 @@ type (
 		GroupBySubmission    bool   `help:"Group commands by submissions"`
 		AllowIncompleteFrame bool   `help:"_Make a group for incomplete frames"`
 		OnlyExecutedDraws    bool   `help:"Only show executed draw calls from within command buffers"`
+		OnlyEndOfFrames      bool   `help:"Only end of frame commands"`
 		Observations         ObservationFlags
 		CommandFilterFlags
 		CaptureFileFlags

@@ -260,10 +260,6 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_CommandTreeNode{v}}
 	case *ConstantSet:
 		return &Value{Val: &Value_ConstantSet{v}}
-	case *Event:
-		return &Value{Val: &Value_Event{v}}
-	case *Events:
-		return &Value{Val: &Value_Events{v}}
 	case *Memory:
 		return &Value{Val: &Value_Memory{v}}
 	case *memory_box.Value:

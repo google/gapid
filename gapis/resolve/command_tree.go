@@ -20,7 +20,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
@@ -292,34 +291,29 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 	}
 
-	if p.GroupByDrawCall || p.GroupByFrame || p.GroupBySubmission {
-		events, err := Events(ctx, &path.Events{
-			Capture:            p.Capture,
-			Filter:             p.Filter,
-			DrawCalls:          true,
-			TransformFeedbacks: true,
-			FirstInFrame:       true,
-			LastInFrame:        true,
-			Submissions:        true,
-		}, r.Config)
-		if err != nil {
-			return nil, log.Errf(ctx, err, "Couldn't get events")
-		}
-		if p.GroupByFrame {
-			addFrameGroups(ctx, events, p, out, api.CmdID(len(c.Commands)))
-		}
-		if p.GroupByTransformFeedback {
-			addFrameEventGroups(ctx, events, p, out, api.CmdID(len(c.Commands)),
-				service.EventKind_TransformFeedback, "Transform Feedback")
-		}
-		if p.GroupByDrawCall {
-			addFrameEventGroups(ctx, events, p, out, api.CmdID(len(c.Commands)),
-				service.EventKind_DrawCall, "Draw")
-		}
-		if p.GroupBySubmission {
-			addContainingGroups(ctx, events, p, out, api.CmdID(len(c.Commands)),
-				service.EventKind_Submission, "Host Coordination")
-		}
+	if p.GroupByFrame {
+		addFrameGroups(ctx, p, out, c.Commands)
+	}
+	if p.GroupByTransformFeedback {
+		addFrameEventGroups(ctx, p, out, c.Commands,
+			func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+				return cmd.CmdFlags().IsTransformFeedback()
+			},
+			"Transform Feedback")
+	}
+	if p.GroupByDrawCall {
+		addFrameEventGroups(ctx, p, out, c.Commands,
+			func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+				return cmd.CmdFlags().IsDrawCall()
+			},
+			"Draw")
+	}
+	if p.GroupBySubmission {
+		addContainingGroups(ctx, p, out, c.Commands,
+			func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+				return cmd.CmdFlags().IsSubmission()
+			},
+			"Host Coordination")
 	}
 
 	drawOrClearCmds := api.Spans{} // All the spans will have length 1
@@ -391,19 +385,16 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 func addFrameEventGroups(
 	ctx context.Context,
-	events *service.Events,
 	p *path.CommandTree,
 	t *commandTree,
-	last api.CmdID,
-	kind service.EventKind,
+	cmds []api.Cmd,
+	filter CommandFilter,
 	prefix string) {
 
 	count := 0
-	for _, e := range events.List {
-		i := api.CmdID(e.Command.Indices[0])
-		switch e.Kind {
-		case kind:
-			// Find group which contains this event
+	for i, e := range cmds {
+		i := api.CmdID(i)
+		if filter(i, e, nil, api.SubCmdIdx([]uint64{uint64(i)})) {
 			group := &t.root
 			for true {
 				if idx := group.Spans.IndexOf(i); idx != -1 {
@@ -423,30 +414,30 @@ func addFrameEventGroups(
 
 			t.root.AddGroup(start, i+1, fmt.Sprintf("%v %v", prefix, count+1), []api.SubCmdIdx{})
 			count++
+		}
 
-		case service.EventKind_LastInFrame:
+		if e.CmdFlags().IsEndOfFrame() {
 			count = 0
 		}
 	}
 }
 
-// addContainingGroups works much the same as addFrameEventGroups
-// except it will lift the command in question OUT of the group.
-// Furthermore it does not number the groups.
 func addContainingGroups(
 	ctx context.Context,
-	events *service.Events,
 	p *path.CommandTree,
 	t *commandTree,
-	last api.CmdID,
-	kind service.EventKind,
+	cmds []api.Cmd,
+	filter CommandFilter,
 	label string) {
 
+	realFilter := func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
+		return cmd.CmdFlags().IsEndOfFrame() || filter(id, cmd, s, idx)
+	}
+
 	lastLeft := api.CmdID(0)
-	for _, e := range events.List {
-		i := api.CmdID(e.Command.Indices[0])
-		switch e.Kind {
-		case kind, service.EventKind_LastInFrame:
+	for i, e := range cmds {
+		i := api.CmdID(i)
+		if realFilter(i, e, nil, api.SubCmdIdx([]uint64{uint64(i)})) {
 			// Find group which contains this event
 			group := &t.root
 			for true {
@@ -490,61 +481,28 @@ func (f frame) addGroup(t *commandTree) {
 	}
 }
 
-func addFrameGroups(ctx context.Context, events *service.Events, p *path.CommandTree, t *commandTree, last api.CmdID) {
-	frameCount := 0
-	firstFrame, curFrame := frame{}, frame{}
+func addFrameGroups(ctx context.Context, p *path.CommandTree, t *commandTree, cmds []api.Cmd) {
 
-	for _, e := range events.List {
-		i := api.CmdID(e.Command.Indices[0])
-		switch e.Kind {
-		case service.EventKind_FirstInFrame:
-			curFrame.start = i
-
-			// If the start is within existing group, move it past the end of the group
-			if idx := t.root.Spans.IndexOf(curFrame.start); idx != -1 {
-				span := t.root.Spans[idx]
-				if span.Bounds().Start < i { // Unless the start is equal to the group start.
-					if subgroup, ok := span.(*api.CmdIDGroup); ok {
-						curFrame.start = subgroup.Range.End
-					}
-				}
-			}
-
-		case service.EventKind_LastInFrame:
-			frameCount++
-			curFrame.index, curFrame.end, curFrame.repr = frameCount, i, i
-
-			// If the end is within existing group, move it to the end of the group
-			if idx := t.root.Spans.IndexOf(curFrame.end); idx != -1 {
-				if subgroup, ok := t.root.Spans[idx].(*api.CmdIDGroup); ok {
-					curFrame.end = subgroup.Range.Last()
-				}
-			}
-
-			// If the app properly annotates frames as well, we will end up with
-			// both groupings, where one is the only child of the other.
-			// However, we can not reliably detect this situation as the user
-			// group might be surrounded by (potentially filtered) commands.
-
-			// If this is the first frame, don't add it yet, until we see a second
-			// frame. This way we don't have a single "Frame 1" group for 1 frame
-			// traces (the norm).
-			if frameCount == 1 {
-				firstFrame = curFrame
-			} else {
-				if firstFrame.end != 0 {
-					firstFrame.addGroup(t)
-					firstFrame.end = 0
-				}
-				curFrame.addGroup(t)
-			}
+	eofCommands := make([]api.Cmd, 0)
+	for _, cmd := range cmds {
+		if cmd.CmdFlags().IsEndOfFrame() {
+			eofCommands = append(eofCommands, cmd)
 		}
 	}
-	if p.AllowIncompleteFrame && frameCount > 0 && curFrame.start > curFrame.end {
-		if firstFrame.end != 0 {
-			firstFrame.addGroup(t)
+
+	frameCount := 0
+	startFrame := 0
+
+	for i, cmd := range cmds {
+		if cmd.CmdFlags().IsEndOfFrame() {
+			t.root.AddGroup(api.CmdID(startFrame), api.CmdID(i+1), fmt.Sprintf("Frame %v", frameCount+1), []api.SubCmdIdx{})
+			startFrame = i + 1
+			frameCount++
 		}
-		t.root.AddGroup(curFrame.start, last, "Incomplete Frame", []api.SubCmdIdx{})
+	}
+
+	if p.AllowIncompleteFrame && frameCount > 0 && len(cmds) > startFrame {
+		t.root.AddGroup(api.CmdID(startFrame), api.CmdID(len(cmds)), fmt.Sprintf("[Incomplete] Frame", frameCount+1), []api.SubCmdIdx{})
 	}
 }
 
