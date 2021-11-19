@@ -506,7 +506,7 @@ sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 ins
             case VK_VERTEX_INPUT_RATE_VERTEX:
               vertexCount
             case VK_VERTEX_INPUT_RATE_INSTANCE:
-              switch vertexInputState.DivisorDescriptions == null {
+              switch vertexInputState.DivisorDescriptions != null {
                 case false:
                   instanceCount
                 case true:
