@@ -39,13 +39,23 @@ public class MemoryBoxes {
         sb.append(toPointerString(value.getPointer().getAddress()));
         break;
       case SLICE:
-        sb.append("Array base: ").append(toPointerString(rootAddress));
+        if (value.getSlice().hasRepresentation()) {
+          Pods.append(sb, value.getSlice().getRepresentation());
+          sb.append(String.format(" (%s)", toPointerString(rootAddress)));
+        } else {
+          sb.append("Array base: ").append(toPointerString(rootAddress));
+        }
         break;
       case STRUCT:
         // No more value related info to expose.
         break;
       case ARRAY:
+      if (value.getArray().hasRepresentation()) {
+        Pods.append(sb, value.getArray().getRepresentation());
+        sb.append(String.format(" (%s)", toPointerString(rootAddress)));
+      } else {
         sb.append("Array base: ").append(toPointerString(rootAddress));
+      }
         break;
       case NULL:
         sb.append("(nil)");

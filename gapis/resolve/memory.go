@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/gapid/core/app/analytics"
 	coreid "github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
@@ -181,6 +182,53 @@ func pNextPrecision(typeIndex uint64) (int, error) {
 	}
 }
 
+// expandCharArrays goes through the range and attaches a human-readable representation to char arrays/slices
+func expandCharArrays(ctx context.Context, typedRanges []*service.TypedMemoryRange) ([]*service.TypedMemoryRange, error) {
+	if len(typedRanges) == 0 {
+		return typedRanges, nil
+	}
+
+	for _, typedRange := range typedRanges {
+		memType, err := types.GetType(typedRange.Type.TypeIndex)
+		if err != nil {
+			return typedRanges, err
+		}
+
+		if slice := memType.GetSlice(); slice != nil && slice.GetUnderlying() == types.CharType {
+			typedRange.Value.GetSlice().Representation = &pod.Value{
+				Val: &pod.Value_String_{
+					String_: valAsString(typedRange.Value.GetSlice().GetValues()),
+				},
+			}
+		} else if arr := memType.GetArray(); arr != nil && arr.GetElementType() == types.CharType {
+			typedRange.Value.GetArray().Representation = &pod.Value{
+				Val: &pod.Value_String_{
+					String_: valAsString(typedRange.Value.GetArray().GetEntries()),
+				},
+			}
+		}
+	}
+	return typedRanges, nil
+}
+
+// valAsString combines the values in the array into one string enclosed by quotation marks (")
+func valAsString(values []*memory_box.Value) string {
+	var sb strings.Builder
+	// Pre-allocate array to include quotation marks but not null terminator
+	sb.Grow(len(values) + 1)
+	sb.WriteString("\"")
+	for _, v := range values {
+		char := v.GetPod().GetUint8()
+
+		// Skip null terminator to avoid formatting issues
+		if char != 0 {
+			sb.WriteString(string(char))
+		}
+	}
+	sb.WriteString("\"")
+	return sb.String()
+}
+
 // Memory resolves and returns the memory from the path p.
 func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*service.Memory, error) {
 	ctx = SetupContext(ctx, path.FindCapture(p), rc)
@@ -227,20 +275,20 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	var reads, writes, observed memory.RangeList
 	typedRanges := []*service.TypedMemoryRange{}
 
-	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
-		if id == memory.PoolID(p.Pool) {
-			pool.OnRead = func(rng memory.Range, root uint64, id uint64, apiId coreid.ID) {
+	s.Memory.SetOnCreate(func(poolID memory.PoolID, pool *memory.Pool) {
+		if poolID == memory.PoolID(p.Pool) {
+			pool.OnRead = func(rng memory.Range, root uint64, typeID uint64, apiId coreid.ID) {
 				if rng.Overlaps(r) {
 					interval.Merge(&reads, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
-						value, err := memoryAsType(ctx, s, rng, pool, id, p, rc)
+						value, err := memoryAsType(ctx, s, rng, pool, typeID, p, rc)
 						if err != nil {
 							return
 						}
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
 								Type: &path.Type{
-									TypeIndex: id,
+									TypeIndex: typeID,
 									API:       &path.API{ID: path.NewID(apiId)},
 								},
 								Range: &service.MemoryRange{
@@ -255,18 +303,18 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 					}
 				}
 			}
-			pool.OnWrite = func(rng memory.Range, root uint64, id uint64, apiId coreid.ID) {
+			pool.OnWrite = func(rng memory.Range, root uint64, typeID uint64, apiId coreid.ID) {
 				if rng.Overlaps(r) {
 					interval.Merge(&writes, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
-						value, err := memoryAsType(ctx, s, rng, pool, id, p, rc)
+						value, err := memoryAsType(ctx, s, rng, pool, typeID, p, rc)
 						if err != nil {
 							return
 						}
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
 								Type: &path.Type{
-									TypeIndex: id,
+									TypeIndex: typeID,
 									API:       &path.API{ID: path.NewID(apiId)},
 								},
 								Range: &service.MemoryRange{
@@ -291,6 +339,11 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	}
 
 	typedRanges, err = filterTypedRanges(typedRanges)
+	if err != nil {
+		return nil, err
+	}
+
+	typedRanges, err = expandCharArrays(ctx, typedRanges)
 	if err != nil {
 		return nil, err
 	}

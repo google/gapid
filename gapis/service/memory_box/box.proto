@@ -35,12 +35,14 @@ message Value {
 }
 
 message Pointer {
-  // base address of the pointer.
+  // The base address of this pointer.
   uint64 address = 1;
 }
 
 message Slice {
   repeated Value values = 1;
+  // A more human readable representation of the values in this data structure.
+  pod.Value representation = 2;
 }
 
 message Null {
@@ -52,4 +54,6 @@ message Struct {
 
 message Array {
   repeated Value entries = 1;
+  // A more human readable representation of the values in this data structure.
+  pod.Value representation = 2;
 }
