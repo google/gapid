@@ -1,0 +1,15 @@
+[submodule "externals/Vulkan-Headers"]
+	path = externals/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "externals/vk_callback_swapchain"]
+	path = externals/vk_callback_swapchain
+	url = https://github.com/google/vk_callback_swapchain
+[submodule "externals/stb"]
+	path = externals/stb
+	url = https://github.com/nothings/stb
+[submodule "externals/SPIRV-Reflect"]
+	path = externals/SPIRV-Reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect
+[submodule "externals/digestpp"]
+	path = externals/digestpp
+	url = https://github.com/kerukuro/digestpp

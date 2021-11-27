@@ -1,0 +1,3 @@
+EXPORTS 
+    gapid2_vkGetDeviceProcAddr
+    gapid2_vkGetInstanceProcAddr

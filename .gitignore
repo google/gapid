@@ -1,0 +1,4 @@
+build/
+b_msvc/
+b2/
+.vscode
