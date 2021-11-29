@@ -83,10 +83,19 @@ public class Paths {
         .build();
   }
 
-  public static Path.Any commandTree(Path.Capture capture) {
+  public static Path.CommandFilter CommandFilter(boolean suppressHostCommands, boolean suppressBeginEndMarkers, boolean suppressDeviceSideSyncCommands) {
+    return Path.CommandFilter.newBuilder()
+        .setSuppressHostCommands(suppressHostCommands)
+        .setSuppressBeginEndMarkers(suppressBeginEndMarkers)
+        .setSuppressDeviceSideSyncCommands(suppressDeviceSideSyncCommands)
+        .build();
+  }
+
+  public static Path.Any commandTree(Path.Capture capture, boolean suppressHostCommands, boolean suppressBeginEndMarkers, boolean suppressDeviceSideSyncCommands) {
     return Path.Any.newBuilder()
         .setCommandTree(Path.CommandTree.newBuilder()
             .setCapture(capture)
+            .setFilter(CommandFilter(suppressHostCommands, suppressBeginEndMarkers, suppressDeviceSideSyncCommands))
             .setGroupByFrame(true)
             .setGroupByDrawCall(true)
             .setGroupByTransformFeedback(true)

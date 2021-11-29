@@ -53,6 +53,7 @@ public class SearchBox extends Composite {
 
     Text text = new Text(this, SWT.SINGLE | SWT.SEARCH | SWT.ICON_SEARCH | SWT.ICON_CANCEL);
     Button regex = Widgets.createCheckbox(this, "Regex", true);
+    Menu menu = new Menu(this);
 
     text.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     regex.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));

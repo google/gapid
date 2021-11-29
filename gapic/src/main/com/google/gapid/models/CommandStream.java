@@ -76,6 +76,12 @@ public class CommandStream
     devices.addListener(this);
   }
 
+  public void reloadCommandTree(Boolean hideHostCommands, Boolean hideBeginEnd, Boolean hideDeviceSync) {
+      CommandIndex sel = getSelectedCommands();
+      load(Paths.commandTree(capture.getData().path, hideHostCommands, hideBeginEnd, hideDeviceSync), false);
+      selectCommands(sel, /*force=*/false);
+  }
+
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
     if (!maintainState) {
@@ -90,7 +96,7 @@ public class CommandStream
       if (selection != null) {
         selection = selection.withCapture(capture.getData().path);
       }
-      load(Paths.commandTree(capture.getData().path), false);
+      load(Paths.commandTree(capture.getData().path, true, true, true), false);
     }
   }
 
@@ -147,26 +153,6 @@ public class CommandStream
     }
   }
 
-  public ListenableFuture<Service.FindResponse> search(
-      CommandStream.Node parent, String text, boolean regex) {
-    SettableFuture<Service.FindResponse> result = SettableFuture.create();
-    client.streamSearch(searchRequest(parent, text, regex), result::set);
-    return result;
-  }
-
-  private static Service.FindRequest searchRequest(
-      CommandStream.Node parent, String text, boolean regex) {
-    return Service.FindRequest.newBuilder()
-        .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
-        .setText(text)
-        .setIsRegex(regex)
-        .setMaxItems(1)
-        .setWrap(true)
-        .setConfig(Path.ResolveConfig.newBuilder()
-            .setReplayDevice(parent.device))
-        .build();
-  }
-
   @Override
   protected void fireLoadStartEvent() {
     listeners.fire().onCommandsLoadingStart();
@@ -195,9 +181,6 @@ public class CommandStream
     RootNode root = (RootNode)getData();
     if (index.getNode() == null) {
       resolve(index.getCommand(), node -> selectCommands(index.withNode(node), force));
-    } else if (!index.getNode().getTree().equals(root.tree)) {
-      // TODO
-      throw new UnsupportedOperationException("This is not yet supported, needs API clarification");
     } else {
       selection = index;
       listeners.fire().onCommandsSelected(selection);

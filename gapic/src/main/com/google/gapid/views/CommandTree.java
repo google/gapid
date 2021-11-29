@@ -53,7 +53,7 @@ import com.google.gapid.widgets.LinkifiedTreeWithImages;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadableImageWidget;
 import com.google.gapid.widgets.LoadablePanel;
-import com.google.gapid.widgets.SearchBox;
+import com.google.gapid.widgets.EventsFilter;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.TreePath;
@@ -91,7 +91,6 @@ public class CommandTree extends Composite
   protected final Tree tree;
   private final Label commandIdx;
   private final SelectionHandler<Control> selectionHandler;
-  private final SingleInFlight searchController = new SingleInFlight();
 
   public CommandTree(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -99,7 +98,7 @@ public class CommandTree extends Composite
 
     setLayout(new GridLayout(1, false));
 
-    SearchBox search = new SearchBox(this, false);
+    EventsFilter eventsFilter = new EventsFilter(this);
     loading = LoadablePanel.create(this, widgets, p -> new Tree(p, models, widgets));
     tree = loading.getContents();
     commandIdx = createLabel(this, COMMAND_INDEX_DSCRP);
@@ -110,7 +109,7 @@ public class CommandTree extends Composite
       }
     });
 
-    search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+    eventsFilter.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     commandIdx.setLayoutData(withIndents(new GridData(SWT.FILL, SWT.FILL, true, false), 3, 0));
 
@@ -123,7 +122,13 @@ public class CommandTree extends Composite
       models.profile.removeListener(this);
     });
 
-    search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
+    eventsFilter.addListener(Events.FilterEvents,
+      e -> filterEvents(
+        (e.detail & Events.HIDE_HOST_COMMANDS) != 0,
+        (e.detail & Events.HIDE_BEGIN_END) != 0,
+        (e.detail & Events.HIDE_DEVICE_SYNC) != 0
+      )
+    );
 
     selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
       @Override
@@ -170,31 +175,8 @@ public class CommandTree extends Composite
     }, true);
   }
 
-  private void search(String text, boolean regex) {
-    models.analytics.postInteraction(View.Commands, ClientAction.Search);
-    CommandStream.Node parent = models.commands.getData();
-    if (parent != null && !text.isEmpty()) {
-      CommandStream.Node selection = tree.getSelection();
-      if (selection != null) {
-        parent = selection;
-      }
-      searchController.start().listen(
-          MoreFutures.transformAsync(models.commands.search(parent, text, regex),
-              r -> models.commands.getTreePath(models.commands.getData(), Lists.newArrayList(),
-                  r.getCommandTreeNode().getIndicesList().iterator())),
-          new UiCallback<TreePath, TreePath>(tree, LOG) {
-        @Override
-        protected TreePath onRpcThread(Rpc.Result<TreePath> result)
-            throws RpcException, ExecutionException {
-          return result.get();
-        }
-
-        @Override
-        protected void onUiThread(TreePath result) {
-          select(result);
-        }
-      });
-    }
+  private void filterEvents(Boolean hideHostCommands, Boolean hideBeginEnd, Boolean hideDeviceSync) {
+    models.commands.reloadCommandTree(hideHostCommands, hideBeginEnd, hideDeviceSync);
   }
 
   protected void select(TreePath path) {
