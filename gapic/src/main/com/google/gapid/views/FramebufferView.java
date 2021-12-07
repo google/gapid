@@ -433,9 +433,11 @@ public class FramebufferView extends Composite
               new GridData(SWT.FILL, SWT.CENTER, true, false));
 
           img.setImage(attachment.getImage(widgets, contents, () -> {
-            img.setImage(attachment.getImage(widgets, contents, this));
-            img.requestLayout();
-            shell.setSize(shell.computeSize(size.width, SWT.DEFAULT));
+            if (!img.isDisposed()) {
+              img.setImage(attachment.getImage(widgets, contents, this));
+              img.requestLayout();
+              shell.setSize(shell.computeSize(size.width, SWT.DEFAULT));
+            }
           }));
 
           img.setBackground(COLOR_LIST_BACKGROUND);
