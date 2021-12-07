@@ -53,3 +53,27 @@ class VkSemaphoreWaitInfo {
     const VkSemaphore*      pSemaphores
     const u64*              pValues
 }
+
+class VkPhysicalDeviceSamplerFilterMinmaxProperties {
+    VkStructureType    sType
+    void*              pNext
+    VkBool32           filterMinmaxSingleComponentFormats
+    VkBool32           filterMinmaxImageComponentMapping
+}
+
+@internal
+class PhysicalDeviceSamplerFilterMinmaxProperties {
+    VkBool32           FilterMinmaxSingleComponentFormats
+    VkBool32           FilterMinmaxImageComponentMapping
+}
+
+class VkSamplerReductionModeCreateInfo {
+    VkStructureType           sType
+    const void*               pNext
+    VkSamplerReductionMode    reductionMode
+} 
+
+@internal
+class SamplerReductionModeCreateInfo {
+    VkSamplerReductionMode    ReductionMode
+}

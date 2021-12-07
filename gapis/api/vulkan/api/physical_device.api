@@ -57,6 +57,7 @@
 
   // Vulkan 1.2 core
   @unused ref!PhysicalDeviceBufferDeviceAddressFeatures PhysicalDeviceBufferDeviceAddressFeatures
+  @unused ref!PhysicalDeviceSamplerFilterMinmaxProperties PhysicalDeviceSamplerFilterMinmaxProperties
 
   // Extensions
   @unused ref!PhysicalDevicePCIBusInfoPropertiesEXT PhysicalDevicePCIBusInfoPropertiesEXT

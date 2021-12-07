@@ -680,6 +680,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
             _ = as!VkPhysicalDeviceCustomBorderColorPropertiesEXT*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
+            _ = as!VkPhysicalDeviceSamplerFilterMinmaxProperties*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -853,6 +856,13 @@ sub void GetPhysicalDeviceProperties2(
               ext := as!VkPhysicalDeviceCustomBorderColorPropertiesEXT*(next.Ptr)[0]
               phyDev.PhysicalDeviceCustomBorderColorPropertiesEXT = new!PhysicalDeviceCustomBorderColorPropertiesEXT(
                 MaxCustomBorderColorSamplers: ext.maxCustomBorderColorSamplers,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
+              ext := as!VkPhysicalDeviceSamplerFilterMinmaxProperties*(next.Ptr)[0]
+              phyDev.PhysicalDeviceSamplerFilterMinmaxProperties = new!PhysicalDeviceSamplerFilterMinmaxProperties(
+                FilterMinmaxSingleComponentFormats: ext.filterMinmaxSingleComponentFormats,
+                FilterMinmaxImageComponentMapping: ext.filterMinmaxImageComponentMapping,
               )
             }
           }

@@ -618,6 +618,9 @@ cmd void vkDestroyImageView(
   // Vulkan 1.1 core
   @unused ref!SamplerYcbcrConversionObject YcbcrConversion
 
+  // Vulkan 1.2 core
+  @unused ref!SamplerReductionModeCreateInfo SamplerReductionModeCreateInfo
+
   // @extension("VK_EXT_custom_border_color")
   @unused ref!SamplerCustomBorderColorCreateInfoEXT CustomBorderColorInfo
 }
@@ -668,6 +671,12 @@ cmd VkResult vkCreateSampler(
           sampler.CustomBorderColorInfo = new!SamplerCustomBorderColorCreateInfoEXT(
             CustomBorderColor: ext.customBorderColor,
             Format: ext.format,
+          )
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: {
+          ext := as!VkSamplerReductionModeCreateInfo*(next.Ptr)[0]
+          sampler.SamplerReductionModeCreateInfo = new!SamplerReductionModeCreateInfo(
+            ReductionMode: ext.reductionMode,
           )
         }
       }

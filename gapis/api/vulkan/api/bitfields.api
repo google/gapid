@@ -76,6 +76,9 @@ bitfield VkFormatFeatureFlagBits {
   VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT = 0x00200000,
   VK_FORMAT_FEATURE_DISJOINT_BIT                                                                = 0x00400000,
   VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT                                                  = 0x00800000,
+
+  // Vulkan 1.2 core
+  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT = 0x00010000,
 }
 type VkFlags VkFormatFeatureFlags
 

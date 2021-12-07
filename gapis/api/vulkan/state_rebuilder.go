@@ -2073,6 +2073,15 @@ func (sb *stateBuilder) createSampler(smp SamplerObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !smp.SamplerReductionModeCreateInfo().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkSamplerReductionModeCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO, // sType
+				pNext, // pNext
+				smp.SamplerReductionModeCreateInfo().ReductionMode(), // reductionMode
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateSampler(
 		smp.Device(),
