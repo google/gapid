@@ -307,7 +307,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			},
 			"Draw")
 	}
-	if p.GroupBySubmission {
+	if p.GroupBySubmission && !p.Filter.GetSuppressHostCommands() {
 		addContainingGroups(ctx, p, out, c.Commands,
 			func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
 				return cmd.CmdFlags().IsSubmission()
