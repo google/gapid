@@ -83,7 +83,6 @@ go_library(
         "//gapis/messages:go_default_library",
         "//gapis/replay:go_default_library",
         "//gapis/replay/devices:go_default_library",
-        "//gapis/resolve/cmdgrouper:go_default_library",
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/box:go_default_library",

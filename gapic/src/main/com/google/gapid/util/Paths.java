@@ -1684,8 +1684,6 @@ public class Paths {
       visit(path.getCapture(), sb)
           .append(".tree");
       append(sb, path.getFilter()).append('[');
-      if (path.getGroupByApi()) sb.append('A');
-      if (path.getGroupByThread()) sb.append('T');
       if (path.getGroupByFrame()) sb.append('F');
       if (path.getAllowIncompleteFrame()) sb.append('i');
       if (path.getGroupByDrawCall()) sb.append('D');

@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/resolve/cmdgrouper"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -236,44 +235,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	groupers := []cmdgrouper.Grouper{}
-
-	if p.GroupByApi {
-		groupers = append(groupers, cmdgrouper.Run(
-			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
-				if api := cmd.API(); api != nil {
-					return api.ID(), api.Name()
-				}
-				return nil, "No context"
-			}))
-	}
-
-	if p.GroupByThread {
-		groupers = append(groupers, cmdgrouper.Run(
-			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
-				thread := cmd.Thread()
-				return thread, fmt.Sprintf("Thread: 0x%x", thread)
-			}))
-	}
-
-	// Walk the list of unfiltered commands to build the groups.
-	s := c.NewState(ctx)
-	err = api.ForeachCmd(ctx, c.Commands, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
-			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)
-		}
-		if filter(id, cmd, s, api.SubCmdIdx([]uint64{uint64(id)})) {
-			for _, g := range groupers {
-				g.Process(ctx, id, cmd, s)
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
 	// Build the command tree
 	out := &commandTree{
 		path: p,
@@ -281,13 +242,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			Name:  "root",
 			Range: api.CmdIDRange{End: api.CmdID(len(c.Commands))},
 		},
-	}
-	for _, g := range groupers {
-		for _, l := range g.Build(api.CmdID(len(c.Commands))) {
-			if group, err := out.root.AddGroup(l.Start, l.End, l.Name, []api.SubCmdIdx{}); err == nil {
-				group.UserData = l.UserData
-			}
-		}
 	}
 
 	if p.GroupByFrame {
@@ -318,7 +272,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	drawOrClearCmds := api.Spans{} // All the spans will have length 1
 
 	// Now we have all the groups, we finally need to add the filtered commands.
-	s = c.NewState(ctx)
+	s := c.NewState(ctx)
 	err = api.ForeachCmd(ctx, c.Commands, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 			return fmt.Errorf("Fail to mutate command %v: %v", cmd, err)

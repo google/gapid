@@ -247,8 +247,6 @@ type (
 		Raw                  bool   `help:"if true then the value of constants, instead of their names, will be dumped."`
 		Name                 string `help:"Filter to commands and groups with the specified name."`
 		MaxChildren          int    `help:"_Maximum children per tree node."`
-		GroupByAPI           bool   `help:"Group commands by api"`
-		GroupByThread        bool   `help:"Group commands by thread"`
 		GroupByDrawCall      bool   `help:"Group commands by draw call"`
 		GroupByFrame         bool   `help:"Group commands by frame"`
 		GroupByUserMarkers   bool   `help:"Group commands by user markers"`

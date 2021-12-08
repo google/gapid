@@ -313,10 +313,6 @@ message CommandTree {
   // The command filter used to create the tree.
   CommandFilter filter = 2;
 
-  // If true then commands will be grouped by API.
-  bool group_by_api = 3;
-  // If true then commands will be grouped by thread.
-  bool group_by_thread = 5;
   // If true then commands will be grouped by draw calls.
   bool group_by_draw_call = 6;
   // If true then commands will be grouped by transform feedback calls.

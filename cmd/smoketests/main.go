@@ -157,10 +157,8 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 	tests := [][]string{
 
 		{"commands", tracepath},
-		{"commands", "-groupbyapi", tracepath},
 		{"commands", "-groupbydrawcall", tracepath},
 		{"commands", "-groupbyframe", tracepath},
-		{"commands", "-groupbythread", tracepath},
 		{"commands", "-groupbyusermarkers", tracepath},
 		{"commands", "-groupbysubmission", tracepath},
 		{"commands", "-maxchildren", "1", tracepath},

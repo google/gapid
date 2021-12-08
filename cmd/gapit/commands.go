@@ -63,8 +63,6 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	filter.OnlyEndOfFrames = verb.OnlyEndOfFrames
 
 	treePath := capture.CommandTree(filter)
-	treePath.GroupByApi = verb.GroupByAPI
-	treePath.GroupByThread = verb.GroupByThread
 	treePath.GroupByDrawCall = verb.GroupByDrawCall
 	treePath.GroupByFrame = verb.GroupByFrame
 	treePath.GroupByUserMarkers = verb.GroupByUserMarkers
