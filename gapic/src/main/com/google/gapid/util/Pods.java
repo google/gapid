@@ -63,6 +63,11 @@ public class Pods {
   public static StringBuilder append(StringBuilder sb, Pod.Value v) {
     switch (v.getValCase()) {
       case VAL_NOT_SET: return sb.append("[null]");
+      case CHAR: {
+        int charValue = v.getChar();
+        if (charValue == 0) return sb.append("\\0");
+        return sb.append((char)charValue);
+      }
       case STRING: return sb.append(v.getString());
       case BOOL: return sb.append(v.getBool());
       case FLOAT64: return sb.append(v.getFloat64());

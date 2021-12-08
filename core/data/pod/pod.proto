@@ -49,6 +49,9 @@ message Value {
     Sint64Array sint64_array = 26;
     BoolArray bool_array = 27;
     StringArray string_array = 28;
+
+    // C++ Types
+    uint32 char = 29;
   }
 }
 
