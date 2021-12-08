@@ -82,11 +82,12 @@ type androidTracer struct {
 }
 
 func newValidator(dev bind.Device) validate.Validator {
-	gpuName := dev.Instance().GetConfiguration().GetHardware().GetGPU().GetName()
+	gpu := dev.Instance().GetConfiguration().GetHardware().GetGPU()
+	gpuName := gpu.GetName()
 	if strings.Contains(gpuName, "Adreno") {
 		return &adreno.AdrenoValidator{}
 	} else if strings.Contains(gpuName, "Mali") {
-		return mali.NewMaliValidator(gpuName)
+		return mali.NewMaliValidator(gpuName, gpu.GetVersion())
 	}
 	return nil
 }

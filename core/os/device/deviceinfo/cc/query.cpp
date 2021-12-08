@@ -124,6 +124,7 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
 
   std::string gpuVendor = "";
   std::string gpuName = "";
+  uint32_t gpuDriverVersion = 0u;
 
   // Checks if the device supports Vulkan (have Vulkan loader) first, then
   // populates the VulkanDriver message.
@@ -138,6 +139,7 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
         gpuVendor =
             getVendorName(vulkan_driver->physical_devices(0).vendor_id());
         gpuName = vulkan_driver->physical_devices(0).device_name();
+        gpuDriverVersion = vulkan_driver->physical_devices(0).driver_version();
       }
     }
     drivers->set_allocated_vulkan(vulkan_driver);
@@ -154,6 +156,7 @@ device::Instance* getDeviceInstance(const Option& opt, std::string* error) {
   auto gpu = new GPU();
   gpu->set_name(gpuName);
   gpu->set_vendor(gpuVendor);
+  gpu->set_version(gpuDriverVersion);
 
   // Instance.Configuration.Hardware
   auto hardware = new Hardware();

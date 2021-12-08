@@ -42,6 +42,17 @@ var (
 		{65536, "GPU utilization", counterChecker()},
 		{65581, "Execution core utilization", counterChecker()},
 	}
+
+	// csfCounters2 are the hardware counters found on CSF based GPUs, with
+	// hardware-independent numerical IDs.
+	csfCounters2 = []validate.GpuCounter{
+		{6, "GPU active cycles", counterChecker()},
+		{1, "Any iterator active cycles", counterChecker()},
+		{45, "Fragment jobs", counterChecker()},
+		{196, "Fragment active cycles", counterChecker()},
+		{65536, "GPU utilization", counterChecker()},
+		{65579, "Execution core utilization", counterChecker()},
+	}
 )
 
 func counterChecker() validate.Checker {
@@ -49,11 +60,12 @@ func counterChecker() validate.Checker {
 }
 
 type MaliValidator struct {
-	gpuName string
+	gpuName       string
+	driverVersion uint32
 }
 
-func NewMaliValidator(gpuName string) *MaliValidator {
-	return &MaliValidator{gpuName}
+func NewMaliValidator(gpuName string, driverVersion uint32) *MaliValidator {
+	return &MaliValidator{gpuName, driverVersion}
 }
 
 func (v *MaliValidator) Validate(ctx context.Context, processor *perfetto.Processor) error {
@@ -85,6 +97,16 @@ func (v *MaliValidator) GetCounters() []validate.GpuCounter {
 		strings.HasSuffix(gpuName, "G78AE") {
 		return jmCounters
 	} else {
-		return csfCounters
+		// Driver versions reported via Vulkan have the following format:
+		// | 31 .. 29 | 28 .. 22 | 21 .. 12 | 11 .. 0 |
+		// | variant  |  major   |  minor   |  patch  |
+		isDevDriver := (v.driverVersion & 0xFFF) != 0
+		isDriverWithStableCounterIds := ((v.driverVersion >> 22) & 0x7F) >= 37
+
+		if isDevDriver || isDriverWithStableCounterIds {
+			return csfCounters2
+		} else {
+			return csfCounters
+		}
 	}
 }

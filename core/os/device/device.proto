@@ -145,6 +145,8 @@ message GPU {
   string name = 1;
   // Vendor is the vendor of this GPU.
   string vendor = 2;
+  // Version is the version of the driver software of this GPU
+  uint32 version = 3;
 }
 
 // Hardware describes the physical configuration of a computing device.
