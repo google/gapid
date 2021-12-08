@@ -481,26 +481,33 @@ func (f frame) addGroup(t *commandTree) {
 }
 
 func addFrameGroups(ctx context.Context, p *path.CommandTree, t *commandTree, cmds []api.Cmd) {
-
-	eofCommands := make([]api.Cmd, 0)
-	for _, cmd := range cmds {
+	eofCommands := []int{}
+	for idx, cmd := range cmds {
 		if cmd.CmdFlags().IsEndOfFrame() {
-			eofCommands = append(eofCommands, cmd)
+			eofCommands = append(eofCommands, idx)
 		}
+	}
+
+	// No end of frame commands in the trace, no grouping necessary.
+	if len(eofCommands) == 0 {
+		return
+	}
+
+	needIncompleteFrame := eofCommands[len(eofCommands)-1] < len(cmds)-1
+	if len(eofCommands) == 1 && !needIncompleteFrame {
+		// Only one frame, so the group would span the entire range. Don't bother adding it.
+		return
 	}
 
 	frameCount := 0
 	startFrame := 0
-
-	for i, cmd := range cmds {
-		if cmd.CmdFlags().IsEndOfFrame() {
-			t.root.AddGroup(api.CmdID(startFrame), api.CmdID(i+1), fmt.Sprintf("Frame %v", frameCount+1), []api.SubCmdIdx{})
-			startFrame = i + 1
-			frameCount++
-		}
+	for _, idx := range eofCommands {
+		t.root.AddGroup(api.CmdID(startFrame), api.CmdID(idx+1), fmt.Sprintf("Frame %v", frameCount+1), []api.SubCmdIdx{})
+		startFrame = idx + 1
+		frameCount++
 	}
 
-	if p.AllowIncompleteFrame && frameCount > 0 && len(cmds) > startFrame {
+	if p.AllowIncompleteFrame && needIncompleteFrame {
 		t.root.AddGroup(api.CmdID(startFrame), api.CmdID(len(cmds)), fmt.Sprintf("[Incomplete] Frame", frameCount+1), []api.SubCmdIdx{})
 	}
 }
