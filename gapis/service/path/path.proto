@@ -327,6 +327,8 @@ message CommandTree {
   bool group_by_user_markers = 9;
   // If true then commands will be grouped by submission.
   bool group_by_submission = 10;
+  // If true, no tree nodes are created for submit infos.
+  bool suppress_submit_info_nodes = 15;
   // If true and grouping by frames, commands after the last frame will be
   // grouped into an 'incomplete frame' group. Only if there is at least one
   // complete frame.

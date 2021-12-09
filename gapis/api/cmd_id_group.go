@@ -602,6 +602,22 @@ func (g *CmdIDGroup) Cluster(maxChildren, maxNeighbours uint64) {
 	}
 }
 
+// Flatten replaces this node's children with its grandchildren.
+func (g *CmdIDGroup) Flatten() {
+	var newSpans Spans
+	for _, s := range g.Spans {
+		switch v := s.(type) {
+		case *SubCmdRoot:
+			newSpans = append(newSpans, v.SubGroup.Spans...)
+		case *CmdIDGroup:
+			newSpans = append(newSpans, v.Spans...)
+		default:
+			newSpans = append(newSpans, s)
+		}
+	}
+	g.Spans = newSpans
+}
+
 // Split returns a new list of spans where each new span will represent no more
 // than the given number of items.
 func (l Spans) Split(max uint64) Spans {

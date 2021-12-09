@@ -355,6 +355,14 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 					return false
 				})
 			}
+
+			// In the current design, it's easier to flatten the tree after the fact,
+			// rather than avoid creating the tree structure in the first place.
+			// TODO(pmuetschard): re-design this to suit Vulkan and avoid this.
+			if p.SuppressSubmitInfoNodes && cmd.CmdFlags().IsSubmission() {
+				subr.SubGroup.Flatten()
+			}
+
 			return nil
 		}
 
