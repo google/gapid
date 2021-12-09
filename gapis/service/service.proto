@@ -1365,8 +1365,7 @@ message TraceOptions {
   float duration = 9;
   // What frames should we insert into the trace
   uint32 observe_frame_frequency = 10;
-  // What draw calls should we insert into the trace
-  uint32 observe_draw_frequency = 11;
+  reserved 11;
   // What frame should we start tracing.
   uint32 start_frame = 12;
   // How many frames should we capture

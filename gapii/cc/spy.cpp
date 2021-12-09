@@ -94,10 +94,7 @@ Spy::Spy()
     : mNumFrames(0),
       mSuspendCaptureFrames(0),
       mCaptureFrames(0),
-      mNumDraws(0),
-      mNumDrawsPerFrame(0),
       mObserveFrameFrequency(0),
-      mObserveDrawFrequency(0),
       mFrameNumber(0) {
   // Start by checking whether to capture the current process: compare the
   // current process name with the "capture_proc_name" that we get from the
@@ -159,7 +156,6 @@ Spy::Spy()
   GAPID_INFO("Connection header read");
 
   mObserveFrameFrequency = header.mObserveFrameFrequency;
-  mObserveDrawFrequency = header.mObserveDrawFrequency;
   SpyBase::mHideUnknownExtensions =
       (header.mFlags & ConnectionHeader::FLAG_HIDE_UNKNOWN_EXTENSIONS) != 0;
   SpyBase::mDisableCoherentMemoryTracker =
@@ -177,7 +173,6 @@ Spy::Spy()
   GAPID_ERROR("APIS %08x", header.mAPIs);
   GAPID_INFO("GAPII connection established. Settings:");
   GAPID_INFO("Observe framebuffer every %d frames", mObserveFrameFrequency);
-  GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
   GAPID_INFO("Hide unknown extensions: %s",
              mHideUnknownExtensions ? "true" : "false");
 
@@ -253,7 +248,7 @@ Spy::Spy()
         }));
   }
   set_suspended(mSuspendCaptureFrames != 0);
-  set_observing(mObserveFrameFrequency != 0 || mObserveDrawFrequency != 0);
+  set_observing(mObserveFrameFrequency != 0);
 }
 
 Spy::~Spy() {
@@ -290,18 +285,6 @@ void Spy::endTraceIfRequested() {
     mConnection->close();
     set_suspended(true);
   }
-}
-
-void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
-  if (is_suspended()) {
-    return;
-  }
-  if (mObserveDrawFrequency != 0 && (mNumDraws % mObserveDrawFrequency == 0)) {
-    GAPID_DEBUG("Observe framebuffer after draw call %d", mNumDraws);
-    observeFramebuffer(observer, api);
-  }
-  mNumDraws++;
-  mNumDrawsPerFrame++;
 }
 
 void Spy::saveInitialState() {
@@ -346,10 +329,8 @@ void Spy::onPreEndOfFrame(CallObserver* observer, uint8_t api) {
     GAPID_DEBUG("Observe framebuffer after frame %d", mNumFrames);
     observeFramebuffer(observer, api);
   }
-  GAPID_DEBUG("NumFrames:%d NumDraws:%d NumDrawsPerFrame:%d", mNumFrames,
-              mNumDraws, mNumDrawsPerFrame);
+  GAPID_DEBUG("NumFrames:%d", mNumFrames);
   mNumFrames++;
-  mNumDrawsPerFrame = 0;
 }
 
 void Spy::onPostEndOfFrame() {

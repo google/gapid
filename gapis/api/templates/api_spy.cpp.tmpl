@@ -269,8 +269,6 @@
         }
       }
 ¶
-      {{if GetAnnotation $ "draw_call"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
-
       observer->observePending();
       observer->exit();
 

@@ -24,7 +24,6 @@ namespace gapii {
 ConnectionHeader::ConnectionHeader()
     : mVersion(0),
       mObserveFrameFrequency(0),
-      mObserveDrawFrequency(0),
       mStartFrame(0),
       mNumFrames(0),
       mAPIs(0xFFFFFFFF),
@@ -47,8 +46,8 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
     return false;
   }
 
-  const int kMinSupportedVersion = 3;
-  const int kMaxSupportedVersion = 3;
+  const int kMinSupportedVersion = 4;
+  const int kMaxSupportedVersion = 4;
 
   if (mVersion < kMinSupportedVersion || mVersion > kMaxSupportedVersion) {
     GAPID_WARNING(
@@ -56,8 +55,7 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
         mVersion, kMinSupportedVersion, kMaxSupportedVersion);
     return false;
   }
-  if (!reader->read(mObserveFrameFrequency) ||
-      !reader->read(mObserveDrawFrequency) || !reader->read(mStartFrame) ||
+  if (!reader->read(mObserveFrameFrequency) || !reader->read(mStartFrame) ||
       !reader->read(mNumFrames) || !reader->read(mAPIs) ||
       !reader->read(mFlags)) {
     return false;

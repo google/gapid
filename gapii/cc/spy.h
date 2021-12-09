@@ -38,7 +38,6 @@ class Spy : public VulkanSpy {
 
   void endTraceIfRequested() override;
 
-  void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreEndOfFrame(CallObserver* observer, uint8_t api) override;
   void onPostEndOfFrame() override;
   void onPostFence(CallObserver* observer) override;
@@ -83,10 +82,7 @@ class Spy : public VulkanSpy {
   // The number of frames that we want to capture
   // 0 for manual stop, -1 for ending the trace
   std::atomic_int mCaptureFrames;
-  int mNumDraws;
-  int mNumDrawsPerFrame;
   int mObserveFrameFrequency;
-  int mObserveDrawFrequency;
   uint64_t mFrameNumber;
 
   std::unique_ptr<core::AsyncJob> mMessageReceiverJob;

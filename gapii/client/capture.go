@@ -62,8 +62,6 @@ const (
 type Options struct {
 	// If non-zero, then a framebuffer-observation will be made after every n end-of-frames.
 	ObserveFrameFrequency uint32
-	// If non-zero, then a framebuffer-observation will be made after every n draw calls.
-	ObserveDrawFrequency uint32
 	// If non-zero, then the capture will only start at frame n.
 	StartFrame uint32
 	// If non-zero, then only n frames will be captured.

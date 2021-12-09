@@ -154,9 +154,6 @@ class SpyBase {
   // abort signals that the command should stop execution immediately.
   void abort();
 
-  // onPostDrawCall is after any command annotated with @draw_call
-  inline virtual void onPostDrawCall(CallObserver*, uint8_t) {}
-
   // onPreEndOfFrame is before any command annotated with @frame_end
   inline virtual void onPreEndOfFrame(CallObserver*, uint8_t) {}
 

@@ -300,7 +300,6 @@ type (
 		URI            string        `help:"uri of the application to trace"`
 		Observe        struct {
 			Frames uint `help:"capture the framebuffer every n frames (0 to disable)"`
-			Draws  uint `help:"capture the framebuffer every n draws (0 to disable)"`
 		}
 		Disable struct {
 			Unknown struct {

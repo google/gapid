@@ -129,7 +129,6 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 
 	return gapii.Options{
 		o.ObserveFrameFrequency,
-		o.ObserveDrawFrequency,
 		o.StartFrame,
 		o.FramesToCapture,
 		time.Duration(o.Duration * float32(time.Second)),

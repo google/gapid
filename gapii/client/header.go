@@ -23,15 +23,14 @@ import (
 
 var magic = [4]byte{'s', 'p', 'y', '0'}
 
-const version = 3
+const version = 4
 
 // The GAPII header is defined as:
 //
 // struct ConnectionHeader {
 //     uint8_t  mMagic[4];                     // 's', 'p', 'y', '0'
-//     uint32_t mVersion;                      // 3
+//     uint32_t mVersion;
 //     uint32_t mObserveFrameFrequency;        // non-zero == enabled.
-//     uint32_t mObserveDrawFrequency;         // non-zero == enabled.
 //     uint32_t mStartFrame;                   // non-zero == Frame to start at.
 //     uint32_t mNumFrames;                    // non-zero == Number of frames to capture.
 //     uint32_t mAPIs;                         // Bitset of APIS to enable.
@@ -49,7 +48,6 @@ func sendHeader(out io.Writer, options Options) error {
 	}
 	w.Uint32(version)
 	w.Uint32(options.ObserveFrameFrequency)
-	w.Uint32(options.ObserveDrawFrequency)
 	w.Uint32(options.StartFrame)
 	w.Uint32(options.FramesToCapture)
 	w.Uint32(options.APIs)

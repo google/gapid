@@ -20,7 +20,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -254,13 +253,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			},
 			"Transform Feedback")
 	}
-	if p.GroupByDrawCall {
-		addFrameEventGroups(ctx, p, out, c.Commands,
-			func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
-				return cmd.CmdFlags().IsDrawCall()
-			},
-			"Draw")
-	}
 	if p.GroupBySubmission && !p.Filter.GetSuppressHostCommands() {
 		addContainingGroups(ctx, p, out, c.Commands,
 			func(id api.CmdID, cmd api.Cmd, s *api.GlobalState, idx api.SubCmdIdx) bool {
@@ -268,8 +260,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			},
 			"Host Coordination")
 	}
-
-	drawOrClearCmds := api.Spans{} // All the spans will have length 1
 
 	// Now we have all the groups, we finally need to add the filtered commands.
 	s := c.NewState(ctx)
@@ -321,13 +311,6 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 
 		out.root.AddCommand(id)
-
-		if flags := cmd.CmdFlags(); flags.IsDrawCall() || flags.IsClear() {
-			drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{
-				Start: id, End: id + 1,
-			})
-		}
-
 		return nil
 	})
 
@@ -339,7 +322,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	out.root.Cluster(uint64(p.MaxChildren), uint64(p.MaxNeighbours))
 
 	// Set group representations.
-	setRepresentations(ctx, &out.root, drawOrClearCmds)
+	setRepresentations(ctx, &out.root)
 
 	return out, nil
 }
@@ -474,23 +457,19 @@ func addFrameGroups(ctx context.Context, p *path.CommandTree, t *commandTree, cm
 	}
 }
 
-func setRepresentations(ctx context.Context, g *api.CmdIDGroup, drawOrClearCmds api.Spans) {
+func setRepresentations(ctx context.Context, g *api.CmdIDGroup) {
 	data, _ := g.UserData.(*CmdGroupData)
 	if data == nil {
 		data = &CmdGroupData{Representation: api.CmdNoID}
 		g.UserData = data
 	}
 	if data.Representation == api.CmdNoID {
-		if s, c := interval.Intersect(drawOrClearCmds, g.Bounds().Span()); c > 0 {
-			data.Representation = drawOrClearCmds[s+c-1].Bounds().Start
-		} else {
-			data.Representation = g.Range.Last()
-		}
+		data.Representation = g.Range.Last()
 	}
 
 	for _, s := range g.Spans {
 		if subgroup, ok := s.(*api.CmdIDGroup); ok {
-			setRepresentations(ctx, subgroup, drawOrClearCmds)
+			setRepresentations(ctx, subgroup)
 		}
 	}
 }
