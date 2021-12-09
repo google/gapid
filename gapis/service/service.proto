@@ -190,6 +190,8 @@ message CommandTreeNode {
   uint64 num_commands = 5;
   // these commands can be disabled for experiments.
   repeated path.Command experimental_commands = 6;
+  // For group nodes, whether it should be expanded by default in the UI.
+  bool expand_by_default = 7;
 }
 
 message Commands {

@@ -22,6 +22,7 @@ import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.models.Follower;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Events;
@@ -60,6 +61,7 @@ import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -70,6 +72,7 @@ import java.util.function.Predicate;
 public abstract class LinkifiedTree<T, F> extends Composite {
   private final TreeViewer viewer;
   protected final Widgets.Refresher refresher;
+  protected final List<T> itemsToExpand = Lists.newArrayList();
   protected final ContentProvider<T> contentProvider;
   protected final LabelProvider labelProvider;
 
@@ -77,7 +80,12 @@ public abstract class LinkifiedTree<T, F> extends Composite {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
     this.viewer = createTreeViewer(this, treeStyle);
-    this.refresher = withAsyncRefresh(viewer);
+    this.refresher = withAsyncRefresh(viewer, () -> {
+      for (T item : itemsToExpand) {
+        viewer.setExpandedState(item, true);
+      }
+      itemsToExpand.clear();
+    });
     this.contentProvider = createContentProvider();
     this.labelProvider = createLabelProvider(widgets.theme);
 
@@ -302,6 +310,7 @@ public abstract class LinkifiedTree<T, F> extends Composite {
     protected abstract T[] getChildNodes(T parent);
     protected abstract T getParentNode(T child);
     protected abstract boolean isLoaded(T element);
+    protected abstract boolean isDefaultExpanded(T element);
     protected abstract void load(T node, Runnable callback);
   }
 
@@ -327,6 +336,9 @@ public abstract class LinkifiedTree<T, F> extends Composite {
       contentProvider.load(element, () -> {
         if (!item.isDisposed()) {
           update(item);
+          if (contentProvider.isDefaultExpanded(element)) {
+            itemsToExpand.add(element);
+          }
           refresher.refresh();
         }
       });

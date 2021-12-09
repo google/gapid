@@ -191,6 +191,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode, r *path.Resol
 			Group:                g,
 			NumCommands:          count,
 			ExperimentalCommands: experimentalCmds,
+			ExpandByDefault:      true,
 		}, nil
 	default:
 		panic(fmt.Errorf("Unexpected type: %T, cmdTree.index(c.Indices): (%v, %v), indices: %v",

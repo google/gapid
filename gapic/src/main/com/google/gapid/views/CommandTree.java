@@ -313,6 +313,12 @@ public class CommandTree extends Composite
         }
 
         @Override
+        protected boolean isDefaultExpanded(CommandStream.Node element) {
+          Service.CommandTreeNode data = element.getData();
+          return data != null && data.getExpandByDefault();
+        }
+
+        @Override
         protected void load(CommandStream.Node node, Runnable callback) {
           models.commands.load(node, callback);
         }

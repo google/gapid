@@ -364,6 +364,11 @@ public class StateView extends Composite
         }
 
         @Override
+        protected boolean isDefaultExpanded(Node element) {
+          return false;
+        }
+
+        @Override
         protected void load(ApiState.Node node, Runnable callback) {
           models.state.load(node, callback);
         }
