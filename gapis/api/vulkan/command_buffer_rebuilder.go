@@ -24,10 +24,10 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-// unpackMapWithAllocator takes a dense map of u32 -> structure, flattens the
+// unpackDenseMapWithAllocator takes a dense map of u32 -> structure, flattens the
 // map into a slice, allocates the appropriate data using a custom provided
 // allocation function and returns it as well as the length of the map.
-func unpackMapWithAllocator(alloc func(v ...interface{}) api.AllocResult, m interface{}) (api.AllocResult, uint32) {
+func unpackDenseMapWithAllocator(alloc func(v ...interface{}) api.AllocResult, m interface{}) (api.AllocResult, uint32) {
 	u32Type := reflect.TypeOf(uint32(0))
 	d := dictionary.From(m)
 	if d == nil || d.KeyTy() != u32Type {
@@ -45,11 +45,11 @@ func unpackMapWithAllocator(alloc func(v ...interface{}) api.AllocResult, m inte
 	return alloc(sl.Interface()), uint32(d.Len())
 }
 
-// unpackMap takes a dense map of u32 -> structure, flattens the map into
+// unpackDenseMap takes a dense map of u32 -> structure, flattens the map into
 // a slice, allocates the appropriate data and returns it as well as the
 // length of the map.
-func unpackMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.AllocResult, uint32) {
-	return unpackMapWithAllocator(func(v ...interface{}) api.AllocResult {
+func unpackDenseMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.AllocResult, uint32) {
+	return unpackDenseMapWithAllocator(func(v ...interface{}) api.AllocResult {
 		return s.AllocDataOrPanic(ctx, v...)
 	}, m)
 }
@@ -296,8 +296,8 @@ func rebuildVkCmdBindDescriptorSets(
 		}
 	}
 
-	descriptorSetData, descriptorSetCount := unpackMap(ctx, s, d.DescriptorSets())
-	dynamicOffsetData, dynamicOffsetCount := unpackMap(ctx, s, d.DynamicOffsets())
+	descriptorSetData, descriptorSetCount := unpackDenseMap(ctx, s, d.DescriptorSets())
+	dynamicOffsetData, dynamicOffsetCount := unpackDenseMap(ctx, s, d.DynamicOffsets())
 
 	return func() {
 			descriptorSetData.Free()
@@ -330,8 +330,8 @@ func rebuildVkCmdBindVertexBuffers(
 		}
 	}
 
-	bufferData, _ := unpackMap(ctx, s, d.Buffers())
-	offsetData, _ := unpackMap(ctx, s, d.Offsets())
+	bufferData, _ := unpackDenseMap(ctx, s, d.Buffers())
+	offsetData, _ := unpackDenseMap(ctx, s, d.Offsets())
 
 	return func() {
 			bufferData.Free()
@@ -373,10 +373,10 @@ func rebuildVkCmdWaitEvents(
 		}
 	}
 
-	eventData, eventCount := unpackMap(ctx, s, d.Events())
-	memoryBarrierData, memoryBarrierCount := unpackMap(ctx, s, d.MemoryBarriers())
-	bufferMemoryBarrierData, bufferMemoryBarrierCount := unpackMap(ctx, s, d.BufferMemoryBarriers())
-	imageMemoryBarrierData, imageMemoryBarrierCount := unpackMap(ctx, s, d.ImageMemoryBarriers())
+	eventData, eventCount := unpackDenseMap(ctx, s, d.Events())
+	memoryBarrierData, memoryBarrierCount := unpackDenseMap(ctx, s, d.MemoryBarriers())
+	bufferMemoryBarrierData, bufferMemoryBarrierCount := unpackDenseMap(ctx, s, d.BufferMemoryBarriers())
+	imageMemoryBarrierData, imageMemoryBarrierCount := unpackDenseMap(ctx, s, d.ImageMemoryBarriers())
 
 	return func() {
 			eventData.Free()
@@ -405,9 +405,9 @@ func rebuildVkCmdPipelineBarrier(
 	s *api.GlobalState,
 	d VkCmdPipelineBarrierArgsʳ) (func(), api.Cmd, error) {
 
-	memoryBarrierData, memoryBarrierCount := unpackMap(ctx, s, d.MemoryBarriers())
-	bufferMemoryBarrierData, bufferMemoryBarrierCount := unpackMap(ctx, s, d.BufferMemoryBarriers())
-	imageMemoryBarrierData, imageMemoryBarrierCount := unpackMap(ctx, s, d.ImageMemoryBarriers())
+	memoryBarrierData, memoryBarrierCount := unpackDenseMap(ctx, s, d.MemoryBarriers())
+	bufferMemoryBarrierData, bufferMemoryBarrierCount := unpackDenseMap(ctx, s, d.BufferMemoryBarriers())
+	imageMemoryBarrierData, imageMemoryBarrierCount := unpackDenseMap(ctx, s, d.ImageMemoryBarriers())
 
 	for i, c := 0, d.BufferMemoryBarriers().Len(); i < c; i++ {
 		buf := d.BufferMemoryBarriers().Get(uint32(i)).Buffer()
@@ -472,7 +472,7 @@ func rebuildVkCmdBlitImage(
 		return nil, nil, fmt.Errorf("Cannot find Image %v", d.DstImage())
 	}
 
-	blitData, blitCount := unpackMap(ctx, s, d.Regions())
+	blitData, blitCount := unpackDenseMap(ctx, s, d.Regions())
 
 	return func() {
 			blitData.Free()
@@ -495,8 +495,8 @@ func rebuildVkCmdClearAttachments(
 	s *api.GlobalState,
 	d VkCmdClearAttachmentsArgsʳ) (func(), api.Cmd, error) {
 
-	clearAttachmentData, clearCount := unpackMap(ctx, s, d.Attachments())
-	rectData, rectCount := unpackMap(ctx, s, d.Rects())
+	clearAttachmentData, clearCount := unpackDenseMap(ctx, s, d.Attachments())
+	rectData, rectCount := unpackDenseMap(ctx, s, d.Rects())
 
 	return func() {
 			clearAttachmentData.Free()
@@ -523,7 +523,7 @@ func rebuildVkCmdClearColorImage(
 
 	colorData := s.AllocDataOrPanic(ctx, d.Color())
 
-	rangeData, rangeCount := unpackMap(ctx, s, d.Ranges())
+	rangeData, rangeCount := unpackDenseMap(ctx, s, d.Ranges())
 
 	return func() {
 			colorData.Free()
@@ -551,7 +551,7 @@ func rebuildVkCmdClearDepthStencilImage(
 
 	depthStencilData := s.AllocDataOrPanic(ctx, d.DepthStencil())
 
-	rangeData, rangeCount := unpackMap(ctx, s, d.Ranges())
+	rangeData, rangeCount := unpackDenseMap(ctx, s, d.Ranges())
 
 	return func() {
 			depthStencilData.Free()
@@ -580,7 +580,7 @@ func rebuildVkCmdCopyBuffer(
 		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.DstBuffer())
 	}
 
-	regionData, regionCount := unpackMap(ctx, s, d.CopyRegions())
+	regionData, regionCount := unpackDenseMap(ctx, s, d.CopyRegions())
 
 	return func() {
 			regionData.Free()
@@ -605,7 +605,7 @@ func rebuildVkCmdCopyBufferToImage(
 	if !GetState(s).Images().Contains(d.DstImage()) {
 		return nil, nil, fmt.Errorf("Cannot find Image %v", d.DstImage())
 	}
-	regionData, regionCount := unpackMap(ctx, s, d.Regions())
+	regionData, regionCount := unpackDenseMap(ctx, s, d.Regions())
 
 	return func() {
 			regionData.Free()
@@ -631,7 +631,7 @@ func rebuildVkCmdCopyImage(
 	if !GetState(s).Images().Contains(d.DstImage()) {
 		return nil, nil, fmt.Errorf("Cannot find Image %v", d.DstImage())
 	}
-	regionData, regionCount := unpackMap(ctx, s, d.Regions())
+	regionData, regionCount := unpackDenseMap(ctx, s, d.Regions())
 
 	return func() {
 			regionData.Free()
@@ -658,7 +658,7 @@ func rebuildVkCmdCopyImageToBuffer(
 	if !GetState(s).Buffers().Contains(d.DstBuffer()) {
 		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.DstBuffer())
 	}
-	regionData, regionCount := unpackMap(ctx, s, d.Regions())
+	regionData, regionCount := unpackDenseMap(ctx, s, d.Regions())
 
 	return func() {
 			regionData.Free()
@@ -922,7 +922,7 @@ func rebuildVkCmdExecuteCommands(
 		}
 	}
 
-	commandBufferData, commandBufferCount := unpackMap(ctx, s, d.CommandBuffers())
+	commandBufferData, commandBufferCount := unpackDenseMap(ctx, s, d.CommandBuffers())
 
 	return func() {
 			commandBufferData.Free()
@@ -1007,7 +1007,7 @@ func rebuildVkCmdResolveImage(
 	if !GetState(s).Images().Contains(d.DstImage()) {
 		return nil, nil, fmt.Errorf("Cannot find Image %v", d.DstImage())
 	}
-	resolveData, resolveCount := unpackMap(ctx, s, d.ResolveRegions())
+	resolveData, resolveCount := unpackDenseMap(ctx, s, d.ResolveRegions())
 
 	return func() {
 			resolveData.Free()
@@ -1107,7 +1107,7 @@ func rebuildVkCmdSetScissor(
 	s *api.GlobalState,
 	d VkCmdSetScissorArgsʳ) (func(), api.Cmd, error) {
 
-	scissorData, scissorCount := unpackMap(ctx, s, d.Scissors())
+	scissorData, scissorCount := unpackDenseMap(ctx, s, d.Scissors())
 
 	return func() {
 			scissorData.Free()
@@ -1171,7 +1171,7 @@ func rebuildVkCmdSetViewport(
 	s *api.GlobalState,
 	d VkCmdSetViewportArgsʳ) (func(), api.Cmd, error) {
 
-	viewportData, viewportCount := unpackMap(ctx, s, d.Viewports())
+	viewportData, viewportCount := unpackDenseMap(ctx, s, d.Viewports())
 
 	return func() {
 			viewportData.Free()
@@ -1431,9 +1431,9 @@ func rebuildVkCmdBindTransformFeedbackBuffersEXT(
 		}
 	}
 
-	bufferData, _ := unpackMap(ctx, s, d.Buffers())
-	offsetData, _ := unpackMap(ctx, s, d.Offsets())
-	sizesData, _ := unpackMap(ctx, s, d.Sizes())
+	bufferData, _ := unpackDenseMap(ctx, s, d.Buffers())
+	offsetData, _ := unpackDenseMap(ctx, s, d.Offsets())
+	sizesData, _ := unpackDenseMap(ctx, s, d.Sizes())
 
 	return func() {
 			bufferData.Free()
@@ -1471,8 +1471,8 @@ func rebuildVkCmdBeginTransformFeedbackEXT(
 		}
 	}
 
-	bufferData, _ := unpackMap(ctx, s, d.CounterBuffers())
-	offsetData, _ := unpackMap(ctx, s, d.CounterBufferOffsets())
+	bufferData, _ := unpackDenseMap(ctx, s, d.CounterBuffers())
+	offsetData, _ := unpackDenseMap(ctx, s, d.CounterBufferOffsets())
 
 	return func() {
 			bufferData.Free()
@@ -1506,8 +1506,8 @@ func rebuildVkCmdEndTransformFeedbackEXT(
 		}
 	}
 
-	bufferData, _ := unpackMap(ctx, s, d.CounterBuffers())
-	offsetData, _ := unpackMap(ctx, s, d.CounterBufferOffsets())
+	bufferData, _ := unpackDenseMap(ctx, s, d.CounterBuffers())
+	offsetData, _ := unpackDenseMap(ctx, s, d.CounterBufferOffsets())
 
 	return func() {
 			bufferData.Free()

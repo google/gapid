@@ -564,8 +564,8 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 			NewVkImageFormatListCreateInfoKHR(
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR, // sType
 				pNext, // pNext
-				uint32(info.ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
-				NewVkFormatᶜᵖ(sb.MustUnpackReadMap(info.ViewFormatList().ViewFormats().All()).Ptr()), // pViewFormats
+				uint32(info.ViewFormatList().ViewFormats().Len()),                                         // viewFormatCount
+				NewVkFormatᶜᵖ(sb.MustUnpackReadDenseMap(info.ViewFormatList().ViewFormats().All()).Ptr()), // pViewFormats
 			),
 		).Ptr())
 	}
@@ -606,7 +606,7 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 				info.Usage(),                            // usage
 				info.SharingMode(),                      // sharingMode
 				uint32(info.QueueFamilyIndices().Len()), // queueFamilyIndexCount
-				NewU32ᶜᵖ(sb.MustUnpackReadMap(info.QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
+				NewU32ᶜᵖ(sb.MustUnpackReadDenseMap(info.QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
 				info.InitialLayout(), // initialLayout
 			)).Ptr(),
 		memory.Nullptr,

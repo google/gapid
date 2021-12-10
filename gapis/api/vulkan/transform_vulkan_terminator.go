@@ -472,7 +472,7 @@ func rebuildCommandBuffer2(ctx context.Context,
 
 		// If we use AddCommand, it will check for the existence of the command buffer,
 		// which wont yet exist (because it hasn't been mutated yet)
-		commandBufferData, commandBufferCount := unpackMap(ctx, s, newCmdExecuteCommandsData.CommandBuffers())
+		commandBufferData, commandBufferCount := unpackDenseMap(ctx, s, newCmdExecuteCommandsData.CommandBuffers())
 		newExecSecCmds := cb.VkCmdExecuteCommands(commandBufferID,
 			commandBufferCount,
 			commandBufferData.Ptr(),

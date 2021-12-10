@@ -487,8 +487,8 @@ func (overdrawTransform *stencilOverdraw) createRenderPass(ctx context.Context,
 	attachments := rpInfo.AttachmentDescriptions().All()
 	newAttachments := rpInfo.AttachmentDescriptions().Clone(api.CloneContext{})
 	newAttachments.Add(uint32(newAttachments.Len()), stencilAttachment)
-	newAttachmentsData, newAttachmentsLen := unpackMapWithAllocator(allocAndRead,
-		newAttachments)
+	newAttachmentsData, newAttachmentsLen :=
+		unpackDenseMapWithAllocator(allocAndRead, newAttachments)
 
 	stencilAttachmentReference := NewVkAttachmentReference(
 		uint32(len(attachments)),
@@ -504,8 +504,8 @@ func (overdrawTransform *stencilOverdraw) createRenderPass(ctx context.Context,
 	}
 	subpassesData := allocAndRead(subpasses)
 
-	subpassDependenciesData, subpassDependenciesLen := unpackMapWithAllocator(allocAndRead,
-		rpInfo.SubpassDependencies())
+	subpassDependenciesData, subpassDependenciesLen :=
+		unpackDenseMapWithAllocator(allocAndRead, rpInfo.SubpassDependencies())
 
 	renderPassCreateInfo := NewVkRenderPassCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
@@ -668,7 +668,7 @@ func (overdrawTransform *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx c
 			Len() int
 		}
 		if m.(HasLen).Len() > 0 {
-			allocation, count := unpackMapWithAllocator(allocAndRead, m)
+			allocation, count := unpackDenseMapWithAllocator(allocAndRead, m)
 			return allocation.Ptr(), count
 		} else {
 			return memory.Nullptr, 0
@@ -2806,7 +2806,7 @@ func createSpecializationInfo(ctx context.Context,
 	if info.IsNil() {
 		return 0, nil
 	}
-	mapEntries, mapEntryCount := unpackMapWithAllocator(allocAndRead, info.Specializations().All())
+	mapEntries, mapEntryCount := unpackDenseMapWithAllocator(allocAndRead, info.Specializations().All())
 	data, err := info.Data().Read(ctx, nil, inputState, nil)
 	if err != nil {
 		return VkSpecializationInfoᶜᵖ(0), err
@@ -2831,7 +2831,7 @@ func subpassToSubpassDescription(
 			Len() int
 		}
 		if m.(HasLen).Len() > 0 {
-			allocation, count := unpackMapWithAllocator(allocAndRead, m)
+			allocation, count := unpackDenseMapWithAllocator(allocAndRead, m)
 			return allocation.Ptr(), count
 		} else {
 			return memory.Nullptr, 0
