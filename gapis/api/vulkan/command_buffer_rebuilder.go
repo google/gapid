@@ -45,11 +45,38 @@ func unpackDenseMapWithAllocator(alloc func(v ...interface{}) api.AllocResult, m
 	return alloc(sl.Interface()), uint32(d.Len())
 }
 
+// unpackMapWithAllocator takes a map of any key -> structure, flattens the
+// map into a slice, allocates the appropriate data using a custom provided
+// allocation function and returns it as well as the length of the map. This is
+// similar to unpackMapWithAllocator, except that the keys are ignored.
+func unpackMapWithAllocator(alloc func(v ...interface{}) api.AllocResult, m interface{}) (api.AllocResult, uint32) {
+	d := dictionary.From(m)
+	sl := reflect.MakeSlice(reflect.SliceOf(d.ValTy()), d.Len(), d.Len())
+	i := 0
+	for _, e := range dictionary.Entries(d) {
+		v := reflect.ValueOf(e.V)
+		sl.Index(i).Set(v)
+		i++
+	}
+
+	return alloc(sl.Interface()), uint32(d.Len())
+}
+
 // unpackDenseMap takes a dense map of u32 -> structure, flattens the map into
 // a slice, allocates the appropriate data and returns it as well as the
 // length of the map.
 func unpackDenseMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.AllocResult, uint32) {
 	return unpackDenseMapWithAllocator(func(v ...interface{}) api.AllocResult {
+		return s.AllocDataOrPanic(ctx, v...)
+	}, m)
+}
+
+// unpackMap takes a map of any key -> structure, flattens the map into
+// a slice, allocates the appropriate data and returns it as well as the
+// length of the map. This is similar to unpackMap, except that the keys are
+// ignored.
+func unpackMap(ctx context.Context, s *api.GlobalState, m interface{}) (api.AllocResult, uint32) {
+	return unpackMapWithAllocator(func(v ...interface{}) api.AllocResult {
 		return s.AllocDataOrPanic(ctx, v...)
 	}, m)
 }

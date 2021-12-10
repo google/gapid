@@ -364,6 +364,14 @@ func (sb *stateBuilder) MustUnpackReadDenseMap(v interface{}) api.AllocResult {
 	return allocateResult
 }
 
+func (sb *stateBuilder) MustUnpackReadMap(v interface{}) api.AllocResult {
+	allocateResult, _ := unpackMap(sb.ctx, sb.newState, v)
+	sb.readMemories = append(sb.readMemories, &allocateResult)
+	rng := allocateResult.Range()
+	interval.Merge(&sb.memoryIntervals, interval.U64Span{rng.Base, rng.Base + rng.Size}, true)
+	return allocateResult
+}
+
 func (sb *stateBuilder) MustUnpackWriteDenseMap(v interface{}) api.AllocResult {
 	allocateResult, _ := unpackDenseMap(sb.ctx, sb.newState, v)
 	sb.writeMemories = append(sb.writeMemories, &allocateResult)
@@ -2707,7 +2715,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT, // sType
 					pNext, // pNext
 					gp.VertexInputState().DivisorDescriptions().VertexBindingDivisorCount(), // vertexBindingDivisorCount
-					NewVkVertexInputBindingDivisorDescriptionEXTᶜᵖ(sb.MustUnpackReadDenseMap(
+					NewVkVertexInputBindingDivisorDescriptionEXTᶜᵖ(sb.MustUnpackReadMap(
 						gp.VertexInputState().DivisorDescriptions().VertexBindingDivisors().All(),
 					).Ptr()), // pVertexBindingDivisors
 				),
