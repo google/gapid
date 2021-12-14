@@ -992,7 +992,7 @@ public class TracerDialog {
       }
 
       private void downloadAndInstallAngle(Theme theme, Settings settings) {
-        DeviceCaptureInfo dev = devices.get(device.getCombo().getSelectionIndex());
+        DeviceCaptureInfo dev = getSelectedDevice();
         Service.Releases.ANGLERelease release = settings.preferences().getLatestAngleRelease();
         String url = getAngleAPKUrl(dev, release);
         if (url == null || !url.startsWith(URLs.EXPECTED_ANGLE_PREFIX)) {
@@ -1013,7 +1013,7 @@ public class TracerDialog {
 
       private static String getAngleAPKUrl(
           DeviceCaptureInfo dev, Service.Releases.ANGLERelease release) {
-        if (dev.device.getConfiguration().getABIsCount() == 0) {
+        if (dev == null || dev.device.getConfiguration().getABIsCount() == 0) {
           return null;
         }
 
