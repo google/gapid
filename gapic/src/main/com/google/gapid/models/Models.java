@@ -74,7 +74,7 @@ public class Models {
     Devices devices = new Devices(shell, analytics, client, capture, settings);
     ConstantSets constants = new ConstantSets(client, devices);
     CommandStream commands = new CommandStream(
-        shell, analytics, client, capture, devices, constants);
+        shell, analytics, client, capture, devices, constants, settings);
     Follower follower = new Follower(shell, client);
     Resources resources = new Resources(
         shell, analytics, client, capture, devices, commands, follower);

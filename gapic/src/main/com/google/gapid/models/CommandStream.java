@@ -29,8 +29,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import com.google.gapid.proto.device.Device.Instance;
+import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
@@ -42,13 +41,13 @@ import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
-
 import com.google.gapid.views.Formatter;
-import java.util.Iterator;
-import java.util.List;
+
 import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -64,22 +63,18 @@ public class CommandStream
 
   private final Capture capture;
   private final ConstantSets constants;
+  private final Paths.CommandFilter filter;
   private CommandIndex selection;
 
   public CommandStream(Shell shell, Analytics analytics, Client client, Capture capture,
-      Devices devices, ConstantSets constants) {
+      Devices devices, ConstantSets constants, Settings settings) {
     super(LOG, shell, analytics, client, Listener.class, devices);
     this.capture = capture;
     this.constants = constants;
+    this.filter = Paths.CommandFilter.fromSettings(settings);
 
     capture.addListener(this);
     devices.addListener(this);
-  }
-
-  public void reloadCommandTree(Boolean hideHostCommands, Boolean hideBeginEnd, Boolean hideDeviceSync) {
-      CommandIndex sel = getSelectedCommands();
-      load(Paths.commandTree(capture.getData().path, hideHostCommands, hideBeginEnd, hideDeviceSync), false);
-      selectCommands(sel, /*force=*/false);
   }
 
   @Override
@@ -96,12 +91,12 @@ public class CommandStream
       if (selection != null) {
         selection = selection.withCapture(capture.getData().path);
       }
-      load(Paths.commandTree(capture.getData().path, true, true, true), false);
+      load(Paths.commandTree(capture.getData().path, filter), false);
     }
   }
 
   @Override
-  public void onReplayDeviceChanged(Instance dev) {
+  public void onReplayDeviceChanged(Device.Instance dev) {
     if (selection != null && selection.getNode() != null) {
       // Clear the node, so the selection will be re-resolved once the context has updated.
       selection = selection.withNode(null);
@@ -166,6 +161,20 @@ public class CommandStream
     }
   }
 
+  public Paths.CommandFilter getFilter() {
+    return filter.copy();
+  }
+
+  public void setFilter(Paths.CommandFilter newFilter) {
+    if (filter.update(newFilter)) {
+      if (selection != null) {
+        // Clear the node, so the selection will be re-resolved once the tree has updated.
+        selection = selection.withNode(null);
+      }
+      load(Paths.commandTree(capture.getData().path, filter), false);
+    }
+  }
+
   public CommandIndex getSelectedCommands() {
     return (selection != null && selection.getNode() != null) ? selection : null;
   }
@@ -181,6 +190,9 @@ public class CommandStream
     RootNode root = (RootNode)getData();
     if (index.getNode() == null) {
       resolve(index.getCommand(), node -> selectCommands(index.withNode(node), force));
+    } else if (!index.getNode().getTree().equals(root.tree)) {
+      // TODO
+      throw new UnsupportedOperationException("This is not yet supported, needs API clarification");
     } else {
       selection = index;
       listeners.fire().onCommandsSelected(selection);

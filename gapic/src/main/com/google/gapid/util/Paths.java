@@ -19,6 +19,8 @@ import com.google.common.collect.Lists;
 import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.Settings;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
@@ -83,27 +85,19 @@ public class Paths {
         .build();
   }
 
-  public static Path.CommandFilter CommandFilter(boolean suppressHostCommands, boolean suppressBeginEndMarkers, boolean suppressDeviceSideSyncCommands) {
-    return Path.CommandFilter.newBuilder()
-        .setSuppressHostCommands(suppressHostCommands)
-        .setSuppressBeginEndMarkers(suppressBeginEndMarkers)
-        .setSuppressDeviceSideSyncCommands(suppressDeviceSideSyncCommands)
-        .build();
-  }
-
-  public static Path.Any commandTree(Path.Capture capture, boolean suppressHostCommands, boolean suppressBeginEndMarkers, boolean suppressDeviceSideSyncCommands) {
+  public static Path.Any commandTree(Path.Capture capture, CommandFilter filter) {
     return Path.Any.newBuilder()
-        .setCommandTree(Path.CommandTree.newBuilder()
-            .setCapture(capture)
-            .setFilter(CommandFilter(suppressHostCommands, suppressBeginEndMarkers, suppressDeviceSideSyncCommands))
-            .setGroupByFrame(true)
-            .setGroupByDrawCall(true)
-            .setGroupByTransformFeedback(true)
-            .setGroupByUserMarkers(true)
-            .setGroupBySubmission(true)
-            .setAllowIncompleteFrame(true)
-            .setMaxChildren(2000)
-            .setMaxNeighbours(20))
+        .setCommandTree(filter.toProto(
+            Path.CommandTree.newBuilder()
+                .setCapture(capture)
+                .setGroupByFrame(true)
+                .setGroupByDrawCall(true)
+                .setGroupByTransformFeedback(true)
+                .setGroupByUserMarkers(true)
+                .setGroupBySubmission(true)
+                .setAllowIncompleteFrame(true)
+                .setMaxChildren(2000)
+                .setMaxNeighbours(20)))
         .build();
   }
 
@@ -569,6 +563,64 @@ public class Paths {
       head = setParent(node, head);
     }
     return toAny(head);
+  }
+
+  public static class CommandFilter {
+    public boolean showHostCommands;
+    public boolean showSubmitInfoNodes;
+    public boolean showSyncCommands;
+    public boolean showBeginEndCommands;
+
+    public CommandFilter(boolean showHostCommands, boolean showSubmitInfoNodes,
+        boolean showSyncCommands, boolean showBeginEndCommands) {
+      this.showHostCommands = showHostCommands;
+      this.showSubmitInfoNodes = showSubmitInfoNodes;
+      this.showSyncCommands = showSyncCommands;
+      this.showBeginEndCommands = showBeginEndCommands;
+    }
+
+    public static CommandFilter fromSettings(Settings settings) {
+      SettingsProto.UI.CommandFilter filter = settings.ui().getCommandFilter();
+      return new CommandFilter(filter.getShowHostCommands(), filter.getShowSubmitInfoNodes(),
+          filter.getShowSyncCommands(), filter.getShowBeginEndCommands());
+    }
+
+    public CommandFilter copy() {
+      return new CommandFilter(
+          showHostCommands, showSubmitInfoNodes, showSyncCommands, showBeginEndCommands);
+    }
+
+    public boolean update(CommandFilter from) {
+      boolean changed =
+          showHostCommands != from.showHostCommands ||
+          showSubmitInfoNodes != from.showSubmitInfoNodes ||
+          showSyncCommands != from.showSyncCommands ||
+          showBeginEndCommands != from.showBeginEndCommands;
+      if (changed) {
+        showHostCommands = from.showHostCommands;
+        showSubmitInfoNodes = from.showSubmitInfoNodes;
+        showSyncCommands = from.showSyncCommands;
+        showBeginEndCommands = from.showBeginEndCommands;
+      }
+      return changed;
+    }
+
+    public Path.CommandTree.Builder toProto(Path.CommandTree.Builder path) {
+      return path
+          .setFilter(Path.CommandFilter.newBuilder()
+              .setSuppressHostCommands(!showHostCommands)
+              .setSuppressDeviceSideSyncCommands(!showSyncCommands)
+              .setSuppressBeginEndMarkers(!showBeginEndCommands))
+          .setSuppressSubmitInfoNodes(!showSubmitInfoNodes);
+    }
+
+    public void save(Settings settings) {
+      SettingsProto.UI.CommandFilter.Builder filter = settings.writeUi().getCommandFilterBuilder();
+      filter.setShowHostCommands(showHostCommands);
+      filter.setShowSubmitInfoNodes(showSubmitInfoNodes);
+      filter.setShowSyncCommands(showSyncCommands);
+      filter.setShowBeginEndCommands(showBeginEndCommands);
+    }
   }
 
   /**

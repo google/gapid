@@ -84,6 +84,14 @@ message UI {
     repeated int32 counter_ids = 3;
   }
   repeated PerformancePreset performance_presets = 4;
+
+  message CommandFilter {
+    bool show_host_commands = 1;
+    bool show_submit_info_nodes = 2;
+    bool show_sync_commands = 3;
+    bool show_begin_end_commands = 4;
+  }
+  CommandFilter command_filter = 5;
 }
 
 message Trace {

@@ -34,31 +34,18 @@ import java.util.logging.Logger;
 public class Events {
   protected static final Logger LOG = Logger.getLogger(Events.class.getName());
 
-  public static final int Loading       = 0x7f000001;
-  public static final int Loaded        = 0x7f000002;
-  public static final int Updated       = 0x7f000003;
-  public static final int Search        = 0x7f000004;
-  public static final int FilterEvents  = 0x7f000005;
+  public static final int Loading = 0x7f000001;
+  public static final int Loaded  = 0x7f000002;
+  public static final int Updated = 0x7f000003;
+  public static final int Search  = 0x7f000004;
 
   public static final int REGEX = 1 << 10; // Used in the Search event.
-
-  public static final int HIDE_HOST_COMMANDS = 1 << 10; // Used in the FilterEvents event.
-  public static final int HIDE_BEGIN_END = 1 << 11; // Used in the FilterEvents event.
-  public static final int HIDE_DEVICE_SYNC = 1 << 12; // Used in the FilterEvents event.
 
   public static Event newSearchEvent(Widget source, String text, boolean regex) {
     Event event = new Event();
     event.widget = source;
     event.text = text;
     event.detail = regex ? REGEX : 0;
-    return event;
-  }
-
-  public static Event newFilterEventsEvent(Widget source, Boolean hideHostCommands, Boolean hideBeginEnd, Boolean hideDeviceSync) {
-    Event event = new Event();
-    event.widget = source;
-    event.text = "unused";
-    event.detail = (hideHostCommands ? HIDE_HOST_COMMANDS : 0) | (hideBeginEnd ? HIDE_BEGIN_END : 0) | (hideDeviceSync ? HIDE_DEVICE_SYNC : 0);
     return event;
   }
 

@@ -20,10 +20,13 @@ import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
 import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
+import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
+import static com.google.gapid.widgets.Widgets.createButton;
+import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.withIndents;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Analytics.View;
@@ -38,14 +41,9 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
-import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpc.SingleInFlight;
-import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.MoreFutures;
+import com.google.gapid.util.Paths;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.Style;
 import com.google.gapid.views.Formatter.StylingString;
@@ -53,7 +51,6 @@ import com.google.gapid.widgets.LinkifiedTreeWithImages;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadableImageWidget;
 import com.google.gapid.widgets.LoadablePanel;
-import com.google.gapid.widgets.EventsFilter;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.TreePath;
@@ -65,16 +62,17 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.TreeItem;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
@@ -87,6 +85,7 @@ public class CommandTree extends Composite
   private static final String COMMAND_INDEX_DSCRP = "Command index: ";
 
   private final Models models;
+  private final Paths.CommandFilter filter;
   private final LoadablePanel<Tree> loading;
   protected final Tree tree;
   private final Label commandIdx;
@@ -95,10 +94,28 @@ public class CommandTree extends Composite
   public CommandTree(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
+    this.filter = models.commands.getFilter();
 
     setLayout(new GridLayout(1, false));
 
-    EventsFilter eventsFilter = new EventsFilter(this);
+    // TODO: add search back
+    ToolBar bar = new ToolBar(this, SWT.FLAT);
+    createBaloonToolItem(bar, widgets.theme.filter(), bubble -> {
+      bubble.setLayout(new GridLayout(1, false));
+      createCheckbox(bubble, "Show Host Commands", filter.showHostCommands,
+          e -> filter.showHostCommands = ((Button)e.widget).getSelection());
+      createCheckbox(bubble, "Show Submit Info Nodes", filter.showSubmitInfoNodes,
+          e -> filter.showSubmitInfoNodes = ((Button)e.widget).getSelection());
+      createCheckbox(bubble, "Show Event/Sync Commands", filter.showSyncCommands,
+          e -> filter.showSyncCommands = ((Button)e.widget).getSelection());
+      createCheckbox(bubble, "Show Begin/End Commands", filter.showBeginEndCommands,
+          e -> filter.showBeginEndCommands = ((Button)e.widget).getSelection());
+      withLayoutData(createButton(bubble, "Apply", e -> bubble.close()),
+          new GridData(SWT.RIGHT, SWT.TOP, false, false));
+
+      bubble.addListener(SWT.Close, e -> models.commands.setFilter(filter));
+    }, "Filter");
+
     loading = LoadablePanel.create(this, widgets, p -> new Tree(p, models, widgets));
     tree = loading.getContents();
     commandIdx = createLabel(this, COMMAND_INDEX_DSCRP);
@@ -109,7 +126,7 @@ public class CommandTree extends Composite
       }
     });
 
-    eventsFilter.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+    bar.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     commandIdx.setLayoutData(withIndents(new GridData(SWT.FILL, SWT.FILL, true, false), 3, 0));
 
@@ -121,14 +138,6 @@ public class CommandTree extends Composite
       models.commands.removeListener(this);
       models.profile.removeListener(this);
     });
-
-    eventsFilter.addListener(Events.FilterEvents,
-      e -> filterEvents(
-        (e.detail & Events.HIDE_HOST_COMMANDS) != 0,
-        (e.detail & Events.HIDE_BEGIN_END) != 0,
-        (e.detail & Events.HIDE_DEVICE_SYNC) != 0
-      )
-    );
 
     selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
       @Override
@@ -175,10 +184,6 @@ public class CommandTree extends Composite
     }, true);
   }
 
-  private void filterEvents(Boolean hideHostCommands, Boolean hideBeginEnd, Boolean hideDeviceSync) {
-    models.commands.reloadCommandTree(hideHostCommands, hideBeginEnd, hideDeviceSync);
-  }
-
   protected void select(TreePath path) {
     models.commands.selectCommands(((CommandStream.Node)path.getLastSegment()).getIndex(), true);
   }
@@ -203,6 +208,11 @@ public class CommandTree extends Composite
     if (error != null) {
       loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
     }
+  }
+
+  @Override
+  public void onCommandsLoadingStart() {
+    updateTree(false);
   }
 
   @Override
