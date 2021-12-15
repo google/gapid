@@ -72,30 +72,28 @@ func (t *commandTree) index(indices []uint64) (api.SpanItem, api.SubCmdIdx) {
 	return group, subCmdRootID
 }
 
-func (t *commandTree) indices(idx []uint64, preferGroup bool) []uint64 {
+func (t *commandTree) indices(cmdIdx []uint64, preferGroup bool) []uint64 {
 	out := []uint64{}
 	group := t.root
 
-	for _, id := range idx {
-		brk := false
-		for {
-			if brk {
-				break
+	for i := 0; i < len(cmdIdx); i++ {
+		cmdId := api.CmdID(cmdIdx[i])
+		idx := group.IndexOf(cmdId)
+		out = append(out, idx)
+
+		switch item := group.Index(idx).(type) {
+		case api.CmdIDGroup:
+			group = item
+			if group.Bounds().Last() > cmdId {
+				// We are looking for something inside this group, not the group itself, so go around again.
+				i--
 			}
-			i := group.IndexOf(api.CmdID(id))
-			out = append(out, i)
-			switch item := group.Index(i).(type) {
-			case api.CmdIDGroup:
-				group = item
-				if preferGroup {
-					brk = true
-				}
-			case api.SubCmdRoot:
-				group = item.SubGroup
-				brk = true
-			default:
-				return out
-			}
+		case api.SubCmdRoot:
+			group = item.SubGroup
+			// This SubCmdRoot may skip over some command indecies.
+			i = len(item.Id) - 1
+		default:
+			return out
 		}
 	}
 	return out
