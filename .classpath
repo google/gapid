@@ -24,7 +24,7 @@
 	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_interceptors_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_interceptors_protos-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_power_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_power_protos-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libprotos_perfetto_config_profiling_protos-speed.jar" sourcepath="bazel-bin/external/perfetto/libprotos_perfetto_config_profiling_protos-speed-src.jar"/>
-	<classpathentry kind="lib" path="bazel-bin/gapidapk/pkginfo/libpkginfo_proto-speed.jar" sourcepath="bazel-bin/gapidapk/pkginfo/pkginfo_proto-speed-src.jar"/>/>
+	<classpathentry kind="lib" path="bazel-bin/gapidapk/pkginfo/libpkginfo_proto-speed.jar" sourcepath="bazel-bin/gapidapk/pkginfo/pkginfo_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/api/libapi_proto-speed.jar" sourcepath="bazel-bin/gapis/api/api_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/memory/libmemory_proto-speed.jar" sourcepath="bazel-bin/gapis/memory/memory_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/perfetto/service/libservice_proto-speed.jar" sourcepath="bazel-bin/gapis/perfetto/service/service_proto-speed-src.jar"/>
