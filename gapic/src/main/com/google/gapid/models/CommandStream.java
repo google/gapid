@@ -29,6 +29,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
@@ -146,6 +147,26 @@ public class CommandStream
         }
       });
     }
+  }
+
+  public ListenableFuture<Service.FindResponse> search(
+      CommandStream.Node parent, String text, boolean regex) {
+    SettableFuture<Service.FindResponse> result = SettableFuture.create();
+    client.streamSearch(searchRequest(parent, text, regex), result::set);
+    return result;
+  }
+
+  private static Service.FindRequest searchRequest(
+      CommandStream.Node parent, String text, boolean regex) {
+    return Service.FindRequest.newBuilder()
+        .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
+        .setText(text)
+        .setIsRegex(regex)
+        .setMaxItems(1)
+        .setWrap(true)
+        .setConfig(Path.ResolveConfig.newBuilder()
+            .setReplayDevice(parent.device))
+        .build();
   }
 
   @Override

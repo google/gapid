@@ -23,10 +23,13 @@ import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
 import static com.google.gapid.widgets.Widgets.createButton;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
+import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMarginOnly;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Analytics.View;
@@ -41,8 +44,14 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.SingleInFlight;
+import com.google.gapid.rpc.UiCallback;
+import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.Style;
@@ -51,6 +60,7 @@ import com.google.gapid.widgets.LinkifiedTreeWithImages;
 import com.google.gapid.widgets.LoadableImage;
 import com.google.gapid.widgets.LoadableImageWidget;
 import com.google.gapid.widgets.LoadablePanel;
+import com.google.gapid.widgets.SearchBox;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.TreePath;
@@ -73,6 +83,7 @@ import org.eclipse.swt.widgets.TreeItem;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
@@ -90,6 +101,7 @@ public class CommandTree extends Composite
   protected final Tree tree;
   private final Label commandIdx;
   private final SelectionHandler<Control> selectionHandler;
+  private final SingleInFlight searchController = new SingleInFlight();
 
   public CommandTree(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -98,8 +110,11 @@ public class CommandTree extends Composite
 
     setLayout(new GridLayout(1, false));
 
-    // TODO: add search back
-    ToolBar bar = new ToolBar(this, SWT.FLAT);
+    Composite top = createComposite(this, withMarginOnly(new GridLayout(2, false), 0, 0));
+    SearchBox search = withLayoutData(
+        new SearchBox(top, false), new GridData(SWT.FILL, SWT.CENTER, true, false));
+    ToolBar bar = withLayoutData(
+        new ToolBar(top, SWT.FLAT), new GridData(SWT.RIGHT, SWT.CENTER, false, false));
     createBaloonToolItem(bar, widgets.theme.filter(), bubble -> {
       bubble.setLayout(new GridLayout(1, false));
       createCheckbox(bubble, "Show Host Commands", filter.showHostCommands,
@@ -126,9 +141,9 @@ public class CommandTree extends Composite
       }
     });
 
-    bar.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
+    top.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    commandIdx.setLayoutData(withIndents(new GridData(SWT.FILL, SWT.FILL, true, false), 3, 0));
+    commandIdx.setLayoutData(withIndents(new GridData(SWT.FILL, SWT.BOTTOM, true, false), 3, 0));
 
     models.capture.addListener(this);
     models.commands.addListener(this);
@@ -138,6 +153,8 @@ public class CommandTree extends Composite
       models.commands.removeListener(this);
       models.profile.removeListener(this);
     });
+
+    search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
 
     selectionHandler = new SelectionHandler<Control>(LOG, tree.getControl()) {
       @Override
@@ -182,6 +199,33 @@ public class CommandTree extends Composite
       }
       return new String[] { result.toString() };
     }, true);
+  }
+
+  private void search(String text, boolean regex) {
+    models.analytics.postInteraction(View.Commands, ClientAction.Search);
+    CommandStream.Node parent = models.commands.getData();
+    if (parent != null && !text.isEmpty()) {
+      CommandStream.Node selection = tree.getSelection();
+      if (selection != null) {
+        parent = selection;
+      }
+      searchController.start().listen(
+          MoreFutures.transformAsync(models.commands.search(parent, text, regex),
+              r -> models.commands.getTreePath(models.commands.getData(), Lists.newArrayList(),
+                  r.getCommandTreeNode().getIndicesList().iterator())),
+          new UiCallback<TreePath, TreePath>(tree, LOG) {
+            @Override
+            protected TreePath onRpcThread(Rpc.Result<TreePath> result)
+                throws RpcException, ExecutionException {
+              return result.get();
+            }
+
+            @Override
+            protected void onUiThread(TreePath result) {
+              select(result);
+            }
+          });
+    }
   }
 
   protected void select(TreePath path) {
