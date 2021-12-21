@@ -1079,7 +1079,7 @@ message ProfilingData {
       int32 id = 1;
       string name = 2;
       Group parent = 3;
-      path.Command link = 4;
+      path.Commands link = 4;
     }
 
     repeated Slice slices = 1;

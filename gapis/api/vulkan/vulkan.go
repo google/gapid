@@ -422,6 +422,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		canStartDrawGrouping := true
 
 		d.RenderPassLookup.AddCommandBuffer(ctx, order, cb.VulkanHandle().Handle(), idx)
+		var renderPassKey sync.RenderPassKey
+		var renderPassStart api.SubCmdIdx
 
 		for i := 0; i < cb.CommandReferences().Len(); i++ {
 			initialCommands, ok := st.initialCommands[cb.VulkanHandle()]
@@ -535,18 +537,20 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				popMarker(debugMarker, uint64(i))
 			}
 
-			// Markdown RenderPasses' ans SubPasses' command index, for helping
-			// connect a command and its correlated GPU slices.
-			switch args := GetCommandArgs(ctx, cb.CommandReferences().Get(uint32(i)), st).(type) {
-			case VkCmdBeginRenderPassArgsʳ:
-				if id.IsReal() {
-					key := sync.RenderPassKey{
+			if id.IsReal() {
+				// Markdown RenderPasses' and SubPasses' command index, for helping
+				// connect a command and its correlated GPU slices.
+				switch args := GetCommandArgs(ctx, cb.CommandReferences().Get(uint32(i)), st).(type) {
+				case VkCmdBeginRenderPassArgsʳ:
+					renderPassKey = sync.RenderPassKey{
 						Submission:    order,
 						CommandBuffer: cb.VulkanHandle().Handle(),
 						RenderPass:    args.RenderPass().Handle(),
 						Framebuffer:   args.Framebuffer().Handle(),
 					}
-					d.RenderPassLookup.AddRenderPass(ctx, key, nv)
+					renderPassStart = append(api.SubCmdIdx{}, nv...)
+				case VkCmdEndRenderPassArgsʳ:
+					d.RenderPassLookup.AddRenderPass(ctx, renderPassKey, sync.SubCmdRange{renderPassStart, nv})
 				}
 			}
 		}

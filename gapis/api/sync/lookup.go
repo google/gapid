@@ -30,6 +30,16 @@ type RenderPassKey struct {
 	Framebuffer   uint64
 }
 
+// SubCmdRange is a range of api.SubCmdIdx.
+type SubCmdRange struct {
+	From api.SubCmdIdx
+	To   api.SubCmdIdx
+}
+
+func (r *SubCmdRange) IsNil() bool {
+	return r == nil || r.From == nil || r.To == nil
+}
+
 // RenderPassLookup maintains a mapping of RenderPassKey to api.SubCmdIdx. It allows for fuzzy
 // lookup of command indecies for submitted render passes and command buffers.
 type RenderPassLookup struct {
@@ -57,8 +67,8 @@ func (l *RenderPassLookup) AddCommandBuffer(ctx context.Context, submission int,
 }
 
 // AddRenderPass adds a submitted render pass start index to the mapping.
-func (l *RenderPassLookup) AddRenderPass(ctx context.Context, key RenderPassKey, idx api.SubCmdIdx) {
-	log.D(ctx, "Adding mapping for render pass %v -> %v", key, idx)
+func (l *RenderPassLookup) AddRenderPass(ctx context.Context, key RenderPassKey, idx SubCmdRange) {
+	log.D(ctx, "Adding mapping for render pass %v -> [%v, %v]", key, idx.From, idx.To)
 	rpl, ok := l.renderPasses[key.RenderPass]
 	if !ok {
 		rpl = newRenderPassLookup()
@@ -71,7 +81,7 @@ func (l *RenderPassLookup) AddRenderPass(ctx context.Context, key RenderPassKey,
 // handles is treated as "unknown" and will cause the lookup to match up with the best known
 // index, if it exists. Returned indecies either point to a submitted command buffer or a render
 // pass within a submitted command buffer.
-func (l *RenderPassLookup) Lookup(ctx context.Context, key RenderPassKey) api.SubCmdIdx {
+func (l *RenderPassLookup) Lookup(ctx context.Context, key RenderPassKey) SubCmdRange {
 	if key.RenderPass != 0 {
 		if rpl, ok := l.renderPasses[key.RenderPass]; ok {
 			return rpl.lookup(key)
@@ -80,7 +90,7 @@ func (l *RenderPassLookup) Lookup(ctx context.Context, key RenderPassKey) api.Su
 	if cbl, ok := l.commandBuffers[key.CommandBuffer]; ok {
 		return cbl.lookup(key)
 	}
-	return nil
+	return SubCmdRange{}
 }
 
 type commandBufferLookup struct {
@@ -104,13 +114,14 @@ func (l *commandBufferLookup) add(submission int, idx api.SubCmdIdx) {
 	}
 }
 
-func (l *commandBufferLookup) lookup(key RenderPassKey) api.SubCmdIdx {
+func (l *commandBufferLookup) lookup(key RenderPassKey) SubCmdRange {
 	if idx, ok := l.submissions[key.Submission]; ok {
-		return idx
+		return SubCmdRange{idx, idx}
 	}
 
 	if key.Submission == 0 || len(l.submissions) == 1 {
-		return l.submissions[l.firstSubmission]
+		idx := l.submissions[l.firstSubmission]
+		return SubCmdRange{idx, idx}
 	}
 
 	// Find the command buffer that matches the submission index the closest.
@@ -123,28 +134,28 @@ func (l *commandBufferLookup) lookup(key RenderPassKey) api.SubCmdIdx {
 			distance = d
 		}
 	}
-	return idx
+	return SubCmdRange{idx, idx}
 }
 
 type renderPassLookup struct {
-	mappings        map[RenderPassKey]api.SubCmdIdx
+	mappings        map[RenderPassKey]SubCmdRange
 	byCommandBuffer map[uint64][]RenderPassKey
 	byFramebuffer   map[uint64][]RenderPassKey
 }
 
 func newRenderPassLookup() *renderPassLookup {
 	return &renderPassLookup{
-		mappings:        map[RenderPassKey]api.SubCmdIdx{},
+		mappings:        map[RenderPassKey]SubCmdRange{},
 		byCommandBuffer: map[uint64][]RenderPassKey{},
 		byFramebuffer:   map[uint64][]RenderPassKey{},
 	}
 }
 
-func (l *renderPassLookup) add(key RenderPassKey, idx api.SubCmdIdx) {
+func (l *renderPassLookup) add(key RenderPassKey, idx SubCmdRange) {
 	key.RenderPass = 0 // clear it out, since we don't care about it anymore.
 
-	if current, ok := l.mappings[key]; !ok || idx.LessThan(current) {
-		l.mappings[key] = idx
+	if current, ok := l.mappings[key]; !ok || !current.contains(idx) {
+		l.mappings[key] = current.expand(idx)
 		// Only add this key to the by* lookups, if we haven't seen it before.
 		if !ok {
 			l.byCommandBuffer[key.CommandBuffer] = append(l.byCommandBuffer[key.CommandBuffer], key)
@@ -153,7 +164,7 @@ func (l *renderPassLookup) add(key RenderPassKey, idx api.SubCmdIdx) {
 	}
 }
 
-func (l *renderPassLookup) lookup(key RenderPassKey) api.SubCmdIdx {
+func (l *renderPassLookup) lookup(key RenderPassKey) SubCmdRange {
 	key.RenderPass = 0
 
 	if idx, ok := l.mappings[key]; ok {
@@ -205,7 +216,7 @@ func (l *renderPassLookup) lookup(key RenderPassKey) api.SubCmdIdx {
 
 	// Find the closest submission.
 	distance := math.MaxInt
-	var idx api.SubCmdIdx
+	var idx SubCmdRange
 	for k, cmd := range l.mappings {
 		d := abs(k.Submission - key.Submission)
 		if d < distance {
@@ -221,4 +232,18 @@ func abs(v int) int {
 		return -v
 	}
 	return v
+}
+
+func (r *SubCmdRange) contains(o SubCmdRange) bool {
+	return r.From.LEQ(o.From) && o.To.LEQ(r.To)
+}
+
+func (r SubCmdRange) expand(o SubCmdRange) SubCmdRange {
+	if r.From == nil || o.From.LessThan(r.From) {
+		r.From = o.From
+	}
+	if r.To == nil || r.To.LessThan(o.To) {
+		r.To = o.To
+	}
+	return r
 }

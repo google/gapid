@@ -92,8 +92,8 @@ func (d *SliceData) MapIdentifiers(ctx context.Context, handleMapping map[uint64
 	ExtractTraceHandles(ctx, d.RenderPasses, "VkRenderPass", handleMapping)
 }
 
-func (d *SliceData) CreateOrGetGroup(name string, link *path.Command) int32 {
-	key := fmt.Sprintf("%v", link.Indices)
+func (d *SliceData) CreateOrGetGroup(name string, link *path.Commands) int32 {
+	key := fmt.Sprintf("%v-%v", link.From, link.To)
 	if g, ok := d.groups[key]; ok {
 		return g.Id
 	}

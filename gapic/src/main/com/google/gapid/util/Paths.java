@@ -462,6 +462,10 @@ public class Paths {
     return (c == null) || (c.getIndicesCount() == 0);
   }
 
+  public static boolean isNull(Path.Commands c) {
+    return (c == null) || (c.getFromCount() == 0);
+  }
+
   /**
    * Compares a and b, returning -1 if a comes before b, 1 if b comes before a and 0 if they
    * are equal.

@@ -108,6 +108,12 @@ public class Ranges {
         Paths.compareCommands(range.getToList(), command.getIndicesList(), true) >= 0;
   }
 
+  public static boolean containsStart(Path.Commands range, Path.Commands command) {
+    return Paths.compareCommands(range.getFromList(), command.getFromList(), false) <= 0 &&
+        Paths.compareCommands(range.getToList(), command.getFromList(), true) >= 0;
+  }
+
+
   /**
    * Returns how the given command relates to the given range:
    * -1 if it comes before, 0 if it's within, and 1 if it's after the range.
@@ -122,4 +128,38 @@ public class Ranges {
     }
     return r;
   }
+
+  /**
+   * Same as above compare with command being the second range's start.
+   */
+  public static int compareStart(Path.Commands range, Path.Commands command) {
+    int r = Paths.compareCommands(command.getFromList(), range.getFromList(), false);
+    if (r > 0) { // Only need to compare to the end if b.From is after start.
+      // If b.From is before or equal end, it's within the range, otherwise after.
+      if (Paths.compareCommands(range.getToList(), command.getFromList(), true) >= 0) {
+        r = 0;
+      }
+    }
+    return r;
+  }
+
+  /**
+   * Compares a and b, returning
+   * -1 if a.start < b.start or if a.start == b.start and a.end < b.end,
+   *  1 if a.start > b.start or if a.start == b.start and a.end > b.end,
+   *  0 if they are equal.
+   */
+  public static int compare(Path.Commands a, Path.Commands b) {
+    if (Paths.isNull(a)) {
+      return Paths.isNull(b) ? 0 : -1;
+    } else if (Paths.isNull(b)) {
+      return 1;
+    }
+    int r = Paths.compareCommands(a.getFromList(), b.getFromList(), false);
+    if (r == 0) {
+      r = Paths.compareCommands(a.getToList(), b.getToList(), false);
+    }
+    return r;
+  }
+
 }

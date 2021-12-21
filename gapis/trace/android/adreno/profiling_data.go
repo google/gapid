@@ -124,11 +124,11 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			}
 			// Create a new group for each main renderPass slice.
 			idx := syncData.RenderPassLookup.Lookup(ctx, key)
-			if idx != nil && sliceData.Names[i] == renderPassSliceName {
-				sliceData.Names[i] = fmt.Sprintf("%v", idx)
+			if !idx.IsNil() && sliceData.Names[i] == renderPassSliceName {
+				sliceData.Names[i] = fmt.Sprintf("%v-%v", idx.From, idx.To)
 				groupId = sliceData.CreateOrGetGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
-					&path.Command{Capture: capture, Indices: idx},
+					&path.Commands{Capture: capture, From: idx.From, To: idx.To},
 				)
 			}
 		} else {

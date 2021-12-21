@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 package com.google.gapid.models;
+
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.MoreFutures.transform;
+import static com.google.gapid.util.Paths.lastCommand;
 import static java.util.Collections.binarySearch;
 import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.groupingBy;
@@ -30,7 +32,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.models.CommandStream.Node;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
@@ -42,7 +43,6 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
-import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
 
 import org.eclipse.swt.widgets.Shell;
@@ -131,7 +131,7 @@ public class Profile
       return;
     }
     for (Service.ProfilingData.GpuSlices.Group group : getData().getSlices().getGroupsList()) {
-      if (group.getLink().getIndicesList().toString().equals(commandIndex.toString())) {
+      if (group.getLink().getToList().toString().equals(commandIndex.toString())) {
         selectGroup(group);
       }
     }
@@ -143,9 +143,9 @@ public class Profile
     // behavior aligns to what happens when selection is from the UI side, where the resource
     // tabs' loading result is based on a "representation" command in the grouping node.
     ListenableFuture<CommandStream.Node> node = MoreFutures.transformAsync(
-        commands.getGroupingNodePath(group.getLink()),
+        commands.getGroupingNodePath(lastCommand(group.getLink())),
         commands::findNode);
-    Rpc.listen(node, new UiCallback<Node, Node>(shell, LOG) {
+    Rpc.listen(node, new UiCallback<CommandStream.Node, CommandStream.Node>(shell, LOG) {
       @Override
       protected CommandStream.Node onRpcThread(Rpc.Result<CommandStream.Node> result)
           throws RpcException, ExecutionException {
@@ -157,7 +157,7 @@ public class Profile
         if (node == null) {
           // A fallback.
           LOG.log(WARNING, "Profile: failed to find the CommandStream.Node for command index: %s", group.getLink());
-          commands.selectCommands(CommandIndex.forCommand(group.getLink()), false);
+          commands.selectCommands(CommandIndex.forCommand(lastCommand(group.getLink())), false);
         } else {
           commands.selectCommands(node.getIndex(), false);
         }
@@ -236,7 +236,7 @@ public class Profile
         Service.ProfilingData profile, Set<Integer> ids) {
       return profile.getSlices().getGroupsList().stream()
           .filter(g -> ids.contains(g.getId()))
-          .sorted((g1, g2) -> Paths.compare(g1.getLink(), g2.getLink()))
+          .sorted((g1, g2) -> Ranges.compare(g1.getLink(), g2.getLink()))
           .collect(toList());
     }
 
@@ -325,14 +325,14 @@ public class Profile
 
     private List<TimeSpan> getSpans(Path.Commands range) {
       List<TimeSpan> spans = Lists.newArrayList();
-      int idx = binarySearch(groups, null, (g, $) -> Ranges.compare(range, g.getLink()));
+      int idx = binarySearch(groups, null, (g, $) -> Ranges.compareStart(range, g.getLink()));
       if (idx < 0) {
         return spans;
       }
-      for (int i = idx; i >= 0 && Ranges.contains(range, groups.get(i).getLink()); i--) {
+      for (int i = idx; i >= 0 && Ranges.containsStart(range, groups.get(i).getLink()); i--) {
         spans.addAll(spansByGroup.get(groups.get(i).getId()));
       }
-      for (int i = idx + 1; i < groups.size() && Ranges.contains(range, groups.get(i).getLink()); i++) {
+      for (int i = idx + 1; i < groups.size() && Ranges.containsStart(range, groups.get(i).getLink()); i++) {
         spans.addAll(spansByGroup.get(groups.get(i).getId()));
       }
       Collections.sort(spans, (s1, s2) -> Long.compare(s1.start, s2.start));
