@@ -128,7 +128,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 				sliceData.Names[i] = fmt.Sprintf("%v-%v", idx.From, idx.To)
 				groupId = sliceData.CreateOrGetGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
-					&path.Commands{Capture: capture, From: idx.From, To: idx.To},
+					idx,
 				)
 			}
 		} else {
@@ -142,7 +142,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 		sliceData.GroupIds[i] = groupId
 	}
 
-	return sliceData.ToService(ctx, processor), nil
+	return sliceData.ToService(ctx, processor, capture), nil
 }
 
 func processCounters(ctx context.Context, processor *perfetto.Processor, desc *device.GpuCounterDescriptor) ([]*service.ProfilingData_Counter, error) {

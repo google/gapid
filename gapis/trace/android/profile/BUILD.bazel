@@ -10,10 +10,12 @@ go_library(
     importpath = "github.com/google/gapid/gapis/trace/android/profile",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data/slice:go_default_library",
         "//core/log:go_default_library",
         "//core/math/f64:go_default_library",
         "//core/math/u64:go_default_library",
         "//core/os/device:go_default_library",
+        "//gapis/api/sync:go_default_library",
         "//gapis/perfetto:go_default_library",
         "//gapis/perfetto/service:go_default_library",
         "//gapis/service:go_default_library",
