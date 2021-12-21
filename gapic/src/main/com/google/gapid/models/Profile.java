@@ -15,6 +15,7 @@
  */
 package com.google.gapid.models;
 
+import static com.google.common.base.Functions.identity;
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
@@ -25,6 +26,7 @@ import static java.util.logging.Level.WARNING;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 import com.google.common.base.Objects;
@@ -241,21 +243,24 @@ public class Profile
     }
 
     private static List<PerfNode> createPerfNodes(Service.ProfilingData profile) {
+      Map<Integer, Service.ProfilingData.GpuSlices.Group> groups =
+          profile.getSlices().getGroupsList().stream()
+              .collect(toMap(Service.ProfilingData.GpuSlices.Group::getId, identity()));
       Map<Integer, PerfNode> nodes = Maps.newHashMap(); // groupId -> node.
       // Create the nodes.
       for (Service.ProfilingData.GpuCounters.Entry entry : profile.getGpuCounters().getEntriesList()) {
-        nodes.put(entry.getGroup().getId(), new PerfNode(entry));
+        nodes.put(entry.getGroupId(), new PerfNode(entry, groups.get(entry.getGroupId())));
       }
       // Link the nodes.
       for (PerfNode node : nodes.values()) {
-        if (node.getGroup().hasParent()) {
-          nodes.get(node.getGroup().getParent().getId()).children.add(node);
+        if (node.getGroup().getParentId() > 0) {
+          nodes.get(node.getGroup().getParentId()).children.add(node);
         }
       }
       // Return the root nodes.
       List<PerfNode> rootNodes = Lists.newArrayList();
       for (PerfNode node : nodes.values()) {
-        if (!node.getGroup().hasParent()) {
+        if (node.getGroup().getParentId() <= 0) {
           rootNodes.add(node);
         }
       }
@@ -374,10 +379,13 @@ public class Profile
 
   public static class PerfNode {
     private final Service.ProfilingData.GpuCounters.Entry entry;
+    private final Service.ProfilingData.GpuSlices.Group group;
     private final List<PerfNode> children;
 
-    public PerfNode(Service.ProfilingData.GpuCounters.Entry entry) {
+    public PerfNode(
+        Service.ProfilingData.GpuCounters.Entry entry, Service.ProfilingData.GpuSlices.Group group) {
       this.entry = entry;
+      this.group = group;
       this.children = Lists.newArrayList();
     }
 
@@ -386,7 +394,7 @@ public class Profile
     }
 
     public Service.ProfilingData.GpuSlices.Group getGroup() {
-      return entry.getGroup();
+      return group;
     }
 
     public Map<Integer, Service.ProfilingData.GpuCounters.Perf> getPerfs() {

@@ -1066,8 +1066,8 @@ message ProfilingData {
       int32 depth = 5;
       repeated Extra extras = 6;
 
-      int32 trackId = 7;  // references Track.id
-      int32 groupId = 8;  // references Group.id
+      int32 track_id = 7;  // references Track.id
+      int32 group_id = 8;  // references Group.id
     }
 
     message Track {
@@ -1078,7 +1078,7 @@ message ProfilingData {
     message Group {
       int32 id = 1;
       string name = 2;
-      Group parent = 3;
+      int32 parent_id = 3;  // references Group.id
       path.Commands link = 4;
     }
 
@@ -1125,14 +1125,14 @@ message ProfilingData {
       double estimate = 1;
       double min = 2;
       double max = 3;
-      map<int32, double> estimateSamples = 4;  // {index} -> {sample weight}
-      map<int32, double> minSamples = 5;       // {index} -> {sample weight}
-      map<int32, double> maxSamples = 6;       // {index} -> {sample weight}
+      map<int32, double> estimate_samples = 4;  // {index} -> {sample weight}
+      map<int32, double> min_samples = 5;       // {index} -> {sample weight}
+      map<int32, double> max_samples = 6;       // {index} -> {sample weight}
     }
 
     // Entry contains performance data for a specific command.
     message Entry {
-      GpuSlices.Group group = 1;
+      int32 group_id = 1;                    // references slices.groups
       map<int32, Perf> metric_to_value = 2;  // Metric.id -> perf value.
     }
 

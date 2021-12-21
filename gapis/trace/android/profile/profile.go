@@ -39,11 +39,13 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	// Filter out the slices that are at depth 0 and belong to a command,
 	// then sort them based on the start time.
 	groupToEntry := map[int32]*service.ProfilingData_GpuCounters_Entry{}
+	groupToParent := map[int32]int32{}
 	for _, group := range slices.Groups {
 		groupToEntry[group.Id] = &service.ProfilingData_GpuCounters_Entry{
-			Group:         group,
+			GroupId:       group.Id,
 			MetricToValue: map[int32]*service.ProfilingData_GpuCounters_Perf{},
 		}
+		groupToParent[group.Id] = group.ParentId
 	}
 	filteredSlices := []*service.ProfilingData_GpuSlices_Slice{}
 	for i := 0; i < len(slices.Slices); i++ {
@@ -58,11 +60,12 @@ func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlice
 	// Group slices based on their group id.
 	groupToSlices := map[int32][]*service.ProfilingData_GpuSlices_Slice{}
 	for i := 0; i < len(filteredSlices); i++ {
-		group := groupToEntry[filteredSlices[i].GroupId].Group
+		e, _ := groupToEntry[filteredSlices[i].GroupId]
 		// Attribute a slice to its direct group and all ancestor groups.
-		for group != nil {
-			groupToSlices[group.Id] = append(groupToSlices[group.Id], filteredSlices[i])
-			group = group.Parent
+		for e != nil {
+			groupToSlices[e.GroupId] = append(groupToSlices[e.GroupId], filteredSlices[i])
+			parent, _ := groupToParent[e.GroupId]
+			e, _ = groupToEntry[parent]
 		}
 	}
 

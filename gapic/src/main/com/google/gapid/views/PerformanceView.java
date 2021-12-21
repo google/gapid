@@ -15,8 +15,8 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.perfetto.views.StyleConstants.threadStateSleeping;
 import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
+import static com.google.gapid.perfetto.views.StyleConstants.threadStateSleeping;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.widgets.Widgets.createButton;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -27,8 +27,8 @@ import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
-import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -52,7 +52,6 @@ import com.google.gapid.proto.SettingsProto.UI.PerformancePreset;
 import com.google.gapid.proto.device.GpuProfiling;
 import com.google.gapid.proto.device.GpuProfiling.GpuCounterDescriptor.GpuCounterGroup;
 import com.google.gapid.proto.device.GpuProfiling.GpuCounterDescriptor.GpuCounterSpec;
-
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.util.Experimental;
 import com.google.gapid.util.Loadable;
@@ -61,15 +60,6 @@ import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
-
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.function.Predicate;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
@@ -82,9 +72,9 @@ import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -99,6 +89,14 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.Predicate;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class PerformanceView extends Composite
     implements Tab, Capture.Listener, CommandStream.Listener, Profile.Listener {
@@ -706,7 +704,7 @@ public class PerformanceView extends Composite
       this.selectedEntry = entry;
       this.selectedMetric = metric;
       String coordinateStr = ENTRY_LABEL_PREFIX
-          + (entry != null ? entry.getGroup().getName() : "")
+          + (entry != null ? entry.getGroupId() : "")
           + "; " + METRIC_LABEL_PREFIX
           + (metric != null ? metric.getName() : "");
       coordinateLabel.setText(coordinateStr);
