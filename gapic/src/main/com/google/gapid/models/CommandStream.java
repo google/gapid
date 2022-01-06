@@ -209,7 +209,11 @@ public class CommandStream
     }
 
     RootNode root = (RootNode)getData();
-    if (index.getNode() == null) {
+    if (root.getChildCount() == 0) {
+      // If the tree is empty, ignore any selection.
+      selection = null;
+      listeners.fire().onCommandsSelected(selection);
+    } else if (index.getNode() == null) {
       resolve(index.getCommand(), node -> selectCommands(index.withNode(node), force));
     } else if (!index.getNode().getTree().equals(root.tree)) {
       // TODO
