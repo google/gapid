@@ -145,7 +145,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
   }
 
   @Override
-  public void onGroupSelected(Service.ProfilingData.GpuSlices.Group group) {
+  public void onGroupSelected(Service.ProfilingData.Group group) {
     traceUi.selectGroup(group);
   }
 
@@ -163,7 +163,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       }
 
       if (firstGroupId != -1) {
-        for (Service.ProfilingData.GpuSlices.Group group : models.profile.getData().getSlices().getGroupsList()) {
+        for (Service.ProfilingData.Group group : models.profile.getData().getGroups()) {
           if (firstGroupId == group.getId()) {
             models.profile.linkGpuGroupToCommand(group);
             models.profile.selectGroup(group);
@@ -215,7 +215,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
       state.update(data.getSlicesTimeSpan());
     }
 
-    public void selectGroup(Service.ProfilingData.GpuSlices.Group group) {
+    public void selectGroup(Service.ProfilingData.Group group) {
       Slices combined = new Slices("");
       for (GpuSliceTrack track : tracks) {
         combined = combined.combine(track.getSlices(group));
@@ -359,7 +359,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
             .collect(toList())));
       }
 
-      public Slices getSlices(Service.ProfilingData.GpuSlices.Group group) {
+      public Slices getSlices(Service.ProfilingData.Group group) {
         return toSlices(slices.stream().filter(s -> s.getGroupId() == group.getId()).collect(toList()));
       }
 

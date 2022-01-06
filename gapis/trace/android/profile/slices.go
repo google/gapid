@@ -17,15 +17,11 @@ package profile
 import (
 	"context"
 	"fmt"
-	"sort"
 
-	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/perfetto"
 	perfetto_service "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service"
-	"github.com/google/gapid/gapis/service/path"
 )
 
 const (
@@ -54,8 +50,6 @@ type SliceData struct {
 	Tracks         []int64
 	TrackNames     []string
 	GroupIds       []int32 // To be filled in by caller.
-
-	groups groupTree
 }
 
 func ExtractSliceData(ctx context.Context, processor *perfetto.Processor) (*SliceData, error) {
@@ -82,7 +76,6 @@ func ExtractSliceData(ctx context.Context, processor *perfetto.Processor) (*Slic
 		Tracks:         slicesColumns[13].GetLongValues(),
 		TrackNames:     slicesColumns[14].GetStringValues(),
 		GroupIds:       make([]int32, slicesQueryResult.GetNumRecords()),
-		groups:         groupTree{1, groupTreeNode{id: 0, name: "root"}},
 	}
 
 	return data, nil
@@ -95,11 +88,7 @@ func (d *SliceData) MapIdentifiers(ctx context.Context, handleMapping map[uint64
 	ExtractTraceHandles(ctx, d.RenderPasses, "VkRenderPass", handleMapping)
 }
 
-func (d *SliceData) CreateOrGetGroup(name string, link sync.SubCmdRange) int32 {
-	return d.groups.createOrGetGroup(name, link)
-}
-
-func (d *SliceData) ToService(ctx context.Context, processor *perfetto.Processor, capture *path.Capture) *service.ProfilingData_GpuSlices {
+func (d *SliceData) ToService(ctx context.Context, processor *perfetto.Processor) *service.ProfilingData_GpuSlices {
 	extraCache := newExtras(processor)
 
 	tracks := map[int64]*service.ProfilingData_GpuSlices_Track{}
@@ -130,7 +119,6 @@ func (d *SliceData) ToService(ctx context.Context, processor *perfetto.Processor
 	return &service.ProfilingData_GpuSlices{
 		Slices: slices,
 		Tracks: flattenTracks(tracks),
-		Groups: d.groups.flatten(nil, capture, 0),
 	}
 }
 
@@ -207,76 +195,4 @@ func (e *extras) get(ctx context.Context, argSet int64) []*service.ProfilingData
 		})
 	}
 	return extras
-}
-
-type groupTreeNode struct {
-	id   int32
-	name string
-	link sync.SubCmdRange
-
-	children []groupTreeNode // sorted by child.link
-}
-
-type groupTree struct {
-	nextID int32
-	groupTreeNode
-}
-
-// TODO: this function makes some assumptions about command/sub command IDs:
-// 1. we only get groups for command buffers, renderpasses and draw calls.
-// 2. no overlaps.
-// 3. the sub command ids are [cmdId, submission, cmdbuff, cmd].
-// All these assumptions currently hold and are also made in other parts of the
-// code in some way. The assumptions will need to be codified as part of the
-// command/sub-command refactor that is already planned.
-func (t *groupTree) createOrGetGroup(name string, link sync.SubCmdRange) int32 {
-	submit, ok := t.findOrInsert(t.nextID, "submit", sync.SubCmdRange{From: link.From[:1], To: link.From[:1]})
-	if !ok {
-		t.nextID++
-	}
-
-	cmdBuf, ok := submit.findOrInsert(t.nextID, "cmdbuf", sync.SubCmdRange{From: link.From[:3], To: link.From[:3]})
-	if !ok {
-		t.nextID++
-	}
-
-	if len(link.From) == 3 {
-		// We've found our command buffer. Let's update the name in case we created it with "cmdbuf".
-		cmdBuf.name = name
-		return cmdBuf.id
-	}
-
-	rp, ok := cmdBuf.findOrInsert(t.nextID, name, link)
-	if !ok {
-		t.nextID++
-	}
-
-	return rp.id
-}
-
-func (n *groupTreeNode) findOrInsert(id int32, name string, link sync.SubCmdRange) (*groupTreeNode, bool) {
-	idx := sort.Search(len(n.children), func(i int) bool {
-		return link.From.LEQ(n.children[i].link.From)
-	})
-	if idx < len(n.children) && n.children[idx].link.From.Equals(link.From) {
-		return &n.children[idx], true
-	}
-	slice.InsertBefore(&n.children, idx, groupTreeNode{id, name, link, nil})
-	return &n.children[idx], false
-}
-
-func (n *groupTreeNode) flatten(list []*service.ProfilingData_GpuSlices_Group, capture *path.Capture, parent int32) []*service.ProfilingData_GpuSlices_Group {
-	if n.id != 0 {
-		list = append(list, &service.ProfilingData_GpuSlices_Group{
-			Id:       n.id,
-			Name:     n.name,
-			ParentId: parent,
-			Link:     &path.Commands{Capture: capture, From: n.link.From, To: n.link.To},
-		})
-	}
-
-	for i := range n.children {
-		list = n.children[i].flatten(list, capture, n.id)
-	}
-	return list
 }

@@ -1048,6 +1048,13 @@ message ProfileExperiments {
 }
 
 message ProfilingData {
+  message Group {
+    int32 id = 1;
+    string name = 2;
+    int32 parent_id = 3;  // references Group.id
+    path.Commands link = 4;
+  }
+
   message GpuSlices {
     message Slice {
       message Extra {
@@ -1075,16 +1082,8 @@ message ProfilingData {
       string name = 2;
     }
 
-    message Group {
-      int32 id = 1;
-      string name = 2;
-      int32 parent_id = 3;  // references Group.id
-      path.Commands link = 4;
-    }
-
     repeated Slice slices = 1;
     repeated Track tracks = 2;
-    repeated Group groups = 3;
   }
 
   message Counter {
@@ -1132,7 +1131,7 @@ message ProfilingData {
 
     // Entry contains performance data for a specific command.
     message Entry {
-      int32 group_id = 1;                    // references slices.groups
+      int32 group_id = 1;                    // references Group.id
       map<int32, Perf> metric_to_value = 2;  // Metric.id -> perf value.
     }
 
@@ -1140,9 +1139,10 @@ message ProfilingData {
     repeated Entry entries = 2;
   }
 
-  GpuSlices slices = 1;
-  repeated Counter counters = 2;
-  GpuCounters gpu_counters = 3;
+  repeated Group groups = 1;
+  GpuSlices slices = 2;
+  repeated Counter counters = 3;
+  GpuCounters gpu_counters = 4;
 }
 
 message GraphVisualizationRequest {

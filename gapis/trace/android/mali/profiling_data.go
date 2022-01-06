@@ -36,8 +36,12 @@ var (
 		"SELECT ts, value FROM counter c WHERE c.track_id = %d ORDER BY ts"
 )
 
-func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, desc *device.GpuCounterDescriptor, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
-	slices, err := processGpuSlices(ctx, processor, capture, handleMapping, syncData)
+func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, capture *path.Capture,
+	desc *device.GpuCounterDescriptor, handleMapping map[uint64][]service.VulkanHandleMappingItem,
+	syncData *sync.Data) (*service.ProfilingData, error) {
+
+	groups := profile.NewGroupTree()
+	slices, err := processGpuSlices(ctx, processor, handleMapping, syncData, groups)
 	if err != nil {
 		log.Err(ctx, err, "Failed to get GPU slices")
 	}
@@ -45,19 +49,22 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, ca
 	if err != nil {
 		log.Err(ctx, err, "Failed to get GPU counters")
 	}
-	gpuCounters, err := profile.ComputeCounters(ctx, slices, counters)
+	gpuCounters, err := profile.ComputeCounters(ctx, groups, slices, counters)
 	if err != nil {
 		log.Err(ctx, err, "Failed to calculate performance data based on GPU slices and counters")
 	}
 
 	return &service.ProfilingData{
+		Groups:      groups.Flatten(capture),
 		Slices:      slices,
 		Counters:    counters,
 		GpuCounters: gpuCounters,
 	}, nil
 }
 
-func processGpuSlices(ctx context.Context, processor *perfetto.Processor, capture *path.Capture, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData_GpuSlices, error) {
+func processGpuSlices(ctx context.Context, processor *perfetto.Processor,
+	handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data,
+	groups *profile.GroupTree) (*service.ProfilingData_GpuSlices, error) {
 	sliceData, err := profile.ExtractSliceData(ctx, processor)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Extracting slice data failed")
@@ -98,7 +105,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 			indices := syncData.RenderPassLookup.Lookup(ctx, key)
 			if !indices.IsNil() && (name == "vertex" || name == "fragment") {
 				sliceData.Names[i] = fmt.Sprintf("%v-%v %v", indices.From, indices.To, name)
-				groupId = sliceData.CreateOrGetGroup(
+				groupId = groups.GetOrCreateGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
 					indices,
 				)
@@ -114,7 +121,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor, captur
 		sliceData.GroupIds[i] = groupId
 	}
 
-	return sliceData.ToService(ctx, processor, capture), nil
+	return sliceData.ToService(ctx, processor), nil
 }
 
 func processCounters(ctx context.Context, processor *perfetto.Processor, desc *device.GpuCounterDescriptor) ([]*service.ProfilingData_Counter, error) {

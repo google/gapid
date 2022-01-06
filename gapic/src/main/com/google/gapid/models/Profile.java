@@ -121,7 +121,7 @@ public class Profile
     listeners.fire().onProfileLoaded(null);
   }
 
-  public void selectGroup(Service.ProfilingData.GpuSlices.Group group) {
+  public void selectGroup(Service.ProfilingData.Group group) {
     if (group.getId() != selectedGroupId) {
       selectedGroupId = group.getId();
       listeners.fire().onGroupSelected(group);
@@ -132,14 +132,14 @@ public class Profile
     if (getData() == null || commandIndex == null) {
       return;
     }
-    for (Service.ProfilingData.GpuSlices.Group group : getData().getSlices().getGroupsList()) {
+    for (Service.ProfilingData.Group group : getData().getGroups()) {
       if (group.getLink().getToList().toString().equals(commandIndex.toString())) {
         selectGroup(group);
       }
     }
   }
 
-  public void linkGpuGroupToCommand(Service.ProfilingData.GpuSlices.Group group) {
+  public void linkGpuGroupToCommand(Service.ProfilingData.Group group) {
     // Use a real CommandStream.Node's CommandIndex to trigger the command selection, rather
     // than using a CommandIndex stitched together on the spot. In this way the selection
     // behavior aligns to what happens when selection is from the UI side, where the resource
@@ -212,7 +212,7 @@ public class Profile
   public static class Data extends DeviceDependentModel.Data {
     public final Service.ProfilingData profile;
     private final Map<Integer, List<TimeSpan>> spansByGroup;
-    private final List<Service.ProfilingData.GpuSlices.Group> groups;
+    private final List<Service.ProfilingData.Group> groups;
     private final List<PerfNode> perfNodes;
 
     public Data(Path.Device device, Service.ProfilingData profile) {
@@ -225,8 +225,8 @@ public class Profile
 
     private static Map<Integer, List<TimeSpan>>
         aggregateSliceTimeByGroup(Service.ProfilingData profile) {
-      Set<Integer> groups = profile.getSlices().getGroupsList().stream()
-          .map(Service.ProfilingData.GpuSlices.Group::getId)
+      Set<Integer> groups = profile.getGroupsList().stream()
+          .map(Service.ProfilingData.Group::getId)
           .collect(toSet());
       return profile.getSlices().getSlicesList().stream()
           .filter(s -> (s.getDepth() == 0) && groups.contains(s.getGroupId()))
@@ -234,18 +234,18 @@ public class Profile
               mapping(s -> new TimeSpan(s.getTs(), s.getTs() + s.getDur()), toList())));
     }
 
-    private static List<Service.ProfilingData.GpuSlices.Group> getSortedGroups(
+    private static List<Service.ProfilingData.Group> getSortedGroups(
         Service.ProfilingData profile, Set<Integer> ids) {
-      return profile.getSlices().getGroupsList().stream()
+      return profile.getGroupsList().stream()
           .filter(g -> ids.contains(g.getId()))
           .sorted((g1, g2) -> Ranges.compare(g1.getLink(), g2.getLink()))
           .collect(toList());
     }
 
     private static List<PerfNode> createPerfNodes(Service.ProfilingData profile) {
-      Map<Integer, Service.ProfilingData.GpuSlices.Group> groups =
-          profile.getSlices().getGroupsList().stream()
-              .collect(toMap(Service.ProfilingData.GpuSlices.Group::getId, identity()));
+      Map<Integer, Service.ProfilingData.Group> groups =
+          profile.getGroupsList().stream()
+              .collect(toMap(Service.ProfilingData.Group::getId, identity()));
       Map<Integer, PerfNode> nodes = Maps.newHashMap(); // groupId -> node.
       // Create the nodes.
       for (Service.ProfilingData.GpuCounters.Entry entry : profile.getGpuCounters().getEntriesList()) {
@@ -265,6 +265,10 @@ public class Profile
         }
       }
       return rootNodes;
+    }
+
+    public List<Service.ProfilingData.Group> getGroups() {
+      return profile.getGroupsList();
     }
 
     public boolean hasSlices() {
@@ -379,11 +383,11 @@ public class Profile
 
   public static class PerfNode {
     private final Service.ProfilingData.GpuCounters.Entry entry;
-    private final Service.ProfilingData.GpuSlices.Group group;
+    private final Service.ProfilingData.Group group;
     private final List<PerfNode> children;
 
     public PerfNode(
-        Service.ProfilingData.GpuCounters.Entry entry, Service.ProfilingData.GpuSlices.Group group) {
+        Service.ProfilingData.GpuCounters.Entry entry, Service.ProfilingData.Group group) {
       this.entry = entry;
       this.group = group;
       this.children = Lists.newArrayList();
@@ -393,7 +397,7 @@ public class Profile
       return entry;
     }
 
-    public Service.ProfilingData.GpuSlices.Group getGroup() {
+    public Service.ProfilingData.Group getGroup() {
       return group;
     }
 
@@ -425,7 +429,9 @@ public class Profile
 
     /**
      * Event indicating that the currently selected group has changed.
+     *
+     * @param group the selected group.
      */
-    public default void onGroupSelected(Service.ProfilingData.GpuSlices.Group group) { /* empty */ }
+    public default void onGroupSelected(Service.ProfilingData.Group group) { /* empty */ }
   }
 }

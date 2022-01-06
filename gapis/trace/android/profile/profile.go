@@ -33,20 +33,22 @@ const (
 )
 
 // For CPU commands, calculate their summarized GPU performance.
-func ComputeCounters(ctx context.Context, slices *service.ProfilingData_GpuSlices, counters []*service.ProfilingData_Counter) (*service.ProfilingData_GpuCounters, error) {
+func ComputeCounters(ctx context.Context, groups *GroupTree, slices *service.ProfilingData_GpuSlices,
+	counters []*service.ProfilingData_Counter) (*service.ProfilingData_GpuCounters, error) {
+
 	metrics := []*service.ProfilingData_GpuCounters_Metric{}
 
 	// Filter out the slices that are at depth 0 and belong to a command,
 	// then sort them based on the start time.
 	groupToEntry := map[int32]*service.ProfilingData_GpuCounters_Entry{}
 	groupToParent := map[int32]int32{}
-	for _, group := range slices.Groups {
-		groupToEntry[group.Id] = &service.ProfilingData_GpuCounters_Entry{
-			GroupId:       group.Id,
+	groups.Visit(func(parent int32, node *groupTreeNode) {
+		groupToEntry[node.id] = &service.ProfilingData_GpuCounters_Entry{
+			GroupId:       node.id,
 			MetricToValue: map[int32]*service.ProfilingData_GpuCounters_Perf{},
 		}
-		groupToParent[group.Id] = group.ParentId
-	}
+		groupToParent[node.id] = parent
+	})
 	filteredSlices := []*service.ProfilingData_GpuSlices_Slice{}
 	for i := 0; i < len(slices.Slices); i++ {
 		if slices.Slices[i].Depth == 0 && groupToEntry[slices.Slices[i].GroupId] != nil {

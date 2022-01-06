@@ -266,7 +266,7 @@ public class PerformanceView extends Composite
   }
 
   @Override
-  public void onGroupSelected(Service.ProfilingData.GpuSlices.Group group) {
+  public void onGroupSelected(Service.ProfilingData.Group group) {
     TreeItem item = findItem(tree.getTree().getItems(), n -> group.getId() == n.getGroup().getId());
     if (item != null) {
       tree.getTree().setSelection(item);
