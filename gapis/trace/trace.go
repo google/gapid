@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/service"
@@ -102,12 +103,15 @@ func TraceConfiguration(ctx context.Context, device *path.Device) (*service.Devi
 	return t.TraceConfiguration(ctx)
 }
 
-func ProcessProfilingData(ctx context.Context, device *path.Device, capture *path.Capture, buffer *bytes.Buffer, handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+func ProcessProfilingData(ctx context.Context, device *path.Device, capture *path.Capture,
+	buffer *bytes.Buffer, staticAnalysisResult chan *api.StaticAnalysisProfileData,
+	handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+
 	t, err := GetTracer(ctx, device)
 	if err != nil {
 		return nil, err
 	}
-	return t.ProcessProfilingData(ctx, buffer, capture, handleMapping, syncData)
+	return t.ProcessProfilingData(ctx, buffer, capture, staticAnalysisResult, handleMapping, syncData)
 }
 
 func Validate(ctx context.Context, device *path.Device) error {

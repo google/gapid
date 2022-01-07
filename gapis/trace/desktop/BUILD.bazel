@@ -27,6 +27,7 @@ go_library(
         "//core/os/process:go_default_library",
         "//core/vulkan/loader:go_default_library",
         "//gapii/client:go_default_library",
+        "//gapis/api:go_default_library",
         "//gapis/api/sync:go_default_library",
         "//gapis/perfetto/desktop:go_default_library",
         "//gapis/service:go_default_library",

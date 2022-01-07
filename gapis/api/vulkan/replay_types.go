@@ -182,6 +182,7 @@ func (a API) QueryProfile(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
+	staticAnalysisResult chan *api.StaticAnalysisProfileData,
 	hints *path.UsageHints,
 	traceOptions *service.TraceOptions,
 	experiments replay.ProfileExperiments,
@@ -203,6 +204,6 @@ func (a API) QueryProfile(
 		return nil, err
 	}
 
-	d, err := trace.ProcessProfilingData(ctx, intent.Device, intent.Capture, &buffer, handleMappings, s)
+	d, err := trace.ProcessProfilingData(ctx, intent.Device, intent.Capture, &buffer, staticAnalysisResult, handleMappings, s)
 	return d, err
 }

@@ -47,6 +47,7 @@ import (
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapidapk/pkginfo"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/perfetto"
 	perfetto_android "github.com/google/gapid/gapis/perfetto/android"
@@ -126,7 +127,12 @@ func (t *androidTracer) GetDevice() bind.Device {
 	return t.b
 }
 
-func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, capture *path.Capture, handleMappings map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer,
+	capture *path.Capture, staticAnalysisResult chan *api.StaticAnalysisProfileData,
+	handleMappings map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
+
+	<-staticAnalysisResult // TODO: don't ignore the static analysis result.
+
 	// Load Perfetto trace and create trace processor.
 	rawData := make([]byte, buffer.Len())
 	_, err := buffer.Read(rawData)

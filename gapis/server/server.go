@@ -42,6 +42,7 @@ import (
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/messages"
@@ -884,21 +885,22 @@ func (s *server) GpuProfile(ctx context.Context, req *service.GpuProfileRequest)
 	var result *service.ProfilingData
 	var wg sync.WaitGroup
 
+	// TODO(pmuetschard): sending the data across via this channel is a bit hacky, but the best option
+	// at this point. When we clean-up the multi-API stuff, we can probably make this go away.
+	staticAnalysisResult := make(chan *api.StaticAnalysisProfileData, 1)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		result, replayErr = replay.GpuProfile(ctx, req.Capture, req.Device, req.Experiments, req.LoopCount)
+		result, replayErr = replay.GpuProfile(ctx, staticAnalysisResult, req.Capture, req.Device, req.Experiments, req.LoopCount)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var analysisResult interface{}
+		var analysisResult *api.StaticAnalysisProfileData
 		analysisResult, analysisErr = resolve.ProfileStaticAnalysis(ctx, req.Capture)
-		if analysisResult != nil {
-			// TODO(pmuetschard): combine the results.
-			log.I(ctx, "Static analysis result: %+v", analysisResult)
-		}
+		staticAnalysisResult <- analysisResult
 	}()
 
 	wg.Wait()

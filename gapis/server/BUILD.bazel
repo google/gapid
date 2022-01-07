@@ -42,6 +42,7 @@ go_library(
         "//core/os/android/adb:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//core/os/file:go_default_library",
+        "//gapis/api:go_default_library",
         "//gapis/api/all:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",

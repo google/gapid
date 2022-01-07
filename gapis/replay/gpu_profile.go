@@ -20,6 +20,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -75,7 +76,10 @@ func getPerfettoConfig(ctx context.Context, device *path.Device) (*perfetto_pb.T
 }
 
 // GpuProfile replays the trace and writes a Perfetto trace of the replay
-func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device, experiments *service.ProfileExperiments, loopCount int32) (*service.ProfilingData, error) {
+func GpuProfile(ctx context.Context, staticAnalysisResult chan *api.StaticAnalysisProfileData,
+	capturePath *path.Capture, device *path.Device, experiments *service.ProfileExperiments,
+	loopCount int32) (*service.ProfilingData, error) {
+
 	if device == nil {
 		return nil, errors.New("Replay device is required.")
 	}
@@ -122,7 +126,7 @@ func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Dev
 	hints := &path.UsageHints{Background: true}
 	for _, a := range c.APIs {
 		if pf, ok := a.(Profiler); ok {
-			data, err := pf.QueryProfile(ctx, intent, mgr, hints, opts, profilingExperiments, loopCount)
+			data, err := pf.QueryProfile(ctx, intent, mgr, staticAnalysisResult, hints, opts, profilingExperiments, loopCount)
 			if err != nil {
 				log.E(ctx, "Replay profiling failed:", err)
 				return nil, log.Err(ctx, err, "Failed to profile the replay.")

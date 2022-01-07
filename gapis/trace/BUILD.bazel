@@ -33,6 +33,7 @@ go_library(
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//gapii/client:go_default_library",
+        "//gapis/api:go_default_library",
         "//gapis/api/sync:go_default_library",
         "//gapis/config:go_default_library",
         "//gapis/service:go_default_library",

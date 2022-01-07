@@ -88,6 +88,7 @@ type Profiler interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
+		staticAnalysisResult chan *api.StaticAnalysisProfileData,
 		hints *path.UsageHints,
 		traceOptions *service.TraceOptions,
 		experiments ProfileExperiments,

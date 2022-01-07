@@ -26,6 +26,7 @@ go_library(
         "//core/os/device/bind:go_default_library",
         "//core/os/file:go_default_library",
         "//core/os/fuchsia:go_default_library",
+        "//gapis/api:go_default_library",
         "//gapis/api/sync:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
