@@ -92,33 +92,34 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor,
 
 	sliceData.MapIdentifiers(ctx, handleMapping)
 
-	groupId := int32(-1)
-	for i, v := range sliceData.Submissions {
-		subOrder, ok := submissionOrdering[v]
+	groupID := int32(-1)
+	for i := range sliceData {
+		slice := &sliceData[i]
+		subOrder, ok := submissionOrdering[slice.Submission]
 		if ok {
-			cb := uint64(sliceData.CommandBuffers[i])
+			cb := uint64(slice.CommandBuffer)
 			key := sync.RenderPassKey{
-				subOrder, cb, uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i]),
+				subOrder, cb, uint64(slice.Renderpass), uint64(slice.RenderTarget),
 			}
 			// Create a new group for each main renderPass slice.
-			name := sliceData.Names[i]
+			name := slice.Name
 			indices := syncData.RenderPassLookup.Lookup(ctx, key)
 			if !indices.IsNil() && (name == "vertex" || name == "fragment") {
-				sliceData.Names[i] = fmt.Sprintf("%v-%v %v", indices.From, indices.To, name)
-				groupId = groups.GetOrCreateGroup(
-					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
+				slice.Name = fmt.Sprintf("%v-%v %v", indices.From, indices.To, name)
+				groupID = groups.GetOrCreateGroup(
+					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(slice.Renderpass), uint64(slice.RenderTarget)),
 					indices,
 				)
 			}
 		} else {
-			log.W(ctx, "Encountered submission ID mismatch %v", v)
+			log.W(ctx, "Encountered submission ID mismatch %v", slice.Submission)
 		}
 
-		if groupId < 0 {
+		if groupID < 0 {
 			log.W(ctx, "Group missing for slice %v at submission %v, commandBuffer %v, renderPass %v, renderTarget %v",
-				sliceData.Names[i], sliceData.Submissions[i], sliceData.CommandBuffers[i], sliceData.RenderPasses[i], sliceData.RenderTargets[i])
+				slice.Name, slice.Submission, slice.CommandBuffer, slice.Renderpass, slice.RenderTarget)
 		}
-		sliceData.GroupIds[i] = groupId
+		slice.GroupID = groupID
 	}
 
 	return sliceData.ToService(ctx, processor), nil

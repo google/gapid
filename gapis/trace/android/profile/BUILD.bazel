@@ -4,7 +4,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "groups.go",
-        "handles.go",
         "profile.go",
         "slices.go",
     ],

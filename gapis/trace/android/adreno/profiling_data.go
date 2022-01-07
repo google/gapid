@@ -63,7 +63,7 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, ca
 	}, nil
 }
 
-func fixContextIds(contextIDs []int64) {
+func fixContextIDs(data profile.SliceData) {
 	// This is a workaround a QC bug(b/192546534)
 	// that causes first deviceID to be zero after a
 	// renderpass change in the same queue submit.
@@ -73,18 +73,18 @@ func fixContextIds(contextIDs []int64) {
 	zeroIndices := make([]int, 0)
 	contextID := int64(0)
 
-	for i, v := range contextIDs {
-		if v == 0 {
+	for i := range data {
+		if data[i].Context == 0 {
 			zeroIndices = append(zeroIndices, i)
 			continue
 		}
 
 		if contextID == 0 {
-			contextID = v
+			contextID = data[i].Context
 			continue
 		}
 
-		if contextID != v {
+		if contextID != data[i].Context {
 			// There are multiple devices
 			// We cannot know which one to fill
 			return
@@ -94,7 +94,7 @@ func fixContextIds(contextIDs []int64) {
 	for _, v := range zeroIndices {
 		// If there is only one device in entire trace
 		// We can assume that we possibly have only one device
-		contextIDs[v] = contextID
+		data[v].Context = contextID
 	}
 }
 
@@ -118,35 +118,36 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor,
 		submissionOrdering[v] = i
 	}
 
-	fixContextIds(sliceData.Contexts)
+	fixContextIDs(sliceData)
 	sliceData.MapIdentifiers(ctx, handleMapping)
 
-	groupId := int32(-1)
-	for i, v := range sliceData.Submissions {
-		subOrder, ok := submissionOrdering[v]
+	groupID := int32(-1)
+	for i := range sliceData {
+		slice := &sliceData[i]
+		subOrder, ok := submissionOrdering[slice.Submission]
 		if ok {
-			cb := uint64(sliceData.CommandBuffers[i])
+			cb := uint64(slice.CommandBuffer)
 			key := sync.RenderPassKey{
-				subOrder, cb, uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i]),
+				subOrder, cb, uint64(slice.Renderpass), uint64(slice.RenderTarget),
 			}
 			// Create a new group for each main renderPass slice.
 			idx := syncData.RenderPassLookup.Lookup(ctx, key)
-			if !idx.IsNil() && sliceData.Names[i] == renderPassSliceName {
-				sliceData.Names[i] = fmt.Sprintf("%v-%v", idx.From, idx.To)
-				groupId = groups.GetOrCreateGroup(
-					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(sliceData.RenderPasses[i]), uint64(sliceData.RenderTargets[i])),
+			if !idx.IsNil() && slice.Name == renderPassSliceName {
+				slice.Name = fmt.Sprintf("%v-%v", idx.From, idx.To)
+				groupID = groups.GetOrCreateGroup(
+					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(slice.Renderpass), uint64(slice.RenderTarget)),
 					idx,
 				)
 			}
 		} else {
-			log.W(ctx, "Encountered submission ID mismatch %v", v)
+			log.W(ctx, "Encountered submission ID mismatch %v", slice.Submission)
 		}
 
-		if groupId < 0 {
+		if groupID < 0 {
 			log.W(ctx, "Group missing for slice %v at submission %v, commandBuffer %v, renderPass %v, renderTarget %v",
-				sliceData.Names[i], sliceData.Submissions[i], sliceData.CommandBuffers[i], sliceData.RenderPasses[i], sliceData.RenderTargets[i])
+				slice.Name, slice.Submission, slice.CommandBuffer, slice.Renderpass, slice.RenderTarget)
 		}
-		sliceData.GroupIds[i] = groupId
+		slice.GroupID = groupID
 	}
 
 	return sliceData.ToService(ctx, processor), nil

@@ -33,85 +33,117 @@ const (
 		"SELECT key, string_value FROM args WHERE args.arg_set_id = %d"
 )
 
-type SliceData struct {
-	Contexts       []int64
-	RenderTargets  []int64
-	Frames         []int64
-	Submissions    []int64
-	HardwareQueues []int64
-	CommandBuffers []int64
-	RenderPasses   []int64
-	Timestamps     []int64
-	Durations      []int64
-	SliceIds       []int64
-	Names          []string
-	Depths         []int64
-	ArgSets        []int64
-	Tracks         []int64
-	TrackNames     []string
-	GroupIds       []int32 // To be filled in by caller.
+type Slice struct {
+	Context       int64
+	RenderTarget  int64
+	Frame         int64
+	Submission    int64
+	HardwareQueue int64
+	CommandBuffer int64
+	Renderpass    int64
+	Timestamp     uint64
+	Duration      uint64
+	SliceID       uint64
+	Name          string
+	Depth         int32
+	ArgSet        int64
+	Track         int32
+	TrackName     string
+	GroupID       int32 // To be filled in by caller.
 }
 
-func ExtractSliceData(ctx context.Context, processor *perfetto.Processor) (*SliceData, error) {
+type SliceData []Slice
+
+func ExtractSliceData(ctx context.Context, processor *perfetto.Processor) (SliceData, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "SQL query failed: %v", slicesQuery)
 	}
 
 	slicesColumns := slicesQueryResult.GetColumns()
-	data := &SliceData{
-		Contexts:       slicesColumns[0].GetLongValues(),
-		RenderTargets:  slicesColumns[1].GetLongValues(),
-		Frames:         slicesColumns[2].GetLongValues(),
-		Submissions:    slicesColumns[3].GetLongValues(),
-		HardwareQueues: slicesColumns[4].GetLongValues(),
-		CommandBuffers: slicesColumns[5].GetLongValues(),
-		RenderPasses:   slicesColumns[6].GetLongValues(),
-		Timestamps:     slicesColumns[7].GetLongValues(),
-		Durations:      slicesColumns[8].GetLongValues(),
-		SliceIds:       slicesColumns[9].GetLongValues(),
-		Names:          slicesColumns[10].GetStringValues(),
-		Depths:         slicesColumns[11].GetLongValues(),
-		ArgSets:        slicesColumns[12].GetLongValues(),
-		Tracks:         slicesColumns[13].GetLongValues(),
-		TrackNames:     slicesColumns[14].GetStringValues(),
-		GroupIds:       make([]int32, slicesQueryResult.GetNumRecords()),
+	data := make([]Slice, slicesQueryResult.GetNumRecords())
+	for i := range data {
+		data[i] = Slice{
+			Context:       slicesColumns[0].GetLongValues()[i],
+			RenderTarget:  slicesColumns[1].GetLongValues()[i],
+			Frame:         slicesColumns[2].GetLongValues()[i],
+			Submission:    slicesColumns[3].GetLongValues()[i],
+			HardwareQueue: slicesColumns[4].GetLongValues()[i],
+			CommandBuffer: slicesColumns[5].GetLongValues()[i],
+			Renderpass:    slicesColumns[6].GetLongValues()[i],
+			Timestamp:     uint64(slicesColumns[7].GetLongValues()[i]),
+			Duration:      uint64(slicesColumns[8].GetLongValues()[i]),
+			SliceID:       uint64(slicesColumns[9].GetLongValues()[i]),
+			Name:          slicesColumns[10].GetStringValues()[i],
+			Depth:         int32(slicesColumns[11].GetLongValues()[i]),
+			ArgSet:        slicesColumns[12].GetLongValues()[i],
+			Track:         int32(slicesColumns[13].GetLongValues()[i]),
+			TrackName:     slicesColumns[14].GetStringValues()[i],
+		}
 	}
 
 	return data, nil
 }
 
-func (d *SliceData) MapIdentifiers(ctx context.Context, handleMapping map[uint64][]service.VulkanHandleMappingItem) {
-	ExtractTraceHandles(ctx, d.Contexts, "VkDevice", handleMapping)
-	ExtractTraceHandles(ctx, d.RenderTargets, "VkFramebuffer", handleMapping)
-	ExtractTraceHandles(ctx, d.CommandBuffers, "VkCommandBuffer", handleMapping)
-	ExtractTraceHandles(ctx, d.RenderPasses, "VkRenderPass", handleMapping)
+func (d SliceData) MapIdentifiers(ctx context.Context, handleMapping map[uint64][]service.VulkanHandleMappingItem) {
+	for i := range d {
+		extractTraceHandle(ctx, &d[i].Context, "VkDevice", handleMapping)
+		extractTraceHandle(ctx, &d[i].RenderTarget, "VkFramebuffer", handleMapping)
+		extractTraceHandle(ctx, &d[i].CommandBuffer, "VkCommandBuffer", handleMapping)
+		extractTraceHandle(ctx, &d[i].Renderpass, "VkRenderPass", handleMapping)
+	}
 }
 
-func (d *SliceData) ToService(ctx context.Context, processor *perfetto.Processor) *service.ProfilingData_GpuSlices {
+// extractTraceHandle translates a handle based on the mappings.
+func extractTraceHandle(ctx context.Context, replayHandle *int64, replayHandleType string, handleMapping map[uint64][]service.VulkanHandleMappingItem) {
+	handles, ok := handleMapping[uint64(*replayHandle)]
+	if !ok {
+		// On some devices, when running in 32bit app compat mode, the handles
+		// reported through Perfetto have this extra bit set in the last nibble,
+		// which is typically all zeros. I.e. handles in the profiling data are
+		// of the form 0x???????4, while exposed by the API they are 0x???????0.
+		if (*replayHandle & 0xf) == 4 {
+			handles, ok = handleMapping[uint64(*replayHandle&^4)]
+		}
+		if !ok {
+			log.E(ctx, "%v not found in replay: %v", replayHandleType, *replayHandle)
+			return
+		}
+	}
+	for _, handle := range handles {
+		if handle.HandleType == replayHandleType {
+			*replayHandle = int64(handle.TraceValue)
+			return
+		}
+	}
+
+	log.E(ctx, "Incorrect Handle type for %v: %v", replayHandleType, *replayHandle)
+}
+
+func (d SliceData) ToService(ctx context.Context, processor *perfetto.Processor) *service.ProfilingData_GpuSlices {
 	extraCache := newExtras(processor)
 
-	tracks := map[int64]*service.ProfilingData_GpuSlices_Track{}
-	slices := make([]*service.ProfilingData_GpuSlices_Slice, len(d.Contexts))
+	tracks := map[int32]*service.ProfilingData_GpuSlices_Track{}
+	slices := make([]*service.ProfilingData_GpuSlices_Slice, len(d))
 
-	for i := range d.Contexts {
-		extras := d.fillInExtras(i, extraCache.get(ctx, d.ArgSets[i]))
+	for i := range d {
+		extras := fillInExtras(&d[i], extraCache.get(ctx, d[i].ArgSet))
 
 		slices[i] = &service.ProfilingData_GpuSlices_Slice{
-			Ts:      uint64(d.Timestamps[i]),
-			Dur:     uint64(d.Durations[i]),
-			Id:      uint64(d.SliceIds[i]),
-			Label:   d.Names[i],
-			Depth:   int32(d.Depths[i]),
+			Ts:      d[i].Timestamp,
+			Dur:     d[i].Duration,
+			Id:      d[i].SliceID,
+			Label:   d[i].Name,
+			Depth:   d[i].Depth,
 			Extras:  extras,
-			TrackId: int32(d.Tracks[i]),
-			GroupId: d.GroupIds[i],
+			TrackId: d[i].Track,
+			GroupId: d[i].GroupID,
 		}
 
-		if _, ok := tracks[d.Tracks[i]]; !ok {
-			tracks[d.Tracks[i]] = &service.ProfilingData_GpuSlices_Track{
-				Id:   int32(d.Tracks[i]),
-				Name: d.TrackNames[i],
+		if _, ok := tracks[d[i].Track]; !ok {
+			tracks[d[i].Track] = &service.ProfilingData_GpuSlices_Track{
+				Id:   d[i].Track,
+				Name: d[i].TrackName,
 			}
 		}
 	}
@@ -122,39 +154,39 @@ func (d *SliceData) ToService(ctx context.Context, processor *perfetto.Processor
 	}
 }
 
-func (d *SliceData) fillInExtras(idx int, extras []*service.ProfilingData_GpuSlices_Slice_Extra) []*service.ProfilingData_GpuSlices_Slice_Extra {
+func fillInExtras(slice *Slice, extras []*service.ProfilingData_GpuSlices_Slice_Extra) []*service.ProfilingData_GpuSlices_Slice_Extra {
 	extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 		Name:  "contextId",
-		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(d.Contexts[idx])},
+		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(slice.Context)},
 	})
 	extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 		Name:  "renderTarget",
-		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(d.RenderTargets[idx])},
+		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(slice.RenderTarget)},
 	})
 	extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 		Name:  "commandBuffer",
-		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(d.CommandBuffers[idx])},
+		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(slice.CommandBuffer)},
 	})
 	extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 		Name:  "renderPass",
-		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(d.RenderPasses[idx])},
+		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(slice.Renderpass)},
 	})
 	extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 		Name:  "frameId",
-		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(d.Frames[idx])},
+		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(slice.Frame)},
 	})
 	extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 		Name:  "submissionId",
-		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(d.Submissions[idx])},
+		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(slice.Submission)},
 	})
 	extras = append(extras, &service.ProfilingData_GpuSlices_Slice_Extra{
 		Name:  "hwQueueId",
-		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(d.HardwareQueues[idx])},
+		Value: &service.ProfilingData_GpuSlices_Slice_Extra_IntValue{IntValue: uint64(slice.HardwareQueue)},
 	})
 	return extras
 }
 
-func flattenTracks(tracks map[int64]*service.ProfilingData_GpuSlices_Track) []*service.ProfilingData_GpuSlices_Track {
+func flattenTracks(tracks map[int32]*service.ProfilingData_GpuSlices_Track) []*service.ProfilingData_GpuSlices_Track {
 	flat := make([]*service.ProfilingData_GpuSlices_Track, 0, len(tracks))
 	for _, v := range tracks {
 		flat = append(flat, v)
