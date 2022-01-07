@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/math/f64"
 	"github.com/google/gapid/core/math/u64"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -331,4 +332,61 @@ func aggregateCounterSamples(sampleWeight map[int32]float64, counter *service.Pr
 func getCounterAggregationMethod(counter *service.ProfilingData_Counter) service.ProfilingData_GpuCounters_Metric_AggregationOperator {
 	// TODO: Use time-weighted average to aggregate all counters for now. May need vendor's support. Bug tracked with b/158057709.
 	return service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg
+}
+
+func (pd *ProfilingData) MergeStaticAnalysis(ctx context.Context, staticAnalysis *api.StaticAnalysisProfileData) {
+	// Find the highest used counter ID and add ours on top.
+	counterOffset := uint32(0)
+	for _, counter := range pd.Counters {
+		if counter.Id > counterOffset {
+			counterOffset = counter.Id
+		}
+	}
+	counterOffset += 1
+
+	// Add the counter definitions.
+	for _, counter := range staticAnalysis.CounterSpecs {
+		pd.Counters = append(pd.Counters, &service.ProfilingData_Counter{
+			Id:          counterOffset + counter.ID,
+			Name:        counter.Name,
+			Description: counter.Description,
+			Unit:        counter.Unit,
+		})
+
+		pd.GpuCounters.Metrics = append(pd.GpuCounters.Metrics, &service.ProfilingData_GpuCounters_Metric{
+			Id:          counterMetricIdOffset + int32(counterOffset+counter.ID),
+			CounterId:   counterOffset + counter.ID,
+			Name:        counter.Name,
+			Unit:        counter.Unit,
+			Op:          service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg,
+			Description: counter.Description,
+		})
+	}
+
+	// Add in our groups and samples.
+	for _, samples := range staticAnalysis.CounterData {
+		group := pd.Groups.GetOrCreateDrawCallGroup("draw call", samples.Index)
+		if group < 0 {
+			// Draw call for which we didn't see a render pass in the data. Ignore for now.
+			// TODO(pmuetschard): This shouldn't really happen, so at this point, trying to find the
+			// correct command mapping for the draw call's renderpass, command buffer, and submit is not
+			// worth it. I expect that with the scheduled command/sub command clean-up this may go away,
+			// as we should be able to inferr the correct index.
+			log.W(ctx, "Got a draw call with static analysis profiling data, but no GPU data: %v", samples.Index)
+			continue
+		}
+
+		values := map[int32]*service.ProfilingData_GpuCounters_Perf{}
+		for _, sample := range samples.Samples {
+			values[counterMetricIdOffset+int32(counterOffset+sample.Counter)] = &service.ProfilingData_GpuCounters_Perf{
+				Estimate: sample.Value,
+				Min:      sample.Value,
+				Max:      sample.Value,
+			}
+		}
+		pd.GpuCounters.Entries = append(pd.GpuCounters.Entries, &service.ProfilingData_GpuCounters_Entry{
+			GroupId:       group,
+			MetricToValue: values,
+		})
+	}
 }

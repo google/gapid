@@ -18,6 +18,7 @@ import (
 	"sort"
 
 	"github.com/google/gapid/core/data/slice"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
@@ -79,6 +80,30 @@ func (t *GroupTree) GetOrCreateGroup(name string, link sync.SubCmdRange) int32 {
 	return rp.id
 }
 
+// GetDrawCallGroup finds or creates the group for the given draw call command and returns its id.
+// TODO: the same assumptions apply here as do for GetOrCreateGroup.
+func (t *GroupTree) GetOrCreateDrawCallGroup(name string, link api.SubCmdIdx) int32 {
+	submit := t.find(link[:1])
+	if submit == nil {
+		return -1
+	}
+
+	cmdBuf := submit.find(link[:3])
+	if cmdBuf == nil {
+		return -1
+	}
+
+	draw, ok := cmdBuf.findOrInsertDrawCall(t.nextID, name, link)
+	if !ok {
+		t.nextID++
+	}
+
+	if draw == nil {
+		return -1
+	}
+	return draw.id
+}
+
 // Visit visits each node in the tree invoking the given callback for each node.
 func (t *GroupTree) Visit(callback func(parent int32, node *groupTreeNode)) {
 	for i := range t.children {
@@ -107,6 +132,17 @@ func (n *groupTreeNode) visit(parent int32, callback func(parent int32, node *gr
 	}
 }
 
+// find returns the child node that matches the given SubCmdIdx or nil if none matches.
+func (n *groupTreeNode) find(link api.SubCmdIdx) *groupTreeNode {
+	idx := sort.Search(len(n.children), func(i int) bool {
+		return link.LEQ(n.children[i].link.From)
+	})
+	if idx < len(n.children) && n.children[idx].link.From.Equals(link) {
+		return &n.children[idx]
+	}
+	return nil
+}
+
 func (n *groupTreeNode) findOrInsert(id int32, name string, link sync.SubCmdRange) (*groupTreeNode, bool) {
 	idx := sort.Search(len(n.children), func(i int) bool {
 		return link.From.LEQ(n.children[i].link.From)
@@ -116,4 +152,28 @@ func (n *groupTreeNode) findOrInsert(id int32, name string, link sync.SubCmdRang
 	}
 	slice.InsertBefore(&n.children, idx, groupTreeNode{id, name, link, nil})
 	return &n.children[idx], false
+}
+
+func (n *groupTreeNode) findOrInsertDrawCall(id int32, name string, link api.SubCmdIdx) (*groupTreeNode, bool) {
+	// First find the render pass child this draw call belongs to.
+	rpIdx := sort.Search(len(n.children), func(i int) bool {
+		return link.LEQ(n.children[i].link.To)
+	})
+	if rpIdx >= len(n.children) || !n.children[rpIdx].link.From.LEQ(link) {
+		// No render pass was found for this draw call.
+		return nil, true
+	}
+	rp := &n.children[rpIdx]
+
+	// Find the correct location within this renderpass for this draw call.
+	drawIdx := sort.Search(len(rp.children), func(i int) bool {
+		return link.LEQ(rp.children[i].link.From)
+	})
+	if drawIdx < len(rp.children) && rp.children[drawIdx].link.From.Equals(link) {
+		return &rp.children[drawIdx], true
+	}
+	slice.InsertBefore(&rp.children, drawIdx, groupTreeNode{
+		id, name, sync.SubCmdRange{From: link, To: link}, nil,
+	})
+	return &rp.children[drawIdx], false
 }

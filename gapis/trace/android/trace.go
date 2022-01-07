@@ -132,8 +132,6 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 	capture *path.Capture, staticAnalysisResult chan *api.StaticAnalysisProfileData,
 	handleMappings map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data) (*service.ProfilingData, error) {
 
-	<-staticAnalysisResult // TODO: don't ignore the static analysis result.
-
 	// Load Perfetto trace and create trace processor.
 	rawData := make([]byte, buffer.Len())
 	_, err := buffer.Read(rawData)
@@ -161,6 +159,11 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 		}
 	} else {
 		return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
+	}
+
+	staticAnalysis := <-staticAnalysisResult
+	if staticAnalysis != nil { // it's nil if it failed or the channel got closed.
+		data.MergeStaticAnalysis(ctx, staticAnalysis)
 	}
 
 	return &service.ProfilingData{

@@ -325,7 +325,9 @@ public class PerformanceView extends Composite
         return "Profiling...";
       } else {
         Service.ProfilingData.GpuCounters.Perf perf = node.getPerfs().get(metric.getId());
-        if (showEstimate) {
+        if (perf == null) {
+          return ""; // Counter not defined for this group.
+        } else if (showEstimate) {
           return perf.getEstimate() < 0 ? "" : unit.format(perf.getEstimate());
         } else {
           String minStr = perf.getMin() < 0 ? "?" : unit.format(perf.getMin());
