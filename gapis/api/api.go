@@ -62,7 +62,7 @@ type API interface {
 	GetFramegraph(ctx context.Context, p *path.Capture) (*Framegraph, error)
 
 	// ProfileStaticAnalysis computes the static analysis profiling data of a capture.
-	ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (interface{}, error)
+	ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (*StaticAnalysisProfileData, error)
 }
 
 // FramebufferAttachmentInfo describes a framebuffer at a given point in the trace
@@ -81,6 +81,32 @@ type FramebufferAttachmentInfo struct {
 	Type FramebufferAttachmentType
 	// Error message when calling state.getFramebufferAttachmentInfo
 	Err error
+}
+
+// StaticAnalysisProfileData is the result of the profiling static analysis.
+type StaticAnalysisProfileData struct {
+	CounterSpecs []StaticAnalysisCounter
+	CounterData  []StaticAnalysisCounterSamples
+}
+
+// StaticAnalysisCounter represents the metadata of a counter produced via the static analysis.
+type StaticAnalysisCounter struct {
+	ID          uint32
+	Name        string
+	Description string
+	Unit        string // this should match the unit from the Perfetto data.
+}
+
+// StaticAnalysisCounterSample is a single sample of a counter.
+type StaticAnalysisCounterSample struct {
+	Counter uint32
+	Value   float64
+}
+
+// StaticAnalysisCounterSamples contains all the counter samples at a command index (draw call).
+type StaticAnalysisCounterSamples struct {
+	Index   SubCmdIdx
+	Samples []StaticAnalysisCounterSample
 }
 
 // ID is an API identifier

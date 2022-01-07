@@ -42,7 +42,7 @@ func (API) GetFramebufferAttachmentInfos(
 	return []api.FramebufferAttachmentInfo{}, nil
 }
 
-func (API) ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (interface{}, error) {
+func (API) ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (*api.StaticAnalysisProfileData, error) {
 	return nil, nil
 }
 

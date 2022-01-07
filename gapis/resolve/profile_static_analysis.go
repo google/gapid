@@ -18,12 +18,13 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service/path"
 )
 
 // ProfileStaticAnalysis resolves the static analysis profiling data.
-func ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (interface{}, error) {
+func ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (*api.StaticAnalysisProfileData, error) {
 	// TODO(pmuetschard): maybe put this into the database?
 
 	c, err := capture.ResolveGraphicsFromPath(ctx, p)
