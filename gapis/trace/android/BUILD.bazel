@@ -42,6 +42,7 @@ go_library(
         "//gapis/service/path:go_default_library",
         "//gapis/trace/android/adreno:go_default_library",
         "//gapis/trace/android/mali:go_default_library",
+        "//gapis/trace/android/profile:go_default_library",
         "//gapis/trace/android/validate:go_default_library",
         "//gapis/trace/tracer:go_default_library",
         "//tools/build/third_party/perfetto:config_go_proto",

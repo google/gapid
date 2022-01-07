@@ -54,6 +54,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/trace/android/adreno"
 	"github.com/google/gapid/gapis/trace/android/mali"
+	"github.com/google/gapid/gapis/trace/android/profile"
 	"github.com/google/gapid/gapis/trace/android/validate"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
@@ -144,16 +145,30 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Failed to create trace processor")
 	}
+
+	data := profile.NewProfilingData()
 	conf := t.b.Instance().GetConfiguration()
 	gpu := conf.GetHardware().GetGPU()
 	desc := conf.GetPerfettoCapability().GetGpuProfiling().GetGpuCounterDescriptor()
 	gpuName := gpu.GetName()
 	if strings.Contains(gpuName, "Adreno") {
-		return adreno.ProcessProfilingData(ctx, processor, capture, desc, handleMappings, syncData)
+		if err := adreno.ProcessProfilingData(ctx, processor, desc, handleMappings, syncData, data); err != nil {
+			return nil, err
+		}
 	} else if strings.Contains(gpuName, "Mali") {
-		return mali.ProcessProfilingData(ctx, processor, capture, desc, handleMappings, syncData)
+		if err := mali.ProcessProfilingData(ctx, processor, desc, handleMappings, syncData, data); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
 	}
-	return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
+
+	return &service.ProfilingData{
+		Groups:      data.Groups.Flatten(capture),
+		Slices:      data.Slices.ToService(ctx, processor),
+		Counters:    data.Counters,
+		GpuCounters: data.GpuCounters,
+	}, nil
 }
 
 func (t *androidTracer) Validate(ctx context.Context) error {

@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/perfetto"
 	"github.com/google/gapid/gapis/service"
-	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/trace/android/profile"
 )
 
@@ -36,43 +35,33 @@ var (
 		"SELECT ts, value FROM counter c WHERE c.track_id = %d ORDER BY ts"
 )
 
-func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, capture *path.Capture,
+func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor,
 	desc *device.GpuCounterDescriptor, handleMapping map[uint64][]service.VulkanHandleMappingItem,
-	syncData *sync.Data) (*service.ProfilingData, error) {
+	syncData *sync.Data, data *profile.ProfilingData) error {
 
-	groups := profile.NewGroupTree()
-	slices, err := processGpuSlices(ctx, processor, handleMapping, syncData, groups)
+	err := processGpuSlices(ctx, processor, handleMapping, syncData, data)
 	if err != nil {
 		log.Err(ctx, err, "Failed to get GPU slices")
 	}
-	counters, err := processCounters(ctx, processor, desc)
+	data.Counters, err = processCounters(ctx, processor, desc)
 	if err != nil {
 		log.Err(ctx, err, "Failed to get GPU counters")
 	}
-	gpuCounters, err := profile.ComputeCounters(ctx, groups, slices, counters)
-	if err != nil {
-		log.Err(ctx, err, "Failed to calculate performance data based on GPU slices and counters")
-	}
-
-	return &service.ProfilingData{
-		Groups:      groups.Flatten(capture),
-		Slices:      slices,
-		Counters:    counters,
-		GpuCounters: gpuCounters,
-	}, nil
+	data.ComputeCounters(ctx)
+	return nil
 }
 
 func processGpuSlices(ctx context.Context, processor *perfetto.Processor,
 	handleMapping map[uint64][]service.VulkanHandleMappingItem, syncData *sync.Data,
-	groups *profile.GroupTree) (*service.ProfilingData_GpuSlices, error) {
-	sliceData, err := profile.ExtractSliceData(ctx, processor)
+	data *profile.ProfilingData) (err error) {
+	data.Slices, err = profile.ExtractSliceData(ctx, processor)
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Extracting slice data failed")
+		return log.Errf(ctx, err, "Extracting slice data failed")
 	}
 
 	queueSubmitQueryResult, err := processor.Query(queueSubmitQuery)
 	if err != nil {
-		return nil, log.Errf(ctx, err, "SQL query failed: %v", queueSubmitQuery)
+		return log.Errf(ctx, err, "SQL query failed: %v", queueSubmitQuery)
 	}
 	queueSubmitColumns := queueSubmitQueryResult.GetColumns()
 	queueSubmitIds := queueSubmitColumns[0].GetLongValues()
@@ -90,11 +79,11 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor,
 		order++
 	}
 
-	sliceData.MapIdentifiers(ctx, handleMapping)
+	data.Slices.MapIdentifiers(ctx, handleMapping)
 
 	groupID := int32(-1)
-	for i := range sliceData {
-		slice := &sliceData[i]
+	for i := range data.Slices {
+		slice := &data.Slices[i]
 		subOrder, ok := submissionOrdering[slice.Submission]
 		if ok {
 			cb := uint64(slice.CommandBuffer)
@@ -106,7 +95,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor,
 			indices := syncData.RenderPassLookup.Lookup(ctx, key)
 			if !indices.IsNil() && (name == "vertex" || name == "fragment") {
 				slice.Name = fmt.Sprintf("%v-%v %v", indices.From, indices.To, name)
-				groupID = groups.GetOrCreateGroup(
+				groupID = data.Groups.GetOrCreateGroup(
 					fmt.Sprintf("RenderPass %v, RenderTarget %v", uint64(slice.Renderpass), uint64(slice.RenderTarget)),
 					indices,
 				)
@@ -122,7 +111,7 @@ func processGpuSlices(ctx context.Context, processor *perfetto.Processor,
 		slice.GroupID = groupID
 	}
 
-	return sliceData.ToService(ctx, processor), nil
+	return nil
 }
 
 func processCounters(ctx context.Context, processor *perfetto.Processor, desc *device.GpuCounterDescriptor) ([]*service.ProfilingData_Counter, error) {
