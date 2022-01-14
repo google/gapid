@@ -202,7 +202,7 @@ public class ActivityPickerDialog extends DialogBase {
     Composite container = createComposite(area, new GridLayout(1, false));
     container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-    SearchBox search = new SearchBox(container, true);
+    SearchBox search = new SearchBox(container, "Filter activities...", true);
     search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 
     loading = LoadablePanel.create(container, widgets, p -> createTreeForViewer(p, SWT.BORDER));

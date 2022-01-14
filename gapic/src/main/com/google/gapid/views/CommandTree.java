@@ -108,8 +108,8 @@ public class CommandTree extends Composite
     setLayout(new GridLayout(1, false));
 
     Composite top = createComposite(this, withMarginOnly(new GridLayout(2, false), 0, 0));
-    SearchBox search = withLayoutData(
-        new SearchBox(top, false), new GridData(SWT.FILL, SWT.CENTER, true, false));
+    SearchBox search = withLayoutData(new SearchBox(top, "Search commands...", false),
+        new GridData(SWT.FILL, SWT.CENTER, true, false));
     ToolBar bar = withLayoutData(
         new ToolBar(top, SWT.FLAT), new GridData(SWT.RIGHT, SWT.CENTER, false, false));
     createBaloonToolItem(bar, widgets.theme.filter(), bubble -> {
