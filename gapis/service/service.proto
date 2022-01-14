@@ -1117,6 +1117,7 @@ message ProfilingData {
       // GPU counter group type specified by vendors.
       repeated device.GpuCounterDescriptor.GpuCounterGroup counter_groups = 8;
       double average = 9;
+      bool static_analysis = 10;
     }
 
     // Perf includes a best-guessing performance value and a confidence range.

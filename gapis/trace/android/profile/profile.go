@@ -354,12 +354,13 @@ func (pd *ProfilingData) MergeStaticAnalysis(ctx context.Context, staticAnalysis
 		})
 
 		pd.GpuCounters.Metrics = append(pd.GpuCounters.Metrics, &service.ProfilingData_GpuCounters_Metric{
-			Id:          counterMetricIdOffset + int32(counterOffset+counter.ID),
-			CounterId:   counterOffset + counter.ID,
-			Name:        counter.Name,
-			Unit:        counter.Unit,
-			Op:          service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg,
-			Description: counter.Description,
+			Id:             counterMetricIdOffset + int32(counterOffset+counter.ID),
+			CounterId:      counterOffset + counter.ID,
+			Name:           counter.Name,
+			Unit:           counter.Unit,
+			Op:             service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg,
+			Description:    counter.Description,
+			StaticAnalysis: true,
 		})
 	}
 
