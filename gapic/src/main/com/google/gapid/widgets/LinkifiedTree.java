@@ -265,7 +265,6 @@ public abstract class LinkifiedTree<T, F> extends Composite {
   protected abstract ContentProvider<T> createContentProvider();
   protected abstract <S extends StylingString> S
       format(T node, S string, Follower.Prefetcher<F> follower);
-  protected abstract Color getBackgroundColor(T node);
   protected abstract Follower.Prefetcher<F> prepareFollower(T node, Runnable callback);
   protected abstract void follow(Path.Any path);
 
@@ -346,14 +345,6 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
     @Override
     protected void erase(Event event, Object element) {
-      Label label = getLabel(event);
-
-      if (!shouldIgnoreColors(event) && label.background != null) {
-        Color oldBackground = event.gc.getBackground();
-        event.gc.setBackground(label.background);
-        event.gc.fillRectangle(event.x, event.y, event.width, event.height);
-        event.gc.setBackground(oldBackground);
-      }
       // Clear the foreground bit, as we'll do our own foreground rendering.
       event.detail &= ~SWT.FOREGROUND;
     }
@@ -377,10 +368,6 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
       boolean ignoreColors = shouldIgnoreColors(event);
       Color oldForeground = event.gc.getForeground();
-      Color oldBackground = event.gc.getBackground();
-      if (!ignoreColors && label.background != null) {
-        event.gc.setBackground(label.background);
-      }
 
       drawText(event, label, ignoreColors);
       if (shouldDrawFocus(event)) {
@@ -389,7 +376,6 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
       if (!ignoreColors) {
         gc.setForeground(oldForeground);
-        gc.setBackground(oldBackground);
       }
     }
 
@@ -455,7 +441,6 @@ public abstract class LinkifiedTree<T, F> extends Composite {
 
       Label label = getLabelNoUpdate(item);
 
-      label.background = getBackgroundColor(element);
       updateText(item, label, element);
       label.bounds = null;
       label.loaded = contentProvider.isLoaded(element);
@@ -552,13 +537,11 @@ public abstract class LinkifiedTree<T, F> extends Composite {
   protected static class Label {
     public static String KEY = Label.class.getName();
 
-    public Color background;
     public StyledString string;
     public Rectangle bounds;
     public boolean loaded;
 
     public Label(Theme theme) {
-      this.background = null;
       this.string = new StyledString("Loading...", theme.structureStyler());
       this.bounds = null;
       this.loaded = false;

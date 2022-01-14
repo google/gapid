@@ -17,8 +17,6 @@ package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
-import static com.google.gapid.util.Colors.getRandomColor;
-import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.widgets.Widgets.createBaloonToolItem;
 import static com.google.gapid.widgets.Widgets.createButton;
@@ -69,7 +67,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -296,7 +293,6 @@ public class CommandTree extends Composite
   }
 
   protected static class Tree extends LinkifiedTreeWithImages<CommandStream.Node, String> {
-    private static final float COLOR_INTENSITY = 0.15f;
     private static final int DURATION_WIDTH = 95;
 
     protected final Models models;
@@ -419,34 +415,6 @@ public class CommandTree extends Composite
         }
       }
       return string;
-    }
-
-    @Override
-    protected Color getBackgroundColor(CommandStream.Node node) {
-      API.Command cmd = node.getCommand();
-      if (cmd == null) {
-        return null;
-      }
-
-      long threadId = cmd.getThread();
-      Color color = threadBackgroundColors.get(threadId);
-      if (color == null) {
-        Control control = getControl();
-        RGBA bg = control.getBackground().getRGBA();
-        color = new Color(control.getDisplay(),
-            lerp(getRandomColor(getColorIndex(threadId)), bg.rgb, COLOR_INTENSITY), bg.alpha);
-        threadBackgroundColors.put(threadId, color);
-      }
-      return color;
-    }
-
-    private static int getColorIndex(long threadId) {
-      // TODO: The index should be the i'th thread in use by the capture, not a hash of the
-      // thread ID. This requires using the list of threads exposed by the service.Capture.
-      int hash = (int)(threadId ^ (threadId >>> 32));
-      hash = hash ^ (hash >>> 16);
-      hash = hash ^ (hash >>> 8);
-      return hash & 0xff;
     }
 
     @Override

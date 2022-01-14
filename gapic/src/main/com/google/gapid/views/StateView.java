@@ -400,11 +400,6 @@ public class StateView extends Composite
     }
 
     @Override
-    protected Color getBackgroundColor(ApiState.Node node) {
-      return null;
-    }
-
-    @Override
     protected Follower.Prefetcher<Void> prepareFollower(ApiState.Node node, Runnable callback) {
       return models.follower.prepare(node, callback);
     }
