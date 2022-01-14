@@ -72,7 +72,8 @@ public class TraceView extends Composite
 
   private static TraceComposite<State.ForSystemTrace> createTraceUi(
       Composite parent, Models models, Theme theme) {
-    return new TraceComposite<State.ForSystemTrace>(parent, models.analytics, models.perfetto, theme) {
+    return new TraceComposite<State.ForSystemTrace>(
+        parent, models.analytics, models.perfetto, theme, /*fullView*/ true) {
       @Override
       protected State.ForSystemTrace createState() {
         return new State.ForSystemTrace(this);

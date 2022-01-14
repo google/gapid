@@ -188,7 +188,7 @@ public class ProfileView extends Composite implements Tab, Capture.Listener, Pro
     protected final List<Panel> panels = Lists.newArrayList();
 
     public TraceUi(Composite parent, Analytics analytics, Perfetto perfetto, Theme theme) {
-      super(parent, analytics, perfetto, theme);
+      super(parent, analytics, perfetto, theme, /*fullView*/ false);
     }
 
     public void update(Profile.Data data) {
