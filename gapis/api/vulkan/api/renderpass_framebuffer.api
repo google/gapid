@@ -118,42 +118,166 @@ cmd void vkDestroyFramebuffer(
 }
 
 ////////////////
-// Renderpass //
+// RenderPass //
 ////////////////
 
+@internal enum RenderPassVersion : u32 {
+  RenderPass = 0,
+  RenderPass2 = 1,
+  RenderPass2KHR = 2,
+}
+
+/*
+This extension is already in the Vulkan core.
+Thefore there is no need to repeat the KHR structs
+*/
+
+@internal class AttachmentDescription {
+    VkAttachmentDescriptionFlags    Flags
+    VkFormat                        Format
+    VkSampleCountFlagBits           Samples
+    VkAttachmentLoadOp              LoadOp
+    VkAttachmentStoreOp             StoreOp
+    VkAttachmentLoadOp              StencilLoadOp
+    VkAttachmentStoreOp             StencilStoreOp
+    VkImageLayout                   InitialLayout
+    VkImageLayout                   FinalLayout
+}
+
+@internal class AttachmentReference {
+    u32                 Attachment
+    VkImageLayout       Layout
+    VkImageAspectFlags  AspectMask
+}
+
 @internal class SubpassDescription {
-  @unused VkSubpassDescriptionFlags        Flags
-  @unused VkPipelineBindPoint              PipelineBindPoint
-  @unused map!(u32, VkAttachmentReference) InputAttachments
-  @unused map!(u32, VkAttachmentReference) ColorAttachments
-  @unused map!(u32, VkAttachmentReference) ResolveAttachments
-  @unused ref!VkAttachmentReference        DepthStencilAttachment
-  @unused map!(u32, u32)                   PreserveAttachments
+  VkSubpassDescriptionFlags         Flags
+  u32                               ViewMask
+  VkPipelineBindPoint               PipelineBindPoint
+  map!(u32, AttachmentReference)    InputAttachments
+  map!(u32, AttachmentReference)    ColorAttachments
+  map!(u32, AttachmentReference)    ResolveAttachments
+  ref!AttachmentReference           DepthStencilAttachment
+  map!(u32, u32)                    PreserveAttachments
+}
+
+@internal class SubpassDependency {
+    u32                     SrcSubpass
+    u32                     DstSubpass
+    VkPipelineStageFlags    SrcStageMask
+    VkPipelineStageFlags    DstStageMask
+    VkAccessFlags           SrcAccessMask
+    VkAccessFlags           DstAccessMask
+    VkDependencyFlags       DependencyFlags
+    s32                     ViewOffset
 }
 
 @internal class RenderPassObject {
   @unused VkDevice                           Device
   @unused VkRenderPass                       VulkanHandle
-  @unused map!(u32, VkAttachmentDescription) AttachmentDescriptions
+  @unused map!(u32, AttachmentDescription)   AttachmentDescriptions
   @unused map!(u32, SubpassDescription)      SubpassDescriptions
-  @unused map!(u32, VkSubpassDependency)     SubpassDependencies
+  @unused map!(u32, SubpassDependency)       SubpassDependencies
+  @unused map!(u32, u32)                     CorrelatedViewMasks
+
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
-  // Vulkan 1.1 core
-  @unused ref!InputAttachmentAspectInfo      InputAttachmentAspectInfo
-  @unused ref!RenderPassMultiviewCreateInfo  MultiviewInfo
+
+  // internal
+  @unused RenderPassVersion                  Version
 }
 
-@indirect("VkDevice")
-cmd VkResult vkCreateRenderPass(
-    VkDevice                      device,
+sub AttachmentReference convertAttachment(VkAttachmentReference attachment) {
+  return AttachmentReference(
+    Attachment: attachment.attachment,
+    Layout: attachment.layout,
+    AspectMask: 0, // This will be updated by VkRenderPassInputAttachmentAspectCreateInfo
+  )
+}
+
+sub ref!RenderPassObject createRenderPassObjectFromInfo(
     const VkRenderPassCreateInfo* pCreateInfo,
-    AllocationCallbacks           pAllocator,
-    VkRenderPass*                 pRenderPass) {
-  if !(device in Devices) { vkErrorInvalidDevice(device) }
+    VkDevice device) {
+  info := pCreateInfo[0]
   renderPass := new!RenderPassObject()
   renderPass.Device = device
-  if pCreateInfo == null { vkErrorNullPointer("VkRenderPassCreateInfo") }
-  info := pCreateInfo[0]
+
+  attachments := info.pAttachments[0:info.attachmentCount]
+  for i in (0 .. info.attachmentCount) {
+    attachment := attachments[i]
+    renderPass.AttachmentDescriptions[i] = AttachmentDescription(
+      Flags: attachment.flags,
+      Format: attachment.format,
+      Samples: attachment.samples,
+      LoadOp: attachment.loadOp,
+      StoreOp: attachment.storeOp,
+      StencilLoadOp: attachment.stencilLoadOp,
+      StencilStoreOp: attachment.stencilStoreOp,
+      InitialLayout: attachment.initialLayout,
+      FinalLayout: attachment.finalLayout,
+    )
+  }
+
+  subpasses := info.pSubpasses[0:info.subpassCount]
+  read(subpasses)
+  for i in (0 .. info.subpassCount) {
+    subpass := subpasses[i]
+    description := SubpassDescription(
+      Flags: subpass.flags,
+      ViewMask: 0, // This will be updated by KHR_multiview extension.
+      PipelineBindPoint: subpass.pipelineBindPoint,
+    )
+
+    inputAttachments := subpass.pInputAttachments[0:subpass.inputAttachmentCount]
+    for j in (0 .. subpass.inputAttachmentCount) {
+      description.InputAttachments[j] = convertAttachment(inputAttachments[j])
+    }
+    colorAttachments := subpass.pColorAttachments[0:subpass.colorAttachmentCount]
+    for j in (0 .. subpass.colorAttachmentCount) {
+      description.ColorAttachments[j] = convertAttachment(colorAttachments[j])
+    }
+
+    if subpass.pResolveAttachments != null {
+      resolveAttachments := subpass.pResolveAttachments[0:subpass.colorAttachmentCount]
+      for j in (0 .. subpass.colorAttachmentCount) {
+        description.ResolveAttachments[j] = convertAttachment(resolveAttachments[j])
+      }
+    }
+
+    if (subpass.pDepthStencilAttachment != null) {
+      attachment := subpass.pDepthStencilAttachment[0]
+      // Cannot call convert
+      description.DepthStencilAttachment = new!AttachmentReference(
+        Attachment: attachment.attachment,
+        Layout: attachment.layout,
+        AspectMask: 0, // This will be updated by VkRenderPassInputAttachmentAspectCreateInfo
+      )
+    }
+
+    preserveAttachments := subpass.pPreserveAttachments[0:subpass.preserveAttachmentCount]
+    for j in (0 .. subpass.preserveAttachmentCount) {
+      description.PreserveAttachments[j] = preserveAttachments[j]
+    }
+
+    renderPass.SubpassDescriptions[i] = description
+  }
+
+  dependencies := info.pDependencies[0:info.dependencyCount]
+  for i in (0 .. info.dependencyCount) {
+    dependency := dependencies[i]
+    renderPass.SubpassDependencies[i] = SubpassDependency(
+      SrcSubpass: dependency.srcSubpass,
+      DstSubpass: dependency.dstSubpass,
+      SrcStageMask: dependency.srcStageMask,
+      DstStageMask: dependency.dstStageMask,
+      SrcAccessMask: dependency.srcAccessMask,
+      DstAccessMask: dependency.dstAccessMask,
+      DependencyFlags: dependency.dependencyFlags,
+      ViewOffset: 0, // This will be updated by KHR_multiview extension.
+    )
+  }
+
+  // CorrelatedViewMasks will be updated by KHR_multiview extension.
+
   // handle pNext
   if info.pNext != null {
     numPNext := numberOfPNext(info.pNext)
@@ -163,46 +287,51 @@ cmd VkResult vkCreateRenderPass(
       switch sType {
         case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO: {
           ext := as!VkRenderPassInputAttachmentAspectCreateInfo*(next.Ptr)[0]
-          renderPass.InputAttachmentAspectInfo = new!InputAttachmentAspectInfo()
-          if ext.aspectReferenceCount != as!u32(0) {
-            if ext.pAspectReferences == null {
-              vkErrorNullPointer("VkInputAttachmentAspectReference(KHR)")
-            } else {
-              for j in (0 .. ext.aspectReferenceCount) {
-                // The intput attachment aspect info is only cached but not used for now, so the
-                // dependency can be wrong as a draw call may depends on just one aspect of a
-                // depth stencil image, as specified in the input attachment aspect info, while
-                // GAPID will still treat both aspects as dependees.
-                // TODO: Once the CL that enables us getting used descriptors from shader is in,
-                // we can pull input_attachment_index from the information of the used descriptors
-                // then use the input attachment aspect info to fix the dependency.
-                renderPass.InputAttachmentAspectInfo.AspectReferences[j] = ext.pAspectReferences[0]
-              }
-            }
+
+          aspectReferences := ext.pAspectReferences[0:ext.aspectReferenceCount]
+          for j in (0 .. ext.aspectReferenceCount) {
+            // The input attachment aspect info is only cached but not used for now, so the
+            // dependency can be wrong as a draw call may depends on just one aspect of a
+            // depth stencil image, as specified in the input attachment aspect info, while
+            // GAPID will still treat both aspects as dependees.
+            // TODO: Once the CL that enables us getting used descriptors from shader is in,
+            // we can pull input_attachment_index from the information of the used descriptors
+            // then use the input attachment aspect info to fix the dependency.
+            aspectReference := aspectReferences[j]
+            subPassIndex := aspectReference.subpass
+            attachmentIndex := aspectReference.inputAttachmentIndex
+
+            attachment := renderPass.SubpassDescriptions[subPassIndex].InputAttachments[attachmentIndex]
+            attachment.AspectMask = aspectReference.aspectMask
+            renderPass.SubpassDescriptions[subPassIndex].InputAttachments[attachmentIndex] = attachment
           }
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO: {
           ext := as!VkRenderPassMultiviewCreateInfo*(next.Ptr)[0]
 
-          renderPass.MultiviewInfo = new!RenderPassMultiviewCreateInfo(
-            SubpassCount: ext.subpassCount,
-            DependencyCount: ext.dependencyCount,
-            CorrelationMaskCount: ext.correlationMaskCount,
-          )
-
           if ext.pViewMasks != null {
-            renderPass.MultiviewInfo.PViewMasks = clone(
-              as!const u32*(ext.pViewMasks)[0:ext.subpassCount])
+            viewMasks := ext.pViewMasks[0:ext.subpassCount]
+            for j in (0 .. ext.subpassCount) {
+              desc := renderPass.SubpassDescriptions[j]
+              desc.ViewMask = viewMasks[j]
+              renderPass.SubpassDescriptions[j] = desc
+            }
           }
 
           if ext.pViewOffsets != null {
-            renderPass.MultiviewInfo.PViewOffsets = clone(
-              as!const s32*(ext.pViewOffsets)[0:ext.dependencyCount])
+            viewOffsets := ext.pViewOffsets[0:ext.dependencyCount]
+            for j in (0 .. ext.dependencyCount) {
+              dependency := renderPass.SubpassDependencies[j]
+              dependency.ViewOffset = viewOffsets[j]
+              renderPass.SubpassDependencies[j] = dependency
+            }
           }
 
           if ext.pCorrelationMasks != null {
-            renderPass.MultiviewInfo.PCorrelationMasks = clone(
-              as!const u32*(ext.pCorrelationMasks)[0:ext.correlationMaskCount])
+            correlationMasks := ext.pCorrelationMasks[0:ext.correlationMaskCount]
+            for j in (0 .. ext.correlationMaskCount) {
+              renderPass.CorrelatedViewMasks[j] = correlationMasks[j]
+            }
           }
         }
       }
@@ -210,53 +339,171 @@ cmd VkResult vkCreateRenderPass(
     }
   }
 
+  return renderPass
+}
+
+sub ref!RenderPassObject createRenderPassObjectFromInfo2(
+    const VkRenderPassCreateInfo2* pCreateInfo,
+    VkDevice device) {
+  info := pCreateInfo[0]
+  renderPass := new!RenderPassObject()
+  renderPass.Device = device
+
   attachments := info.pAttachments[0:info.attachmentCount]
   for i in (0 .. info.attachmentCount) {
-    renderPass.AttachmentDescriptions[i] = attachments[i]
+    attachment := attachments[i]
+    renderPass.AttachmentDescriptions[i] = AttachmentDescription(
+      Flags: attachment.flags,
+      Format: attachment.format,
+      Samples: attachment.samples,
+      LoadOp: attachment.loadOp,
+      StoreOp: attachment.storeOp,
+      StencilLoadOp: attachment.stencilLoadOp,
+      StencilStoreOp: attachment.stencilStoreOp,
+      InitialLayout: attachment.initialLayout,
+      FinalLayout: attachment.finalLayout,
+    )
   }
+
   subpasses := info.pSubpasses[0:info.subpassCount]
   read(subpasses)
   for i in (0 .. info.subpassCount) {
     subpass := subpasses[i]
     description := SubpassDescription(
+      Flags: subpass.flags,
+      ViewMask: subpass.viewMask,
       PipelineBindPoint: subpass.pipelineBindPoint,
     )
+
     inputAttachments := subpass.pInputAttachments[0:subpass.inputAttachmentCount]
     for j in (0 .. subpass.inputAttachmentCount) {
-      description.InputAttachments[j] = inputAttachments[j]
+      attachment := inputAttachments[j]
+      description.InputAttachments[j] = AttachmentReference(
+        Attachment: attachment.attachment,
+        Layout: attachment.layout,
+        AspectMask: attachment.aspectMask
+      )
     }
+
     colorAttachments := subpass.pColorAttachments[0:subpass.colorAttachmentCount]
     for j in (0 .. subpass.colorAttachmentCount) {
-      description.ColorAttachments[j] = colorAttachments[j]
+      attachment := colorAttachments[j]
+      description.ColorAttachments[j] = AttachmentReference(
+        Attachment: attachment.attachment,
+        Layout: attachment.layout,
+        AspectMask: attachment.aspectMask
+      )
     }
+
     if subpass.pResolveAttachments != null {
       resolveAttachments := subpass.pResolveAttachments[0:subpass.colorAttachmentCount]
       for j in (0 .. subpass.colorAttachmentCount) {
-        description.ResolveAttachments[j] = resolveAttachments[j]
+        attachment := resolveAttachments[j]
+        description.ResolveAttachments[j] = AttachmentReference(
+          Attachment: attachment.attachment,
+          Layout: attachment.layout,
+          AspectMask: attachment.aspectMask
+        )
       }
     }
+
     if (subpass.pDepthStencilAttachment != null) {
-      depth_attachment := subpass.pDepthStencilAttachment[0]
-      description.DepthStencilAttachment = new!VkAttachmentReference(
-        Attachment: depth_attachment.Attachment,
-        Layout:     depth_attachment.Layout)
+      attachment := subpass.pDepthStencilAttachment[0]
+      description.DepthStencilAttachment = new!AttachmentReference(
+        Attachment: attachment.attachment,
+        Layout: attachment.layout,
+        AspectMask: attachment.aspectMask,
+      )
     }
+
     preserveAttachments := subpass.pPreserveAttachments[0:subpass.preserveAttachmentCount]
     for j in (0 .. subpass.preserveAttachmentCount) {
       description.PreserveAttachments[j] = preserveAttachments[j]
     }
+
     renderPass.SubpassDescriptions[i] = description
   }
+
   dependencies := info.pDependencies[0:info.dependencyCount]
   for i in (0 .. info.dependencyCount) {
-    renderPass.SubpassDependencies[i] = dependencies[i]
+    dependency := dependencies[i]
+    renderPass.SubpassDependencies[i] = SubpassDependency(
+      SrcSubpass: dependency.srcSubpass,
+      DstSubpass: dependency.dstSubpass,
+      SrcStageMask: dependency.srcStageMask,
+      DstStageMask: dependency.dstStageMask,
+      SrcAccessMask: dependency.srcAccessMask,
+      DstAccessMask: dependency.dstAccessMask,
+      DependencyFlags: dependency.dependencyFlags,
+      ViewOffset: dependency.viewOffset,
+    )
   }
-  handle := ?
-  if pRenderPass == null { vkErrorNullPointer("VkRenderPass") }
-  pRenderPass[0] = handle
-  renderPass.VulkanHandle = pRenderPass[0]
+
+  if info.pCorrelatedViewMasks != null {
+    pCorrelatedViewMasks := info.pCorrelatedViewMasks[0:info.correlatedViewMaskCount]
+    for i in (0 .. info.correlatedViewMaskCount) {
+      renderPass.CorrelatedViewMasks[i] = pCorrelatedViewMasks[i]
+    }
+  }
+
+  // This looks like it doesn't do anything but in reality
+  // it generates a switch statement with a default case that
+  // returns error.
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0]
+      switch (sType) {
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+    }
+  }
+
+  return renderPass
+}
+
+sub void recordNewRenderPass(ref!RenderPassObject renderPass,  VkRenderPass handle) {
+  renderPass.VulkanHandle = handle
   RenderPasses[handle] = renderPass
-  return ?
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateRenderPass(
+    VkDevice                      device,
+    const VkRenderPassCreateInfo* pCreateInfo,
+    AllocationCallbacks           pAllocator,
+    VkRenderPass*                 pRenderPass) {
+    if !(device in Devices) { vkErrorInvalidDevice(device) }
+    if pCreateInfo == null { vkErrorNullPointer("VkRenderPassCreateInfo") }
+    if pRenderPass == null { vkErrorNullPointer("VkRenderPass") }
+
+    renderPass := createRenderPassObjectFromInfo(pCreateInfo, device)
+    renderPass.Version = RenderPass
+
+    handle := ?
+    pRenderPass[0] = handle
+    recordNewRenderPass(renderPass, handle)
+    return ?
+}
+
+@indirect("VkDevice")
+cmd VkResult vkCreateRenderPass2(
+    VkDevice                                    device,
+    const VkRenderPassCreateInfo2*              pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkRenderPass*                               pRenderPass) {
+    if !(device in Devices) { vkErrorInvalidDevice(device) }
+    if pCreateInfo == null { vkErrorNullPointer("VkRenderPassCreateInfo") }
+    if pRenderPass == null { vkErrorNullPointer("VkRenderPass") }
+
+    renderPass := createRenderPassObjectFromInfo2(pCreateInfo, device)
+    renderPass.Version = RenderPass2
+
+    handle := ?
+    pRenderPass[0] = handle
+    recordNewRenderPass(renderPass, handle)
+    return ?
 }
 
 @indirect("VkDevice")
@@ -287,21 +534,32 @@ cmd void vkGetRenderAreaGranularity(
   map!(u32, VkRect2D) RenderAreas
 }
 
-@internal class
-vkCmdBeginRenderPassArgs {
-  VkSubpassContents        Contents
-  VkRenderPass             RenderPass
-  VkFramebuffer            Framebuffer
-  VkRect2D                 RenderArea
-  map!(u32, VkClearValue)  ClearValues
+@internal class RenderPassBeginInfo {
+  VkRenderPass            RenderPass
+  VkFramebuffer           Framebuffer
+  VkRect2D                RenderArea
+  map!(u32, VkClearValue) ClearValues
+
+  // @extension("VK_KHR_device_group_creation")
   ref!DeviceGroupBeginInfo DeviceGroupBeginInfo
 }
 
-sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
+@internal class
+vkCmdBeginRenderPassXArgs {
+  ref!RenderPassBeginInfo RenderPassBeginInfo
+  ref!SubpassBeginInfo    SubpassBeginInfo
+
+  // internal
+  RenderPassVersion Version
+}
+
+sub void dovkCmdBeginRenderPassCommon(ref!vkCmdBeginRenderPassXArgs args) {
+  renderPassBeginInfo := args.RenderPassBeginInfo
+
   ldi := lastDrawInfo()
-  ldi.Framebuffer = Framebuffers[args.Framebuffer]
+  ldi.Framebuffer = Framebuffers[renderPassBeginInfo.Framebuffer]
   ldi.LastSubpass = 0
-  ldi.RenderPass = RenderPasses[args.RenderPass]
+  ldi.RenderPass = RenderPasses[renderPassBeginInfo.RenderPass]
   ldi.InRenderPass = true
   attachments := ldi.Framebuffer.ImageAttachments
   n := len(attachments)
@@ -316,20 +574,14 @@ class MutableAspect {
   VkImageAspectFlags aspect
 }
 
-sub void RecordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
+sub void recordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
   cb.CurrentRecordingSubpass = subpass
   rp := cb.CurrentRecordingRenderpass
   for _, _, v in rp.SubpassDescriptions[subpass].InputAttachments {
     if v.Attachment != VK_ATTACHMENT_UNUSED {
       l := v.Layout
       aspect := MutableAspect(as!VkImageAspectFlags(0))
-      if rp.InputAttachmentAspectInfo != null {
-        for _, _, ar in rp.InputAttachmentAspectInfo.AspectReferences {
-          if (ar.subpass == subpass) && (ar.inputAttachmentIndex == v.Attachment) {
-            aspect.aspect = ar.aspectMask
-          }
-        }
-      }
+      aspect.aspect = v.AspectMask
       view := cb.CurrentRecordingFramebuffer.ImageAttachments[v.Attachment]
       rng := view.SubresourceRange
       if aspect.aspect != as!VkImageAspectFlags(0) {
@@ -340,6 +592,103 @@ sub void RecordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
   }
 }
 
+sub ref!RenderPassBeginInfo createRenderPassBeginInfo(const VkRenderPassBeginInfo* pRenderPassBegin) {
+  info := pRenderPassBegin[0]
+  if !(info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(info.renderPass) }
+  if !(info.framebuffer in Framebuffers) { vkErrorInvalidFramebuffer(info.framebuffer) }
+
+  beginInfo := new!RenderPassBeginInfo(
+    RenderPass: info.renderPass,
+    Framebuffer: info.framebuffer,
+    RenderArea: info.renderArea,
+  )
+
+  clearValues := info.pClearValues[0:info.clearValueCount]
+  for i in (0 .. info.clearValueCount) {
+    beginInfo.ClearValues[i] = clearValues[i]
+  }
+
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: {
+          ext := as!VkDeviceGroupRenderPassBeginInfo*(next.Ptr)[0]
+          beginInfo.DeviceGroupBeginInfo = new!DeviceGroupBeginInfo(
+            DeviceMask: ext.deviceMask,
+          )
+          rects := ext.pDeviceRenderAreas[0:ext.deviceRenderAreaCount]
+          for j in (0 .. ext.deviceRenderAreaCount) {
+            beginInfo.DeviceGroupBeginInfo.RenderAreas[j] = rects[j]
+          }
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+    }
+  }
+
+  return beginInfo
+}
+
+sub ref!SubpassBeginInfo createSubpassBeginInfoFromContents(VkSubpassContents contents) {
+  return new!SubpassBeginInfo(
+    Contents: contents,
+  )
+}
+
+sub ref!SubpassBeginInfo createSubpassBeginInfoFromInfo(const VkSubpassBeginInfo* pSubpassBeginInfo) {
+  info := pSubpassBeginInfo[0]
+
+  // This looks like it doesn't do anything but in reality
+  // it generates a switch statement with a default case that
+  // returns error.
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0]
+      switch (sType) {
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+    }
+  }
+
+  return new!SubpassBeginInfo(
+    Contents: info.contents,
+  )
+}
+
+sub ref!SubpassEndInfo createSubpassEndInfo(const VkSubpassEndInfo* pSubpassEndInfo) {
+  if pSubpassEndInfo != null {
+    info := pSubpassEndInfo[0]
+
+    // This looks like it doesn't do anything but in reality
+    // it generates a switch statement with a default case that
+    // returns error.
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0]
+        switch (sType) {
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+      }
+    }
+  }
+  return new!SubpassEndInfo()
+}
+
+sub void recordBeginRenderPass(ref!CommandBufferObject commandBuffer, ref!RenderPassBeginInfo beginInfo) {
+  commandBuffer.CurrentRecordingRenderpass = RenderPasses[beginInfo.RenderPass]
+  commandBuffer.CurrentRecordingFramebuffer = Framebuffers[beginInfo.Framebuffer]
+  commandBuffer.PreviouslyStartedRenderpass = RenderPasses[beginInfo.RenderPass]
+  commandBuffer.PreviousFramebuffer = Framebuffers[beginInfo.Framebuffer]
+  recordSubpassBegin(commandBuffer, 0)
+}
 
 @indirect("VkCommandBuffer", "VkDevice")
 @begin_end_renderpass
@@ -350,62 +699,68 @@ cmd void vkCmdBeginRenderPass(
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
-    cb := CommandBuffers[commandBuffer]
     if pRenderPassBegin == null { vkErrorNullPointer("VkRenderPassBeginInfo") }
-    begin_info := pRenderPassBegin[0]
-    if !(begin_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(begin_info.renderPass) }
-    if !(begin_info.framebuffer in Framebuffers) { vkErrorInvalidFramebuffer(begin_info.framebuffer) }
+    renderPassBeginInfo := createRenderPassBeginInfo(pRenderPassBegin)
+    subpassBeginInfo := createSubpassBeginInfoFromContents(contents)
 
-    args := new!vkCmdBeginRenderPassArgs(
-      Contents:     contents,
-      RenderPass:   begin_info.renderPass,
-      Framebuffer:  begin_info.framebuffer,
-      RenderArea:   begin_info.renderArea
+    args := new!vkCmdBeginRenderPassXArgs(
+      RenderPassBeginInfo: renderPassBeginInfo,
+      SubpassBeginInfo: subpassBeginInfo,
+      Version: RenderPass,
     )
 
-    // handle pNext
-    if begin_info.pNext != null {
-      numPNext := numberOfPNext(begin_info.pNext)
-      next := MutableVoidPtr(as!void*(begin_info.pNext))
-      for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0]
-        switch sType {
-          case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: {
-            ext := as!VkDeviceGroupRenderPassBeginInfo*(next.Ptr)[0]
-            args.DeviceGroupBeginInfo = new!DeviceGroupBeginInfo(
-              DeviceMask: ext.deviceMask,
-            )
-            rects := ext.pDeviceRenderAreas[0:ext.deviceRenderAreaCount]
-            for j in (0 .. ext.deviceRenderAreaCount) {
-              args.DeviceGroupBeginInfo.RenderAreas[j] = rects[j]
-            }
-          }
-        }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
-      }
-    }
-
-    clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
-    for i in (0 .. begin_info.clearValueCount) {
-      args.ClearValues[i] = clear_values[i]
-    }
-
-    cb.CurrentRecordingRenderpass = RenderPasses[begin_info.renderPass]
-    cb.CurrentRecordingFramebuffer = Framebuffers[begin_info.framebuffer]
-    cb.PreviouslyStartedRenderpass = RenderPasses[begin_info.renderPass]
-    cb.PreviousFramebuffer = Framebuffers[begin_info.framebuffer]
-    RecordSubpassBegin(cb, 0)
+    cb := CommandBuffers[commandBuffer]
+    recordBeginRenderPass(cb, renderPassBeginInfo)
 
     mapPos := as!u32(len(cb.BufferCommands.vkCmdBeginRenderPass))
     cb.BufferCommands.vkCmdBeginRenderPass[mapPos] = args
-
     AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
   }
 }
 
+@indirect("VkCommandBuffer", "VkDevice")
+@begin_end_renderpass
+cmd void vkCmdBeginRenderPass2(
+    VkCommandBuffer                             commandBuffer,
+    const VkRenderPassBeginInfo*                pRenderPassBegin,
+    const VkSubpassBeginInfo*                   pSubpassBeginInfo) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if pRenderPassBegin == null { vkErrorNullPointer("VkRenderPassBeginInfo2") }
+    renderPassBeginInfo := createRenderPassBeginInfo(pRenderPassBegin)
+    subpassBeginInfo := createSubpassBeginInfoFromInfo(pSubpassBeginInfo)
+
+    args := new!vkCmdBeginRenderPassXArgs(
+      RenderPassBeginInfo: renderPassBeginInfo,
+      SubpassBeginInfo: subpassBeginInfo,
+      Version: RenderPass2,
+    )
+
+    cb := CommandBuffers[commandBuffer]
+    recordBeginRenderPass(cb, renderPassBeginInfo)
+
+    mapPos := as!u32(len(cb.BufferCommands.vkCmdBeginRenderPass2))
+    cb.BufferCommands.vkCmdBeginRenderPass2[mapPos] = args
+    AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass2, mapPos)
+  }
+}
+
+@internal class SubpassBeginInfo {
+    VkSubpassContents   Contents
+}
+
+@internal class SubpassEndInfo {
+    // Intentionally left blank
+}
+
 @internal class
-vkCmdNextSubpassArgs {
-  VkSubpassContents Contents
+vkCmdNextSubpassXArgs {
+  ref!SubpassBeginInfo              SubpassBeginInfo
+  ref!SubpassEndInfo                SubpassEndInfo
+
+  // internal
+  RenderPassVersion Version
 }
 
 sub void transitionSubpassAttachmentLayouts(u32 subpass) {
@@ -432,7 +787,7 @@ sub void transitionSubpassAttachmentLayouts(u32 subpass) {
   }
 }
 
-sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
+sub void dovkCmdNextSubpassCommon(ref!vkCmdNextSubpassXArgs Unused) {
   useRenderPass()
   ldi := lastDrawInfo()
   ldi.LastSubpass += 1
@@ -447,9 +802,15 @@ cmd void vkCmdNextSubpass(
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
     cmdBuf := CommandBuffers[commandBuffer]
-    args := new!vkCmdNextSubpassArgs(contents)
+    recordSubpassBegin(cmdBuf, cmdBuf.CurrentRecordingSubpass + 1)
 
-    RecordSubpassBegin(cmdBuf, cmdBuf.CurrentRecordingSubpass + 1)
+    subpassBeginInfo := createSubpassBeginInfoFromContents(contents)
+    subpassEndInfo := createSubpassEndInfo(null)
+    args := new!vkCmdNextSubpassXArgs(
+      SubpassBeginInfo: subpassBeginInfo,
+      SubpassEndInfo: subpassEndInfo,
+      Version: RenderPass,
+    )
 
     mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdNextSubpass))
     cmdBuf.BufferCommands.vkCmdNextSubpass[mapPos] = args
@@ -458,11 +819,40 @@ cmd void vkCmdNextSubpass(
   }
 }
 
-@internal class
-vkCmdEndRenderPassArgs {
+@indirect("VkCommandBuffer", "VkDevice")
+cmd void vkCmdNextSubpass2(
+    VkCommandBuffer                             commandBuffer,
+    const VkSubpassBeginInfo*                   pSubpassBeginInfo,
+    const VkSubpassEndInfo*                     pSubpassEndInfo) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    cmdBuf := CommandBuffers[commandBuffer]
+    recordSubpassBegin(cmdBuf, cmdBuf.CurrentRecordingSubpass + 1)
+
+    subpassBeginInfo := createSubpassBeginInfoFromInfo(pSubpassBeginInfo)
+    subpassEndInfo := createSubpassEndInfo(pSubpassEndInfo)
+    args := new!vkCmdNextSubpassXArgs(
+      SubpassBeginInfo: subpassBeginInfo,
+      SubpassEndInfo: subpassEndInfo,
+      Version: RenderPass2,
+    )
+
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdNextSubpass2))
+    cmdBuf.BufferCommands.vkCmdNextSubpass2[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdNextSubpass2, mapPos)
+  }
 }
 
-sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
+@internal class
+vkCmdEndRenderPassXArgs {
+  ref!SubpassEndInfo SubpassEndInfo
+  // internal
+  RenderPassVersion Version
+}
+
+sub void dovkCmdEndRenderPassCommon(ref!vkCmdEndRenderPassXArgs unused) {
   ldi := lastDrawInfo()
   attachmentDescriptions := ldi.RenderPass.AttachmentDescriptions
   n := len(attachmentDescriptions)
@@ -473,6 +863,27 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
   ldi.InRenderPass = false
 }
 
+sub void recordEndRenderpass(ref!CommandBufferObject commandBuffer) {
+  if (commandBuffer.CurrentRecordingRenderpass == null) {
+      vkErrorInvalidRenderPass(as!VkRenderPass(0))
+    } else if (commandBuffer.CurrentRecordingFramebuffer == null) {
+      vkErrorInvalidFramebuffer(as!VkFramebuffer(0))
+    } else {
+      rpo := commandBuffer.CurrentRecordingRenderpass
+      for _, i, at in rpo.AttachmentDescriptions {
+        if (i < len(commandBuffer.CurrentRecordingFramebuffer.ImageAttachments)) {
+          view := commandBuffer.CurrentRecordingFramebuffer.ImageAttachments[i]
+          rng := view.SubresourceRange
+          RecordLayoutTransition(commandBuffer, view.Image, rng, at.FinalLayout)
+        }
+      }
+    }
+
+    commandBuffer.CurrentRecordingRenderpass = null
+    commandBuffer.CurrentRecordingFramebuffer = null
+    commandBuffer.CurrentRecordingSubpass = 0
+}
+
 @indirect("VkCommandBuffer", "VkDevice")
 @begin_end_renderpass
 cmd void vkCmdEndRenderPass(
@@ -481,30 +892,42 @@ cmd void vkCmdEndRenderPass(
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
     cmdBuf := CommandBuffers[commandBuffer]
-    args := new!vkCmdEndRenderPassArgs()
+    recordEndRenderpass(cmdBuf)
 
-    if (cmdBuf.CurrentRecordingRenderpass == null) {
-      vkErrorInvalidRenderPass(as!VkRenderPass(0))
-    } else if (cmdBuf.CurrentRecordingFramebuffer == null) {
-      vkErrorInvalidFramebuffer(as!VkFramebuffer(0))
-    } else {
-      rpo := cmdBuf.CurrentRecordingRenderpass
-      for _, i, at in rpo.AttachmentDescriptions {
-        if (i < len(cmdBuf.CurrentRecordingFramebuffer.ImageAttachments)) {
-          view := cmdBuf.CurrentRecordingFramebuffer.ImageAttachments[i]
-          rng := view.SubresourceRange
-          RecordLayoutTransition(cmdBuf, view.Image, rng, at.finalLayout)
-        }
-      }
-    }
-    cmdBuf.CurrentRecordingRenderpass = null
-    cmdBuf.CurrentRecordingFramebuffer = null
-    cmdBuf.CurrentRecordingSubpass = 0
+    subpassEndInfo := createSubpassEndInfo(null)
+    args := new!vkCmdEndRenderPassXArgs(
+      SubpassEndInfo: subpassEndInfo,
+      Version: RenderPass,
+    )
 
     mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdEndRenderPass))
     cmdBuf.BufferCommands.vkCmdEndRenderPass[mapPos] = args
 
     AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
+  }
+}
+
+@indirect("VkCommandBuffer", "VkDevice")
+@begin_end_renderpass
+cmd void vkCmdEndRenderPass2(
+    VkCommandBuffer                             commandBuffer,
+    const VkSubpassEndInfo*                     pSubpassEndInfo) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+      cmdBuf := CommandBuffers[commandBuffer]
+      recordEndRenderpass(cmdBuf)
+
+      subpassEndInfo := createSubpassEndInfo(pSubpassEndInfo)
+      args := new!vkCmdEndRenderPassXArgs(
+        SubpassEndInfo: subpassEndInfo,
+        Version: RenderPass2,
+      )
+
+      mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdEndRenderPass2))
+      cmdBuf.BufferCommands.vkCmdEndRenderPass2[mapPos] = args
+
+      AddCommand(commandBuffer, cmd_vkCmdEndRenderPass2, mapPos)
   }
 }
 
@@ -514,7 +937,7 @@ sub void loadImageAttachment(u32 attachmentID) {
     attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
     desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
-      switch desc.loadOp {
+      switch desc.LoadOp {
         case VK_ATTACHMENT_LOAD_OP_LOAD: {
           readCoherentMemoryInImage(attachment.Image)
           readImageView(attachment)
@@ -536,10 +959,10 @@ sub void storeImageAttachment(u32 attachmentID) {
     attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
     desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
-      if desc.initialLayout != desc.finalLayout {
-        transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
+      if desc.InitialLayout != desc.FinalLayout {
+        transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, desc.FinalLayout)
       }
-      switch desc.storeOp {
+      switch desc.StoreOp {
         case VK_ATTACHMENT_STORE_OP_STORE: {
           writeImageView(attachment)
           updateImageViewQueue(attachment)
@@ -558,12 +981,4 @@ sub void useRenderPass() {
   _ = lastDrawInfo().InRenderPass
   ldi := lastDrawInfo()
   ldi.InRenderPass = true
-}
-
-// ----------------------------------------------------------------------------
-// Vulkan 1.1 Core
-// ----------------------------------------------------------------------------
-
-@internal class InputAttachmentAspectInfo{
-  @unused dense_map!(u32, VkInputAttachmentAspectReference) AspectReferences
 }

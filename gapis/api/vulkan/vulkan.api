@@ -73,6 +73,7 @@ import "extensions/ext_debug_report.api"
 import "extensions/ext_debug_utils.api"
 import "extensions/ext_pipeline_creation_feedback.api"
 import "extensions/amd_buffer_marker.api"
+import "extensions/khr_create_renderpass2.api"
 import "extensions/khr_dedicated_allocation.api"
 import "extensions/khr_display.api"
 import "extensions/khr_display_swapchain.api"
@@ -257,6 +258,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_shader_draw_parameters"] = true
   supported.ExtensionNames["VK_KHR_relaxed_block_layout"] = true
   supported.ExtensionNames["VK_KHR_16bit_storage"] = true
+  supported.ExtensionNames["VK_KHR_create_renderpass2"] = true
   supported.ExtensionNames["VK_KHR_maintenance1"] = true
   supported.ExtensionNames["VK_KHR_maintenance2"] = true
   supported.ExtensionNames["VK_KHR_maintenance3"] = true
