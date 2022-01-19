@@ -128,6 +128,7 @@ public class ShaderView extends Composite
     private final SourceViewer spirvViewer;
     private final SourceViewer sourceViewer;
     private final Optional<Button> pushButton;
+    private TabItem spirvTab;
     private TabItem sourceTab;
     private Service.Resource shaderResource = null;
     private API.Shader shaderMessage = null;
@@ -176,7 +177,7 @@ public class ShaderView extends Composite
           spirvViewer.doOperation(ITextOperationTarget.REDO);
         }
       });
-      createStandardTabItem(tabFolder, "SPIR-V", spirvViewer.getControl());
+      spirvTab = createStandardTabItem(tabFolder, "SPIR-V", spirvViewer.getControl());
 
       sourceContainer = createComposite(
           tabFolder, withMargin(new GridLayout(1, false), 0, 0), SWT.NONE);
@@ -305,6 +306,7 @@ public class ShaderView extends Composite
           sourceTab.setText(shaderMessage.getSourceLanguage());
         }
       } else if (sourceTab != null) {
+        tabFolder.setSelection(spirvTab);
         sourceTab.dispose();
         sourceTab = null;
       }
