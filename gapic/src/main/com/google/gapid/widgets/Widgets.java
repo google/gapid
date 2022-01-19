@@ -771,7 +771,15 @@ public class Widgets {
         case SWT.ARROW_RIGHT:
           ITreeSelection selection = viewer.getStructuredSelection();
           if (selection.size() == 1) {
-            viewer.setExpandedState(selection.getFirstElement(), e.keyCode == SWT.ARROW_RIGHT);
+            Object element = selection.getFirstElement();
+            boolean expand = e.keyCode == SWT.ARROW_RIGHT;
+            if (expand != viewer.getExpandedState(element)) {
+              TreeItem selectedItem = viewer.getTree().getSelection()[0];
+              viewer.setExpandedState(selection.getFirstElement(), expand);
+              viewer.getTree().notifyListeners(expand ? SWT.Expand : SWT.Collapse, new Event() {{
+                this.item = selectedItem;
+              }});
+            }
           }
           break;
       }
@@ -782,7 +790,12 @@ public class Widgets {
         IStructuredSelection selection = (IStructuredSelection)event.getSelection();
         if (selection.size() == 1) {
           Object element = selection.getFirstElement();
-          viewer.setExpandedState(element, !viewer.getExpandedState(element));
+          boolean expand = !viewer.getExpandedState(element);
+          TreeItem selectedItem = viewer.getTree().getSelection()[0];
+          viewer.setExpandedState(element, expand);
+          viewer.getTree().notifyListeners(expand ? SWT.Expand : SWT.Collapse, new Event() {{
+            this.item = selectedItem;
+          }});
         }
       }
     });
