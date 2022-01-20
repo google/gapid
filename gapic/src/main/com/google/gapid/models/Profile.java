@@ -40,6 +40,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
+import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.util.Ranges;
 
 import org.eclipse.swt.widgets.Shell;
@@ -154,16 +155,21 @@ public class Profile
       }
 
       @Override
-      protected void onUiThread(CommandStream.Node node) {
-        if (node == null) {
-          // A fallback.
-          LOG.log(WARNING, "Profile: failed to find the CommandStream.Node for command index: %s", group.getLink());
-          commands.selectCommands(CommandIndex.forCommand(lastCommand(group.getLink())), false);
-        } else {
-          commands.selectCommands(node.getIndex(), false);
-        }
+      protected void onUiThread(CommandStream.Node result) {
+        selectNode(group, result);
       }
     });
+  }
+
+  protected void selectNode(Service.ProfilingData.Group group, CommandStream.Node node) {
+    if (node == null) {
+      // A fallback.
+      LOG.log(WARNING, "Profile: failed to find the CommandStream.Node for command index: %s",
+          ProtoDebugTextFormat.shortDebugString(group.getLink()));
+      commands.selectCommands(CommandIndex.forCommand(lastCommand(group.getLink())), false);
+    } else {
+      commands.selectCommands(node.getIndex(), false);
+    }
   }
 
   public ProfileExperiments getExperiments() {
@@ -254,10 +260,6 @@ public class Profile
       return profile.getGpuCounters();
     }
 
-    public List<PerfNode> getPerfNodes() {
-      return rootNode.children;
-    }
-
     // TODO: this function makes some assumptions about command/sub command IDs. For more details
     // see gapis/trace/android/profile/groups.go.
     public PerfNode getPerfNode(Service.CommandTreeNode treeNode) {
@@ -295,38 +297,6 @@ public class Profile
     }
   }
 
-  public static class Duration {
-    public static final Duration NONE = new Duration(0, 0, TimeSpan.ZERO) {
-      @Override
-      public String formatGpuTime() {
-        return "";
-      }
-
-      @Override
-      public String formatWallTime() {
-        return "";
-      }
-    };
-
-    public final long gpuTime;
-    public final long wallTime;
-    public final TimeSpan timeSpan;
-
-    public Duration(long gpuTime, long wallTime, TimeSpan timeSpan) {
-      this.gpuTime = gpuTime;
-      this.wallTime = wallTime;
-      this.timeSpan = timeSpan;
-    }
-
-    public String formatGpuTime() {
-      return String.format("%.3fms", gpuTime / 1e6);
-    }
-
-    public String formatWallTime() {
-      return String.format("%.3fms", wallTime / 1e6);
-    }
-  }
-
   public static class PerfNode {
     private final Service.ProfilingData.GpuCounters.Entry entry;
     private final Service.ProfilingData.Group group;
@@ -339,24 +309,12 @@ public class Profile
       this.children = Lists.newArrayList();
     }
 
-    public Service.ProfilingData.GpuCounters.Entry getEntry() {
-      return entry;
-    }
-
     public Service.ProfilingData.Group getGroup() {
       return group;
     }
 
     public Map<Integer, Service.ProfilingData.GpuCounters.Perf> getPerfs() {
       return entry.getMetricToValueMap();
-    }
-
-    public boolean hasChildren() {
-      return children.size() > 0;
-    }
-
-    public List<PerfNode> getChildren() {
-      return children;
     }
 
     protected void addChild(PerfNode node) {
