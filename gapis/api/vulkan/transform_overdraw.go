@@ -484,26 +484,14 @@ func (overdrawTransform *stencilOverdraw) createRenderPass(ctx context.Context,
 		return res
 	}
 
-	newAttachments := []VkAttachmentDescription{}
-	for _, k := range rpInfo.AttachmentDescriptions().Keys() {
-		ad := rpInfo.AttachmentDescriptions().Get(k)
-		newAttachments = append(newAttachments, NewVkAttachmentDescription(
-			ad.Flags(),
-			ad.Fmt(),
-			ad.Samples(),
-			ad.LoadOp(),
-			ad.StoreOp(),
-			ad.StencilLoadOp(),
-			ad.StencilStoreOp(),
-			ad.InitialLayout(),
-			ad.FinalLayout(),
-		))
-	}
-	newAttachments = append(newAttachments, stencilAttachment)
-	newAttachmentsPtr := allocAndRead(newAttachments).Ptr()
+	attachments := rpInfo.AttachmentDescriptions().All()
+	newAttachments := rpInfo.AttachmentDescriptions().Clone(api.CloneContext{})
+	newAttachments.Add(uint32(newAttachments.Len()), stencilAttachment)
+	newAttachmentsData, newAttachmentsLen :=
+		unpackDenseMapWithAllocator(allocAndRead, newAttachments)
 
 	stencilAttachmentReference := NewVkAttachmentReference(
-		uint32(len(newAttachments)-1),
+		uint32(len(attachments)),
 		stencilAttachment.InitialLayout(),
 	)
 	stencilAttachmentReferencePtr := allocAndRead(stencilAttachmentReference).Ptr()
@@ -521,10 +509,10 @@ func (overdrawTransform *stencilOverdraw) createRenderPass(ctx context.Context,
 
 	renderPassCreateInfo := NewVkRenderPassCreateInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
-		0,                           // pNext
-		0,                           // flags
-		uint32(len(newAttachments)), // attachmentCount
-		NewVkAttachmentDescriptionᶜᵖ(newAttachmentsPtr),         // pAttachments
+		0,                 // pNext
+		0,                 // flags
+		newAttachmentsLen, // attachmentCount
+		NewVkAttachmentDescriptionᶜᵖ(newAttachmentsData.Ptr()), // pAttachments
 		uint32(len(subpasses)),                                  // subpassCount
 		NewVkSubpassDescriptionᶜᵖ(subpassesData.Ptr()),          // pSubpasses
 		subpassDependenciesLen,                                  // dependencyCount
@@ -1624,7 +1612,7 @@ func (overdrawTransform *stencilOverdraw) createCommandBuffer(ctx context.Contex
 		args := GetCommandArgs(ctx, cr, GetState(inputState))
 		if uint64(i) >= rpStartIdx && !rpEnded {
 			switch ar := args.(type) {
-			case VkCmdBeginRenderPassXArgsʳ:
+			case VkCmdBeginRenderPassArgsʳ:
 				// Transition the stencil image to the right layout
 				if err := overdrawTransform.transitionStencilImage(ctx, inputState, newCmdBuffer, renderInfo); err != nil {
 					return VkCommandBuffer(0), err
@@ -1636,8 +1624,8 @@ func (overdrawTransform *stencilOverdraw) createCommandBuffer(ctx context.Contex
 				}
 
 				newArgs := ar.Clone(api.CloneContext{})
-				newArgs.RenderPassBeginInfo().SetRenderPass(renderInfo.renderPass)
-				newArgs.RenderPassBeginInfo().SetFramebuffer(renderInfo.framebuffer)
+				newArgs.SetRenderPass(renderInfo.renderPass)
+				newArgs.SetFramebuffer(renderInfo.framebuffer)
 
 				rpInfo := GetState(inputState).RenderPasses().Get(renderInfo.renderPass)
 				attachmentIdx := uint32(rpInfo.AttachmentDescriptions().Len()) - 1
@@ -1646,7 +1634,7 @@ func (overdrawTransform *stencilOverdraw) createCommandBuffer(ctx context.Contex
 				if renderInfo.depthIdx != ^uint32(0) &&
 					rpInfo.AttachmentDescriptions().Get(renderInfo.depthIdx).LoadOp() ==
 						VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR {
-					newClear.Set(0, newArgs.RenderPassBeginInfo().
+					newClear.Set(0, newArgs.
 						ClearValues().
 						Get(renderInfo.depthIdx).
 						Color().
@@ -1654,8 +1642,8 @@ func (overdrawTransform *stencilOverdraw) createCommandBuffer(ctx context.Contex
 						Get(0))
 				}
 				for j := uint32(0); j < attachmentIdx; j++ {
-					if !newArgs.RenderPassBeginInfo().ClearValues().Contains(j) {
-						newArgs.RenderPassBeginInfo().ClearValues().Add(j, NilVkClearValue)
+					if !newArgs.ClearValues().Contains(j) {
+						newArgs.ClearValues().Add(j, NilVkClearValue)
 					}
 				}
 				// 0 initialize the stencil buffer
@@ -1663,10 +1651,10 @@ func (overdrawTransform *stencilOverdraw) createCommandBuffer(ctx context.Contex
 				// VkClearDepthValue because it doesn't
 				// seem like the union is set up in the
 				// API DSL
-				newArgs.RenderPassBeginInfo().ClearValues().Add(attachmentIdx, NewVkClearValue(
+				newArgs.ClearValues().Add(attachmentIdx, NewVkClearValue(
 					NewVkClearColorValue(newClear)))
 				args = newArgs
-			case VkCmdEndRenderPassXArgsʳ:
+			case VkCmdEndRenderPassArgsʳ:
 				rpEnded = true
 			case VkCmdBindPipelineArgsʳ:
 				newArgs := ar
@@ -1716,7 +1704,7 @@ func (overdrawTransform *stencilOverdraw) createCommandBuffer(ctx context.Contex
 
 		cleanup()
 
-		if _, ok := args.(VkCmdEndRenderPassXArgsʳ); ok {
+		if _, ok := args.(VkCmdEndRenderPassArgsʳ); ok {
 			// Add commands to handle storing the new depth values if necessary
 			if err := overdrawTransform.storeNewDepthValues(ctx, inputState,
 				device, queue, newCmdBuffer, renderInfo); err != nil {
@@ -1736,7 +1724,7 @@ func (overdrawTransform *stencilOverdraw) createCommandBuffer(ctx context.Contex
 func (overdrawTransform *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 	inputState *api.GlobalState,
 	queueSubmitCmd *VkQueueSubmit,
-	rpBeginArgs VkCmdBeginRenderPassXArgsʳ,
+	rpBeginArgs VkCmdBeginRenderPassArgsʳ,
 	rpBeginIdx api.SubCmdIdx) (stencilImage, error) {
 
 	// Need to deep clone all of the submit info so we can mark it as
@@ -1751,7 +1739,7 @@ func (overdrawTransform *stencilOverdraw) rewriteQueueSubmit(ctx context.Context
 	}
 
 	renderInfo, err := overdrawTransform.createNewRenderPassFramebuffer(
-		ctx, inputState, rpBeginArgs.RenderPassBeginInfo().RenderPass(), rpBeginArgs.RenderPassBeginInfo().Framebuffer())
+		ctx, inputState, rpBeginArgs.RenderPass(), rpBeginArgs.Framebuffer())
 	if err != nil {
 		return stencilImage{}, err
 	}
@@ -3000,32 +2988,20 @@ func getDepthAttachment(rpInfo RenderPassObjectʳ) (VkAttachmentDescription, uin
 			fmt.Errorf("Invalid depth attachment")
 	}
 
-	newAttachment := NewVkAttachmentDescription(
-		attachmentDesc.Flags(),
-		attachmentDesc.Fmt(),
-		attachmentDesc.Samples(),
-		attachmentDesc.LoadOp(),
-		attachmentDesc.StoreOp(),
-		attachmentDesc.StencilLoadOp(),
-		attachmentDesc.StencilStoreOp(),
-		attachmentDesc.InitialLayout(),
-		attachmentDesc.FinalLayout(),
-	)
-
-	return newAttachment, attachment0.Attachment(), nil
+	return attachmentDesc, attachment0.Attachment(), nil
 }
 
 func getLastRenderPass(ctx context.Context,
 	inputState *api.GlobalState,
 	submit *VkQueueSubmit,
 	lastIdx api.SubCmdIdx,
-) (VkCmdBeginRenderPassXArgsʳ, api.SubCmdIdx, error) {
-	lastRenderPassArgs := NilVkCmdBeginRenderPassXArgsʳ
+) (VkCmdBeginRenderPassArgsʳ, api.SubCmdIdx, error) {
+	lastRenderPassArgs := NilVkCmdBeginRenderPassArgsʳ
 	var lastRenderPassIdx api.SubCmdIdx
 	submit.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 	submitInfos, err := submit.PSubmits().Slice(0, uint64(submit.SubmitCount()), inputState.MemoryLayout).Read(ctx, submit, inputState, nil)
 	if err != nil {
-		return NilVkCmdBeginRenderPassXArgsʳ, nil, err
+		return NilVkCmdBeginRenderPassArgsʳ, nil, err
 	}
 	for i, si := range submitInfos {
 		if len(lastIdx) >= 1 && lastIdx[0] < uint64(i) {
@@ -3033,7 +3009,7 @@ func getLastRenderPass(ctx context.Context,
 		}
 		cmdBuffers, err := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), inputState.MemoryLayout).Read(ctx, submit, inputState, nil)
 		if err != nil {
-			return NilVkCmdBeginRenderPassXArgsʳ, nil, err
+			return NilVkCmdBeginRenderPassArgsʳ, nil, err
 		}
 		for j, buf := range cmdBuffers {
 			if len(lastIdx) >= 2 && lastIdx[0] == uint64(i) && lastIdx[1] < uint64(j) {
@@ -3052,9 +3028,10 @@ func getLastRenderPass(ctx context.Context,
 					break
 				}
 				cr := commandBuffers.CommandReferences().Get(uint32(k))
-				args := GetCommandArgs(ctx, cr, GetState(inputState))
-				if beginRenderPassArgs, ok := args.(VkCmdBeginRenderPassXArgsʳ); ok {
-					lastRenderPassArgs = beginRenderPassArgs
+				if cr.Type() == CommandType_cmd_vkCmdBeginRenderPass {
+					lastRenderPassArgs = commandBuffers.BufferCommands().
+						VkCmdBeginRenderPass().
+						Get(cr.MapIndex())
 					lastRenderPassIdx = api.SubCmdIdx{
 						uint64(i), uint64(j), uint64(k)}
 				}

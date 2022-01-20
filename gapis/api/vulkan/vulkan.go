@@ -501,8 +501,8 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					}
 					mergeExperimentalCmds(append(idx, uint64(i)))
 				}
-			case VkCmdBeginRenderPassXArgsʳ:
-				rp := st.RenderPasses().Get(args.RenderPassBeginInfo().RenderPass())
+			case VkCmdBeginRenderPassArgsʳ:
+				rp := st.RenderPasses().Get(args.RenderPass())
 				name := fmt.Sprintf("RenderPass: %v", rp.VulkanHandle())
 				if label := rp.Label(ctx, s); len(label) > 0 {
 					name = label
@@ -516,13 +516,13 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 					nextSubpass++
 				}
 				break
-			case VkCmdEndRenderPassXArgsʳ:
+			case VkCmdEndRenderPassArgsʳ:
 				if nextSubpass > 0 { // Pop one more time since there were one extra marker pushed.
 					popMarker(renderPassMarker, uint64(i))
 				}
 				popMarker(renderPassMarker, uint64(i))
 				break
-			case VkCmdNextSubpassXArgsʳ:
+			case VkCmdNextSubpassArgsʳ:
 				popMarker(renderPassMarker, uint64(i-1))
 				name := fmt.Sprintf("Subpass: %v", nextSubpass)
 				pushMarker(name, renderPassMarker, i, append(api.SubCmdIdx{}, idx...))
@@ -541,15 +541,15 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				// Markdown RenderPasses' and SubPasses' command index, for helping
 				// connect a command and its correlated GPU slices.
 				switch args := GetCommandArgs(ctx, cb.CommandReferences().Get(uint32(i)), st).(type) {
-				case VkCmdBeginRenderPassXArgsʳ:
+				case VkCmdBeginRenderPassArgsʳ:
 					renderPassKey = sync.RenderPassKey{
 						Submission:    order,
 						CommandBuffer: cb.VulkanHandle().Handle(),
-						RenderPass:    args.RenderPassBeginInfo().RenderPass().Handle(),
-						Framebuffer:   args.RenderPassBeginInfo().Framebuffer().Handle(),
+						RenderPass:    args.RenderPass().Handle(),
+						Framebuffer:   args.Framebuffer().Handle(),
 					}
 					renderPassStart = append(api.SubCmdIdx{}, nv...)
-				case VkCmdNextSubpassXArgsʳ:
+				case VkCmdEndRenderPassArgsʳ:
 					d.RenderPassLookup.AddRenderPass(ctx, renderPassKey, sync.SubCmdRange{renderPassStart, nv})
 				}
 			}

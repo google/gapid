@@ -87,3 +87,13 @@ class PhysicalDeviceMultiviewProperties {
     u32                 MaxMultiviewViewCount
     u32                 MaxMultiviewInstanceIndex
 }
+
+@internal
+class RenderPassMultiviewCreateInfo {
+    u32   SubpassCount
+    u32[] PViewMasks
+    u32   DependencyCount
+    s32[] PViewOffsets
+    u32   CorrelationMaskCount
+    u32[] PCorrelationMasks
+}

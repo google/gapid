@@ -236,18 +236,9 @@ func (vtTransform *vulkanTerminator) cutCommandBuffer(ctx context.Context, id ap
 		numSubpasses := uint32(lrp.SubpassDescriptions().Len())
 		for i := 0; uint32(i) < numSubpasses-lsp-1; i++ {
 			extraCommands = append(extraCommands,
-				NewVkCmdNextSubpassXArgsʳ(
-					NewSubpassBeginInfoʳ(
-						VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
-					),
-					NewSubpassEndInfoʳ(),
-					lrp.Version(),
-				))
+				NewVkCmdNextSubpassArgsʳ(VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE))
 		}
-		extraCommands = append(extraCommands, NewVkCmdEndRenderPassXArgsʳ(
-			NewSubpassEndInfoʳ(),
-			lrp.Version(),
-		))
+		extraCommands = append(extraCommands, NewVkCmdEndRenderPassArgsʳ())
 	}
 	cmdBuffer := stateObject.CommandBuffers().Get(newCommandBuffers[lastCommandBuffer])
 	subIdx := make(api.SubCmdIdx, 0)
@@ -320,14 +311,14 @@ func resolveCurrentRenderPass2(ctx context.Context, s *api.GlobalState, submit *
 	l := s.MemoryLayout
 
 	walkCommandsCallback := func(o CommandReferenceʳ) {
-		args := GetCommandArgs(ctx, o, GetState(s))
-		switch ar := args.(type) {
-		case VkCmdBeginRenderPassXArgsʳ:
-			lrp = c.RenderPasses().Get(ar.RenderPassBeginInfo().RenderPass())
+		switch o.Type() {
+		case CommandType_cmd_vkCmdBeginRenderPass:
+			t := c.CommandBuffers().Get(o.Buffer()).BufferCommands().VkCmdBeginRenderPass().Get(o.MapIndex())
+			lrp = c.RenderPasses().Get(t.RenderPass())
 			subpass = 0
-		case VkCmdNextSubpassXArgsʳ:
+		case CommandType_cmd_vkCmdNextSubpass:
 			subpass++
-		case VkCmdEndRenderPassXArgsʳ:
+		case CommandType_cmd_vkCmdEndRenderPass:
 			lrp = NilRenderPassObjectʳ
 			subpass = 0
 		}

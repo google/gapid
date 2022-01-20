@@ -926,8 +926,8 @@ class VkAttachmentDescription {
 }
 
 class VkAttachmentReference {
-  u32           attachment
-  VkImageLayout layout
+  u32           Attachment // We have capitalized these so we can manipulate
+  VkImageLayout Layout     // them in Go
 }
 
 class VkSubpassDescription {

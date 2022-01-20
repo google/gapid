@@ -227,7 +227,7 @@ func storeOp2LoadStoreOp(storeOp VkAttachmentStoreOp) api.LoadStoreOp {
 	panic("Unknown storeOp")
 }
 
-func newFramegraphAttachment(desc AttachmentDescription, state *State, imgView ImageViewObjectʳ, isDepthStencil bool) *api.FramegraphAttachment {
+func newFramegraphAttachment(desc VkAttachmentDescription, state *State, imgView ImageViewObjectʳ, isDepthStencil bool) *api.FramegraphAttachment {
 	var loadOp VkAttachmentLoadOp
 	var storeOp VkAttachmentStoreOp
 	if isDepthStencil {
@@ -514,14 +514,13 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 	switch args := cmdArgs.(type) {
 
 	// Beginning of renderpass
-	case VkCmdBeginRenderPassXArgsʳ:
+	case VkCmdBeginRenderPassArgsʳ:
 		if helpers.wlInfo != nil {
 			panic("Renderpass starts within another workload")
 		}
 
-		renderPassBeginInfo := args.RenderPassBeginInfo()
-		framebuffer := vkState.Framebuffers().Get(renderPassBeginInfo.Framebuffer())
-		renderpassObj := vkState.RenderPasses().Get(renderPassBeginInfo.RenderPass())
+		framebuffer := vkState.Framebuffers().Get(args.Framebuffer())
+		renderpassObj := vkState.RenderPasses().Get(args.RenderPass())
 		subpassesDesc := renderpassObj.SubpassDescriptions()
 		subpasses := make([]*api.FramegraphSubpass, subpassesDesc.Len())
 		for i := 0; i < len(subpasses); i++ {
@@ -652,7 +651,7 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 	switch cmdArgs.(type) {
 
 	// End of renderpass
-	case VkCmdEndRenderPassXArgsʳ:
+	case VkCmdEndRenderPassArgsʳ:
 		if helpers.wlInfo == nil || helpers.wlInfo.renderpass == nil {
 			panic("Renderpass ends without having started")
 		}

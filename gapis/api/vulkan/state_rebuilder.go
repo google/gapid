@@ -2383,405 +2383,59 @@ func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
 }
 
 func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
-	switch rp.Version() {
-	case RenderPassVersion_RenderPass:
-		sb.createRenderPassOld(rp)
-	case RenderPassVersion_RenderPass2:
-	case RenderPassVersion_RenderPass2KHR:
-		sb.createRenderPass2(rp)
-	}
-}
-
-func (sb *stateBuilder) createRenderPass2(rp RenderPassObjectʳ) {
-	newAttachmentDescriptions := NewVkAttachmentDescription2ᶜᵖ(memory.Nullptr)
-	if rp.AttachmentDescriptions().Len() > 0 {
-		attachmentDescriptions := []VkAttachmentDescription2{}
-		for _, k := range rp.AttachmentDescriptions().Keys() {
-			ad := rp.AttachmentDescriptions().Get(k)
-			attachmentDescriptions = append(attachmentDescriptions, NewVkAttachmentDescription2(
-				VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-				NewVoidᶜᵖ(memory.Nullptr),
-				ad.Flags(),
-				ad.Fmt(),
-				ad.Samples(),
-				ad.LoadOp(),
-				ad.StoreOp(),
-				ad.StencilLoadOp(),
-				ad.StencilStoreOp(),
-				ad.InitialLayout(),
-				ad.FinalLayout(),
-			))
-		}
-
-		newAttachmentDescriptions = NewVkAttachmentDescription2ᶜᵖ(
-			sb.MustAllocReadData(attachmentDescriptions).Ptr(),
-		)
-	}
-
-	subpassDescriptions := []VkSubpassDescription2{}
-	for _, k := range rp.SubpassDescriptions().Keys() {
-		sd := rp.SubpassDescriptions().Get(k)
-
-		depthStencil := NewVkAttachmentReference2ᶜᵖ(memory.Nullptr)
-		if !sd.DepthStencilAttachment().IsNil() {
-			attachment := sd.DepthStencilAttachment().Get()
-			depthStencil = NewVkAttachmentReference2ᶜᵖ(sb.MustAllocReadData(
-				NewVkAttachmentReference2(
-					VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-					NewVoidᶜᵖ(memory.Nullptr),
-					attachment.Attachment(),
-					attachment.Layout(),
-					attachment.AspectMask(),
-				),
-			).Ptr())
-		}
-
-		colorAttachments := NewVkAttachmentReference2ᶜᵖ(memory.Nullptr)
-		if sd.ColorAttachments().Len() > 0 {
-			newAttachments := []VkAttachmentReference2{}
-			for _, a := range sd.ColorAttachments().Keys() {
-				attachment := sd.ColorAttachments().Get(a)
-				newAttachments = append(newAttachments,
-					NewVkAttachmentReference2(
-						VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-						NewVoidᶜᵖ(memory.Nullptr),
-						attachment.Attachment(),
-						attachment.Layout(),
-						attachment.AspectMask(),
-					),
-				)
-			}
-			colorAttachments = NewVkAttachmentReference2ᶜᵖ(
-				sb.MustAllocReadData(newAttachments).Ptr(),
-			)
-		}
-
-		resolveAttachments := NewVkAttachmentReference2ᶜᵖ(memory.Nullptr)
-		if sd.ResolveAttachments().Len() > 0 {
-			newAttachments := []VkAttachmentReference2{}
-			for _, a := range sd.ResolveAttachments().Keys() {
-				attachment := sd.ResolveAttachments().Get(a)
-				newAttachments = append(newAttachments,
-					NewVkAttachmentReference2(
-						VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-						NewVoidᶜᵖ(memory.Nullptr),
-						attachment.Attachment(),
-						attachment.Layout(),
-						attachment.AspectMask(),
-					),
-				)
-			}
-			resolveAttachments = NewVkAttachmentReference2ᶜᵖ(
-				sb.MustAllocReadData(newAttachments).Ptr(),
-			)
-		}
-
-		inputAttachments := NewVkAttachmentReference2ᶜᵖ(memory.Nullptr)
-		if sd.InputAttachments().Len() > 0 {
-			newAttachments := []VkAttachmentReference2{}
-			for _, a := range sd.InputAttachments().Keys() {
-				attachment := sd.InputAttachments().Get(a)
-				newAttachments = append(newAttachments,
-					NewVkAttachmentReference2(
-						VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-						NewVoidᶜᵖ(memory.Nullptr),
-						attachment.Attachment(),
-						attachment.Layout(),
-						attachment.AspectMask(),
-					),
-				)
-			}
-
-			inputAttachments = NewVkAttachmentReference2ᶜᵖ(
-				sb.MustAllocReadData(newAttachments).Ptr(),
-			)
-		}
-
-		subpassDescriptions = append(subpassDescriptions, NewVkSubpassDescription2(
-			VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
-			NewVoidᶜᵖ(memory.Nullptr),
-			sd.Flags(),                             // flags
-			sd.PipelineBindPoint(),                 // pipelineBindPoint
-			sd.ViewMask(),                          // viewMask
-			uint32(sd.InputAttachments().Len()),    // inputAttachmentCount
-			inputAttachments,                       // pInputAttachments
-			uint32(sd.ColorAttachments().Len()),    // colorAttachmentCount
-			colorAttachments,                       // pColorAttachments
-			resolveAttachments,                     // pResolveAttachments
-			depthStencil,                           // pDepthStencilAttachment
-			uint32(sd.PreserveAttachments().Len()), // preserveAttachmentCount
-			NewU32ᶜᵖ(sb.MustUnpackReadDenseMap(sd.PreserveAttachments().All()).Ptr()), // pPreserveAttachments
-		))
-	}
-
-	newSubpassDescriptions := NewVkSubpassDescription2ᶜᵖ(
-		sb.MustAllocReadData(subpassDescriptions).Ptr(),
-	)
-
-	subpassDependencies := []VkSubpassDependency2{}
-	for _, k := range rp.SubpassDependencies().Keys() {
-		sd := rp.SubpassDependencies().Get(k)
-		subpassDependencies = append(subpassDependencies, NewVkSubpassDependency2(
-			VkStructureType_VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
-			NewVoidᶜᵖ(memory.Nullptr),
-			sd.SrcSubpass(),
-			sd.DstSubpass(),
-			sd.SrcStageMask(),
-			sd.DstStageMask(),
-			sd.SrcAccessMask(),
-			sd.DstAccessMask(),
-			sd.DependencyFlags(),
-			sd.ViewOffset(),
-		))
-	}
-
-	newSubpassDependencies := NewVkSubpassDependency2ᶜᵖ(memory.Nullptr)
-	if len(subpassDependencies) > 0 {
-		newSubpassDependencies = NewVkSubpassDependency2ᶜᵖ(
-			sb.MustAllocReadData(subpassDependencies).Ptr(),
-		)
-	}
-
-	newCorrelatedViewMasks := NewU32ᶜᵖ(memory.Nullptr)
-	if rp.CorrelatedViewMasks().Len() > 0 {
-		newCorrelatedViewMasks = NewU32ᶜᵖ(sb.MustUnpackReadDenseMap(rp.CorrelatedViewMasks().All()).Ptr())
-	}
-
-	pNext := NewVoidᶜᵖ(memory.Nullptr)
-	// We do not support any extension for this functionality yet
-
-	newCreateRenderPassCmd := api.Cmd(nil)
-
-	switch rp.Version() {
-	case RenderPassVersion_RenderPass2:
-		newCreateRenderPassCmd = sb.cb.VkCreateRenderPass2(
-			rp.Device(),
-			sb.MustAllocReadData(NewVkRenderPassCreateInfo2(
-				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2, // sType
-				pNext, // pNext
-				0,     // flags
-				uint32(rp.AttachmentDescriptions().Len()), // attachmentCount
-				newAttachmentDescriptions,                 // pAttachments
-				uint32(rp.SubpassDescriptions().Len()),    // subpassCount
-				newSubpassDescriptions,                    // pSubpasses
-				uint32(rp.SubpassDependencies().Len()),    // dependencyCount
-				newSubpassDependencies,                    // pDependencies
-				uint32(rp.CorrelatedViewMasks().Len()),    // correlatedViewMaskCount
-				newCorrelatedViewMasks,                    // pCorrelatedViewMasks
-			)).Ptr(),
-			memory.Nullptr,
-			sb.MustAllocWriteData(rp.VulkanHandle()).Ptr(),
-			VkResult_VK_SUCCESS,
-		)
-	case RenderPassVersion_RenderPass2KHR:
-		newCreateRenderPassCmd = sb.cb.VkCreateRenderPass2KHR(
-			rp.Device(),
-			sb.MustAllocReadData(NewVkRenderPassCreateInfo2(
-				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2, // sType
-				pNext, // pNext
-				0,     // flags
-				uint32(rp.AttachmentDescriptions().Len()),                                 // attachmentCount
-				newAttachmentDescriptions,                                                 // pAttachments
-				uint32(rp.SubpassDescriptions().Len()),                                    // subpassCount
-				newSubpassDescriptions,                                                    // pSubpasses
-				uint32(rp.SubpassDependencies().Len()),                                    // dependencyCount
-				newSubpassDependencies,                                                    // pDependencies
-				uint32(rp.CorrelatedViewMasks().Len()),                                    // correlatedViewMaskCount
-				NewU32ᶜᵖ(sb.MustUnpackReadDenseMap(rp.CorrelatedViewMasks().All()).Ptr()), // pCorrelatedViewMasks
-			)).Ptr(),
-			memory.Nullptr,
-			sb.MustAllocWriteData(rp.VulkanHandle()).Ptr(),
-			VkResult_VK_SUCCESS,
-		)
-	default:
-		panic("Renderpass version must be Renderpass2 or Renderpass2KHR")
-	}
-
-	sb.write(newCreateRenderPassCmd)
-	sb.addDebugInfo(rp.Device(), rp.VulkanHandle(), VkObjectType_VK_OBJECT_TYPE_RENDER_PASS, rp.DebugInfo())
-}
-
-func (sb *stateBuilder) createRenderPassOld(rp RenderPassObjectʳ) {
-	newAttachmentDescriptions := NewVkAttachmentDescriptionᶜᵖ(memory.Nullptr)
-	if rp.AttachmentDescriptions().Len() > 0 {
-		attachmentDescriptions := []VkAttachmentDescription{}
-		for _, k := range rp.AttachmentDescriptions().Keys() {
-			ad := rp.AttachmentDescriptions().Get(k)
-			attachmentDescriptions = append(attachmentDescriptions, NewVkAttachmentDescription(
-				ad.Flags(),
-				ad.Fmt(),
-				ad.Samples(),
-				ad.LoadOp(),
-				ad.StoreOp(),
-				ad.StencilLoadOp(),
-				ad.StencilStoreOp(),
-				ad.InitialLayout(),
-				ad.FinalLayout(),
-			))
-		}
-
-		newAttachmentDescriptions = NewVkAttachmentDescriptionᶜᵖ(
-			sb.MustAllocReadData(attachmentDescriptions).Ptr(),
-		)
-	}
-
-	// VkRenderPassInputAttachmentAspectCreateInfo
-	aspectReferences := []VkInputAttachmentAspectReference{}
-
-	// VK_KHR_multiview info
-	isMultiviewEnabled := false
-	viewMasks := []uint32{}
-	viewOffsets := []int32{}
-
 	subpassDescriptions := []VkSubpassDescription{}
 	for _, k := range rp.SubpassDescriptions().Keys() {
 		sd := rp.SubpassDescriptions().Get(k)
-
 		depthStencil := NewVkAttachmentReferenceᶜᵖ(memory.Nullptr)
 		if !sd.DepthStencilAttachment().IsNil() {
-			attachment := sd.DepthStencilAttachment().Get()
-			depthStencil = NewVkAttachmentReferenceᶜᵖ(sb.MustAllocReadData(
-				NewVkAttachmentReference(
-					attachment.Attachment(),
-					attachment.Layout(),
-				),
-			).Ptr())
+			depthStencil = NewVkAttachmentReferenceᶜᵖ(sb.MustAllocReadData(sd.DepthStencilAttachment().Get()).Ptr())
 		}
-
-		colorAttachments := NewVkAttachmentReferenceᶜᵖ(memory.Nullptr)
-		if sd.ColorAttachments().Len() > 0 {
-			newAttachments := []VkAttachmentReference{}
-			for _, a := range sd.ColorAttachments().Keys() {
-				attachment := sd.ColorAttachments().Get(a)
-				newAttachments = append(newAttachments,
-					NewVkAttachmentReference(
-						attachment.Attachment(),
-						attachment.Layout(),
-					),
-				)
-			}
-			colorAttachments = NewVkAttachmentReferenceᶜᵖ(
-				sb.MustAllocReadData(newAttachments).Ptr())
-		}
-
 		resolveAttachments := NewVkAttachmentReferenceᶜᵖ(memory.Nullptr)
 		if sd.ResolveAttachments().Len() > 0 {
-			newAttachments := []VkAttachmentReference{}
-			for _, a := range sd.ResolveAttachments().Keys() {
-				attachment := sd.ResolveAttachments().Get(a)
-				newAttachments = append(newAttachments,
-					NewVkAttachmentReference(
-						attachment.Attachment(),
-						attachment.Layout(),
-					),
-				)
-			}
-			resolveAttachments = NewVkAttachmentReferenceᶜᵖ(
-				sb.MustAllocReadData(newAttachments).Ptr())
-		}
-
-		inputAttachments := NewVkAttachmentReferenceᶜᵖ(memory.Nullptr)
-		if sd.InputAttachments().Len() > 0 {
-			newAttachments := []VkAttachmentReference{}
-			for _, a := range sd.InputAttachments().Keys() {
-				attachment := sd.InputAttachments().Get(a)
-				newAttachments = append(newAttachments,
-					NewVkAttachmentReference(
-						attachment.Attachment(),
-						attachment.Layout(),
-					),
-				)
-
-				// Gather info for VkRenderPassInputAttachmentAspectCreateInfo
-				if attachment.AspectMask() != VkImageAspectFlags(0) {
-					aspectReferences = append(aspectReferences,
-						NewVkInputAttachmentAspectReference(
-							k,                       // subpass
-							a,                       // inputAttachmentIndex
-							attachment.AspectMask(), // aspectMask
-						),
-					)
-				}
-			}
-
-			inputAttachments = NewVkAttachmentReferenceᶜᵖ(
-				sb.MustAllocReadData(newAttachments).Ptr())
+			resolveAttachments = NewVkAttachmentReferenceᶜᵖ(sb.MustUnpackReadDenseMap(sd.ResolveAttachments().All()).Ptr())
 		}
 
 		subpassDescriptions = append(subpassDescriptions, NewVkSubpassDescription(
-			sd.Flags(),                             // flags
-			sd.PipelineBindPoint(),                 // pipelineBindPoint
-			uint32(sd.InputAttachments().Len()),    // inputAttachmentCount
-			inputAttachments,                       // pInputAttachments
-			uint32(sd.ColorAttachments().Len()),    // colorAttachmentCount
-			colorAttachments,                       // pColorAttachments
+			sd.Flags(),                          // flags
+			sd.PipelineBindPoint(),              // pipelineBindPoint
+			uint32(sd.InputAttachments().Len()), // inputAttachmentCount
+			NewVkAttachmentReferenceᶜᵖ(sb.MustUnpackReadDenseMap(sd.InputAttachments().All()).Ptr()), // pInputAttachments
+			uint32(sd.ColorAttachments().Len()), // colorAttachmentCount
+			NewVkAttachmentReferenceᶜᵖ(sb.MustUnpackReadDenseMap(sd.ColorAttachments().All()).Ptr()), // pColorAttachments
 			resolveAttachments,                     // pResolveAttachments
 			depthStencil,                           // pDepthStencilAttachment
 			uint32(sd.PreserveAttachments().Len()), // preserveAttachmentCount
 			NewU32ᶜᵖ(sb.MustUnpackReadDenseMap(sd.PreserveAttachments().All()).Ptr()), // pPreserveAttachments
 		))
-
-		// Gather info for VK_KHR_multiview
-		if sd.ViewMask() != 0 {
-			isMultiviewEnabled = true
-		}
-
-		viewMasks = append(viewMasks, sd.ViewMask())
-	}
-
-	newSubpassDescriptions := NewVkSubpassDescriptionᶜᵖ(
-		sb.MustAllocReadData(subpassDescriptions).Ptr(),
-	)
-
-	subpassDependencies := []VkSubpassDependency{}
-	for _, k := range rp.SubpassDependencies().Keys() {
-		sd := rp.SubpassDependencies().Get(k)
-		subpassDependencies = append(subpassDependencies, NewVkSubpassDependency(
-			sd.SrcSubpass(),
-			sd.DstSubpass(),
-			sd.SrcStageMask(),
-			sd.DstStageMask(),
-			sd.SrcAccessMask(),
-			sd.DstAccessMask(),
-			sd.DependencyFlags(),
-		))
-
-		// Gather info for VK_KHR_multiview
-		viewOffsets = append(viewOffsets, sd.ViewOffset())
-	}
-
-	newSubpassDependencies := NewVkSubpassDependencyᶜᵖ(memory.Nullptr)
-	if len(subpassDependencies) > 0 {
-		newSubpassDependencies = NewVkSubpassDependencyᶜᵖ(
-			sb.MustAllocReadData(subpassDependencies).Ptr(),
-		)
 	}
 
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
-	if len(aspectReferences) > 0 {
+	if !rp.InputAttachmentAspectInfo().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			NewVkRenderPassInputAttachmentAspectCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR, // sType
-				pNext,                         // pNext
-				uint32(len(aspectReferences)), // aspectReferenceCount
+				pNext, // pNext
+				uint32(rp.InputAttachmentAspectInfo().AspectReferences().Len()), // aspectReferenceCount
 				NewVkInputAttachmentAspectReferenceᶜᵖ(
-					sb.MustAllocReadData(aspectReferences).Ptr(),
-				), // pAspectReferences
+					sb.MustUnpackReadDenseMap(
+						rp.InputAttachmentAspectInfo().AspectReferences().All(),
+					).Ptr(),
+				), // pAsepctReferences
 			),
 		).Ptr())
 	}
 
-	if isMultiviewEnabled {
+	if !rp.MultiviewInfo().IsNil() {
 		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
 			NewVkRenderPassMultiviewCreateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO, // sType
 				pNext, // pNext
-				uint32(len(viewMasks)),
-				NewU32ᶜᵖ(sb.MustAllocReadData(viewMasks).Ptr()),
-				uint32(len(viewOffsets)),
-				NewS32ᶜᵖ(sb.MustAllocReadData(viewOffsets).Ptr()),
-				uint32(rp.CorrelatedViewMasks().Len()),
-				NewU32ᶜᵖ(sb.MustUnpackReadDenseMap(rp.CorrelatedViewMasks().All()).Ptr()),
+				uint32(rp.MultiviewInfo().PViewMasks().Count()),
+				NewU32ᶜᵖ(sb.mustReadSlice(rp.MultiviewInfo().PViewMasks()).Ptr()),
+				uint32(rp.MultiviewInfo().PViewOffsets().Count()),
+				NewS32ᶜᵖ(sb.mustReadSlice(rp.MultiviewInfo().PViewOffsets()).Ptr()),
+				uint32(rp.MultiviewInfo().PCorrelationMasks().Count()),
+				NewU32ᶜᵖ(sb.mustReadSlice(rp.MultiviewInfo().PCorrelationMasks()).Ptr()),
 			),
 		).Ptr())
 	}
@@ -2792,12 +2446,12 @@ func (sb *stateBuilder) createRenderPassOld(rp RenderPassObjectʳ) {
 			VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
 			pNext, // pNext
 			0,     // flags
-			uint32(rp.AttachmentDescriptions().Len()), // attachmentCount
-			newAttachmentDescriptions,                 // pAttachments
-			uint32(rp.SubpassDescriptions().Len()),    // subpassCount
-			newSubpassDescriptions,                    // pSubpasses
-			uint32(rp.SubpassDependencies().Len()),    // dependencyCount
-			newSubpassDependencies,                    // pDependencies
+			uint32(rp.AttachmentDescriptions().Len()),                                                        // attachmentCount
+			NewVkAttachmentDescriptionᶜᵖ(sb.MustUnpackReadDenseMap(rp.AttachmentDescriptions().All()).Ptr()), // pAttachments
+			uint32(len(subpassDescriptions)),                                                                 // subpassCount
+			NewVkSubpassDescriptionᶜᵖ(sb.MustAllocReadData(subpassDescriptions).Ptr()),                       // pSubpasses
+			uint32(rp.SubpassDependencies().Len()),                                                           // dependencyCount
+			NewVkSubpassDependencyᶜᵖ(sb.MustUnpackReadDenseMap(rp.SubpassDependencies().All()).Ptr()),        // pDependencies
 		)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(rp.VulkanHandle()).Ptr(),
