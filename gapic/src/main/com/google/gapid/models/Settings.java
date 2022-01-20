@@ -59,15 +59,15 @@ public class Settings {
 
   private static final String SETTINGS_FILE = ".agic";
   private static final int MAX_RECENT_FILES = 16;
-  private static final int CURRENT_VERSION = 3;
+  private static final int CURRENT_VERSION = 4;
 
   // Only set values for fields where the proto zero/false/empty default doesn't make sense.
   private static SettingsProto.Settings DEFAULT_SETTINGS = SettingsProto.Settings.newBuilder()
       .setVersion(CURRENT_VERSION)
       .setTabs(SettingsProto.Tabs.newBuilder()
-          .setStructure("g2;f1;g3;f1;f1;f2") // See GraphicsTraceView.MainTab.getFolders().
-          .addAllWeights(Arrays.asList(1, 1, 4, 1, 3, 1))
-          .addAllTabs(Arrays.asList("Filmstrip", "ApiCalls", "Framebuffer", "ApiState", "Memory"))
+          .setStructure("g2;f1;f1;") // See GraphicsTraceView.MainTab.getFolders().
+          .addAllWeights(Arrays.asList(-1, 1, 4))
+          .addAllTabs(Arrays.asList("Profile", "ApiCalls"))
           .addAllHidden(Arrays.asList("Log")))
       .setUi(SettingsProto.UI.newBuilder()
           .setPerfetto(SettingsProto.UI.Perfetto.newBuilder()
@@ -147,6 +147,10 @@ public class Settings {
           proto.getTraceBuilder().setType("ANGLE");
         }
         proto.getTraceBuilder().clearApi();
+        //$FALL-THROUGH$
+      case 3:
+        // Version 4 resets the default layout after the mergin of the Performance and Command tabs.
+        proto.setTabs(DEFAULT_SETTINGS.getTabs());
     }
     return proto.setVersion(CURRENT_VERSION);
   }
