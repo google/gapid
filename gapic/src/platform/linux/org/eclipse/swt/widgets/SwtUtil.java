@@ -15,11 +15,23 @@
  */
 package org.eclipse.swt.widgets;
 
+import org.eclipse.swt.SWT;
+
 public class SwtUtil {
   private SwtUtil() {
   }
 
   public static void disableAutoHideScrollbars(@SuppressWarnings("unused") Scrollable widget) {
     // Do nothing.
+  }
+
+  public static void syncTreeAndTableScroll(Tree tree, Table table) {
+    ScrollBar bar1 = tree.getVerticalBar();
+    ScrollBar bar2 = table.getVerticalBar();
+    bar1.addListener(SWT.Selection, event -> bar2.setSelection(bar1.getSelection()));
+    bar2.addListener(SWT.Selection, event -> bar1.setSelection(bar2.getSelection()));
+    bar1.setVisible(false);
+    tree.getHorizontalBar().setVisible(true);
+    table.getHorizontalBar().setVisible(true);
   }
 }

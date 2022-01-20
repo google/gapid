@@ -388,7 +388,8 @@ public class Settings {
   public static enum SplitterWeights {
     Report(new int[] { 75, 25 }),
     Shaders(new int[] { 20, 80 }),
-    Textures(new int[] { 30, 70 });
+    Textures(new int[] { 30, 70 }),
+    Commands(new int[] { 20, 80 });
 
     private final int[] dflt;
 

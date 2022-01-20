@@ -432,6 +432,19 @@ public class CommandStream
       return parent.getPath(path).addIndices(index);
     }
 
+    public TreePath getTreePath() {
+      List<Node> nodes = getTreePath(Lists.newArrayList());
+      return new TreePath(nodes.toArray(Node[]::new));
+    }
+
+    private List<Node> getTreePath(List<Node> nodes) {
+      if (parent != null) {
+        parent.getTreePath(nodes);
+      }
+      nodes.add(this);
+      return nodes;
+    }
+
     public List<Long> getCommandStart() {
       return data == null ? null : data.getCommands().getFromList();
     }

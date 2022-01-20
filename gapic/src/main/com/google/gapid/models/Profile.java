@@ -21,13 +21,8 @@ import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.Paths.lastCommand;
-import static java.util.Collections.binarySearch;
 import static java.util.logging.Level.WARNING;
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.mapping;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
 
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
@@ -52,7 +47,6 @@ import org.eclipse.swt.widgets.Shell;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -60,6 +54,11 @@ public class Profile
     extends CaptureDependentModel<Profile.Data, Profile.Source, Loadable.Message, Profile.Listener> {
   private static final Logger LOG = Logger.getLogger(Profile.class.getName());
   private static final int FRAME_LOOP_COUNT = 10;
+
+  private static final int SUBMIT_LEVEL = 0;
+  private static final int SUBMIT_INFO_LEVEL = 1;
+  private static final int COMMAND_BUFFER_LEVEL = 2;
+  private static final int COMMAND_LEVEL = 3;
 
   private final Capture capture;
   private final CommandStream commands;
@@ -211,60 +210,27 @@ public class Profile
 
   public static class Data extends DeviceDependentModel.Data {
     public final Service.ProfilingData profile;
-    private final Map<Integer, List<TimeSpan>> spansByGroup;
-    private final List<Service.ProfilingData.Group> groups;
-    private final List<PerfNode> perfNodes;
+    private final PerfNode rootNode;
 
     public Data(Path.Device device, Service.ProfilingData profile) {
       super(device);
       this.profile = profile;
-      this.spansByGroup = aggregateSliceTimeByGroup(profile);
-      this.groups = getSortedGroups(profile, spansByGroup.keySet());
-      this.perfNodes = createPerfNodes(profile);
+      this.rootNode = createPerfNodes(profile);
     }
 
-    private static Map<Integer, List<TimeSpan>>
-        aggregateSliceTimeByGroup(Service.ProfilingData profile) {
-      Set<Integer> groups = profile.getGroupsList().stream()
-          .map(Service.ProfilingData.Group::getId)
-          .collect(toSet());
-      return profile.getSlices().getSlicesList().stream()
-          .filter(s -> (s.getDepth() == 0) && groups.contains(s.getGroupId()))
-          .collect(groupingBy(Service.ProfilingData.GpuSlices.Slice::getGroupId,
-              mapping(s -> new TimeSpan(s.getTs(), s.getTs() + s.getDur()), toList())));
-    }
-
-    private static List<Service.ProfilingData.Group> getSortedGroups(
-        Service.ProfilingData profile, Set<Integer> ids) {
-      return profile.getGroupsList().stream()
-          .filter(g -> ids.contains(g.getId()))
-          .sorted((g1, g2) -> Ranges.compare(g1.getLink(), g2.getLink()))
-          .collect(toList());
-    }
-
-    private static List<PerfNode> createPerfNodes(Service.ProfilingData profile) {
-      Map<Integer, Service.ProfilingData.Group> groups =
-          profile.getGroupsList().stream()
-              .collect(toMap(Service.ProfilingData.Group::getId, identity()));
+    private static PerfNode createPerfNodes(Service.ProfilingData profile) {
+      Map<Integer, Service.ProfilingData.GpuCounters.Entry> entries =
+          profile.getGpuCounters().getEntriesList().stream()
+              .collect(toMap(Service.ProfilingData.GpuCounters.Entry::getGroupId, identity()));
       Map<Integer, PerfNode> nodes = Maps.newHashMap(); // groupId -> node.
-      // Create the nodes.
-      for (Service.ProfilingData.GpuCounters.Entry entry : profile.getGpuCounters().getEntriesList()) {
-        nodes.put(entry.getGroupId(), new PerfNode(entry, groups.get(entry.getGroupId())));
+      nodes.put(0, new PerfNode(null, null));
+      // Groups in the proto are sorted and parents come before children.
+      for (Service.ProfilingData.Group group : profile.getGroupsList()) {
+        PerfNode node = new PerfNode(entries.get(group.getId()), group);
+        nodes.put(group.getId(), node);
+        nodes.get(group.getParentId()).addChild(node);
       }
-      // Link the nodes.
-      for (PerfNode node : nodes.values()) {
-        if (node.getGroup().getParentId() > 0) {
-          nodes.get(node.getGroup().getParentId()).children.add(node);
-        }
-      }
-      // Return the root nodes.
-      List<PerfNode> rootNodes = Lists.newArrayList();
-      for (PerfNode node : nodes.values()) {
-        if (node.getGroup().getParentId() <= 0) {
-          rootNodes.add(node);
-        }
-      }
-      return rootNodes;
+      return nodes.get(0);
     }
 
     public List<Service.ProfilingData.Group> getGroups() {
@@ -289,7 +255,30 @@ public class Profile
     }
 
     public List<PerfNode> getPerfNodes() {
-      return perfNodes;
+      return rootNode.children;
+    }
+
+    // TODO: this function makes some assumptions about command/sub command IDs. For more details
+    // see gapis/trace/android/profile/groups.go.
+    public PerfNode getPerfNode(Service.CommandTreeNode treeNode) {
+      Path.Commands commands = treeNode.getCommands();
+      if (commands.getFromCount() == SUBMIT_INFO_LEVEL + 1) {
+        // We don't have perf data for submit infos, bail out early.
+        return null;
+      }
+      PerfNode submit = rootNode.findNode(commands, SUBMIT_LEVEL);
+      if (submit == null || commands.getFromCount() == SUBMIT_LEVEL + 1) {
+        return submit;
+      }
+      PerfNode cmdBuf = submit.findNode(commands, COMMAND_BUFFER_LEVEL);
+      if (cmdBuf == null || commands.getFromCount() == COMMAND_BUFFER_LEVEL + 1) {
+        return cmdBuf;
+      }
+      PerfNode rp = cmdBuf.findNodeContaining(commands);
+      if (rp == null || Ranges.compare(rp.getGroup().getLink(), commands) == 0) {
+        return rp;
+      }
+      return rp.findNodeContaining(commands);
     }
 
     public TimeSpan getSlicesTimeSpan() {
@@ -303,49 +292,6 @@ public class Profile
         end = Math.max(slice.getTs() + slice.getDur(), end);
       }
       return new TimeSpan(start, end);
-    }
-
-    public Duration getDuration(Path.Commands range) {
-      List<TimeSpan> spans = getSpans(range);
-      if (spans.size() == 0) {
-        return Duration.NONE;
-      }
-      long start = Long.MAX_VALUE, end = Long.MIN_VALUE;
-      long gpuTime = 0, wallTime = 0;
-      TimeSpan last = TimeSpan.ZERO;
-      for (TimeSpan span : spans) {
-        start = Math.min(start, span.start);
-        end = Math.max(end, span.end);
-        long duration = span.getDuration();
-        gpuTime += duration;
-        if (span.start < last.end) {
-          if (span.end <= last.end) {
-            continue; // completely contained within the other, can ignore it.
-          }
-          duration -= last.end - span.start;
-        }
-        wallTime += duration;
-        last = span;
-      }
-
-      TimeSpan ts = start < end ? new TimeSpan(start, end) : TimeSpan.ZERO;
-      return new Duration(gpuTime, wallTime, ts);
-    }
-
-    private List<TimeSpan> getSpans(Path.Commands range) {
-      List<TimeSpan> spans = Lists.newArrayList();
-      int idx = binarySearch(groups, null, (g, $) -> Ranges.compareStart(range, g.getLink()));
-      if (idx < 0) {
-        return spans;
-      }
-      for (int i = idx; i >= 0 && Ranges.containsStart(range, groups.get(i).getLink()); i--) {
-        spans.addAll(spansByGroup.get(groups.get(i).getId()));
-      }
-      for (int i = idx + 1; i < groups.size() && Ranges.containsStart(range, groups.get(i).getLink()); i++) {
-        spans.addAll(spansByGroup.get(groups.get(i).getId()));
-      }
-      Collections.sort(spans, (s1, s2) -> Long.compare(s1.start, s2.start));
-      return spans;
     }
   }
 
@@ -384,7 +330,7 @@ public class Profile
   public static class PerfNode {
     private final Service.ProfilingData.GpuCounters.Entry entry;
     private final Service.ProfilingData.Group group;
-    private final List<PerfNode> children;
+    protected final List<PerfNode> children;
 
     public PerfNode(
         Service.ProfilingData.GpuCounters.Entry entry, Service.ProfilingData.Group group) {
@@ -411,6 +357,51 @@ public class Profile
 
     public List<PerfNode> getChildren() {
       return children;
+    }
+
+    protected void addChild(PerfNode node) {
+      children.add(node);
+    }
+
+    // Finds this node's child that matches the given command path up to the given level.
+    protected PerfNode findNode(Path.Commands commands, int level) {
+      int idx = Collections.binarySearch(children, null, (node, $) -> {
+        Path.Commands current = node.group.getLink();
+        int result = 0;
+        for (int i = 0; result == 0 && i <= level; i++) {
+          result = Long.compare(current.getFrom(i), commands.getFrom(i));
+          if (result == 0) {
+            result = Long.compare(current.getTo(i), commands.getTo(i));
+          }
+        }
+        return result;
+      });
+      return idx < 0 ? null : children.get(idx);
+    }
+
+    // Finds this node's child which fully contains the given command path.
+    protected PerfNode findNodeContaining(Path.Commands commands) {
+      int idx = Collections.binarySearch(children, null, (node, $) -> {
+        Path.Commands current = node.group.getLink();
+        int result = 0;
+        for (int i = 0; result == 0 && i <= COMMAND_BUFFER_LEVEL; i++) {
+          result = Long.compare(current.getFrom(i), commands.getFrom(i));
+          if (result == 0) {
+            result = Long.compare(current.getTo(i), commands.getTo(i));
+          }
+        }
+        if (result == 0) {
+          result = Long.compare(current.getFrom(COMMAND_LEVEL), commands.getTo(COMMAND_LEVEL));
+          if (result <= 0) {
+            result = Long.compare(current.getTo(COMMAND_LEVEL), commands.getTo(COMMAND_LEVEL));
+            if (result >= 0) {
+              result = 0;
+            }
+          }
+        }
+        return result;
+      });
+      return idx < 0 ? null : children.get(idx);
     }
   }
 
