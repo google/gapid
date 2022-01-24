@@ -27,7 +27,7 @@
 #define WINDOWS_ONLY(x)
 #define ANDROID_ONLY(x)
 
-#if defined(TARGET_OS_LINUX)
+#if defined(GAPID_TARGET_OS_LINUX)
 #define TARGET_OS GAPID_OS_LINUX
 #define STDCALL
 #define EXPORT __attribute__((visibility("default")))
@@ -37,7 +37,7 @@
 #define LINUX_ONLY(x) x
 #endif
 
-#if defined(TARGET_OS_OSX)
+#if defined(GAPID_TARGET_OS_OSX)
 #define TARGET_OS GAPID_OS_OSX
 #define STDCALL
 #define EXPORT __attribute__((visibility("default")))
@@ -47,12 +47,12 @@
 #define OSX_ONLY(x) x
 #include <stdint.h>
 using size_val = uint64_t;
-#else  // defined(TARGET_OS_OSX)
+#else  // defined(GAPID_TARGET_OS_OSX)
 #include <stddef.h>
 using size_val = size_t;
 #endif
 
-#if defined(TARGET_OS_ANDROID)
+#if defined(GAPID_TARGET_OS_ANDROID)
 #define TARGET_OS GAPID_OS_ANDROID
 #define STDCALL
 #define EXPORT __attribute__((visibility("default")))
@@ -62,7 +62,7 @@ using size_val = size_t;
 #define ANDROID_ONLY(x) x
 #endif
 
-#if defined(TARGET_OS_WINDOWS)
+#if defined(GAPID_TARGET_OS_WINDOWS)
 #define TARGET_OS GAPID_OS_WINDOWS
 #define STDCALL __stdcall
 #define EXPORT __declspec(dllexport)
@@ -76,7 +76,7 @@ using size_val = size_t;
 #error "OS not defined correctly."
 #error \
     "Exactly one of the following macro have to be defined:" \
-           "TARGET_OS_LINUX, TARGET_OS_OSX, TARGET_OS_WINDOWS, TARGET_OS_ANDROID"
+           "GAPID_TARGET_OS_LINUX, GAPID_TARGET_OS_OSX, GAPID_TARGET_OS_WINDOWS, GAPID_TARGET_OS_ANDROID"
 #endif
 
 #ifdef _MSC_VER  // MSVC

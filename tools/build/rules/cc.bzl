@@ -20,15 +20,15 @@ _ANDROID_COPTS = [
     "-ffunction-sections",
     "-fvisibility-inlines-hidden",
     "-DANDROID",
-    "-DTARGET_OS_ANDROID",
+    "-DGAPID_TARGET_OS_ANDROID",
 ]
 
 # This should probably all be done by fixing the toolchains...
 def cc_copts():
     return ["-Werror"] + select({
-        "@gapid//tools/build:linux": ["-DTARGET_OS_LINUX"],
-        "@gapid//tools/build:darwin": ["-DTARGET_OS_OSX"],
-        "@gapid//tools/build:windows": ["-DTARGET_OS_WINDOWS"],
+        "@gapid//tools/build:linux": ["-DGAPID_TARGET_OS_LINUX"],
+        "@gapid//tools/build:darwin": ["-DGAPID_TARGET_OS_OSX"],
+        "@gapid//tools/build:windows": ["-DGAPID_TARGET_OS_WINDOWS"],
         "@gapid//tools/build:android-armeabi-v7a": _ANDROID_COPTS,
         "@gapid//tools/build:android-arm64-v8a": _ANDROID_COPTS,
         "@gapid//tools/build:android-x86": _ANDROID_COPTS,

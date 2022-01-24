@@ -36,12 +36,12 @@
 
 #include "core/cc/target.h"
 
-#if defined(TARGET_OS_WINDOWS)
+#if TARGET_OS == GAPID_OS_WINDOWS
 // On Windows, Vulkan commands use the stdcall convention
 #define VKAPI_ATTR
 #define VKAPI_CALL __stdcall
 #define VKAPI_PTR VKAPI_CALL
-#elif defined(TARGET_OS_ANDROID) && defined(__ARM_ARCH_7A__)
+#elif TARGET_OS == GAPID_OS_ANDROID && defined(__ARM_ARCH_7A__)
 // On Android/ARMv7a, Vulkan functions use the armeabi-v7a-hard calling
 // convention, even if the application's native code is compiled with the
 // armeabi-v7a calling convention.
