@@ -482,10 +482,9 @@ func (API) ProfileStaticAnalysis(ctx context.Context, p *path.Capture) (*api.Sta
 			}
 			byteCount += vertexCount * indexSize
 		}
-		data.addSample(sampler, byteCountType, float64(byteCount))
-
 		// Compute bytes/primitive
 		data.addSample(sampler, primitiveSizeType, float64(byteCount)/float64(primitiveCount))
+		data.addSample(sampler, byteCountType, float64(byteCount))
 	}
 
 	if err := sync.MutateWithSubcommands(ctx, p, nil, nil, nil, postSubCmdCb); err != nil {
