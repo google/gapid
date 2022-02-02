@@ -45,30 +45,35 @@ var (
 			Name:        "Vertex Count",
 			Description: "The number of input vertices processed.",
 			Unit:        "25", // VERTEX
+			Type:        api.CounterType_Summed,
 		},
 		primitiveCountType: {
 			ID:          uint32(primitiveCountType),
 			Name:        "Primitive Count",
 			Description: "The number of primitives assembled.",
 			Unit:        "38", // PRIMITIVE
+			Type:        api.CounterType_Summed,
 		},
 		vertexSizeType: {
 			ID:          uint32(vertexSizeType),
 			Name:        "Vertex Size",
 			Description: "The combined size of all input bindings, per vertex.",
 			Unit:        "7/25", // BYTE / VERTEX
+			Type:        api.CounterType_Ranged,
 		},
 		byteCountType: {
 			ID:          uint32(byteCountType),
 			Name:        "Byte Count",
 			Description: "The total bytes read from index and vertex buffers.",
 			Unit:        "7", // BYTE
+			Type:        api.CounterType_Summed,
 		},
 		primitiveSizeType: {
 			ID:          uint32(primitiveSizeType),
 			Name:        "Primitive Size",
 			Description: "The bytes read from index and vertex buffers, per primitive.",
 			Unit:        "7/38", // BYTE / PRIMITIVE
+			Type:        api.CounterType_Ranged,
 		},
 	}
 )

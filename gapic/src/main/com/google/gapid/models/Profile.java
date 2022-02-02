@@ -30,7 +30,9 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.Unit;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.ProfilingData.GpuCounters.Perf;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -40,6 +42,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.MoreFutures;
+import com.google.gapid.util.Paths;
 import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.util.Ranges;
 
@@ -276,11 +279,26 @@ public class Profile
       if (cmdBuf == null || commands.getFromCount() == COMMAND_BUFFER_LEVEL + 1) {
         return cmdBuf;
       }
-      PerfNode rp = cmdBuf.findNodeContaining(commands);
-      if (rp == null || Ranges.compare(rp.getGroup().getLink(), commands) == 0) {
-        return rp;
+      PerfNode renderpass = cmdBuf.findNodeContaining(commands);
+      if (renderpass == null || Ranges.compare(renderpass.getGroup().getLink(), commands) == 0) {
+        return renderpass;
       }
-      return rp.findNodeContaining(commands);
+      PerfNode drawCall = renderpass.findNodeContaining(commands);
+      if (drawCall != null) {
+        return drawCall;
+      }
+
+      // A node with possibly multiple draw call child nodes was selected in the tree. This happens,
+      // for example, if debug markers are used. If a single draw call is found, just use it,
+      // otherwise return a synthetic node wrapping all draw calls in the range.
+      List<PerfNode> drawCalls = renderpass.findAllNodesContaining(commands);
+      if (drawCalls.isEmpty()) {
+        return null;
+      } else if (drawCalls.size() == 1) {
+        return drawCalls.get(0);
+      } else {
+        return new PerfNode(drawCalls);
+      }
     }
 
     public TimeSpan getSlicesTimeSpan() {
@@ -301,6 +319,7 @@ public class Profile
     private final Service.ProfilingData.GpuCounters.Entry entry;
     private final Service.ProfilingData.Group group;
     protected final List<PerfNode> children;
+    private final Map<Integer, Value> computedPerfValues = Maps.newHashMap();
 
     public PerfNode(
         Service.ProfilingData.GpuCounters.Entry entry, Service.ProfilingData.Group group) {
@@ -309,12 +328,49 @@ public class Profile
       this.children = Lists.newArrayList();
     }
 
+    public PerfNode(List<PerfNode> children) {
+      this.entry = Service.ProfilingData.GpuCounters.Entry.getDefaultInstance();
+      this.group = null;
+      this.children = children;
+    }
+
     public Service.ProfilingData.Group getGroup() {
       return group;
     }
 
-    public Map<Integer, Service.ProfilingData.GpuCounters.Perf> getPerfs() {
-      return entry.getMetricToValueMap();
+    public Value getPerf(Service.ProfilingData.GpuCounters.Metric metric) {
+      Service.ProfilingData.GpuCounters.Perf perf =
+          entry.getMetricToValueOrDefault(metric.getId(), null);
+      if (perf != null) {
+        return new PerfValue(perf);
+      }
+
+      // A metric was requested that requires us to aggregate its value from our children.
+      // This is currently only necessary for static analysis counters.
+      Value value = computedPerfValues.get(metric.getId());
+      if (value == null) {
+        // Compute the value and remember it.
+        switch (metric.getType()) {
+          case StaticAnalysisRanged:
+            ComputedRangeValue range = null;
+            for (PerfNode child : children) {
+              range = ComputedRangeValue.aggregate(range, child.getPerf(metric));
+            }
+            value = range;
+            break;
+          case StaticAnalysisSummed:
+            ComputedSummedValue sum = null;
+            for (PerfNode child : children) {
+              sum = ComputedSummedValue.aggregate(sum, child.getPerf(metric));
+            }
+            value = sum;
+            break;
+          default:
+            return null;
+        }
+        computedPerfValues.put(metric.getId(), value);
+      }
+      return value;
     }
 
     protected void addChild(PerfNode node) {
@@ -360,6 +416,114 @@ public class Profile
         return result;
       });
       return idx < 0 ? null : children.get(idx);
+    }
+
+    // Finds all of this node's children, whose range intersects with the given command path.
+    protected List<PerfNode> findAllNodesContaining(Path.Commands commands) {
+      // Find the first child whose range intersects with commands.
+      int start = Collections.binarySearch(children, null, (node, $) ->
+        Paths.compareCommands(node.group.getLink().getToList(), commands.getFromList(), false));
+
+      // Collect all children whose range intersects with commands.
+      List<PerfNode> result = Lists.newArrayList();
+      for (int idx = (start < 0) ? -start - 1 : start; idx < children.size(); idx++) {
+        PerfNode child = children.get(idx);
+        if (Paths.compareCommands(
+            child.group.getLink().getToList(), commands.getToList(), false) <= 0) {
+          result.add(child);
+        } else {
+          break;
+        }
+      }
+      return result;
+    }
+
+    public static interface Value {
+      public String format(Unit unit, boolean estimate);
+    }
+
+    private static class PerfValue implements Value {
+      public final Service.ProfilingData.GpuCounters.Perf perf;
+
+      public PerfValue(Perf perf) {
+        this.perf = perf;
+      }
+
+      @Override
+      public String format(Unit unit, boolean estimate) {
+        if (estimate || perf.getMin() == perf.getMax()) {
+          return unit.format(perf.getEstimate());
+        } else {
+          String minStr = perf.getMin() < 0 ? "?" : unit.format(perf.getMin());
+          String maxStr = perf.getMax() < 0 ? "?" : unit.format(perf.getMax());
+          return minStr + "~" + maxStr;
+        }
+      }
+    }
+
+    private static class ComputedRangeValue implements Value {
+      public final double min;
+      public final double max;
+
+      public ComputedRangeValue(double min, double max) {
+        this.min = min;
+        this.max = max;
+      }
+
+      @Override
+      public String format(Unit unit, boolean estimate) {
+        if (min == max) {
+          return unit.format(min);
+        }
+
+        return unit.format(min) + " - " + unit.format(max);
+      }
+
+      public static ComputedRangeValue aggregate(ComputedRangeValue a, Value b) {
+        if (a == null) {
+          if (b instanceof PerfValue) {
+            double v = ((PerfValue)b).perf.getEstimate();
+            return new ComputedRangeValue(v, v);
+          } else if (b instanceof ComputedRangeValue) {
+            return (ComputedRangeValue)b;
+          }
+        } else if (b instanceof PerfValue) {
+          double v = ((PerfValue)b).perf.getEstimate();
+          return new ComputedRangeValue(Math.min(a.min, v), Math.max(a.max, v));
+        } else if (b instanceof ComputedRangeValue) {
+          ComputedRangeValue v = (ComputedRangeValue)b;
+          return new ComputedRangeValue(Math.min(a.min, v.min), Math.max(a.max, v.max));
+        }
+        return a;
+      }
+    }
+
+    private static class ComputedSummedValue implements Value {
+      public final double value;
+
+      public ComputedSummedValue(double value) {
+        this.value = value;
+      }
+
+      @Override
+      public String format(Unit unit, boolean estimate) {
+        return unit.format(value);
+      }
+
+      public static ComputedSummedValue aggregate(ComputedSummedValue a, Value b) {
+        if (a == null) {
+          if (b instanceof PerfValue) {
+            return new ComputedSummedValue(((PerfValue)b).perf.getEstimate());
+          } else if (b instanceof ComputedSummedValue) {
+            return (ComputedSummedValue)b;
+          }
+        } else if (b instanceof PerfValue) {
+          return new ComputedSummedValue(a.value + ((PerfValue)b).perf.getEstimate());
+        } else if (b instanceof ComputedSummedValue) {
+          return new ComputedSummedValue(a.value + ((ComputedSummedValue)b).value);
+        }
+        return a;
+      }
     }
   }
 

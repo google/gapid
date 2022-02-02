@@ -114,6 +114,7 @@ func setTimeMetrics(ctx context.Context, groupToSlices map[int32][]*Slice,
 		Op:              service.ProfilingData_GpuCounters_Metric_Summation,
 		Description:     "GPU Time",
 		SelectByDefault: true,
+		Type:            service.ProfilingData_GpuCounters_Metric_Hardware,
 	}
 	*metrics = append(*metrics, gpuTimeMetric)
 	wallTimeMetric := &service.ProfilingData_GpuCounters_Metric{
@@ -123,6 +124,7 @@ func setTimeMetrics(ctx context.Context, groupToSlices map[int32][]*Slice,
 		Op:              service.ProfilingData_GpuCounters_Metric_Summation,
 		Description:     "GPU Wall Time",
 		SelectByDefault: true,
+		Type:            service.ProfilingData_GpuCounters_Metric_Hardware,
 	}
 	*metrics = append(*metrics, wallTimeMetric)
 	gpuTimeSum, wallTimeSum := float64(0), float64(0)
@@ -352,15 +354,22 @@ func (pd *ProfilingData) MergeStaticAnalysis(ctx context.Context, staticAnalysis
 			Description: counter.Description,
 			Unit:        counter.Unit,
 		})
+		var counterType service.ProfilingData_GpuCounters_Metric_Type
+		switch counter.Type {
+		case api.CounterType_Ranged:
+			counterType = service.ProfilingData_GpuCounters_Metric_StaticAnalysisRanged
+		case api.CounterType_Summed:
+			counterType = service.ProfilingData_GpuCounters_Metric_StaticAnalysisSummed
+		}
 
 		pd.GpuCounters.Metrics = append(pd.GpuCounters.Metrics, &service.ProfilingData_GpuCounters_Metric{
-			Id:             counterMetricIdOffset + int32(counterOffset+counter.ID),
-			CounterId:      counterOffset + counter.ID,
-			Name:           counter.Name,
-			Unit:           counter.Unit,
-			Op:             service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg,
-			Description:    counter.Description,
-			StaticAnalysis: true,
+			Id:          counterMetricIdOffset + int32(counterOffset+counter.ID),
+			CounterId:   counterOffset + counter.ID,
+			Name:        counter.Name,
+			Unit:        counter.Unit,
+			Op:          service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg,
+			Description: counter.Description,
+			Type:        counterType,
 		})
 	}
 

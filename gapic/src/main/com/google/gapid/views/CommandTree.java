@@ -333,16 +333,10 @@ public class CommandTree extends Composite
           continue;
         }
 
-        Service.ProfilingData.GpuCounters.Perf p = perf.getPerfs().get(metric.getId());
-        if (p != null) {
+        Profile.PerfNode.Value value = perf.getPerf(metric);
+        if (value != null) {
           Unit unit = CounterInfo.unitFromString(metric.getUnit());
-          if (showEstimate || p.getMin() == p.getMax()) {
-            item.setText(itemIdx, unit.format(p.getEstimate()));
-          } else {
-            String minStr = p.getMin() < 0 ? "?" : unit.format(p.getMin());
-            String maxStr = p.getMax() < 0 ? "?" : unit.format(p.getMax());
-            item.setText(itemIdx, minStr + "~" + maxStr);
-          }
+          item.setText(itemIdx, value.format(unit, showEstimate));
         }
 
         itemIdx++;
@@ -494,12 +488,12 @@ public class CommandTree extends Composite
     int[] order = new int[metrics.size()];
     done = 0;
     for (int i = 0; i < order.length; i++) {
-      if (metrics.get(i).getStaticAnalysis()) {
+      if (isStaticAnalysisCounter(metrics.get(i))) {
         order[done++] = i;
       }
     }
     for (int i = 0; i < order.length; i++) {
-      if (!metrics.get(i).getStaticAnalysis()) {
+      if (!isStaticAnalysisCounter(metrics.get(i))) {
         order[done++] = i;
       }
     }
@@ -517,8 +511,8 @@ public class CommandTree extends Composite
     // with the minimum data requirement that is needed and referenced in GpuCountersDialog.
     return models.profile.getData().getGpuPerformance().getMetricsList().stream()
         .sorted((m1, m2) -> {
-          if (m1.getStaticAnalysis() != m2.getStaticAnalysis()) {
-            return m1.getStaticAnalysis() ? -1 : 1;
+          if (isStaticAnalysisCounter(m1) != isStaticAnalysisCounter(m2)) {
+            return isStaticAnalysisCounter(m1) ? -1 : 1;
           }
           return Integer.compare(m1.getId(), m2.getId());
         })
@@ -526,9 +520,13 @@ public class CommandTree extends Composite
             .setName(metric.getName())
             .setDescription(metric.getDescription())
             .setCounterId(metric.getId())
-            .setSelectByDefault(metric.getSelectByDefault() || metric.getStaticAnalysis())
+            .setSelectByDefault(metric.getSelectByDefault() || isStaticAnalysisCounter(metric))
             .build())
         .collect(toList());
+  }
+
+  private static boolean isStaticAnalysisCounter(Service.ProfilingData.GpuCounters.Metric metric) {
+    return metric.getType() != Service.ProfilingData.GpuCounters.Metric.Type.Hardware;
   }
 
   protected static class Tree extends LinkifiedTreeWithImages<CommandStream.Node, String> {

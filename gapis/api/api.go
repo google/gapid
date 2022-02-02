@@ -89,12 +89,20 @@ type StaticAnalysisProfileData struct {
 	CounterData  []StaticAnalysisCounterSamples
 }
 
+type StaticAnalysisCounterType int
+
+const (
+	CounterType_Ranged StaticAnalysisCounterType = iota
+	CounterType_Summed
+)
+
 // StaticAnalysisCounter represents the metadata of a counter produced via the static analysis.
 type StaticAnalysisCounter struct {
 	ID          uint32
 	Name        string
 	Description string
 	Unit        string // this should match the unit from the Perfetto data.
+	Type        StaticAnalysisCounterType
 }
 
 // StaticAnalysisCounterSample is a single sample of a counter.
