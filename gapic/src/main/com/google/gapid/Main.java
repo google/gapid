@@ -125,7 +125,11 @@ public class Main {
 
         LOG.log(Level.WARNING, "Unhandled exception in the UI thread.", thrown);
         handler.reportException(thrown);
-        if (shouldShowUIErrorDialog(thrown)) {
+        
+        if (shouldSuppressUIErrorDialog(thrown)) {
+          LOG.log(Level.WARNING, "*** Suppressed Exception Display in UI as known bug ***");
+        }
+        else {
           showErrorDialog(null, getAnalytics(), "Unhandled exception in the UI thread.", thrown);
         }
       });
@@ -218,14 +222,23 @@ public class Main {
       return (models == null) ? null : models.analytics;
     }
 
-    private boolean shouldShowUIErrorDialog(Throwable throwable) {
-      // TODO b/178397207: Disable error dialog for a known UI issue, while waiting solution from the SWT side.
-      if (OS.isMac && throwable != null && throwable.getStackTrace().length > 0
-          && "org.eclipse.swt.widgets.Widget".equals(throwable.getStackTrace()[0].getClassName())
-          && "drawRect".equals(throwable.getStackTrace()[0].getMethodName())) {
-        return false;
+    private boolean shouldSuppressUIErrorDialog(Throwable throwable) {
+      if (OS.isMac && throwable != null) {
+
+        // TODO b/178397207: Disable error dialog for a known UI issue, while waiting for asolution from the SWT side.
+        boolean isDrawRectBug = throwable instanceof NullPointerException &&
+                                throwable.getStackTrace().length > 0 &&
+                                "org.eclipse.swt.widgets.Widget".equals(throwable.getStackTrace()[0].getClassName()) &&
+                                "drawRect".equals(throwable.getStackTrace()[0].getMethodName());
+
+        // TODO b/216617761: Disabe error dialog for a different known UI issue, while waiting for a solution from the SWT side.
+        boolean isUnknownNullExceptionBug = throwable instanceof NullPointerException &&
+                                            throwable.getStackTrace().length == 0;
+
+        return isDrawRectBug || isUnknownNullExceptionBug;
       }
-      return true;
+
+      return false;
     }
 
     private static interface ShellRunnable {
