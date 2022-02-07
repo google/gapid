@@ -265,11 +265,11 @@ sub void callCommand(ref!CommandReference reference) {
     case cmd_vkCmdPushConstants:
       dovkCmdPushConstants(CommandBuffers[reference.Buffer].BufferCommands.vkCmdPushConstants[reference.MapIndex])
     case cmd_vkCmdBeginRenderPass:
-      dovkCmdBeginRenderPass(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginRenderPass[reference.MapIndex])
+      dovkCmdBeginRenderPassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginRenderPass[reference.MapIndex])
     case cmd_vkCmdNextSubpass:
-      dovkCmdNextSubpass(CommandBuffers[reference.Buffer].BufferCommands.vkCmdNextSubpass[reference.MapIndex])
+      dovkCmdNextSubpassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdNextSubpass[reference.MapIndex])
     case cmd_vkCmdEndRenderPass:
-      dovkCmdEndRenderPass(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndRenderPass[reference.MapIndex])
+      dovkCmdEndRenderPassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndRenderPass[reference.MapIndex])
     case cmd_vkCmdExecuteCommands:
       dovkCmdExecuteCommands(CommandBuffers[reference.Buffer].BufferCommands.vkCmdExecuteCommands[reference.MapIndex])
     case cmd_vkCmdDebugMarkerBeginEXT:
@@ -302,6 +302,13 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdDispatchBase(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatchBase[reference.MapIndex])
     case cmd_vkCmdSetLineStippleEXT:
       dovkCmdSetLineStippleEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetLineStippleEXT[reference.MapIndex])
+    // Vulkan 1.2
+    case cmd_vkCmdBeginRenderPass2:
+      dovkCmdBeginRenderPassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginRenderPass2[reference.MapIndex])
+    case cmd_vkCmdEndRenderPass2:
+      dovkCmdEndRenderPassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndRenderPass2[reference.MapIndex])
+    case cmd_vkCmdNextSubpass2:
+      dovkCmdNextSubpassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdNextSubpass2[reference.MapIndex])
     // @extension("VK_EXT_transform_feedback")
     case cmd_vkCmdBindTransformFeedbackBuffersEXT:
       dovkCmdBindTransformFeedbackBuffersEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBindTransformFeedbackBuffersEXT[reference.MapIndex])
@@ -315,6 +322,13 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdEndQueryIndexedEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndQueryIndexedEXT[reference.MapIndex])
     case cmd_vkCmdDrawIndirectByteCountEXT:
       dovkCmdDrawIndirectByteCountEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndirectByteCountEXT[reference.MapIndex])
+    // @extension("VK_KHR_create_renderpass2")
+    case cmd_vkCmdBeginRenderPass2KHR:
+      dovkCmdBeginRenderPassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginRenderPass2KHR[reference.MapIndex])
+    case cmd_vkCmdEndRenderPass2KHR:
+      dovkCmdEndRenderPassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndRenderPass2KHR[reference.MapIndex])
+    case cmd_vkCmdNextSubpass2KHR:
+      dovkCmdNextSubpassX(CommandBuffers[reference.Buffer].BufferCommands.vkCmdNextSubpass2KHR[reference.MapIndex])
     default:
       vkErrorInvalidCommandBuffer(reference.Buffer)
   }

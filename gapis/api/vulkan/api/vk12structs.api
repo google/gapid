@@ -71,9 +71,85 @@ class VkSamplerReductionModeCreateInfo {
     VkStructureType           sType
     const void*               pNext
     VkSamplerReductionMode    reductionMode
-} 
+}
 
 @internal
 class SamplerReductionModeCreateInfo {
     VkSamplerReductionMode    ReductionMode
+}
+
+class VkAttachmentDescription2 {
+    VkStructureType                 sType
+    const void*                     pNext
+    VkAttachmentDescriptionFlags    flags
+    VkFormat                        format
+    VkSampleCountFlagBits           samples
+    VkAttachmentLoadOp              loadOp
+    VkAttachmentStoreOp             storeOp
+    VkAttachmentLoadOp              stencilLoadOp
+    VkAttachmentStoreOp             stencilStoreOp
+    VkImageLayout                   initialLayout
+    VkImageLayout                   finalLayout
+}
+
+class VkAttachmentReference2 {
+    VkStructureType     sType
+    const void*         pNext
+    u32                 attachment
+    VkImageLayout       layout
+    VkImageAspectFlags  aspectMask
+}
+
+class VkRenderPassCreateInfo2 {
+    VkStructureType                     sType
+    const void*                         pNext
+    VkRenderPassCreateFlags             flags
+    u32                                 attachmentCount
+    const VkAttachmentDescription2*     pAttachments
+    u32                                 subpassCount
+    const VkSubpassDescription2*        pSubpasses
+    u32                                 dependencyCount
+    const VkSubpassDependency2*         pDependencies
+    u32                                 correlatedViewMaskCount
+    const u32*                          pCorrelatedViewMasks
+}
+
+class VkSubpassBeginInfo {
+    VkStructureType     sType
+    const void*         pNext
+    VkSubpassContents   contents
+}
+
+class VkSubpassDependency2 {
+    VkStructureType         sType
+    const void*             pNext
+    u32                     srcSubpass
+    u32                     dstSubpass
+    VkPipelineStageFlags    srcStageMask
+    VkPipelineStageFlags    dstStageMask
+    VkAccessFlags           srcAccessMask
+    VkAccessFlags           dstAccessMask
+    VkDependencyFlags       dependencyFlags
+    s32                     viewOffset
+}
+
+class VkSubpassDescription2 {
+    VkStructureType                 sType
+    const void*                     pNext
+    VkSubpassDescriptionFlags       flags
+    VkPipelineBindPoint             pipelineBindPoint
+    u32                             viewMask
+    u32                             inputAttachmentCount
+    const VkAttachmentReference2*   pInputAttachments
+    u32                             colorAttachmentCount
+    const VkAttachmentReference2*   pColorAttachments
+    const VkAttachmentReference2*   pResolveAttachments
+    const VkAttachmentReference2*   pDepthStencilAttachment
+    u32                             preserveAttachmentCount
+    const u32*                      pPreserveAttachments
+}
+
+class VkSubpassEndInfo {
+    VkStructureType     sType
+    const void*         pNext
 }
