@@ -64,11 +64,11 @@ mv AGI.app/Contents/MacOS/jre/legal AGI.app/Contents/Resources/jre
 zip -r agi-$VERSION-macos.zip AGI.app
 
 # Make a dmg file.
-pip install --upgrade --user dmgbuild pyobjc-framework-Quartz
+python3 -m pip install --upgrade --user dmgbuild pyobjc-framework-Quartz
 cp "$SRC"/background*.png .
 cp "$SRC/dmg-settings.py" .
 # Path to dmgbuild must match where pip installs it
-~/Library/Python/3.7/bin/dmgbuild -s dmg-settings.py AGI agi-$VERSION-macos.dmg
+~/.local/bin/dmgbuild -s dmg-settings.py AGI agi-$VERSION-macos.dmg
 
 # Copy the symbol file to the output.
 [ -f "$BIN/cmd/gapir/cc/gapir.sym" ] && cp "$BIN/cmd/gapir/cc/gapir.sym" gapir-$VERSION-macos.sym

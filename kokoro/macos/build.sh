@@ -20,6 +20,10 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/agi/
 CURL="curl -fksLS --http1.1 --retry 3"
 
+# Android SDK Manager requires an older version of Java
+# Therefore, temporarily downgrade java
+export JAVA_HOME=`/usr/libexec/java_home -v 1.8`
+
 # Setup the Android SDK and NDK.
 $CURL -O https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
 echo "593544d4ca7ab162705d0032fb0c0c88e75bd0f42412d09a1e8daa3394681dc6  tools_r25.2.3-macosx.zip" | shasum --check
@@ -55,7 +59,7 @@ mkdir bazel
 sh bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 
 # Specify the version of XCode.
-export DEVELOPER_DIR=/Applications/Xcode_11.3.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode_13.2.1.app/Contents/Developer
 
 cd $SRC
 BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
