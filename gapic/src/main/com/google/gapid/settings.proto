@@ -92,6 +92,8 @@ message UI {
     bool show_begin_end_commands = 4;
   }
   CommandFilter command_filter = 5;
+
+  double command_splitter_ratio = 6;
 }
 
 message Trace {

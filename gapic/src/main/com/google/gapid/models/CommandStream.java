@@ -146,6 +146,8 @@ public class CommandStream
           callback.run();
         }
       });
+    } else {
+      callback.run();
     }
   }
 
@@ -293,7 +295,7 @@ public class CommandStream
         if (index >= node.getChildCount()) {
           return null;
         }
-        node = node.children[(int)index];
+        node = node.getChild((int)index);
       }
       return node;
     });
@@ -391,6 +393,10 @@ public class CommandStream
 
     public Node getParent() {
       return parent;
+    }
+
+    public int getChildIndex() {
+      return index;
     }
 
     public int getChildCount() {

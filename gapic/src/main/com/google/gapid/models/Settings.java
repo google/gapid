@@ -59,7 +59,7 @@ public class Settings {
 
   private static final String SETTINGS_FILE = ".agic";
   private static final int MAX_RECENT_FILES = 16;
-  private static final int CURRENT_VERSION = 4;
+  private static final int CURRENT_VERSION = 5;
 
   // Only set values for fields where the proto zero/false/empty default doesn't make sense.
   private static SettingsProto.Settings DEFAULT_SETTINGS = SettingsProto.Settings.newBuilder()
@@ -73,7 +73,8 @@ public class Settings {
           .setPerfetto(SettingsProto.UI.Perfetto.newBuilder()
               .setDrawerHeight(250))
           .setFramebufferPicker(SettingsProto.UI.FramebufferPicker.newBuilder()
-              .setEnabled(true)))
+              .setEnabled(true))
+          .setCommandSplitterRatio(0.2))
       .setTrace(SettingsProto.Trace.newBuilder()
           .setType("Graphics")
           .setGfxDuration(SettingsProto.Trace.Duration.newBuilder()
@@ -151,6 +152,10 @@ public class Settings {
       case 3:
         // Version 4 resets the default layout after the mergin of the Performance and Command tabs.
         proto.setTabs(DEFAULT_SETTINGS.getTabs());
+        //$FALL-THROUGH$
+      case 4:
+        // Version 5 added the command_splitter_ratio field.
+        proto.getUiBuilder().setCommandSplitterRatio(0.2);
     }
     return proto.setVersion(CURRENT_VERSION);
   }

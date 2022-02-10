@@ -16,6 +16,7 @@
 package com.google.gapid.perfetto.canvas;
 
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
 
 /**
  * Represents a width, height tuple.
@@ -41,6 +42,14 @@ public class Size {
 
   public static Size of(Point p, double scale) {
     return new Size(p.x * scale, p.y * scale);
+  }
+
+  public static Size of(Rectangle rect) {
+    return new Size(rect.width, rect.height);
+  }
+
+  public static Size of(Rectangle rect, double scale) {
+    return new Size(rect.width * scale, rect.height * scale);
   }
 
   public static Size vertCombine(double margin, double padding, Size... sizes) {

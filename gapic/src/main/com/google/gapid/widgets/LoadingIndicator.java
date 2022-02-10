@@ -18,6 +18,9 @@ package com.google.gapid.widgets;
 import static com.google.gapid.widgets.Widgets.redrawIfNotDisposed;
 
 import com.google.common.collect.Sets;
+import com.google.gapid.perfetto.canvas.Fonts;
+import com.google.gapid.perfetto.canvas.RenderContext;
+import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.util.Loadable;
 
 import org.eclipse.swt.SWT;
@@ -47,6 +50,8 @@ public class LoadingIndicator {
   private final Image[] icons;
   private final Image[] smallIcons;
   private final Image refresh;
+  private final Image smile;
+  private final Image error;
   private final Set<Repaintable> componentsToRedraw = Sets.newIdentityHashSet();
 
   public LoadingIndicator(Display display, Theme theme) {
@@ -54,6 +59,8 @@ public class LoadingIndicator {
     this.icons = theme.loadingLarge();
     this.smallIcons = theme.loadingSmall();
     this.refresh = theme.refresh();
+    this.smile = theme.smile();
+    this.error = theme.error();
   }
 
   public void paint(GC g, int x, int y, Point size, String text) {
@@ -71,8 +78,41 @@ public class LoadingIndicator {
         (Math.min(w - textWidth, h) < SIZE_THRESHOLD) ? getCurrentSmallFrame() : getCurrentFrame();
     int ix = paint(image, g, x, y, w - textWidth, h);
     if (!text.isEmpty()) {
-      g.drawText(text, ix + TEXT_MARGIN, y + (h - textHeight) / 2, SWT.DRAW_TRANSPARENT);
+      g.drawText(text, ix + TEXT_MARGIN, y + (h - textHeight) / 2,
+          SWT.DRAW_TRANSPARENT | SWT.DRAW_DELIMITER);
     }
+  }
+
+  public void paint(
+      RenderContext ctx, double x, double y, double w, double h, Loadable.Message message) {
+    double textWidth = 0, textHeight = 0;
+    if (!message.text.isEmpty()) {
+      Size textSize = ctx.measure(Fonts.Style.Normal, message.text);
+      textWidth = textSize.w + TEXT_MARGIN;
+      textHeight = textSize.h;
+    }
+    Image image = getImage(message.type, w - textWidth, h);
+    double ix;
+    if (image == null) {
+      ix = (w - textWidth) / 2;
+    } else {
+      ix = paint(image, ctx, x, y, w - textWidth, h);
+    }
+    if (!message.text.isEmpty()) {
+      ctx.drawText(Fonts.Style.Normal, message.text, ix + TEXT_MARGIN, y + (h - textHeight) / 2);
+    }
+  }
+
+  public Size measure(RenderContext.Global ctx, Loadable.Message message) {
+    Size textSize =
+        message.text.isEmpty() ? Size.ZERO : ctx.measure(Fonts.Style.Normal, message.text);
+    Image image = getImage(message.type, SIZE_THRESHOLD, SIZE_THRESHOLD);
+    if (image == null) {
+      return textSize;
+    }
+    Size imageSize = Size.of(image.getBounds());
+    return textSize.isEmpty() ? imageSize :
+        new Size(textSize.w + TEXT_MARGIN + imageSize.w, Math.max(textSize.h, imageSize.h));
   }
 
   public void paint(Image image, GC g, int x, int y, Point size) {
@@ -84,6 +124,23 @@ public class LoadingIndicator {
     g.drawImage(image, 0, 0, s.width, s.height,
         x + (w - s.width) / 2, y + (h - s.height) / 2, s.width, s.height);
     return x + (w - s.width) / 2 + s.width;
+  }
+
+  private static double paint(Image image, RenderContext ctx, double x, double y, double w, double h) {
+    Rectangle s = image.getBounds();
+    ctx.drawImage(image, x + (w - s.width) / 2, y + (h - s.height) / 2);
+    return x + (w - s.width) / 2 + s.width;
+  }
+
+  private Image getImage(Loadable.MessageType type, double w, double h) {
+    switch (type) {
+      case Loading:
+        return Math.min(w, h) < SIZE_THRESHOLD ? getCurrentSmallFrame() : getCurrentFrame();
+      case Smile: return smile;
+      case Info: return null;
+      case Error: return error;
+      default: throw new AssertionError();
+    }
   }
 
   public Image getCurrentFrame() {

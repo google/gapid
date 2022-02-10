@@ -80,30 +80,30 @@ public class ImagesModel {
   public ListenableFuture<ImageData> getThumbnail(
       Path.Command command, int size, Consumer<Image.Info> onInfo) {
     return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(command), onInfo),
-        image -> processImage(image, size));
+        image -> scaleImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.CommandTreeNode node, int size, Consumer<Image.Info> onInfo) {
     return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(node), onInfo),
-        image -> processImage(image, size));
+        image -> scaleImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.ResourceData resource, int size, Consumer<Image.Info> onInfo) {
     return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(resource), onInfo),
-        image -> processImage(image, size));
+        image -> scaleImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(CommandIndex command,
       int attachment, int size, Consumer<Image.Info> onInfo) {
     return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(command, attachment), onInfo),
-        image -> processImage(image, size));
+        image -> scaleImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(Image.Info info, int size) {
     return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), info),
-        image -> processImage(image, size));
+        image -> scaleImage(image, size));
   }
 
   public ListenableFuture<Service.MultiResourceThumbnail> getAllTextureThumbnails(CommandIndex command) {
@@ -141,7 +141,7 @@ public class ImagesModel {
     return settings.preferences().getDisableReplayOptimization();
   }
 
-  private static ImageData processImage(ImageData image, int size) {
+  public static ImageData scaleImage(ImageData image, int size) {
     size = DPIUtil.autoScaleUp(size);
     if (image.width >= image.height) {
       if (image.width > size) {

@@ -31,6 +31,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.Unit;
+import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ProfilingData.GpuCounters.Perf;
 import com.google.gapid.proto.service.path.Path;
@@ -346,7 +347,7 @@ public class Profile
       Service.ProfilingData.GpuCounters.Perf perf =
           entry.getMetricToValueOrDefault(metric.getId(), null);
       if (perf != null) {
-        return new PerfValue(perf);
+        return new PerfValue(perf, metric);
       }
 
       // A metric was requested that requires us to aggregate its value from our children.
@@ -370,11 +371,11 @@ public class Profile
             value = sum;
             break;
           default:
-            return null;
+            return Value.NULL;
         }
         computedPerfValues.put(metric.getId(), value);
       }
-      return value;
+      return (value == null) ? Value.NULL : value;
     }
 
     protected void addChild(PerfNode node) {
@@ -443,24 +444,48 @@ public class Profile
     }
 
     public static interface Value {
-      public String format(Unit unit, boolean estimate);
+      public static final Value NULL = new Value() {
+        @Override
+        public boolean hasInterval() {
+          return false;
+        }
+
+        @Override
+        public String format(boolean estimate) {
+          return "";
+        }
+      };
+
+      public boolean hasInterval();
+      public String format(boolean estimate);
     }
 
     private static class PerfValue implements Value {
       public final Service.ProfilingData.GpuCounters.Perf perf;
+      private final Service.ProfilingData.GpuCounters.Metric metric;
 
-      public PerfValue(Perf perf) {
+      public PerfValue(Perf perf, Service.ProfilingData.GpuCounters.Metric metric) {
         this.perf = perf;
+        this.metric = metric;
       }
 
       @Override
-      public String format(Unit unit, boolean estimate) {
+      public boolean hasInterval() {
+        return perf.getMin() != perf.getMax();
+      }
+
+      @Override
+      public String format(boolean estimate) {
+        if (metric.getType() != Service.ProfilingData.GpuCounters.Metric.Type.Hardware) {
+          return String.format("%,d", (long)perf.getEstimate());
+        }
+        Unit unit = CounterInfo.unitFromString(metric.getUnit());
         if (estimate || perf.getMin() == perf.getMax()) {
           return unit.format(perf.getEstimate());
         } else {
           String minStr = perf.getMin() < 0 ? "?" : unit.format(perf.getMin());
           String maxStr = perf.getMax() < 0 ? "?" : unit.format(perf.getMax());
-          return minStr + "~" + maxStr;
+          return "Min: " + minStr + "\nMax: " + maxStr;
         }
       }
     }
@@ -475,12 +500,17 @@ public class Profile
       }
 
       @Override
-      public String format(Unit unit, boolean estimate) {
+      public boolean hasInterval() {
+        return false;
+      }
+
+      @Override
+      public String format(boolean estimate) {
         if (min == max) {
-          return unit.format(min);
+          return String.format("%,d", (long)min);
         }
 
-        return unit.format(min) + " - " + unit.format(max);
+        return String.format("%,d - %,d", (long)min, (long)max);
       }
 
       public static ComputedRangeValue aggregate(ComputedRangeValue a, Value b) {
@@ -510,8 +540,13 @@ public class Profile
       }
 
       @Override
-      public String format(Unit unit, boolean estimate) {
-        return unit.format(value);
+      public boolean hasInterval() {
+        return false;
+      }
+
+      @Override
+      public String format(boolean estimate) {
+        return String.format("%,d", (long)value);
       }
 
       public static ComputedSummedValue aggregate(ComputedSummedValue a, Value b) {

@@ -30,6 +30,11 @@ public class Area {
     }
 
     @Override
+    public Area shrink(double dx, double dy) {
+      return NONE;
+    }
+
+    @Override
     public Area combine(Area o) {
       return o;
     }
@@ -73,6 +78,11 @@ public class Area {
   public static final Area FULL = new Area(-1, -1, -1, -1) {
     @Override
     public Area translate(double dx, double dy) {
+      return FULL;
+    }
+
+    @Override
+    public Area shrink(double dx, double dy) {
       return FULL;
     }
 
@@ -132,6 +142,18 @@ public class Area {
 
   public Area translate(double dx, double dy) {
     return new Area(x + dx, y + dy, w, h);
+  }
+
+  // shrinks the area by dx on the left and right side, and by dy from top and bottom.
+  public Area shrink(double dx, double dy) {
+    if (2 * dx >= w || 2 * dy >= h) {
+      return Area.NONE;
+    }
+    return new Area(x + dx, y + dy, w - 2 * dx, h - 2 * dy);
+  }
+
+  public boolean contains(double px, double py) {
+    return px >= x && px < x + w && py >= y && py < y + h;
   }
 
   public Area combine(Area o) {

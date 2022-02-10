@@ -21,7 +21,6 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.util.Experimental;
-import com.google.gapid.views.CommandTree.Tree;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.SWT;
@@ -36,9 +35,10 @@ public class CommandOptions {
   private CommandOptions() {
   }
 
-  public static void CreateCommandOptionsMenu(Control parent, Widgets widgets, Tree tree, Models models) {
+  public static void CreateCommandOptionsMenu(Control parent, Widgets widgets, Models models) {
     final Menu optionsMenu = new Menu(parent);
 
+    /* TODO(pmuetschard): re-enable the command-tree popup menu.
     MenuItem editMenuItem = Widgets.createMenuItem(optionsMenu , "&Edit", SWT.MOD1 + 'E', e -> {
       CommandStream.Node node = tree.getSelection();
       if (node != null && node.getData() != null && node.getCommand() != null) {
@@ -110,6 +110,7 @@ public class CommandOptions {
       }
       return true;
     });
+    */
   }
 
   private static List<Path.Command> getSiblings(CommandStream.Node node) {

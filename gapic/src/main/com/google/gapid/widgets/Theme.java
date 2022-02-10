@@ -26,6 +26,7 @@ import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.StyledString.Styler;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
@@ -376,7 +377,11 @@ public interface Theme {
       textStyle.underline = underline;
       textStyle.strikeout = strikeout;
       if (bold) {
-        textStyle.font = JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT);
+        if (textStyle instanceof StyleRange) {
+          ((StyleRange)textStyle).fontStyle = SWT.BOLD;
+        } else {
+          textStyle.font = JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT);
+        }
       }
     }
   }

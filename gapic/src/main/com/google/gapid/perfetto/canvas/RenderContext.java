@@ -22,11 +22,13 @@ import com.google.gapid.perfetto.canvas.Fonts.Style;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.RGBA;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.graphics.TextLayout;
 import org.eclipse.swt.graphics.Transform;
 import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.widgets.Control;
@@ -40,7 +42,7 @@ import java.util.logging.Logger;
 /**
  * Handles all the drawing operations.
  */
-public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
+public class RenderContext implements Fonts.TextMeasurer, Fonts.FontContext, AutoCloseable {
   protected static final Logger LOG = Logger.getLogger(RenderContext.class.getName());
 
   private static final int textSizeGreediness = 3; // must be >= 1.
@@ -98,6 +100,11 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
   }
 
   @Override
+  public Size measure(TextLayout layout) {
+    return fontContext.measure(layout);
+  }
+
+  @Override
   public double getAscent(Style style) {
     return fontContext.getAscent(style);
   }
@@ -105,6 +112,21 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
   @Override
   public double getDescent(Style style) {
     return fontContext.getDescent(style);
+  }
+
+  @Override
+  public int getOffset(TextLayout layout, double x, double y) {
+    return fontContext.getOffset(layout, x, y);
+  }
+
+  @Override
+  public TextLayout newTextLayout() {
+    return null;
+  }
+
+  @Override
+  public void applyStyle(TextLayout layout, StyleRange range) {
+    fontContext.applyStyle(layout, range);
   }
 
   @Override
@@ -203,7 +225,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
       lastFontStyle = style;
       fontContext.setFont(gc, style);
     }
-    gc.drawText(text, scale(x), scale(y), SWT.DRAW_TRANSPARENT);
+    gc.drawText(text, scale(x), scale(y), SWT.DRAW_TRANSPARENT | SWT.DRAW_DELIMITER);
   }
 
   // draws text centered vertically
@@ -335,8 +357,22 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     drawText(style, text, x - size.w, y + (h - size.h) / 2);
   }
 
+  public void drawText(TextLayout text, double x, double y) {
+    text.draw(gc, scale(x), scale(y));
+  }
+
   public void drawPath(Path path) {
     gc.drawPath(path.path);
+  }
+
+  public void drawPath(Path path, double lineWidthScale) {
+    int lineWidth = gc.getLineWidth();
+    try {
+      gc.setLineWidth((int)(lineWidth * lineWidthScale));
+      gc.drawPath(path.path);
+    } finally {
+      gc.setLineWidth(lineWidth);
+    }
   }
 
   public void fillPath(Path path) {
@@ -370,6 +406,11 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
   }
 
   public void withTranslation(double x, double y, Runnable run) {
+    if (x == 0 && y == 0) {
+      run.run();
+      return;
+    }
+
     Area clip = getClip().translate(-x, -y);
     Transform transform = new Transform(gc.getDevice());
     try {
@@ -399,6 +440,44 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     run.run();
     transformStack.removeLast();
     gc.setClipping(rect(old.x, old.y, old.w, old.h));
+  }
+
+  // This is the same as a sequence of withClip and withTranslation.
+  public void withClipAndTranslation(double clipX, double clipY, double clipW, double clipH,
+      double translateX, double translateY, Runnable run) {
+    Area old = getClip();
+    Area clip = old.intersect(clipX, clipY, clipW, clipH);
+    if (clip.isEmpty()) {
+      return;
+    }
+
+    Transform transform = new Transform(gc.getDevice());
+    try {
+      gc.getTransform(transform);
+      transform.translate((float)(translateX * scale), (float)(translateY * scale));
+
+      gc.setClipping(rect(clip.x, clip.y, clip.w, clip.h));
+      gc.setTransform(transform);
+      transformStack.add(new TransformAndClip(transform, clip.translate(-translateX, -translateY)));
+      run.run();
+      transformStack.removeLast();
+      gc.setTransform(transformStack.getLast().transform);
+      gc.setClipping(rect(old.x, old.y, old.w, old.h));
+    } finally {
+      transform.dispose();
+    }
+  }
+
+  // This is the same as withClip and withTranslation, where the transform puts the origin at clip.xy.
+  public void withClipAndTranslation(double x, double y, double w, double h, Runnable run) {
+    withClipAndTranslation(x, y, w, h, x, y, run);
+  }
+
+  // This is the same as withClip and withTranslation, where the transform puts the origin at clip.xy.
+  public void withClipAndTranslation(Area a, Runnable run) {
+    if (!a.isEmpty()) {
+      withClipAndTranslation(a.x, a.y, a.w, a.h, run);
+    }
   }
 
   public void trace(String label, Runnable run) {
@@ -448,7 +527,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     }
   }
 
-  public static class Global implements Fonts.TextMeasurer {
+  public static class Global implements Fonts.TextMeasurer, Fonts.FontContext {
     private final Theme theme;
     private final ColorCache colors;
     private final Fonts.Context fontContext;
@@ -473,6 +552,11 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     }
 
     @Override
+    public Size measure(TextLayout layout) {
+      return fontContext.measure(layout);
+    }
+
+    @Override
     public double getAscent(Style style) {
       return fontContext.getAscent(style);
     }
@@ -480,6 +564,21 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     @Override
     public double getDescent(Style style) {
       return fontContext.getDescent(style);
+    }
+
+    @Override
+    public int getOffset(TextLayout layout, double x, double y) {
+      return fontContext.getOffset(layout, x, y);
+    }
+
+    @Override
+    public TextLayout newTextLayout() {
+      return fontContext.newTextLayout();
+    }
+
+    @Override
+    public void applyStyle(TextLayout layout, StyleRange range) {
+      fontContext.applyStyle(layout, range);
     }
 
     public void dispose() {

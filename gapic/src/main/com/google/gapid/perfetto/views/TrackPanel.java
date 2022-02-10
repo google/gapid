@@ -15,24 +15,19 @@
  */
 package com.google.gapid.perfetto.views;
 
-import static com.google.common.base.CharMatcher.whitespace;
+import static com.google.gapid.perfetto.canvas.Tooltip.LocationComputer.fixedLocation;
 import static com.google.gapid.perfetto.views.StyleConstants.LABEL_WIDTH;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
-import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.perfetto.views.TimelinePanel.drawGridLines;
 
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.RenderContext;
-import com.google.gapid.perfetto.canvas.Size;
+import com.google.gapid.perfetto.canvas.Tooltip;
 import com.google.gapid.perfetto.models.Track;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -42,7 +37,6 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
     implements TitledPanel, CopyablePanel<T> {
   private static final double HOVER_X_OFF = 10;
   private static final double HOVER_Y_OFF = 7;
-  private static final double HOVER_PADDING = 4;
 
   protected final State state;
   protected Tooltip tooltip;
@@ -68,18 +62,7 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
 
     if (tooltip != null) {
       ctx.addOverlay(() -> {
-        ctx.setBackgroundColor(colors().hoverBackground);
-        ctx.fillRect(tooltip.x, tooltip.y,
-            tooltip.width + 2 * HOVER_PADDING, tooltip.height + 2 * HOVER_PADDING);
-        ctx.setForegroundColor(colors().panelBorder);
-        ctx.drawRect(tooltip.x, tooltip.y,
-            tooltip.width + 2 * HOVER_PADDING - 1, tooltip.height + 2 * HOVER_PADDING - 1);
-        ctx.setForegroundColor(colors().textMain);
-
-        double tx = tooltip.x + HOVER_PADDING, ty = tooltip.y + HOVER_PADDING;
-        for (Tooltip.Line line : tooltip.lines) {
-          line.render(ctx, tx, ty);
-        }
+        tooltip.render(ctx);
       });
     }
   }
@@ -101,12 +84,11 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
         return Hover.NONE;
       }
 
-      tooltip = Tooltip.compute(m, text, x + HOVER_X_OFF, y + HOVER_Y_OFF);
+      tooltip = Tooltip.forText(m, text, fixedLocation(x + HOVER_X_OFF, y + HOVER_Y_OFF));
       return new Hover() {
         @Override
         public Area getRedraw() {
-          return new Area(tooltip.x, tooltip.y,
-              2 * HOVER_PADDING + tooltip.width, 2 * HOVER_PADDING + tooltip.height);
+          return tooltip.getArea();
         }
 
         @Override
@@ -159,137 +141,5 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
 
   protected StyleConstants.Gradient getSliceColor(String title) {
     return getSliceColor(title, 0);
-  }
-
-  private static class Tooltip {
-    private static final Splitter LINE_SPLITTER =
-        Splitter.on(CharMatcher.anyOf("\r\n")).omitEmptyStrings().trimResults();
-    private static final int MAX_WIDTH = 400;
-
-    public final double x, y;
-    public final Line[] lines;
-    public final double width;
-    public final double height;
-
-    public Tooltip(double x, double y, Line[] lines, double width, double height) {
-      this.x = x;
-      this.y = y;
-      this.lines = lines;
-      this.width = width;
-      this.height = height;
-    }
-
-    public static Tooltip compute(Fonts.TextMeasurer m, String text, double x, double y) {
-      Builder builder = new Builder(m.measure(Fonts.Style.Normal, " "));
-      para: for (String paragraph : LINE_SPLITTER.split(text)) {
-        boolean first = true;
-        Fonts.Style style = Fonts.Style.Normal;
-        if (paragraph.startsWith("\\b")) {
-          style = Fonts.Style.Bold;
-          paragraph = paragraph.substring(2);
-        }
-
-        do {
-          Size size = m.measure(style, paragraph);
-          if (size.w <= MAX_WIDTH) {
-            builder.addLine(paragraph, style, size, first);
-            continue para;
-          }
-
-          int guess = (int)(MAX_WIDTH * paragraph.length() / size.w);
-          while (guess < paragraph.length() && !whitespace().matches(paragraph.charAt(guess))) {
-            guess++;
-          }
-          size = m.measure(style, paragraph.substring(0, guess));
-
-          if (size.w <= MAX_WIDTH) {
-            do {
-              int next = guess + 1;
-              while (next < paragraph.length() && !whitespace().matches(paragraph.charAt(next))) {
-                next++;
-              }
-              Size now = m.measure(style, paragraph.substring(0, next));
-              if (now.w <= MAX_WIDTH) {
-                guess = next;
-                size = now;
-              } else {
-                break;
-              }
-            } while (guess < paragraph.length());
-            builder.addLine(paragraph.substring(0, guess), style, size, first);
-            paragraph = paragraph.substring(guess).trim();
-            first = false;
-          } else {
-            do {
-              int next = guess - 1;
-              while (next > 0 && !whitespace().matches(paragraph.charAt(next))) {
-                next--;
-              }
-
-              if (next == 0) {
-                // We have a single word longer than our max width. Blow our limit.
-                builder.addLine(paragraph.substring(0, guess), style, size, first);
-                paragraph = paragraph.substring(guess).trim();
-                first = false;
-                break;
-              }
-
-              guess = next;
-              size = m.measure(style, paragraph.substring(0, next));
-              if (size.w <= MAX_WIDTH) {
-                builder.addLine(paragraph.substring(0, guess), style, size, first);
-                paragraph = paragraph.substring(guess).trim();
-                first = false;
-                break;
-              }
-            } while (true);
-          }
-        } while (!paragraph.isEmpty());
-      }
-      return builder.build(x, y);
-    }
-
-    public static class Line {
-      private final String line;
-      private final Fonts.Style style;
-      private final double y;
-
-      public Line(String line, Fonts.Style style, double y) {
-        this.line = line;
-        this.y = y;
-        this.style = style;
-      }
-
-      public void render(RenderContext ctx, double ox, double oy) {
-        if (!line.isEmpty()) {
-          ctx.drawText(style, line, ox, oy + y);
-        }
-      }
-    }
-
-    private static class Builder {
-      private final Size empty;
-      private double width = 0;
-      private double height = 0;
-      private List<Line> lines = Lists.newArrayList();
-
-      public Builder(Size empty) {
-        this.empty = empty;
-      }
-
-      public Tooltip build(double x, double y) {
-        return new Tooltip(x, y, lines.toArray(new Line[lines.size()]), width, height);
-      }
-
-      public void addLine(String line, Fonts.Style style, Size size, boolean addSep) {
-        if (!lines.isEmpty() && addSep) {
-          lines.add(new Line("", style, height));
-          height += empty.h;
-        }
-        lines.add(new Line(line, style, height));
-        width = Math.max(width, size.w);
-        height += size.h;
-      }
-    }
   }
 }

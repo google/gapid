@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 public class Unit {
   private static final String[] BIT_NAMES = { "bits", "Kbit", "Mbit", "Gbit", "Tbit", "Pbit" };
-  private static final String[] BYTE_NAMES = { "bytes", "KB", "MB", "GB", "TB", "PB" };
+  private static final String[] BYTE_NAMES = { "B", "KB", "MB", "GB", "TB", "PB" };
   private static final String[] HERTZ_NAMES = { "Hz", "KHz", "MHz", "GHz", "THz", "PHz" };
   private static final String[] WATT_NAMES = { "mW", "W", "KW" };
 
@@ -35,7 +35,7 @@ public class Unit {
   public static final Unit TERA_BIT = new Unit("Tbit", new Formatter.Base2(BIT_NAMES, 4));
   public static final Unit PETA_BIT = new Unit("Pbit", new Formatter.Base2(BIT_NAMES, 5));
 
-  public static final Unit BYTE = new Unit("bytes", new Formatter.Base2(BYTE_NAMES, 0));
+  public static final Unit BYTE = new Unit("B", new Formatter.Base2(BYTE_NAMES, 0));
   public static final Unit KILO_BYTE = new Unit("KB", new Formatter.Base2(BYTE_NAMES, 1));
   public static final Unit MEGA_BYTE = new Unit("MB", new Formatter.Base2(BYTE_NAMES, 2));
   public static final Unit GIGA_BYTE = new Unit("GB", new Formatter.Base2(BYTE_NAMES, 3));
