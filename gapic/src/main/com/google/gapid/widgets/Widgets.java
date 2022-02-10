@@ -268,6 +268,13 @@ public class Widgets {
     return createToolItem(bar, SWT.CHECK, image, listener, tip);
   }
 
+  public static ToolItem createToggleToolItem(
+      ToolBar bar, String text, Listener listener, String tip) {
+    ToolItem item = createToolItem(bar, SWT.CHECK, null, listener, tip);
+    item.setText(text);
+    return item;
+  }
+
   public static ToolItem createDropDownToolItem(
       ToolBar bar, Image image, Listener listener, String tip) {
     return createToolItem(bar, SWT.DROP_DOWN, image, listener, tip);
@@ -416,6 +423,13 @@ public class Widgets {
 
   public static Button createButton(Composite parent, String text, Listener listener) {
     Button result = new Button(parent, SWT.PUSH);
+    result.setText(text);
+    result.addListener(SWT.Selection, listener);
+    return result;
+  }
+
+  public static Button createToggleButton(Composite parent, String text, Listener listener) {
+    Button result = new Button(parent, SWT.TOGGLE);
     result.setText(text);
     result.addListener(SWT.Selection, listener);
     return result;

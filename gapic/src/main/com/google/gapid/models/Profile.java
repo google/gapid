@@ -263,6 +263,10 @@ public class Profile
       return profile.getGpuCounters();
     }
 
+    public List<Service.ProfilingData.CounterGroup> getCounterGroups() {
+      return profile.getCounterGroupsList();
+    }
+
     // TODO: this function makes some assumptions about command/sub command IDs. For more details
     // see gapis/trace/android/profile/groups.go.
     public PerfNode getPerfNode(Service.CommandTreeNode treeNode) {

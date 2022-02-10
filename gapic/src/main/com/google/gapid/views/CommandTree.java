@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createTableForViewer;
+import static com.google.gapid.widgets.Widgets.createToggleButton;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
@@ -90,6 +91,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.SwtUtil;
 import org.eclipse.swt.widgets.Table;
@@ -117,6 +119,7 @@ public class CommandTree extends Composite
   private static final int NUM_PRE_CREATED_COLUMNS = 300;
 
   private final Models models;
+  private final Widgets widgets;
   private final Paths.CommandFilter filter;
   private final LoadablePanel<SashForm> loading;
   protected final Tree tree;
@@ -127,10 +130,12 @@ public class CommandTree extends Composite
   private final SingleInFlight searchController = new SingleInFlight();
   private boolean showEstimate = true;
   private final Set<Integer> visibleMetrics = Sets.newHashSet();  // identified by metric.id
+  private final ToggleButtonBar counterGroupButtons;
 
   public CommandTree(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
+    this.widgets = widgets;
     this.filter = models.commands.getFilter();
 
     setLayout(new GridLayout(1, false));
@@ -164,30 +169,26 @@ public class CommandTree extends Composite
     tree = new Tree(left, models, widgets);
 
     Composite right = createComposite(splitter, null);
-    Composite topRight = createComposite(right, withMarginOnly(new GridLayout(3, false), 0, 0));
+    int topRightCount = 2 /* toggle, toolbar */;
+    if (Experimental.enableProfileExperiments(models.settings)) {
+      topRightCount++; /* experiments button */
+    }
+    Composite topRight = createComposite(
+        right, withMarginOnly(new GridLayout(topRightCount, false), 0, 0));
     Button toggleButton = withLayoutData(
         createButton(topRight, "Estimate / Confidence Range", e -> toggleEstimateOrRange()),
-        new GridData(SWT.LEFT, SWT.CENTER, false, false));
+        new GridData(SWT.LEFT, SWT.CENTER, false, true));
     toggleButton.setImage(widgets.theme.swap());
 
     if (Experimental.enableProfileExperiments(models.settings)) {
       Button experimentsButton = withLayoutData(createButton(topRight, "Experiments", e ->
             widgets.experiments.showExperimentsPopup(getShell())),
-          new GridData(SWT.LEFT, SWT.CENTER, false, false));
+          new GridData(SWT.LEFT, SWT.CENTER, false, true));
       experimentsButton.setImage(widgets.theme.science());
     }
 
-    Button filterButton = withLayoutData(createButton(topRight, "Filter Counters", e -> {
-        GpuCountersDialog dialog = new GpuCountersDialog(
-            getShell(), widgets.theme, getCounterSpecs(), Lists.newArrayList(visibleMetrics));
-        if (dialog.open() == Window.OK) {
-          visibleMetrics.clear();
-          visibleMetrics.addAll(dialog.getSelectedIds());
-          updateTable();
-        }
-      }),
-      new GridData(SWT.LEFT, SWT.CENTER, false, false));
-    filterButton.setImage(widgets.theme.more());
+    counterGroupButtons = withLayoutData(new ToggleButtonBar(topRight),
+        new GridData(SWT.LEFT, SWT.CENTER, false, true));
 
     profileTable = LoadablePanel.create(right, widgets, p ->
         createTableForViewer(p, SWT.H_SCROLL | SWT.V_SCROLL | SWT.SINGLE | SWT.VIRTUAL | SWT.FULL_SELECTION));
@@ -434,12 +435,58 @@ public class CommandTree extends Composite
     }
 
     profileTable.stopLoading();
+
+    // Update the group buttons.
+    counterGroupButtons.clear();
+    counterGroupButtons.addLabel("Counters:");
+    List<Service.ProfilingData.CounterGroup> groups = models.profile.getData().getCounterGroups();
+    for (Service.ProfilingData.CounterGroup group : groups) {
+      counterGroupButtons.addButton(group.getLabel(), e -> {
+        selectCounterGroup(group);
+        updateTable();
+      });
+    }
+    counterGroupButtons.addButton("All", e -> {
+      selectAllCounters();
+      updateTable();
+    });
+    counterGroupButtons.addButton("Custom", e -> {
+      GpuCountersDialog dialog = new GpuCountersDialog(
+          getShell(), widgets.theme, getCounterSpecs(), Lists.newArrayList(visibleMetrics));
+      if (dialog.open() == Window.OK) {
+        visibleMetrics.clear();
+        visibleMetrics.addAll(dialog.getSelectedIds());
+        updateTable();
+      }
+    });
+    counterGroupButtons.selectButton(0);
+    counterGroupButtons.requestLayout();
+
+    if (groups.isEmpty()) {
+      selectAllCounters();
+    } else {
+      selectCounterGroup(groups.get(0));
+    }
+
+    // Update the table UI.
+    updateTable();
+  }
+
+  private void selectCounterGroup(Service.ProfilingData.CounterGroup counterGroup) {
     visibleMetrics.clear();
-    getCounterSpecs().stream()
-        .mapToInt(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
+    models.profile.getData().getGpuPerformance().getMetricsList().stream()
+        .filter(m -> isStaticAnalysisCounter(m) || m.getCounterGroupIdsList().contains(counterGroup.getId()))
+        .mapToInt(Service.ProfilingData.GpuCounters.Metric::getId)
         .boxed()
         .forEach(visibleMetrics::add);
-    updateTable();
+  }
+
+  private void selectAllCounters() {
+    visibleMetrics.clear();
+    models.profile.getData().getGpuPerformance().getMetricsList().stream()
+        .mapToInt(Service.ProfilingData.GpuCounters.Metric::getId)
+        .boxed()
+        .forEach(visibleMetrics::add);
   }
 
   private void updateTree(boolean assumeLoading) {
@@ -812,6 +859,47 @@ public class CommandTree extends Composite
       }
       Control last = forLeft ? lControls[lControls.length - 1] : rControls[rControls.length - 1];
       last.setBounds(size);
+    }
+  }
+
+  private static class ToggleButtonBar extends Composite {
+    private final List<Button> buttons = Lists.newArrayList();
+    private final Listener selectionListener = e -> {
+      for (Button button : buttons) {
+        button.setSelection(e.widget == button);
+      }
+    };
+
+    public ToggleButtonBar(Composite parent) {
+      super(parent, SWT.NONE);
+      setLayout(withMarginOnly(new GridLayout(0, false), 0, 0));
+    }
+
+    public void clear() {
+      for (Control child : getChildren()) {
+        child.dispose();
+      }
+      buttons.clear();
+      ((GridLayout)getLayout()).numColumns = 0;
+    }
+
+    public void addLabel(String text) {
+      ((GridLayout)getLayout()).numColumns++;
+      withLayoutData(createLabel(this, text), new GridData(SWT.LEFT, SWT.CENTER, false, true));
+    }
+
+    public void addButton(String text, Listener listener) {
+      ((GridLayout)getLayout()).numColumns++;
+      Button button = withLayoutData(createToggleButton(this, text, listener),
+          new GridData(SWT.LEFT, SWT.CENTER, false, true));
+      buttons.add(button);
+      button.addListener(SWT.Selection, selectionListener);
+    }
+
+    public void selectButton(int idx) {
+      for (int i = 0; i < buttons.size(); i++) {
+        buttons.get(i).setSelection(i == idx);
+      }
     }
   }
 }

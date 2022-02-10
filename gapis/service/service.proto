@@ -1098,6 +1098,11 @@ message ProfilingData {
     repeated double values = 8;
   }
 
+  message CounterGroup {
+    uint32 id = 1;
+    string label = 2;
+  }
+
   // GpuCounters contains aggregated GPU performance result, the aggregation
   // happens inside each GPU slices groups, and on multiple metrics.
   message GpuCounters {
@@ -1115,8 +1120,8 @@ message ProfilingData {
       AggregationOperator op = 5;
       string description = 6;
       bool select_by_default = 7;
-      // GPU counter group type specified by vendors.
-      repeated device.GpuCounterDescriptor.GpuCounterGroup counter_groups = 8;
+      reserved 8;
+      repeated uint32 counter_group_ids = 12;  // References CounterGroup.id.
       double average = 9;
       reserved 10;
       enum Type {
@@ -1151,6 +1156,7 @@ message ProfilingData {
   GpuSlices slices = 2;
   repeated Counter counters = 3;
   GpuCounters gpu_counters = 4;
+  repeated CounterGroup counter_groups = 5;
 }
 
 message GraphVisualizationRequest {

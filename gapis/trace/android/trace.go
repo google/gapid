@@ -169,10 +169,11 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 	}
 
 	return &service.ProfilingData{
-		Groups:      data.Groups.Flatten(capture),
-		Slices:      data.Slices.ToService(ctx, processor),
-		Counters:    data.Counters,
-		GpuCounters: data.GpuCounters,
+		Groups:        data.Groups.Flatten(capture),
+		Slices:        data.Slices.ToService(ctx, processor),
+		Counters:      data.Counters,
+		GpuCounters:   data.GpuCounters,
+		CounterGroups: data.CounterGroups,
 	}, nil
 }
 

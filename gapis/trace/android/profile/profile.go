@@ -34,10 +34,11 @@ const (
 )
 
 type ProfilingData struct {
-	Groups      *GroupTree
-	Slices      SliceData
-	Counters    []*service.ProfilingData_Counter
-	GpuCounters *service.ProfilingData_GpuCounters
+	Groups        *GroupTree
+	Slices        SliceData
+	Counters      []*service.ProfilingData_Counter
+	GpuCounters   *service.ProfilingData_GpuCounters
+	CounterGroups []*service.ProfilingData_CounterGroup
 }
 
 func NewProfilingData() *ProfilingData {
@@ -188,11 +189,9 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*Slice,
 		op := getCounterAggregationMethod(counter)
 		description := ""
 		selectByDefault := false
-		counterGroups := []device.GpuCounterDescriptor_GpuCounterGroup{}
 		if counter.Spec != nil {
 			description = counter.Spec.Description
 			selectByDefault = counter.Spec.SelectByDefault
-			counterGroups = counter.Spec.Groups
 		}
 		counterMetric := &service.ProfilingData_GpuCounters_Metric{
 			Id:              metricId,
@@ -202,7 +201,6 @@ func setGpuCounterMetrics(ctx context.Context, groupToSlices map[int32][]*Slice,
 			Op:              op,
 			Description:     description,
 			SelectByDefault: selectByDefault,
-			CounterGroups:   counterGroups,
 		}
 		*metrics = append(*metrics, counterMetric)
 		if op != service.ProfilingData_GpuCounters_Metric_TimeWeightedAvg {
