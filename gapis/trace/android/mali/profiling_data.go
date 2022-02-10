@@ -17,6 +17,7 @@ package mali
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -48,6 +49,7 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor,
 		log.Err(ctx, err, "Failed to get GPU counters")
 	}
 	data.ComputeCounters(ctx)
+	updateCounterGroups(ctx, data)
 	return nil
 }
 
@@ -163,4 +165,100 @@ func processCounters(ctx context.Context, processor *perfetto.Processor, desc *d
 		}
 	}
 	return counters, nil
+}
+
+const (
+	summaryCounterGroup   uint32 = 1
+	defaultCounterGroup   uint32 = 2
+	textureCounterGroup   uint32 = 3
+	loadStoreCounterGroup uint32 = 4
+	memoryCounterGroup    uint32 = 5
+	cacheCounterGroup     uint32 = 6
+)
+
+func updateCounterGroups(ctx context.Context, data *profile.ProfilingData) {
+	data.CounterGroups = append(data.CounterGroups,
+		&service.ProfilingData_CounterGroup{
+			Id:    summaryCounterGroup,
+			Label: "Performance",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    defaultCounterGroup,
+			Label: "Overview",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    textureCounterGroup,
+			Label: "Texture",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    loadStoreCounterGroup,
+			Label: "Load/Store",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    memoryCounterGroup,
+			Label: "Memory",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    cacheCounterGroup,
+			Label: "Cache",
+		},
+	)
+	summaryCounters := map[string]struct{}{
+		"gpu time":                                   struct{}{},
+		"gpu active cycles":                          struct{}{},
+		"fragment queue active cycles":               struct{}{},
+		"non-fragment queue active cycles":           struct{}{},
+		"tiler active cycles":                        struct{}{},
+		"texture filtering cycles":                   struct{}{},
+		"cycles per pixel":                           struct{}{},
+		"pixels":                                     struct{}{},
+		"output external write bytes":                struct{}{},
+		"output external read bytes":                 struct{}{},
+		"gpu utilization":                            struct{}{},
+		"fragment queue utilization":                 struct{}{},
+		"non-fragment queue utilization":             struct{}{},
+		"tiler utilization":                          struct{}{},
+		"texture unit utilization":                   struct{}{},
+		"varying unit utilization":                   struct{}{},
+		"load/store unit utilization":                struct{}{},
+		"load/store read bytes from l2 cache":        struct{}{},
+		"load/store read bytes from external memory": struct{}{},
+		"texture read bytes from l2 cache":           struct{}{},
+		"texture read bytes from external memory":    struct{}{},
+		"front-end read bytes from l2 cache":         struct{}{},
+		"front-end read bytes from external memory":  struct{}{},
+		"load/store write bytes":                     struct{}{},
+		"tile buffer write bytes":                    struct{}{},
+	}
+	for _, counter := range data.GpuCounters.Metrics {
+		name := strings.ToLower(counter.Name)
+		if _, ok := summaryCounters[name]; ok {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, summaryCounterGroup)
+			delete(summaryCounters, name)
+		} else if strings.Index(name, "iterator active") >= 0 ||
+			strings.Index(name, "iterator utilization") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, summaryCounterGroup)
+		}
+		if counter.SelectByDefault {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, defaultCounterGroup)
+		}
+		if strings.Index(name, "texture") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, textureCounterGroup)
+		}
+		if strings.Index(name, "load/store") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, loadStoreCounterGroup)
+		}
+		if strings.Index(name, "memory") >= 0 ||
+			strings.Index(name, "mmu") >= 0 ||
+			strings.Index(name, "read bytes") >= 0 ||
+			strings.Index(name, "write bytes") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, memoryCounterGroup)
+		}
+		if strings.Index(name, "cache") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, cacheCounterGroup)
+		}
+	}
+	for counter := range summaryCounters {
+		log.W(ctx, "Summary counter %v not found", counter)
+	}
 }
