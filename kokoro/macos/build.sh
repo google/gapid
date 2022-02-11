@@ -59,7 +59,7 @@ mkdir bazel
 sh bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 
 # Specify the version of XCode.
-export DEVELOPER_DIR=/Applications/Xcode_13.2.1.app/Contents/Developer
+export DEVELOPER_DIR=/Applications/Xcode_12.4.app/Contents/Developer
 
 cd $SRC
 BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
