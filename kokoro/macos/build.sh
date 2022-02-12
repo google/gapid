@@ -72,7 +72,7 @@ function run_bazel {
   # paths to the .a files into the debug section of the executable.
   $BUILD_ROOT/bazel/bin/bazel \
       --output_base="${TMP}/bazel_out" \
-      $ACTION -c opt --config symbols \
+      $ACTION -c opt \
       --define AGI_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
       --define AGI_BUILD_SHA="$BUILD_SHA" \
       --strategy CppLink=local \
@@ -85,7 +85,7 @@ function run_bazel {
 run_bazel build //gapis/api/vulkan:go_default_library
 
 # Build the package and symbol file.
-run_bazel build //:pkg //:symbols
+run_bazel build //:pkg
 
 # Build and run the smoketests.
 run_bazel run //cmd/smoketests:smoketests -- --traces test/traces
