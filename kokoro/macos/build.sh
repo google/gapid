@@ -93,3 +93,8 @@ run_bazel run //cmd/smoketests:smoketests -- --traces test/traces
 # Build the release packages.
 mkdir $BUILD_ROOT/out
 $SRC/kokoro/macos/package.sh $BUILD_ROOT/out
+
+# Shutdown some background processes that appear to hang Kokoro: b/196832502.
+$BUILD_ROOT/bazel/bin/bazel --output_base="${TMP}/bazel_out" shutdown
+killall gapis || true
+killall adb || true
