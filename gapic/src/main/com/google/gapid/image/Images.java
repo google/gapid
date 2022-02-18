@@ -19,6 +19,8 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.image.Image.FmtETC2.AlphaMode;
+import com.google.gapid.proto.image.Image.FmtETC2.ColorMode;
+import com.google.gapid.proto.image.Image.Format.FormatCase;
 import com.google.gapid.proto.stream.Stream;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Streams;
@@ -40,21 +42,27 @@ import java.util.Set;
 public class Images {
   public static final Image.Format FMT_RGBA_U8_NORM = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_RGBA_U8_NORM))
+      .setName("FMT_RGBA_U8_NORM")
       .build();
   public static final Image.Format FMT_DEPTH_U8_NORM = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_DEPTH_U8_NORM))
+      .setName("FMT_DEPTH_U8_NORM")
       .build();
   public static final Image.Format FMT_RGBA_FLOAT = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_RGBA_FLOAT))
+      .setName("FMT_RGBA_FLOAT")
       .build();
   public static final Image.Format FMT_LUMINANCE_FLOAT = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_LUMINANCE_FLOAT))
+      .setName("FMT_LUMINANCE_FLOAT")
       .build();
   public static final Image.Format FMT_DEPTH_FLOAT = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_DEPTH_FLOAT))
+      .setName("FMT_DEPTH_FLOAT")
       .build();
   public static final Image.Format FMT_COUNT_U8 = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_COUNT_U8))
+      .setName("FMT_COUNT_U8")
       .build();
 
   public static final Set<Stream.Channel> COLOR_CHANNELS = Sets.immutableEnumSet(
@@ -132,18 +140,6 @@ public class Images {
     });
   }
 
-  public static Image.Format getFormatToRequest(Image.Format format) {
-      if (isColorFormat(format)) {
-        return are8BitsEnough(format, COLOR_CHANNELS) ? FMT_RGBA_U8_NORM :
-            (getChannelCount(format, COLOR_CHANNELS) == 1 ? FMT_LUMINANCE_FLOAT : FMT_RGBA_FLOAT);
-      } else if (isCountFormat(format)) {
-        // Currently only one count format
-        return FMT_COUNT_U8;
-      } else {
-        return are8BitsEnough(format, DEPTH_CHANNELS) ? FMT_DEPTH_U8_NORM : FMT_DEPTH_FLOAT;
-      }
-  }
-
   public static int getChannelCount(Image.Format format, Set<Stream.Channel> interestedChannels) {
     switch (format.getFormatCase()) {
       case UNCOMPRESSED:
@@ -198,13 +194,18 @@ public class Images {
 
   public static boolean are8BitsEnough(
       Image.Format format, Set<Stream.Channel> interestedChannels) {
-    switch (format.getFormatCase()) {
-      case UNCOMPRESSED:
-        return are8BitsEnough(format.getUncompressed().getFormat(), interestedChannels);
-      default:
-        // All Compressed formats can fully be represented as 8 bits (at this time).
-        return true;
+    if(format.getFormatCase() == FormatCase.UNCOMPRESSED) {
+      return are8BitsEnough(format.getUncompressed().getFormat(), interestedChannels);
     }
+
+    // Only RGB and SRGB formats of ETC2 can be represented with 8 bits.
+    if(format.getFormatCase() == FormatCase.ETC2) {
+      ColorMode colorMode = format.getEtc2().getColorMode();
+      return colorMode == ColorMode.RGB || colorMode == ColorMode.SRGB;
+    }
+
+    // All Compressed formats except ETC2 can fully be represented as 8 bits (at this time).
+    return true;
   }
 
   public static boolean are8BitsEnough(

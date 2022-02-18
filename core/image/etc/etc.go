@@ -196,22 +196,14 @@ func init() {
 	}
 
 	// This is for converting via intermediate format.
-	// TODO (melihyalcin): We should check if we really need all the conversion formats
-	// especially from SRGB(A) formats to RGB(A) formats
-	streamETCSupportMap := []converterLayout{
-		{image.RGBA_U8_NORM, ETC2_RGB_U8_NORM},
-		{image.RGBA_U8_NORM, ETC2_RGBA_U8_NORM},
-		{image.RGBA_U8_NORM, ETC2_RGBA_U8U8U8U1_NORM},
-		{image.SRGBA_U8_NORM, ETC2_SRGB_U8_NORM},
-		{image.SRGBA_U8_NORM, ETC2_SRGBA_U8_NORM},
-		{image.SRGBA_U8_NORM, ETC2_SRGBA_U8U8U8U1_NORM},
+	EACtoRGBASupportMap := []converterLayout{
 		{image.R_U16_NORM, ETC2_R_U11_NORM},
-		{image.RG_U16_NORM, ETC2_RG_U11_NORM},
 		{image.R_S16_NORM, ETC2_R_S11_NORM},
+		{image.RG_U16_NORM, ETC2_RG_U11_NORM},
 		{image.RG_S16_NORM, ETC2_RG_S11_NORM},
 	}
 
-	for _, conversion := range streamETCSupportMap {
+	for _, conversion := range EACtoRGBASupportMap {
 		// Intentional local copy
 		conv := conversion
 		if !image.Registered(conv.compressed, image.RGB_U8_NORM) {
@@ -246,6 +238,36 @@ func init() {
 		if !image.Registered(image.RGBA_U8_NORM, conv.compressed) {
 			image.RegisterConverter(image.RGBA_U8_NORM, conv.compressed, func(src []byte, w, h, d int) ([]byte, error) {
 				rgb, err := image.Convert(src, w, h, d, image.RGBA_U8_NORM, conv.uncompressed)
+				if err != nil {
+					return nil, err
+				}
+				return image.Convert(rgb, w, h, d, conv.uncompressed, conv.compressed)
+			})
+		}
+	}
+
+	// This is for converting via intermediate format.
+	RToLuminanceSupportMap := []converterLayout{
+		{image.R_U16_NORM, ETC2_R_U11_NORM},
+		{image.R_S16_NORM, ETC2_R_S11_NORM},
+	}
+
+	for _, conversion := range RToLuminanceSupportMap {
+		// Intentional local copy
+		conv := conversion
+		if !image.Registered(conv.compressed, image.Luminance_R32) {
+			image.RegisterConverter(conv.compressed, image.Luminance_R32, func(src []byte, w, h, d int) ([]byte, error) {
+				rgb, err := image.Convert(src, w, h, d, conv.compressed, conv.uncompressed)
+				if err != nil {
+					return nil, err
+				}
+				return image.Convert(rgb, w, h, d, conv.uncompressed, image.Luminance_R32)
+			})
+		}
+
+		if !image.Registered(image.Luminance_R32, conv.compressed) {
+			image.RegisterConverter(image.Luminance_R32, conv.compressed, func(src []byte, w, h, d int) ([]byte, error) {
+				rgb, err := image.Convert(src, w, h, d, image.Luminance_R32, conv.uncompressed)
 				if err != nil {
 					return nil, err
 				}

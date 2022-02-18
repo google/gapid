@@ -34,6 +34,10 @@ var (
 	RG_S16_NORM   = newUncompressed(fmts.RG_S16_NORM)
 	Gray_U8_NORM  = newUncompressed(fmts.Gray_U8_NORM)
 	D_U16_NORM    = newUncompressed(fmts.D_U16_NORM)
+
+	Luminance_R32      = newUncompressed(fmts.L_F32)
+	Luminance_U8_NORM  = newUncompressed(fmts.L_U8_NORM)
+	LuminanceA_U8_NORM = newUncompressed(fmts.LA_U8_NORM)
 )
 
 // newUncompressed returns a new uncompressed format containing with the default
@@ -66,7 +70,7 @@ func (f *FmtUncompressed) channels() stream.Channels {
 }
 
 func (f *FmtUncompressed) resize(data []byte, srcW, srcH, srcD, dstW, dstH, dstD int) ([]byte, error) {
-	format := &Format{Name: "", Format: &Format_Uncompressed{f}}
+	format := &Format{Name: "Temporary Uncompressed Format", Format: &Format_Uncompressed{f}}
 	data, err := Convert(data, srcW, srcH, srcD, format, RGBA_F32)
 	if err != nil {
 		return nil, err

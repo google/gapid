@@ -15,6 +15,8 @@
 package image
 
 import (
+	"fmt"
+
 	"github.com/google/gapid/core/math/sint"
 	"github.com/google/gapid/core/stream"
 )
@@ -32,7 +34,9 @@ func NewETC2(name string, colorMode FmtETC2_ColorMode, alphaMode FmtETC2_AlphaMo
 }
 
 func (f *FmtETC2) key() interface{} {
-	return f.String()
+	// If enum value is 0, it's not included in f.String()
+	// causes FmtETC2_R11's string to be empty
+	return fmt.Sprintf("FmtETCS{ColorMode:%v, AlphaMode:%v}", f.ColorMode, f.AlphaMode)
 }
 
 func (f *FmtETC2) size(w, h, d int) int {
