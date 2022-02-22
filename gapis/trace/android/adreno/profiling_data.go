@@ -17,6 +17,7 @@ package adreno
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -49,6 +50,7 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor,
 		log.Err(ctx, err, "Failed to get GPU counters")
 	}
 	data.ComputeCounters(ctx)
+	updateCounterGroups(ctx, data)
 	return nil
 }
 
@@ -192,4 +194,48 @@ func processCounters(ctx context.Context, processor *perfetto.Processor, desc *d
 		}
 	}
 	return counters, nil
+}
+
+const (
+	defaultCounterGroup  uint32 = 1
+	veretexCounterGroup  uint32 = 2
+	fragmentCounterGroup uint32 = 3
+	textureCounterGroup  uint32 = 4
+)
+
+func updateCounterGroups(ctx context.Context, data *profile.ProfilingData) {
+	data.CounterGroups = append(data.CounterGroups,
+		&service.ProfilingData_CounterGroup{
+			Id:    defaultCounterGroup,
+			Label: "Performance",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    veretexCounterGroup,
+			Label: "Vertex",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    fragmentCounterGroup,
+			Label: "Fragment",
+		},
+		&service.ProfilingData_CounterGroup{
+			Id:    textureCounterGroup,
+			Label: "Texture",
+		},
+	)
+
+	for _, counter := range data.GpuCounters.Metrics {
+		name := strings.ToLower(counter.Name)
+		if counter.SelectByDefault {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, defaultCounterGroup)
+		}
+		if strings.Index(name, "vertex") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, veretexCounterGroup)
+		}
+		if strings.Index(name, "fragment") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, fragmentCounterGroup)
+		}
+		if strings.Index(name, "texture") >= 0 {
+			counter.CounterGroupIds = append(counter.CounterGroupIds, textureCounterGroup)
+		}
+	}
 }
