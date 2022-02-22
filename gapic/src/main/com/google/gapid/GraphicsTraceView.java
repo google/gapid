@@ -465,7 +465,7 @@ public class GraphicsTraceView extends Composite
     public static enum Type {
       Profile(View.Profile, "Profile", DefaultPosition.Top, ProfileView::new),
 
-      ApiCalls(View.Commands, "Commands", DefaultPosition.Left, CommandTree::new),
+      ApiCalls(View.Commands, "Performance", DefaultPosition.Left, CommandTree::new),
 
       Framebuffer(View.Framebuffer, "Framebuffer", DefaultPosition.Center, FramebufferView::new),
       Pipeline(View.Pipeline, "Pipeline", DefaultPosition.Center, PipelineView::new),
