@@ -64,6 +64,8 @@ namespace {
 // kSocketName must match "socketName" in gapir/client/device_connection.go
 const std::string kSocketName("gapir-socket");
 
+std::unique_ptr<Server> server = nullptr;
+
 std::shared_ptr<MemoryAllocator> createAllocator() {
 #if defined(__x86_64) || defined(__aarch64__)
   size_t size = 16ull * 1024ull * 1024ull * 1024ull;
@@ -560,6 +562,16 @@ void android_process(struct android_app* app, int32_t cmd) {
       GAPID_DEBUG("Received window: %p\n", gapir::android_window);
       break;
     }
+    case APP_CMD_PAUSE: {
+      GAPID_WARNING(
+          "Exiting because of APP_CMD_PAUSE. GAPIR does not work correctly "
+          "from pause.");
+      if (server != nullptr) {
+        server->shutdown();
+      }
+      ANativeActivity_finish(app->activity);
+      break;
+    }
   }
 }
 
@@ -710,7 +722,6 @@ void android_main(struct android_app* app) {
   std::string internal_data_path = std::string(app->activity->internalDataPath);
   std::string socket_file_path = internal_data_path + "/" + kSocketName;
   std::string uri = std::string("unix://") + socket_file_path;
-  std::unique_ptr<Server> server = nullptr;
   std::shared_ptr<MemoryAllocator> allocator = createAllocator();
   MemoryManager memoryManager(allocator);
   auto cache =
