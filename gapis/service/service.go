@@ -190,7 +190,7 @@ type Service interface {
 
 	// ValidateDevice validates the GPU profiling capabilities of the given device and returns
 	// an error if validation failed or the GPU profiling data is invalid.
-	ValidateDevice(ctx context.Context, d *path.Device) error
+	ValidateDevice(ctx context.Context, d *path.Device) (*DeviceValidationResult, error)
 
 	// InstallApp installs an application on the given device.
 	InstallApp(ctx context.Context, d *path.Device, app string) error

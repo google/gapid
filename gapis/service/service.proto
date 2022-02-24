@@ -1482,7 +1482,23 @@ message ValidateDeviceRequest {
 }
 
 message ValidateDeviceResponse {
-  Error error = 1;
+  reserved 1;
+  oneof res {
+    DeviceValidationResult result = 2;
+
+    // Internal error from being unable to start validation
+    // (doesn't include failure from the validation itself).
+    Error error = 3;
+  }
+}
+
+message DeviceValidationResult {
+  // Message with details of how the device failed validation (doesn't
+  // include internal errors where we somehow failed to start validation).
+  string validation_failure_msg = 1;
+
+  // Path to the perfetto trace file to help debug validation issues.
+  string trace_path = 2;
 }
 
 message FuchsiaTraceConfig {

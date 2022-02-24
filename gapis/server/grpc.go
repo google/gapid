@@ -688,11 +688,11 @@ func (s *grpcServer) PerfettoQuery(ctx xctx.Context, req *service.PerfettoQueryR
 
 func (s *grpcServer) ValidateDevice(ctx xctx.Context, req *service.ValidateDeviceRequest) (*service.ValidateDeviceResponse, error) {
 	defer s.inRPC()()
-	err := s.handler.ValidateDevice(s.bindCtx(ctx), req.Device)
+	res, err := s.handler.ValidateDevice(s.bindCtx(ctx), req.Device)
 	if err := service.NewError(err); err != nil {
-		return &service.ValidateDeviceResponse{Error: err}, nil
+		return &service.ValidateDeviceResponse{Res: &service.ValidateDeviceResponse_Error{Error: err}}, nil
 	}
-	return &service.ValidateDeviceResponse{}, nil
+	return &service.ValidateDeviceResponse{Res: &service.ValidateDeviceResponse_Result{Result: res}}, nil
 }
 
 func (s *grpcServer) InstallApp(ctx xctx.Context, req *service.InstallAppRequest) (*service.InstallAppResponse, error) {

@@ -577,17 +577,17 @@ func (c *client) PerfettoQuery(ctx context.Context, capture *path.Capture, query
 	return res.GetResult(), nil
 }
 
-func (c *client) ValidateDevice(ctx context.Context, device *path.Device) error {
+func (c *client) ValidateDevice(ctx context.Context, device *path.Device) (*service.DeviceValidationResult, error) {
 	res, err := c.client.ValidateDevice(ctx, &service.ValidateDeviceRequest{
 		Device: device,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := res.GetError(); err != nil {
-		return err.Get()
+		return nil, err.Get()
 	}
-	return nil
+	return res.GetResult(), nil
 }
 
 func (c *client) InstallApp(ctx context.Context, d *path.Device, app string) error {

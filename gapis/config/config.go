@@ -38,9 +38,6 @@ const (
 	// DumpReplayProfile dumps the perfetto trace of a replay profile.
 	DumpReplayProfile = false
 
-	// DumpValidationTrace dumps the perfetto trace of a validation profile.
-	DumpValidationTrace = false
-
 	// AllInitialCommandsLive forces all initial commands to be considered as
 	// live when computing dead code elimination.
 	AllInitialCommandsLive = false

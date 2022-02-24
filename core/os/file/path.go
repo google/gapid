@@ -16,6 +16,7 @@ package file
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -49,6 +50,16 @@ func Abs(path string) Path {
 // Temp creates a new temp file and returns its path.
 func Temp() (Path, error) {
 	p, err := ioutil.TempFile("", "gapid")
+	if err != nil {
+		return Path{}, err
+	}
+	p.Close()
+	return Abs(p.Name()), nil
+}
+
+// TempWithExt creates a new temp file with the given name and extension and returns its path.
+func TempWithExt(name string, ext string) (Path, error) {
+	p, err := ioutil.TempFile("", fmt.Sprintf("%s*.%s", name, ext))
 	if err != nil {
 		return Path{}, err
 	}

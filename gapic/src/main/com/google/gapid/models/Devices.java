@@ -446,7 +446,7 @@ public class Devices {
     }
 
     public DeviceValidationResult(Service.ValidateDeviceResponse r) {
-      this(r.getError(), !r.hasError(), false);
+      this(r.getError(), !r.hasError() && r.getResult().getValidationFailureMsg().length() == 0, false);
     }
 
     @Override

@@ -114,12 +114,13 @@ func ProcessProfilingData(ctx context.Context, device *path.Device, capture *pat
 	return t.ProcessProfilingData(ctx, buffer, capture, staticAnalysisResult, handleMapping, syncData)
 }
 
-func Validate(ctx context.Context, device *path.Device) error {
+func Validate(ctx context.Context, device *path.Device, enableLocalFiles bool) (*service.DeviceValidationResult, error) {
 	t, err := GetTracer(ctx, device)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return t.Validate(ctx)
+
+	return t.Validate(ctx, enableLocalFiles)
 }
 
 func GetTracer(ctx context.Context, device *path.Device) (tracer.Tracer, error) {
