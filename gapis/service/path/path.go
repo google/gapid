@@ -98,6 +98,7 @@ func (n *StateTreeNodeForPath) Path() *Any      { return &Any{Path: &Any_StateTr
 func (n *Stats) Path() *Any                     { return &Any{Path: &Any_Stats{n}} }
 func (n *Thumbnail) Path() *Any                 { return &Any{Path: &Any_Thumbnail{n}} }
 func (n *Type) Path() *Any                      { return &Any{Path: &Any_Type{n}} }
+func (n *ResourceExtras) Path() *Any            { return &Any{Path: &Any_ResourceExtras{n}} }
 
 func (n API) Parent() Node                       { return nil }
 func (n ArrayIndex) Parent() Node                { return oneOfNode(n.Array) }
@@ -129,6 +130,7 @@ func (n Parameter) Parent() Node                 { return n.Command }
 func (n Pipelines) Parent() Node                 { return oneOfNode(n.Object) }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
+func (n ResourceExtras) Parent() Node            { return n.After }
 func (n MultiResourceData) Parent() Node         { return n.After }
 func (n Resources) Parent() Node                 { return n.Capture }
 func (n Result) Parent() Node                    { return n.Command }
@@ -165,6 +167,7 @@ func (n *Messages) SetParent(p Node)                  { n.Capture, _ = p.(*Captu
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
 func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }
+func (n *ResourceExtras) SetParent(p Node)            { n.After, _ = p.(*Command) }
 func (n *MultiResourceData) SetParent(p Node)         { n.After, _ = p.(*Command) }
 func (n *Resources) SetParent(p Node)                 { n.Capture, _ = p.(*Capture) }
 func (n *Result) SetParent(p Node)                    { n.Command, _ = p.(*Command) }
@@ -273,6 +276,11 @@ func (n Report) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.report", n.Pare
 // Format implements fmt.Formatter to print the path.
 func (n ResourceData) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.ID)
+}
+
+// Format implements fmt.Formatter to print the path.
+func (n ResourceExtras) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.resource-extras<%x>", n.Parent(), n.ID)
 }
 
 // Format implements fmt.Formatter to print the path.

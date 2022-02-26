@@ -67,6 +67,7 @@ message Any {
     Thumbnail thumbnail = 42;
     Type type = 43;
     Framegraph framegraph = 44;
+    ResourceExtras resource_extras = 45;
   }
 }
 
@@ -489,6 +490,13 @@ message Resources {
 // ResourceData is a path to a single resource snapshot at a given point in an
 // command stream.
 message ResourceData {
+  ID ID = 1;
+  Command after = 2;
+}
+
+// ResourceExtras is a path to extra data for a single resource at a given point
+// in an command stream.
+message ResourceExtras {
   ID ID = 1;
   Command after = 2;
 }

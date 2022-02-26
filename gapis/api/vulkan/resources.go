@@ -801,6 +801,10 @@ func (t ImageObjectʳ) SetResourceData(
 	return fmt.Errorf("SetResourceData is not supported for ImageObject")
 }
 
+func (t ImageObjectʳ) ResourceExtras(ctx context.Context, s *api.GlobalState, cmd *path.Command, r *path.ResolveConfig) (*api.ResourceExtras, error) {
+	return nil, fmt.Errorf("ResourceExtras is not supported for ImageObject")
+}
+
 // IsResource returns true if this instance should be considered as a resource.
 func (s ShaderModuleObjectʳ) IsResource() bool {
 	return true
@@ -845,16 +849,27 @@ func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalSta
 	}
 	spirv := shadertools.DisassembleSpirvBinary(words)
 
-	counters, _ := shadertools.Analyze(words)
+	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross}), nil
+}
 
-	analysis_stats := &api.Shader_StaticAnalysis{
+func (s ShaderModuleObjectʳ) ResourceExtras(ctx context.Context, t *api.GlobalState, cmd *path.Command, r *path.ResolveConfig) (*api.ResourceExtras, error) {
+	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceExtras()")
+	words, err := s.Words().Read(ctx, nil, t, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Could not get resource data %v", err)
+	}
+	counters, err := shadertools.Analyze(words)
+	if err != nil {
+		return nil, err
+	}
+	staticAnalysis := &api.ShaderExtras_StaticAnalysis{
 		AluInstructions:     counters.ALUInstructions,
 		TextureInstructions: counters.TexInstructions,
 		BranchInstructions:  counters.BranchInstructions,
 		TempRegisters:       counters.TempRegisters,
 	}
 
-	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross, StaticAnalysis: analysis_stats}), nil
+	return api.NewResourceExtras(&api.ShaderExtras{StaticAnalysis: staticAnalysis}), nil
 }
 
 func (shader ShaderModuleObjectʳ) SetResourceData(
@@ -1081,6 +1096,10 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	}, nil
 }
 
+func (p GraphicsPipelineObjectʳ) ResourceExtras(ctx context.Context, s *api.GlobalState, cmd *path.Command, r *path.ResolveConfig) (*api.ResourceExtras, error) {
+	return nil, fmt.Errorf("ResourceExtras is not supported for GraphicsPipelineObject")
+}
+
 func commonShaderDataGroups(ctx context.Context,
 	s *api.GlobalState,
 	cmd *path.Command,
@@ -1105,14 +1124,6 @@ func commonShaderDataGroups(ctx context.Context,
 			}
 			spirv := shadertools.DisassembleSpirvBinary(words)
 			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source, SpirvSource: spirv, SourceLanguage: sourceLanguage, CrossCompiled: isCross}
-
-			counters, _ := shadertools.Analyze(words)
-			shader.StaticAnalysis = &api.Shader_StaticAnalysis{
-				AluInstructions:     counters.ALUInstructions,
-				TextureInstructions: counters.TexInstructions,
-				BranchInstructions:  counters.BranchInstructions,
-				TempRegisters:       counters.TempRegisters,
-			}
 
 			dsetRows := []*api.Row{}
 			for _, usedSet := range usedSets {
@@ -2130,6 +2141,10 @@ func (p ComputePipelineObjectʳ) SetResourceData(
 	api.MutateInitialState,
 	*path.ResolveConfig) error {
 	return fmt.Errorf("SetResourceData is not supported on ComputePipeline")
+}
+
+func (p ComputePipelineObjectʳ) ResourceExtras(ctx context.Context, s *api.GlobalState, cmd *path.Command, r *path.ResolveConfig) (*api.ResourceExtras, error) {
+	return nil, fmt.Errorf("ResourceExtras is not supported for ComputePipelineObject")
 }
 
 func stageType(vkStage VkShaderStageFlagBits) (string, error) {

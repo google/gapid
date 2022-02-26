@@ -240,6 +240,17 @@ public class Paths {
         .build();
   }
 
+  public static Path.Any resourceExtrasAfter(CommandIndex command, Path.ID id) {
+    if (command == null || id == null) {
+      return null;
+    }
+    return Path.Any.newBuilder()
+        .setResourceExtras(Path.ResourceExtras.newBuilder()
+            .setAfter(command.getCommand())
+            .setID(id))
+        .build();
+  }
+
   public static Path.Any pipelinesAfter(CommandIndex command) {
     if (command == null) {
       return null;

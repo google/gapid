@@ -56,6 +56,9 @@ type Resource interface {
 		edits ReplaceCallback,
 		mutate MutateInitialState,
 		r *path.ResolveConfig) error
+
+	// ResourceExtras returns the resource data given the current state.
+	ResourceExtras(ctx context.Context, s *GlobalState, cmd *path.Command, r *path.ResolveConfig) (*ResourceExtras, error)
 }
 
 // ReplaceCallback is called from SetResourceData to propagate changes to current command stream.
@@ -104,6 +107,16 @@ func NewResourceData(data interface{}) *ResourceData {
 		return &ResourceData{Data: &ResourceData_Pipeline{data}}
 	default:
 		panic(fmt.Errorf("%T is not a ResourceData type", data))
+	}
+}
+
+// NewResourceExtras returns a new *ResourceExtras with the specified data.
+func NewResourceExtras(data interface{}) *ResourceExtras {
+	switch data := data.(type) {
+	case *ShaderExtras:
+		return &ResourceExtras{Data: &ResourceExtras_ShaderExtras{data}}
+	default:
+		panic(fmt.Errorf("%T is not a ResourceExtras type", data))
 	}
 }
 

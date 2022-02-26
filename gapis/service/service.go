@@ -286,6 +286,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_Metrics{v}}
 	case *api.ResourceData:
 		return &Value{Val: &Value_ResourceData{v}}
+	case *api.ResourceExtras:
+		return &Value{Val: &Value_ResourceExtras{v}}
 	case *image.Info:
 		return &Value{Val: &Value_ImageInfo{v}}
 	case *device.Instance:
@@ -304,7 +306,6 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_TraceConfig{v}}
 	case *types.Type:
 		return &Value{Val: &Value_Type{v}}
-
 	default:
 		if v := box.NewValue(v); v != nil {
 			return &Value{Val: &Value_Box{v}}

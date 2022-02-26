@@ -203,3 +203,56 @@ func ResourceDatas(ctx context.Context, p *path.MultiResourceData, r *path.Resol
 	}
 	return &service.MultiResourceData{Resources: m}, nil
 }
+
+func ResourceExtras(ctx context.Context, p *path.ResourceExtras, r *path.ResolveConfig) (interface{}, error) {
+	cmdIdx := p.After.Indices[0]
+
+	capture, err := capture.ResolveGraphics(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	allCmds, err := Cmds(ctx, p.After.Capture)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := SyncData(ctx, p.After.Capture)
+	if err != nil {
+		return nil, err
+	}
+	cmds, err := sync.MutationCmdsFor(ctx, p.After.Capture, s, allCmds, api.CmdID(cmdIdx), p.After.Indices[1:], false)
+	if err != nil {
+		return nil, err
+	}
+	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, p.After.Capture)
+	if err != nil {
+		return nil, err
+	}
+
+	var currentCmdIndex uint64
+	var currentCmdResourceCount int
+	var resource api.Resource
+	state := capture.NewUninitializedState(ctx).ReserveMemory(ranges)
+	state.OnResourceCreated = func(r api.Resource) {
+		currentCmdResourceCount++
+		if p.ID.ID() == genResourceID(currentCmdIndex, currentCmdResourceCount) {
+			resource = r
+		}
+	}
+
+	err = api.MutateCmds(ctx, state, nil, nil, initialCmds...)
+	if err != nil {
+		return nil, err
+	}
+	err = api.MutateCmds(ctx, state, nil, nil, cmds...)
+	if err != nil {
+		return nil, err
+	}
+
+	if resource == nil {
+		return nil, fmt.Errorf("Cannot resolve resource %v at command: %v", p.ID.ID(), p.After)
+	}
+
+	return resource.ResourceExtras(ctx, state, p.After, r)
+}

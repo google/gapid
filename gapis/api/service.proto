@@ -118,6 +118,14 @@ message ResourceData {
   }
 }
 
+// ResourceExtras represents extra resource state that may be too expensive to
+// pre-compute
+message ResourceExtras {
+  oneof data {
+    ShaderExtras shader_extras = 1;
+  }
+}
+
 // MultiResourceData represents the state  of resources at a single point in a
 // capture
 message MultiResourceData {
@@ -144,14 +152,17 @@ message Shader {
   string source_language = 3;
   string spirv_source = 4;
   bool cross_compiled = 5;
+}
 
+// Extra data for a shader resource.
+message ShaderExtras {
   message StaticAnalysis {
     uint32 alu_instructions = 1;
     uint32 texture_instructions = 2;
     uint32 branch_instructions = 3;
     uint32 temp_registers = 4;
   }
-  StaticAnalysis static_analysis = 6;
+  StaticAnalysis static_analysis = 1;
 }
 
 // Uniform respresents a uniform/active uniform resource.

@@ -140,6 +140,7 @@ message Value {
     FramebufferAttachments framebuffer_attachments = 35;
     FramebufferAttachment framebuffer_attachment = 36;
     api.Framegraph framegraph = 37;
+    api.ResourceExtras resource_extras = 39;
 
     image.Info image_info = 40;
 

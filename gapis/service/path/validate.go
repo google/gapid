@@ -267,6 +267,14 @@ func (n *ResourceData) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *ResourceExtras) Validate() error {
+	return anyErr(
+		checkNotNilAndValidate(n, n.After, "after"),
+		checkIsValid(n, n.ID, "id"),
+	)
+}
+
+// Validate checks the path is valid.
 func (n *MultiResourceData) Validate() error {
 	if err := checkNotNilAndValidate(n, n.After, "after"); err != nil {
 		return err

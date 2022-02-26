@@ -349,6 +349,8 @@ func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (i
 		return Report(ctx, p, r)
 	case *path.ResourceData:
 		return ResourceData(ctx, p, r)
+	case *path.ResourceExtras:
+		return ResourceExtras(ctx, p, r)
 	case *path.MultiResourceData:
 		return ResourceDatas(ctx, p, r)
 	case *path.Resources:

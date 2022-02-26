@@ -230,11 +230,11 @@ public class ShaderView extends Composite
       statTable.setContentProvider(new IStructuredContentProvider() {
         @Override
         public Object[] getElements(Object inputElement) {
-          if (!(inputElement instanceof API.Shader.StaticAnalysis)) {
+          if (!(inputElement instanceof API.ShaderExtras.StaticAnalysis)) {
             return null;
           }
 
-          API.Shader.StaticAnalysis analysis = (API.Shader.StaticAnalysis)inputElement;
+          API.ShaderExtras.StaticAnalysis analysis = (API.ShaderExtras.StaticAnalysis)inputElement;
           return new Object[] {
               new Object[] { "ALU Instructions", analysis.getAluInstructions() },
               new Object[] { "Texture Instructions", analysis.getTextureInstructions() },
@@ -243,7 +243,7 @@ public class ShaderView extends Composite
           };
         }
       });
-      statTable.setInput(API.Shader.StaticAnalysis.getDefaultInstance());
+      statTable.setInput(API.ShaderExtras.StaticAnalysis.getDefaultInstance());
       packColumns(statTable.getTable());
 
       clear();
@@ -281,6 +281,19 @@ public class ShaderView extends Composite
     }
 
     public void setShader(Service.Resource resource, API.Shader shader) {
+      rpcController.start().listen(models.resources.loadResourceExtras(resource),
+          new UiCallback<API.ResourceExtras, API.ShaderExtras>(this, LOG) {
+        @Override
+        protected API.ShaderExtras onRpcThread(Rpc.Result<API.ResourceExtras> result)
+            throws RpcException, ExecutionException {
+          return result.get().getShaderExtras();
+        }
+
+        @Override
+        protected void onUiThread(API.ShaderExtras result) {
+          statTable.setInput(result.getStaticAnalysis());
+        }
+      });
       loading.stopLoading();
 
       shaderResource = resource;
@@ -310,8 +323,6 @@ public class ShaderView extends Composite
         sourceTab.dispose();
         sourceTab = null;
       }
-
-      statTable.setInput(shader.getStaticAnalysis());
     }
 
     private void save() {
