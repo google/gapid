@@ -96,6 +96,7 @@ import "extensions/khr_external_semaphore_capabilities.api"
 import "extensions/khr_external_semaphore_fd.api"
 import "extensions/khr_variable_pointers.api"
 import "extensions/khr_sampler_ycbcr_conversion.api"
+import "extensions/ext_sampler_filter_minmax.api"
 import "extensions/amd_draw_indirect_count.api"
 import "extensions/khr_draw_indirect_count.api"
 import "extensions/khr_image_format_list.api"
@@ -268,6 +269,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_sampler_ycbcr_conversion"] = true
   supported.ExtensionNames["VK_KHR_image_format_list"] = true
   supported.ExtensionNames["VK_KHR_sampler_mirror_clamp_to_edge"] = true
+  supported.ExtensionNames["VK_EXT_sampler_filter_minmax"] = true
   supported.ExtensionNames["VK_EXT_pipeline_creation_feedback"] = true
   supported.ExtensionNames["VK_EXT_scalar_block_layout"] = true
   supported.ExtensionNames["VK_EXT_hdr_metadata"] = true
