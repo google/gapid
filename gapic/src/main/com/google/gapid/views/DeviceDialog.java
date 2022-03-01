@@ -58,6 +58,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Shell;
@@ -129,8 +130,8 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       if (models.devices.getReplayDevices() != null
           && models.devices.getReplayDevices().size() == 1) {
         device = models.devices.getReplayDevices().get(0);
-        DeviceValidationResult result = models.devices.getValidationStatus(device);
-        skipDialog = result.passed || result.skipped;
+        DeviceValidationResult cachedResult = models.devices.getCachedValidationStatus(device);
+        skipDialog = cachedResult.passed || cachedResult.skipped;
       }
 
       if (skipDialog) {
@@ -151,9 +152,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
     private final Widgets widgets;
 
     private Label noCompatibleDeviceFound;
-    private LoadingIndicator.Widget validationStatusLoader;
-    private Link validationStatusText;
-    private boolean validationPassed;
+    private DeviceValidationView deviceValidationView;
     private TableViewer compatibleDeviceTable;
     private TableViewer incompatibleDeviceTable;
     private Button refreshDeviceButton;
@@ -164,7 +163,6 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       super(shell, widgets.theme);
       this.models = models;
       this.widgets = widgets;
-      validationPassed = false;
     }
 
     public void packColumns() {
@@ -224,20 +222,11 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
           "Driver version", dev -> Devices.getDriverVersion((Device.Instance)dev));
 
       compatibleDeviceTable.getTable().addListener(SWT.Selection, e -> {
-        runValidationCheck(getSelectedDevice());
+        deviceValidationView.ValidateDevice(getSelectedDevice());
       });
 
       // Validation widgets
-      validationStatusLoader = widgets.loading.createWidgetWithImage(compatibleGroup,
-          widgets.theme.check(), widgets.theme.error());
-      validationStatusLoader
-          .setLayoutData(new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
-      validationStatusText = createLink(compatibleGroup, "", e -> {
-        Program.launch(URLs.DEVICE_COMPATIBILITY_URL);
-      });
-      validationStatusText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-      validationStatusLoader.setVisible(false);
-      validationStatusText.setVisible(false);
+      deviceValidationView = new DeviceValidationView(compatibleGroup, models, widgets);
 
       // Use a group to keep the same look and feel for incompatible devices
       Group incompatibleGroup = withLayoutData(
@@ -281,7 +270,12 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
       Button openTrace = createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
-      openTrace.setEnabled(validationPassed);
+
+      Listener modifyListener = e -> {
+        openTrace.setEnabled(deviceValidationView.PassesValidation());
+      };
+      deviceValidationView.addListener(SWT.Modify, modifyListener);
+      modifyListener.handleEvent(null); // Set initial state of widgets.
     }
 
     @Override
@@ -312,68 +306,5 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
       IStructuredSelection sel = compatibleDeviceTable.getStructuredSelection();
       return sel.isEmpty() ? null : (Device.Instance) sel.getFirstElement();
     }
-
-    private void runValidationCheck(Device.Instance dev) {
-      if (dev == null) {
-        validationStatusLoader.setVisible(false);
-        validationStatusText.setVisible(false);
-        return;
-      }
-      validationStatusLoader.setVisible(true);
-      validationStatusText.setVisible(true);
-      // We need a DeviceCaptureInfo to do validation.
-      setValidationStatus(models.devices.getValidationStatus(dev));
-      if (!models.devices.getValidationStatus(dev).passed) {
-        validationStatusLoader.startLoading();
-        validationStatusText.setText("Device support is being validated");
-        rpcController.start().listen(models.devices.validateDevice(dev),
-            new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(
-                validationStatusLoader, LOG) {
-              @Override
-              protected ResultOrError<DeviceValidationResult, DeviceValidationResult> onRpcThread(
-                  Rpc.Result<DeviceValidationResult> response)
-                  throws RpcException, ExecutionException {
-                try {
-                  return success(response.get());
-                } catch (RpcException | ExecutionException e) {
-                  throttleLogRpcError(LOG, "LoadData error", e);
-                  return error(null);
-                }
-              }
-
-              @Override
-              protected void onUiThreadSuccess(DeviceValidationResult result) {
-                setValidationStatus(result);
-              }
-
-              @Override
-              protected void onUiThreadError(DeviceValidationResult result) {
-                LOG.log(WARNING, "UI thread error while validating device support");
-                setValidationStatus(result);
-              }
-            });
-      }
-    }
-
-    protected void setValidationStatus(DeviceValidationResult result) {
-      if (result.skipped) {
-        validationStatusLoader.updateStatus(true);
-        validationStatusLoader.stopLoading();
-        validationStatusText.setText("Device support validation skipped.");
-        validationPassed = true;
-      } else {
-        validationStatusLoader.updateStatus(result.passed);
-        validationStatusText.setText("Device support validation "
-            + (result.passed ? "passed." : "failed. " + Messages.VALIDATION_FAILED_LANDING_PAGE));
-        validationStatusLoader.stopLoading();
-        validationPassed = result.passed;
-      }
-      Button openTrace = getButton(IDialogConstants.OK_ID);
-      if (openTrace != null) {
-        openTrace.setEnabled(validationPassed);
-      }
-    }
-
   }
-
 }

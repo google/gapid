@@ -194,16 +194,11 @@ public class Devices {
   }
 
   public ListenableFuture<DeviceValidationResult> validateDevice(Device.Instance device) {
-    DeviceValidationResult fromCache = getValidationStatus(device);
-    if (fromCache.passed) {
-      return immediateFuture(fromCache);
-    }
-
     return transformAsync(client.validateDevice(Paths.device(device.getID())), r ->
       submitIfNotDisposed(shell, () -> validationCache.add(device, new DeviceValidationResult(r))));
   }
 
-  public DeviceValidationResult getValidationStatus(Device.Instance device) {
+  public DeviceValidationResult getCachedValidationStatus(Device.Instance device) {
     DeviceValidationResult fromCache = validationCache.getFromCache(device);
     if (fromCache != null) {
       return fromCache;

@@ -332,8 +332,7 @@ public class TracerDialog {
       private final LoadingIndicator.Widget deviceLoader;
       private final ComboViewer api;
       private final Label apiLabel;
-      private final LoadingIndicator.Widget validationStatusLoader;
-      private final Link validationStatusText;
+      private final DeviceValidationView deviceValidationView;
       private final ActionTextbox traceTarget;
       private final Label targetLabel;
       private final Text arguments;
@@ -365,8 +364,6 @@ public class TracerDialog {
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
-
-      public boolean validationStatus;
 
       public TraceInput(Composite parent, TraceType type, Models models, Widgets widgets,
           Runnable refreshDevices) {
@@ -424,20 +421,7 @@ public class TracerDialog {
         });
 
         createLabel(mainGroup, "Validation:");
-        Composite validationContainer = withLayoutData(
-            createComposite(mainGroup, withMarginOnly(new GridLayout(2, false), 0, 0)),
-            new GridData(SWT.FILL, SWT.TOP, true, false));
-        validationStatusLoader = widgets.loading.createWidgetWithImage(
-            validationContainer, widgets.theme.check(), widgets.theme.error());
-        validationStatusLoader.setLayoutData(
-            withIndents(new GridData(SWT.LEFT, SWT.BOTTOM, false, false), 0, 0));
-        validationStatusText = createLink(validationContainer, "", e-> {
-          Program.launch(URLs.DEVICE_COMPATIBILITY_URL);
-        });
-        validationStatusText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-        validationStatus = false;
-        validationStatusLoader.setVisible(false);
-        validationStatusText.setVisible(false);
+        deviceValidationView = new DeviceValidationView(mainGroup, this.models, widgets);
 
         Group appGroup  = withLayoutData(
             createGroup(this, "Application", new GridLayout(2, false)),
@@ -592,7 +576,7 @@ public class TracerDialog {
 
         device.getCombo().addListener(SWT.Selection, e -> {
           updateOnDeviceChange(models.settings, getSelectedDevice());
-          runValidationCheck(getSelectedDevice());
+          deviceValidationView.ValidateDevice(getSelectedDevice());
         });
         api.getCombo().addListener(SWT.Selection, e -> {
           updateOnApiChange(models.settings, trace, getSelectedType());
@@ -702,63 +686,6 @@ public class TracerDialog {
         if (dev != null) {
           updateOnConfigChange(settings, settings.trace(), getSelectedType(), dev);
         }
-      }
-
-      private void runValidationCheck(DeviceCaptureInfo deviceInfo) {
-        if (deviceInfo == null) {
-          validationStatusLoader.setVisible(false);
-          validationStatusText.setVisible(false);
-          return;
-        }
-
-        Device.Instance dev = deviceInfo.device;
-        validationStatusLoader.setVisible(true);
-        validationStatusText.setVisible(true);
-        DeviceValidationResult validation = models.devices.getValidationStatus(dev);
-        setValidationStatus(validation);
-        if (!validation.passed) {
-          validationStatusLoader.startLoading();
-          validationStatusText.setText("Device support is being validated");
-          rpcController.start().listen(models.devices.validateDevice(dev),
-              new UiErrorCallback<DeviceValidationResult, DeviceValidationResult, DeviceValidationResult>(validationStatusLoader, LOG) {
-            @Override
-            protected ResultOrError<DeviceValidationResult, DeviceValidationResult>
-              onRpcThread(Rpc.Result<DeviceValidationResult> response) throws RpcException, ExecutionException {
-              try {
-                return success(response.get());
-              } catch (RpcException | ExecutionException e) {
-                throttleLogRpcError(LOG, "LoadData error", e);
-                return error(null);
-              }
-            }
-
-            @Override
-            protected void onUiThreadSuccess(DeviceValidationResult result) {
-              setValidationStatus(result);
-            }
-
-            @Override
-            protected void onUiThreadError(DeviceValidationResult result) {
-              LOG.log(WARNING, "UI thread error while validating device support");
-              setValidationStatus(result);
-            }
-          });
-        }
-      }
-
-      protected void setValidationStatus(DeviceValidationResult result) {
-        if (result.skipped) {
-          validationStatusLoader.updateStatus(true);
-          validationStatusLoader.stopLoading();
-          validationStatusText.setText("Device support validation skipped.");
-          validationStatus = true;
-        } else {
-          validationStatusLoader.updateStatus(result.passed);
-          validationStatusText.setText("Device support validation " + (result.passed ? "passed." : "failed. " + Messages.VALIDATION_FAILED_LANDING_PAGE));
-          validationStatusLoader.stopLoading();
-          validationStatus = result.passed;
-        }
-        notifyListeners(SWT.Modify, new Event());
       }
 
       private void updateOnConfigChange(Settings settings, SettingsProto.TraceOrBuilder trace,
@@ -1028,7 +955,7 @@ public class TracerDialog {
       public boolean isReady() {
         TraceType type = getSelectedType();
         DeviceCaptureInfo dev = getSelectedDevice();
-        return isInputReady(type, dev) && validationStatus &&
+        return isInputReady(type, dev) && deviceValidationView.PassesValidation() &&
             (type != TraceType.ANGLE || dev.device.getConfiguration().getAngle().getVersion() > 0);
       }
 
@@ -1050,6 +977,7 @@ public class TracerDialog {
         directory.addBoxListener(SWT.Modify, listener);
         file.addListener(SWT.Modify, listener);
         this.addListener(SWT.Modify, listener);
+        deviceValidationView.addListener(SWT.Modify, listener);
       }
 
       public void setDevices(Settings settings, List<DeviceCaptureInfo> devices) {
