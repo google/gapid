@@ -44,6 +44,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.SettingsProto;
@@ -172,27 +173,28 @@ public class TraceConfigDialog extends DialogBase {
   private static final Pattern APP_REGEX = Pattern.compile("(?:[^:]*)?:([^/]+)(?:/[^/]+)");
 
   private final Settings settings;
-  private final Device.PerfettoCapability caps;
+  private final Devices.DeviceCaptureInfo device;
   private InputArea input;
 
   public TraceConfigDialog(
-      Shell shell, Settings settings, Theme theme, Device.PerfettoCapability caps) {
+      Shell shell, Settings settings, Theme theme, Devices.DeviceCaptureInfo device) {
     super(shell, theme);
     this.settings = settings;
-    this.caps = caps;
+    this.device = device;
   }
 
   public static void showPerfettoConfigDialog(
-      Shell shell, Models models, Widgets widgets, Device.PerfettoCapability caps) {
-    new TraceConfigDialog(shell, models.settings, widgets.theme, caps).open();
+      Shell shell, Models models, Widgets widgets, Devices.DeviceCaptureInfo device) {
+    new TraceConfigDialog(shell, models.settings, widgets.theme, device).open();
   }
 
-  public static String getConfigSummary(Settings settings, Device.PerfettoCapability caps) {
+  public static String getConfigSummary(Settings settings, Devices.DeviceCaptureInfo device) {
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
     if (p.getUseCustom()) {
       return "Custom";
     }
 
+    Device.PerfettoCapability caps = device.device.getConfiguration().getPerfettoCapability();
     List<String> enabled = Lists.newArrayList();
     if (p.getCpuOrBuilder().getEnabled()) {
       enabled.add("CPU");
@@ -223,11 +225,12 @@ public class TraceConfigDialog extends DialogBase {
   }
 
   public static TraceConfig.Builder getConfig(
-      Settings settings, Device.PerfettoCapability caps, String traceTarget, int duration) {
+      Settings settings, Devices.DeviceCaptureInfo device, String traceTarget, int duration) {
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
     if (p.getUseCustom()) {
       return p.getCustomConfig().toBuilder().setDurationMs(duration);
     }
+    Device.PerfettoCapability caps = device.device.getConfiguration().getPerfettoCapability();
 
     TraceConfig.Builder config = TraceConfig.newBuilder();
     FtraceConfig.Builder ftrace = config.addDataSourcesBuilder()
@@ -285,14 +288,17 @@ public class TraceConfigDialog extends DialogBase {
             .getConfigBuilder()
                 .setName("VulkanAPI");
       }
-      if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 &&
-          gpu.getCounters() && gpu.getCounterIdsCount() > 0) {
-        GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
-            .getConfigBuilder()
-                .setName("gpu.counters")
-                .getGpuCounterConfigBuilder()
-                    .setCounterPeriodNs(MICROSECONDS.toNanos(gpu.getCounterRate()));
-        counters.addAllCounterIds(gpu.getCounterIdsList());
+      if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 && gpu.getCounters()) {
+        SettingsProto.Perfetto.GPUCounters enabledCounters = gpu.getCountersByGpuOrDefault(
+            device.device.getConfiguration().getHardware().getGPU().getName(), null);
+        if (enabledCounters != null && enabledCounters.getCounterIdsCount() > 0) {
+          GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
+              .getConfigBuilder()
+                  .setName("gpu.counters")
+                  .getGpuCounterConfigBuilder()
+                      .setCounterPeriodNs(MICROSECONDS.toNanos(gpu.getCounterRate()));
+          counters.addAllCounterIds(enabledCounters.getCounterIdsList());
+        }
       }
       if (caps.getHasFrameLifecycle() && gpu.getSurfaceFlinger()) {
         config.addDataSourcesBuilder()
@@ -389,7 +395,7 @@ public class TraceConfigDialog extends DialogBase {
 
     InputArea[] areas = new InputArea[2];
     areas[0] = new BasicInputArea(
-        container, settings, theme, caps, () -> switchTo(container, areas[1]));
+        container, settings, theme, device, () -> switchTo(container, areas[1]));
     areas[1] = new AdvancedInputArea(
         container, () -> switchTo(container, areas[0]), this::setOkButtonEnabled);
 
@@ -619,7 +625,7 @@ public class TraceConfigDialog extends DialogBase {
     private final Button forceTraceToFile;
 
     public BasicInputArea(Composite parent, Settings settings, Theme theme,
-        Device.PerfettoCapability caps, Runnable toAdvanced) {
+        Devices.DeviceCaptureInfo device, Runnable toAdvanced) {
       super(parent, SWT.NONE);
       setLayout(new GridLayout(1, false));
 
@@ -638,6 +644,7 @@ public class TraceConfigDialog extends DialogBase {
       cpuSlices = createCheckbox(cpuGroup, "Thread slices", sCpu.getSlices());
       addSeparator();
 
+      Device.PerfettoCapability caps = device.device.getConfiguration().getPerfettoCapability();
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
       if (gpuCaps.getHasRenderStage() ||
           gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 ||
@@ -682,31 +689,43 @@ public class TraceConfigDialog extends DialogBase {
           }
           gpuCountersLabels[2] = createLabel(counterGroup, "us");
 
+          String gpuName = device.device.getConfiguration().getHardware().getGPU().getName();
+          List<Integer> rememberedCounterIds = sGpu.getCountersByGpuOrDefault(
+              gpuName, SettingsProto.Perfetto.GPUCounters.getDefaultInstance()).getCounterIdsList();
           long count = caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList().stream()
-              .filter(c -> sGpu.getCounterIdsList().contains(c.getCounterId())).count();
+              .filter(c -> rememberedCounterIds.contains(c.getCounterId())).count();
           long total = caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsCount();
           if (count == 0 && sGpu.getCounters()) {
-            // Select all counters by default if none where remembered, but counters are turned on.
-            // TODO(pmuetschard): possibly use the ones marked "default" instead.
-            settings.writePerfetto().getGpuBuilder()
-                .clearCounterIds()
-                .addAllCounterIds(caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList()
-                    .stream()
-                    .map(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
-                    .collect(toList()));
-            count = total;
+            // Select the default counters if none where remembered, but counters are turned on.
+            List<Integer> ids = caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList()
+                .stream()
+                .filter(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getSelectByDefault)
+                .mapToInt(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
+                .boxed()
+                .collect(toList());
+            settings.writePerfetto().getGpuBuilder().putCountersByGpu(gpuName,
+                SettingsProto.Perfetto.GPUCounters.newBuilder()
+                  .addAllCounterIds(ids)
+                  .build());
+            count = ids.size();
           }
           gpuCountersLabels[0] = createLabel(counterGroup, count + " of " + total + " selected");
           gpuCountersSelect = Widgets.createButton(counterGroup, "Select", e -> {
-            List<Integer> currentIds = settings.perfetto().getGpuOrBuilder().getCounterIdsList();
+            List<Integer> currentIds = settings.perfetto().getGpuOrBuilder().getCountersByGpuOrDefault(
+                gpuName, SettingsProto.Perfetto.GPUCounters.getDefaultInstance()).getCounterIdsList();
             GpuCountersDialog dialog = new GpuCountersDialog(getShell(), theme,
                 caps.getGpuProfiling().getGpuCounterDescriptor().getSpecsList(), currentIds);
             if (dialog.open() == Window.OK) {
               List<Integer> newIds = dialog.getSelectedIds();
-              settings.writePerfetto().getGpuBuilder()
-                  .clearCounterIds()
-                  .addAllCounterIds(newIds)
-                  .setCounters(!newIds.isEmpty());
+              if (newIds.isEmpty()) {
+                settings.writePerfetto().getGpuBuilder().setCounters(false);
+              } else {
+                settings.writePerfetto().getGpuBuilder()
+                  .setCounters(true)
+                  .putCountersByGpu(gpuName, SettingsProto.Perfetto.GPUCounters.newBuilder()
+                      .addAllCounterIds(newIds)
+                      .build());
+              }
               gpuCounters.setSelection(!newIds.isEmpty());
               gpuCountersLabels[0].setText(newIds.size() + " of " + total + " selected");
               gpuCountersLabels[0].requestLayout();
@@ -832,7 +851,7 @@ public class TraceConfigDialog extends DialogBase {
         update(settings);
         settings.writePerfetto().setCustomConfig(
             // Use a config that writes to file for custom by default.
-            getConfig(settings, caps, "", MAX_IN_MEM_DURATION + 1)
+            getConfig(settings, device, "", MAX_IN_MEM_DURATION + 1)
                 .clearDurationMs());
         toAdvanced.run();
       }), new GridData(SWT.END, SWT.BEGINNING, false, false));
@@ -1035,7 +1054,7 @@ public class TraceConfigDialog extends DialogBase {
 
     @Override
     public void onSwitchedTo(Settings settings) {
-      input.setText(TextFormat.printToString(settings.perfetto().getCustomConfig()));
+      input.setText(TextFormat.printer().printToString(settings.perfetto().getCustomConfig()));
     }
 
     @Override

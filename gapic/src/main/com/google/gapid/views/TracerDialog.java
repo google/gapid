@@ -511,10 +511,12 @@ public class TracerDialog {
         systemTracingConfigLabel = createLabel(systemTracingConfig, PERFETTO_LABEL);
         Widgets.createButton(systemTracingConfig, "Configure", e -> {
           DeviceCaptureInfo dev = getSelectedDevice();
-          if (dev != null && dev.isFuchsia()) {
+          if (dev == null) {
+            // Ignore.
+          } else if (dev.isFuchsia()) {
             showFuchsiaConfigDialog(getShell(), models, widgets);
           } else {
-            showPerfettoConfigDialog(getShell(), models, widgets, getPerfettoCaps(dev));
+            showPerfettoConfigDialog(getShell(), models, widgets, dev);
           }
 
           if (!isDisposed()) {
@@ -840,12 +842,14 @@ public class TracerDialog {
       }
 
       private void updateSystemTracingConfigLabel(Settings settings, DeviceCaptureInfo dev) {
-        if (dev != null && dev.isFuchsia()) {
+        if (dev == null) {
+          systemTracingConfigLabel.setText("");
+        } else if (dev.isFuchsia()) {
           systemTracingConfigLabel.setText(
               FUCHSIA_LABEL + FuchsiaTraceConfigDialog.getConfigSummary(settings));
         } else {
           systemTracingConfigLabel.setText(
-              PERFETTO_LABEL + getConfigSummary(settings, getPerfettoCaps(dev)));
+              PERFETTO_LABEL + getConfigSummary(settings, dev));
         }
         systemTracingConfigLabel.requestLayout();
       }
@@ -1063,8 +1067,7 @@ public class TracerDialog {
             int durationMs = duration.getSelection() * 1000;
             // TODO: this isn't really unlimited.
             durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
-            options.setPerfettoConfig(
-                getConfig(settings, getPerfettoCaps(dev), traceTarget.getText(), durationMs));
+            options.setPerfettoConfig(getConfig(settings, dev, traceTarget.getText(), durationMs));
           }
         }
 
@@ -1108,11 +1111,6 @@ public class TracerDialog {
       protected TraceType getSelectedType() {
         IStructuredSelection sel = api.getStructuredSelection();
         return sel.isEmpty() ? null : ((TraceType)sel.getFirstElement());
-      }
-
-      protected Device.PerfettoCapability getPerfettoCaps(DeviceCaptureInfo dev) {
-        return (dev == null) ? Device.PerfettoCapability.getDefaultInstance() :
-            dev.device.getConfiguration().getPerfettoCapability();
       }
 
       private File getOutputFile() {

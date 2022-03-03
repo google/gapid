@@ -142,13 +142,18 @@ message Perfetto {
   }
   CPU cpu = 1;
 
+  message GPUCounters {
+    repeated int32 counter_ids = 1;
+  }
+
   message GPU {
     bool enabled = 1;
     bool slices = 2;
     bool counters = 3;
     int32 counter_rate = 4;
-    repeated int32 counter_ids = 5;
+    reserved 5;
     bool surface_flinger = 6;
+    map<string, GPUCounters> counters_by_gpu = 7;
   }
   GPU gpu = 2;
 
