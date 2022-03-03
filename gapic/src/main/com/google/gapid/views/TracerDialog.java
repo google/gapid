@@ -365,7 +365,8 @@ public class TracerDialog {
 
         setLayout(new GridLayout(1, false));
 
-        Service.TraceType lastType = Service.TraceType.Graphics;
+        Service.TraceType lastType = trace.getLastFrameTraceWasVulkan() ?
+            Service.TraceType.Graphics : Service.TraceType.ANGLE;
         try {
           lastType = Service.TraceType.valueOf(trace.getType());
         } catch (IllegalArgumentException e) {
@@ -375,7 +376,7 @@ public class TracerDialog {
         if (type == null) {
           // Use the last used type if no specific type was requested.
           type = TraceType.from(lastType);
-        } else if (type == TraceType.Vulkan && lastType == Service.TraceType.ANGLE) {
+        } else if (type == TraceType.Vulkan && !trace.getLastFrameTraceWasVulkan()) {
           // If frame profiler was requested, use ANGLE if the previous trace was an ANGLE trace.
           type = TraceType.ANGLE;
         }
@@ -990,6 +991,11 @@ public class TracerDialog {
         trace.setDeviceSerial(dev.device.getSerial());
         trace.setDeviceName(dev.device.getName());
         trace.setType(config.getType().name());
+        if (type == TraceType.Vulkan) {
+          trace.setLastFrameTraceWasVulkan(true);
+        } else if (type == TraceType.ANGLE) {
+          trace.setLastFrameTraceWasVulkan(false);
+        }
         trace.setUri(traceTarget.getText());
         trace.setArguments(arguments.getText());
         SettingsProto.Trace.Duration.Builder dur = (type == TraceType.System) ?

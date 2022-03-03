@@ -114,6 +114,7 @@ message Trace {
   string device_serial = 1;
   string device_name = 2;
   string type = 3;
+  bool last_frame_trace_was_vulkan = 21;
   string api = 4 [deprecated = true];  // Kept for de-serialization.
   string uri = 5;
   string arguments = 6;
