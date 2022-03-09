@@ -57,8 +57,10 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
       "select ts, ts + dur, value, id from %s " +
       "where ts + dur >= %d and ts <= %d order by ts";
   private static final String STATS_SQL =
-      "select min(value), max(value), avg(value) " +
-      "from counter where track_id = %d and ts >= %d and ts <= %d";
+      "select min(value), max(value), sum(value * dur) / sum(dur) avg from " +
+        "(select min(dur, ts + dur - %d, %d + 1 - ts) dur, value from " +
+        "%s where ts + dur >= %d and ts <= %d)";
+
 
   private final CounterInfo counter;
 
@@ -175,7 +177,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   }
 
   private String statsSql(TimeSpan span) {
-    return format(STATS_SQL, counter.id, span.start, span.end);
+    return format(STATS_SQL, span.start, span.end, tableName("vals"), span.start, span.end);
   }
 
   public static class Data extends Track.Data {
