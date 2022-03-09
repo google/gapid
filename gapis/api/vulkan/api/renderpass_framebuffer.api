@@ -132,22 +132,33 @@ This extension is already in the Vulkan core.
 Thefore there is no need to repeat the KHR structs
 */
 
+@internal class AttachmentDescriptionStencilLayout {
+    VkImageLayout StencilInitialLayout
+    VkImageLayout StencilFinalLayout
+}
+
 @internal class AttachmentDescription {
-    VkAttachmentDescriptionFlags    Flags
-    VkFormat                        Format
-    VkSampleCountFlagBits           Samples
-    VkAttachmentLoadOp              LoadOp
-    VkAttachmentStoreOp             StoreOp
-    VkAttachmentLoadOp              StencilLoadOp
-    VkAttachmentStoreOp             StencilStoreOp
-    VkImageLayout                   InitialLayout
-    VkImageLayout                   FinalLayout
+    VkAttachmentDescriptionFlags           Flags
+    VkFormat                               Format
+    VkSampleCountFlagBits                  Samples
+    VkAttachmentLoadOp                     LoadOp
+    VkAttachmentStoreOp                    StoreOp
+    VkAttachmentLoadOp                     StencilLoadOp
+    VkAttachmentStoreOp                    StencilStoreOp
+    VkImageLayout                          InitialLayout
+    VkImageLayout                          FinalLayout
+    ref!AttachmentDescriptionStencilLayout StencilLayout
+}
+
+@internal class AttachmentReferenceStencilLayout {
+    VkImageLayout StencilLayout
 }
 
 @internal class AttachmentReference {
-    u32                 Attachment
-    VkImageLayout       Layout
-    VkImageAspectFlags  AspectMask
+    u32                                   Attachment
+    VkImageLayout                         Layout
+    VkImageAspectFlags                    AspectMask
+    ref!AttachmentReferenceStencilLayout  StencilLayout
 }
 
 @internal class SubpassDescription {
@@ -191,6 +202,7 @@ sub AttachmentReference convertAttachment(VkAttachmentReference attachment) {
     Attachment: attachment.attachment,
     Layout: attachment.layout,
     AspectMask: 0, // This will be updated by VkRenderPassInputAttachmentAspectCreateInfo
+    StencilLayout: null,
   )
 }
 
@@ -214,6 +226,7 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo(
       StencilStoreOp: attachment.stencilStoreOp,
       InitialLayout: attachment.initialLayout,
       FinalLayout: attachment.finalLayout,
+      StencilLayout: null,
     )
   }
 
@@ -250,6 +263,7 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo(
         Attachment: attachment.attachment,
         Layout: attachment.layout,
         AspectMask: 0, // This will be updated by VkRenderPassInputAttachmentAspectCreateInfo
+        StencilLayout: null,
       )
     }
 
@@ -362,7 +376,24 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
       StencilStoreOp: attachment.stencilStoreOp,
       InitialLayout: attachment.initialLayout,
       FinalLayout: attachment.finalLayout,
+      StencilLayout: null,
     )
+    if attachment.pNext != null {
+      numPNext := numberOfPNext(attachment.pNext)
+      next := MutableVoidPtr(as!void*(attachment.pNext))
+      for j in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0]
+        switch sType {
+          case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
+            ext := as!VkAttachmentDescriptionStencilLayout*(next.Ptr)[0]
+            renderPass.AttachmentDescriptions[j].StencilLayout = new!AttachmentDescriptionStencilLayout(
+              StencilInitialLayout: ext.stencilInitialLayout,
+              StencilFinalLayout: ext.stencilFinalLayout,
+            )
+          }
+        }
+      }
+    }
   }
 
   subpasses := info.pSubpasses[0:info.subpassCount]
@@ -381,7 +412,8 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
       description.InputAttachments[j] = AttachmentReference(
         Attachment: attachment.attachment,
         Layout: attachment.layout,
-        AspectMask: attachment.aspectMask
+        AspectMask: attachment.aspectMask,
+        StencilLayout: null,
       )
     }
 
@@ -391,7 +423,8 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
       description.ColorAttachments[j] = AttachmentReference(
         Attachment: attachment.attachment,
         Layout: attachment.layout,
-        AspectMask: attachment.aspectMask
+        AspectMask: attachment.aspectMask,
+        StencilLayout: null,
       )
     }
 
@@ -402,7 +435,8 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
         description.ResolveAttachments[j] = AttachmentReference(
           Attachment: attachment.attachment,
           Layout: attachment.layout,
-          AspectMask: attachment.aspectMask
+          AspectMask: attachment.aspectMask,
+          StencilLayout: null,
         )
       }
     }
@@ -413,7 +447,24 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
         Attachment: attachment.attachment,
         Layout: attachment.layout,
         AspectMask: attachment.aspectMask,
+        StencilLayout: null,
       )
+      if attachment.pNext != null {
+        numPNext := numberOfPNext(attachment.pNext)
+        next := MutableVoidPtr(as!void*(attachment.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0]
+          switch sType {
+            case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT: {
+              ext := as!VkAttachmentReferenceStencilLayout*(next.Ptr)[0]
+              description.DepthStencilAttachment.StencilLayout = new!AttachmentReferenceStencilLayout(
+                StencilLayout: ext.stencilLayout
+              )
+            }
+          }
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+      }
     }
 
     preserveAttachments := subpass.pPreserveAttachments[0:subpass.preserveAttachmentCount]

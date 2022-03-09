@@ -71,6 +71,7 @@
 
   // Vulkan 1.2
   @unused ref!PhysicalDeviceBufferDeviceAddressFeatures PhysicalDeviceBufferDeviceAddressFeatures
+  @unused ref!PhysicalDeviceSeparateDepthStencilLayoutsFeatures PhysicalDeviceSeparateDepthStencilLayoutsFeatures
 
   // @extension("VK_EXT_line_rasterization")
   @unused ref!PhysicalDeviceLineRasterizationFeaturesEXT PhysicalDeviceLineRasterizationFeaturesEXT
@@ -351,6 +352,12 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             BufferDeviceAddress: ext.bufferDeviceAddress,
             BufferDeviceAddressCaptureReplay: ext.bufferDeviceAddressCaptureReplay,
             BufferDeviceAddressMultiDevice: ext.bufferDeviceAddressMultiDevice,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
+          ext := as!VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*(next.Ptr)[0]
+          object.PhysicalDeviceSeparateDepthStencilLayoutsFeatures = new!PhysicalDeviceSeparateDepthStencilLayoutsFeatures(
+            SeparateDepthStencilLayouts: ext.separateDepthStencilLayouts,
           )
         }
       }

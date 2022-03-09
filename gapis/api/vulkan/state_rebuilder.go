@@ -984,6 +984,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceSeparateDepthStencilLayoutsFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceSeparateDepthStencilLayoutsFeatures(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES,
+				pNext,
+				d.PhysicalDeviceSeparateDepthStencilLayoutsFeatures().SeparateDepthStencilLayouts(),
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
@@ -2398,9 +2407,20 @@ func (sb *stateBuilder) createRenderPass2(rp RenderPassObjectʳ) {
 		attachmentDescriptions := []VkAttachmentDescription2{}
 		for _, k := range rp.AttachmentDescriptions().Keys() {
 			ad := rp.AttachmentDescriptions().Get(k)
+			pNext := NewVoidᶜᵖ(memory.Nullptr)
+			if !ad.StencilLayout().IsNil() {
+				pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+					NewVkAttachmentDescriptionStencilLayout(
+						VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT,
+						NewVoidᵖ(pNext),
+						ad.StencilLayout().StencilInitialLayout(),
+						ad.StencilLayout().StencilFinalLayout(),
+					),
+				).Ptr())
+			}
 			attachmentDescriptions = append(attachmentDescriptions, NewVkAttachmentDescription2(
 				VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-				NewVoidᶜᵖ(memory.Nullptr),
+				pNext,
 				ad.Flags(),
 				ad.Fmt(),
 				ad.Samples(),
@@ -2425,10 +2445,20 @@ func (sb *stateBuilder) createRenderPass2(rp RenderPassObjectʳ) {
 		depthStencil := NewVkAttachmentReference2ᶜᵖ(memory.Nullptr)
 		if !sd.DepthStencilAttachment().IsNil() {
 			attachment := sd.DepthStencilAttachment().Get()
+			pNext := NewVoidᶜᵖ(memory.Nullptr)
+			if !attachment.StencilLayout().IsNil() {
+				pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+					NewVkAttachmentReferenceStencilLayout(
+						VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT,
+						NewVoidᵖ(pNext),
+						attachment.StencilLayout().StencilLayout(),
+					),
+				).Ptr())
+			}
 			depthStencil = NewVkAttachmentReference2ᶜᵖ(sb.MustAllocReadData(
 				NewVkAttachmentReference2(
 					VkStructureType_VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-					NewVoidᶜᵖ(memory.Nullptr),
+					pNext,
 					attachment.Attachment(),
 					attachment.Layout(),
 					attachment.AspectMask(),

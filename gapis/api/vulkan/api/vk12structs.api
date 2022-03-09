@@ -153,3 +153,27 @@ class VkSubpassEndInfo {
     VkStructureType     sType
     const void*         pNext
 }
+
+class VkAttachmentDescriptionStencilLayout {
+    VkStructureType     sType
+    void*               pNext
+    VkImageLayout       stencilInitialLayout
+    VkImageLayout       stencilFinalLayout
+}
+
+class VkAttachmentReferenceStencilLayout {
+    VkStructureType     sType
+    void*               pNext
+    VkImageLayout       stencilLayout
+}
+
+class VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures {
+    VkStructureType     sType
+    void*               pNext
+    VkBool32            separateDepthStencilLayouts
+}
+
+@internal
+class PhysicalDeviceSeparateDepthStencilLayoutsFeatures {
+    VkBool32            SeparateDepthStencilLayouts
+}

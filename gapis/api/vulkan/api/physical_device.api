@@ -56,7 +56,6 @@
   @unused ref!PhysicalDeviceProtectedMemoryProperties ProtectedMemoryProperties
 
   // Vulkan 1.2 core
-  @unused ref!PhysicalDeviceBufferDeviceAddressFeatures PhysicalDeviceBufferDeviceAddressFeatures
   @unused ref!PhysicalDeviceSamplerFilterMinmaxProperties PhysicalDeviceSamplerFilterMinmaxProperties
 
   // Extensions

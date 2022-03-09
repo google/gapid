@@ -312,6 +312,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_blend_operation_advanced"] = true
   supported.ExtensionNames["VK_EXT_index_type_uint8"] = true
   supported.ExtensionNames["VK_EXT_custom_border_color"] = true
+  supported.ExtensionNames["VK_KHR_separate_depth_stencil_layouts"] = true
   return supported
 }
 
