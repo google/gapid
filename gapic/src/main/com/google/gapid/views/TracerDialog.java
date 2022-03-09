@@ -411,7 +411,9 @@ public class TracerDialog {
           logFailure(LOG, Scheduler.EXECUTOR.schedule(refreshDevices, 300, TimeUnit.MILLISECONDS));
         });
 
-        createLabel(mainGroup, "Validation:");
+        // Align label with first line of text.
+        withLayoutData(createLabel(mainGroup, "Validation:"),
+          withIndents(new GridData(GridData.HORIZONTAL_ALIGN_FILL | GridData.VERTICAL_ALIGN_BEGINNING), 0, 12));
         deviceValidationView = new DeviceValidationView(mainGroup, this.models, widgets);
 
         Group appGroup  = withLayoutData(

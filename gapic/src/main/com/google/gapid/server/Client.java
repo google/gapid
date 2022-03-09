@@ -253,13 +253,13 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getProfilingData(), in.getError(), stack))));
   }
 
-  public ListenableFuture<Service.ValidateDeviceResponse> validateDevice(Path.Device device) {
+  public ListenableFuture<Service.DeviceValidationResult> validateDevice(Path.Device device) {
     return call(() -> String.format("RPC->validateDevice(%s)", shortDebugString(device)),
         stack -> MoreFutures.transformAsync(
             client.validateDevice(Service.ValidateDeviceRequest.newBuilder()
                 .setDevice(device)
                 .build()),
-            in -> immediateFuture(in)));
+            in -> immediateFuture(throwIfError(in.getResult(), in.getError(), stack))));
   }
 
   public ListenableFuture<Void> installApp(Path.Device device, String app) {

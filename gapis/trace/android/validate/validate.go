@@ -168,14 +168,14 @@ func ValidateGpuCounters(ctx context.Context, processor *perfetto.Processor, cou
 			return log.Errf(ctx, err, "Failed to query with %v", fmt.Sprintf(counterIDQuery, counter.Name))
 		}
 		if len(queryResult.GetColumns()) != 1 {
-			return log.Errf(ctx, err, "Expect one result with query: %v", fmt.Sprintf(counterIDQuery, counter.Name))
+			return log.Errf(ctx, err, "Expected one result with query: %v", fmt.Sprintf(counterIDQuery, counter.Name))
 		}
 		var counterID int64
 		for _, column := range queryResult.GetColumns() {
 			longValues := column.GetLongValues()
 			if len(longValues) != 1 {
 				// This should never happen, but sill have a check.
-				return log.Errf(ctx, nil, "Query result is not 1: %v", counter)
+				return log.Errf(ctx, nil, "Queried result is not 1: %v", counter)
 			}
 			counterID = longValues[0]
 			break
