@@ -1189,7 +1189,12 @@ public class CommandTree extends Canvas
       }
     }
 
-    updateCursor(ex - size.tree.x + treeHBar.getSelection());
+    if (ex < size.tree.x || ex >= size.tree.x + size.tree.w) {
+      setCursor(null);
+    } else {
+      double x = ex - size.tree.x + treeHBar.getSelection();
+      setCursor(getFollow(x) != null ? getDisplay().getSystemCursor(SWT.CURSOR_HAND) : null);
+    }
   }
 
   private void checkHoveredRow() {
@@ -1235,10 +1240,6 @@ public class CommandTree extends Canvas
   private boolean shouldShowImage(CommandStream.Node node) {
     return models.images.isReady() &&
         node.getData() != null && !node.getData().getGroup().isEmpty();
-  }
-
-  private void updateCursor(double x) {
-    setCursor(getFollow(x) != null ? getDisplay().getSystemCursor(SWT.CURSOR_HAND) : null);
   }
 
   @Override
