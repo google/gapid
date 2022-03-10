@@ -50,7 +50,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	resourceTypes := map[string]path.ResourceType{}
 	seen := map[api.Resource]int{}
 
-	var currentCmdIndex uint64
+	var currentCmdIndex uint64 = 0xffffffffffffffff
 	var currentCmdResourceCount int
 	// If the capture contains initial state, build the necessary commands to recreate it.
 	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
