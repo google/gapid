@@ -572,6 +572,7 @@ public class CommandTree extends Canvas
 
   @Override
   public void onProfileLoadingStart() {
+    tree.resetColumns();
     tableMessage = Loadable.Message.loading(Messages.LOADING_PROFILE);
     updateSize(true, 0);
     redraw(Area.FULL);
@@ -1291,6 +1292,10 @@ public class CommandTree extends Canvas
       expanded.add(rootRow);
       expandChildren(rootRow, rows);
       onNewRows.accept(rows);
+    }
+
+    public void resetColumns() {
+      columns.clear();
     }
 
     public void dispose() {
