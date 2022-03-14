@@ -23,10 +23,10 @@ developers. See also the README files under some source directories.
 
 *Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases).
 
-> Dependency for Linux builds in zip archives: they depend on java8 and
-> libwebkit2gtk. These two are marked as dependencies in the deb package, if
-> you install AGI via a zip archive, make sure to also install java8 and
-> libwebkit2gtk.
+> Dependencies for Linux builds in zip archives: AGI depends on openjdk-11-jre,
+> libgtk-3-0, and libwebkit2gtk. These are marked as dependencies in the deb
+> package. If you install AGI via a zip archive, make sure to install these
+> dependencies as well.
 
 ## Building
 
@@ -35,7 +35,3 @@ developers. See also the README files under some source directories.
 ## Running the client
 
 After building AGI, you can run the client from `<agi-root>/bazel-bin/pkg/agi`.
-
-## Command-Line Interface
-
-AGI exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gpuinspector.dev/docs/cli).
