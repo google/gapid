@@ -45,7 +45,3 @@ class VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR {
     void*              pNext
     VkBool32           uniformBufferStandardLayout
 }
-
-@internal class PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR {
-  VkBool32 UniformBufferStandardLayout
-}

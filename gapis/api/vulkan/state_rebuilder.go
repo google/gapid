@@ -834,12 +834,12 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
-	if !d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().IsNil() {
+	if !d.PhysicalDeviceUniformBufferStandardLayoutFeatures().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
-			NewVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(
-				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR, // sType
+			NewVkPhysicalDeviceUniformBufferStandardLayoutFeatures(
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES, // sType
 				pNext, // pNext
-				d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().UniformBufferStandardLayout(), // uniformBufferStandardLayout
+				d.PhysicalDeviceUniformBufferStandardLayoutFeatures().UniformBufferStandardLayout(), // uniformBufferStandardLayout
 			),
 		).Ptr())
 	}

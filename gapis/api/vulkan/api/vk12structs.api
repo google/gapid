@@ -177,3 +177,14 @@ class VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures {
 class PhysicalDeviceSeparateDepthStencilLayoutsFeatures {
     VkBool32            SeparateDepthStencilLayouts
 }
+
+class VkPhysicalDeviceUniformBufferStandardLayoutFeatures {
+    VkStructureType    sType
+    void*              pNext
+    VkBool32           uniformBufferStandardLayout
+}
+
+@internal
+class PhysicalDeviceUniformBufferStandardLayoutFeatures {
+  VkBool32 UniformBufferStandardLayout
+}

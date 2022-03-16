@@ -63,7 +63,6 @@
   @unused ref!PhysicalDeviceScalarBlockLayoutFeaturesEXT PhysicalDeviceScalarBlockLayoutFeaturesEXT
 
   @unused ref!Vk8BitStorageFeatures Vk8BitStorageFeatures
-  @unused ref!PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR
   @unused ref!PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR
   @unused ref!PhysicalDeviceShaderClockFeaturesKHR PhysicalDeviceShaderClockFeaturesKHR
   @unused ref!PhysicalDeviceVulkanMemoryModelFeaturesKHR PhysicalDeviceVulkanMemoryModelFeaturesKHR
@@ -72,6 +71,7 @@
   // Vulkan 1.2
   @unused ref!PhysicalDeviceBufferDeviceAddressFeatures PhysicalDeviceBufferDeviceAddressFeatures
   @unused ref!PhysicalDeviceSeparateDepthStencilLayoutsFeatures PhysicalDeviceSeparateDepthStencilLayoutsFeatures
+  @unused ref!PhysicalDeviceUniformBufferStandardLayoutFeatures PhysicalDeviceUniformBufferStandardLayoutFeatures
 
   // @extension("VK_EXT_line_rasterization")
   @unused ref!PhysicalDeviceLineRasterizationFeaturesEXT PhysicalDeviceLineRasterizationFeaturesEXT
@@ -247,9 +247,9 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             UniformAndStorageBuffer8BitAccess: ext.uniformAndStorageBuffer8BitAccess,
             StoragePushConstant8: ext.storagePushConstant8)
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
-          ext := as!VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*(next.Ptr)[0]
-          object.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR = new!PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: {
+          ext := as!VkPhysicalDeviceUniformBufferStandardLayoutFeatures*(next.Ptr)[0]
+          object.PhysicalDeviceUniformBufferStandardLayoutFeatures = new!PhysicalDeviceUniformBufferStandardLayoutFeatures(
             UniformBufferStandardLayout: ext.uniformBufferStandardLayout
           )
         }
