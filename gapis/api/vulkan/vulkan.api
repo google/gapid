@@ -314,6 +314,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_custom_border_color"] = true
   supported.ExtensionNames["VK_KHR_separate_depth_stencil_layouts"] = true
   supported.ExtensionNames["VK_KHR_uniform_buffer_standard_layout"] = true
+  supported.ExtensionNames["VK_QCOM_render_pass_store_ops"] = true
   return supported
 }
 

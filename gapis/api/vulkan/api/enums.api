@@ -1111,6 +1111,8 @@ enum VkAttachmentLoadOp: u32 {
 enum VkAttachmentStoreOp: u32 {
   VK_ATTACHMENT_STORE_OP_STORE     = 0x00000000,
   VK_ATTACHMENT_STORE_OP_DONT_CARE = 0x00000001,
+  // @extension("VK_QCOM_render_pass_store_ops")
+  VK_ATTACHMENT_STORE_OP_NONE      = 1000301000,
 }
 
 enum VkPipelineBindPoint: u32 {
@@ -1169,7 +1171,7 @@ enum VkSamplerReductionMode: u32 {
     VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE     = 0,
     VK_SAMPLER_REDUCTION_MODE_MIN                  = 1,
     VK_SAMPLER_REDUCTION_MODE_MAX                  = 2,
-} 
+}
 
 enum VkTessellationDomainOrigin: u32  {
   VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT = 0,
