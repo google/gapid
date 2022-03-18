@@ -48,7 +48,19 @@ go_stripped_binary(
     name = "gapis",
     data = [
         "//cmd/gapir/cc:gapir",
+        "//core/vulkan/vk_virtual_swapchain/cc:json",
+        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
+        "//gapii/cc:libgapii",
+        "//gapii/vulkan/vk_graphics_spy/cc:json",
     ] + select({
+        "@gapid//tools/build:linux": [
+            "//core/vulkan/vk_api_timing_layer/cc:json",
+            "//core/vulkan/vk_api_timing_layer/cc:libVkLayer_CPUTiming",
+            "//core/vulkan/vk_memory_tracker_layer/cc:json",
+            "//core/vulkan/vk_memory_tracker_layer/cc:libVkLayer_MemoryTracker",
+        ],
+        "//conditions:default": [],
+    }) + select({
         "//tools/build:no-android": [],
         "//conditions:default": [
             "//gapidapk/android/apk:arm64-v8a.apk",
