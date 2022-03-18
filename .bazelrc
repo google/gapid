@@ -22,8 +22,8 @@ build --verbose_failures
 test --test_output=errors
 query --nohost_deps --noimplicit_deps
 
-# Adding in c++11 compiling, this really should be done in the android toolchains
-build --cxxopt="-std=c++11" --host_cxxopt="-std=c++11"
+# Use the C++17 standard.
+build --cxxopt="-std=c++17" --host_cxxopt="-std=c++17"
 
 # Android special build configurations
 build --fat_apk_cpu armeabi-v7a,arm64-v8a,x86

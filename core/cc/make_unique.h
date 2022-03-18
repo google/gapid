@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-// std::make_unique is only available from C++14. As we stick to C++11 for now,
-// we define our own make_unique here.
-
 #ifndef CORE_MAKE_UNIQUE_H
 #define CORE_MAKE_UNIQUE_H
 
 #include <memory>
 
+#if __cplusplus > 201400
+using std::make_unique;
+#else
 template <typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
+#endif
 
 #endif  // CORE_MAKE_UNIQUE_H
