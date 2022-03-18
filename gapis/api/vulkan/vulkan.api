@@ -315,6 +315,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_separate_depth_stencil_layouts"] = true
   supported.ExtensionNames["VK_KHR_uniform_buffer_standard_layout"] = true
   supported.ExtensionNames["VK_QCOM_render_pass_store_ops"] = true
+  supported.ExtensionNames["VK_EXT_load_store_op_none"] = true
   return supported
 }
 

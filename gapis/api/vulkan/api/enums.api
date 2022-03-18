@@ -1106,6 +1106,8 @@ enum VkAttachmentLoadOp: u32 {
   VK_ATTACHMENT_LOAD_OP_LOAD      = 0x00000000,
   VK_ATTACHMENT_LOAD_OP_CLEAR     = 0x00000001,
   VK_ATTACHMENT_LOAD_OP_DONT_CARE = 0x00000002,
+  // @extension("VK_EXT_load_store_op_none")
+  VK_ATTACHMENT_LOAD_OP_NONE_EXT = 1000400000,
 }
 
 enum VkAttachmentStoreOp: u32 {
