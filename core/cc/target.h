@@ -21,11 +21,13 @@
 #define GAPID_OS_OSX 2
 #define GAPID_OS_WINDOWS 3
 #define GAPID_OS_ANDROID 4
+#define GAPID_OS_FUCHSIA 5
 
 #define LINUX_ONLY(x)
 #define OSX_ONLY(x)
 #define WINDOWS_ONLY(x)
 #define ANDROID_ONLY(x)
+#define FUCHSIA_ONLY(x)
 
 #if defined(GAPID_TARGET_OS_LINUX)
 #define TARGET_OS GAPID_OS_LINUX
@@ -35,6 +37,16 @@
 #define PATH_DELIMITER_STR "/"
 #undef LINUX_ONLY
 #define LINUX_ONLY(x) x
+#endif
+
+#if defined(GAPID_TARGET_OS_FUCHSIA)
+#define TARGET_OS GAPID_OS_FUCHSIA
+#define STDCALL
+#define EXPORT __attribute__((visibility("default")))
+#define PATH_DELIMITER '/'
+#define PATH_DELIMITER_STR "/"
+#undef FUCHSIA_ONLY
+#define FUCHSIA_ONLY(x) x
 #endif
 
 #if defined(GAPID_TARGET_OS_OSX)

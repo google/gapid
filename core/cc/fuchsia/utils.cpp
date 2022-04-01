@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Google Inc.
+ * Copyright (C) 2022 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,26 @@
  * limitations under the License.
  */
 
-#ifndef GAPII_MEMORY_PROTECTIONS_H
-#define GAPII_MEMORY_PROTECTIONS_H
+#include "utils.h"
 
-namespace gapii {
-namespace track_memory {
+#include <stdio.h>
 
-enum class PageProtections {
-  kNone = 0x0,
-  kRead = 0x1,
-  kWrite = 0x2,
-  kReadWrite = 0x1 | 0x2
-};
+#include "zircon/process.h"
+#include "zircon/syscalls.h"
 
-}  // namespace track_memory
-}  // namespace gapii
+namespace core {
 
-#endif  // GAPII_MEMORY_PROTECTIONS_H
+bool KoidFromHandle(uint32_t handle, uint64_t* koid) {
+  zx_info_handle_basic_t info;
+  zx_status_t status = zx_object_get_info(handle, ZX_INFO_HANDLE_BASIC, &info,
+                                          sizeof(info), nullptr, nullptr);
+  if (status != ZX_OK) {
+    fprintf(stderr, "ERROR: KoidFromHandle failed.\n");
+    return false;
+  }
+
+  *koid = info.koid;
+  return true;
+}
+
+}  // namespace core

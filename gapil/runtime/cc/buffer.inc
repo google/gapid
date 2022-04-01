@@ -133,3 +133,4 @@ buffer Buffer::release_ownership() {
 }  // namespace gapil
 
 #endif  // __GAPIL_RUNTIME_BUFFER_H__
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Google Inc.
+ * Copyright (C) 2022 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef GAPII_MEMORY_PROTECTIONS_H
-#define GAPII_MEMORY_PROTECTIONS_H
+#include <stdint.h>
 
-namespace gapii {
-namespace track_memory {
-
-enum class PageProtections {
-  kNone = 0x0,
-  kRead = 0x1,
-  kWrite = 0x2,
-  kReadWrite = 0x1 | 0x2
-};
-
-}  // namespace track_memory
-}  // namespace gapii
-
-#endif  // GAPII_MEMORY_PROTECTIONS_H
+namespace core {
+bool KoidFromHandle(uint32_t handle, uint64_t* koid);
+}  // namespace core

@@ -46,6 +46,7 @@ _strip = rule(
             default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
         ),
     },
+    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )
 
 def gapid_apk(name = "", abi = "", pkg = "", libs = {}, bins = {}):

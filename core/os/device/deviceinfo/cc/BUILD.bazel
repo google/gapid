@@ -28,6 +28,7 @@ cc_library(
         "//tools/build:linux": glob(["linux/query.cpp"]),
         "//tools/build:windows": glob(["windows/query.cpp"]),
         "//tools/build:darwin": [],
+        "//tools/build:fuchsia-arm64": glob(["fuchsia/query.cpp"]),
         # Android
         "//conditions:default": glob([
             "android/*.cpp",
@@ -39,6 +40,7 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": [],
         "//tools/build:darwin": [],
+        "//tools/build:fuchsia-arm64": [],
         "//tools/build:windows": [],
         # Android
         "//conditions:default": [
@@ -53,6 +55,10 @@ cc_library(
         "//core/os/device:device_cc_proto",
     ] + select({
         "//tools/build:darwin": [":darwin_query"],
+        "//tools/build:fuchsia-arm64": [
+            "@fuchsia_sdk_dynamic//fidl/fuchsia.hwinfo:fuchsia.hwinfo_cc",
+            "@fuchsia_sdk_dynamic//pkg/sys_cpp",
+        ],
         "//conditions:default": [],
     }),
 )

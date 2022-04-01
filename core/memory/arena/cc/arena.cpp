@@ -28,7 +28,7 @@
 #include <inttypes.h>
 
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID) || \
-    (TARGET_OS == GAPID_OS_OSX)
+    (TARGET_OS == GAPID_OS_OSX) || (TARGET_OS == GAPID_OS_FUCHSIA)
 #include <sys/mman.h>
 #include <unistd.h>  // getpagesize
 #elif TARGET_OS == GAPID_OS_WINDOWS

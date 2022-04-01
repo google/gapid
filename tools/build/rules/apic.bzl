@@ -161,6 +161,7 @@ apic_compile = rule(
             default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
         ),
     },
+    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )
 
 def _apic_template_impl(ctx):

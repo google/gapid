@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Google Inc.
+ * Copyright (C) 2022 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef GAPII_MEMORY_PROTECTIONS_H
-#define GAPII_MEMORY_PROTECTIONS_H
+#include "../debugger.h"
 
-namespace gapii {
-namespace track_memory {
+static volatile bool gIsDebuggerAttached = false;
 
-enum class PageProtections {
-  kNone = 0x0,
-  kRead = 0x1,
-  kWrite = 0x2,
-  kReadWrite = 0x1 | 0x2
-};
+namespace core {
 
-}  // namespace track_memory
-}  // namespace gapii
+void Debugger::waitForAttach() {
+  while (!isAttached()) {
+  }
+}
 
-#endif  // GAPII_MEMORY_PROTECTIONS_H
+bool Debugger::isAttached() { return gIsDebuggerAttached; }
+
+}  // namespace core

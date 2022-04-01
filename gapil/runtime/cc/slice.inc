@@ -237,3 +237,4 @@ void Slice<T>::reference() const {
 }  // namespace gapil
 
 #endif  // __GAPIL_RUNTIME_SLICE_INC__
+

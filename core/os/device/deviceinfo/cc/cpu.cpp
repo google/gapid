@@ -101,6 +101,70 @@ bool query::queryCpu(CpuInfo* info, std::string* error) {
   return true;
 }
 
+#elif ((defined(__arm__) || defined(__aarch64__)) && \
+       TARGET_OS == GAPID_OS_FUCHSIA)
+#include <fuchsia/hwinfo/cpp/fidl.h>
+#include <lib/sys/cpp/component_context.h>
+
+bool query::queryCpu(CpuInfo* info, std::string* error) {
+  auto context = sys::ComponentContext::Create();
+
+  // Name, Architecture
+  fuchsia::hwinfo::BoardSyncPtr board_ptr;
+  if (context->svc()->Connect(board_ptr.NewRequest()) != ZX_OK) {
+    error->append("Failed board context Connect() call.");
+    return false;
+  }
+
+  fuchsia::hwinfo::BoardInfo board_info;
+  if (board_ptr->GetInfo(&board_info) != ZX_OK) {
+    error->append("Failed fuchsia board GetInfo() call.");
+    return false;
+  }
+
+  if (!board_info.has_cpu_architecture()) {
+    error->append("Unspecified board cpu architecture.");
+    return false;
+  }
+  switch (board_info.cpu_architecture()) {
+    case fuchsia::hwinfo::Architecture::ARM64:
+#ifdef __arm__
+      info->architecture = device::ARMv7a;
+#else
+      info->architecture = device::ARMv8a;
+#endif
+      break;
+    default:
+      error->append("Unknown ARM cpu architecture.");
+      return false;
+  }
+
+  if (!board_info.has_name()) {
+    error->append("Unspecified board name.");
+    return false;
+  }
+  info->name = board_info.name();
+
+  // Vendor
+  fuchsia::hwinfo::ProductSyncPtr product_ptr;
+  if (context->svc()->Connect(product_ptr.NewRequest()) != ZX_OK) {
+    error->append("Failed product context Connect() call.");
+    return false;
+  }
+  fuchsia::hwinfo::ProductInfo product_info;
+  if (product_ptr->GetInfo(&product_info) != ZX_OK) {
+    error->append("Failed fuchsia product GetInfo() call.");
+    return false;
+  }
+  if (!product_info.has_manufacturer()) {
+    error->append("Unspecified product manufacturer.");
+    return false;
+  }
+  info->vendor = product_info.manufacturer();
+
+  return true;
+}
+
 #else
 #error Unsupported target architecture.
 #endif

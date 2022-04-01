@@ -97,6 +97,8 @@ func parseABI(s string) (*device.ABI, error) {
 		return device.AndroidARM64v8a, nil
 	case "x86":
 		return device.AndroidX86, nil
+	case "aarch64":
+		return device.FuchsiaARM64, nil
 	default:
 		return nil, fmt.Errorf("Unrecognised target: '%v'", s)
 	}

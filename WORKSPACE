@@ -28,6 +28,14 @@ load("@gapid//tools/build:workspace_gapic.bzl", "gapic_dependencies", "gapic_thi
 gapic_dependencies(locals = LOCALS)
 gapic_third_party()
 
+# Fuchsia rules, disabled by default. See .bazelrc for config to enable.
+load("@gapid//tools/build/fuchsia:fuchsia_config.bzl", "fuchsia_config")
+fuchsia_config()
+load("@local_config_fuchsia//:workspace.bzl", "fuchsia_base_dependencies")
+fuchsia_base_dependencies(locals = LOCALS)
+load("@local_config_fuchsia//:fuchsia_sdk.bzl", "fuchsia_sdk_dependencies")
+fuchsia_sdk_dependencies(locals = LOCALS)
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 go_rules_dependencies()

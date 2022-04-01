@@ -386,3 +386,4 @@ void Map<K, V, DENSE>::Allocation::clear_keep() {
 #endif
 
 #endif  // __GAPIL_RUNTIME_MAP_INC__
+

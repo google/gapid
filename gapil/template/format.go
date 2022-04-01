@@ -52,7 +52,7 @@ func (f *Functions) Reflow(indentSize int, value string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s : %s", f.active.Name(), err)
 	}
-	return string(result), nil
+	return string(result) + "\n", nil
 }
 
 const goIndent = 2 // Required by go style guide

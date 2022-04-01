@@ -32,6 +32,7 @@ def cc_copts():
         "@gapid//tools/build:android-armeabi-v7a": _ANDROID_COPTS,
         "@gapid//tools/build:android-arm64-v8a": _ANDROID_COPTS,
         "@gapid//tools/build:android-x86": _ANDROID_COPTS,
+        "@gapid//tools/build:fuchsia-arm64": ["-DGAPID_TARGET_OS_FUCHSIA"],
     })
 
 # Strip rule implementation, which invokes the cc_toolchain.strip_executable
@@ -50,7 +51,7 @@ def _strip_impl(ctx):
 
     flags = []
     cc_toolchain = find_cpp_toolchain(ctx)
-    if cc_toolchain.cpu == "k8" or cc_toolchain.cpu == "x64_windows":
+    if cc_toolchain.cpu == "k8" or cc_toolchain.cpu == "x64_windows" or cc_toolchain.cpu == "aarch64":
         flags = ["--strip-unneeded", "-p"]
     elif cc_toolchain.cpu == "darwin_x86_64":
         flags = ["-x"]
@@ -62,9 +63,10 @@ def _strip_impl(ctx):
     ctx.actions.run(
         executable = cc_toolchain.strip_executable,
         arguments = flags + ["-o", out.path, src.path],
-        inputs = [src],
+	inputs = depset(direct = [src], transitive = [ cc_toolchain.all_files ]),
         outputs = [out],
     )
+
     return struct(
         files = depset([out]),
         runfiles = ctx.runfiles(collect_data = True),
@@ -88,12 +90,17 @@ strip = rule(
         ),
     },
     executable = True,
+    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )
 
 # Symbol rule implementation, which invokes the _dump_syms binary to generate
 # a symbol dump file that can be uploaded to the crash server to symbolize
 # stack traces of uploaded crash dumps.
 def _symbols_impl(ctx):
+    # TODO: figure out symbol dumping for Fuchsia.
+    if ctx.var.get("FUCHSIA_BUILD") != None and ctx.var["FUCHSIA_BUILD"] == 1:
+        return
+
     out = ctx.actions.declare_file(ctx.label.name)
     bin = ctx.file.src
     cc_toolchain = find_cpp_toolchain(ctx)

@@ -117,3 +117,4 @@ void Ref<T>::Allocation::reference() {
 }  // namespace gapil
 
 #endif  // __GAPIL_RUNTIME_REF_INC__
+

@@ -86,6 +86,16 @@ config_setting(
 )
 
 config_setting(
+    name = "fuchsia-arm64",
+    define_values = {
+        "FUCHSIA_BUILD": "1",
+    },
+    values = {
+        "cpu": "aarch64",
+    },
+)
+
+config_setting(
     name = "debug",
     values = {
         "compilation_mode": "dbg",

@@ -32,13 +32,14 @@ namespace core {
 namespace {
 
 const uint64_t SEC_TO_NANO = 1000000000;
-const uint64_t MICRO_TO_NANO = 1000;
 
 // Returns a monotonic clock reading in a platform-specific unit.
 // Use platformDurationToNanosecods() to convert the difference in values
 // returned from two calls to platformGetTime() into nanoseconds.
 inline uint64_t platformGetTime() {
 #if TARGET_OS == GAPID_OS_OSX
+  static const uint64_t MICRO_TO_NANO = 1000;
+
   timeval tv = {0, 0};
   if (gettimeofday(&tv, NULL) != 0) {
     GAPID_FATAL("Unable to start timer. Error: %d", errno);

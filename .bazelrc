@@ -51,3 +51,7 @@ build:nodroid --define NO_ANDROID=1
 
 # Tests requiring a GPU fail in the sandbox.
 test --strategy TestRunner=standalone --test_env DISPLAY
+
+build:fuchsia_arm64 --crosstool_top=@fuchsia_clang//:toolchain --cpu=aarch64 --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build:fuchsia_arm64 --cxxopt="-Wno-extra-semi"
+build:fuchsia_arm64 --define FUCHSIA_BUILD=1 --action_env=AGI_FUCHSIA_BUILD=1
