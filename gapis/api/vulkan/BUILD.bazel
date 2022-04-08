@@ -60,6 +60,7 @@ go_library(
         "allocation_tracker.go",
         "buffer_command.go",
         "command_buffer_rebuilder.go",
+        "command_builder_utils.go",
         "custom_replay.go",
         "doc.go",
         "draw_call_mesh.go",

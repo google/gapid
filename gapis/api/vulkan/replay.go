@@ -204,7 +204,7 @@ func getFramebufferTransforms(ctx context.Context,
 		return nil, err
 	}
 
-	splitterTransform := NewCommandSplitter(ctx)
+	splitterTransform := NewCommandSplitter(ctx, uint64(numOfInitialCmds))
 	readFramebufferTransform := newReadFramebuffer(ctx)
 	overdrawTransform := NewStencilOverdraw()
 

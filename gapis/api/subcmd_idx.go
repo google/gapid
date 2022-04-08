@@ -92,6 +92,18 @@ func (s SubCmdIdx) Contains(s2 SubCmdIdx) bool {
 	return len(s2) >= len(s) && len(s) != 0 && s.Equals(s2[:len(s)])
 }
 
+func (s SubCmdIdx) InRange(begin SubCmdIdx, end SubCmdIdx) bool {
+	if s.LessThan(begin) {
+		return false
+	}
+
+	if end.LessThan(s) {
+		return false
+	}
+
+	return true
+}
+
 // SortSubCmdIDs sorts the slice of subcommand ids
 func SortSubCmdIDs(ids []SubCmdIdx) {
 	lessFunc := func(i, j int) bool {

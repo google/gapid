@@ -24,953 +24,1059 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-// commandSplitter is a transform that will re-write command-buffers and insert replacement
-// commands at the correct locations in the stream for downstream transforms to replace.
-// See: https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#renderpass
-// and https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#pipelines-graphics
-// to understand how/why we have to split these.
-type commandSplitter struct {
-	lastRequest      api.SubCmdIdx
-	requestsSubIndex []api.SubCmdIdx
-
-	readMemoriesForSubmit []*api.AllocResult
-	readMemoriesForCmd    []*api.AllocResult
-	writeMemoriesForCmd   []*api.AllocResult
-	pool                  VkCommandPool
-
-	thisRenderPass    VkCmdBeginRenderPassXArgsʳ
-	currentRenderPass [][3]VkRenderPass
-	thisSubpass       int
-
-	splitRenderPasses      map[VkRenderPass][][3]VkRenderPass
-	fixedGraphicsPipelines map[VkPipeline]VkPipeline
-
-	pendingCommandBuffers []VkCommandBuffer
-	stateMutator          transform.StateMutator
-	allocations           *allocationTracker
+// To split a renderpass and insert insertion command in it,
+// for every subpass in a renderpass, we create 3 renderpasses
+type subpassSplitters struct {
+	enter        VkRenderPass
+	intermediate VkRenderPass
+	exit         VkRenderPass
 }
 
-func NewCommandSplitter(ctx context.Context) *commandSplitter {
+type renderPassSplitters []subpassSplitters
+
+type commandSplitter struct {
+	requestedCmds   []api.SubCmdIdx
+	cmdsOffset      uint64
+	mutationStarted bool
+	allocations     *allocationTracker
+	stateMutator    transform.StateMutator
+
+	readMemoriesForSubmit []*api.AllocResult
+
+	splitRenderPasses          map[VkRenderPass]renderPassSplitters
+	rewrittenGraphicsPipelines map[VkPipeline]VkPipeline
+	pendingCommandBuffers      []VkCommandBuffer
+
+	pool VkCommandPool
+}
+
+func NewCommandSplitter(ctx context.Context, cmdsOffset uint64) *commandSplitter {
 	return &commandSplitter{
-		lastRequest:            api.SubCmdIdx{},
-		requestsSubIndex:       make([]api.SubCmdIdx, 0),
-		readMemoriesForSubmit:  make([]*api.AllocResult, 0),
-		readMemoriesForCmd:     make([]*api.AllocResult, 0),
-		writeMemoriesForCmd:    make([]*api.AllocResult, 0),
-		pool:                   0,
-		thisRenderPass:         NilVkCmdBeginRenderPassXArgsʳ,
-		currentRenderPass:      make([][3]VkRenderPass, 0),
-		thisSubpass:            0,
-		splitRenderPasses:      make(map[VkRenderPass][][3]VkRenderPass),
-		fixedGraphicsPipelines: make(map[VkPipeline]VkPipeline),
-		pendingCommandBuffers:  make([]VkCommandBuffer, 0),
-		stateMutator:           nil,
+		requestedCmds:   make([]api.SubCmdIdx, 0, 0),
+		cmdsOffset:      cmdsOffset,
+		mutationStarted: false,
+
+		splitRenderPasses:          make(map[VkRenderPass]renderPassSplitters),
+		rewrittenGraphicsPipelines: make(map[VkPipeline]VkPipeline),
+		pendingCommandBuffers:      make([]VkCommandBuffer, 0),
+
+		allocations:  nil,
+		stateMutator: nil,
 	}
 }
 
 // Add adds the command with identifier id to the set of commands that will be split.
-func (splitTransform *commandSplitter) Split(ctx context.Context, id api.SubCmdIdx) error {
-	splitTransform.requestsSubIndex = append(splitTransform.requestsSubIndex, append(api.SubCmdIdx{}, id...))
-	if splitTransform.lastRequest.LessThan(id) {
-		splitTransform.lastRequest = append(api.SubCmdIdx{}, id...)
+// The requested command ids will be sorted and handled in one pass.
+func (splitter *commandSplitter) Split(ctx context.Context, id api.SubCmdIdx) error {
+	if splitter.mutationStarted {
+		return log.Err(ctx, nil, "Commands cannot be requested to split after mutation started")
 	}
 
+	if len(id) == 0 {
+		return log.Err(ctx, nil, "Requested id is empty")
+	}
+
+	id[0] = id[0] + splitter.cmdsOffset
+
+	splitter.requestedCmds = append(splitter.requestedCmds, append(api.SubCmdIdx{}, id...))
 	return nil
 }
 
-func (splitTransform *commandSplitter) RequiresAccurateState() bool {
+func (splitter *commandSplitter) RequiresAccurateState() bool {
 	return false
 }
 
-func (splitTransform *commandSplitter) RequiresInnerStateMutation() bool {
+func (splitter *commandSplitter) RequiresInnerStateMutation() bool {
 	return true
 }
 
-func (splitTransform *commandSplitter) SetInnerStateMutationFunction(mutator transform.StateMutator) {
-	splitTransform.stateMutator = mutator
+func (splitter *commandSplitter) SetInnerStateMutationFunction(mutator transform.StateMutator) {
+	splitter.stateMutator = mutator
 }
 
-func (splitTransform *commandSplitter) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
-	splitTransform.allocations = NewAllocationTracker(inputState)
+func (splitter *commandSplitter) BeginTransform(ctx context.Context, inputState *api.GlobalState) error {
+	splitter.allocations = NewAllocationTracker(inputState)
+	api.SortSubCmdIDs(splitter.requestedCmds)
+	splitter.mutationStarted = true
 	return nil
 }
 
-func (splitTransform *commandSplitter) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
-	return nil, nil
+func (splitter *commandSplitter) EndTransform(ctx context.Context, inputState *api.GlobalState) ([]api.Cmd, error) {
+	if len(splitter.requestedCmds) == 0 {
+		return nil, nil
+	}
+
+	err := fmt.Errorf("The requested commands to be splitted could not found: ")
+
+	for _, cmdID := range splitter.requestedCmds {
+		cmdID[0] = cmdID[0] - splitter.cmdsOffset
+		err = fmt.Errorf("%v %v ", err, cmdID)
+	}
+
+	log.E(ctx, "Command Splitter Transform Error: %v", err)
+	return nil, err
 }
 
-func (splitTransform *commandSplitter) ClearTransformResources(ctx context.Context) {
-	splitTransform.allocations.FreeAllocations()
+func (splitter *commandSplitter) ClearTransformResources(ctx context.Context) {
+	splitter.allocations.FreeAllocations()
 }
 
-func (splitTransform *commandSplitter) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
+func (splitter *commandSplitter) TransformCommand(ctx context.Context, id transform.CommandID, inputCommands []api.Cmd, inputState *api.GlobalState) ([]api.Cmd, error) {
 	if len(inputCommands) == 0 {
 		return inputCommands, nil
 	}
 
-	inRange := false
-	var topCut api.SubCmdIdx
-	cuts := []api.SubCmdIdx{}
-	thisID := api.SubCmdIdx{uint64(id.GetID())}
-	for _, r := range splitTransform.requestsSubIndex {
-		if thisID.Contains(r) {
-			inRange = true
-			if thisID.Equals(r) {
-				topCut = r
-			} else {
-				cuts = append(cuts, r[1:])
-			}
-		}
-	}
-
-	if !inRange {
+	if id.GetCommandType() != transform.TransformCommand {
+		// We are not interested in the artificial commands from endTransform.
 		return inputCommands, nil
 	}
 
-	if len(cuts) == 0 {
-		if err := splitTransform.appendInsertionCommand(ctx, inputCommands, topCut); err != nil {
-			log.E(ctx, "Failed during appending insertion command : %v", err)
-			return []api.Cmd{}, err
-		}
-
-		return []api.Cmd{}, nil
-	}
+	currentSubCmdID := api.SubCmdIdx{uint64(id.GetID())}
 
 	queueSubmitProcessed := false
-	for _, cmd := range inputCommands {
-		if queueSubmitCmd, ok := cmd.(*VkQueueSubmit); ok {
+	for i := range inputCommands {
+		queueSubmitCmd, ok := inputCommands[i].(*VkQueueSubmit)
+		if ok && splitter.isSubCmdRequestedNext(currentSubCmdID) {
 			if queueSubmitProcessed {
 				panic("We should not have more than one vkQueueSubmit for a single command")
 			}
-
 			queueSubmitProcessed = true
-			if err := splitTransform.modifyVkQueueSubmit(ctx, id.GetID(), queueSubmitCmd, inputState, topCut, cuts); err != nil {
-				log.E(ctx, "Failed during modifying VkQueueSubmit : %v", err)
+
+			newCmd, err := splitter.rewriteQueueSubmit(ctx, id.GetID(), queueSubmitCmd, inputState)
+			if err != nil {
+				log.E(ctx, "Failed during rewriting VkQueueSubmit : %v", err)
 				return nil, err
 			}
-		} else {
-			if err := splitTransform.writeCommand(cmd); err != nil {
-				log.E(ctx, "Failed during processing input commands : %v", err)
+			inputCommands[i] = newCmd
+		}
+
+		// It means that this is a VkQueuePresentKHR and
+		// we need to get image before QueuePresent
+		if splitter.isCmdRequestedNext(currentSubCmdID) {
+			insertionCmd := splitter.createInsertionCommand(ctx, VkCommandBuffer(0), currentSubCmdID, inputCommands[i])
+			if err := splitter.writeCommand(insertionCmd); err != nil {
+				log.E(ctx, "Failed during processing insertion command : %v", err)
 				return nil, err
 			}
 		}
+
+		if err := splitter.writeCommand(inputCommands[i]); err != nil {
+			log.E(ctx, "Failed during processing input commands : %v", err)
+			return nil, err
+		}
 	}
+
+	splitter.pendingCommandBuffers = []VkCommandBuffer{}
 
 	return nil, nil
 }
 
-func (splitTransform *commandSplitter) appendInsertionCommand(ctx context.Context, inputCommands []api.Cmd, topCut api.SubCmdIdx) error {
-	isEndOfFrame := false
-	endOfFrameCmdID := 0
-	for i, cmd := range inputCommands {
-		if cmd.CmdFlags().IsEndOfFrame() {
-			isEndOfFrame = true
-			endOfFrameCmdID = i
-			break
-		}
-	}
-
-	insertionCommand := &InsertionCommand{
-		VkCommandBuffer(0),
-		append([]VkCommandBuffer{}, splitTransform.pendingCommandBuffers...),
-		topCut,
-		inputCommands[endOfFrameCmdID],
-	}
-
-	if isEndOfFrame {
-		// We want to add insertion command before the vkQueuePresentKHR so that
-		// the images are still valid.
-		if err := splitTransform.writeCommand(insertionCommand); err != nil {
-			log.E(ctx, "Failed during writing insertion command : %v", err)
-			return err
-		}
-
-		if err := splitTransform.writeCommands(inputCommands); err != nil {
-			log.E(ctx, "Failed during processing input commands : %v", err)
-			return err
-		}
-	} else {
-		if err := splitTransform.writeCommands(inputCommands); err != nil {
-			log.E(ctx, "Failed during processing input commands : %v", err)
-			return err
-		}
-		if err := splitTransform.writeCommand(insertionCommand); err != nil {
-			log.E(ctx, "Failed during writing insertion command : %v", err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (splitTransform *commandSplitter) modifyVkQueueSubmit(
-	ctx context.Context,
-	id api.CmdID,
-	cmd *VkQueueSubmit,
-	inputState *api.GlobalState,
-	topCut api.SubCmdIdx,
-	cuts []api.SubCmdIdx) error {
-	newSubmit, err := splitTransform.rewriteQueueSubmit(ctx, id, cuts, cmd, inputState)
-	if err != nil {
-		log.E(ctx, "Failed during rewriting VkQueueSubmit : %v", err)
-		return err
-	}
-
-	if err = splitTransform.writeCommand(newSubmit); err != nil {
-		log.E(ctx, "Failed during writing VkQueueSubmit : %v", err)
-		return err
-	}
-
-	if len(topCut) == 0 {
-		return nil
-	}
-
-	if err := splitTransform.writeCommand(&InsertionCommand{
-		VkCommandBuffer(0),
-		append([]VkCommandBuffer{}, splitTransform.pendingCommandBuffers...),
-		topCut,
-		cmd,
-	}); err != nil {
-		log.E(ctx, "Failed during inserting and Insertion Command after VkQueueSubmit : %v", err)
-		return err
-	}
-
-	splitTransform.pendingCommandBuffers = []VkCommandBuffer{}
-	return nil
-}
-
-func (splitTransform *commandSplitter) rewriteQueueSubmit(ctx context.Context, id api.CmdID, cuts []api.SubCmdIdx, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (*VkQueueSubmit, error) {
+func (splitter *commandSplitter) rewriteQueueSubmit(ctx context.Context,
+	id api.CmdID, cmd *VkQueueSubmit, inputState *api.GlobalState) (api.Cmd, error) {
 	layout := inputState.MemoryLayout
-	cb := CommandBuilder{Thread: queueSubmit.Thread()}
-	queueSubmit.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
+	cb := CommandBuilder{Thread: cmd.Thread()}
+	cmd.Extras().Observations().ApplyReads(inputState.Memory.ApplicationPool())
 
-	submitInfos, err := queueSubmit.PSubmits().Slice(0, uint64(queueSubmit.SubmitCount()), layout).Read(ctx, queueSubmit, inputState, nil)
+	submitInfos, err := cmd.PSubmits().Slice(0, uint64(cmd.SubmitCount()), layout).Read(ctx, cmd, inputState, nil)
 	if err != nil {
 		return nil, err
 	}
 	newSubmitInfos := []VkSubmitInfo{}
 
-	newSubmit := cb.VkQueueSubmit(queueSubmit.Queue(), queueSubmit.SubmitCount(), queueSubmit.PSubmits(), queueSubmit.Fence(), queueSubmit.Result())
-	newSubmit.Extras().MustClone(queueSubmit.Extras().All()...)
+	newQueueSubmit := cb.VkQueueSubmit(cmd.Queue(), cmd.SubmitCount(), cmd.PSubmits(), cmd.Fence(), cmd.Result())
+	newQueueSubmit.Extras().MustClone(cmd.Extras().All()...)
 
-	for i := 0; i < len(submitInfos); i++ {
-		subIdx := api.SubCmdIdx{uint64(id), uint64(i)}
-		newCuts := []api.SubCmdIdx{}
-		addAfterSubmit := false
-		for _, s := range cuts {
-			if s[0] == uint64(i) {
-				if len(s) == 1 {
-					addAfterSubmit = true
-				} else {
-					newCuts = append(newCuts, s[1:])
-				}
-			}
-		}
+	for i := range submitInfos {
+		currentSubCmdID := append(api.SubCmdIdx{uint64(id)}, uint64(i))
+
 		newSubmitInfo := submitInfos[i]
-		if len(newCuts) != 0 {
-			newSubmitInfo, err = splitTransform.splitSubmit(ctx, submitInfos[i], subIdx, newCuts, queueSubmit, inputState)
+		if splitter.isSubCmdRequestedNext(currentSubCmdID) {
+			newSubmitInfo, err = splitter.rewriteSubmissionBatch(ctx, currentSubCmdID, submitInfos[i], cmd, inputState)
 			if err != nil {
 				log.E(ctx, "Failed during splitting submit : %v", err)
 				return nil, err
 			}
 		} else {
-			commandBuffers, err := submitInfos[i].PCommandBuffers().Slice(0, uint64(submitInfos[i].CommandBufferCount()), layout).Read(ctx, queueSubmit, inputState, nil)
+			commandBuffers, err := newSubmitInfo.PCommandBuffers().Slice(0, uint64(newSubmitInfo.CommandBufferCount()), layout).Read(ctx, cmd, inputState, nil)
 			if err != nil {
+				log.E(ctx, "Failed during reading existing command buffer: %v", err)
 				return nil, err
 			}
-			splitTransform.pendingCommandBuffers = append(splitTransform.pendingCommandBuffers, commandBuffers...)
+			splitter.pendingCommandBuffers = append(splitter.pendingCommandBuffers, commandBuffers...)
 		}
 		newSubmitInfos = append(newSubmitInfos, newSubmitInfo)
-		if addAfterSubmit {
-			submitInfo, err := splitTransform.splitAfterSubmit(ctx, subIdx, queueSubmit, inputState)
+
+		if splitter.isCmdRequestedNext(currentSubCmdID) {
+			insertionCommandBuffer, err := splitter.createCommandBufferWithInsertion(ctx, inputState, cmd, currentSubCmdID)
 			if err != nil {
-				log.E(ctx, "Failed during splitting after Submit : %v", err)
+				log.E(ctx, "Failed during creating insertion command buffer")
 				return nil, err
 			}
-			newSubmitInfos = append(newSubmitInfos, submitInfo)
+
+			insertionSubmitInfo := NewVkSubmitInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
+				NewVoidᶜᵖ(memory.Nullptr),                     // pNext
+				0,                                             // waitSemaphoreCount,
+				NewVkSemaphoreᶜᵖ(memory.Nullptr),              // pWaitSemaphores
+				NewVkPipelineStageFlagsᶜᵖ(memory.Nullptr), // pWaitDstStageMask
+				1, // commandBufferCount
+				NewVkCommandBufferᶜᵖ(splitter.mustAllocReadDataForSubmit(ctx, inputState, insertionCommandBuffer).Ptr()),
+				0,                                // signalSemaphoreCount
+				NewVkSemaphoreᶜᵖ(memory.Nullptr), // pSignalSemaphores
+			)
+
+			newSubmitInfos = append(newSubmitInfos, insertionSubmitInfo)
 		}
 	}
-	newSubmit.SetSubmitCount(uint32(len(newSubmitInfos)))
-	newSubmit.SetPSubmits(NewVkSubmitInfoᶜᵖ(splitTransform.mustAllocReadDataForSubmit(ctx, inputState, newSubmitInfos).Ptr()))
 
-	for x := range splitTransform.readMemoriesForSubmit {
-		newSubmit.AddRead(splitTransform.readMemoriesForSubmit[x].Data())
+	newQueueSubmit.SetSubmitCount(uint32(len(newSubmitInfos)))
+	newQueueSubmit.SetPSubmits(NewVkSubmitInfoᶜᵖ(splitter.mustAllocReadDataForSubmit(ctx, inputState, newSubmitInfos).Ptr()))
+
+	for x := range splitter.readMemoriesForSubmit {
+		newQueueSubmit.AddRead(splitter.readMemoriesForSubmit[x].Data())
 	}
-	splitTransform.readMemoriesForSubmit = []*api.AllocResult{}
-	return newSubmit, nil
+
+	splitter.readMemoriesForSubmit = []*api.AllocResult{}
+	return newQueueSubmit, nil
 }
 
-func (splitTransform *commandSplitter) splitSubmit(ctx context.Context, submit VkSubmitInfo, idx api.SubCmdIdx, cuts []api.SubCmdIdx, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkSubmitInfo, error) {
-	newSubmitInfo := MakeVkSubmitInfo()
-	newSubmitInfo.SetSType(submit.SType())
-	newSubmitInfo.SetPNext(submit.PNext())
-	newSubmitInfo.SetWaitSemaphoreCount(submit.WaitSemaphoreCount())
-	newSubmitInfo.SetPWaitSemaphores(submit.PWaitSemaphores())
-	newSubmitInfo.SetPWaitDstStageMask(submit.PWaitDstStageMask())
-	newSubmitInfo.SetCommandBufferCount(submit.CommandBufferCount())
-
+func (splitter *commandSplitter) rewriteSubmissionBatch(ctx context.Context, idx api.SubCmdIdx, submitInfo VkSubmitInfo, cmd *VkQueueSubmit, inputState *api.GlobalState) (VkSubmitInfo, error) {
 	layout := inputState.MemoryLayout
-	// pCommandBuffers
-	commandBuffers, err := submit.PCommandBuffers().Slice(0, uint64(submit.CommandBufferCount()), layout).Read(ctx, queueSubmit, inputState, nil)
+	commandBuffers, err := submitInfo.PCommandBuffers().Slice(0, uint64(submitInfo.CommandBufferCount()), layout).Read(ctx, cmd, inputState, nil)
 	if err != nil {
 		return VkSubmitInfo{}, err
 	}
+	newSubmitInfo := MakeVkSubmitInfo()
+
 	newCommandBuffers := make([]VkCommandBuffer, 0)
-
-	cb := CommandBuilder{Thread: queueSubmit.Thread()}
-
 	for i := range commandBuffers {
-		splitAfterCommandBuffer := false
-		newCuts := []api.SubCmdIdx{}
-		for _, s := range cuts {
-			if s[0] == uint64(i) {
-				if len(s) == 1 {
-					splitAfterCommandBuffer = true
-					continue
-				} else {
-					newCuts = append(newCuts, s[1:])
-				}
+		currentCommandBuffer := commandBuffers[i]
+
+		currentSubCmdID := append(idx, uint64(i))
+		if splitter.isSubCmdRequestedNext(currentSubCmdID) {
+			newCommandBuffer, err := splitter.createNewCommandBufferAndBegin(ctx, inputState, cmd, currentCommandBuffer)
+			if err != nil {
+				return VkSubmitInfo{}, err
 			}
+
+			err = splitter.rewriteCommandBuffer(ctx, inputState, currentSubCmdID, cmd, currentCommandBuffer, newCommandBuffer)
+			if err != nil {
+				return VkSubmitInfo{}, log.Err(ctx, err, "Failed during rewriting command buffer")
+			}
+
+			endCommandBufferCmd := endCommandBuffer(cmd.Thread(), newCommandBuffer)
+			if err := splitter.writeCommand(endCommandBufferCmd); err != nil {
+				log.E(ctx, "Failed during writing end command buffer : %v", err)
+				return VkSubmitInfo{}, err
+			}
+			currentCommandBuffer = newCommandBuffer
 		}
-		if len(newCuts) > 0 {
-			cbuff := commandBuffers[i]
-			cbo := GetState(inputState).CommandBuffers().Get(cbuff)
-			commandBuffer, err := splitTransform.getStartedCommandBuffer(ctx, queueSubmit, inputState)
-			if err != nil {
-				log.E(ctx, "Failed during getting started command buffer : %v", err)
-				return VkSubmitInfo{}, err
-			}
 
-			splitCommandBuffers, err := splitTransform.splitCommandBuffer(ctx, commandBuffer, cbo, queueSubmit, append(idx, uint64(i)), newCuts, inputState)
-			if err != nil {
-				log.E(ctx, "Failed during splitting command buffer : %v", err)
-				return VkSubmitInfo{}, err
-			}
-			newCommandBuffers = append(newCommandBuffers, splitCommandBuffers)
-			if err := splitTransform.observeAndWriteCommand(cb.VkEndCommandBuffer(commandBuffer, VkResult_VK_SUCCESS)); err != nil {
-				log.E(ctx, "Failed during writing EndCommandBuffer : %v", err)
-				return VkSubmitInfo{}, err
-			}
-		} else {
-			newCommandBuffers = append(newCommandBuffers, commandBuffers[i])
-		}
-		if splitAfterCommandBuffer {
-			commandBuffer, err := splitTransform.getStartedCommandBuffer(ctx, queueSubmit, inputState)
-			if err != nil {
-				log.E(ctx, "Failed during getting started command buffer : %v", err)
-				return VkSubmitInfo{}, err
-			}
+		newCommandBuffers = append(newCommandBuffers, currentCommandBuffer)
 
-			if err := splitTransform.writeCommand(&InsertionCommand{
-				commandBuffer,
-				append([]VkCommandBuffer{}, splitTransform.pendingCommandBuffers...),
-				append(idx, uint64(i)),
-				queueSubmit,
-			}); err != nil {
-				log.E(ctx, "Failed during insterting and instertion command : %v", err)
+		if splitter.isCmdRequestedNext(currentSubCmdID) {
+			insertionCommandBuffer, err := splitter.createCommandBufferWithInsertion(ctx, inputState, cmd, currentSubCmdID)
+			if err != nil {
+				log.E(ctx, "Failed during creating insertion command buffer")
 				return VkSubmitInfo{}, err
 			}
-
-			if err := splitTransform.observeAndWriteCommand(cb.VkEndCommandBuffer(commandBuffer, VkResult_VK_SUCCESS)); err != nil {
-				log.E(ctx, "Failed during writing EndCommandBuffer : %v", err)
-				return VkSubmitInfo{}, err
-			}
-			newCommandBuffers = append(newCommandBuffers, commandBuffer)
+			newCommandBuffers = append(newCommandBuffers, insertionCommandBuffer)
 		}
 	}
-	splitTransform.pendingCommandBuffers = append(splitTransform.pendingCommandBuffers, newCommandBuffers...)
-	newCbs := splitTransform.mustAllocReadDataForSubmit(ctx, inputState, newCommandBuffers)
+
+	splitter.pendingCommandBuffers = append(splitter.pendingCommandBuffers, newCommandBuffers...)
+
+	newCbs := splitter.mustAllocReadDataForSubmit(ctx, inputState, newCommandBuffers)
+	newSubmitInfo.SetSType(submitInfo.SType())
+	newSubmitInfo.SetPNext(submitInfo.PNext())
+	newSubmitInfo.SetWaitSemaphoreCount(submitInfo.WaitSemaphoreCount())
+	newSubmitInfo.SetPWaitSemaphores(submitInfo.PWaitSemaphores())
+	newSubmitInfo.SetPWaitDstStageMask(submitInfo.PWaitDstStageMask())
+	newSubmitInfo.SetCommandBufferCount(uint32(len(newCommandBuffers)))
 	newSubmitInfo.SetPCommandBuffers(NewVkCommandBufferᶜᵖ(newCbs.Ptr()))
 	newSubmitInfo.SetCommandBufferCount(uint32(len(newCommandBuffers)))
-	newSubmitInfo.SetSignalSemaphoreCount(submit.SignalSemaphoreCount())
-	newSubmitInfo.SetPSignalSemaphores(submit.PSignalSemaphores())
-
+	newSubmitInfo.SetSignalSemaphoreCount(submitInfo.SignalSemaphoreCount())
+	newSubmitInfo.SetPSignalSemaphores(submitInfo.PSignalSemaphores())
 	return newSubmitInfo, nil
 }
 
-func (splitTransform *commandSplitter) splitAfterSubmit(ctx context.Context, id api.SubCmdIdx, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkSubmitInfo, error) {
+func (splitter *commandSplitter) rewriteCommandBuffer(
+	ctx context.Context,
+	inputState *api.GlobalState,
+	idx api.SubCmdIdx,
+	queueSubmit *VkQueueSubmit,
+	existingCommandBuffer VkCommandBuffer,
+	newCommandBuffer VkCommandBuffer) error {
+
 	cb := CommandBuilder{Thread: queueSubmit.Thread()}
-	commandBuffer, err := splitTransform.getStartedCommandBuffer(ctx, queueSubmit, inputState)
-	if err != nil {
-		log.E(ctx, "Failed during getting started command buffer : %v", err)
-		return VkSubmitInfo{}, err
+
+	existingCommandBufferObject := GetState(inputState).CommandBuffers().Get(existingCommandBuffer)
+	for i := uint32(0); i < uint32(existingCommandBufferObject.CommandReferences().Len()); i++ {
+		currentCmd := existingCommandBufferObject.CommandReferences().Get(uint32(i))
+		currentCmdArgs := GetCommandArgs(ctx, currentCmd, GetState(inputState))
+
+		// If we are outside of a renderpass just copy the commands without modifying
+		if _, ok := currentCmdArgs.(VkCmdBeginRenderPassXArgsʳ); !ok {
+			if err := splitter.addCommandToCommandBuffer(ctx, inputState, currentCmdArgs, newCommandBuffer, cb); err != nil {
+				return err
+			}
+			continue
+		}
+
+		beginRenderPassIndex := i
+		endRenderPassIndex, err := splitter.getNextEndRenderPassIndex(ctx, inputState, existingCommandBufferObject, beginRenderPassIndex)
+		if err != nil {
+			return err
+		}
+
+		// Explicitly copy the slices to avoid the possible "gotcha"
+		// https://go.dev/blog/slices-intro
+		beginIndex := api.SubCmdIdx{}
+		beginIndex = append(beginIndex, idx...)
+		beginIndex = append(beginIndex, uint64(beginRenderPassIndex))
+
+		endIndex := api.SubCmdIdx{}
+		endIndex = append(endIndex, idx...)
+		endIndex = append(endIndex, uint64(endRenderPassIndex))
+
+		// If the current renderPassIndex is not requested copy the commands without modifying
+		// and jump to the end of the renderpass and continue
+		if !splitter.isCmdRequestedNextInInterval(beginIndex, endIndex) {
+			// Melih TODO: Due to the b/200873355 we need to fix VkCmdBindPipeline calls
+			// outside of the renderpass
+			for j := beginRenderPassIndex; j <= endRenderPassIndex; j++ {
+				cmdToAdd := existingCommandBufferObject.CommandReferences().Get(uint32(j))
+				cmdArgsToAdd := GetCommandArgs(ctx, cmdToAdd, GetState(inputState))
+				if err := splitter.addCommandToCommandBuffer(ctx, inputState, cmdArgsToAdd, newCommandBuffer, cb); err != nil {
+					return err
+				}
+			}
+			i = endRenderPassIndex
+			continue
+		}
+
+		// Rewrite the renderpass if we have a request in it
+		if err := splitter.rewriteRenderPass(ctx, inputState, queueSubmit, existingCommandBufferObject, newCommandBuffer,
+			idx, beginRenderPassIndex, endRenderPassIndex); err != nil {
+			return err
+		}
+
+		// Jump to the end of the renderpass
+		i = endRenderPassIndex
 	}
 
-	splitTransform.pendingCommandBuffers = append(splitTransform.pendingCommandBuffers, commandBuffer)
-
-	if err = splitTransform.writeCommand(&InsertionCommand{
-		commandBuffer,
-		append([]VkCommandBuffer{}, splitTransform.pendingCommandBuffers...),
-		id,
-		queueSubmit,
-	}); err != nil {
-		log.E(ctx, "Failed during insterting and instertion command : %v", err)
-		return VkSubmitInfo{}, err
-	}
-
-	if err = splitTransform.observeAndWriteCommand(cb.VkEndCommandBuffer(commandBuffer, VkResult_VK_SUCCESS)); err != nil {
-		log.E(ctx, "Failed during writing end command buffer : %v", err)
-		return VkSubmitInfo{}, err
-	}
-
-	info := NewVkSubmitInfo(
-		VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
-		NewVoidᶜᵖ(memory.Nullptr),                     // pNext
-		0,                                             // waitSemaphoreCount,
-		NewVkSemaphoreᶜᵖ(memory.Nullptr),              // pWaitSemaphores
-		NewVkPipelineStageFlagsᶜᵖ(memory.Nullptr), // pWaitDstStageMask
-		1, // commandBufferCount
-		NewVkCommandBufferᶜᵖ(splitTransform.mustAllocReadDataForSubmit(ctx, inputState, commandBuffer).Ptr()),
-		0,                                // signalSemaphoreCount
-		NewVkSemaphoreᶜᵖ(memory.Nullptr), // pSignalSemaphores
-	)
-
-	return info, nil
+	return nil
 }
 
-func (splitTransform *commandSplitter) splitRenderPass(ctx context.Context, rp RenderPassObjectʳ, inputState *api.GlobalState) ([][3]VkRenderPass, error) {
-	st := GetState(inputState)
+func (splitter *commandSplitter) rewriteRenderPass(
+	ctx context.Context,
+	inputState *api.GlobalState,
+	queueSubmit *VkQueueSubmit,
+	existingCommandBufferObject CommandBufferObjectʳ,
+	newCommandBuffer VkCommandBuffer,
+	idx api.SubCmdIdx,
+	beginRenderPassIndex uint32,
+	endRenderPassIndex uint32) error {
 
-	if rp, ok := splitTransform.splitRenderPasses[rp.VulkanHandle()]; ok {
-		return rp, nil
-	}
-
-	handles := make([][3]VkRenderPass, 0)
-	currentLayouts := make(map[uint32]VkImageLayout)
-	for i := uint32(0); i < uint32(rp.AttachmentDescriptions().Len()); i++ {
-		currentLayouts[i] = rp.AttachmentDescriptions().Get(i).InitialLayout()
-	}
-
-	tempTransformWriter := newCommandsplitTransformWriter(inputState, splitTransform)
-	sb := st.newStateBuilder(ctx, newTransformerOutput(tempTransformWriter))
-
-	for i := uint32(0); i < uint32(rp.SubpassDescriptions().Len()); i++ {
-		subpassHandles := [3]VkRenderPass{}
-		lastSubpass := (i == uint32(rp.SubpassDescriptions().Len()-1))
-		firstSubpass := (i == 0)
-
-		patchFinalLayout := func(rpo RenderPassObjectʳ, ar U32ːAttachmentReferenceᵐ) {
-			for k := 0; k < len(ar.All()); k++ {
-				ia := ar.Get(uint32(k))
-				if ia.Attachment() != VK_ATTACHMENT_UNUSED {
-					currentLayouts[ia.Attachment()] = ia.Layout()
-					ad := rpo.AttachmentDescriptions().Get(ia.Attachment())
-					ad.SetFinalLayout(ia.Layout())
-					rpo.AttachmentDescriptions().Add(ia.Attachment(), ad)
-				}
-			}
-		}
-
-		const (
-			PATCH_LOAD uint32 = 1 << iota
-			PATCH_STORE
-			PATCH_FINAL_LAYOUT
-		)
-
-		patchAllDescriptions := func(rpo RenderPassObjectʳ, patch uint32) {
-			for j := uint32(0); j < uint32(len(currentLayouts)); j++ {
-				ad := rpo.AttachmentDescriptions().Get(j)
-				ad.SetInitialLayout(currentLayouts[j])
-				if 0 != (patch & PATCH_FINAL_LAYOUT) {
-					ad.SetFinalLayout(currentLayouts[j])
-				}
-				if 0 != (patch & PATCH_LOAD) {
-					ad.SetLoadOp(VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD)
-					ad.SetStencilLoadOp(VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD)
-				}
-				if 0 != (patch & PATCH_STORE) {
-					ad.SetStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE)
-					ad.SetStencilStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE)
-				}
-				rpo.AttachmentDescriptions().Add(j, ad)
-			}
-		}
-
-		{
-			rp1 := rp.Clone(api.CloneContext{})
-			rp1.SetVulkanHandle(
-				VkRenderPass(newUnusedID(true, func(x uint64) bool {
-					return st.RenderPasses().Contains(VkRenderPass(x))
-				})))
-
-			spd := rp1.SubpassDescriptions().Get(i)
-			patch := uint32(0)
-			if !firstSubpass {
-				patch = PATCH_LOAD
-			}
-			patchAllDescriptions(rp1, patch|PATCH_STORE|PATCH_FINAL_LAYOUT)
-			patchFinalLayout(rp1, spd.InputAttachments())
-			patchFinalLayout(rp1, spd.ColorAttachments())
-			spd.ResolveAttachments().Clear()
-			if !spd.DepthStencilAttachment().IsNil() {
-				ia := spd.DepthStencilAttachment()
-				if ia.Attachment() != VK_ATTACHMENT_UNUSED {
-					currentLayouts[ia.Attachment()] = ia.Layout()
-					ad := rp1.AttachmentDescriptions().Get(ia.Attachment())
-					ad.SetFinalLayout(ia.Layout())
-					rp1.AttachmentDescriptions().Add(ia.Attachment(), ad)
-				}
-			}
-			spd.PreserveAttachments().Clear()
-
-			rp1.SubpassDescriptions().Clear()
-			rp1.SubpassDescriptions().Add(0, spd)
-			rp1.SubpassDependencies().Clear()
-			sb.createRenderPass(rp1)
-			subpassHandles[0] = rp1.VulkanHandle()
-		}
-
-		{
-			rp2 := rp.Clone(api.CloneContext{})
-			rp2.SetVulkanHandle(
-				VkRenderPass(newUnusedID(true, func(x uint64) bool {
-					return st.RenderPasses().Contains(VkRenderPass(x))
-				})))
-			spd := rp2.SubpassDescriptions().Get(i)
-			patchAllDescriptions(rp2, PATCH_LOAD|PATCH_STORE|PATCH_FINAL_LAYOUT)
-			patchFinalLayout(rp2, spd.InputAttachments())
-			patchFinalLayout(rp2, spd.ColorAttachments())
-			spd.ResolveAttachments().Clear()
-			if !spd.DepthStencilAttachment().IsNil() {
-				ia := spd.DepthStencilAttachment()
-				if ia.Attachment() != VK_ATTACHMENT_UNUSED {
-					currentLayouts[ia.Attachment()] = ia.Layout()
-					ad := rp2.AttachmentDescriptions().Get(ia.Attachment())
-					ad.SetFinalLayout(ia.Layout())
-					rp2.AttachmentDescriptions().Add(ia.Attachment(), ad)
-				}
-			}
-			spd.PreserveAttachments().Clear()
-			rp2.SubpassDescriptions().Clear()
-			rp2.SubpassDescriptions().Add(0, spd)
-			rp2.SubpassDependencies().Clear()
-			sb.createRenderPass(rp2)
-			subpassHandles[1] = rp2.VulkanHandle()
-		}
-
-		{
-			rp3 := rp.Clone(api.CloneContext{})
-			rp3.SetVulkanHandle(
-				VkRenderPass(newUnusedID(true, func(x uint64) bool {
-					return st.RenderPasses().Contains(VkRenderPass(x))
-				})))
-			spd := rp3.SubpassDescriptions().Get(i)
-			patch := PATCH_LOAD
-			if !lastSubpass {
-				patch |= PATCH_STORE | PATCH_FINAL_LAYOUT
-			}
-			patchAllDescriptions(rp3, patch)
-			if !lastSubpass {
-				patchFinalLayout(rp3, spd.InputAttachments())
-				patchFinalLayout(rp3, spd.ColorAttachments())
-				if !spd.DepthStencilAttachment().IsNil() {
-					ia := spd.DepthStencilAttachment()
-					if ia.Attachment() != VK_ATTACHMENT_UNUSED {
-						currentLayouts[ia.Attachment()] = ia.Layout()
-						ad := rp3.AttachmentDescriptions().Get(ia.Attachment())
-						ad.SetFinalLayout(ia.Layout())
-						rp3.AttachmentDescriptions().Add(ia.Attachment(), ad)
-					}
-				}
-			}
-			spd.PreserveAttachments().Clear()
-			rp3.SubpassDescriptions().Clear()
-			rp3.SubpassDescriptions().Add(0, spd)
-			rp3.SubpassDependencies().Clear()
-			sb.createRenderPass(rp3)
-			subpassHandles[2] = rp3.VulkanHandle()
-		}
-
-		handles = append(handles, subpassHandles)
-	}
-
-	splitTransform.splitRenderPasses[rp.VulkanHandle()] = handles
-	return handles, nil
-}
-
-func (splitTransform *commandSplitter) rewriteGraphicsPipeline(ctx context.Context, graphicsPipeline VkPipeline, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkPipeline, error) {
-	if gp, ok := splitTransform.fixedGraphicsPipelines[graphicsPipeline]; ok {
-		return gp, nil
-	}
-
-	st := GetState(inputState)
-	tempTransformWriter := newCommandsplitTransformWriter(inputState, splitTransform)
-	sb := st.newStateBuilder(ctx, newTransformerOutput(tempTransformWriter))
-	newGp := st.GraphicsPipelines().Get(graphicsPipeline).Clone(api.CloneContext{})
-	newGp.SetRenderPass(st.RenderPasses().Get(splitTransform.currentRenderPass[splitTransform.thisSubpass][0]))
-	newGp.SetSubpass(0)
-	newGp.SetVulkanHandle(
-		VkPipeline(newUnusedID(true, func(x uint64) bool {
-			return st.GraphicsPipelines().Contains(VkPipeline(x)) ||
-				st.ComputePipelines().Contains(VkPipeline(x))
-		})))
-	sb.createGraphicsPipeline(newGp)
-	splitTransform.fixedGraphicsPipelines[graphicsPipeline] = newGp.VulkanHandle()
-	return newGp.VulkanHandle(), nil
-}
-
-func (splitTransform *commandSplitter) splitCommandBuffer(ctx context.Context, embedBuffer VkCommandBuffer, commandBuffer CommandBufferObjectʳ, queueSubmit *VkQueueSubmit, id api.SubCmdIdx, cuts []api.SubCmdIdx, inputState *api.GlobalState) (VkCommandBuffer, error) {
+	replaceCommand := false
+	stateObject := GetState(inputState)
 	cb := CommandBuilder{Thread: queueSubmit.Thread()}
-	st := GetState(inputState)
 
-	for i := 0; i < commandBuffer.CommandReferences().Len(); i++ {
-		splitAfterCommand := false
-		replaceCommand := false
-		newCuts := []api.SubCmdIdx{}
-		for _, s := range cuts {
-			if s[0] == uint64(i) {
-				if len(s) == 1 {
-					splitAfterCommand = true
-					continue
-				} else {
-					newCuts = append(newCuts, s[1:])
-				}
-			}
-		}
+	currentSubpass := 0
+	currentRenderPassSplitters := renderPassSplitters{}
+	currentRenderPassArgs := NilVkCmdBeginRenderPassXArgsʳ
 
-		cr := commandBuffer.CommandReferences().Get(uint32(i))
-		extraArgs := make([]interface{}, 0)
-		args := GetCommandArgs(ctx, cr, st)
-		switch ar := args.(type) {
+	for i := beginRenderPassIndex; i <= endRenderPassIndex; i++ {
+		currentCmd := existingCommandBufferObject.CommandReferences().Get(i)
+		newCommandsArgs := make([]interface{}, 0)
+		currentCommandArgs := GetCommandArgs(ctx, currentCmd, stateObject)
+
+		switch arg := currentCommandArgs.(type) {
 		case VkCmdBeginRenderPassXArgsʳ:
-			renderpassBeginInfo := ar.RenderPassBeginInfo()
-			rp := renderpassBeginInfo.RenderPass()
-			rpo := st.RenderPasses().Get(rp)
-			var err error
-			if splitTransform.currentRenderPass, err = splitTransform.splitRenderPass(ctx, rpo, inputState); err != nil {
-				log.E(ctx, "Failed during splitting render pass : %v", err)
-				return VkCommandBuffer(0), err
-			}
-			splitTransform.thisSubpass = 0
-			args = NewVkCmdBeginRenderPassXArgsʳ(
+			currentRenderPassSplitters = splitter.createRenderPassSplitters(
+				ctx, inputState, stateObject.RenderPasses().Get(arg.RenderPassBeginInfo().RenderPass()))
+			currentSubpass = 0
+			currentCommandArgs = NewVkCmdBeginRenderPassXArgsʳ(
 				NewRenderPassBeginInfoʳ(
-					splitTransform.currentRenderPass[splitTransform.thisSubpass][0],
-					renderpassBeginInfo.Framebuffer(),
-					renderpassBeginInfo.RenderArea(),
-					renderpassBeginInfo.ClearValues(),
-					renderpassBeginInfo.DeviceGroupBeginInfo(),
+					currentRenderPassSplitters[currentSubpass].enter,
+					arg.RenderPassBeginInfo().Framebuffer(),
+					arg.RenderPassBeginInfo().RenderArea(),
+					arg.RenderPassBeginInfo().ClearValues(),
+					arg.RenderPassBeginInfo().DeviceGroupBeginInfo(),
 				),
 				NewSubpassBeginInfoʳ(
 					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
 				),
-				ar.Version(),
+				arg.Version(),
 			)
-			splitTransform.thisRenderPass = ar
+			currentRenderPassArgs = arg
 		case VkCmdNextSubpassXArgsʳ:
-			args = NewVkCmdEndRenderPassXArgsʳ(
+			currentCommandArgs = NewVkCmdEndRenderPassXArgsʳ(
 				NewSubpassEndInfoʳ(),
-				splitTransform.thisRenderPass.Version(),
+				arg.Version(),
 			)
-			extraArgs = append(extraArgs,
-				NewVkCmdBeginRenderPassXArgsʳ(
-					NewRenderPassBeginInfoʳ(
-						splitTransform.currentRenderPass[splitTransform.thisSubpass][2],
-						splitTransform.thisRenderPass.RenderPassBeginInfo().Framebuffer(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().RenderArea(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().ClearValues(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().DeviceGroupBeginInfo(),
-					),
-					NewSubpassBeginInfoʳ(
-						VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
-					),
-					splitTransform.thisRenderPass.Version(),
-				))
-			extraArgs = append(extraArgs, NewVkCmdEndRenderPassXArgsʳ(
-				NewSubpassEndInfoʳ(),
-				splitTransform.thisRenderPass.Version(),
+			newCommandsArgs = append(newCommandsArgs, NewVkCmdBeginRenderPassXArgsʳ(
+				NewRenderPassBeginInfoʳ(
+					currentRenderPassSplitters[currentSubpass].exit,
+					currentRenderPassArgs.RenderPassBeginInfo().Framebuffer(),
+					currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
+					currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
+					currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+				),
+				NewSubpassBeginInfoʳ(
+					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+				),
+				currentRenderPassArgs.Version(),
 			))
 
-			splitTransform.thisSubpass++
+			newCommandsArgs = append(newCommandsArgs, NewVkCmdEndRenderPassXArgsʳ(
+				NewSubpassEndInfoʳ(),
+				arg.Version(),
+			))
 
-			extraArgs = append(extraArgs,
-				NewVkCmdBeginRenderPassXArgsʳ(
-					NewRenderPassBeginInfoʳ(
-						splitTransform.currentRenderPass[splitTransform.thisSubpass][0],
-						splitTransform.thisRenderPass.RenderPassBeginInfo().Framebuffer(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().RenderArea(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().ClearValues(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().DeviceGroupBeginInfo(),
-					),
-					NewSubpassBeginInfoʳ(
-						VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
-					),
-					splitTransform.thisRenderPass.Version(),
-				))
+			currentSubpass++
+			newCommandsArgs = append(newCommandsArgs, NewVkCmdBeginRenderPassXArgsʳ(
+				NewRenderPassBeginInfoʳ(
+					currentRenderPassSplitters[currentSubpass].enter,
+					currentRenderPassArgs.RenderPassBeginInfo().Framebuffer(),
+					currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
+					currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
+					currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+				),
+				NewSubpassBeginInfoʳ(
+					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+				),
+				currentRenderPassArgs.Version(),
+			))
 		case VkCmdEndRenderPassXArgsʳ:
-			extraArgs = append(extraArgs,
-				NewVkCmdBeginRenderPassXArgsʳ(
-					NewRenderPassBeginInfoʳ(
-						splitTransform.currentRenderPass[splitTransform.thisSubpass][2],
-						splitTransform.thisRenderPass.RenderPassBeginInfo().Framebuffer(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().RenderArea(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().ClearValues(),
-						splitTransform.thisRenderPass.RenderPassBeginInfo().DeviceGroupBeginInfo(),
-					),
-					NewSubpassBeginInfoʳ(
-						VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
-					),
-					splitTransform.thisRenderPass.Version(),
-				))
-			extraArgs = append(extraArgs, NewVkCmdEndRenderPassXArgsʳ(
-				NewSubpassEndInfoʳ(),
-				splitTransform.thisRenderPass.Version(),
+			newCommandsArgs = append(newCommandsArgs, NewVkCmdBeginRenderPassXArgsʳ(
+				NewRenderPassBeginInfoʳ(
+					currentRenderPassSplitters[currentSubpass].exit,
+					currentRenderPassArgs.RenderPassBeginInfo().Framebuffer(),
+					currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
+					currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
+					currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+				),
+				NewSubpassBeginInfoʳ(
+					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+				),
+				currentRenderPassArgs.Version(),
 			))
-			splitTransform.thisRenderPass = NilVkCmdBeginRenderPassXArgsʳ
-			splitTransform.thisSubpass = 0
+			newCommandsArgs = append(newCommandsArgs, NewVkCmdEndRenderPassXArgsʳ(
+				NewSubpassEndInfoʳ(),
+				arg.Version(),
+			))
+			currentRenderPassArgs = NilVkCmdBeginRenderPassXArgsʳ
+			currentSubpass = 0
 		case VkCmdBindPipelineArgsʳ:
-			if ar.PipelineBindPoint() == VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
+			// Melih TODO: Due to the b/200873355 we need to fix VkCmdBindPipeline calls
+			// outside of the renderpass
+			if arg.PipelineBindPoint() == VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
 				// Graphics pipeline, must be split (maybe)
-				if st.RenderPasses().Get(splitTransform.thisRenderPass.RenderPassBeginInfo().RenderPass()).SubpassDescriptions().Len() > 1 {
+				if stateObject.RenderPasses().Get(currentRenderPassArgs.RenderPassBeginInfo().RenderPass()).SubpassDescriptions().Len() > 1 {
 					// If we have more than one renderpass, then we should replace
-					newPipeline, err := splitTransform.rewriteGraphicsPipeline(ctx, ar.Pipeline(), queueSubmit, inputState)
+					newPipeline, err := splitter.rewriteGraphicsPipeline(ctx, inputState,
+						arg.Pipeline(), currentRenderPassSplitters[currentSubpass].enter)
 					if err != nil {
 						log.E(ctx, "Failed during rewriting graphics pipeline : %v", err)
-						return VkCommandBuffer(0), err
+						return err
 					}
-					np := ar.Clone(api.CloneContext{})
-					np.SetPipeline(newPipeline)
-					args = np
+					newPipelineArgs := arg.Clone(api.CloneContext{})
+					newPipelineArgs.SetPipeline(newPipeline)
+					currentCommandArgs = newPipelineArgs
 				}
 			}
 		case VkCmdExecuteCommandsArgsʳ:
-			replaceCommand = true
-			for j := 0; j < ar.CommandBuffers().Len(); j++ {
-				splitAfterExecute := false
-				newSubCuts := []api.SubCmdIdx{}
-				for _, s := range newCuts {
-					if s[0] == uint64(j) {
-						if len(s) == 1 {
-							splitAfterExecute = true
-							continue
-						} else {
-							newSubCuts = append(newSubCuts, s[1:])
-						}
-					}
-				}
-
-				cbo := st.CommandBuffers().Get(ar.CommandBuffers().Get(uint32(j)))
-
-				if _, err := splitTransform.splitCommandBuffer(ctx, embedBuffer, cbo, queueSubmit, append(id, uint64(i), uint64(j)), newSubCuts, inputState); err != nil {
-					log.E(ctx, "Failed during splitting command buffer : %v", err)
-					return VkCommandBuffer(0), err
-				}
-
-				if splitAfterExecute {
-					insertionCmd := &InsertionCommand{
-						embedBuffer,
-						append([]VkCommandBuffer{}, splitTransform.pendingCommandBuffers...),
-						append(id, uint64(i), uint64(j)),
+			currentSubCmdID := append(idx, uint64(i))
+			// If there is any framebuffer is requested in a command buffer executed by a VkCmdExecuteCommands
+			// flatten the all command buffers.
+			if splitter.isSubCmdRequestedNext(currentSubCmdID) {
+				replaceCommand = true
+				for j := 0; j < arg.CommandBuffers().Len(); j++ {
+					executedCmdBufferSubCmdID := append(currentSubCmdID, uint64(j))
+					currentCommandBufferToExecute := arg.CommandBuffers().Get(uint32(j))
+					if err := splitter.flattenSecondaryCommandBuffer(
+						ctx,
+						inputState,
+						executedCmdBufferSubCmdID,
 						queueSubmit,
-					}
-					if err := splitTransform.observeAndWriteCommand(insertionCmd); err != nil {
-						log.E(ctx, "Failed during inserting insertion command : %v", err)
-						return VkCommandBuffer(0), err
+						currentCommandBufferToExecute,
+						newCommandBuffer,
+						currentRenderPassArgs,
+						currentRenderPassSplitters[currentSubpass].intermediate); err != nil {
+						log.E(ctx, "Failed during splitting command buffer : %v", err)
+						return err
 					}
 				}
 			}
-		}
-		if splitAfterCommand {
-			// If we are inside a renderpass, then drop out for this call.
-			// If we were not in a renderpass then we do not need to drop out
-			// of it.
-			if splitTransform.thisRenderPass != NilVkCmdBeginRenderPassXArgsʳ {
-				extraArgs = append(extraArgs, NewVkCmdEndRenderPassXArgsʳ(
-					NewSubpassEndInfoʳ(),
-					splitTransform.thisRenderPass.Version(),
-				))
-			}
-			extraArgs = append(extraArgs, &InsertionCommand{
-				embedBuffer,
-				append([]VkCommandBuffer{}, splitTransform.pendingCommandBuffers...),
-				append(id, uint64(i)),
-				queueSubmit,
-			})
-			// If we were inside a renderpass, then we have to get back
-			// into a renderpass
-			if splitTransform.thisRenderPass != NilVkCmdBeginRenderPassXArgsʳ {
-				extraArgs = append(extraArgs,
-					NewVkCmdBeginRenderPassXArgsʳ(
-						NewRenderPassBeginInfoʳ(
-							splitTransform.currentRenderPass[splitTransform.thisSubpass][1],
-							splitTransform.thisRenderPass.RenderPassBeginInfo().Framebuffer(),
-							splitTransform.thisRenderPass.RenderPassBeginInfo().RenderArea(),
-							splitTransform.thisRenderPass.RenderPassBeginInfo().ClearValues(),
-							splitTransform.thisRenderPass.RenderPassBeginInfo().DeviceGroupBeginInfo(),
-						),
-						NewSubpassBeginInfoʳ(
-							VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
-						),
-						splitTransform.thisRenderPass.Version(),
-					))
+			if splitter.isCmdRequestedNext(currentSubCmdID) {
+				insertionCmd := splitter.createInsertionCommand(ctx, newCommandBuffer, currentSubCmdID, queueSubmit)
+				if err := splitter.writeCommand(insertionCmd); err != nil {
+					log.E(ctx, "Failed during processing insertion command : %v", err)
+					return err
+				}
 			}
 		}
+
 		if !replaceCommand {
-			cleanup, cmd, err := AddCommand(ctx, cb, embedBuffer, inputState, inputState, args)
+			if err := splitter.addCommandToCommandBuffer(
+				ctx, inputState, currentCommandArgs, newCommandBuffer, cb); err != nil {
+				return err
+			}
+		}
+
+		currentSubCmdID := append(idx, uint64(i))
+		if splitter.isCmdRequestedNext(currentSubCmdID) {
+			insertionCmd := splitter.createInsertionCommand(ctx, newCommandBuffer, currentSubCmdID, queueSubmit)
+			insertedCmdsArgs := splitter.insertInsertionCommand(ctx, currentRenderPassArgs,
+				currentRenderPassSplitters[currentSubpass].intermediate, insertionCmd)
+			newCommandsArgs = append(newCommandsArgs, insertedCmdsArgs...)
+		}
+
+		for _, args := range newCommandsArgs {
+			insertionCmd, ok := args.(api.Cmd)
+			if !ok {
+				// If it's not an insertion command, add the command to new command buffer
+				splitter.addCommandToCommandBuffer(ctx, inputState, args, newCommandBuffer, cb)
+				continue
+			}
+
+			// Mutate the insertion command without adding it to new command buffer
+			if err := splitter.writeCommand(insertionCmd); err != nil {
+				log.E(ctx, "Failed during inserting insertion command : %v", err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (splitter *commandSplitter) flattenSecondaryCommandBuffer(
+	ctx context.Context,
+	inputState *api.GlobalState,
+	idx api.SubCmdIdx,
+	queueSubmit *VkQueueSubmit,
+	secondaryCommandBuffer VkCommandBuffer,
+	newCommandBuffer VkCommandBuffer,
+	currentRenderPassArgs VkCmdBeginRenderPassXArgsʳ,
+	newRenderpass VkRenderPass) error {
+
+	cb := CommandBuilder{Thread: queueSubmit.Thread()}
+	stateObject := GetState(inputState)
+	secondaryCommandBufferObject := stateObject.CommandBuffers().Get(secondaryCommandBuffer)
+	for i := uint32(0); i < uint32(secondaryCommandBufferObject.CommandReferences().Len()); i++ {
+		currentCmd := secondaryCommandBufferObject.CommandReferences().Get(i)
+		currentCommandArgs := GetCommandArgs(ctx, currentCmd, stateObject)
+
+		var err error
+		switch cmdArgs := currentCommandArgs.(type) {
+		case VkCmdBindPipelineArgsʳ:
+			currentCommandArgs, err = splitter.rewritePipelineBind(ctx, inputState, cmdArgs, currentRenderPassArgs, newRenderpass)
 			if err != nil {
-				panic(fmt.Errorf("Invalid command-buffer detected %+v", err))
+				return err
 			}
-			if err := splitTransform.observeAndWriteCommand(cmd); err != nil {
-				log.E(ctx, "Failed during adding command : [%v]%v", cmd, err)
-				return VkCommandBuffer(0), err
-			}
-			cleanup()
 		}
-		for _, ea := range extraArgs {
-			if ins, ok := ea.(api.Cmd); ok {
-				if err := splitTransform.observeAndWriteCommand(ins); err != nil {
+
+		if err := splitter.addCommandToCommandBuffer(
+			ctx, inputState, currentCommandArgs, newCommandBuffer, cb); err != nil {
+			return err
+		}
+
+		currentSubCmdID := append(idx, uint64(i))
+		if splitter.isCmdRequestedNext(currentSubCmdID) {
+			insertionCmd := splitter.createInsertionCommand(ctx, newCommandBuffer, currentSubCmdID, queueSubmit)
+			insertedCmdsArgs := splitter.insertInsertionCommand(ctx, currentRenderPassArgs, newRenderpass, insertionCmd)
+
+			for _, cmdArgs := range insertedCmdsArgs {
+				insertionCmd, ok := cmdArgs.(api.Cmd)
+				if !ok {
+					// If it's not an insertion command, add the command to new command buffer
+					splitter.addCommandToCommandBuffer(ctx, inputState, cmdArgs, newCommandBuffer, cb)
+					continue
+				}
+
+				// Mutate the insertion command without adding it to new command buffer
+				if err := splitter.writeCommand(insertionCmd); err != nil {
 					log.E(ctx, "Failed during inserting insertion command : %v", err)
-					return VkCommandBuffer(0), err
+					return err
 				}
-			} else {
-				cleanup, cmd, err := AddCommand(ctx, cb, embedBuffer, inputState, inputState, ea)
-				if err != nil {
-					panic(fmt.Errorf("Invalid command-buffer detected %+v", err))
-				}
-				if err := splitTransform.observeAndWriteCommand(cmd); err != nil {
-					log.E(ctx, "Failed during adding command : [%v]%v", cmd, err)
-					return VkCommandBuffer(0), err
-				}
-				cleanup()
 			}
 		}
 	}
 
-	return embedBuffer, nil
+	return nil
 }
 
-func (splitTransform *commandSplitter) getStartedCommandBuffer(ctx context.Context, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkCommandBuffer, error) {
-	cb := CommandBuilder{Thread: queueSubmit.Thread()}
-	queue := GetState(inputState).Queues().Get(queueSubmit.Queue())
+func (splitter *commandSplitter) rewritePipelineBind(
+	ctx context.Context,
+	inputState *api.GlobalState,
+	bindPipelineArgs VkCmdBindPipelineArgsʳ,
+	currentRenderPassArgs VkCmdBeginRenderPassXArgsʳ,
+	newRenderPass VkRenderPass) (VkCmdBindPipelineArgsʳ, error) {
 
-	commandPoolID, err := splitTransform.getCommandPool(ctx, queueSubmit, inputState)
+	// We are only interested in graphics pipeline
+	if bindPipelineArgs.PipelineBindPoint() != VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
+		return bindPipelineArgs, nil
+	}
+
+	stateObject := GetState(inputState)
+
+	// If we have only one renderpass we don't modify the renderpass, therefore no change is required.
+	if stateObject.RenderPasses().Get(currentRenderPassArgs.RenderPassBeginInfo().RenderPass()).SubpassDescriptions().Len() <= 1 {
+		return bindPipelineArgs, nil
+	}
+
+	newPipeline, err := splitter.rewriteGraphicsPipeline(ctx, inputState,
+		bindPipelineArgs.Pipeline(), newRenderPass)
 	if err != nil {
-		log.E(ctx, "Failed during getting command pool : %v", err)
+		log.E(ctx, "Failed during rewriting graphics pipeline : %v", err)
+		return VkCmdBindPipelineArgsʳ{}, err
+	}
+
+	newPipelineArgs := bindPipelineArgs.Clone(api.CloneContext{})
+	newPipelineArgs.SetPipeline(newPipeline)
+	return newPipelineArgs, nil
+}
+
+type renderPassRequirements struct {
+	loadAttachment                 bool
+	storeAttachment                bool
+	updateFinalLayout              bool
+	updateSubpassLayoutTransitions bool
+	preventAttachmentResolve       bool
+}
+
+func (splitter *commandSplitter) createRenderPassSplitters(ctx context.Context, inputState *api.GlobalState, renderPassObject RenderPassObjectʳ) renderPassSplitters {
+	st := GetState(inputState)
+
+	// Check if we already split this renderpass
+	if splitRenderPasses, ok := splitter.splitRenderPasses[renderPassObject.VulkanHandle()]; ok {
+		return splitRenderPasses
+	}
+
+	handles := make(renderPassSplitters, 0)
+	currentLayouts := make(map[uint32]VkImageLayout)
+
+	for i := uint32(0); i < uint32(renderPassObject.AttachmentDescriptions().Len()); i++ {
+		currentLayouts[i] = renderPassObject.AttachmentDescriptions().Get(i).InitialLayout()
+	}
+
+	tempTransformWriter := newCommandSplitTransformWriter(inputState, splitter)
+	sb := st.newStateBuilder(ctx, newTransformerOutput(tempTransformWriter))
+
+	// For every subpass we have, we create 3 kind of renderpass. How they will be used at the end
+	// is based on what commands requested.
+	//
+	// For example for a renderpass that has 3 subpass with 3 draw in each:
+	// {
+	//     SP1[draw, draw, draw], SP2[draw, draw, draw], SP3[draw, draw, draw]
+	// }
+	//
+	// Let's assume we request drawcalls with *
+	// {
+	//     SP1[draw*, draw, draw], SP2[draw, draw*, draw], SP3[draw, draw*, draw*]
+	// }
+	//
+	// The new renderpasses at the end of this transform will be
+	// {
+	//     Enter1[draw*], [InsertionCmd], Intermediate1[draw, draw], Exit1[],
+	//     Enter2[draw, draw*], [InsertionCmd], Intermedite2[draw], Exit2[],
+	//     Enter3[draw, draw*], [InsertionCmd], Intermediate2[draw*], [InsertionCmd], Intermediate2[], Exit2[]
+	// }
+
+	for i := uint32(0); i < uint32(renderPassObject.SubpassDescriptions().Len()); i++ {
+		// This is the first renderpass for the subpass
+		// If it's also the first subpass then we should behave exactly like the original renderpass
+		// in terms of loading the attachments.
+		// If it's not the first subpass, then we should always load attachments as the original application
+		// would be able to read it between subpasses.
+		//
+		// We do always store and patch the final layouts of attachments for the next renderpass.
+		// This allows the final layout of this renderpass will be the same with inital layout,
+		// so that, the intermediate renderpass gets the same initial layout with the original renderpass.
+		//
+		// Also we do update subpass final layouts for the intermediate renderpass.
+		//
+		// We prevent resolving the attachments because those may be written by the intermediate renderpasses
+		// on the way.
+		isFirstSubpass := (i == 0)
+		patchRequirements := renderPassRequirements{
+			loadAttachment:                 !isFirstSubpass,
+			storeAttachment:                true,
+			updateFinalLayout:              true,
+			updateSubpassLayoutTransitions: true,
+			preventAttachmentResolve:       true,
+		}
+		enterRenderPass := createSplitRenderPassObject(inputState, currentLayouts,
+			renderPassObject, i, patchRequirements)
+		sb.createRenderPass(enterRenderPass)
+
+		// This is the intermediate renderpass for the subpass.
+		// After every insertion command we will begin this renderpass to continue.
+		// If we are requesting the last drawcall, this renderpass may be empty.
+		//
+		// We always load and store every attachment and we always update the final layout as well.
+		// Because this renderpass means being in the middle of a subpass.
+		//
+		// We prevent resolving the attachments because those may be written by the intermediate renderpasses
+		// on the way.
+		patchRequirements = renderPassRequirements{
+			loadAttachment:                 true,
+			storeAttachment:                true,
+			updateFinalLayout:              true,
+			updateSubpassLayoutTransitions: true,
+			preventAttachmentResolve:       true,
+		}
+		intermediateRenderPass := createSplitRenderPassObject(inputState, currentLayouts,
+			renderPassObject, i, patchRequirements)
+		sb.createRenderPass(intermediateRenderPass)
+
+		// This is the exit renderpass for the subpass.
+		// This renderpass is always empty.
+		//
+		// If this is the last subpass we use this to represent ending of the original renderpass.
+		// Therefore we do not change the store operation or final layout
+		//
+		// Otherwise, this represent a subpass transition(e.g. VkCmdNextSubpass).
+		// Thereforewe always load, store and update the final layout.
+		//
+		// We keep resolve the attachments as the original subpass. So if there is resolve
+		// between subpasses, it can happen here.
+		lastSubpass := (i == uint32(renderPassObject.SubpassDescriptions().Len()-1))
+		patchRequirements = renderPassRequirements{
+			loadAttachment:                 true,
+			storeAttachment:                !lastSubpass,
+			updateFinalLayout:              !lastSubpass,
+			updateSubpassLayoutTransitions: !lastSubpass,
+			preventAttachmentResolve:       false,
+		}
+		exitRenderPass := createSplitRenderPassObject(
+			inputState, currentLayouts, renderPassObject, i,
+			patchRequirements)
+		sb.createRenderPass(exitRenderPass)
+
+		newRenderPasses := subpassSplitters{
+			enter:        enterRenderPass.VulkanHandle(),
+			intermediate: intermediateRenderPass.VulkanHandle(),
+			exit:         exitRenderPass.VulkanHandle(),
+		}
+
+		handles = append(handles, newRenderPasses)
+	}
+
+	splitter.splitRenderPasses[renderPassObject.VulkanHandle()] = handles
+	return handles
+}
+
+func createSplitRenderPassObject(
+	inputState *api.GlobalState,
+	currentLayouts map[uint32]VkImageLayout,
+	renderPassObject RenderPassObjectʳ,
+	subpassIndex uint32,
+	patchRequirements renderPassRequirements) RenderPassObjectʳ {
+
+	newRenderPass := renderPassObject.Clone(api.CloneContext{})
+	newRenderPass.SetVulkanHandle(
+		VkRenderPass(newUnusedID(true, func(x uint64) bool {
+			return GetState(inputState).RenderPasses().Contains(VkRenderPass(x))
+		})))
+
+	updateAllAttachmentDescriptions(currentLayouts, newRenderPass, patchRequirements)
+
+	subpassDescription := newRenderPass.SubpassDescriptions().Get(subpassIndex)
+
+	if patchRequirements.updateSubpassLayoutTransitions {
+		updateAttachmentFinalLayouts(currentLayouts, newRenderPass, subpassDescription.InputAttachments())
+		updateAttachmentFinalLayouts(currentLayouts, newRenderPass, subpassDescription.ColorAttachments())
+		if !subpassDescription.DepthStencilAttachment().IsNil() {
+			updateAttachmentFinalLayout(currentLayouts, newRenderPass, subpassDescription.DepthStencilAttachment().Get())
+		}
+	}
+
+	if patchRequirements.preventAttachmentResolve {
+		subpassDescription.ResolveAttachments().Clear()
+	}
+
+	subpassDescription.PreserveAttachments().Clear()
+
+	newRenderPass.SubpassDescriptions().Clear()
+	newRenderPass.SubpassDescriptions().Add(0, subpassDescription)
+	newRenderPass.SubpassDependencies().Clear()
+	return newRenderPass
+}
+
+func updateAttachmentFinalLayouts(currentLayouts map[uint32]VkImageLayout, renderPassObject RenderPassObjectʳ, attachmentReferences U32ːAttachmentReferenceᵐ) {
+	for i := 0; i < len(attachmentReferences.All()); i++ {
+		updateAttachmentFinalLayout(currentLayouts, renderPassObject, attachmentReferences.Get(uint32(i)))
+	}
+}
+
+func updateAttachmentFinalLayout(currentLayouts map[uint32]VkImageLayout, renderPassObject RenderPassObjectʳ, attachmentReference AttachmentReference) {
+	// We are not interested with unusued attachment
+	if attachmentReference.Attachment() == VK_ATTACHMENT_UNUSED {
+		return
+	}
+
+	// set the current layout for the attachment reference
+	currentLayouts[attachmentReference.Attachment()] = attachmentReference.Layout()
+
+	// Update the layout of the corresponding attachment description in renderpass object
+	attachmentDescription := renderPassObject.AttachmentDescriptions().Get(attachmentReference.Attachment())
+	attachmentDescription.SetFinalLayout(attachmentReference.Layout())
+	renderPassObject.AttachmentDescriptions().Add(attachmentReference.Attachment(), attachmentDescription)
+}
+
+func updateAllAttachmentDescriptions(currentLayouts map[uint32]VkImageLayout, renderPassObject RenderPassObjectʳ, patchRequirements renderPassRequirements) {
+	for i := uint32(0); i < uint32(len(currentLayouts)); i++ {
+		attachmentDescription := renderPassObject.AttachmentDescriptions().Get(i)
+
+		attachmentDescription.SetInitialLayout(currentLayouts[i])
+
+		if patchRequirements.updateFinalLayout {
+			attachmentDescription.SetFinalLayout(currentLayouts[i])
+		}
+
+		if patchRequirements.loadAttachment {
+			attachmentDescription.SetLoadOp(VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD)
+			attachmentDescription.SetStencilLoadOp(VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD)
+		}
+
+		if patchRequirements.storeAttachment {
+			attachmentDescription.SetStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE)
+			attachmentDescription.SetStencilStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE)
+		}
+
+		renderPassObject.AttachmentDescriptions().Add(i, attachmentDescription)
+	}
+}
+
+func (splitter *commandSplitter) addCommandToCommandBuffer(ctx context.Context, inputState *api.GlobalState, commandArgs interface{}, commandBufer VkCommandBuffer, cb CommandBuilder) error {
+	cleanup, newCmd, err := AddCommand(ctx, cb, commandBufer, inputState, inputState, commandArgs)
+	if err != nil {
+		log.E(ctx, "Failed during copying the command : %v", err)
+		return err
+	}
+
+	if err = splitter.writeCommand(newCmd); err != nil {
+		log.E(ctx, "Failed during writing new command : %v", err)
+		return err
+	}
+	cleanup()
+	return nil
+}
+
+func (splitter *commandSplitter) getNextEndRenderPassIndex(ctx context.Context, inputState *api.GlobalState, existingCommandBuffer CommandBufferObjectʳ, beginRenderPassId uint32) (uint32, error) {
+	for i := beginRenderPassId; i < uint32(existingCommandBuffer.CommandReferences().Len()); i++ {
+		currentCmd := existingCommandBuffer.CommandReferences().Get(uint32(i))
+		cmdArgs := GetCommandArgs(ctx, currentCmd, GetState(inputState))
+		if _, ok := cmdArgs.(VkCmdEndRenderPassXArgsʳ); ok {
+			return i, nil
+		}
+	}
+
+	return 0, fmt.Errorf("No end renderpass found!")
+}
+
+func (splitter *commandSplitter) createCommandBufferWithInsertion(ctx context.Context, inputState *api.GlobalState, cmd *VkQueueSubmit, subCmdID api.SubCmdIdx) (VkCommandBuffer, error) {
+	newCommandBuffer, err := splitter.createNewCommandBufferAndBegin(ctx, inputState, cmd, VkCommandBuffer(0))
+	if err != nil {
+		log.E(ctx, "Failed during creating insertion command buffer")
 		return VkCommandBuffer(0), err
 	}
 
-	commandBufferAllocateInfo := NewVkCommandBufferAllocateInfo(
-		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
-		NewVoidᶜᵖ(memory.Nullptr),                                      // pNext
-		commandPoolID,                                                  // commandPool
-		VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY,           // level
-		1, // commandBufferCount
-	)
-	commandBufferID := VkCommandBuffer(newUnusedID(true, func(x uint64) bool {
-		return GetState(inputState).CommandBuffers().Contains(VkCommandBuffer(x))
-	}))
+	splitter.pendingCommandBuffers = append(splitter.pendingCommandBuffers, newCommandBuffer)
 
-	allocateCmd := cb.VkAllocateCommandBuffers(
-		queue.Device(),
-		splitTransform.mustAllocReadDataForCmd(ctx, inputState, commandBufferAllocateInfo).Ptr(),
-		splitTransform.mustAllocWriteDataForCmd(ctx, inputState, commandBufferID).Ptr(),
-		VkResult_VK_SUCCESS,
-	)
-
-	if err = splitTransform.observeAndWriteCommand(allocateCmd); err != nil {
-		log.E(ctx, "Failed during allocating command buffer : %v", err)
+	newCmd := splitter.createInsertionCommand(ctx, newCommandBuffer, subCmdID, cmd)
+	if err := splitter.writeCommand(newCmd); err != nil {
+		log.E(ctx, "Failed during writing insertion command")
 		return VkCommandBuffer(0), err
 	}
 
-	beginInfo := NewVkCommandBufferBeginInfo(
-		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
-		NewVoidᶜᵖ(memory.Nullptr),                                   // pNext
-		0,                                                           // flags
-		NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr), // pInheritanceInfo
-	)
-	beginCommandBufferCmd := cb.VkBeginCommandBuffer(
-		commandBufferID,
-		splitTransform.mustAllocReadDataForCmd(ctx, inputState, beginInfo).Ptr(),
-		VkResult_VK_SUCCESS,
-	)
-
-	if err = splitTransform.observeAndWriteCommand(beginCommandBufferCmd); err != nil {
-		log.E(ctx, "Failed during begin command buffer : %v", err)
+	endCommandBufferCmd := endCommandBuffer(cmd.Thread(), newCommandBuffer)
+	if err := splitter.writeCommand(endCommandBufferCmd); err != nil {
+		log.E(ctx, "Failed during writing end command buffer for insertion: %v", err)
 		return VkCommandBuffer(0), err
 	}
-	return commandBufferID, nil
+
+	return newCommandBuffer, nil
 }
 
-func (splitTransform *commandSplitter) getCommandPool(ctx context.Context, queueSubmit *VkQueueSubmit, inputState *api.GlobalState) (VkCommandPool, error) {
-	if splitTransform.pool != 0 {
-		return splitTransform.pool, nil
+func (splitter *commandSplitter) insertInsertionCommand(
+	ctx context.Context,
+	currentRenderPassArgs VkCmdBeginRenderPassXArgsʳ,
+	splittingRenderPass VkRenderPass,
+	insertionCmd api.Cmd) []interface{} {
+	if currentRenderPassArgs == NilVkCmdBeginRenderPassXArgsʳ {
+		return []interface{}{insertionCmd}
 	}
 
-	cb := CommandBuilder{Thread: queueSubmit.Thread()}
-	queue := GetState(inputState).Queues().Get(queueSubmit.Queue())
-
-	splitTransform.pool = VkCommandPool(newUnusedID(false, func(x uint64) bool {
-		return GetState(inputState).CommandPools().Contains(VkCommandPool(x))
-	}))
-
-	poolCreateInfo := NewVkCommandPoolCreateInfo(
-		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,                                 // sType
-		NewVoidᶜᵖ(memory.Nullptr),                                                                  // pNext
-		VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_TRANSIENT_BIT), // flags
-		queue.Family(), // queueFamilyIndex
-	)
-
-	newCmd := cb.VkCreateCommandPool(
-		queue.Device(),
-		splitTransform.mustAllocReadDataForCmd(ctx, inputState, poolCreateInfo).Ptr(),
-		memory.Nullptr,
-		splitTransform.mustAllocWriteDataForCmd(ctx, inputState, splitTransform.pool).Ptr(),
-		VkResult_VK_SUCCESS,
-	)
-
-	if err := splitTransform.observeAndWriteCommand(newCmd); err != nil {
-		log.E(ctx, "Failed during creating command pool : %v", err)
-		return VkCommandPool(0), err
+	return []interface{}{
+		// If we are inside a renderpass, we need to split it
+		NewVkCmdEndRenderPassXArgsʳ(
+			NewSubpassEndInfoʳ(),
+			currentRenderPassArgs.Version(),
+		),
+		insertionCmd,
+		// Begin new renderpass for the remaining commands in the original renderpass
+		NewVkCmdBeginRenderPassXArgsʳ(
+			NewRenderPassBeginInfoʳ(
+				splittingRenderPass,
+				currentRenderPassArgs.RenderPassBeginInfo().Framebuffer(),
+				currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
+				currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
+				currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+			),
+			NewSubpassBeginInfoʳ(
+				VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
+			),
+			currentRenderPassArgs.Version(),
+		),
 	}
-	return splitTransform.pool, nil
 }
 
-func (splitTransform *commandSplitter) mustAllocReadDataForSubmit(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
-	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
-	splitTransform.readMemoriesForSubmit = append(splitTransform.readMemoriesForSubmit, &allocateResult)
-	rng, id := allocateResult.Data()
-	g.Memory.ApplicationPool().Write(rng.Base, memory.Resource(id, rng.Size))
-	return allocateResult
+func (splitter *commandSplitter) createInsertionCommand(ctx context.Context, cmdBuffer VkCommandBuffer, subCmdId api.SubCmdIdx, callee api.Cmd) api.Cmd {
+	splitter.removeFromRequestedList(subCmdId)
+	return &InsertionCommand{
+		cmdBuffer,
+		append([]VkCommandBuffer{}, splitter.pendingCommandBuffers...),
+		subCmdId,
+		callee,
+	}
 }
 
-func (splitTransform *commandSplitter) mustAllocReadDataForCmd(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
-	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
-	splitTransform.readMemoriesForCmd = append(splitTransform.readMemoriesForCmd, &allocateResult)
-	rng, id := allocateResult.Data()
-	g.Memory.ApplicationPool().Write(rng.Base, memory.Resource(id, rng.Size))
-	return allocateResult
+func (splitter *commandSplitter) createNewCommandBufferAndBegin(
+	ctx context.Context, inputState *api.GlobalState,
+	cmd *VkQueueSubmit, referenceCommandBuffer VkCommandBuffer) (VkCommandBuffer, error) {
+
+	queue := GetState(inputState).Queues().Get(cmd.Queue())
+
+	if splitter.pool == VkCommandPool(0) {
+		commandPoolID, poolCmd := createNewCommandPool(
+			ctx, splitter.allocations, inputState,
+			cmd.Thread(), queue.Device(), queue.Family())
+
+		if err := splitter.writeCommand(poolCmd); err != nil {
+			return VkCommandBuffer(0), err
+		}
+
+		splitter.pool = commandPoolID
+	}
+
+	commandBuffer, createCmd := createNewCommandBuffer(
+		ctx, splitter.allocations, inputState,
+		cmd.Thread(), queue.Device(), splitter.pool,
+		VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+
+	if err := splitter.writeCommand(createCmd); err != nil {
+		return VkCommandBuffer(0), err
+	}
+
+	beginCmd := api.Cmd(nil)
+
+	if referenceCommandBuffer != VkCommandBuffer(0) {
+		referenceCommandBufferObject := GetState(inputState).CommandBuffers().Get(referenceCommandBuffer)
+		beginCmd = beginCommandBufferFromExistingCommandBuffer(ctx, splitter.allocations, inputState,
+			cmd.Thread(), commandBuffer, referenceCommandBufferObject)
+	} else {
+		beginCmd = beginCommandBuffer(ctx, splitter.allocations, inputState,
+			cmd.Thread(), commandBuffer)
+	}
+
+	if err := splitter.writeCommand(beginCmd); err != nil {
+		return VkCommandBuffer(0), err
+	}
+
+	return commandBuffer, nil
 }
 
-func (splitTransform *commandSplitter) mustAllocWriteDataForCmd(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
-	allocateResult := splitTransform.allocations.AllocDataOrPanic(ctx, v...)
-	splitTransform.writeMemoriesForCmd = append(splitTransform.writeMemoriesForCmd, &allocateResult)
-	return allocateResult
+func (splitter *commandSplitter) rewriteGraphicsPipeline(
+	ctx context.Context,
+	inputState *api.GlobalState,
+	graphicsPipeline VkPipeline,
+	renderPass VkRenderPass) (VkPipeline, error) {
+	if gp, ok := splitter.rewrittenGraphicsPipelines[graphicsPipeline]; ok {
+		return gp, nil
+	}
+
+	stateObject := GetState(inputState)
+	tempTransformWriter := newCommandSplitTransformWriter(inputState, splitter)
+	sb := stateObject.newStateBuilder(ctx, newTransformerOutput(tempTransformWriter))
+
+	newGp := stateObject.GraphicsPipelines().Get(graphicsPipeline).Clone(api.CloneContext{})
+	newGp.SetVulkanHandle(
+		VkPipeline(newUnusedID(true, func(x uint64) bool {
+			return stateObject.GraphicsPipelines().Contains(VkPipeline(x)) ||
+				stateObject.ComputePipelines().Contains(VkPipeline(x))
+		})))
+
+	newGp.SetRenderPass(stateObject.RenderPasses().Get(renderPass))
+	newGp.SetSubpass(0)
+	sb.createGraphicsPipeline(newGp)
+
+	splitter.rewrittenGraphicsPipelines[graphicsPipeline] = newGp.VulkanHandle()
+	return newGp.VulkanHandle(), nil
 }
 
 func (splitter *commandSplitter) writeCommand(cmd api.Cmd) error {
 	return splitter.stateMutator([]api.Cmd{cmd})
 }
 
-func (splitter *commandSplitter) writeCommands(cmds []api.Cmd) error {
-	for _, cmd := range cmds {
-		if err := splitter.writeCommand(cmd); err != nil {
-			return err
-		}
+// This function should return only if next requested command is a sub command of id
+// but not itself.
+func (splitter *commandSplitter) isSubCmdRequestedNext(id api.SubCmdIdx) bool {
+	if len(splitter.requestedCmds) == 0 {
+		return false
 	}
 
-	return nil
+	// Requested commands are sorted and as we traverse in our command tree in order,
+	// if we cannot find it in first element, it will not be there after
+	if id.Equals(splitter.requestedCmds[0]) {
+		return false
+	}
+
+	return id.Contains(splitter.requestedCmds[0])
 }
 
-func (s *commandSplitter) observeAndWriteCommand(cmd api.Cmd) error {
-	for i := range s.readMemoriesForCmd {
-		cmd.Extras().GetOrAppendObservations().AddRead(s.readMemoriesForCmd[i].Data())
+func (splitter *commandSplitter) isCmdRequestedNext(id api.SubCmdIdx) bool {
+	if len(splitter.requestedCmds) == 0 {
+		return false
 	}
-	for i := range s.writeMemoriesForCmd {
-		cmd.Extras().GetOrAppendObservations().AddWrite(s.writeMemoriesForCmd[i].Data())
-	}
-	s.readMemoriesForCmd = []*api.AllocResult{}
-	s.writeMemoriesForCmd = []*api.AllocResult{}
 
-	return s.writeCommand(cmd)
+	// Requested commands are sorted and as we traverse in our command tree in order,
+	// if we cannot find it in first element, it will not be there after unless it's a parent
+	return id.Equals(splitter.requestedCmds[0])
+}
+
+// Returns true if the next requested cmd is in an interval of cmds. e.g renderpass
+func (splitter *commandSplitter) isCmdRequestedNextInInterval(begin api.SubCmdIdx, end api.SubCmdIdx) bool {
+	if len(splitter.requestedCmds) == 0 {
+		return false
+	}
+
+	return splitter.requestedCmds[0].InRange(begin, end)
+}
+
+func (splitter *commandSplitter) removeFromRequestedList(id api.SubCmdIdx) {
+	if len(splitter.requestedCmds) == 0 {
+		panic("Requested Command list is empty, this should not happen")
+	}
+
+	// Requested commands are sorted and as we traverse in our command tree in order,
+	// if we cannot find it in first element, it will not be there after
+	if !id.Equals(splitter.requestedCmds[0]) {
+		panic("Requested command is not the first element, this should not happen")
+	}
+
+	splitter.requestedCmds = splitter.requestedCmds[1:len(splitter.requestedCmds)]
+}
+
+func (splitter *commandSplitter) mustAllocReadDataForSubmit(ctx context.Context, g *api.GlobalState, v ...interface{}) api.AllocResult {
+	allocateResult := splitter.allocations.AllocDataOrPanic(ctx, v...)
+	splitter.readMemoriesForSubmit = append(splitter.readMemoriesForSubmit, &allocateResult)
+	rng, id := allocateResult.Data()
+	g.Memory.ApplicationPool().Write(rng.Base, memory.Resource(id, rng.Size))
+	return allocateResult
 }
 
 type commandsplitTransformWriter struct {
@@ -978,7 +1084,7 @@ type commandsplitTransformWriter struct {
 	splitter *commandSplitter
 }
 
-func newCommandsplitTransformWriter(state *api.GlobalState, splitter *commandSplitter) *commandsplitTransformWriter {
+func newCommandSplitTransformWriter(state *api.GlobalState, splitter *commandSplitter) *commandsplitTransformWriter {
 	return &commandsplitTransformWriter{
 		state:    state,
 		splitter: splitter,
