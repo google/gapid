@@ -1,0 +1,21 @@
+{
+    "file_format_version": "1.1.2",
+    "layer": {
+        "name": "VK_LAYER_LUNARG_override",
+        "api_version": "1.2.198",
+        "implementation_version": "1",
+        "app_keys": [],
+        "blacklisted_layers": [],
+        "component_layers": [
+            "VK_LAYER_GOOGLE_gapii"
+        ],
+        "description": "LunarG Override Layer",
+        "disable_environment": {
+            "DISABLE_VK_LAYER_LUNARG_override": "1"
+        },
+        "override_paths": [
+            "/gapii_pkg/data/vulkan/explicit_layer.d"
+        ],
+        "type": "GLOBAL"
+    }
+}

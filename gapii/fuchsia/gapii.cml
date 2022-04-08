@@ -1,0 +1,5 @@
+{
+    include: [
+        "//gapii/fuchsia/application.shard.cml",
+    ],
+}

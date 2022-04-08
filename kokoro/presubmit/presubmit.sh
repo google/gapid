@@ -85,7 +85,7 @@ function run_buildozer() {
 }
 
 function run_enumerate_tests() {
-  TARGETS="$($BAZEL query --output label 'kind(".*_test rule", //...)' | sort -t: -k1,1 | awk '{print "        \""$0"\","}')"
+  TARGETS="$($BAZEL query --deleted_packages=//gapii/fuchsia --output label 'kind(".*_test rule", //...)' | sort -t: -k1,1 | awk '{print "        \""$0"\","}')"
   OUT=$(mktemp)
   cp BUILD.bazel $OUT
   cat $OUT | awk -v targets="$TARGETS" 'begin {a=0} /__END_TESTS/ {a=0} { if (a==0) print $0;} /__BEGIN_TESTS/ { a=1; print targets }' > BUILD.bazel
