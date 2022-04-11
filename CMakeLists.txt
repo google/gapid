@@ -77,7 +77,7 @@ set(ALL_GENERATED
     ${gapid2_BINARY_DIR}/call_forwards.h
     ${gapid2_BINARY_DIR}/handle_defines.inl
     ${gapid2_BINARY_DIR}/command_deserializer.h
-    ${gapid2_BINARY_DIR}/layer.h
+    ${gapid2_BINARY_DIR}/layer_internal.h
     ${gapid2_BINARY_DIR}/layerer.h
     ${gapid2_BINARY_DIR}/struct_printer.h
     ${gapid2_BINARY_DIR}/command_printer.h
@@ -85,6 +85,7 @@ set(ALL_GENERATED
 
 add_custom_command(OUTPUT
     ${ALL_GENERATED}
+    ${gapid2_BINARY_DIR}/call_forwards.cpp
     COMMAND ${Python3_EXECUTABLE} 
         ${gapid2_SOURCE_DIR}/generator.py
         ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/registry/vk.xml

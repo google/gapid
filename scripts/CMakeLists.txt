@@ -23,7 +23,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../externals/Vulkan-Headers/incl
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(OUTPUT
-    ${CMAKE_CURRENT_BINARY_DIR}/layer.h
+    ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl.h
     COMMAND ${Python3_EXECUTABLE} 
         ${CMAKE_CURRENT_SOURCE_DIR}/../generator.py
         ${CMAKE_CURRENT_SOURCE_DIR}/../externals/Vulkan-Headers/registry/vk.xml
@@ -35,6 +35,6 @@ add_custom_command(OUTPUT
 
 add_library(${LIB_NAME} SHARED
     "${LIB_SRC}"
-    ${CMAKE_CURRENT_BINARY_DIR}/layer.h
+    ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl.h
 )
 target_compile_definitions(${LIB_NAME} PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)

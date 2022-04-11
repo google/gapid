@@ -280,8 +280,8 @@ class Replayer : public gapid2::CommandDeserializer<
   temporary_allocator allocator;
 };
 
-std::vector<std::string> layers{{"D:\\src\\gapid2\\test3.cpp"},
-                                {"D:\\src\\gapid2\\screenshot.cpp"}};
+std::vector<std::string> layers{{"C:\\src\\gapid\\test3.cpp"},
+                                {"C:\\src\\gapid\\screenshot.cpp"}};
 
 int main(int argc, const char** argv) {
   if (argc < 2) {

@@ -35,7 +35,7 @@ class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
  public:
   Spy() : out_file("file.trace", std::ios::out | std::ios::binary) {
     encoder_tls_key = TlsAlloc();
-    std::vector<std::string> layers = {{"D:\\src\\gapid2\\test3.cpp"}};
+    std::vector<std::string> layers = {{"D:\\src\\gapid\\test3.cpp"}};
     initializeLayers(layers);
   }
   void add_instance(VkInstance instance) {

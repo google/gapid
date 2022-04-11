@@ -1,59 +1,75 @@
-/*
- * Copyright (C) 2022 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #include "layer.h"
 
 #include <iostream>
-#include <sstream>
 
 namespace foo {
 VKAPI_ATTR VkResult VKAPI_CALL
 override_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
                           const VkAllocationCallbacks* pAllocator,
                           VkInstance* pInstance) {
-  std::ostringstream oss;
-
-  oss << __FUNCTION__ << std::endl;
-  oss << "  "
-      << "enabledExtensionCount: " << pCreateInfo->enabledExtensionCount
-      << std::endl;
-  for (size_t i = 0; i < pCreateInfo->enabledExtensionCount; ++i) {
-    oss << "    " << pCreateInfo->ppEnabledExtensionNames[i] << std::endl;
-  }
-  OutputDebugStringA(oss.str().c_str());
+  std::cout << __FUNCTION__ << " :: " << std::endl;
 
   return vkCreateInstance(pCreateInfo, pAllocator, pInstance);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-override_vkCreateDevice(VkPhysicalDevice phys_dev,
-                        const VkDeviceCreateInfo* pCreateInfo,
-                        const VkAllocationCallbacks* pAllocator,
-                        VkDevice* pDevice) {
-  std::ostringstream oss;
+override_vkSignalSemaphoreKHR(VkDevice device,
+                              const VkSemaphoreSignalInfo* pSignalInfo) {
+  std::cout << "vkSignalSemaphoreKHR { device: "
+            << reinterpret_cast<uintptr_t>(device) << std::endl;
 
-  oss << __FUNCTION__ << std::endl;
-  oss << "  "
-      << "enabledExtensionCount: " << pCreateInfo->enabledExtensionCount
-      << std::endl;
-  for (size_t i = 0; i < pCreateInfo->enabledExtensionCount; ++i) {
-    oss << "    " << pCreateInfo->ppEnabledExtensionNames[i] << std::endl;
-  }
-  OutputDebugStringA(oss.str().c_str());
+  std::cout << "  Semaphore : "
+            << reinterpret_cast<uintptr_t>(pSignalInfo->semaphore) << std::endl;
+  std::cout << "  Value :" << pSignalInfo->value << std::endl;
 
-  return vkCreateDevice(phys_dev, pCreateInfo, pAllocator, pDevice);
+  return vkSignalSemaphoreKHR(device, pSignalInfo);
 }
+
+VKAPI_ATTR VkResult VKAPI_CALL
+override_vkWaitSemaphoresKHR(VkDevice device,
+                             const VkSemaphoreWaitInfo* pWaitInfo,
+                             uint64_t timeout) {
+  std::cout << "vkWaitSemaphoresKHR { device: "
+            << reinterpret_cast<uintptr_t>(device) << std::endl;
+  for (size_t i = 0; i < pWaitInfo->semaphoreCount; ++i) {
+    std::cout << "  Semaphore " << i << " : "
+              << reinterpret_cast<uintptr_t>(pWaitInfo->pSemaphores[i])
+              << std::endl;
+    if (pWaitInfo->pValues) {
+      std::cout << "  Value " << i << " : " << pWaitInfo->pValues[i]
+                << std::endl;
+    }
+  }
+  return vkWaitSemaphoresKHR(device, pWaitInfo, timeout);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+override_vkCmdDrawIndexed(VkCommandBuffer commandBuffer,
+                          uint32_t indexCount,
+                          uint32_t instanceCount,
+                          uint32_t firstIndex,
+                          int32_t vertexOffset,
+                          uint32_t firstInstance) {
+  if (reinterpret_cast<uintptr_t>(commandBuffer) == 1933471327024ull + 1) {
+    std::cout << "  Dropping " << __FUNCTION__ << " in commmand buffer  "
+              << reinterpret_cast<uintptr_t>(commandBuffer) << std::endl;
+    return;
+  }
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL override_vkQueueWaitIdle(VkQueue queue) {
+  auto ret = vkQueueWaitIdle(queue);
+  if (ret != VK_SUCCESS) {
+    std::cout << __FUNCTION__ << " QUEUE WAIT IDLE FAILED : "
+              << reinterpret_cast<uintptr_t>(queue) << std::endl;
+    std::abort();
+  }
+  return ret;
+}
+
+VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
+  options->CaptureCommands(VK_NULL_HANDLE);
+  options->CaptureAllCommands();
+}
+
 }  // namespace foo

@@ -1,17 +1,3 @@
- #  Copyright (C) 2022 Google Inc.
- # 
- #  Licensed under the Apache License, Version 2.0 (the "License");
- #  you may not use this file except in compliance with the License.
- #  You may obtain a copy of the License at
- # 
- #       http://www.apache.org/licenses/LICENSE-2.0
- # 
- #  Unless required by applicable law or agreed to in writing, software
- #  distributed under the License is distributed on an "AS IS" BASIS,
- #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- #  See the License for the specific language governing permissions and
- #  limitations under the License.
-
 import os
 import xml.etree.ElementTree as ET
 import argparse
@@ -2736,10 +2722,7 @@ class CommandDeserializer : public T {
 ''', file=fbod)
 
 def output_forward_header(definition, dir, commands_to_handle = None):
-    with open(os.path.join(dir, "layer.h"), mode="w") as fcall:
-        print('#pragma once', file=fcall)
-        print('#define VK_NO_PROTOTYPES', file=fcall)
-        print('#include <vulkan/vulkan.h>', file=fcall)
+    with open(os.path.join(dir, "layer_internal.inl"), mode="w") as fcall:
         print('\nvoid* user_data;', file=fcall)
         for cmd in definition.commands.values():
             if commands_to_handle:
@@ -2749,13 +2732,14 @@ def output_forward_header(definition, dir, commands_to_handle = None):
             args = [x.name for x in cmd.args]
             print(f'void *call_{cmd.name}_user_data;', file=fcall)
             print(f'{cmd.ret.short_str()} (*call_{cmd.name})(void*, {", ".join(prms)});', file=fcall)
+            
         for x in definition.types.values():
             if type(x) == handle:
                 print(f'{x.name} (*get_raw_handle_{x.name})(void* data_, {x.name} in);', file=fcall)
         print(
 '''
 extern "C" {
-__declspec(dllexport) void SetupLayer(void* user_data_, void* (fn)(void*, const char*, void**), void*(tf)(void*, const char*)) {
+__declspec(dllexport) void SetupLayerInternal(void* user_data_, void* (fn)(void*, const char*, void**), void*(tf)(void*, const char*)) {
   user_data = user_data_;
 ''', file=fcall)
         for cmd in definition.commands.values():
@@ -2769,6 +2753,7 @@ __declspec(dllexport) void SetupLayer(void* user_data_, void* (fn)(void*, const 
                 print(f'  get_raw_handle_{x.name} = ({x.name}(*)(void*, {x.name}))tf(user_data_, "{x.name}");', file=fcall)
         print(
 '''
+  SetupInternalPointers(user_data_, fn);
 }
 }
 ''', file=fcall)
@@ -2882,7 +2867,10 @@ f'''
                 FreeLibrary(mod);
             }
         }
-        fns f;''', file=fcall)
+        fns f;
+        void RunUserSetup(HMODULE module);
+        void* ResolveHelperFunction(const char* name, void** fout);
+''', file=fcall)
         print('''        bool initializeLayers(std::vector<std::string> layers) {
           char cp[MAX_PATH];
           GetModuleFileName(NULL, cp, MAX_PATH);
@@ -2917,7 +2905,7 @@ f'''
               layer_dlls.push_back(dll);
               continue;
             }
-            std::string v = "cmd /c D:\\\\src\\\\gapid2\\\\build_file.bat ";
+            std::string v = "cmd /c C:\\\\src\\\\gapid\\\\build_file.bat ";
             v += file.string();
             v += " ";
             v += sha;
@@ -2950,7 +2938,7 @@ f'''
               return false;
           }
           modules.push_back(lib);
-          auto setup = (void (*)(void*, void* (*)(void*, const char*, void**), void*(tf)(void*, const char*)))GetProcAddress(lib, "SetupLayer");
+          auto setup = (void (*)(void*, void* (*)(void*, const char*, void**), void*(tf)(void*, const char*)))GetProcAddress(lib, "SetupLayerInternal");
           if (!setup) {
               std::cerr << "Could not find library setup for " << layer << std::endl;
               return false;
@@ -2967,8 +2955,11 @@ f'''
             print(f'              return reinterpret_cast<void*>(this_->f.fn_{cmd.name});', file=fcall)
             print(f'            }}', file=fcall)
         print('''
-            std::cerr << "Could not resolve function " << fn << std::endl;
-            return nullptr;
+            auto ret = this_->ResolveHelperFunction(fn, fout);
+            if (!ret) {
+                std::cerr << "Could not resolve function " << fn << std::endl;
+            }
+            return ret;
           }, [](void* this__, const char* tp) -> void* {''', file=fcall)
         for x in definition.types.values():
             if type(x) == handle:
@@ -2991,6 +2982,7 @@ f'''
             print(f'            }}', file=fcall)
         print(
 '''
+          RunUserSetup(lib);
         }
         return true;
       }
@@ -3010,6 +3002,7 @@ f'''
       std::vector<HMODULE> modules;
   };
 }
+#include "layerer.inl"
 ''', file=fcall)
 def main():
     parser = argparse.ArgumentParser(description='Processes the vulkan XML into code')

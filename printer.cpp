@@ -103,8 +103,8 @@ class Printer : public gapid2::CommandDeserializer<
   temporary_allocator allocator;
 };
 
-std::vector<std::string> layers{{"D:\\src\\gapid2\\test3.cpp"},
-                                {"D:\\src\\gapid2\\screenshot.cpp"}};
+std::vector<std::string> layers{{"C:\\src\\gapid\\test3.cpp"},
+                                {"C:\\src\\gapid\\screenshot.cpp"}};
 
 const std::string version_string = "1";
 
