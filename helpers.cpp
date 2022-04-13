@@ -356,4 +356,359 @@ bool _VkDescriptorSetLayoutCreateInfo_VkDescriptorSetLayoutBinding_pImmutableSam
   return false;
 }
 
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceSubgroupProperties_supportedStages_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceSubgroupProperties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceSubgroupProperties_supportedOperations_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceSubgroupProperties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceSubgroupProperties_quadOperationsInAllStages_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceSubgroupProperties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceVulkan11Properties_subgroupSize_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceVulkan11Properties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceVulkan11Properties_subgroupSupportedStages_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceVulkan11Properties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceVulkan11Properties_subgroupSupportedOperations_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceVulkan11Properties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceVulkan11Properties_subgroupQuadOperationsInAllStages_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceVulkan11Properties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkPhysicalDeviceProperties2_VkPhysicalDeviceSubgroupProperties_subgroupSize_valid(
+    const VkPhysicalDeviceProperties2& self,
+    const VkPhysicalDeviceSubgroupProperties& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkDescriptorUpdateTemplateCreateInfo_descriptorSetLayout_valid(
+    const VkDescriptorUpdateTemplateCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkDescriptorUpdateTemplateCreateInfo_pipelineBindPoint_valid(
+    const VkDescriptorUpdateTemplateCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkDescriptorUpdateTemplateCreateInfo_pipelineLayout_valid(
+    const VkDescriptorUpdateTemplateCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkDescriptorUpdateTemplateCreateInfo_set_valid(
+    const VkDescriptorUpdateTemplateCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_depthResolveMode_valid(
+    const VkRenderPassCreateInfo2& self,
+    const VkSubpassDescription2& _self,
+    const VkSubpassDescriptionDepthStencilResolve& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_stencilResolveMode_valid(
+    const VkRenderPassCreateInfo2& self,
+    const VkSubpassDescription2& _self,
+    const VkSubpassDescriptionDepthStencilResolve& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_VkAttachmentReference2_aspectMask_valid(
+    const VkRenderPassCreateInfo2& self,
+    const VkSubpassDescription2& _self,
+    const VkSubpassDescriptionDepthStencilResolve& __self,
+    const VkAttachmentReference2& ___self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkRenderPassCreateInfo2_VkSubpassDescription2_VkAttachmentReference2_aspectMask_valid(
+    const VkRenderPassCreateInfo2& self,
+    const VkSubpassDescription2& _self,
+    const VkAttachmentReference2& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkSampleLocationsInfoEXT_sampleLocationsPerPixel_valid(
+    const VkSampleLocationsInfoEXT& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkQueryPoolCreateInfo_pipelineStatistics_valid(
+    const VkQueryPoolCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkGraphicsPipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_VkSpecializationMapEntry_size_valid(
+    const VkGraphicsPipelineCreateInfo& self,
+    const VkPipelineShaderStageCreateInfo& _self,
+    const VkSpecializationInfo& __self,
+    const VkSpecializationMapEntry& ___self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_x_valid(
+    const VkGraphicsPipelineCreateInfo& self,
+    const VkPipelineViewportStateCreateInfo& _self,
+    const VkViewport& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_y_valid(
+    const VkGraphicsPipelineCreateInfo& self,
+    const VkPipelineViewportStateCreateInfo& _self,
+    const VkViewport& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_width_valid(
+    const VkGraphicsPipelineCreateInfo& self,
+    const VkPipelineViewportStateCreateInfo& _self,
+    const VkViewport& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_height_valid(
+    const VkGraphicsPipelineCreateInfo& self,
+    const VkPipelineViewportStateCreateInfo& _self,
+    const VkViewport& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkGraphicsPipelineCreateInfo_VkPipelineMultisampleStateCreateInfo_VkPipelineSampleLocationsStateCreateInfoEXT_VkSampleLocationsInfoEXT_sampleLocationsPerPixel_valid(
+    const VkGraphicsPipelineCreateInfo& self,
+    const VkPipelineMultisampleStateCreateInfo& _self,
+    const VkPipelineSampleLocationsStateCreateInfoEXT& __self,
+    const VkSampleLocationsInfoEXT& ___self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkGraphicsPipelineCreateInfo_VkPipelineColorBlendStateCreateInfo_logicOp_valid(
+    const VkGraphicsPipelineCreateInfo& self,
+    const VkPipelineColorBlendStateCreateInfo& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkGraphicsPipelineCreateInfo_basePipelineHandle_valid(
+    const VkGraphicsPipelineCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkComputePipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_VkSpecializationMapEntry_size_valid(
+    const VkComputePipelineCreateInfo& self,
+    const VkPipelineShaderStageCreateInfo& _self,
+    const VkSpecializationInfo& __self,
+    const VkSpecializationMapEntry& ___self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkComputePipelineCreateInfo_basePipelineHandle_valid(
+    const VkComputePipelineCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkSamplerCreateInfo_VkSamplerCustomBorderColorCreateInfoEXT_customBorderColor_valid(
+    const VkSamplerCreateInfo& self,
+    const VkSamplerCustomBorderColorCreateInfoEXT& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkWriteDescriptorSet_dstSet_valid(const VkWriteDescriptorSet& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkWriteDescriptorSet_VkDescriptorImageInfo_sampler_valid(
+    const VkWriteDescriptorSet& self,
+    const VkDescriptorImageInfo& _self) {
+  return self.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER ||
+         self.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+}
+bool _VkWriteDescriptorSet_VkDescriptorImageInfo_imageView_valid(
+    const VkWriteDescriptorSet& self,
+    const VkDescriptorImageInfo& _self) {
+  return self.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+         self.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
+         self.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+         self.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+}
+bool _VkWriteDescriptorSet_VkDescriptorImageInfo_imageLayout_valid(
+    const VkWriteDescriptorSet& self,
+    const VkDescriptorImageInfo& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkCommandBufferBeginInfo_VkCommandBufferInheritanceInfo_renderPass_valid(
+    const VkCommandBufferBeginInfo& self,
+    const VkCommandBufferInheritanceInfo& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkCommandBufferBeginInfo_VkCommandBufferInheritanceInfo_framebuffer_valid(
+    const VkCommandBufferBeginInfo& self,
+    const VkCommandBufferInheritanceInfo& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkCommandBufferBeginInfo_VkCommandBufferInheritanceInfo_queryFlags_valid(
+    const VkCommandBufferBeginInfo& self,
+    const VkCommandBufferInheritanceInfo& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkCommandBufferBeginInfo_VkCommandBufferInheritanceInfo_pipelineStatistics_valid(
+    const VkCommandBufferBeginInfo& self,
+    const VkCommandBufferInheritanceInfo& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkViewport_x_valid(const VkViewport& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkViewport_y_valid(const VkViewport& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkViewport_width_valid(const VkViewport& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkViewport_height_valid(const VkViewport& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkBufferCopy_size_valid(const VkBufferCopy& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkClearAttachment_clearValue_valid(const VkClearAttachment& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkClearAttachment_VkClearValue_color_valid(const VkClearAttachment& self,
+                                                 const VkClearValue& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkBufferMemoryBarrier_srcAccessMask_valid(
+    const VkBufferMemoryBarrier& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkBufferMemoryBarrier_dstAccessMask_valid(
+    const VkBufferMemoryBarrier& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkImageMemoryBarrier_VkSampleLocationsInfoEXT_sampleLocationsPerPixel_valid(
+    const VkImageMemoryBarrier& self,
+    const VkSampleLocationsInfoEXT& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkImageMemoryBarrier_srcAccessMask_valid(
+    const VkImageMemoryBarrier& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkImageMemoryBarrier_dstAccessMask_valid(
+    const VkImageMemoryBarrier& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkRenderPassBeginInfo_VkRenderPassSampleLocationsBeginInfoEXT_VkAttachmentSampleLocationsEXT_VkSampleLocationsInfoEXT_sampleLocationsPerPixel_valid(
+    const VkRenderPassBeginInfo& self,
+    const VkRenderPassSampleLocationsBeginInfoEXT& _self,
+    const VkAttachmentSampleLocationsEXT& __self,
+    const VkSampleLocationsInfoEXT& ___self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkRenderPassBeginInfo_VkRenderPassSampleLocationsBeginInfoEXT_VkSubpassSampleLocationsEXT_VkSampleLocationsInfoEXT_sampleLocationsPerPixel_valid(
+    const VkRenderPassBeginInfo& self,
+    const VkRenderPassSampleLocationsBeginInfoEXT& _self,
+    const VkSubpassSampleLocationsEXT& __self,
+    const VkSampleLocationsInfoEXT& ___self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkRenderPassBeginInfo_VkClearValue_color_valid(
+    const VkRenderPassBeginInfo& self,
+    const VkClearValue& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkBindImageMemoryInfo_memory_valid(const VkBindImageMemoryInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+
+bool _VkDeviceCreateInfo_VkPhysicalDeviceFeatures2_VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures_shaderSubgroupExtendedTypes_valid(
+    const VkDeviceCreateInfo& self,
+    const VkPhysicalDeviceFeatures2& _self,
+    const VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures& __self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkDeviceCreateInfo_VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures_shaderSubgroupExtendedTypes_valid(
+    const VkDeviceCreateInfo& self,
+    const VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkSamplerCreateInfo_compareOp_valid(const VkSamplerCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkSamplerCreateInfo_borderColor_valid(const VkSamplerCreateInfo& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkDescriptorSetLayoutCreateInfo_VkDescriptorSetLayoutBinding_stageFlags_valid(
+    const VkDescriptorSetLayoutCreateInfo& self,
+    const VkDescriptorSetLayoutBinding& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+bool _VkPhysicalDeviceFeatures2_VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures_shaderSubgroupExtendedTypes_valid(
+    const VkPhysicalDeviceFeatures2& self,
+    const VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures& _self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
 }  // namespace gapid2

@@ -21,14 +21,18 @@
 
 namespace gapid2 {
 struct encoder {
-  encoder() { data_.push_back(block{4096, (char*)malloc(4096), 4096}); }
+#define INITIAL_SIZE 4096
+  encoder() {
+    data_.push_back(
+        block{INITIAL_SIZE, (char*)malloc(INITIAL_SIZE), INITIAL_SIZE});
+  }
 
   void ensure_large_enough(const size_t _sz) {
     auto* b = &data_[data_offset];
     if (b->left < _sz) {
       ++data_offset;
       if (data_offset >= data_.size() || data_[data_offset].size < _sz) {
-        auto sz = std::max<size_t>(_sz, 4096);
+        auto sz = std::max<size_t>(_sz, INITIAL_SIZE);
         char* c = (char*)malloc(sz);
         data_.push_back(block{sz, c, sz});
         // If we couldnt fit into the next bucket, make a new bucket,
@@ -60,6 +64,13 @@ struct encoder {
     write(_t, sizeof(T) * len);
   }
 
+  void reset() {
+    data_offset = 0;
+    for (size_t i = 0; i < data_.size(); ++i) {
+      data_[i].left = data_[i].size;
+    }
+  }
+
   std::vector<block> data_;
   size_t data_offset = 0;
 };
@@ -68,6 +79,7 @@ class encoder_handle {
  public:
   encoder_handle(encoder* _encoder, std::function<void()> on_return)
       : _encoder(_encoder), _on_return(on_return) {}
+  explicit encoder_handle(encoder* _encoder) : _encoder(_encoder) {}
   encoder_handle(encoder_handle&& _other) = default;
   ~encoder_handle() {
     if (_on_return) {
@@ -77,6 +89,7 @@ class encoder_handle {
   encoder* operator*() { return _encoder; }
   encoder* operator->() { return _encoder; }
   operator encoder*() { return _encoder; }
+  operator bool() const { return _encoder != nullptr; }
   encoder* _encoder;
   std::function<void()> _on_return;
 };

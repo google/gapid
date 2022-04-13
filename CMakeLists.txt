@@ -14,7 +14,7 @@ add_library(spirv-reflect STATIC
 
 find_package (Python3 COMPONENTS Interpreter REQUIRED)
 
-#add_compile_options("/bigobj")
+add_compile_options("/bigobj")
 
 set(ALL_HEADERS
     buffer_view.h
@@ -77,10 +77,13 @@ set(ALL_GENERATED
     ${gapid2_BINARY_DIR}/call_forwards.h
     ${gapid2_BINARY_DIR}/handle_defines.inl
     ${gapid2_BINARY_DIR}/command_deserializer.h
-    ${gapid2_BINARY_DIR}/layer_internal.h
+    ${gapid2_BINARY_DIR}/layer_internal.inl
     ${gapid2_BINARY_DIR}/layerer.h
     ${gapid2_BINARY_DIR}/struct_printer.h
     ${gapid2_BINARY_DIR}/command_printer.h
+    ${gapid2_BINARY_DIR}/fn_caller.h
+    ${gapid2_BINARY_DIR}/fns.h
+    ${gapid2_BINARY_DIR}/command_buffer_recorder.inl
 )
 
 add_custom_command(OUTPUT
@@ -98,7 +101,7 @@ add_custom_command(OUTPUT
 add_library(gapii SHARED
     helpers.cpp
     memory_tracker.cpp
-    layer_setup.cpp 
+    layer_setup.cpp
     layer.def
     spy.h
     ${gapid2_BINARY_DIR}/call_forwards.cpp
@@ -106,9 +109,29 @@ add_library(gapii SHARED
     ${ALL_HEADERS}
 )
 
+
 target_compile_definitions(gapii PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
 target_link_libraries(gapii spirv-reflect)
 target_include_directories(gapii PRIVATE
+    ${gapid2_BINARY_DIR}
+    ${gapid2_SOURCE_DIR}
+    ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include/vulkan
+)
+
+add_library(gapii_raw SHARED
+    helpers.cpp
+    memory_tracker.cpp
+    layer_setup.cpp
+    layer.def
+    raw_spy.h
+    ${gapid2_BINARY_DIR}/call_forwards.cpp
+    ${ALL_GENERATED}
+    ${ALL_HEADERS}
+)
+
+target_compile_definitions(gapii_raw PRIVATE VK_USE_PLATFORM_WIN32_KHR=1 NO_SERIALIZE)
+target_link_libraries(gapii_raw spirv-reflect)
+target_include_directories(gapii_raw PRIVATE
     ${gapid2_BINARY_DIR}
     ${gapid2_SOURCE_DIR}
     ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include/vulkan
@@ -150,3 +173,41 @@ configure_file(
     ${gapid2_BINARY_DIR}/manifest.json
     @ONLY 
 )
+
+configure_file(
+    manifest2.json.in 
+    ${gapid2_BINARY_DIR}/manifest2.json
+    @ONLY 
+)
+
+configure_file(
+    generator.py
+    ${gapid2_BINARY_DIR}/scripts/generator.py
+    COPYONLY
+)
+
+configure_file(
+    build_file.bat
+    ${gapid2_BINARY_DIR}/scripts/build_file.bat
+    COPYONLY
+)
+
+configure_file(
+    layer.h
+    ${gapid2_BINARY_DIR}/scripts/layer.h
+    COPYONLY
+)
+
+configure_file(
+    layer_internal_setup.h
+    ${gapid2_BINARY_DIR}/scripts/layer_internal_setup.h
+    COPYONLY
+)
+
+configure_file(
+    scripts/CMakeLists.txt
+    ${gapid2_BINARY_DIR}/scripts/CMakeLists.txt
+    COPYONLY
+)
+
+file(COPY externals/Vulkan-Headers DESTINATION ${gapid2_BINARY_DIR})

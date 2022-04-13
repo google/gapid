@@ -18,7 +18,7 @@ call "%VSVARS%"
 echo %*
 md %4
 
-cmake -GNinja -S %~dp0/scripts -B %4 -DLIB_NAME=%2 -DLIB_SRC=%1 -DCMAKE_BUILD_TYPE=%3
+cmake -GNinja -S %~dp0 -B %4 -DLIB_NAME=%2 -DLIB_SRC=%1 -DCMAKE_BUILD_TYPE=%3
 if %errorlevel% neq 0 pause && exit /b %errorlevel%
 cmake --build %4
 if %errorlevel% neq 0 pause && exit /b %errorlevel%

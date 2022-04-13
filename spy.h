@@ -21,22 +21,27 @@
 #include "command_caller.h"
 #include "commands.h"
 #include "encoder.h"
+#include "layer_helper.h"
 #include "layerer.h"
 #include "memory_tracker.h"
 #include "minimal_state_tracker.h"
 #include "state_tracker.h"
 namespace gapid2 {
-class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
-                CommandSerializer<CommandCaller<HandleWrapperUpdater>>>>> {
-  using super = StateTracker<gapid2::Layerer<MinimalStateTracker<
-      CommandSerializer<CommandCaller<HandleWrapperUpdater>>>>>;
+class Spy
+    : public StateTracker<gapid2::Layerer<
+          MinimalStateTracker<
+              CommandSerializer<false, CommandCaller<HandleWrapperUpdater>>>,
+          HandleWrapperUpdater>> {
+  using super = StateTracker<gapid2::Layerer<
+      MinimalStateTracker<
+          CommandSerializer<false, CommandCaller<HandleWrapperUpdater>>>,
+      HandleWrapperUpdater>>;
   using caller = CommandCaller<HandleWrapperUpdater>;
 
  public:
   Spy() : out_file("file.trace", std::ios::out | std::ios::binary) {
     encoder_tls_key = TlsAlloc();
-    std::vector<std::string> layers = {{"D:\\src\\gapid\\test3.cpp"}};
-    initializeLayers(layers);
+    initializeLayers(get_layers());
   }
   void add_instance(VkInstance instance) {
     std::unique_lock l(map_mutex);
@@ -75,7 +80,7 @@ class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
       return ret;
     }
     if (pPhysicalDevices) {
-      auto enc = get_encoder();
+      auto enc = get_encoder(reinterpret_cast<uintptr_t>(instance));
       for (size_t i = 0; i < *pPhysicalDeviceCount; ++i) {
         VkPhysicalDeviceProperties properties;
         caller::vkGetPhysicalDeviceProperties(pPhysicalDevices[i], &properties);
@@ -117,7 +122,7 @@ class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
       auto new_mem = updater_.cast_from_vk(mr.memory);
       tracker.for_dirty_in_mem(mr.memory, [this, mr, new_mem](
                                               void* ptr, VkDeviceSize size) {
-        auto enc = get_encoder();
+        auto enc = get_encoder(0);
         auto offset = reinterpret_cast<char*>(ptr) - new_mem->_mapped_location;
         enc->encode<uint64_t>(0);
         enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(mr.memory));
@@ -161,7 +166,7 @@ class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
             auto new_mem = updater_.cast_from_vk(m);
             tracker.for_dirty_in_mem(
                 m, [this, m, new_mem](void* ptr, VkDeviceSize size) {
-                  auto enc = get_encoder();
+                  auto enc = get_encoder(0);
                   auto offset =
                       reinterpret_cast<char*>(ptr) - new_mem->_mapped_location;
                   enc->encode<uint64_t>(0);
@@ -183,15 +188,15 @@ class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
     return res;
   }
 
-  encoder_handle get_encoder() override {
+  encoder_handle get_encoder(uintptr_t) override {
     encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
     if (!enc) {
       enc = new encoder();
       TlsSetValue(encoder_tls_key, enc);
     }
 
-    call_mutex.lock();
     return encoder_handle(enc, [this, enc]() {
+      call_mutex.lock();
       uint64_t data_size = 0;
       for (size_t i = 0; i <= enc->data_offset; ++i) {
         data_size += enc->data_[i].size - enc->data_[i].left;
@@ -210,7 +215,7 @@ class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
     });
   }
 
-  encoder_handle get_locked_encoder() override {
+  encoder_handle get_locked_encoder(uintptr_t) override {
     encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
     if (!enc) {
       enc = new encoder();
@@ -266,7 +271,7 @@ class Spy : public StateTracker<gapid2::Layerer<MinimalStateTracker<
     if (fenceCount == 1) {
       return res;
     }
-    auto enc = get_encoder();
+    auto enc = get_encoder(reinterpret_cast<uintptr_t>(device));
     for (uint32_t i = 0; i < fenceCount; ++i) {
       if (caller::vkGetFenceStatus(device, pFences[i]) == VK_SUCCESS) {
         enc->encode<char>(1);

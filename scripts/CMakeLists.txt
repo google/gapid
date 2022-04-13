@@ -19,22 +19,22 @@ if (NOT (EXISTS "${LIB_SRC}"))
 endif()
 file(TO_CMAKE_PATH "${LIB_SRC}" LIB_SRC)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../externals/Vulkan-Headers/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Vulkan-Headers/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(OUTPUT
-    ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl.h
+    ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl
     COMMAND ${Python3_EXECUTABLE} 
-        ${CMAKE_CURRENT_SOURCE_DIR}/../generator.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/../externals/Vulkan-Headers/registry/vk.xml
+        ${CMAKE_CURRENT_SOURCE_DIR}/generator.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Vulkan-Headers/registry/vk.xml
         ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS 
-        ${CMAKE_CURRENT_SOURCE_DIR}/../generator.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/../externals/Vulkan-Headers/registry/vk.xml
+        ${CMAKE_CURRENT_SOURCE_DIR}/generator.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Vulkan-Headers/registry/vk.xml
 )
 
 add_library(${LIB_NAME} SHARED
     "${LIB_SRC}"
-    ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl.h
+    ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl
 )
 target_compile_definitions(${LIB_NAME} PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)

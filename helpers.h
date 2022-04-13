@@ -179,6 +179,7 @@ inline void create_handle_from_struct(
 }
 class encoder;
 class decoder;
+
 template <typename HandleUpdater>
 void _custom_serialize_VkClearColorValue(HandleUpdater*,
                                          const VkClearColorValue& value,
@@ -189,9 +190,12 @@ void _custom_serialize_VkClearColorValue(HandleUpdater*,
   enc->encode<uint32_t>(value.int32[3]);
 }
 template <typename HandleUpdater>
-void _custom_serialize_VkClearValue(HandleUpdater*,
-                                    const VkClearValue& value,
-                                    encoder* enc) {
+void _custom_serialize_VkClearValue(
+    HandleUpdater*,
+    const VkClearValue& value,
+    encoder* enc,
+    std::function<bool(const VkClearValue& self)> _VkClearValue_color_valid) {
+#pragma FIXME(awoloszyn, Do something with the passed function)
   enc->encode<uint32_t>(value.color.int32[0]);
   enc->encode<uint32_t>(value.color.int32[1]);
   enc->encode<uint32_t>(value.color.int32[2]);
@@ -478,10 +482,13 @@ void _custom_deserialize_vkCmdPushConstants_pValues(
 }
 
 template <typename HandleUpdater>
-void _custom_clone_VkClearValue(HandleUpdater*,
-                                const VkClearValue& src,
-                                VkClearValue& dst,
-                                temporary_allocator* mem) {
+void _custom_clone_VkClearValue(
+    HandleUpdater*,
+    const VkClearValue& src,
+    VkClearValue& dst,
+    temporary_allocator* mem,
+    std::function<bool(const VkClearValue& self)> _VkClearValue_color_valid) {
+#pragma FIXME(awoloszyn, Do something with the passed function)
   memcpy(&dst, &src, sizeof(src));
 }
 

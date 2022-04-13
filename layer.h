@@ -5,9 +5,9 @@
 
 struct LayerOptions;
 
-void (*LayerOptions_CaptureCommands)(LayerOptions*, VkCommandBuffer);
-void (*LayerOptions_CaptureAllCommands)(LayerOptions*);
-
+void LayerOptions_CaptureCommands(LayerOptions*, VkCommandBuffer);
+void LayerOptions_CaptureAllCommands(LayerOptions*);
+void Rerecord_CommandBuffer(VkCommandBuffer cb);
 struct LayerOptions {
 #ifdef __cplusplus
   void CaptureCommands(VkCommandBuffer cb) {

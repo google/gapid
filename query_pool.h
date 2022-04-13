@@ -29,7 +29,8 @@ struct VkQueryPoolWrapper : handle_base<VkQueryPool> {
 
   void set_create_info(const VkQueryPoolCreateInfo* pCreateInfo) {
     create_info = mem.get_typed_memory<VkQueryPoolCreateInfo>(1);
-    clone<NullCloner>(&cloner, pCreateInfo[0], create_info[0], &mem);
+    clone<NullCloner>(&cloner, pCreateInfo[0], create_info[0], &mem,
+                      _VkQueryPoolCreateInfo_pipelineStatistics_valid);
   }
 
   VkQueryPoolCreateInfo* create_info = nullptr;

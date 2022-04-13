@@ -61,7 +61,7 @@ struct decoder {
 
   void read(void* ptr, size_t length) {
     auto b = &data_[read_offset];
-    GAPID2_ASSERT(data_[read_offset].size > (read_head + length),
+    GAPID2_ASSERT(data_[read_offset].size >= (read_head + length),
                   "Out of data");
     if (ptr) {
       memcpy(ptr, b->data + read_head, length);
@@ -105,10 +105,12 @@ struct decoder {
   }
 
   bool has_data_left() {
-    if (read_offset == data_.size() - 1) {
-      return read_head < data_[read_offset].size - data_[read_offset].left;
+    for (size_t i = read_offset; i < data_.size(); ++i) {
+      if ((data_[i].size - data_[i].left) - read_head) {
+        return true;
+      }
     }
-    return read_offset < data_.size();
+    return false;
   }
 
   std::vector<block> memory_blocks_;

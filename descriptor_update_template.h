@@ -34,7 +34,12 @@ struct VkDescriptorUpdateTemplateWrapper
   void set_create_info(
       const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo) {
     create_info = mem.get_typed_memory<VkDescriptorUpdateTemplateCreateInfo>(1);
-    clone<NullCloner>(&cloner, pCreateInfo[0], create_info[0], &mem);
+    clone<NullCloner>(
+        &cloner, pCreateInfo[0], create_info[0], &mem,
+        _VkDescriptorUpdateTemplateCreateInfo_descriptorSetLayout_valid,
+        _VkDescriptorUpdateTemplateCreateInfo_pipelineBindPoint_valid,
+        _VkDescriptorUpdateTemplateCreateInfo_pipelineLayout_valid,
+        _VkDescriptorUpdateTemplateCreateInfo_set_valid);
   }
 
   VkDescriptorUpdateTemplateCreateInfo* create_info = nullptr;

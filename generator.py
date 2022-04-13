@@ -470,7 +470,7 @@ class struct(base):
                     a.args.append(serialization_arg('self', f'const {self.name}&'))
                     a.args.append(serialization_arg('enc', f'encoder*'))
                 p.append(a)
-            if x.noautovalidity and type(xt) == pointer_type and not _serialization_type == DESERIALIZE:
+            if x.noautovalidity and not _serialization_type == DESERIALIZE:
                 a = serialization_param("valid", f'{self.name}_{x.name}', 'bool')
                 a.args.append(serialization_arg('self', f'const {self.name}&'))
                 p.append(a)
@@ -487,7 +487,8 @@ class struct(base):
                     a.name = "_" + a.name
                     x.args.append(a)
             p.extend(child_params)
-        return p
+        used = set()
+        return [x for x in p if x.signature() not in used and  (used.add(x.signature()) or True)]
 
 class constant:
     def __init__(self):
@@ -873,7 +874,9 @@ def output_member_dec(x, struct_name, memberid, idx, depth, vop, fdec):
             for y in x.extended_by:
                 print(depth + f"  case {y[0]}: {{", file=fdec)
                 print(depth + f"    {y[1].name}* pn = dec->get_typed_memory<{y[1].name}>(1);", file=fdec)
-                print(depth + f"    deserialize_{y[1].name}(updater, *pn, dec);", file=fdec)
+                prms = [f"*pn", "dec"]
+                prms.extend([f'bind_first(_{struct_name}{z.name()}, val)' for z in y[1].get_serialization_params(DESERIALIZE)])
+                print(depth + f"    deserialize_{y[1].name}(updater, {', '.join(prms)});", file=fdec)
                 print(depth + f"    *ppNext{memberid} = pn;", file=fdec)
                 print(depth + f"    ppNext{memberid} = const_cast<const void**>(&pn->pNext);", file=fdec)
                 print(depth + f"    break;", file=fdec)
@@ -994,11 +997,11 @@ def output_member_enc(x, struct_name, memberid, idx, depth, vop, fenc):
                 print(depth + f"        {y[1].name} _tmp = *reinterpret_cast<const {y[1].name}*>(baseStruct);", file=fenc)
                 print(depth + f"        _tmp.pNext = nullptr;", file=fenc)
                 prms = [f"_tmp", "enc"]
-                prms.extend([z.name() for z in y[1].get_serialization_params()])
+                prms.extend([f'bind_first(_{struct_name}{z.name()}, val)' for z in y[1].get_serialization_params()])
                 print(depth + f"        serialize_{y[1].name}(updater, {', '.join(prms)});", file=fenc)
                 print(depth + f"      }} else {{", file=fenc)
                 prms = [f"*reinterpret_cast<const {y[1].name}*>(baseStruct)", "enc"]
-                prms.extend([z.name() for z in y[1].get_serialization_params()])
+                prms.extend([f'bind_first(_{struct_name}{z.name()}, val)' for z in y[1].get_serialization_params()])
                 print(depth + f"        serialize_{y[1].name}(updater, {', '.join(prms)});", file=fenc)
                 print(depth + f"      }}", file=fenc)
                 print(depth + f"      break;", file=fenc)
@@ -1028,8 +1031,7 @@ def output_member_enc(x, struct_name, memberid, idx, depth, vop, fenc):
             print(depth + f"enc->template encode<uint32_t>(0); // pNext", file=fenc)
     elif type(tp) == union:
         prms = [f"{vop}{x.name}{idx}", "enc"]
-        prms.extend([z.name() for z in tp.get_serialization_params()])
-
+        prms.extend([f'bind_first(_{struct_name}{z.name()}, val)' for z in tp.get_serialization_params()])
         print(depth + f"_custom_serialize_{tp.name}(updater, {', '.join(prms)});", file=fenc)
     elif type(tp) == struct:
         prms = [f"{vop}{x.name}{idx}", "enc"]
@@ -1144,12 +1146,12 @@ def output_member_clone(x, xdst, struct_name, memberid, idx, depth, vop, dop, fc
                 print(depth + f"            auto srctmp_ = *reinterpret_cast<const {y[1].name}*>(srcBaseStruct);", file=fclone)
                 print(depth + f"            srctmp_.pNext = nullptr;", file=fclone)
                 prms = [f"srctmp_", "*_val", "mem"]
-                prms.extend([z.name() for z in y[1].get_serialization_params(CLONE)])
+                prms.extend([f'bind_first(_{struct_name}{z.name()}, src)' for z in y[1].get_serialization_params(CLONE)])
                 print(depth + f"            clone<HandleUpdater>(updater, {', '.join(prms)});", file=fclone)
                 print(depth + f"            *dstBaseStruct = reinterpret_cast<VkBaseOutStructure*>(_val);", file=fclone)
                 print(depth + f"          }} else {{", file=fclone)
                 prms = [f"*reinterpret_cast<const {y[1].name}*>(srcBaseStruct)", "*_val", "mem"]
-                prms.extend([z.name() for z in y[1].get_serialization_params(CLONE)])
+                prms.extend([f'bind_first(_{struct_name}{z.name()}, src)' for z in y[1].get_serialization_params(CLONE)])
                 print(depth + f"            clone<HandleUpdater>(updater, {', '.join(prms)});", file=fclone)
                 print(depth + f"            *dstBaseStruct = reinterpret_cast<VkBaseOutStructure*>(_val);", file=fclone)
                 print(depth + f"          }}", file=fclone)
@@ -1192,23 +1194,47 @@ def output_member_clone(x, xdst, struct_name, memberid, idx, depth, vop, dop, fc
             print(depth + f'if({vop}pNext) {{ GAPID2_ERROR("Unexpected pNext"); }}', file=fclone)
             print(depth + f"{dop}pNext = nullptr;", file=fclone)
     elif type(tp) == union:
+        if x.noautovalidity:
+            print(depth + f"if (_{struct_name}_{x.name}_valid(src)) {{", file=fclone)
+            depth = depth + "  "
         prms = [f"{vop}{x.name}{idx}", f"{dop}{xdst.name}{idx}", "mem"]
-        prms.extend([z.name() for z in tp.get_serialization_params(CLONE)])
+        prms.extend([f'bind_first(_{struct_name}{z.name()}, src)' for z in tp.get_serialization_params(CLONE)])
         print(depth + f"_custom_clone_{tp.name}<HandleUpdater>(updater, {', '.join(prms)});", file=fclone)
+        if x.noautovalidity:
+            depth = depth[:-2]
+            print(depth + f"}}", file=fclone)
     elif type(tp) == struct:
+        if x.noautovalidity:
+            print(depth + f"if (_{struct_name}_{x.name}_valid(src)) {{", file=fclone)
+            depth = depth + "  "
         prms = [f"{vop}{x.name}{idx}", f"{dop}{xdst.name}{idx}", "mem"]
         prms.extend([f'bind_first(_{struct_name}{z.name()}, src)' for z in tp.get_serialization_params(CLONE)])
         print(depth + f"clone<HandleUpdater>(updater, {', '.join(prms)});", file=fclone)
+        if x.noautovalidity:
+            depth = depth[:-2]
+            print(depth + f"}}", file=fclone)
     elif type(tp) == basetype:
+        if x.noautovalidity:
+            print(depth + f"if (_{struct_name}_{x.name}_valid(src)) {{", file=fclone)
+            depth = depth + "  "
         enc_type = tp.base_type
         if enc_type == "size_t":
             enc_type = "uint64_t"
         print(depth + f"{dop}{xdst.name}{idx} = {vop}{x.name}{idx};", file=fclone)
+        if x.noautovalidity:
+            depth = depth[:-2]
+            print(depth + f"}}", file=fclone)
     elif type(tp) == platform_type:
+        if x.noautovalidity:
+            print(depth + f"if (_{struct_name}_{x.name}_valid(src)) {{", file=fclone)
+            depth = depth + "  "
         enc_type = str(tp)
         if enc_type == "size_t":
             enc_type = "uint64_t"
         print(depth + f"{dop}{xdst.name}{idx} = {vop}{x.name}{idx};", file=fclone)
+        if x.noautovalidity:
+            depth = depth[:-2]
+            print(depth + f"}}", file=fclone)
     elif type(tp) == pointer_type:
         if (tp.pointee.name == "void"):
             prms = ["src", "dst", "mem"]
@@ -1260,11 +1286,13 @@ def output_member_clone(x, xdst, struct_name, memberid, idx, depth, vop, dop, fc
         xm = copy.deepcopy(x)
         xm.type = tp.pointee
         xm.name = f'{vop}{xm.name}'
+        xm.noautovalidity = False
         if x.len:
             xm.len = ",".join(x.len.split(",")[1:])
         x2 = copy.deepcopy(xdst)
         x2.type = dt.pointee
         x2.name = tmp
+        x2.noautovalidity = False
 
         output_member_clone(xm, x2, struct_name, memberid + 1, mem_idx, depth, f"", f"", fclone)
         if x.len:
@@ -1279,15 +1307,24 @@ def output_member_clone(x, xdst, struct_name, memberid, idx, depth, vop, dop, fc
     elif type(tp) == enum:
         print(depth + f"{dop}{xdst.name}{idx} = {vop}{x.name}{idx};", file=fclone)
     elif type(tp) == handle:
+        if x.noautovalidity:
+            print(depth + f"if (_{struct_name}_{x.name}_valid(src)) {{", file=fclone)
+            depth = depth + "  "
         print(depth + f"{dop}{xdst.name}{idx} = updater->cast_in({vop}{x.name}{idx});", file=fclone)
+        if x.noautovalidity:
+            depth = depth[:-2]
+            print(depth + f"}}", file=fclone)
+
     elif type(tp) == array_type:
         ii = len(depth)
         print(depth + f"for (size_t i_{ii} = 0; i_{ii} < {tp.size}; ++i_{ii}) {{", file=fclone)
         depth += "  "
         xm = copy.deepcopy(x)
         xm.type = tp.child
+        xm.noautovalidity = False
         x2 = copy.deepcopy(xdst)
         x2.type = dt.child
+        x2.noautovalidity = False
         output_member_clone(xm, x2, struct_name, memberid + 1, f"[i_{ii}]", depth, vop, dop, fclone)
         print(depth + f"}}", file=fclone)
 def output_member_fix(x, struct_name, memberid, idx, depth, vop, ffix):
@@ -1466,11 +1503,11 @@ def output_print_member(x, struct_name, memberid, idx, depth, vop, fprint):
                 print(depth + f"        {y[1].name} _tmp = *reinterpret_cast<const {y[1].name}*>(baseStruct);", file=fprint)
                 print(depth + f"        _tmp.pNext = nullptr;", file=fprint)
                 prms = [f"_tmp", "printer"]
-                prms.extend([z.name() for z in y[1].get_serialization_params()])
+                prms.extend([f'bind_first(_{struct_name}{z.name()}, val)' for z in y[1].get_serialization_params()])
                 print(depth + f"        print_{y[1].name}(\"\", updater, {', '.join(prms)});", file=fprint)
                 print(depth + f"      }} else {{", file=fprint)
                 prms = [f"*reinterpret_cast<const {y[1].name}*>(baseStruct)", "printer"]
-                prms.extend([z.name() for z in y[1].get_serialization_params()])
+                prms.extend([f'bind_first(_{struct_name}{z.name()}, val)' for z in y[1].get_serialization_params()])
                 print(depth + f"        print_{y[1].name}(\"\", updater, {', '.join(prms)});", file=fprint)
                 print(depth + f"      }}", file=fprint)
                 print(depth + f"      break;", file=fprint)
@@ -1595,9 +1632,7 @@ def output_print_struct(x, fprint):
     print(f"template<typename HandleUpdater, typename Printer>", file=fprint)
     print(f"inline void print_{x.name}(const char* name, HandleUpdater* updater, {', '.join(serialize_params)}) {{", file=fprint)
     print(f"  printer->begin_object(name);", file=fprint)
-    deserialize_params = [f"{x.name}& val", "decoder* dec"]
-    deserialize_params.extend([y.function() for y in x.get_serialization_params(DESERIALIZE)])
-
+    
     for y in x.members:
         output_print_member(y, x.name, memberid, "", "  ", "val.", fprint)
         memberid += 1
@@ -1665,7 +1700,7 @@ def output_arg_convert(cmd, param):
     if not tp.has_handle():
         return param.name
     if type(tp) == handle:
-        return f"updater_.cast_in({param.name})"
+        return f"updater->cast_in({param.name})"
     if type(tp) == pointer_type:
         if type(param.type) != const_type:
             # Return pointer dont need to copy
@@ -1805,26 +1840,28 @@ def output_command(cmd, definition, fbod, only_return = False):
     # Special case. Anything that can unblock the CPU we have to actually cause 
     # block around call. Otherwise the returns might encode out of order
     # which means we deadlock on replay.
-    if (cmd.name == "vkSignalSemaphore" or cmd.name == "vkSignalSemaphoreKHR" or cmd.name == "vkSetEvent" or cmd.name == "vkQueueSubmit"):
-        print(f"    auto enc = get_locked_encoder();", file=fbod)
+    if (cmd.name == "vkWaitSemaphoresKHR" or cmd.name == "vkWaitSemaphores"):
+        print(f"    auto enc = get_encoder(reinterpret_cast<uintptr_t>({cmd.args[0].name}));", file=fbod)
     else:
-        print(f"    auto enc = get_encoder();", file=fbod)
+        print(f"    auto enc = get_locked_encoder(reinterpret_cast<uintptr_t>({cmd.args[0].name}));", file=fbod)
     sha = int.from_bytes(hashlib.sha256(cmd.name.encode('utf-8')).digest()[:8], 'little')
     print(f"    enc->template encode<uint64_t>({sha}u);", file=fbod)
     if not only_return:
+        print("    if (!OptionalSerialize || enc) {", file=fbod)
         arg_idx = 0
         for arg in cmd.args:
             if arg.name == 'pAllocator':
-                print(f"    // Skipping: {arg.name} for as it cannot be replayed", file=fbod)
+                print(f"      // Skipping: {arg.name} for as it cannot be replayed", file=fbod)
                 continue
             if type(arg.type) == pointer_type and not arg.type.const:
                 if arg.inout():
-                    print(f"    // Inout: {arg.name}", file=fbod)
+                    print(f"      // Inout: {arg.name}", file=fbod)
                 else:
-                    print(f"    // Skipping: {arg.name} for now as it is an output param", file=fbod)
+                    print(f"      // Skipping: {arg.name} for now as it is an output param", file=fbod)
                     continue
-            output_arg_enc(cmd, arg, "", arg_idx, "",  "    ", fbod)
+            output_arg_enc(cmd, arg, "", arg_idx, "",  "      ", fbod)
             arg_idx += 1
+        print("    }", file=fbod)
     args = ", ".join(x.name for x in cmd.args)
     if (cmd.ret.name == 'void'):
         print(f"    T::{cmd.name}({args});", file=fbod)
@@ -1832,21 +1869,34 @@ def output_command(cmd, definition, fbod, only_return = False):
         print(f"    const auto ret = T::{cmd.name}({args});", file=fbod)
 
     arg_idx = 0
+    any = False
     for arg in cmd.args:
         if type(arg.type) == pointer_type and not arg.type.const:
+            if not any:
+                    print("    if (!OptionalSerialize || enc) {", file=fbod)
+                    any = True
             if arg.inout():
-                print(f"    // Inout value: {arg.name}", file=fbod) 
+                print(f"      // Inout value: {arg.name}", file=fbod) 
             else:
-                print(f"    // Return value: {arg.name}", file=fbod)
+                print(f"      // Return value: {arg.name}", file=fbod)
             
         else:
             continue
-        output_arg_enc(cmd, arg, "", arg_idx, "",  "    ", fbod)
+        output_arg_enc(cmd, arg, "", arg_idx, "",  "      ", fbod)
         arg_idx += 1
     if cmd.ret.name != "void":
+        if not any:
+            print("    if (!OptionalSerialize || enc) {", file=fbod)
+            any = True
         if cmd.ret.name == "VkResult":
-            print(f"    enc->template encode<uint32_t>(ret);", file=fbod)
+            print(f"      enc->template encode<uint32_t>(ret);", file=fbod)
+        if any:
+            print("    }", file=fbod)
+            any = False
         print(f"    return ret;", file=fbod)
+    if any:
+        print("    }", file=fbod)
+        any = False
     print(f"  }}", file=fbod)
 
 def output_commands(definition, dir, commands_to_handle = None):
@@ -1862,7 +1912,7 @@ def output_commands(definition, dir, commands_to_handle = None):
         print(
 '''
 namespace gapid2 {
-template<typename T>
+template<bool OptionalSerialize, typename T>
 class CommandSerializer: public T {
   static_assert(std::is_base_of<CommandProcessor, T>::value, "Expected T to be derived from CommandProcessor");
   public:
@@ -1874,8 +1924,8 @@ class CommandSerializer: public T {
             output_command(cmd, definition, fbod)
         print(
 '''
-    virtual encoder_handle get_encoder() = 0;
-    virtual encoder_handle get_locked_encoder() = 0;
+    virtual encoder_handle get_encoder(uintptr_t key) = 0;
+    virtual encoder_handle get_locked_encoder(uintptr_t key) = 0;
 };
 } // namespace gapid2
 ''', file=fbod)
@@ -1893,7 +1943,7 @@ def output_returns_serializer(definition, dir, commands_to_handle = None):
         print(
 '''
 namespace gapid2 {
-template<typename T>
+template<typename T, bool OptionalSerialize>
 class ReturnSerializer: public T {
   static_assert(std::is_base_of<CommandProcessor, T>::value, "Expected T to be derived from CommandProcessor");
   public:
@@ -1929,9 +1979,13 @@ def output_call_forwards(definition, dir, commands_to_handle = None):
             print('#include <vulkan.h>', file=fcall)
             print('#include "call_forwards.h"', file=fbod)
             print('#include "layer_setup.h"', file=fcall)
-            print('#include "spy.h"', file=fcall)
             print(
 '''
+#ifdef NO_SERIALIZE
+#include "raw_spy.h"
+#else
+#include "spy.h"
+#endif
 namespace gapid2 {
 ''', file=fbod)
             print(
@@ -2042,7 +2096,7 @@ class CommandCaller : public CommandProcessor {
                 print(f"    // ----- Special ----- ", file=fbod)
                 print(f"    const auto fn = _{cmd.name};", file=fbod)
             else:
-                print(f"    const auto fn = updater_.cast_from_vk({cmd.args[0].name})->_functions->{cmd.name};", file=fbod)
+                print(f"    const auto fn = updater->cast_from_vk({cmd.args[0].name})->_functions->{cmd.name};", file=fbod)
             
             args = ", ".join(output_arg_convert(cmd, x) for x in cmd.args)
             if (cmd.ret.name == 'void'):
@@ -2343,8 +2397,8 @@ def output_forwards(definition, dir, commands_to_handle = None):
                 for arg in cmd.args:
                     if arg.name == 'pAllocator':
                         continue
-                    if type(arg.type) == pointer_type and not arg.type.const:
-                        continue
+                    #if type(arg.type) == pointer_type and not arg.type.const:
+                     #   continue
                     tp = arg.type.get_noncv_type()
                     all_enc_args.extend([y.signature() for y in tp.get_serialization_params()])
                     all_enc_args.extend([y.signature() for y in tp.get_serialization_params(DESERIALIZE)])
@@ -2559,13 +2613,13 @@ def output_arg_register(cmd, param, file):
             len = param.len
         if type(tp.pointee) == struct:
             prms = [param.name, len]
-            print(f"    this->updater_.register_handle_from_struct({', '.join(prms)});", file=file)
+            print(f"    this->updater->register_handle_from_struct({', '.join(prms)});", file=file)
         else:
             prms = [param.name, len]
-            print(f"    this->updater_.register_handle({', '.join(prms)});", file=file)
+            print(f"    this->updater->register_handle({', '.join(prms)});", file=file)
 
 def output_command_deserializer(cmd, definition, fbod):
-    print(f"  virtual void {cmd.name}() {{", file=fbod)
+    print(f"  virtual void {cmd.name}(decoder* decoder_) {{", file=fbod)
     arg_idx = 0
     print(f"    // -------- Args ------", file=fbod)
     for arg in cmd.args:
@@ -2647,11 +2701,12 @@ def output_command_deserializer(cmd, definition, fbod):
     
     
     if cmd.ret.name == "VkResult":
-        print(f"    current_return_ = decoder_->decode<VkResult>();", file=fbod)
+        print(f"    VkResult current_return_ = decoder_->decode<VkResult>();", file=fbod)
+        print(f"    (void)current_return_;", file=fbod)
     print(f"    // -------- Call ------", file=fbod)
     args = ", ".join(x.name for x in cmd.args)
     print(f"    T::{cmd.name}({args});", file=fbod)
-    print(f'    GAPID2_ASSERT(this->updater_.tbd_handles.empty(), "Unprocessed handles");', file=fbod)
+    print(f'    GAPID2_ASSERT(this->updater->tbd_handles.empty(), "Unprocessed handles");', file=fbod)
     print(f"  }}", file=fbod)
 
 def output_call_deserializer(definition, dir, commands_to_handle = None):
@@ -2677,12 +2732,16 @@ class CommandDeserializer : public T {
                 print("  // ---- Special", file=fbod)
             output_command_deserializer(cmd, definition, fbod)
         
-        
-        print("  void DeserializeStream() {", file=fbod)
+        print("  // A raw stream does not have command lengths encoded inside it.", file=fbod)
+        print("  void DeserializeStream(decoder* decoder_, bool raw_stream = false) {", file=fbod)
         print("    do {", file=fbod)
-        print("      const uint64_t data_left = decoder_->data_left();", file=fbod)
-        print("      if (data_left < sizeof(uint64_t)) { return; }", file=fbod)
-        print("      if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>()) { return; } ", file=fbod)
+        print("      if (!raw_stream) {", file=fbod)
+        print("        const uint64_t data_left = decoder_->data_left();", file=fbod)
+        print("        if (data_left < sizeof(uint64_t)) { return; }", file=fbod)
+        print("        if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>()) { return; } ", file=fbod)
+        print("      } else {", file=fbod)
+        print("        if (!decoder_->has_data_left()) { return; } ", file=fbod)
+        print("      }", file=fbod)
         print("      uint64_t command_idx = decoder_->decode<uint64_t>();", file=fbod)
         print("      switch(command_idx) {", file=fbod)
 
@@ -2693,7 +2752,7 @@ class CommandDeserializer : public T {
             if cmd.args[0].name != 'device' and cmd.args[0].name != 'commandBuffer' and  cmd.args[0].name != 'queue' and cmd.args[0].name != 'instance' and cmd.args[0].name != 'physicalDevice':
                 print("  // ---- Special", file=fbod)
             sha = int.from_bytes(hashlib.sha256(cmd.name.encode('utf-8')).digest()[:8], 'little')
-            print(f"        case {sha}u: {cmd.name}(); continue;", file=fbod)
+            print(f"        case {sha}u: {cmd.name}(decoder_); continue;", file=fbod)
         print('''
         default:
             std::abort();
@@ -2715,8 +2774,6 @@ class CommandDeserializer : public T {
     virtual void *get_memory_write_location(VkDeviceMemory, VkDeviceSize, VkDeviceSize) {
         return nullptr;
     } 
-  decoder* decoder_;
-  VkResult current_return_;
 };
 } // namespace gapid2
 ''', file=fbod)
@@ -2788,8 +2845,13 @@ def output_layerer(definition, dir, commands_to_handle = None):
         print('#pragma once', file=fcall)
         print('#include <vulkan/vulkan.h>', file=fcall)
         print('#include <filesystem>', file=fcall)
+        print('#include <iostream>', file=fcall)
+        print('#include <fstream>', file=fcall)
+        print('#include <list>', file=fcall)
+        print('#include "fns.h"', file=fcall)
         print('#include "algorithm/sha1.hpp"', file=fcall)
         print('#include "command_processor.h"', file=fcall)
+        print('#include "command_buffer_recorder.h"', file=fcall)
         print('''namespace gapid2 {
   const std::string version_string = "1";
   
@@ -2824,19 +2886,9 @@ f'''
     {cmd.ret.short_str()} inline forward_{cmd.name}(void* fn, {", ".join(prms)}) {{
         return (*({cmd.ret.short_str()}(*)({", ".join(prms)}))(fn))({", ".join(args)});
     }}''', file=fcall)
-        
-        print('    struct fns {', file=fcall)
-        for cmd in definition.commands.values():
-            if commands_to_handle:
-                if not cmd in commands_to_handle:
-                    continue
-            prms = [x.short_str() for x in cmd.args]
-            print(f'      {cmd.ret.short_str()}(*fn_{cmd.name})(void*, {", ".join(prms)});', file=fcall)
-            print(f'      void* {cmd.name}_user_data;', file=fcall)
-        print('''
-    };
 
-    template<typename T>
+        print('''
+    template<typename T, typename HandleUpdater>
     class Layerer: public T {
       using super = T;
       public:''', file=fcall)
@@ -2857,7 +2909,7 @@ f'''
         
         template<typename TT>
         static TT get_raw_handle(void* data_, TT in) {{
-            return reinterpret_cast<T*>(data_)->updater_.cast_in(in);
+            return reinterpret_cast<T*>(data_)->updater->cast_in(in);
         }}''', file=fcall)
 
         print(
@@ -2873,7 +2925,12 @@ f'''
 ''', file=fcall)
         print('''        bool initializeLayers(std::vector<std::string> layers) {
           char cp[MAX_PATH];
-          GetModuleFileName(NULL, cp, MAX_PATH);
+          HMODULE hm = NULL;
+          GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | 
+                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    (LPCSTR) &get_file_sha, &hm);
+          GetModuleFileName(hm, cp, MAX_PATH);
+          std::filesystem::path fsp = cp;
           std::vector<std::string> layer_dlls;
           char cwd[MAX_PATH];
           GetCurrentDirectoryA(MAX_PATH, cwd);
@@ -2886,11 +2943,22 @@ f'''
 #else
           hasher.absorb("RelWithDebInfo");
 #endif
-
-          std::string work_path = hasher.hexdigest();
+          std::filesystem::path build_path = 
+            fsp.parent_path() / "scripts" / "build_file.bat";
+          std::string work_path("gapid2_");
+          work_path += hasher.hexdigest();
           for (auto& layer : layers) {
             if (!std::filesystem::exists(layer)) {
               GAPID2_ERROR("Could not find layer file");
+            }
+            if (layer.size() > 4 && 
+                 layer[layer.size() - 4] == '.' && 
+                 layer[layer.size() - 3] == 'd' && 
+                 layer[layer.size() - 2] == 'l' && 
+                 layer[layer.size() - 1] == 'l') {
+                layer_dlls.push_back(layer);
+                std::cout << "Using prebuilt dll: " << layer_dlls.back() << std::endl;
+                continue;
             }
             auto file = std::filesystem::absolute(layer);
             std::string sha = get_file_sha(file.string());
@@ -2905,7 +2973,9 @@ f'''
               layer_dlls.push_back(dll);
               continue;
             }
-            std::string v = "cmd /c C:\\\\src\\\\gapid\\\\build_file.bat ";
+            std::string v = "cmd /c ";
+            v += build_path.string();
+            v += " ";
             v += file.string();
             v += " ";
             v += sha;
@@ -2945,7 +3015,7 @@ f'''
           }
           std::cerr << "Setting up library " << layer << std::endl;
           setup(this, [](void* this__, const char* fn, void** fout) -> void* {
-            Layerer<T>* this_ = reinterpret_cast<Layerer<T>*>(this__);''', file=fcall)
+            Layerer<T, HandleUpdater>* this_ = reinterpret_cast<Layerer<T, HandleUpdater>*>(this__);''', file=fcall)
         for cmd in definition.commands.values():
             if commands_to_handle:
                 if not cmd in commands_to_handle:
@@ -2964,7 +3034,7 @@ f'''
         for x in definition.types.values():
             if type(x) == handle:
                 print(f'            if (!strcmp(tp, "{x.name}")) {{', file=fcall)
-                print(f'              auto r = Layerer<T>::get_raw_handle<{x.name}>;', file=fcall)
+                print(f'              auto r = Layerer<T, HandleUpdater>::get_raw_handle<{x.name}>;', file=fcall)
                 print(f'              return r;', file=fcall)
                 print(f'            }}', file=fcall)
         print('''            std::cerr << "Could not resolve handle type " << tp << std::endl;''', file=fcall)
@@ -2999,11 +3069,107 @@ f'''
             return f.fn_{cmd.name}(f.{cmd.name}_user_data, {", ".join(args)});
         }}''', file=fcall)
         print('''
+      std::list<std::unique_ptr<CommandBufferRecorder<HandleUpdater>>> recorders;
       std::vector<HMODULE> modules;
   };
 }
 #include "layerer.inl"
 ''', file=fcall)
+
+def output_fn_caller(definition, dir, commands_to_handle = None):
+    with open(os.path.join(dir, "fn_caller.h"), mode="w") as fbod:
+        print("#pragma once", file=fbod)
+        print('#include "command_processor.h"', file=fbod)
+        print('#include "fns.h"', file=fbod)
+        print('#include <vulkan.h>', file=fbod)
+
+        print(
+'''
+namespace gapid2 {
+template<typename HandleUpdater>
+class FnCaller : public CommandProcessor {
+  public:
+  using Updater = HandleUpdater;
+''', file=fbod)
+        for cmd in definition.commands.values():
+            if commands_to_handle:
+                if not cmd in commands_to_handle:
+                    continue
+            print(f"  {cmd.short_str()} override {{", file=fbod)
+            print(f"    const auto fn = f.fn_{cmd.name};", file=fbod)
+            args = ", ".join(x.name for x in cmd.args)
+            if (cmd.ret.name == 'void'):
+                print(f"    fn(f.{cmd.name}_user_data, {args});", file=fbod)
+            else:
+                print(f"    const auto ret = fn(f.{cmd.name}_user_data, {args});", file=fbod)
+            
+            if (cmd.ret.name != 'void'):
+                print(f"    return ret;", file=fbod)
+            print(f"  }}", file=fbod)
+        print(
+'''
+    HandleUpdater* updater = nullptr;
+    fns f;
+};
+} // namespace gapid2
+''', file=fbod)
+
+def output_indirect_functions(definition, dir, commands_to_handle = None):
+    with open(os.path.join(dir, "fns.h"), mode="w") as fns:
+        print("#pragma once", file=fns)
+        print("namespace gapid2 {", file=fns)
+        print('    struct fns {', file=fns)
+        for cmd in definition.commands.values():
+            if commands_to_handle:
+                if not cmd in commands_to_handle:
+                    continue
+            prms = [x.short_str() for x in cmd.args]
+            print(f'      {cmd.ret.short_str()}(*fn_{cmd.name})(void*, {", ".join(prms)});', file=fns)
+            print(f'      void* {cmd.name}_user_data;', file=fns)
+        print('''
+};
+}
+''', file=fns)
+
+def output_command_buffer_recorder_fns(definition, dir, commands_to_handle = None):
+    with open(os.path.join(dir, "command_buffer_recorder.inl"), mode="w") as fns:
+        print("#pragma once", file=fns)
+        print("#include \"command_buffer_recorder.h\"", file=fns)
+        print("#include <vulkan/vulkan.h>", file=fns)
+        print("namespace gapid2 {", file=fns)
+        for cmd in definition.commands.values():
+            if commands_to_handle:
+                if not cmd in commands_to_handle:
+                    continue
+            if cmd.args[0].name != "commandBuffer" and cmd.name != "vkAllocateCommandBuffers" and cmd.name != "vkFreeCommandBuffers":
+                continue                
+            prms = [x.short_str() for x in cmd.args]
+            print(f'template<typename T>', file=fns)
+            print(f'inline {cmd.ret.short_str()} forward_cmd_{cmd.name}(void* f, {", ".join(prms)}) {{', file=fns)
+            print(f'  return reinterpret_cast<CommandBufferRecorder<T>*>(f)->{cmd.name}({", ".join([x.name for x in cmd.args])});', file=fns)
+            print(f'}}', file=fns)
+
+        print('''
+template<typename T>
+void CommandBufferRecorder<T>::SetupCommandBufferRecorderFunctions(fns& f) {
+    f.fn_vkAllocateCommandBuffers = forward_cmd_vkAllocateCommandBuffers<T>;
+    f.vkAllocateCommandBuffers_user_data = this;
+    f.fn_vkFreeCommandBuffers = forward_cmd_vkFreeCommandBuffers<T>;
+    f.vkFreeCommandBuffers_user_data = this;
+''', file=fns)
+        for cmd in definition.commands.values():
+            if commands_to_handle:
+                if not cmd in commands_to_handle:
+                    continue
+            if cmd.args[0].name != "commandBuffer":
+                continue
+            print(f'    f.fn_{cmd.name} = forward_cmd_{cmd.name}<T>;', file=fns)
+            print(f'    f.{cmd.name}_user_data = this;', file=fns)
+        print('''
+}
+}
+''', file=fns)
+
 def main():
     parser = argparse.ArgumentParser(description='Processes the vulkan XML into code')
     parser.add_argument('vulkan_xml', type=str,
@@ -3033,6 +3199,9 @@ def main():
     output_struct_printer(definition, args.output_location)
     output_command_printer(definition, args.output_location)
     output_null_caller(definition, args.output_location)
+    output_fn_caller(definition, args.output_location)
+    output_indirect_functions(definition, args.output_location)
+    output_command_buffer_recorder_fns(definition, args.output_location)
 
 if __name__ == "__main__":
     main()

@@ -55,7 +55,10 @@ struct VkDeviceWrapper : handle_base<VkDevice, void> {
 
   void set_create_info(const VkDeviceCreateInfo* pCreateInfo) {
     create_info = mem.get_typed_memory<VkDeviceCreateInfo>(1);
-    clone<NullCloner>(&cloner, pCreateInfo[0], create_info[0], &mem);
+    clone<NullCloner>(
+        &cloner, pCreateInfo[0], create_info[0], &mem,
+        _VkDeviceCreateInfo_VkPhysicalDeviceFeatures2_VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures_shaderSubgroupExtendedTypes_valid,
+        _VkDeviceCreateInfo_VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures_shaderSubgroupExtendedTypes_valid);
   }
 
   PFN_vkSetDeviceLoaderData vkSetDeviceLoaderData;

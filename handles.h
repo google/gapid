@@ -16,6 +16,7 @@
 
 #pragma once
 #include <atomic>
+#include <deque>
 #include "handle_templates.h"
 
 namespace gapid2 {
@@ -34,6 +35,17 @@ struct handle_base {
 };
 
 struct HandleWrapperUpdater {
+  std::deque<uint64_t> tbd_handles;
+
+  template <typename T>
+  void register_handle(T* value, uint64_t ct) {}
+
+  template <typename T>
+  void register_handle(T value, uint32_t* ct) {}
+
+  inline void register_handle_from_struct(VkPhysicalDeviceGroupProperties*,
+                                          uint32_t*) {}
+
   static const bool has_dispatch = true;
   template <typename P, typename T>
   typename std::enable_if_t<needs_dispatch_fixup<T>::val> fixup_dispatch(P p,

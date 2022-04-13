@@ -22,7 +22,11 @@
 #include "helpers.h"
 #include "instance.h"
 #include "physical_device.h"
+#ifdef NO_SERIALIZE
+#include "raw_spy.h"
+#else
 #include "spy.h"
+#endif
 
 template <typename T>
 struct link_info_traits {

@@ -37,6 +37,7 @@ struct VkDescriptorSetLayoutWrapper : handle_base<VkDescriptorSetLayout> {
     create_info = mem.get_typed_memory<VkDescriptorSetLayoutCreateInfo>(1);
     clone<NullCloner>(
         &cloner, pCreateInfo[0], create_info[0], &mem,
+        _VkDescriptorSetLayoutCreateInfo_VkDescriptorSetLayoutBinding_stageFlags_valid,
         _VkDescriptorSetLayoutCreateInfo_VkDescriptorSetLayoutBinding_pImmutableSamplers_valid);
   }
 

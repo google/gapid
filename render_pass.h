@@ -34,7 +34,12 @@ struct VkRenderPassWrapper : handle_base<VkRenderPass> {
 
   void set_create_info2(const VkRenderPassCreateInfo2* pCreateInfo) {
     create_info2 = mem.get_typed_memory<VkRenderPassCreateInfo2>(1);
-    clone<NullCloner>(&cloner, pCreateInfo[0], create_info2[0], &mem);
+    clone<NullCloner>(
+        &cloner, pCreateInfo[0], create_info2[0], &mem,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_depthResolveMode_valid,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_stencilResolveMode_valid,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_VkAttachmentReference2_aspectMask_valid,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkAttachmentReference2_aspectMask_valid);
   }
 
   VkRenderPassCreateInfo* create_info = nullptr;

@@ -23,10 +23,12 @@
 #include "command_deserializer.h"
 #include "decoder.h"
 #include "handle_runner.h"
+#include "layer_helper.h"
 #include "layerer.h"
 #include "minimal_state_tracker.h"
 #include "physical_device.h"
 
+namespace gapid2 {
 VkResult VKAPI_PTR layer_vkSetInstanceLoaderData(VkInstance instance,
                                                  void* object) {
   return VK_SUCCESS;
@@ -34,26 +36,29 @@ VkResult VKAPI_PTR layer_vkSetInstanceLoaderData(VkInstance instance,
 VkResult VKAPI_PTR layer_vkSetDeviceLoaderData(VkDevice device, void* object) {
   return VK_SUCCESS;
 }
-class Replayer : public gapid2::CommandDeserializer<
-                     gapid2::Layerer<gapid2::MinimalStateTracker<
-                         gapid2::CommandCaller<gapid2::HandleRunner<true>>>>> {
-  using super =
-      gapid2::CommandDeserializer<gapid2::Layerer<gapid2::MinimalStateTracker<
-          gapid2::CommandCaller<gapid2::HandleRunner<true>>>>>;
+
+class Replayer : public gapid2::CommandDeserializer<gapid2::Layerer<
+                     gapid2::MinimalStateTracker<
+                         gapid2::CommandCaller<gapid2::HandleRunner<true>>>,
+                     gapid2::HandleRunner<true>>> {
+  using super = gapid2::CommandDeserializer<
+      gapid2::Layerer<gapid2::MinimalStateTracker<
+                          gapid2::CommandCaller<gapid2::HandleRunner<true>>>,
+                      gapid2::HandleRunner<true>>>;
   using caller = gapid2::CommandCaller<gapid2::HandleRunner<true>>;
 
  public:
   Replayer() {}
-  void vkCreateInstance() override {
-    super::vkCreateInstance();
+  void vkCreateInstance(decoder* decoder_) override {
+    super::vkCreateInstance(decoder_);
     for (auto& el : updater_.VkInstances_out_) {
       if (!el.second->_functions) {
         el.second->set_instance_data(gipa, &layer_vkSetInstanceLoaderData);
       }
     }
   }
-  void vkCreateDevice() override {
-    super::vkCreateDevice();
+  void vkCreateDevice(decoder* decoder_) override {
+    super::vkCreateDevice(decoder_);
     for (auto& el : updater_.VkDevices_out_) {
       if (!el.second->_functions) {
         el.second->set_device_loader_data(&layer_vkSetDeviceLoaderData);
@@ -68,7 +73,7 @@ class Replayer : public gapid2::CommandDeserializer<
   // paramters of the application.
   // We have stored the VendorID/DeviceID in the trace just after the
   // call so look there.
-  virtual void vkEnumeratePhysicalDevices() override {
+  virtual void vkEnumeratePhysicalDevices(decoder* decoder_) override {
     // -------- Args ------
     VkInstance instance;
     uint32_t tmp_pPhysicalDeviceCount[1];
@@ -96,7 +101,7 @@ class Replayer : public gapid2::CommandDeserializer<
     auto original_physical_device_count = *pPhysicalDeviceCount;
     memcpy(pPhysicalDeviceCount, tmp_pPhysicalDeviceCount,
            sizeof(pPhysicalDeviceCount[0]) * 1);  // setting inout properly
-    current_return_ = decoder_->decode<VkResult>();
+    VkResult current_return_ = decoder_->decode<VkResult>();
     // -------- Call ------
     if (!pPhysicalDevices) {
       caller::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount,
@@ -203,7 +208,7 @@ class Replayer : public gapid2::CommandDeserializer<
     GAPID2_ASSERT(updater_.tbd_handles.empty(), "Unprocessed handles");
   }
 
-  void vkWaitForFences() override {
+  void vkWaitForFences(decoder* decoder_) override {
     // -------- Args ------
     VkDevice device;
     uint32_t fenceCount;
@@ -222,7 +227,7 @@ class Replayer : public gapid2::CommandDeserializer<
     timeout = decoder_->decode<uint64_t>();
     // -------- Out Params ------
     // -------- FixUp Params ------
-    current_return_ = decoder_->decode<VkResult>();
+    VkResult current_return_ = decoder_->decode<VkResult>();
 
     std::vector<VkFence> success_fences;
     success_fences.reserve(fenceCount);
@@ -244,7 +249,7 @@ class Replayer : public gapid2::CommandDeserializer<
     GAPID2_ASSERT(updater_.tbd_handles.empty(), "Unprocessed handles");
   }
 
-  void vkGetFenceStatus() override {
+  void vkGetFenceStatus(decoder* decoder_) override {
     // -------- Args ------
     VkDevice device;
     VkFence fence;
@@ -254,7 +259,7 @@ class Replayer : public gapid2::CommandDeserializer<
     fence = reinterpret_cast<VkFence>(decoder_->decode<uint64_t>());
     // -------- Out Params ------
     // -------- FixUp Params ------
-    current_return_ = decoder_->decode<VkResult>();
+    VkResult current_return_ = decoder_->decode<VkResult>();
     // -------- Call ------
     if (current_return_ == VK_SUCCESS) {
       caller::vkWaitForFences(device, 1, &fence, VK_TRUE,
@@ -279,9 +284,7 @@ class Replayer : public gapid2::CommandDeserializer<
   PFN_vkGetDeviceProcAddr gdpa;
   temporary_allocator allocator;
 };
-
-std::vector<std::string> layers{{"C:\\src\\gapid\\test3.cpp"},
-                                {"C:\\src\\gapid\\screenshot.cpp"}};
+}  // namespace gapid2
 
 int main(int argc, const char** argv) {
   if (argc < 2) {
@@ -318,19 +321,18 @@ int main(int argc, const char** argv) {
     return -1;
   }
 
-  Replayer replayer;
+  gapid2::Replayer replayer;
   replayer._vkCreateInstance = reinterpret_cast<PFN_vkCreateInstance>(ci);
   replayer.gipa = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
       GetProcAddress(vk, "vkGetInstanceProcAddr"));
   replayer.gdpa = reinterpret_cast<PFN_vkGetDeviceProcAddr>(
       GetProcAddress(vk, "vkGetDeviceProcAddr"));
-  replayer.initializeLayers(layers);
+  replayer.initializeLayers(gapid2::get_layers());
   std::vector<block> b({block{static_cast<uint64_t>(fileSize.QuadPart),
                               reinterpret_cast<char*>(loc), 0}});
   gapid2::decoder dec(std::move(b));
-  replayer.decoder_ = &dec;
   auto res = std::chrono::high_resolution_clock::now();
-  replayer.DeserializeStream();
+  replayer.DeserializeStream(&dec);
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = end - res;
   auto str = "Elapsed time:: " +

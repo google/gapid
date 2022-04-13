@@ -28,7 +28,11 @@ struct VkSamplerWrapper : handle_base<VkSampler> {
       : handle_base<VkSampler>(sampler) {}
   void set_create_info(const VkSamplerCreateInfo* pCreateInfo) {
     create_info = mem.get_typed_memory<VkSamplerCreateInfo>(1);
-    clone<NullCloner>(&cloner, pCreateInfo[0], create_info[0], &mem);
+    clone<NullCloner>(
+        &cloner, pCreateInfo[0], create_info[0], &mem,
+        _VkSamplerCreateInfo_VkSamplerCustomBorderColorCreateInfoEXT_customBorderColor_valid,
+        _VkSamplerCreateInfo_compareOp_valid,
+        _VkSamplerCreateInfo_borderColor_valid);
   }
 
   VkSamplerCreateInfo* create_info = nullptr;

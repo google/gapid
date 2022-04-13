@@ -35,17 +35,25 @@ struct VkPipelineWrapper : handle_base<VkPipeline> {
     graphics_info = mem.get_typed_memory<VkGraphicsPipelineCreateInfo>(1);
     clone<NullCloner>(
         &cloner, info[0], graphics_info[0], &mem,
+        _VkGraphicsPipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_VkSpecializationMapEntry_size_valid,
         _VkGraphicsPipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_pData_clone,
         _VkGraphicsPipelineCreateInfo_pVertexInputState_valid,
         _VkGraphicsPipelineCreateInfo_pInputAssemblyState_valid,
         _VkGraphicsPipelineCreateInfo_pTessellationState_valid,
         _VkGraphicsPipelineCreateInfo_pViewportState_valid,
         _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_pViewports_valid,
+        _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_x_valid,
+        _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_y_valid,
+        _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_width_valid,
+        _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_VkViewport_height_valid,
         _VkGraphicsPipelineCreateInfo_VkPipelineViewportStateCreateInfo_pScissors_valid,
         _VkGraphicsPipelineCreateInfo_pMultisampleState_valid,
+        _VkGraphicsPipelineCreateInfo_VkPipelineMultisampleStateCreateInfo_VkPipelineSampleLocationsStateCreateInfoEXT_VkSampleLocationsInfoEXT_sampleLocationsPerPixel_valid,
         _VkGraphicsPipelineCreateInfo_VkPipelineMultisampleStateCreateInfo_pSampleMask_length,
         _VkGraphicsPipelineCreateInfo_pDepthStencilState_valid,
-        _VkGraphicsPipelineCreateInfo_pColorBlendState_valid);
+        _VkGraphicsPipelineCreateInfo_pColorBlendState_valid,
+        _VkGraphicsPipelineCreateInfo_VkPipelineColorBlendStateCreateInfo_logicOp_valid,
+        _VkGraphicsPipelineCreateInfo_basePipelineHandle_valid);
   }
 
   void set_create_info(VkPipelineCache pipelineCache,
@@ -55,7 +63,9 @@ struct VkPipelineWrapper : handle_base<VkPipeline> {
     bind = VK_PIPELINE_BIND_POINT_COMPUTE;
     clone<NullCloner>(
         &cloner, info[0], compute_info[0], &mem,
-        _VkComputePipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_pData_clone);
+        _VkComputePipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_VkSpecializationMapEntry_size_valid,
+        _VkComputePipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_pData_clone,
+        _VkComputePipelineCreateInfo_basePipelineHandle_valid);
   }
 
   VkPipelineCache cache;
