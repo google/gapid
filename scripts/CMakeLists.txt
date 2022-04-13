@@ -20,6 +20,7 @@ endif()
 file(TO_CMAKE_PATH "${LIB_SRC}" LIB_SRC)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Vulkan-Headers/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(OUTPUT
