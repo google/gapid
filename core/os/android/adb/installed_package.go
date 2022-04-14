@@ -211,6 +211,7 @@ func (t *treeNode) find(name string) *treeNode {
 
 func parseTabbedTree(str string) *treeNode {
 	head := &treeNode{depth: -1}
+	extraDepth := 0
 	for _, line := range strings.Split(str, "\n") {
 		line = strings.TrimRight(line, "\r")
 		if line == "" {
@@ -219,14 +220,35 @@ func parseTabbedTree(str string) *treeNode {
 
 		// Calculate the line's depth
 		depth := 0
-		for i, r := range line {
+		for _, r := range line {
 			if r == ' ' {
 				depth++
 			} else {
-				line = line[i:]
 				break
 			}
 		}
+		line = line[depth:]
+
+		if line == "" {
+			// A line containing only whitespace probably comes from an extra newline
+			// character being printed before the intended line. So, add the depth that
+			// would have resulted from this empty line to the next line. Example with
+			// front spaces shown as '_':
+			// ...
+			// Known Packages:
+			// _ Package [foo]:
+			// __
+			//Package categories:
+			// ___ category bar
+			// ...
+			// In the above example "Package categories" was meant to be indented by
+			// two spaces, which are present on the previous line.
+			extraDepth += depth
+			continue
+		}
+
+		depth += extraDepth
+		extraDepth = 0
 
 		// Find the insertion point
 		for {

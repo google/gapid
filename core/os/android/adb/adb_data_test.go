@@ -95,7 +95,10 @@ Activity Resolver Table:
 Packages:
   Package [com.google.foo] (ffffffc):
     userId=12345
-    primaryCpuAbi=armeabi-v7a
+    *** extra whitespace on next line is for testing https://github.com/google/agi/issues/1077 ***
+    *** Do not remove it, doing so will make the tests fail ***
+
+primaryCpuAbi=armeabi-v7a
     secondaryCpuAbi=null
     versionCode=902107 minSdk=14 targetSdk=15
     flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
