@@ -28,6 +28,8 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+const resourceCreatedBeforeTrace = 0xffffffffffffffff
+
 // Resources resolves all the resources used by the specified capture.
 func Resources(ctx context.Context, c *path.Capture, r *path.ResolveConfig) (*service.Resources, error) {
 	obj, err := database.Build(ctx, &ResourcesResolvable{Capture: c, Config: r})
@@ -50,7 +52,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	resourceTypes := map[string]path.ResourceType{}
 	seen := map[api.Resource]int{}
 
-	var currentCmdIndex uint64 = 0xffffffffffffffff
+	var currentCmdIndex uint64 = resourceCreatedBeforeTrace
 	var currentCmdResourceCount int
 	// If the capture contains initial state, build the necessary commands to recreate it.
 	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
@@ -154,16 +156,20 @@ func (r trackedResource) asService(p *path.Capture) *service.Resource {
 		Handle:   r.resource.ResourceHandle(),
 		Label:    r.resource.ResourceLabel(),
 		Order:    r.resource.Order(),
-		Accesses: make([]*path.Command, len(r.accesses)),
+		Accesses: make([]*path.Command, 0, len(r.accesses)),
 		Type:     r.resourceType,
 	}
-	for i, a := range r.accesses {
-		out.Accesses[i] = p.Command(a)
+	for _, a := range r.accesses {
+		if a != resourceCreatedBeforeTrace {
+			out.Accesses = append(out.Accesses, p.Command(a))
+		}
 	}
 	if r.deleted > 0 {
 		out.Deleted = p.Command(r.deleted)
 	}
-	out.Created = p.Command(r.created)
+	if r.created != resourceCreatedBeforeTrace {
+		out.Created = p.Command(r.created)
+	}
 	return out
 }
 
