@@ -516,6 +516,7 @@ vkGetInstanceProcAddr(VkInstance instance, const char* funcName) {
 
   INTERCEPT(vkGetPhysicalDeviceSurfaceSupportKHR);
   INTERCEPT(vkGetPhysicalDeviceSurfaceFormatsKHR);
+  INTERCEPT(vkGetPhysicalDeviceSurfaceFormats2KHR);
   INTERCEPT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
   INTERCEPT(vkGetPhysicalDeviceSurfaceCapabilities2KHR);
   INTERCEPT(vkGetPhysicalDeviceSurfacePresentModesKHR);

@@ -55,6 +55,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     uint32_t* pSurfaceFormatCount, VkSurfaceFormatKHR* pSurfaceFormats);
 
+VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfaceFormats2KHR(
+    VkPhysicalDevice physicalDevice,
+    const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+    uint32_t* pSurfaceFormatCount, VkSurfaceFormatKHR* pSurfaceFormats);
+
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
     uint32_t* pPresentModeCount, VkPresentModeKHR* pPresentModes);
