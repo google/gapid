@@ -123,7 +123,7 @@ public class ShaderView extends Composite
     private final TabFolder tabFolder;
     private final Composite sourceContainer;
     private final Group statGroup;
-    private final TableViewer statTable;
+    protected final TableViewer statTable;
     private final GridData crossCompileGridData;
     private final SourceViewer spirvViewer;
     private final SourceViewer sourceViewer;
@@ -281,19 +281,22 @@ public class ShaderView extends Composite
     }
 
     public void setShader(Service.Resource resource, API.Shader shader) {
-      rpcController.start().listen(models.resources.loadResourceExtras(resource),
-          new UiCallback<API.ResourceExtras, API.ShaderExtras>(this, LOG) {
-        @Override
-        protected API.ShaderExtras onRpcThread(Rpc.Result<API.ResourceExtras> result)
-            throws RpcException, ExecutionException {
-          return result.get().getShaderExtras();
-        }
+      if (resource != null) {
+        rpcController.start().listen(models.resources.loadResourceExtras(resource),
+            new UiCallback<API.ResourceExtras, API.ShaderExtras>(this, LOG) {
+          @Override
+          protected API.ShaderExtras onRpcThread(Rpc.Result<API.ResourceExtras> result)
+              throws RpcException, ExecutionException {
+            return result.get().getShaderExtras();
+          }
 
-        @Override
-        protected void onUiThread(API.ShaderExtras result) {
-          statTable.setInput(result.getStaticAnalysis());
-        }
-      });
+          @Override
+          protected void onUiThread(API.ShaderExtras result) {
+            statTable.setInput(result.getStaticAnalysis());
+          }
+        });
+      }
+
       loading.stopLoading();
 
       shaderResource = resource;
