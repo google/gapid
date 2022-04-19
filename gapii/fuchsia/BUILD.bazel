@@ -12,7 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_fuchsia//fuchsia:defs.bzl", "fuchsia_component", "fuchsia_component_manifest", "fuchsia_package", "fuchsia_package_archive", "fuchsia_package_resource")
+load("@rules_fuchsia//fuchsia:defs.bzl", "fuchsia_cc_binary", "fuchsia_component", "fuchsia_component_manifest", "fuchsia_package", "fuchsia_package_archive", "fuchsia_package_resource")
+
+cc_binary(
+    name = "gapii_server_bin",
+    srcs = ["gapii_server.cc"],
+    deps = [
+        "@fuchsia_sdk_dynamic//fidl/fuchsia.io:fuchsia.io_cc",
+        "@fuchsia_sdk_dynamic//fidl/fuchsia.ldsvc:fuchsia.ldsvc_cc",
+        "@fuchsia_sdk_dynamic//pkg/async-loop-cpp",
+        "@fuchsia_sdk_dynamic//pkg/async-loop-default",
+        "@fuchsia_sdk_dynamic//pkg/fdio",
+        "@fuchsia_sdk_dynamic//pkg/vfs_cpp",
+    ],
+)
+
+fuchsia_cc_binary(
+    name = "gapii_server",
+    cc_binary = ":gapii_server_bin",
+    sdk_root_label = "@fuchsia_sdk_dynamic",
+)
 
 fuchsia_component_manifest(
     name = "gapii_component_manifest",
@@ -29,7 +48,10 @@ fuchsia_package_resource(
 fuchsia_component(
     name = "gapii_component",
     manifest = ":gapii_component_manifest",
-    deps = ["//gapii/cc:libgapii"],
+    deps = [
+        ":gapii_server",
+        "//gapii/cc:libgapii",
+    ],
 )
 
 fuchsia_package(
