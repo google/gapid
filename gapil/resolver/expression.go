@@ -525,6 +525,25 @@ func classInitializer(rv *resolver, class *semantic.Class, in *ast.Call) *semant
 		}
 		return out
 	}
+
+	// Check if the copy constructor is being used.
+	if len(in.Arguments) == 1 {
+		switch in.Arguments[0].(type) {
+		case *ast.Null:
+			// "class(null)"" is ambiguous, but it does not make sense to deref null,
+			// so we force it to mean to initialize the first field with null.
+		default:
+			field := &semantic.FieldInitializer{AST: in.Arguments[0]}
+			rv.with(class, func() {
+				field.Value = expression(rv, in.Arguments[0])
+			})
+			if equal(class, field.Value.ExpressionType()) {
+				out.Fields = append(out.Fields, field)
+				return out
+			}
+		}
+	}
+
 	if len(in.Arguments) > len(class.Fields) {
 		rv.errorf(in, "too many arguments to class %s constructor, expected %d got %d", class.Name, len(class.Fields), len(in.Arguments))
 		return out

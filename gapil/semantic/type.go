@@ -95,10 +95,28 @@ type ClassInitializer struct {
 func (*ClassInitializer) isNode()       {}
 func (*ClassInitializer) isExpression() {}
 
+// IsCopyConstructor returns whether this ClassInitializer represents the
+// calling of the copy constructor.
+func (c *ClassInitializer) IsCopyConstructor() bool {
+	return len(c.Fields) == 1 && c.Fields[0].Field == nil
+}
+
 // InitialValues returns the full set of initial values for each field in
 // the class. If there is not an initialized or default value for a field, then
 // nil is returned for that field.
 func (c *ClassInitializer) InitialValues() []Expression {
+	if c.IsCopyConstructor() {
+		// Create expressions for each field using the copied value.
+		out := make([]Expression, len(c.Class.Fields))
+		for i, f := range c.Class.Fields {
+			out[i] = &Member{
+				Object: c.Fields[0].Value,
+				Field:  f,
+			}
+		}
+		return out
+	}
+
 	m := make(map[*Field]*FieldInitializer, len(c.Class.Fields))
 	for _, f := range c.Fields {
 		m[f.Field] = f

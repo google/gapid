@@ -464,9 +464,20 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 
 	case *semantic.ClassInitializer:
 		c := s.defaultOf(n.Class).(*ClassValue)
-		for _, f := range n.Fields {
-			v, _ := s.valueOf(f.Value)
-			c.Fields[f.Field.Name()] = v
+		if n.IsCopyConstructor() {
+			obj, _ := s.valueOf(n.Fields[0].Value)
+			src, ok := obj.(fieldHolder)
+			if !ok {
+				panic(fmt.Errorf("Attempted to index field on type %T", obj))
+			}
+			for _, f := range c.Class.Fields {
+				c.Fields[f.Name()] = src.field(s, f.Name())
+			}
+		} else {
+			for _, f := range n.Fields {
+				v, _ := s.valueOf(f.Value)
+				c.Fields[f.Field.Name()] = v
+			}
 		}
 		return c, nil
 
