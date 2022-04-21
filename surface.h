@@ -27,12 +27,21 @@ struct VkSurfaceKHRWrapper : handle_base<VkSurfaceKHR> {
   VkSurfaceKHRWrapper(HandleUpdater*, VkInstance, VkSurfaceKHR sampler)
       : handle_base<VkSurfaceKHR>(sampler) {}
 
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
   void set_create_info(const VkWin32SurfaceCreateInfoKHR* pCreateInfo) {
     create_info = mem.get_typed_memory<VkWin32SurfaceCreateInfoKHR>(1);
     clone<NullCloner>(&cloner, pCreateInfo[0], create_info[0], &mem);
   }
 
   VkWin32SurfaceCreateInfoKHR* create_info = nullptr;
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+void set_create_info(const VkXcbSurfaceCreateInfoKHR* pCreateInfo) {
+    create_info = mem.get_typed_memory<VkXcbSurfaceCreateInfoKHR>(1);
+    clone<NullCloner>(&cloner, pCreateInfo[0], create_info[0], &mem, _VkXcbSurfaceCreateInfoKHR_connection_valid);
+  }
+
+  VkXcbSurfaceCreateInfoKHR* create_info = nullptr;
+#endif
   NullCloner cloner;
   temporary_allocator mem;
 };

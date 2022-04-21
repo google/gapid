@@ -711,4 +711,12 @@ bool _VkPhysicalDeviceFeatures2_VkPhysicalDeviceShaderSubgroupExtendedTypesFeatu
 #pragma FIXME(awoloszyn, fill this in)
   return true;
 }
+
+#ifdef VK_USE_PLATFORM_XCB_KHR
+bool _VkXcbSurfaceCreateInfoKHR_connection_valid(const VkXcbSurfaceCreateInfoKHR& self) {
+#pragma FIXME(awoloszyn, fill this in)
+  return true;
+}
+#endif
+
 }  // namespace gapid2

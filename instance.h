@@ -24,6 +24,8 @@
 #include <unordered_map>
 #include "instance_functions.h"
 #include "null_cloner.h"
+#include "struct_clone.h"
+#include "bind_first.h"
 
 #define REGISTER_CHILD_TYPE(type)           \
  public:                                    \

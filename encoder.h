@@ -18,6 +18,7 @@
 #include <deque>
 #include <functional>
 #include "common.h"
+#include <cstring>
 
 namespace gapid2 {
 struct encoder {

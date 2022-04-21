@@ -5,6 +5,8 @@ import sys
 from collections import deque
 import copy
 import hashlib
+import json
+import platform
 from functools import partial
 def error(string):
     print(string)
@@ -1462,11 +1464,13 @@ def output_structs_enc_dec(definition, dir, structs_to_handle = None):
             print('#include "encoder.h"', file=fenc)
             print('#include <vulkan.h>', file=fenc)
             print('#include "helpers.h"', file=fenc)
+            print('#include "bind_first.h"', file=fenc)
             print('#include "forwards.h"', file=fenc)
             print('namespace gapid2 {', file=fenc)
 
             print('#include <functional>', file=fdec)
             print('#include <vulkan.h>', file=fdec)
+            print('#include "bind_first.h"', file=fenc)
             print('#include "decoder.h"', file=fdec)
             print('#include "helpers.h"', file=fdec)
             print('#include "forwards.h"', file=fdec)
@@ -1647,6 +1651,7 @@ def output_struct_printer(definition, dir, structs_to_handle = None):
             print('#include "encoder.h"', file=fprint)
             print('#include <vulkan.h>', file=fprint)
             print('#include "helpers.h"', file=fprint)
+            print('#include "bind_first.h"', file=fprint)
             print('#include "forwards.h"', file=fprint)
             print('namespace gapid2 {', file=fprint)
             for x in get_sorted_structs(definition):
@@ -1667,6 +1672,7 @@ def output_structs_clone(definition, dir, structs_to_handle = None):
             print('#include "encoder.h"', file=fclone)
             print('#include <vulkan.h>', file=fclone)
             print('#include "helpers.h"', file=fclone)
+            print('#include "bind_first.h"', file=fclone)
             print('#include "forwards.h"', file=fclone)
             print('#include "temporary_allocator.h"', file=fclone)
             print('namespace gapid2 {', file=fclone)
@@ -1905,6 +1911,7 @@ def output_commands(definition, dir, commands_to_handle = None):
         print('#include "struct_clone.h"', file=fbod)
         print('#include "struct_serialization.h"', file=fbod)
         print('#include "helpers.h"', file=fbod)
+        print('#include "bind_first.h"', file=fbod)
         print('#include "forwards.h"', file=fbod)
         print('#include "command_processor.h"', file=fbod)
         print('#include <iostream>', file=fbod)
@@ -1936,6 +1943,7 @@ def output_returns_serializer(definition, dir, commands_to_handle = None):
         print('#include "struct_clone.h"', file=fbod)
         print('#include "struct_serialization.h"', file=fbod)
         print('#include "helpers.h"', file=fbod)
+        print('#include "bind_first.h"', file=fbod)
         print('#include "forwards.h"', file=fbod)
         print('#include "command_processor.h"', file=fbod)
         print('#include <iostream>', file=fbod)
@@ -2163,8 +2171,10 @@ def print_arg_ptr(cmd, param, tp, count, depth, fprint):
         print(depth + f"// Ignoring union for now", file=fprint)
     elif type(tp) == enum:
         print(depth + f"printer->print<{tp.base_type.name}>(\"{nm}\", {param.name}{idx});", file=fprint)
+    elif type(tp) == external_type:
+        print(depth + f'// Not printing type because its external', file=fprint)    
     else:
-        error(f'Error printing {param.name} type: {tp.name}')
+        error(f'Error printing {param.name} type: {tp.name} :: type_type: {type(tp)}', file=fprint)
     if count != "1":
         depth = depth[:-2]
         print(depth + f"}}", file=fprint)
@@ -2215,6 +2225,8 @@ def output_arg_print(cmd, param, depth, fprint):
         
     elif type(tp) == array_type:
         print_arg_ptr(cmd, param, tp.get_noncv_type(), f'{tp.size}', depth, fprint)
+    elif type(tp) == external_type:
+        print(depth + f"// Not printing external type", file=fprint)
     else:
         error(f'Error printing {param.name} type: {tp.name}')
 
@@ -2222,6 +2234,7 @@ def output_command_printer(definition, dir, commands_to_handle = None):
     with open(os.path.join(dir, "command_printer.h"), mode="w") as fbod:
         print("#pragma once", file=fbod)
         print('#include "helpers.h"', file=fbod)
+        print('#include "bind_first.h"', file=fbod)
         print('#include "command_processor.h"', file=fbod)
         print('#include "struct_clone.h"', file=fbod)
         print('#include "forwards.h"', file=fbod)
@@ -2323,61 +2336,70 @@ def get_command_deps(c):
         deps = deps.union(deps, get_alldeps(a.type))
     return deps
 
+def exts(plat):
+    e = [
+    #DXVK AND NORMAL
+        "VK_KHR_get_physical_device_properties2",
+        "VK_KHR_multiview",
+        "VK_KHR_maintenance2",
+        "VK_AMD_memory_overallocation_behavior",
+        "VK_KHR_swapchain",
+        "VK_KHR_surface",
+        "VK_KHR_image_format_list",
+        "VK_AMD_shader_fragment_mask",
+        "VK_EXT_4444_formats",
+        "VK_EXT_conservative_rasterization",
+        "VK_EXT_custom_border_color",
+        "VK_EXT_depth_clip_enable",
+        "VK_EXT_extended_dynamic_state",
+        "VK_EXT_host_query_reset",
+        "VK_EXT_memory_budget",
+        "VK_EXT_memory_priority",
+        "VK_EXT_robustness2",
+        "VK_EXT_shader_demote_to_helper_invocation",
+        "VK_EXT_shader_stencil_export",
+        "VK_EXT_shader_viewport_index_layer",
+        "VK_EXT_transform_feedback",
+        "VK_EXT_vertex_attribute_divisor",
+        "VK_KHR_buffer_device_address",
+        "VK_KHR_create_renderpass2",
+        "VK_KHR_depth_stencil_resolve",
+        "VK_KHR_draw_indirect_count",
+        "VK_KHR_driver_properties",
+        "VK_KHR_image_format_list",
+        "VK_KHR_sampler_mirror_clamp_to_edge",
+        "VK_KHR_shader_float_controls",
+        "VK_KHR_swapchain",
+        "VK_KHR_get_surface_capabilities2",
 
-exts = [
-#DXVK AND NORMAL
-    "VK_KHR_get_physical_device_properties2",
-    "VK_KHR_multiview",
-    "VK_KHR_maintenance2",
-    "VK_AMD_memory_overallocation_behavior",
-    "VK_KHR_swapchain",
-    "VK_KHR_surface",
-    "VK_KHR_win32_surface",
-    "VK_KHR_image_format_list",
-    "VK_AMD_shader_fragment_mask",
-    "VK_EXT_4444_formats",
-    "VK_EXT_conservative_rasterization",
-    "VK_EXT_custom_border_color",
-    "VK_EXT_depth_clip_enable",
-    "VK_EXT_extended_dynamic_state",
-    "VK_EXT_full_screen_exclusive",
-    "VK_EXT_host_query_reset",
-    "VK_EXT_memory_budget",
-    "VK_EXT_memory_priority",
-    "VK_EXT_robustness2",
-    "VK_EXT_shader_demote_to_helper_invocation",
-    "VK_EXT_shader_stencil_export",
-    "VK_EXT_shader_viewport_index_layer",
-    "VK_EXT_transform_feedback",
-    "VK_EXT_vertex_attribute_divisor",
-    "VK_KHR_buffer_device_address",
-    "VK_KHR_create_renderpass2",
-    "VK_KHR_depth_stencil_resolve",
-    "VK_KHR_draw_indirect_count",
-    "VK_KHR_driver_properties",
-    "VK_KHR_image_format_list",
-    "VK_KHR_sampler_mirror_clamp_to_edge",
-    "VK_KHR_shader_float_controls",
-    "VK_KHR_swapchain",
-    "VK_KHR_get_surface_capabilities2",
+    #MORE!
+        "VK_KHR_maintenance3",
+        "VK_KHR_storage_buffer_storage_class",
+        "VK_KHR_shader_draw_parameters",
+        "VK_KHR_16bit_storage",
+        "VK_KHR_shader_atomic_int64",
+        "VK_KHR_shader_float16_int8",
+        "VK_KHR_timeline_semaphore",
+        "VK_EXT_depth_range_unrestricted",
+        "VK_EXT_descriptor_indexing",
+        "VK_EXT_fragment_shader_interlock",
+        "VK_EXT_shader_image_atomic_int64",
+        "VK_EXT_scalar_block_layout",
+        "VK_AMD_shader_core_properties",
+        "VK_EXT_sample_locations",
+        "VK_NV_shader_sm_builtins"
+    ]
+    if plat.system() == "Windows":
+        e.extend(
+            ["VK_EXT_full_screen_exclusive",
+            "VK_KHR_win32_surface",
+            ])
+        print("Platform detected: Win32")
 
-#MORE!
-    "VK_KHR_maintenance3",
-    "VK_KHR_storage_buffer_storage_class",
-    "VK_KHR_shader_draw_parameters",
-    "VK_KHR_16bit_storage",
-    "VK_KHR_shader_atomic_int64",
-    "VK_KHR_shader_float16_int8",
-    "VK_KHR_timeline_semaphore",
-    "VK_EXT_depth_range_unrestricted",
-    "VK_EXT_descriptor_indexing",
-    "VK_EXT_fragment_shader_interlock",
-    "VK_EXT_shader_image_atomic_int64",
-    "VK_EXT_scalar_block_layout",
-    "VK_AMD_shader_core_properties",
-    "VK_EXT_sample_locations",
-    "VK_NV_shader_sm_builtins"
-]
+    elif plat.system() == "Linux":
+        e.extend(["VK_KHR_xcb_surface"])
+        print("Platform detected: X11/XCB")
+    return e
 
 def output_forwards(definition, dir, commands_to_handle = None):
     all_enc_args = []
@@ -2385,6 +2407,7 @@ def output_forwards(definition, dir, commands_to_handle = None):
         print("#pragma once", file=fhead)
         print('#include <vulkan.h>', file=fhead)
         print('#include "helpers.h"', file=fhead)
+        print('#include "bind_first.h"', file=fhead)
         print('namespace gapid2 {', file=fhead)
         print('struct encoder;', file=fhead)
         print('struct decoder;', file=fhead)
@@ -3178,7 +3201,7 @@ def main():
                         help='an integer for the accumulator')
     args = parser.parse_args() 
     vk = load_vulkan(args)
-    definition = api_definition(vk, 1.2, exts)
+    definition = api_definition(vk, 1.2, exts(platform))
     
     output_structs_enc_dec(definition, args.output_location)
     output_structs_clone(definition, args.output_location)

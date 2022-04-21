@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(gapid2)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include)
@@ -14,7 +15,14 @@ add_library(spirv-reflect STATIC
 
 find_package (Python3 COMPONENTS Interpreter REQUIRED)
 
-add_compile_options("/bigobj")
+set(ADDITIONAL_DEFINES)
+
+if (WIN32)
+    set(ADDITIONAL_DEFINES VK_USE_PLATFORM_WIN32_KHR=1)
+    add_compile_options("/bigobj")
+elseif (UNIX)
+    set(ADDITIONAL_DEFINES VK_USE_PLATFORM_XCB_KHR=1)
+endif()
 
 set(ALL_HEADERS
     buffer_view.h
@@ -110,7 +118,7 @@ add_library(gapii SHARED
 )
 
 
-target_compile_definitions(gapii PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
+target_compile_definitions(gapii PRIVATE ${ADDITIONAL_DEFINES})
 target_link_libraries(gapii spirv-reflect)
 target_include_directories(gapii PRIVATE
     ${gapid2_BINARY_DIR}
@@ -129,7 +137,7 @@ add_library(gapii_raw SHARED
     ${ALL_HEADERS}
 )
 
-target_compile_definitions(gapii_raw PRIVATE VK_USE_PLATFORM_WIN32_KHR=1 NO_SERIALIZE)
+target_compile_definitions(gapii_raw PRIVATE ${ADDITIONAL_DEFINES} NO_SERIALIZE)
 target_link_libraries(gapii_raw spirv-reflect)
 target_include_directories(gapii_raw PRIVATE
     ${gapid2_BINARY_DIR}
@@ -145,7 +153,7 @@ add_executable(gapir
     ${ALL_HEADERS}
 )
 
-target_compile_definitions(gapir PRIVATE VK_USE_PLATFORM_WIN32_KHR=1 NOMINMAX=1)
+target_compile_definitions(gapir PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)
 
 target_include_directories(gapir PRIVATE
     ${gapid2_BINARY_DIR}
@@ -160,7 +168,7 @@ add_executable(printer
     ${ALL_HEADERS}
 )
 
-target_compile_definitions(printer PRIVATE VK_USE_PLATFORM_WIN32_KHR=1 NOMINMAX=1)
+target_compile_definitions(printer PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)
 
 target_include_directories(printer PRIVATE
     ${gapid2_BINARY_DIR}

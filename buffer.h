@@ -21,6 +21,7 @@
 #include "device.h"
 #include "device_memory.h"
 #include "null_cloner.h"
+#include "struct_clone.h"
 
 namespace gapid2 {
 template <typename HandleUpdater>

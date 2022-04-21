@@ -16,6 +16,7 @@
 
 #pragma once
 #include <vector>
+#include <malloc.h>
 #include "common.h"
 
 struct temporary_allocator {

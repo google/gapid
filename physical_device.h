@@ -20,6 +20,8 @@
 #include <vulkan.h>
 #include "instance.h"
 #include "null_cloner.h"
+#include "struct_clone.h"
+
 
 #define REGISTER_CHILD_TYPE(type)                                   \
  public:                                                            \

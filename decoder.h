@@ -17,7 +17,7 @@
 #pragma once
 #include <vector>
 #include "common.h"
-#include "helpers.h"
+#include <cstring>
 
 namespace gapid2 {
 struct decoder {
