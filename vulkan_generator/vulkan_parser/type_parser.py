@@ -57,8 +57,8 @@ def parse(root: ET.Element) -> AllVulkanTypes:
     vulkan_types = AllVulkanTypes()
 
     for child in root:
-        if 'category' in child.attrib:
-            type_category = child.attrib['category']
+        if "category" in child.attrib:
+            type_category = child.attrib["category"]
             if type_category == "handle":
                 process_handle(vulkan_types, child)
 
