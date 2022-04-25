@@ -44,6 +44,16 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
 
     maybe_repository(
         github_repository,
+        name = "rules_python",
+        locals = locals,
+        organization = "bazelbuild",
+        project = "rules_python",
+        commit = "ae7a2677b3003b13d45bc9bfc25f1425bed5b407",  # 0.8.1
+        sha256 = "f1c3069679395ac1c1104f28a166f06167d30d41bdb1797d154d80b511780d2e",
+    )
+
+    maybe_repository(
+        github_repository,
         name = "bazel_gazelle",
         locals = locals,
         organization = "bazelbuild",
