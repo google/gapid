@@ -18,3 +18,9 @@ cc_library(
     strip_include_prefix = "include",
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "vk.xml",
+    srcs = ["registry/vk.xml"],
+    visibility = ["//visibility:public"],
+)
