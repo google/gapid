@@ -97,7 +97,7 @@ Packages:
     userId=12345
     *** extra whitespace on next line is for testing https://github.com/google/agi/issues/1077 ***
     *** Do not remove it, doing so will make the tests fail ***
-
+    
 primaryCpuAbi=armeabi-v7a
     secondaryCpuAbi=null
     versionCode=902107 minSdk=14 targetSdk=15
