@@ -15,7 +15,8 @@
  */
 
 #pragma once
-#include <vulkan.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -25,6 +26,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "common.h"
 
 namespace gapid2 {

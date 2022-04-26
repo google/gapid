@@ -1,3 +1,4 @@
+#pragma once
 /*
  * Copyright (C) 2022 Google Inc.
  *
@@ -14,89 +15,45 @@
  * limitations under the License.
  */
 
-#pragma once
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
+
+#include "creation_tracker.h"
+#include "null_cloner.h"
+#include "temporary_allocator.h"
 
 namespace gapid2 {
-template <typename T>
-class MinimalStateTracker : public T {
+class minimal_state_tracker : public creation_tracker<VkDeviceMemory, VkDescriptorUpdateTemplate> {
  protected:
-  using super = T;
+  using super = creation_tracker;
 
  public:
   void vkGetPhysicalDeviceMemoryProperties(
       VkPhysicalDevice physicalDevice,
-      VkPhysicalDeviceMemoryProperties* pMemoryProperties) override {
-    super::vkGetPhysicalDeviceMemoryProperties(physicalDevice,
-                                               pMemoryProperties);
-    clone<NullCloner>(&cloner, pMemoryProperties[0], memory_properties, &mem);
-  }
+      VkPhysicalDeviceMemoryProperties* pMemoryProperties) override;
   void vkGetPhysicalDeviceMemoryProperties2(
       VkPhysicalDevice physicalDevice,
-      VkPhysicalDeviceMemoryProperties2* pMemoryProperties) override {
-    super::vkGetPhysicalDeviceMemoryProperties2(physicalDevice,
-                                                pMemoryProperties);
-    clone<NullCloner>(&cloner, pMemoryProperties->memoryProperties,
-                      memory_properties, &mem);
-  }
+      VkPhysicalDeviceMemoryProperties2* pMemoryProperties) override;
 
   VkResult vkAllocateMemory(VkDevice device,
                             const VkMemoryAllocateInfo* pAllocateInfo,
                             const VkAllocationCallbacks* pAllocator,
-                            VkDeviceMemory* pMemory) override {
-    auto res =
-        super::vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto new_mem = this->updater_.cast_from_vk(*pMemory);
-    auto type = memory_properties.memoryTypes[pAllocateInfo->memoryTypeIndex];
-    new_mem->_is_coherent =
-        (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
-    new_mem->_size = pAllocateInfo->allocationSize;
-    return res;
-  }
+                            VkDeviceMemory* pMemory) override;
 
   VkResult vkMapMemory(VkDevice device,
                        VkDeviceMemory memory,
                        VkDeviceSize offset,
                        VkDeviceSize size,
                        VkMemoryMapFlags flags,
-                       void** ppData) override {
-    auto res = super::vkMapMemory(device, memory, offset, size, flags, ppData);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto new_mem = this->updater_.cast_from_vk(memory);
-    if (size == VK_WHOLE_SIZE) {
-      size = new_mem->_size - offset;
-    }
-    size = size > new_mem->_size - offset ? new_mem->_size - offset : size;
-    new_mem->_mapped_location = reinterpret_cast<char*>(ppData[0]);
-    new_mem->_mapped_offset = offset;
-    new_mem->_mapped_size = size;
-    return res;
-  }
+                       void** ppData) override;
 
-  void vkUnmapMemory(VkDevice device, VkDeviceMemory memory) override {
-    auto new_mem = this->updater_.cast_from_vk(memory);
-    new_mem->_mapped_location = nullptr;
-    super::vkUnmapMemory(device, memory);
-  }
+  void vkUnmapMemory(VkDevice device, VkDeviceMemory memory) override;
 
   VkResult vkCreateDescriptorUpdateTemplate(
       VkDevice device,
       const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
       const VkAllocationCallbacks* pAllocator,
-      VkDescriptorUpdateTemplate* pDescriptorUpdateTemplate) override {
-    auto res = super::vkCreateDescriptorUpdateTemplate(
-        device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto pl = this->updater_.cast_from_vk(pDescriptorUpdateTemplate[0]);
-    pl->set_create_info(pCreateInfo);
-    return res;
-  }
+      VkDescriptorUpdateTemplate* pDescriptorUpdateTemplate) override;
 
  protected:
   VkPhysicalDeviceMemoryProperties memory_properties;

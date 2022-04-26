@@ -1,29 +1,20 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+
 #include <shared_mutex>
 #include <unordered_map>
 #include <unordered_set>
-#include "command_deserializer.h"
-#include "commands.h"
+
+#include "command_buffer_deserializer.h"
 #include "decoder.h"
 #include "encoder.h"
-#include "fn_caller.h"
-#include "layerer.h"
+#include "indirect_functions.h"
+#include "transform_base.h"
 
 namespace gapid2 {
-template <typename T>
-class CommandBufferRecorder : public CommandSerializer<true, FnCaller<T>> {
+class command_buffer_recorder : public transform_base {
  public:
-  void SetupCommandBufferRecorderFunctions(fns& f);
-  CommandBufferRecorder(
-      fns& f_) {  // Make a copy of the function calls at this point.
-                  // Once we have a copy, we can modify the calls to call us for
-                  // any functions we might care about.
-    f = f_;
-    SetupCommandBufferRecorderFunctions(f_);
-  }
-
   void RerecordCommandBuffer(VkCommandBuffer cb) {
     std::shared_lock<std::shared_mutex> l(command_buffers_mutex);
     std::unordered_map<VkCommandBuffer,
@@ -36,9 +27,9 @@ class CommandBufferRecorder : public CommandSerializer<true, FnCaller<T>> {
     // Clone the contents in case we want to re-record AGAIN later.
     std::vector v = it->second->enc.data_;
     decoder dec(std::move(v));
-    CommandDeserializer<FnCaller<T>> deserializer;
-    deserializer.f = f;
-    deserializer.updater = updater;
+
+    command_buffer_deserializer deserializer;
+    *static_cast<transform_base*>(&deserializer) = *static_cast<transform_base*>(this);
     deserializer.DeserializeStream(&dec, true);
   }
 
@@ -47,8 +38,8 @@ class CommandBufferRecorder : public CommandSerializer<true, FnCaller<T>> {
       const VkCommandBufferAllocateInfo* pAllocateInfo,
       VkCommandBuffer* pCommandBuffers) {
     // Bypass serialization for vkAllocate*
-    auto ret = FnCaller::vkAllocateCommandBuffers(device, pAllocateInfo,
-                                                  pCommandBuffers);
+    auto ret = transform_base::vkAllocateCommandBuffers(device, pAllocateInfo,
+                                                        pCommandBuffers);
     if (ret != VK_SUCCESS) {
       return ret;
     }
@@ -83,13 +74,11 @@ class CommandBufferRecorder : public CommandSerializer<true, FnCaller<T>> {
     }
 
     // Bypass serialization for vkFree*
-    FnCaller::vkFreeCommandBuffers(device, commandPool, commandBufferCount,
-                                   pCommandBuffers);
+    transform_base::vkFreeCommandBuffers(device, commandPool, commandBufferCount,
+                                         pCommandBuffers);
   }
 
-  VkResult vkBeginCommandBuffer(
-      VkCommandBuffer commandBuffer,
-      const VkCommandBufferBeginInfo* pBeginInfo) override {
+  void do_begin_command_buffer(VkCommandBuffer commandBuffer) {
     std::unordered_map<VkCommandBuffer,
                        std::unique_ptr<command_buffer_recording>>::iterator it;
     {
@@ -99,9 +88,6 @@ class CommandBufferRecorder : public CommandSerializer<true, FnCaller<T>> {
         it->second->enc.reset();
       }
     }
-
-    return CommandSerializer<true, FnCaller<T>>::vkBeginCommandBuffer(
-        commandBuffer, pBeginInfo);
   }
 
   struct command_buffer_recording {
@@ -131,8 +117,8 @@ class CommandBufferRecorder : public CommandSerializer<true, FnCaller<T>> {
     // We don't need a locked encoder for any command buffers.
     return get_encoder(key);
   }
+
+#include "command_buffer_recorder.inl"
 };
 
 }  // namespace gapid2
-
-#include "command_buffer_recorder.inl"

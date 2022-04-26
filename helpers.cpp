@@ -15,8 +15,11 @@
  */
 
 #include "helpers.h"
+
 #include "decoder.h"
 #include "encoder.h"
+#include "utils.h"
+
 namespace gapid2 {
 
 bool _VkRenderPassBeginInfo_pClearValues_valid(

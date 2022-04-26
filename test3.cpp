@@ -1,7 +1,7 @@
-#include "layer.h"
-
 #include <iostream>
 #include <sstream>
+
+#include "layer.h"
 
 namespace foo {
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -94,6 +94,8 @@ override_vkQueueSubmit(VkQueue queue,
                        uint32_t submitCount,
                        const VkSubmitInfo* pSubmits,
                        VkFence fence) {
+  std::cout << __FUNCTION__ << " QUEUE SUBMIT: "
+            << reinterpret_cast<uintptr_t>(queue) << std::endl;
   for (size_t i = 0; i < submitCount; ++i) {
     for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
       VkCommandBuffer cb = pSubmits[i].pCommandBuffers[i];

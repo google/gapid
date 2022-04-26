@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-#include <vulkan.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
+
 #include <chrono>
 #include <fstream>
 #include <string>
 #include <vector>
+
 #include "command_caller.h"
 #include "command_deserializer.h"
 #include "decoder.h"

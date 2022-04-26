@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-#include <vk_layer.h>
-#include <vulkan.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vk_layer.h>
+#include <vulkan/vulkan.h>
+
 #include "call_forwards.h"
 #include "device.h"
 #include "handles.h"
 #include "helpers.h"
 #include "instance.h"
+#include "layer_base.h"
 #include "physical_device.h"
-#ifdef NO_SERIALIZE
-#include "raw_spy.h"
-#else
-#include "spy.h"
-#endif
+
+namespace gapid2 {
+layer_base* get_layer_base();
+}
 
 template <typename T>
 struct link_info_traits {
@@ -80,13 +82,6 @@ typename link_info_traits<T>::layer_info_type* get_layer_fn_info(
   }
   return layer_info;
 }
-
-namespace gapid2 {
-Spy* spy() {
-  static Spy spy;
-  return &spy;
-}
-}  // namespace gapid2
 
 namespace {
 static const VkLayerProperties props[] = {
@@ -156,10 +151,9 @@ gapid2_vkEnumerateDeviceExtensionProperties(
   if (!device) {
     return VK_SUCCESS;
   }
-  auto dev = reinterpret_cast<
-      gapid2::VkPhysicalDeviceWrapper<gapid2::HandleWrapperUpdater>*>(device);
-  return dev->_functions->vkEnumerateDeviceExtensionProperties(
-      dev->_handle, pLayerName, pPropertyCount, pProperties);
+
+  return gapid2::vkEnumerateDeviceExtensionProperties(
+      device, pLayerName, pPropertyCount, pProperties);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -182,18 +176,10 @@ gapid2_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
 
   layer_info->u.pLayerInfo = layer_info->u.pLayerInfo->pNext;
 
-  gapid2::spy()->_vkCreateInstance = create_instance;
+  gapid2::get_layer_base()->set_nexts(create_instance, get_instance_proc_addr);
+
   VkResult result =
-      gapid2::spy()->vkCreateInstance(pCreateInfo, pAllocator, pInstance);
-
-  if (result != VK_SUCCESS) {
-    return result;
-  }
-
-  auto wrapper = gapid2::spy()->updater_.cast_from_vk(*pInstance);
-  wrapper->set_instance_data(
-      get_instance_proc_addr,
-      set_instance_loader_data->u.pfnSetInstanceLoaderData);
+      gapid2::get_layer_base()->get_top_level_functions()->vkCreateInstance(pCreateInfo, pAllocator, pInstance);
 
   return result;
 }
@@ -221,22 +207,10 @@ gapid2_vkCreateDevice(VkPhysicalDevice physicalDevice,
       get_layer_fn_info(pCreateInfo);
   PFN_vkGetInstanceProcAddr get_instance_proc_addr =
       layer_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
-  auto phys_dev = reinterpret_cast<
-      gapid2::VkPhysicalDeviceWrapper<gapid2::HandleWrapperUpdater>*>(
-      physicalDevice);
-  auto inst = reinterpret_cast<
-      gapid2::VkInstanceWrapper<gapid2::HandleWrapperUpdater>*>(
-      phys_dev->_instance);
-
-  PFN_vkCreateDevice next = reinterpret_cast<PFN_vkCreateDevice>(
-      get_instance_proc_addr(inst->_handle, "vkCreateDevice"));
-
-  if (!next) {
-    return VK_ERROR_INITIALIZATION_FAILED;
-  }
 
   PFN_vkGetDeviceProcAddr get_device_proc_addr =
       layer_info->u.pLayerInfo->pfnNextGetDeviceProcAddr;
+  gapid2::get_layer_base()->set_device_nexts(get_device_proc_addr);
 
   layer_info->u.pLayerInfo = layer_info->u.pLayerInfo->pNext;
 
@@ -246,12 +220,6 @@ gapid2_vkCreateDevice(VkPhysicalDevice physicalDevice,
     return ret;
   }
 
-  auto dev =
-      reinterpret_cast<gapid2::VkDeviceWrapper<gapid2::HandleWrapperUpdater>*>(
-          *pDevice);
-  dev->_functions = std::make_unique<gapid2::DeviceFunctions>(
-      dev->_handle, get_device_proc_addr);
-  dev->set_device_loader_data(set_device_loader_data->u.pfnSetDeviceLoaderData);
   return ret;
 }
 

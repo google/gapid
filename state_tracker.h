@@ -17,10 +17,13 @@
 #pragma once
 #define NOMINMAX
 #include <externals/SPIRV-Reflect/spirv_reflect.h>
-#include <vulkan.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
+
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "creation_data_tracker.h"
 
 namespace gapid2 {

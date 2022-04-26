@@ -16,7 +16,8 @@
 
 #include <command_caller.h>
 #include <commands.h>
-#include <vulkan.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 
 namespace gapid2 {
 class Spy;

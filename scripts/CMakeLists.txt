@@ -19,19 +19,35 @@ if (NOT (EXISTS "${LIB_SRC}"))
 endif()
 file(TO_CMAKE_PATH "${LIB_SRC}" LIB_SRC)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Vulkan-Headers/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Headers/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_custom_command(OUTPUT
-    ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl
-    COMMAND ${Python3_EXECUTABLE} 
-        ${CMAKE_CURRENT_SOURCE_DIR}/generator.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Vulkan-Headers/registry/vk.xml
-        ${CMAKE_CURRENT_BINARY_DIR}
-    DEPENDS 
-        ${CMAKE_CURRENT_SOURCE_DIR}/generator.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/../Vulkan-Headers/registry/vk.xml
+
+function(generate_file SOURCE)
+    set(of)
+    foreach(X ${ARGN})
+        list(APPEND of ${CMAKE_CURRENT_BINARY_DIR}/${X})
+    endforeach()
+    add_custom_command(OUTPUT
+        ${of}
+        COMMAND ${Python3_EXECUTABLE} 
+            ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Headers/registry/vk.xml
+            ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS
+            ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/generator/args.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/generator/standard.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/generator/vulkan.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/generator/generator.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Headers/registry/vk.xml
+    )
+endfunction()
+
+generate_file(
+    "layer_internal.py"
+    "layer_internal.inl"
 )
 
 add_library(${LIB_NAME} SHARED

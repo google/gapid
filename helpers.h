@@ -15,21 +15,10 @@
  */
 
 #pragma once
-#include <vulkan.h>
-#include <cassert>
-#include "handles.h"
-#include "temporary_allocator.h"
-#define _QUOTE(x) #x
-#define QUOTE(x) _QUOTE(x)
-#define __FILE__LINE__ __FILE__ ":" QUOTE(__LINE__) " : "
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 
-#define FIXME(user, ...)                                        \
-  message(__FILE__LINE__                                        \
-          "\n"                                                  \
-          " ------------------------------------------------\n" \
-          "|  FIXME(" #user ") :  " #__VA_ARGS__                \
-          "\n"                                                  \
-          " -------------------------------------------------\n")
+#include <cassert>
 
 #include "buffer.h"
 #include "buffer_view.h"
@@ -62,17 +51,9 @@
 #include "shader_module.h"
 #include "surface.h"
 #include "swapchain.h"
+#include "temporary_allocator.h"
 
 namespace gapid2 {
-
-#define PROCESS_HANDLE(Type)                   \
-  template <typename HandleUpdater>            \
-  struct handle_type<HandleUpdater, Type> {    \
-    using type = Type##Wrapper<HandleUpdater>; \
-    const bool is_handle = true;               \
-  };
-#include "handle_defines.inl"
-#undef PROCESS_HANDLE
 
 template <typename HandleUpdater, typename T, typename... Args>
 T* clone_struct(HandleUpdater* _updater,

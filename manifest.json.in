@@ -1,9 +1,9 @@
 {
   "file_format_version" : "1.0.0",
   "layer" : {
-    "name": "VK_LAYER_test",
+    "name": "VK_LAYER_gapid_passthrough",
     "type": "GLOBAL",
-    "library_path": ".\\gapii.dll",
+    "library_path": ".\\test.dll",
     "api_version": "1.0.0",
     "implementation_version": "1",
     "description": "",

@@ -1,4 +1,7 @@
 build/
 b_msvc/
+build_msvc/
 b2/
 .vscode
+*.pyc
+*/__pycache__/*

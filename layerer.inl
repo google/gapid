@@ -1,10 +1,12 @@
 #include <iostream>
 #include <shared_mutex>
 #include <unordered_set>
+
+#include "command_buffer_recorder.h"
 #include "layerer.h"
+#include "transform.h"
 
 namespace gapid2 {
-
 struct LayerOptions {
   void CaptureCommands(VkCommandBuffer cb) {
     if (captureAll) {
@@ -36,9 +38,8 @@ struct LayerOptions {
   std::unordered_set<VkCommandBuffer> buffersToCheck;
 };
 
-template <typename T, typename HandleUpdater>
-void* Layerer<T, HandleUpdater>::ResolveHelperFunction(const char* name,
-                                                       void** fout) {
+inline void* layerer::ResolveHelperFunction(const char* name,
+                                            void** fout) {
   if (!strcmp(name, "LayerOptions_CaptureCommands")) {
     return reinterpret_cast<void*>(&LayerOptions::CaptureCommandsForward);
   }
@@ -48,14 +49,12 @@ void* Layerer<T, HandleUpdater>::ResolveHelperFunction(const char* name,
   return nullptr;
 }
 
-template <typename HandleUpdater>
 void call_rerecord(void* data, VkCommandBuffer cb) {
-  auto* cbr = reinterpret_cast<CommandBufferRecorder<HandleUpdater>*>(data);
+  auto* cbr = reinterpret_cast<command_buffer_recorder*>(data);
   return cbr->RerecordCommandBuffer(cb);
 }
 
-template <typename T, typename HandleUpdater>
-void Layerer<T, HandleUpdater>::RunUserSetup(HMODULE module) {
+inline void layerer::RunUserSetup(HMODULE module) {
   auto setup = (void* (*)(LayerOptions*))GetProcAddress(module, "SetupLayer");
   LayerOptions lo;
   if (setup) {
@@ -64,14 +63,13 @@ void Layerer<T, HandleUpdater>::RunUserSetup(HMODULE module) {
   } else {
     OutputDebugStringA("No user setup found for layer\n");
   }
-  CommandBufferRecorder<HandleUpdater>* cbr = nullptr;
+
+  transform<command_buffer_recorder>* cbr = nullptr;
 
   if (lo.captureAll || lo.buffersToCheck.empty()) {
-    auto cb = std::make_unique<CommandBufferRecorder<HandleUpdater>>(f);
+    auto cb = std::make_unique<transform<command_buffer_recorder>>(this);
 
     OutputDebugStringA("Setting up command buffer recorder for layer\n");
-
-    cb->updater = updater;
     cbr = cb.get();
     recorders.push_back(std::move(cb));
   }
@@ -91,7 +89,7 @@ void Layerer<T, HandleUpdater>::RunUserSetup(HMODULE module) {
       if (!cb) {
         return nullptr;
       }
-      return reinterpret_cast<void*>(&call_rerecord<HandleUpdater>);
+      return reinterpret_cast<void*>(&call_rerecord);
     }
     OutputDebugStringA("Invalid setup call\n");
     return nullptr;

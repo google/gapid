@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(gapid2)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -20,182 +20,19 @@ set(ADDITIONAL_DEFINES)
 if (WIN32)
     set(ADDITIONAL_DEFINES VK_USE_PLATFORM_WIN32_KHR=1)
     add_compile_options("/bigobj")
+    add_compile_options("/MP")
 elseif (UNIX)
     set(ADDITIONAL_DEFINES VK_USE_PLATFORM_XCB_KHR=1)
 endif()
 
-set(ALL_HEADERS
-    buffer_view.h
-    buffer.h
-    command_buffer.h
-    command_pool.h
-    common.h
-    creation_data_tracker.h
-    decoder.h
-    descriptor_pool.h
-    descriptor_set_layout.h
-    descriptor_set.h
-    descriptor_update_template.h
-    device_memory.h
-    device.h
-    encoder.h
-    event.h
-    fence.h
-    framebuffer.h
-    handle_runner.h
-    handle_templates.h
-    handles.h
-    helpers.cpp
-    helpers.h
-    image_view.h
-    image.h
-    instance.h
-    memory_tracker.cpp
-    memory_tracker.h
-    minimal_state_tracker.h
-    null_cloner.h
-    physical_device.h
-    pipeline_cache.h
-    pipeline_layout.h
-    pipeline.h
-    query_pool.h
-    queue.h
-    render_pass.h
-    sampler_ycbcr_conversion.h
-    sampler.h
-    semaphore.h
-    shader_module.h
-    state_tracker.h
-    surface.h
-    swapchain.h
-    temporary_allocator.h
-)
-
-set(ALL_GENERATED 
-    ${gapid2_BINARY_DIR}/struct_deserialization.h
-    ${gapid2_BINARY_DIR}/struct_serialization.h
-    ${gapid2_BINARY_DIR}/struct_clone.h
-    ${gapid2_BINARY_DIR}/return_serializer.h
-    ${gapid2_BINARY_DIR}/commands.h
-    ${gapid2_BINARY_DIR}/command_processor.h
-    ${gapid2_BINARY_DIR}/command_caller.h
-    ${gapid2_BINARY_DIR}/forwards.h
-    ${gapid2_BINARY_DIR}/device_functions.h
-    ${gapid2_BINARY_DIR}/instance_functions.h
-    ${gapid2_BINARY_DIR}/call_forwards.h
-    ${gapid2_BINARY_DIR}/handle_defines.inl
-    ${gapid2_BINARY_DIR}/command_deserializer.h
-    ${gapid2_BINARY_DIR}/layer_internal.inl
-    ${gapid2_BINARY_DIR}/layerer.h
-    ${gapid2_BINARY_DIR}/struct_printer.h
-    ${gapid2_BINARY_DIR}/command_printer.h
-    ${gapid2_BINARY_DIR}/fn_caller.h
-    ${gapid2_BINARY_DIR}/fns.h
-    ${gapid2_BINARY_DIR}/command_buffer_recorder.inl
-)
-
-add_custom_command(OUTPUT
-    ${ALL_GENERATED}
-    ${gapid2_BINARY_DIR}/call_forwards.cpp
-    COMMAND ${Python3_EXECUTABLE} 
-        ${gapid2_SOURCE_DIR}/generator.py
-        ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/registry/vk.xml
-        ${gapid2_BINARY_DIR}
-    DEPENDS 
-        ${gapid2_SOURCE_DIR}/generator.py
-        ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/registry/vk.xml
-)
-
-add_library(gapii SHARED
-    helpers.cpp
-    memory_tracker.cpp
-    layer_setup.cpp
-    layer.def
-    spy.h
-    ${gapid2_BINARY_DIR}/call_forwards.cpp
-    ${ALL_GENERATED}
-    ${ALL_HEADERS}
-)
-
-
-target_compile_definitions(gapii PRIVATE ${ADDITIONAL_DEFINES})
-target_link_libraries(gapii spirv-reflect)
-target_include_directories(gapii PRIVATE
-    ${gapid2_BINARY_DIR}
-    ${gapid2_SOURCE_DIR}
-    ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include/vulkan
-)
-
-add_library(gapii_raw SHARED
-    helpers.cpp
-    memory_tracker.cpp
-    layer_setup.cpp
-    layer.def
-    raw_spy.h
-    ${gapid2_BINARY_DIR}/call_forwards.cpp
-    ${ALL_GENERATED}
-    ${ALL_HEADERS}
-)
-
-target_compile_definitions(gapii_raw PRIVATE ${ADDITIONAL_DEFINES} NO_SERIALIZE)
-target_link_libraries(gapii_raw spirv-reflect)
-target_include_directories(gapii_raw PRIVATE
-    ${gapid2_BINARY_DIR}
-    ${gapid2_SOURCE_DIR}
-    ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include/vulkan
-)
-
-add_executable(gapir
-    replayer.cpp
-    helpers.h
-    helpers.cpp
-    ${ALL_GENERATED}
-    ${ALL_HEADERS}
-)
-
-target_compile_definitions(gapir PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)
-
-target_include_directories(gapir PRIVATE
-    ${gapid2_BINARY_DIR}
-    ${gapid2_SOURCE_DIR}
-    ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include/vulkan
-)
-
-add_executable(printer
-    printer.cpp
-    helpers.cpp
-    ${ALL_GENERATED}
-    ${ALL_HEADERS}
-)
-
-target_compile_definitions(printer PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)
-
-target_include_directories(printer PRIVATE
-    ${gapid2_BINARY_DIR}
-    ${gapid2_SOURCE_DIR}
-    ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include/vulkan
-)
-
 configure_file(
-    manifest.json.in 
-    ${gapid2_BINARY_DIR}/manifest.json
-    @ONLY 
-)
-
-configure_file(
-    manifest2.json.in 
-    ${gapid2_BINARY_DIR}/manifest2.json
-    @ONLY 
-)
-
-configure_file(
-    generator.py
-    ${gapid2_BINARY_DIR}/scripts/generator.py
+    scripts/layer_internal.py
+    ${gapid2_BINARY_DIR}/scripts/layer_internal.py
     COPYONLY
 )
 
 configure_file(
-    build_file.bat
+    scripts/build_file.bat
     ${gapid2_BINARY_DIR}/scripts/build_file.bat
     COPYONLY
 )
@@ -218,4 +55,238 @@ configure_file(
     COPYONLY
 )
 
-file(COPY externals/Vulkan-Headers DESTINATION ${gapid2_BINARY_DIR})
+configure_file(
+    scripts/generator/args.py
+    ${gapid2_BINARY_DIR}/scripts/generator/args.py
+    COPYONLY
+)
+
+configure_file(
+    scripts/generator/standard.py
+    ${gapid2_BINARY_DIR}/scripts/generator/standard.py
+    COPYONLY
+)
+
+configure_file(
+    scripts/generator/vulkan.py
+    ${gapid2_BINARY_DIR}/scripts/generator/vulkan.py
+    COPYONLY
+)
+
+configure_file(
+    scripts/generator/generator.py
+    ${gapid2_BINARY_DIR}/scripts/generator/generator.py
+    COPYONLY
+)
+
+configure_file(
+    scripts/generator/arg_serialization.py
+    ${gapid2_BINARY_DIR}/scripts/generator/arg_serialization.py
+    COPYONLY
+)
+
+
+file(COPY externals/Vulkan-Headers DESTINATION ${gapid2_BINARY_DIR}/scripts/)
+
+function(generate_file SOURCE)
+    set(of)
+    foreach(X ${ARGN})
+        list(APPEND of ${gapid2_BINARY_DIR}/${X})
+    endforeach()
+    add_custom_command(OUTPUT
+        ${of}
+        COMMAND ${Python3_EXECUTABLE} 
+            ${gapid2_SOURCE_DIR}/${SOURCE}
+            ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/registry/vk.xml
+            ${gapid2_BINARY_DIR}
+        DEPENDS
+            ${gapid2_SOURCE_DIR}/${SOURCE}
+            scripts/generator/args.py
+            scripts/generator/standard.py
+            scripts/generator/vulkan.py
+            scripts/generator/generator.py
+            scripts/generator/arg_serialization.py
+            ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/registry/vk.xml
+    )
+endfunction()
+
+generate_file(
+    scripts/transform_base.py
+    transform_base.h
+)
+
+generate_file(
+    scripts/transform.py
+    transform.h
+)
+
+generate_file(
+    scripts/struct_serializer.py
+    struct_serialization.h
+)
+
+generate_file(
+    scripts/struct_deserializer.py
+    struct_deserialization.h
+)
+
+generate_file(
+    scripts/struct_clone.py
+    struct_clone.h
+)
+
+generate_file(
+    scripts/forwards.py
+    forwards.h
+)
+
+generate_file(
+    scripts/handle_defines.py
+    handle_defines.inl
+)
+
+generate_file(
+    scripts/base_caller.py
+    base_caller.h
+)
+
+generate_file(
+    scripts/instance_functions.py
+    instance_functions.h
+)
+
+generate_file(
+    scripts/device_functions.py
+    device_functions.h
+)
+
+generate_file(
+    scripts/layerer.py
+    layerer.h
+)
+
+generate_file(
+    scripts/call_forwards.py
+    call_forwards.h
+    call_forwards.cpp
+)
+
+generate_file(
+    scripts/indirect_functions.py
+    indirect_functions.h
+)
+
+generate_file(
+    scripts/command_buffer_recorder.py
+    command_buffer_recorder.inl
+    command_buffer_recorder.cpp
+)
+
+generate_file(
+    scripts/command_buffer_deserializer.py
+    command_buffer_deserializer.h
+)
+
+configure_file(
+    manifest.json.in 
+    ${gapid2_BINARY_DIR}/manifest.json
+    @ONLY 
+)
+
+set(HANDLE_TYPES
+    handles/buffer_view.cpp
+    handles/buffer_view.h
+    handles/buffer.cpp
+    handles/buffer.h
+    handles/command_buffer.cpp
+    handles/command_buffer.h
+    handles/command_pool.cpp
+    handles/command_pool.h
+    handles/descriptor_pool.cpp
+    handles/descriptor_pool.h
+    handles/descriptor_update_template.cpp
+    handles/descriptor_update_template.h
+    handles/descriptor_set_layout.cpp
+    handles/descriptor_set_layout.h
+    handles/descriptor_set.cpp
+    handles/descriptor_set.h
+    handles/device_memory.cpp
+    handles/device_memory.h
+    handles/device.cpp
+    handles/device.h
+    handles/event.cpp
+    handles/event.h
+    handles/fence.cpp
+    handles/fence.h
+    handles/framebuffer.cpp
+    handles/framebuffer.h
+    handles/image_view.cpp
+    handles/image_view.h
+    handles/image.cpp
+    handles/image.h
+    handles/instance.cpp
+    handles/instance.h
+    handles/physical_device.cpp
+    handles/physical_device.h
+    handles/pipeline_cache.cpp
+    handles/pipeline_cache.h
+    handles/pipeline_layout.cpp
+    handles/pipeline_layout.h
+    handles/pipeline.cpp
+    handles/pipeline.h
+    handles/query_pool.cpp
+    handles/query_pool.h
+    handles/queue.cpp
+    handles/queue.h
+    handles/render_pass.cpp
+    handles/render_pass.h
+    handles/sampler_ycbcr_conversion.cpp
+    handles/sampler_ycbcr_conversion.h
+    handles/sampler.cpp
+    handles/sampler.h
+    handles/semaphore.cpp
+    handles/semaphore.h
+    handles/shader_module.cpp
+    handles/shader_module.h
+    handles/surface.cpp
+    handles/surface.h
+    handles/swapchain.cpp
+    handles/swapchain.h
+)
+
+add_library(test SHARED
+    base_caller.cpp
+    helpers.cpp
+    layer_setup.cpp
+    minimal_state_tracker.cpp
+    passthrough_layer.cpp
+    state_block.cpp
+    layer.def
+    ${HANDLE_TYPES}
+    ${gapid2_BINARY_DIR}/forwards.h
+    ${gapid2_BINARY_DIR}/struct_clone.h
+    ${gapid2_BINARY_DIR}/device_functions.h
+    ${gapid2_BINARY_DIR}/instance_functions.h
+    ${gapid2_BINARY_DIR}/indirect_functions.h
+    ${gapid2_BINARY_DIR}/struct_deserialization.h
+    ${gapid2_BINARY_DIR}/struct_serialization.h
+    ${gapid2_BINARY_DIR}/transform_base.h
+    ${gapid2_BINARY_DIR}/handle_defines.inl
+    ${gapid2_BINARY_DIR}/transform.h
+    ${gapid2_BINARY_DIR}/base_caller.h
+    ${gapid2_BINARY_DIR}/call_forwards.h
+    ${gapid2_BINARY_DIR}/call_forwards.cpp
+    ${gapid2_BINARY_DIR}/layerer.h
+    ${gapid2_BINARY_DIR}/command_buffer_recorder.inl
+    ${gapid2_BINARY_DIR}/command_buffer_recorder.cpp
+    ${gapid2_BINARY_DIR}/command_buffer_deserializer.h
+)
+
+target_include_directories(test PRIVATE
+    ${gapid2_SOURCE_DIR}
+    ${gapid2_SOURCE_DIR}/handles
+    ${gapid2_BINARY_DIR}
+    ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include
+)
+
+target_compile_definitions(test PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)

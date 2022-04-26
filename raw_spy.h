@@ -15,9 +15,12 @@
  */
 
 #pragma once
-#include <vulkan.h>
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
+
 #include <fstream>
 #include <set>
+
 #include "command_caller.h"
 #include "commands.h"
 #include "encoder.h"
