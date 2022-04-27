@@ -14,14 +14,51 @@
 
 """This module contains the utility functions that needed elsewhere while parsing Vulkan XML"""
 
+import os
+from typing import Optional
 import xml.etree.ElementTree as ET
 
 
-def get_text_from_tag(root: ET.Element, tag: str) -> str:
+def get_text_from_tag(elem: ET.Element, tag: str) -> str:
     """Gets the text of the element with the given tag"""
-    for child in root:
+    value = try_get_text_from_tag(elem, tag)
+
+    if value is None:
+        # This should not happen
+        raise SyntaxError(
+            f"No {tag} tag found in {ET.tostring(elem, 'utf-8')}")
+
+    return value
+
+
+def try_get_text_from_tag(elem: ET.Element, tag: str) -> Optional[str]:
+    """Tries to Gets the text of the element with the given tag
+    and returns None if the tag does not exits"""
+    for child in elem.iter():
         if tag == child.tag:
             return child.text
 
-    # This should not happen
-    raise SyntaxError(f"No name tag found in {ET.tostring(root, 'utf-8')}")
+    return None
+
+
+def try_get_tail_from_tag(elem: ET.Element, tag: str) -> Optional[str]:
+    """Tries to Gets the text of the element with the given tag
+    and returns None if the tag does not exits"""
+    for child in elem.iter():
+        if tag == child.tag:
+            return child.tail
+
+    return None
+
+
+def try_get_attribute(elem: ET.Element, attrib: str) -> Optional[str]:
+    """Tries to get an attribute from XML and returns None if the attribute does not exists"""
+    if attrib not in elem.attrib:
+        return None
+
+    return elem.attrib[attrib]
+
+
+def clean_type_string(string: str) -> str:
+    """Cleans the string from whitespace and ',' and ');'"""
+    return string.replace(os.linesep, "").replace(" ", "").replace(",", "").replace(");", "")

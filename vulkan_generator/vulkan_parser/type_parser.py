@@ -14,14 +14,16 @@
 
 """This module is responsible for parsing Vulkan Types"""
 
-import dataclasses
+
 import xml.etree.ElementTree as ET
 
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Dict
 
-from vulkan_parser import types
 from vulkan_parser import handle_parser
+from vulkan_parser import struct_parser
+from vulkan_parser import types
 
 
 @dataclass
@@ -31,14 +33,20 @@ class AllVulkanTypes:
     This class should have all the information needed to generate code
     """
     # This class holds every Vulkan Type as [typename -> type]
-    handles: Dict[str, types.VulkanHandle] = dataclasses.field(
+    handles: Dict[str, types.VulkanHandle] = field(
         default_factory=dict)
 
     # Melih TODO: We probably need the map in two ways while generating code
     # both type -> alias and alias -> type
     # For now, lets store as the other types but when we do code generation,
     # We may have an extra step to convert the map to other direction.
-    handle_aliases: Dict[str, types.VulkanHandleAlias] = dataclasses.field(
+    handle_aliases: Dict[str, types.VulkanHandleAlias] = field(
+        default_factory=dict)
+
+    structs: Dict[str, types.VulkanStruct] = field(
+        default_factory=dict)
+
+    struct_aliases: Dict[str, types.VulkanStructAlias] = field(
         default_factory=dict)
 
 
@@ -52,14 +60,26 @@ def process_handle(vulkan_types: AllVulkanTypes, handle_element: ET.Element) -> 
         vulkan_types.handle_aliases[handle.typename] = handle
 
 
-def parse(root: ET.Element) -> AllVulkanTypes:
+def process_struct(vulkan_types: AllVulkanTypes, struct_element: ET.Element) -> None:
+    """ Parse the Vulkan type "Struct". This can be a struct or an alias to another struct """
+    vulkan_struct = struct_parser.parse(struct_element)
+
+    if isinstance(vulkan_struct, types.VulkanStruct):
+        vulkan_types.structs[vulkan_struct.typename] = vulkan_struct
+    elif isinstance(vulkan_struct, types.VulkanStructAlias):
+        vulkan_types.struct_aliases[vulkan_struct.typename] = vulkan_struct
+
+
+def parse(types_root: ET.Element) -> AllVulkanTypes:
     """ Parses all the Vulkan types and returns them in an object with dictionaries to each type """
     vulkan_types = AllVulkanTypes()
 
-    for child in root:
-        if "category" in child.attrib:
-            type_category = child.attrib["category"]
+    for type_element in types_root.iter():
+        if "category" in type_element.attrib:
+            type_category = type_element.attrib["category"]
             if type_category == "handle":
-                process_handle(vulkan_types, child)
+                process_handle(vulkan_types, type_element)
+            elif type_category == "struct":
+                process_struct(vulkan_types, type_element)
 
     return vulkan_types

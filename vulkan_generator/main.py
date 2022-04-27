@@ -20,7 +20,7 @@ import sys
 import vulkan_generator
 
 
-def main() -> int:
+def main() -> None:
     """ Entry point """
     vulkan_generator.generate(Path(sys.argv[1]))
 

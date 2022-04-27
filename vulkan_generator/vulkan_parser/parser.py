@@ -14,19 +14,18 @@
 
 """This module is the Vulkan parser that extracts information from Vulkan XML"""
 
+from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from vulkan_parser import type_parser
 
 
-def parse(filename: str) -> type_parser.AllVulkanTypes:
+def parse(filename: Path) -> type_parser.AllVulkanTypes:
     """ Parse the Vulkan XML to extract every information that is needed for code generation"""
     tree = ET.parse(filename)
-    root = tree.getroot()
-
     all_types = type_parser.AllVulkanTypes()
 
-    for child in root:
+    for child in tree.iter():
         if child.tag == "types":
             all_types = type_parser.parse(child)
 

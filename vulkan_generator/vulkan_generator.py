@@ -15,19 +15,28 @@
 """This is the top level point for Vulkan Code Generator"""
 
 from pathlib import Path
-from pprint import pprint
+import pprint
+
 from vulkan_parser import parser as vulkan_parser
+from vulkan_parser import type_parser
 
 
-def print_vulkan_metaadata(vulkan_metadata) -> None:
+def print_vulkan_metaadata(vulkan_metadata: type_parser.AllVulkanTypes) -> None:
     """Prints all the vulkan information that is extracted"""
 
+    pretty_printer = pprint.PrettyPrinter(depth=4)
+
     print("=== Vulkan Handles ===")
-    pprint(vulkan_metadata.handles)
-    print("")
+    pretty_printer.pprint(vulkan_metadata.handles)
 
     print("=== Vulkan Handle Aliases ===")
-    pprint(vulkan_metadata.handle_aliases)
+    pretty_printer.pprint(vulkan_metadata.handle_aliases)
+
+    print("=== Vulkan Structs ===")
+    pretty_printer.pprint(vulkan_metadata.structs)
+
+    print("=== Vulkan Struct Aliases ===")
+    pretty_printer.pprint(vulkan_metadata.struct_aliases)
 
 
 def generate(vulkan_xml_path: Path) -> bool:
