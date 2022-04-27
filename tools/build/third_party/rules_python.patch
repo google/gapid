@@ -1,0 +1,11 @@
+diff --git a/python/repositories.bzl b/python/repositories.bzl
+--- a/python/repositories.bzl
++++ b/python/repositories.bzl
+@@ -152,6 +152,7 @@ py_runtime(
+     files = [":files"],
+     interpreter = "{python_path}",
+     python_version = "PY3",
++    stub_shebang = "#!/usr/bin/env python3",
+ )
+
+ py_runtime_pair(
