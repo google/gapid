@@ -60,6 +60,9 @@ void base_caller::on_device_created(VkPhysicalDevice physical_device, VkDevice* 
                              });
     GAPID2_ASSERT(inst != instance_functions_.end(), "Cannot find instance that created this physical device");
     auto gdpa = reinterpret_cast<PFN_vkGetDeviceProcAddr>(phys_dev_fns->vkGetInstanceProcAddr_(inst->first, "vkGetDeviceProcAddr"));
+    if (!gdpa) {
+      gdpa = vkGetDeviceProcAddr_;
+    }
     device_functions_.insert(std::make_pair(val[i], std::make_unique<device_functions>(val[i], gdpa)));
   }
   device_lock_.unlock();

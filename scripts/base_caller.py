@@ -31,6 +31,9 @@ def out_footer(base_caller, definition):
             base_caller.print(f"PFN_{cmd.name} {cmd.name}_ = nullptr;")
     base_caller.print(
         f"PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr_ = nullptr;")
+    base_caller.print(
+        f"PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr_ = nullptr;")
+        
     for t in definition.types.values():
         if type(t) == vulkan.handle and t.dispatch == vulkan.handle.DISPATCHABLE:
             extra_args = "VkDevice device"

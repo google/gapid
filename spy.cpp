@@ -223,8 +223,9 @@ encoder_handle spy::get_encoder(uintptr_t) {
     TlsSetValue(encoder_tls_key, enc);
   }
 
-  call_mutex.lock();
+  
   return encoder_handle(enc, [this, enc]() {
+    call_mutex.lock();
     uint64_t data_size = 0;
     for (size_t i = 0; i <= enc->data_offset; ++i) {
       data_size += enc->data_[i].size - enc->data_[i].left;
