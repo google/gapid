@@ -19,16 +19,71 @@
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+#include <fstream>
+#include <mutex>
+#include <unordered_set>
+
+#include "command_serializer.h"
+#include "encoder.h"
+#include "memory_tracker.h"
+#include "temporary_allocator.h"
+
 namespace gapid2 {
-class spy_base {
+class spy : public command_serializer {
  public:
+  using super = command_serializer;
   spy() {
   }
 
-  void set_create_instance(){
+  VkResult vkMapMemory(VkDevice device,
+                       VkDeviceMemory memory,
+                       VkDeviceSize offset,
+                       VkDeviceSize size,
+                       VkMemoryMapFlags flags,
+                       void** ppData) override;
+  VkResult vkEnumeratePhysicalDevices(
+      VkInstance instance,
+      uint32_t* pPhysicalDeviceCount,
+      VkPhysicalDevice* pPhysicalDevices) override;
 
-  };
+  void vkUnmapMemory(VkDevice device, VkDeviceMemory memory) override;
+
+  void vkFreeMemory(VkDevice device,
+                    VkDeviceMemory memory,
+                    const VkAllocationCallbacks* pAllocator) override;
+
+  VkResult vkFlushMappedMemoryRanges(
+      VkDevice device,
+      uint32_t memoryRangeCount,
+      const VkMappedMemoryRange* pMemoryRanges) override;
+
+  VkResult vkInvalidateMappedMemoryRanges(
+      VkDevice device,
+      uint32_t memoryRangeCount,
+      const VkMappedMemoryRange* pMemoryRanges) override;
+
+  VkResult vkQueueSubmit(VkQueue queue,
+                         uint32_t submitCount,
+                         const VkSubmitInfo* pSubmits,
+                         VkFence fence) override;
+
+  VkResult vkDeviceWaitIdle(VkDevice device) override;
+
+  VkResult vkWaitForFences(VkDevice device,
+                           uint32_t fenceCount,
+                           const VkFence* pFences,
+                           VkBool32 waitAll,
+                           uint64_t timeout) override;
 
  private:
+  std::unordered_set<VkInstance> instances;
+  std::mutex memory_mutex;
+  std::unordered_set<VkDeviceMemory> mapped_coherent_memories;
+  std::mutex map_mutex;
+  std::mutex call_mutex;
+  temporary_allocator allocator;
+  DWORD encoder_tls_key;
+  std::fstream out_file;
+  memory_tracker tracker;
 };
 }  // namespace gapid2

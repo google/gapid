@@ -187,6 +187,12 @@ generate_file(
     command_buffer_deserializer.h
 )
 
+generate_file(
+    scripts/command_serializer.py
+    command_serializer.h
+    command_serializer.cpp
+)
+
 configure_file(
     manifest.json.in 
     ${gapid2_BINARY_DIR}/manifest.json
@@ -254,7 +260,7 @@ set(HANDLE_TYPES
     handles/swapchain.h
 )
 
-add_library(test SHARED
+set(LAYER_FILES 
     base_caller.cpp
     helpers.cpp
     layer_setup.cpp
@@ -262,6 +268,8 @@ add_library(test SHARED
     passthrough_layer.cpp
     state_block.cpp
     layer.def
+    spy.h
+    spy.cpp
     ${HANDLE_TYPES}
     ${gapid2_BINARY_DIR}/forwards.h
     ${gapid2_BINARY_DIR}/struct_clone.h
@@ -280,13 +288,23 @@ add_library(test SHARED
     ${gapid2_BINARY_DIR}/command_buffer_recorder.inl
     ${gapid2_BINARY_DIR}/command_buffer_recorder.cpp
     ${gapid2_BINARY_DIR}/command_buffer_deserializer.h
+    ${gapid2_BINARY_DIR}/command_serializer.h
+    ${gapid2_BINARY_DIR}/command_serializer.cpp
 )
 
-target_include_directories(test PRIVATE
-    ${gapid2_SOURCE_DIR}
-    ${gapid2_SOURCE_DIR}/handles
-    ${gapid2_BINARY_DIR}
-    ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include
-)
+add_library(test SHARED
+    ${LAYER_FILES})
 
-target_compile_definitions(test PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)
+add_library(gapii SHARED
+    ${LAYER_FILES})
+
+foreach(L test gapii)
+    target_include_directories(${L} PRIVATE
+        ${gapid2_SOURCE_DIR}
+        ${gapid2_SOURCE_DIR}/handles
+        ${gapid2_BINARY_DIR}
+        ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include
+    )
+
+    target_compile_definitions(${L} PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)
+endforeach()

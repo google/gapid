@@ -363,7 +363,7 @@ def output_command(cmd, definition, g, only_return=False, optional_serialize=Fal
 
         else:
             continue
-        output_arg_enc(cmd, arg, "", arg_idx, "",  "      ", g)
+        output_arg_enc(cmd, arg, "", arg_idx, "", g)
         arg_idx += 1
     if cmd.ret.name != "void":
         if serialize_return:

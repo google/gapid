@@ -15,10 +15,11 @@
  */
 
 #pragma once
+#include <cstring>
 #include <deque>
 #include <functional>
+
 #include "common.h"
-#include <cstring>
 
 namespace gapid2 {
 struct encoder {
@@ -26,11 +27,11 @@ struct encoder {
   encoder() {
     data_.push_back(
         block{INITIAL_SIZE, (char*)malloc(INITIAL_SIZE), INITIAL_SIZE});
+    current_ = &data_[0];
   }
 
   void ensure_large_enough(const size_t _sz) {
-    auto* b = &data_[data_offset];
-    if (b->left < _sz) {
+    if (current_->left < _sz) {
       ++data_offset;
       if (data_offset >= data_.size() || data_[data_offset].size < _sz) {
         auto sz = std::max<size_t>(_sz, INITIAL_SIZE);
@@ -43,11 +44,12 @@ struct encoder {
         }
       }
       data_[data_offset].left = data_[data_offset].size;
+      current_ = &data_[data_offset];
     }
   }
 
   void write(const void* ptr, size_t length) {
-    auto b = &data_[data_offset];
+    auto b = current_;
     memcpy(b->data + (b->size - b->left), ptr, length);
     b->left -= length;
   }
@@ -67,12 +69,14 @@ struct encoder {
 
   void reset() {
     data_offset = 0;
+    current_ = &data_[data_offset];
     for (size_t i = 0; i < data_.size(); ++i) {
       data_[i].left = data_[i].size;
     }
   }
 
   std::vector<block> data_;
+  block* current_;
   size_t data_offset = 0;
 };
 
