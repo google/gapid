@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" This module is responsible for parsing Vulkan Handles and aliases of them"""
+""" This module is responsible for parsing Vulkan structs and aliases of them"""
 
 from typing import Dict
 import xml.etree.ElementTree as ET

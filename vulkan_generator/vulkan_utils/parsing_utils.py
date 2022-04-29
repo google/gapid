@@ -14,9 +14,9 @@
 
 """This module contains the utility functions that needed elsewhere while parsing Vulkan XML"""
 
-import os
-from typing import Optional
 import xml.etree.ElementTree as ET
+from typing import Optional
+import os
 
 
 def get_text_from_tag(elem: ET.Element, tag: str) -> str:
@@ -25,8 +25,7 @@ def get_text_from_tag(elem: ET.Element, tag: str) -> str:
 
     if value is None:
         # This should not happen
-        raise SyntaxError(
-            f"No {tag} tag found in {ET.tostring(elem, 'utf-8')}")
+        raise SyntaxError(f"No {tag} tag found in {ET.tostring(elem, 'utf-8')}")
 
     return value
 
@@ -39,6 +38,17 @@ def try_get_text_from_tag(elem: ET.Element, tag: str) -> Optional[str]:
             return child.text
 
     return None
+
+
+def get_tail_from_tag(elem: ET.Element, tag: str) -> str:
+    """Gets the tail of the element with the given tag"""
+    value = try_get_tail_from_tag(elem, tag)
+
+    if value is None:
+        # This should not happen
+        raise SyntaxError(f"No tail found in {ET.tostring(elem, 'utf-8')}")
+
+    return value
 
 
 def try_get_tail_from_tag(elem: ET.Element, tag: str) -> Optional[str]:

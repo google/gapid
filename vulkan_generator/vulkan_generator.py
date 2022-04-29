@@ -38,6 +38,9 @@ def print_vulkan_metaadata(vulkan_metadata: type_parser.AllVulkanTypes) -> None:
     print("=== Vulkan Struct Aliases ===")
     pretty_printer.pprint(vulkan_metadata.struct_aliases)
 
+    print("=== Vulkan Function Pointers ===")
+    pretty_printer.pprint(vulkan_metadata.funcpointers)
+
 
 def generate(vulkan_xml_path: Path) -> bool:
     """ Generator function """

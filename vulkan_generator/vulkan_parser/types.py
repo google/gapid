@@ -16,7 +16,9 @@
 
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Dict, Optional
+from typing import Dict
+from typing import List
+from typing import Optional
 
 
 @dataclass
@@ -80,3 +82,17 @@ class VulkanStruct(VulkanType):
 class VulkanStructAlias(VulkanType):
     """The meta data defines a Vulkan Handle alias"""
     aliased_typename: str
+
+
+@dataclass
+class VulkanFunctionArgument(VulkanType):
+    """The meta data defines a Function argument"""
+    argument_name: str
+
+
+@dataclass
+class VulkanFunctionPtr(VulkanType):
+    """The meta data defines a Function Pointer"""
+    return_type: str
+    arguments: List[VulkanFunctionArgument] = field(
+        default_factory=list)

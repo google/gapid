@@ -23,6 +23,7 @@ from typing import Dict
 
 from vulkan_parser import handle_parser
 from vulkan_parser import struct_parser
+from vulkan_parser import funcptr_parser
 from vulkan_parser import types
 
 
@@ -49,9 +50,12 @@ class AllVulkanTypes:
     struct_aliases: Dict[str, types.VulkanStructAlias] = field(
         default_factory=dict)
 
+    funcpointers: Dict[str, types.VulkanFunctionPtr] = field(
+        default_factory=dict)
+
 
 def process_handle(vulkan_types: AllVulkanTypes, handle_element: ET.Element) -> None:
-    """ Parse the Vulkan type "Handle". This can be an handle or an alias to another handle """
+    """ Parse the Vulkan type "Handle". This can be an handle or an alias to another handle"""
     handle = handle_parser.parse(handle_element)
 
     if isinstance(handle, types.VulkanHandle):
@@ -61,13 +65,21 @@ def process_handle(vulkan_types: AllVulkanTypes, handle_element: ET.Element) -> 
 
 
 def process_struct(vulkan_types: AllVulkanTypes, struct_element: ET.Element) -> None:
-    """ Parse the Vulkan type "Struct". This can be a struct or an alias to another struct """
+    """ Parse the Vulkan type "Struct". This can be a struct or an alias to another struct"""
     vulkan_struct = struct_parser.parse(struct_element)
 
     if isinstance(vulkan_struct, types.VulkanStruct):
         vulkan_types.structs[vulkan_struct.typename] = vulkan_struct
     elif isinstance(vulkan_struct, types.VulkanStructAlias):
         vulkan_types.struct_aliases[vulkan_struct.typename] = vulkan_struct
+
+
+def process_funcpointer(vulkan_types: AllVulkanTypes, func_ptr_element: ET.Element) -> None:
+    """ Parse the Vulkan type "Funcpointer"""
+    vulkan_func_ptr = funcptr_parser.parse(func_ptr_element)
+
+    if isinstance(vulkan_func_ptr, types.VulkanFunctionPtr):
+        vulkan_types.funcpointers[vulkan_func_ptr.typename] = vulkan_func_ptr
 
 
 def parse(types_root: ET.Element) -> AllVulkanTypes:
@@ -81,5 +93,7 @@ def parse(types_root: ET.Element) -> AllVulkanTypes:
                 process_handle(vulkan_types, type_element)
             elif type_category == "struct":
                 process_struct(vulkan_types, type_element)
+            elif type_category == "funcpointer":
+                process_funcpointer(vulkan_types, type_element)
 
     return vulkan_types
