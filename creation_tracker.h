@@ -595,6 +595,252 @@ class creation_tracker : public transform_base {
     }
   }
 
+  void vkDestroyInstance(VkInstance instance, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkInstance, Args...>()) {
+      if (instance) {
+        GAPID2_ASSERT(state_block_->erase(instance), "Could not find instance to erase");
+      }
+    }
+
+    return super::vkDestroyInstance(instance, pAllocator);
+  }
+
+  void vkDestroyDevice(VkDevice device, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkDevice, Args...>()) {
+      if (device) {
+        GAPID2_ASSERT(state_block_->erase(device), "Could not find device to erase");
+      }
+    }
+    return super::vkDestroyDevice(device, pAllocator);
+  }
+
+  void vkFreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) override {
+    if constexpr (args_contain<VkCommandBuffer, Args...>()) {
+      for (size_t i = 0; i < commandBufferCount; ++i) {
+        if (pCommandBuffers[i]) {
+          GAPID2_ASSERT(state_block_->erase(pCommandBuffers[i]), "Could not find pCommandBuffers to erase");
+        }
+      }
+    }
+    return super::vkFreeCommandBuffers(device, commandPool, commandBufferCount, pCommandBuffers);
+  }
+
+  void vkFreeMemory(VkDevice device, VkDeviceMemory memory, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkDeviceMemory, Args...>()) {
+      if (memory) {
+        GAPID2_ASSERT(state_block_->erase(memory), "Could not find memory to erase");
+      }
+    }
+    return super::vkFreeMemory(device, memory, pAllocator);
+  }
+  VkResult vkFreeDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) override {
+    if constexpr (args_contain<VkDescriptorSet, Args...>()) {
+      for (size_t i = 0; i < descriptorSetCount; ++i) {
+        if (pDescriptorSets[0]) {
+          GAPID2_ASSERT(state_block_->erase(pDescriptorSets[0]), "Could not find pDescriptorSets to erase");
+        }
+      }
+    }
+    return super::vkFreeDescriptorSets(device, descriptorPool, descriptorSetCount, pDescriptorSets);
+  }
+
+  void vkDestroyFence(VkDevice device, VkFence fence, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkFence, Args...>()) {
+      if (fence) {
+        GAPID2_ASSERT(state_block_->erase(fence), "Could not find fence to erase");
+      }
+    }
+    return super::vkDestroyFence(device, fence, pAllocator);
+  }
+
+  void vkDestroySemaphore(VkDevice device, VkSemaphore semaphore, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkSemaphore, Args...>()) {
+      if (semaphore) {
+        GAPID2_ASSERT(state_block_->erase(semaphore), "Could not find semaphore to erase");
+      }
+    }
+    return super::vkDestroySemaphore(device, semaphore, pAllocator);
+  }
+
+  void vkDestroyEvent(VkDevice device, VkEvent event, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkEvent, Args...>()) {
+      if (event) {
+        GAPID2_ASSERT(state_block_->erase(event), "Could not find event to erase");
+      }
+    }
+    return super::vkDestroyEvent(device, event, pAllocator);
+  }
+
+  void vkDestroyQueryPool(VkDevice device, VkQueryPool queryPool, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkQueryPool, Args...>()) {
+      if (queryPool) {
+        GAPID2_ASSERT(state_block_->erase(queryPool), "Could not find queryPool to erase");
+      }
+    }
+    return super::vkDestroyQueryPool(device, queryPool, pAllocator);
+  }
+
+  void vkDestroyBuffer(VkDevice device, VkBuffer buffer, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkBuffer, Args...>()) {
+      if (buffer) {
+        GAPID2_ASSERT(state_block_->erase(buffer), "Could not find buffer to erase");
+      }
+    }
+    return super::vkDestroyBuffer(device, buffer, pAllocator);
+  }
+  void vkDestroyBufferView(VkDevice device, VkBufferView bufferView, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkBufferView, Args...>()) {
+      if (bufferView) {
+        GAPID2_ASSERT(state_block_->erase(bufferView), "Could not find bufferView to erase");
+      }
+    }
+    return super::vkDestroyBufferView(device, bufferView, pAllocator);
+  }
+
+  void vkDestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkImage, Args...>()) {
+      if (image) {
+        GAPID2_ASSERT(state_block_->erase(image), "Could not find image to erase");
+      }
+    }
+    return super::vkDestroyImage(device, image, pAllocator);
+  }
+
+  void vkDestroyImageView(VkDevice device, VkImageView imageView, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkImageView, Args...>()) {
+      if (imageView) {
+        GAPID2_ASSERT(state_block_->erase(imageView), "Could not find imageView to erase");
+      }
+    }
+    return super::vkDestroyImageView(device, imageView, pAllocator);
+  }
+
+  void vkDestroyShaderModule(VkDevice device, VkShaderModule shaderModule, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkShaderModule, Args...>()) {
+      if (shaderModule) {
+        GAPID2_ASSERT(state_block_->erase(shaderModule), "Could not find shaderModule to erase");
+      }
+    }
+    return super::vkDestroyShaderModule(device, shaderModule, pAllocator);
+  }
+
+  void vkDestroyPipelineCache(VkDevice device, VkPipelineCache pipelineCache, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkPipelineCache, Args...>()) {
+      if (pipelineCache) {
+        GAPID2_ASSERT(state_block_->erase(pipelineCache), "Could not find pipelineCache to erase");
+      }
+    }
+    return super::vkDestroyPipelineCache(device, pipelineCache, pAllocator);
+  }
+
+  void vkDestroyPipeline(VkDevice device, VkPipeline pipeline, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkPipeline, Args...>()) {
+      if (pipeline) {
+        GAPID2_ASSERT(state_block_->erase(pipeline), "Could not find pipeline to erase");
+      }
+    }
+    return super::vkDestroyPipeline(device, pipeline, pAllocator);
+  }
+
+  void vkDestroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkPipelineLayout, Args...>()) {
+      if (pipelineLayout) {
+        GAPID2_ASSERT(state_block_->erase(pipelineLayout), "Could not find pipelineLayout to erase");
+      }
+    }
+    return super::vkDestroyPipelineLayout(device, pipelineLayout, pAllocator);
+  }
+
+  void vkDestroySampler(VkDevice device, VkSampler sampler, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkSampler, Args...>()) {
+      if (sampler) {
+        GAPID2_ASSERT(state_block_->erase(sampler), "Could not find sampler to erase");
+      }
+    }
+    return super::vkDestroySampler(device, sampler, pAllocator);
+  }
+
+  void vkDestroyDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkDescriptorSetLayout, Args...>()) {
+      if (descriptorSetLayout) {
+        GAPID2_ASSERT(state_block_->erase(descriptorSetLayout), "Could not find descriptorSetLayout to erase");
+      }
+    }
+    return super::vkDestroyDescriptorSetLayout(device, descriptorSetLayout, pAllocator);
+  }
+
+  void vkDestroyDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkDescriptorPool, Args...>()) {
+      if (descriptorPool) {
+        GAPID2_ASSERT(state_block_->erase(descriptorPool), "Could not find descriptorPool to erase");
+      }
+    }
+    return super::vkDestroyDescriptorPool(device, descriptorPool, pAllocator);
+  }
+
+  void vkDestroyFramebuffer(VkDevice device, VkFramebuffer framebuffer, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkFramebuffer, Args...>()) {
+      if (framebuffer) {
+        GAPID2_ASSERT(state_block_->erase(framebuffer), "Could not find framebuffer to erase");
+      }
+    }
+    return super::vkDestroyFramebuffer(device, framebuffer, pAllocator);
+  }
+
+  void vkDestroyRenderPass(VkDevice device, VkRenderPass renderPass, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkRenderPass, Args...>()) {
+      if (renderPass) {
+        GAPID2_ASSERT(state_block_->erase(renderPass), "Could not find renderPass to erase");
+      }
+    }
+    return super::vkDestroyRenderPass(device, renderPass, pAllocator);
+  }
+
+  void vkDestroyCommandPool(VkDevice device, VkCommandPool commandPool, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkCommandPool, Args...>()) {
+      if (commandPool) {
+        GAPID2_ASSERT(state_block_->erase(commandPool), "Could not find commandPool to erase");
+      }
+    }
+    return super::vkDestroyCommandPool(device, commandPool, pAllocator);
+  }
+
+  void vkDestroySamplerYcbcrConversion(VkDevice device, VkSamplerYcbcrConversion ycbcrConversion, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkSamplerYcbcrConversion, Args...>()) {
+      if (ycbcrConversion) {
+        GAPID2_ASSERT(state_block_->erase(ycbcrConversion), "Could not find ycbcrConversion to erase");
+      }
+    }
+    return super::vkDestroySamplerYcbcrConversion(device, ycbcrConversion, pAllocator);
+  }
+
+  void vkDestroyDescriptorUpdateTemplate(VkDevice device, VkDescriptorUpdateTemplate descriptorUpdateTemplate, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkDescriptorUpdateTemplate, Args...>()) {
+      if (descriptorUpdateTemplate) {
+        GAPID2_ASSERT(state_block_->erase(descriptorUpdateTemplate), "Could not find descriptorUpdateTemplate to erase");
+      }
+    }
+    return super::vkDestroyDescriptorUpdateTemplate(device, descriptorUpdateTemplate, pAllocator);
+  }
+
+  void vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkSurfaceKHR, Args...>()) {
+      if (surface) {
+        GAPID2_ASSERT(state_block_->erase(surface), "Could not find surface to erase");
+      }
+    }
+    return super::vkDestroySurfaceKHR(instance, surface, pAllocator);
+  }
+
+  void vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* pAllocator) override {
+    if constexpr (args_contain<VkSwapchainKHR, Args...>()) {
+      if (swapchain) {
+        GAPID2_ASSERT(state_block_->erase(swapchain), "Could not find swapchain to erase");
+      }
+    }
+    return super::vkDestroySwapchainKHR(device, swapchain, pAllocator);
+  }
+
  protected:
 };
 }  // namespace gapid2

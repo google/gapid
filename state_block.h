@@ -37,6 +37,7 @@ class state_block : public transform_base {
   Type##Wrapper* get_or_create(Type t);    \
   Type##Wrapper* create(Type t);           \
   Type##Wrapper* get(Type t);              \
+  bool erase(Type t);                      \
   std::unordered_map<Type, Type##Wrapper*> \
       Type##s;
 

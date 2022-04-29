@@ -82,6 +82,15 @@ state_block::~state_block() {
       return it->second;                              \
     }                                                 \
     return nullptr;                                   \
+  }                                                   \
+  bool state_block::erase(Type t) {                   \
+    auto it = Type##s.find(t);                        \
+    if (it == Type##s.end()) {                        \
+      return false;                                   \
+    }                                                 \
+    delete it->second;                                \
+    Type##s.erase(it);                                \
+    return true;                                      \
   }
 #include "handle_defines.inl"
 #undef PROCESS_HANDLE
