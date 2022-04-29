@@ -15,9 +15,10 @@
  */
 
 #pragma once
-#include <vector>
-#include "common.h"
 #include <cstring>
+#include <vector>
+
+#include "common.h"
 
 namespace gapid2 {
 struct decoder {
@@ -90,6 +91,11 @@ struct decoder {
   template <typename T>
   void decode_primitive_array(T* _t, size_t len) {
     read(_t, sizeof(T) * len);
+  }
+
+  template <typename T>
+  void drop_primitive_array(size_t len) {
+    read(nullptr, sizeof(T) * len);
   }
 
   uint64_t data_left() {

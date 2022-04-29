@@ -493,22 +493,21 @@ class struct(base):
 
     def has_handle(self):
         for x in self.members:
-            if x.type.has_handle():
-                return True
             xt = x.type
             while type(xt) == const_type:
                 xt = xt.child
-            if xt == self:
-                return False
+            if xt.get_noncv_type() == self:
+                continue
+            if(xt.has_handle()):
+                return True
             if type(xt) == pointer_type and xt.pointee.name == 'void':
                 for eb in x.extended_by:
                     if eb[1].has_handle():
                         return True
+
             # prevent infinite loops for VkBaseInStructure
             if type(xt) == pointer_type and xt.pointee == self:
                 return False
-            if(xt.has_handle()):
-                return True
         return False
 
     def has_pnext(self):
@@ -548,12 +547,17 @@ class struct(base):
                     a.args.append(serialization_arg('dst', f'{self.name}&'))
                     a.args.append(serialization_arg(
                         'mem', f'temporary_allocator*'))
-                elif _serialization_type == FIX_HANDLES:
-                    a = serialization_param(
-                        "fix_handles", f'{self.name}_{x.name}', 'void')
-                    a.args.append(serialization_arg('val', f'{self.name}&'))
-                    a.args.append(serialization_arg(
-                        'mem', f'temporary_allocator*'))
+                # For now I dont think we have to write custom handle fixers for
+                # void* params. This is because the only place that we have a handle
+                # in a void* buffer is as a primary buffer, not something that is chained
+                # from a struct. This will significantly clean up the number of
+                # custom bits until it is needed.
+                # elif _serialization_type == FIX_HANDLES:
+                #    a = serialization_param(
+                #        "fix_handles", f'{self.name}_{x.name}', 'void')
+                #    a.args.append(serialization_arg('val', f'{self.name}&'))
+                #    a.args.append(serialization_arg(
+                #        'mem', f'temporary_allocator*'))
                 elif _serialization_type == DESERIALIZE:
                     a = serialization_param(
                         "deserialize", f'{self.name}_{x.name}', 'void')

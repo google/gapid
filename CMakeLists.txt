@@ -193,11 +193,45 @@ generate_file(
     command_serializer.cpp
 )
 
+generate_file(
+    scripts/handle_replacer.py
+    handle_replacer.h
+    handle_replacer.cpp
+)
+
+generate_file(
+    scripts/fix_handles.py
+    fix_handles.h
+)
+
+generate_file(
+    scripts/command_inline_fixer.py
+    command_inline_fixer.h
+    command_inline_fixer.cpp
+)
+
+generate_file(
+    scripts/command_deserializer.py
+    command_deserializer.h
+)
+
+generate_file(
+    scripts/null_caller.py
+    null_caller.h
+)
+
 configure_file(
     manifest.json.in 
     ${gapid2_BINARY_DIR}/manifest.json
     @ONLY 
 )
+
+configure_file(
+    manifest2.json.in 
+    ${gapid2_BINARY_DIR}/manifest2.json
+    @ONLY 
+)
+
 
 set(HANDLE_TYPES
     handles/buffer_view.cpp
@@ -260,16 +294,11 @@ set(HANDLE_TYPES
     handles/swapchain.h
 )
 
-set(LAYER_FILES 
+set(BASE_FILES 
     base_caller.cpp
     helpers.cpp
-    layer_setup.cpp
     minimal_state_tracker.cpp
-    passthrough_layer.cpp
     state_block.cpp
-    layer.def
-    spy.h
-    spy.cpp
     ${HANDLE_TYPES}
     ${gapid2_BINARY_DIR}/forwards.h
     ${gapid2_BINARY_DIR}/struct_clone.h
@@ -282,23 +311,50 @@ set(LAYER_FILES
     ${gapid2_BINARY_DIR}/handle_defines.inl
     ${gapid2_BINARY_DIR}/transform.h
     ${gapid2_BINARY_DIR}/base_caller.h
-    ${gapid2_BINARY_DIR}/call_forwards.h
-    ${gapid2_BINARY_DIR}/call_forwards.cpp
     ${gapid2_BINARY_DIR}/layerer.h
     ${gapid2_BINARY_DIR}/command_buffer_recorder.inl
     ${gapid2_BINARY_DIR}/command_buffer_recorder.cpp
     ${gapid2_BINARY_DIR}/command_buffer_deserializer.h
     ${gapid2_BINARY_DIR}/command_serializer.h
     ${gapid2_BINARY_DIR}/command_serializer.cpp
+    ${gapid2_BINARY_DIR}/command_inline_fixer.h
+    ${gapid2_BINARY_DIR}/command_inline_fixer.cpp
+    ${gapid2_BINARY_DIR}/command_deserializer.h
+    ${gapid2_BINARY_DIR}/null_caller.h
+)
+
+set(LAYER_FILES 
+    layer_setup.cpp
+    layer.def
+    ${gapid2_BINARY_DIR}/call_forwards.h
+    ${gapid2_BINARY_DIR}/call_forwards.cpp
 )
 
 add_library(test SHARED
-    ${LAYER_FILES})
+    passthrough_layer.cpp
+    ${BASE_FILES}
+    ${LAYER_FILES}
+)
 
 add_library(gapii SHARED
-    ${LAYER_FILES})
+    ${BASE_FILES}
+    ${LAYER_FILES}
+    spy.h
+    spy.cpp
+    gapii.cpp
+    memory_tracker.h
+    memory_tracker.cpp
+)
 
-foreach(L test gapii)
+add_executable(gapir
+    ${BASE_FILES}
+    replayer.cpp
+    ${gapid2_BINARY_DIR}/handle_replacer.h
+    ${gapid2_BINARY_DIR}/handle_replacer.cpp
+    ${gapid2_BINARY_DIR}/fix_handles.h
+)
+
+foreach(L test gapii gapir)
     target_include_directories(${L} PRIVATE
         ${gapid2_SOURCE_DIR}
         ${gapid2_SOURCE_DIR}/handles

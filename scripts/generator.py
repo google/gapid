@@ -3153,7 +3153,7 @@ class CommandDeserializer : public T {
         print(
             '''
   public:
-    virtual void *get_memory_write_location(VkDeviceMemory, VkDeviceSize, VkDeviceSize) {
+    
         return nullptr;
     } 
 };
@@ -3193,7 +3193,7 @@ __declspec(dllexport) void SetupLayerInternal(void* user_data_, void* (fn)(void*
         for x in definition.types.values():
             if type(x) == handle:
                 print(
-                    f'  get_raw_handle_{x.name} = ({x.name}(*)(void*, {x.name}))tf(user_data_, "{x.name}");', file=fcall)
+                    f'get_raw_handle_{x.name} = ({x.name}(*)(void*, {x.name}))tf(user_data_, "{x.name}");', file=fcall)
         print(
             '''
   SetupInternalPointers(user_data_, fn);

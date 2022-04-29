@@ -26,6 +26,7 @@ def main(args):
         layerer.print('#include "transform.h"')
         layerer.print('#include "indirect_functions.h"')
         layerer.print('#include "indirect_functions.h"')
+        layerer.print('#include "handle_fixer.h"')
         layerer.print('#include "command_buffer_recorder.h"')
         layerer.print('''namespace gapid2 {
   const std::string version_string = "1";
@@ -61,7 +62,8 @@ def main(args):
 
         layerer.print('''
     class layerer: public transform_base {
-      public:''')
+      public:
+        handle_fixer* fixer = nullptr;''')
         for cmd in definition.commands.values():
             prms = [x.short_str() for x in cmd.args]
             args = [x.name for x in cmd.args]
@@ -69,6 +71,19 @@ def main(args):
                 f'''
         static {cmd.ret.short_str()} next_layer_{cmd.name}(void* data_, {", ".join(prms)}) {{
             return reinterpret_cast<transform_base*>(data_)->transform_base::{cmd.name}({", ".join(args)});
+        }}''')
+
+        layerer.print(
+            f'''
+        
+        template<typename TT>
+        static TT get_raw_handle(void* data_, TT in) {{
+            auto fix = reinterpret_cast<layerer*>(data_)->fixer;
+            if (fix) {{
+              fix->fix_handle(&in);
+            }}
+            
+            return in;
         }}''')
 
         layerer.print(
@@ -166,7 +181,7 @@ def main(args):
               return false;
           }
           modules.push_back(lib);
-          auto setup = (void (*)(void*, void* (*)(void*, const char*, void**)))GetProcAddress(lib, "SetupLayerInternal");
+          auto setup = (void (*)(void*, void* (*)(void*, const char*, void**), void*(tf)(void*, const char*)))GetProcAddress(lib, "SetupLayerInternal");
           if (!setup) {
               std::cerr << "Could not find library setup for " << layer << std::endl;
               return false;
@@ -187,7 +202,19 @@ def main(args):
                 std::cerr << "Could not resolve function " << fn << std::endl;
             }
             return ret;
-          });''')
+          }, [](void* this__, const char* tp) -> void* {''')
+        for x in definition.types.values():
+            if type(x) == vulkan.handle:
+                layerer.print(
+                    f'            if (!strcmp(tp, "{x.name}")) {{')
+                layerer.print(
+                    f'              auto r = layerer::get_raw_handle<{x.name}>;')
+                layerer.print(f'              return r;')
+                layerer.print(f'            }}')
+        layerer.print(
+            '''            std::cerr << "Could not resolve handle type " << tp << std::endl;''')
+        layerer.print('''          });''')
+
         for cmd in definition.commands.values():
             prms = [x.type.name for x in cmd.args]
             layerer.print(

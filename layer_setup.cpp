@@ -210,7 +210,6 @@ gapid2_vkCreateDevice(VkPhysicalDevice physicalDevice,
 
   PFN_vkGetDeviceProcAddr get_device_proc_addr =
       layer_info->u.pLayerInfo->pfnNextGetDeviceProcAddr;
-  gapid2::get_layer_base()->set_device_nexts(get_device_proc_addr);
 
   layer_info->u.pLayerInfo = layer_info->u.pLayerInfo->pNext;
 

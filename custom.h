@@ -24,6 +24,7 @@
 #include "decoder.h"
 #include "descriptor_update_template.h"
 #include "encoder.h"
+#include "handle_fixer.h"
 #include "state_block.h"
 #include "temporary_allocator.h"
 #include "utils.h"
@@ -331,4 +332,22 @@ inline void _custom_deserialize_vkCmdUpdateBuffer_pData(state_block*,
   dec->decode_primitive_array(dat, dataSize);
   pData = reinterpret_cast<void*>(dat);
 }
+
+inline void custom_register_pPhysicalDeviceGroupProperties(VkPhysicalDeviceGroupProperties* props,
+                                                           handle_fixer& fix_) {
+  for (size_t i = 0; i < VK_MAX_DEVICE_GROUP_SIZE; ++i) {
+    fix_.register_handle(&props->physicalDevices[i]);
+  }
+}
+
+inline void custom_process_pPhysicalDeviceGroupProperties(VkPhysicalDeviceGroupProperties* props,
+                                                          handle_fixer& fix_) {
+  for (size_t i = 0; i < props->physicalDeviceCount; ++i) {
+    fix_.process_handle(&props->physicalDevices[i]);
+  }
+  for (size_t i = props->physicalDeviceCount; i < VK_MAX_DEVICE_GROUP_SIZE; ++i) {
+    fix_.VkPhysicalDevice_registered_handles_.erase(&props->physicalDevices[i]);
+  }
+}
+
 }  // namespace gapid2

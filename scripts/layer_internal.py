@@ -22,16 +22,25 @@ def main(args):
             g.print(f'void *call_{cmd.name}_user_data;')
             g.print(
                 f'{cmd.ret.short_str()} (*call_{cmd.name})(void*, {", ".join(prms)});')
+        for x in definition.types.values():
+            if type(x) == vulkan.handle:
+                g.print(
+                    f'{x.name} (*get_raw_handle_{x.name})(void* data_, {x.name} in);')
         g.print(
             '''
 extern "C" {
-__declspec(dllexport) void SetupLayerInternal(void* user_data_, void* (fn)(void*, const char*, void**)) {
+__declspec(dllexport) void SetupLayerInternal(void* user_data_, void* (fn)(void*, const char*, void**), void*(tf)(void*, const char*)) {
   user_data = user_data_;
 ''')
         for cmd in definition.commands.values():
             prms = [x.short_str() for x in cmd.args]
             g.print(
                 f'  call_{cmd.name} = ({cmd.ret.short_str()}(*)(void*, {", ".join(prms)}))fn(user_data_, "{cmd.name}", &call_{cmd.name}_user_data);')
+        for x in definition.types.values():
+            if type(x) == vulkan.handle:
+                g.print(
+                    f'get_raw_handle_{x.name} = ({x.name}(*)(void*, {x.name}))tf(user_data_, "{x.name}");')
+
         g.print(
             '''
   SetupInternalPointers(user_data_, fn);
@@ -46,7 +55,13 @@ __declspec(dllexport) void SetupLayerInternal(void* user_data_, void* (fn)(void*
 inline {cmd.ret.short_str()} {cmd.name}({', '.join(prms)}) {{
   return (*call_{cmd.name})(call_{cmd.name}_user_data, {', '.join(args)});
 }}''')
-
+        for x in definition.types.values():
+            if type(x) == vulkan.handle:
+                g.print(
+                    f'''
+{x.name} get_raw_handle({x.name} in) {{
+  return (*get_raw_handle_{x.name})(user_data, in);
+}}''')
         g.print(
             '''
 #undef VKAPI_ATTR

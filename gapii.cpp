@@ -21,6 +21,8 @@
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+#include "gapii.h"
+
 namespace gapid2 {
 
 layer_base* get_layer_base() {

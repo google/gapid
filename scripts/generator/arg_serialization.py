@@ -204,7 +204,7 @@ def output_command_deserializer(cmd, definition, g, serialize_return=True):
             g.print(f"(void)current_return_;")
     g.print(f"// -------- Call ------")
     args = ", ".join(x.name for x in cmd.args)
-    g.print(f"transform_base::{cmd.name}({args});")
+    g.print(f"{cmd.name}({args});")
 
 
 def output_arg_enc(cmd, x, vop, arg_idx, idx, g):

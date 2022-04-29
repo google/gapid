@@ -15,10 +15,13 @@
  */
 
 #pragma once
+#include <chrono>
 #include <string>
+
 #include "layer.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <vector>
+
 #include "externals/stb/stb_image_write.h"
 
 using PFN_vkSetSwapchainCallback = void(VKAPI_PTR*)(VkSwapchainKHR swapchain,
@@ -29,6 +32,9 @@ using PFN_vkSetSwapchainCallback = void(VKAPI_PTR*)(VkSwapchainKHR swapchain,
 
 struct foo {
   ~foo() {
+    if (last_data.empty()) {
+      return;
+    }
     stbi_write_png_compression_level = 0;
     stbi_write_force_png_filter = 0;
     OutputDebugString("Dumping Image\n");
@@ -53,6 +59,21 @@ struct foo {
   VkFormat format = VK_FORMAT_UNDEFINED;
   std::vector<uint8_t> last_data;
 };
+
+auto begin = std::chrono::high_resolution_clock::now();
+VKAPI_ATTR VkResult VKAPI_CALL
+override_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
+                          const VkAllocationCallbacks* pAllocator,
+                          VkInstance* instance) {
+  auto begin = std::chrono::high_resolution_clock::now();
+  auto ret = vkCreateInstance(pCreateInfo, pAllocator, instance);
+  auto end = std::chrono::high_resolution_clock::now();
+  OutputDebugString(("Create Instance time:: " +
+                     std::to_string(std::chrono::duration<float>(end - begin).count()) +
+                     "\n")
+                        .c_str());
+  return ret;
+}
 
 VKAPI_ATTR VkResult VKAPI_CALL
 override_vkCreateSwapchainKHR(VkDevice device,
@@ -86,4 +107,4 @@ override_vkCreateSwapchainKHR(VkDevice device,
         nullptr);
   }
   return res;
-}   
+}

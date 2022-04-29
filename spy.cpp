@@ -18,6 +18,7 @@
 
 #include "command_buffer.h"
 #include "device_memory.h"
+#include "encoder.h"
 #include "state_block.h"
 
 namespace gapid2 {
@@ -213,6 +214,60 @@ VkResult spy::vkWaitForFences(VkDevice device,
     }
   }
   return res;
+}
+
+encoder_handle spy::get_encoder(uintptr_t) {
+  encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
+  if (!enc) {
+    enc = new encoder();
+    TlsSetValue(encoder_tls_key, enc);
+  }
+
+  call_mutex.lock();
+  return encoder_handle(enc, [this, enc]() {
+    uint64_t data_size = 0;
+    for (size_t i = 0; i <= enc->data_offset; ++i) {
+      data_size += enc->data_[i].size - enc->data_[i].left;
+    }
+    char dat[sizeof(data_size)];
+    memcpy(dat, &data_size, sizeof(data_size));
+    out_file.write(dat, sizeof(dat));
+
+    for (size_t i = 0; i <= enc->data_offset; ++i) {
+      out_file.write(enc->data_[i].data,
+                     enc->data_[i].size - enc->data_[i].left);
+      enc->data_[i].left = enc->data_[i].size;
+    }
+    enc->data_offset = 0;
+    call_mutex.unlock();
+  });
+}
+
+encoder_handle spy::get_locked_encoder(uintptr_t) {
+  encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
+  if (!enc) {
+    enc = new encoder();
+    TlsSetValue(encoder_tls_key, enc);
+  }
+
+  call_mutex.lock();
+  return encoder_handle(enc, [this, enc]() {
+    uint64_t data_size = 0;
+    for (size_t i = 0; i <= enc->data_offset; ++i) {
+      data_size += enc->data_[i].size - enc->data_[i].left;
+    }
+    char dat[sizeof(data_size)];
+    memcpy(dat, &data_size, sizeof(data_size));
+    out_file.write(dat, sizeof(dat));
+
+    for (size_t i = 0; i <= enc->data_offset; ++i) {
+      out_file.write(enc->data_[i].data,
+                     enc->data_[i].size - enc->data_[i].left);
+      enc->data_[i].left = enc->data_[i].size;
+    }
+    enc->data_offset = 0;
+    call_mutex.unlock();
+  });
 }
 
 }  // namespace gapid2

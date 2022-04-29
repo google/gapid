@@ -1,9 +1,9 @@
 {
   "file_format_version" : "1.0.0",
   "layer" : {
-    "name": "VK_LAYER_raw_test",
+    "name": "VK_LAYER_gapii",
     "type": "GLOBAL",
-    "library_path": ".\\gapii_raw.dll",
+    "library_path": ".\\gapii.dll",
     "api_version": "1.0.0",
     "implementation_version": "1",
     "description": "",

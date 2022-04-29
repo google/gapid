@@ -38,10 +38,6 @@ class layer_base {
     base_caller_->vkGetInstanceProcAddr_ = get_instance_proc_addr;
   }
 
-  void set_device_nexts(PFN_vkGetDeviceProcAddr get_device_proc_addr) {
-    base_caller_->vkGetDeviceProcAddr_ = get_device_proc_addr;
-  }
-
   virtual gapid2::transform_base* get_top_level_functions() = 0;
 
   std::unique_ptr<gapid2::transform<gapid2::base_caller>> base_caller_;

@@ -16,6 +16,8 @@
 
 #include "base_caller.h"
 
+#include "common.h"
+
 namespace gapid2 {
 
 void base_caller::on_instance_created(const VkInstanceCreateInfo* create_info, VkInstance* val, uint32_t count) {
@@ -46,11 +48,23 @@ void base_caller::on_device_created(VkPhysicalDevice physical_device, VkDevice* 
   if (!val) {
     return;
   }
+  instance_lock_.lock_shared();
+  physicaldevice_lock_.lock_shared();
   device_lock_.lock();
   for (uint32_t i = 0; i < count; ++i) {
-    device_functions_.insert(std::make_pair(val[i], std::make_unique<device_functions>(val[i], vkGetDeviceProcAddr_)));
+    auto phys_dev_fns = physicaldevice_functions_[physical_device];
+    auto inst = std::find_if(instance_functions_.begin(),
+                             instance_functions_.end(),
+                             [phys_dev_fns](const std::pair<const VkInstance, std::unique_ptr<gapid2::instance_functions>>& it) {
+                               return it.second.get() == phys_dev_fns;
+                             });
+    GAPID2_ASSERT(inst != instance_functions_.end(), "Cannot find instance that created this physical device");
+    auto gdpa = reinterpret_cast<PFN_vkGetDeviceProcAddr>(phys_dev_fns->vkGetInstanceProcAddr_(inst->first, "vkGetDeviceProcAddr"));
+    device_functions_.insert(std::make_pair(val[i], std::make_unique<device_functions>(val[i], gdpa)));
   }
   device_lock_.unlock();
+  physicaldevice_lock_.unlock_shared();
+  instance_lock_.unlock_shared();
 }
 
 void base_caller::on_queue_created(VkDevice device, VkQueue* val, uint32_t count) {

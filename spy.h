@@ -32,7 +32,7 @@ namespace gapid2 {
 class spy : public command_serializer {
  public:
   using super = command_serializer;
-  spy() {
+  spy() : out_file("file.trace", std::ios::out | std::ios::binary) {
   }
 
   VkResult vkMapMemory(VkDevice device,
@@ -74,6 +74,9 @@ class spy : public command_serializer {
                            const VkFence* pFences,
                            VkBool32 waitAll,
                            uint64_t timeout) override;
+
+  encoder_handle get_locked_encoder(uintptr_t key) override;
+  encoder_handle get_encoder(uintptr_t key) override;
 
  private:
   std::unordered_set<VkInstance> instances;
