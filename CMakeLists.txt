@@ -220,6 +220,16 @@ generate_file(
     null_caller.h
 )
 
+generate_file(
+    scripts/struct_print.py
+    struct_print.h
+)
+
+generate_file(
+    scripts/command_printer.py
+    command_printer.h
+)
+
 configure_file(
     manifest.json.in 
     ${gapid2_BINARY_DIR}/manifest.json
@@ -354,7 +364,15 @@ add_executable(gapir
     ${gapid2_BINARY_DIR}/fix_handles.h
 )
 
-foreach(L test gapii gapir)
+
+add_executable(printer
+    ${BASE_FILES}
+    printer.cpp
+    ${gapid2_BINARY_DIR}/struct_print.h
+    ${gapid2_BINARY_DIR}/command_printer.h
+)
+
+foreach(L test gapii gapir printer)
     target_include_directories(${L} PRIVATE
         ${gapid2_SOURCE_DIR}
         ${gapid2_SOURCE_DIR}/handles

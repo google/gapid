@@ -26,30 +26,22 @@
 #include "command_deserializer.h"
 #include "command_printer.h"
 #include "decoder.h"
-#include "handle_runner.h"
-#include "helpers.h"
 #include "json_printer.h"
 #include "minimal_state_tracker.h"
 #include "null_caller.h"
+#include "transform.h"
 
 namespace gapid2 {
-class Printer : public gapid2::CommandDeserializer<
-                    gapid2::MinimalStateTracker<gapid2::CommandPrinter<
-                        gapid2::JsonPrinter,
-                        gapid2::NullCaller<gapid2::HandleRunner<false>>>>> {
-  using super = gapid2::CommandDeserializer<gapid2::MinimalStateTracker<
-      gapid2::CommandPrinter<gapid2::JsonPrinter,
-                             gapid2::NullCaller<gapid2::HandleRunner<false>>>>>;
-  using caller = gapid2::MinimalStateTracker<
-      gapid2::CommandPrinter<gapid2::JsonPrinter,
-                             gapid2::NullCaller<gapid2::HandleRunner<false>>>>;
+class trace_printer : public command_deserializer {
+  using super = command_deserializer;
 
+ public:
   // Custom vkEnumeratePhysicalDevices to handle the case where a vendor
   // or system may re-order physical devices based on certain
   // paramters of the application.
   // We have stored the VendorID/DeviceID in the trace just after the
   // call so look there.
-  virtual void vkEnumeratePhysicalDevices(decoder* decoder_) override {
+  virtual void call_vkEnumeratePhysicalDevices(decoder* decoder_) override {
     // -------- Args ------
     VkInstance instance;
     uint32_t tmp_pPhysicalDeviceCount[1];
@@ -73,12 +65,9 @@ class Printer : public gapid2::CommandDeserializer<
     }
 
     VkResult current_return_ = decoder_->decode<VkResult>();
-    if (pPhysicalDevices) {
-      updater_.register_handle(pPhysicalDevices, pPhysicalDeviceCount);
-    }
 
-    caller::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount,
-                                       pPhysicalDevices);
+    call_through->vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount,
+                                             pPhysicalDevices);
     if (!pPhysicalDevices) {
       return;
     }
@@ -98,18 +87,14 @@ class Printer : public gapid2::CommandDeserializer<
       (void)vendor_id;
       (void)driver_version;
     }
-
-    GAPID2_ASSERT(updater_.tbd_handles.empty(), "Unprocessed handles");
   }
 
  public:
-  Printer() {}
+  transform_base* call_through;
+  trace_printer() {}
   temporary_allocator allocator;
 };
 }  // namespace gapid2
-
-std::vector<std::string> layers{{"C:\\src\\gapid\\test3.cpp"},
-                                {"C:\\src\\gapid\\screenshot.cpp"}};
 
 const std::string version_string = "1";
 
@@ -141,15 +126,28 @@ int main(int argc, const char** argv) {
     return -1;
   }
 
-  gapid2::Printer printer;
+  gapid2::transform<gapid2::trace_printer> printer(nullptr);
+  gapid2::transform<gapid2::null_caller> null_caller(&printer);
+  gapid2::transform<gapid2::state_block> state_block_(&printer);
+  gapid2::transform<gapid2::minimal_state_tracker> minimal_state_tracker_(&printer);
+  gapid2::transform<gapid2::command_printer> command_printer(&printer);
+  printer.call_through = &minimal_state_tracker_;
+  gapid2::json_printer jp;
+  if (argc > 2) {
+    jp.set_file(argv[2]);
+  }
+
+  command_printer.printer_ = &jp;
+
   std::vector<block> b({block{static_cast<uint64_t>(fileSize.QuadPart),
                               reinterpret_cast<char*>(loc), 0}});
   gapid2::decoder dec(std::move(b));
   auto res = std::chrono::high_resolution_clock::now();
-  printer.printer->set_file(argv[2]);
-  printer.printer->begin_array("");
+
+  jp.begin_array("");
   printer.DeserializeStream(&dec);
-  printer.printer->end_array();
+  jp.end_array();
+
   auto end = std::chrono::high_resolution_clock::now();
   auto elapsed = end - res;
   auto str = "Elapsed time:: " +

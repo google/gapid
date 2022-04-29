@@ -2420,21 +2420,22 @@ class CommandCaller : public CommandProcessor {
 ''', file=fbod)
 
 
-def print_arg_ptr(cmd, param, tp, count, depth, fprint):
-    nm = f"{param.name}"
-    tp = tp.get_noncv_type()
-    idx = "[0]"
 
-    p = [x for x in cmd.args if x.name == count]
+def print_arg_ptr(cmd, param, tp, count, depth, fprint):
+    nm= f"{param.name}"
+    tp= tp.get_noncv_type()
+    idx= "[0]"
+
+    p= [x for x in cmd.args if x.name == count]
     if len(p):
         if type(p[0].type) == pointer_type:
-            count = f"*{count}"
+            count= f"*{count}"
 
     if count != "1":
         print(depth + f"printer->begin_array(\"{nm}\");", file=fprint)
         print(depth + f"for (size_t i = 0; i < {count}; ++i) {{", file=fprint)
-        idx = "[i]"
-        nm = ""
+        idx= "[i]"
+        nm= ""
         depth += "  "
     if tp.name == "void":
         print(depth + f"// Ignoring void for now", file=fprint)
@@ -2446,19 +2447,19 @@ def print_arg_ptr(cmd, param, tp, count, depth, fprint):
             print(
                 depth + f"printer->print<uint64_t>(\"{nm}\", reinterpret_cast<uintptr_t>({param.name}{idx}));", file=fprint)
     elif type(tp) == struct:
-        prms = [f"\"{nm}\"", f"updater", f"{param.name}{idx}", "printer"]
+        prms= [f"\"{nm}\"", f"updater", f"{param.name}{idx}", "printer"]
         prms.extend([x.name() for x in tp.get_serialization_params()])
         print(depth + f"print_{tp.name}({', '.join(prms)});", file=fprint)
     elif type(tp) == basetype:
-        enc_type = tp.base_type
+        enc_type= tp.base_type
         if enc_type == "size_t":
-            enc_type = "uint64_t"
+            enc_type= "uint64_t"
         print(
             depth + f"printer->print<{enc_type}>(\"{nm}\", {param.name}{idx});", file=fprint)
     elif type(tp) == platform_type:
-        enc_type = str(tp)
+        enc_type= str(tp)
         if enc_type == "size_t":
-            enc_type = "uint64_t"
+            enc_type= "uint64_t"
         print(
             depth + f"printer->print<{enc_type}>(\"{nm}\", {param.name}{idx});", file=fprint)
     elif type(tp) == union:
@@ -2472,18 +2473,18 @@ def print_arg_ptr(cmd, param, tp, count, depth, fprint):
         error(
             f'Error printing {param.name} type: {tp.name} :: type_type: {type(tp)}', file=fprint)
     if count != "1":
-        depth = depth[:-2]
+        depth= depth[:-2]
         print(depth + f"}}", file=fprint)
         print(depth + f"printer->end_array();", file=fprint)
 
 
-def output_arg_print(cmd, param, depth, fprint):
+ def output_arg_print(cmd, param, depth, fprint):
     if param.name == "pAllocator":
         return
-    tp = param.type
-    nm = f"{param.name}"
+    tp= param.type
+    nm= f"{param.name}"
     while type(tp) == const_type:
-        tp = tp.child
+        tp= tp.child
     if type(tp) == enum:
         print(
             depth + f"printer->print<{tp.base_type.name}>(\"{nm}\", {nm});", file=fprint)
@@ -2495,15 +2496,15 @@ def output_arg_print(cmd, param, depth, fprint):
             print(
                 depth + f"printer->print<uint64_t>(\"{nm}\", reinterpret_cast<uintptr_t>({nm}));", file=fprint)
     elif type(tp) == basetype:
-        enc_type = tp.base_type
+        enc_type= tp.base_type
         if enc_type == "size_t":
-            enc_type = "uint64_t"
+            enc_type= "uint64_t"
         print(
             depth + f"printer->print<{enc_type}>(\"{nm}\", {nm});", file=fprint)
     elif type(tp) == platform_type:
-        enc_type = str(tp)
+        enc_type= str(tp)
         if enc_type == "size_t":
-            enc_type = "uint64_t"
+            enc_type= "uint64_t"
         print(
             depth + f"printer->print<{enc_type}>(\"{nm}\", {nm});", file=fprint)
     elif type(tp) == pointer_type:
@@ -2515,13 +2516,13 @@ def output_arg_print(cmd, param, depth, fprint):
             return
         if param.optional:
             print(depth + f"if ({nm}) {{", file=fprint)
-            depth = depth + "  "
-        ct = "1"
+            depth= depth + "  "
+        ct= "1"
         if param.len:
-            ct = param.len
+            ct= param.len
         print_arg_ptr(cmd, param, tp.pointee, ct, depth, fprint)
         if param.optional:
-            depth = depth[:-2]
+            depth= depth[:-2]
             print(depth + f"}} else {{ ", file=fprint)
             print(depth + f"  printer->print_null(\"{nm}\");", file=fprint)
             print(depth + f"}}", file=fprint)
@@ -2563,7 +2564,7 @@ class CommandPrinter : public T {
             for x in cmd.args:
                 output_arg_print(cmd, x, "    ", fbod)
 
-            args = ", ".join(x.name for x in cmd.args)
+            args= ", ".join(x.name for x in cmd.args)
             if (cmd.ret.name != 'void'):
                 print(f"    auto ret = T::{cmd.name}({args});", file=fbod)
             else:
@@ -2581,6 +2582,7 @@ class CommandPrinter : public T {
 };
 } // namespace gapid2
 ''', file=fbod)
+]
 
 
 def output_null_caller(definition, dir, commands_to_handle=None):
