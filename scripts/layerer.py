@@ -213,6 +213,8 @@ def main(args):
                 layerer.print(f'            }}')
         layerer.print(
             '''            std::cerr << "Could not resolve handle type " << tp << std::endl;''')
+        layerer.print(
+            '''            return nullptr;''')
         layerer.print('''          });''')
 
         for cmd in definition.commands.values():
