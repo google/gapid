@@ -331,19 +331,6 @@ class StateTracker : public CreationDataTracker<T> {
                                   pDescriptorCopies);
   }
 
-  VkResult vkBeginCommandBuffer(
-      VkCommandBuffer commandBuffer,
-      const VkCommandBufferBeginInfo* pBeginInfo) override {
-    auto res = super::vkBeginCommandBuffer(commandBuffer, pBeginInfo);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
-    cb->_pre_run_functions.clear();
-    cb->_post_run_functions.clear();
-    return res;
-  }
-
   VkResult vkQueueSubmit(VkQueue queue,
                          uint32_t submitCount,
                          const VkSubmitInfo* pSubmits,

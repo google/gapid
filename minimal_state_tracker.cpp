@@ -17,6 +17,7 @@
 
 #include "minimal_state_tracker.h"
 
+#include "command_buffer.h"
 #include "descriptor_update_template.h"
 #include "device_memory.h"
 #include "struct_clone.h"
@@ -95,6 +96,50 @@ VkResult minimal_state_tracker::vkCreateDescriptorUpdateTemplate(
   }
   auto pl = state_block_->get(pDescriptorUpdateTemplate[0]);
   pl->set_create_info(state_block_, pCreateInfo);
+  return res;
+}
+
+VkResult minimal_state_tracker::vkBeginCommandBuffer(
+    VkCommandBuffer commandBuffer,
+    const VkCommandBufferBeginInfo* pBeginInfo) {
+  auto res = super::vkBeginCommandBuffer(commandBuffer, pBeginInfo);
+  if (res != VK_SUCCESS) {
+    return res;
+  }
+  auto cb = state_block_->get(commandBuffer);
+  cb->_pre_run_functions.clear();
+  cb->_post_run_functions.clear();
+  return res;
+}
+
+VkResult minimal_state_tracker::vkQueueSubmit(VkQueue queue,
+                                              uint32_t submitCount,
+                                              const VkSubmitInfo* pSubmits,
+                                              VkFence fence) {
+  for (size_t i = 0; i < submitCount; ++i) {
+    for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
+      auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
+      for (auto& pf : cb->_pre_run_functions) {
+        pf();
+      }
+    }
+  }
+
+  auto res = super::vkQueueSubmit(queue, submitCount, pSubmits, fence);
+  if (res != VK_SUCCESS) {
+    return res;
+  }
+  for (size_t i = 0; i < submitCount; ++i) {
+    for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
+      auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
+      for (auto& pf : cb->_post_run_functions) {
+        pf();
+      }
+    }
+  }
+  //if (fence) {
+  //  m_pending_write_fences[fence] = std::move(m_write_bound_device_memories);
+  //}
   return res;
 }
 

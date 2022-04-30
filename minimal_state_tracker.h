@@ -49,6 +49,13 @@ class minimal_state_tracker : public creation_tracker<VkDeviceMemory, VkDescript
 
   void vkUnmapMemory(VkDevice device, VkDeviceMemory memory) override;
 
+  VkResult vkBeginCommandBuffer(
+      VkCommandBuffer commandBuffer,
+      const VkCommandBufferBeginInfo* pBeginInfo) override;
+  VkResult vkQueueSubmit(VkQueue queue,
+                         uint32_t submitCount,
+                         const VkSubmitInfo* pSubmits,
+                         VkFence fence) override;
   VkResult vkCreateDescriptorUpdateTemplate(
       VkDevice device,
       const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
