@@ -33,6 +33,7 @@ class spy : public command_serializer {
  public:
   using super = command_serializer;
   spy() : out_file("file.trace", std::ios::out | std::ios::binary) {
+    encoder_tls_key = TlsAlloc();
   }
 
   VkResult vkMapMemory(VkDevice device,
