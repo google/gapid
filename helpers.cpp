@@ -279,6 +279,17 @@ void _VkPipelineCacheCreateInfo_pInitialData_clone(
          src.initialDataSize);
 }
 
+void _VkMemoryAllocateInfo_VkImportMemoryHostPointerInfoEXT_pHostPointer_clone(const VkMemoryAllocateInfo& self, const VkImportMemoryHostPointerInfoEXT& _src, VkImportMemoryHostPointerInfoEXT& _dst, temporary_allocator* _mem) {
+  _dst.pHostPointer = _src.pHostPointer;
+}
+
+void _VkMemoryAllocateInfo_VkImportMemoryHostPointerInfoEXT_pHostPointer_serialize(const VkMemoryAllocateInfo& self, const VkImportMemoryHostPointerInfoEXT& _self, encoder* _enc) {
+  GAPID2_ERROR("Unimplemented: _VkMemoryAllocateInfo_VkImportMemoryHostPointerInfoEXT_pHostPointer_serialize");
+}
+void _VkMemoryAllocateInfo_VkImportMemoryHostPointerInfoEXT_pHostPointer_deserialize(const VkMemoryAllocateInfo& self, VkImportMemoryHostPointerInfoEXT& _self, decoder* _dec) {
+  GAPID2_ERROR("Unimplemented: _VkMemoryAllocateInfo_VkImportMemoryHostPointerInfoEXT_pHostPointer_deserialize");
+}
+
 void _VkComputePipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_pData_clone(
     const VkComputePipelineCreateInfo& self,
     const VkPipelineShaderStageCreateInfo& _self,

@@ -117,7 +117,12 @@ def output_member_fix_handles(x, struct_name, memberid, idx, vop, fix_handles):
         elif x.optional:
             fix_handles.leave_scope(f"}}")
     elif type(tp) == vulkan.handle:
+        if x.noautovalidity:
+            fix_handles.enter_scope(
+                f"if (_{struct_name}_{x.name}_valid(val)) {{")
         fix_handles.print(f"fix->fix_handle(&{vop}{x.name}{idx});")
+        if x.noautovalidity:
+            fix_handles.leave_scope("}")
     elif type(tp) == vulkan.array_type:
         ii = fix_handles.get_depth()
         fix_handles.enter_scope(
@@ -135,7 +140,7 @@ def output_struct_fix_handles(x, fix_handles):
 
     serialize_params = [f"const {x.name}& val", "handle_fixer* fix"]
     serialize_params.extend([y.function()
-                            for y in x.get_serialization_params()])
+                            for y in x.get_serialization_params(vulkan.FIX_HANDLES)])
     fix_handles.enter_scope(
         f"inline void fix_handles_{x.name}(state_block* state_block_, {', '.join(serialize_params)}) {{")
 

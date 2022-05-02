@@ -40,6 +40,7 @@ struct range_data {
   char* dst_ptr;
   VkDeviceSize mapped_size;
   VkDeviceMemory mem;
+  bool fast = false;
 };
 class memory_tracker {
  public:
@@ -79,11 +80,13 @@ class memory_tracker {
       VirtualProtect(base_addr, 4096, PAGE_READWRITE, &old_protect);
       // Copy from the GPU range to the Host range before writes can take place
       // in case a GPU write has happend in the mean-time.
-      const uintptr_t offs = base_addr - rng.dst_ptr;
-      memcpy(base_addr, rng.src_ptr + offs, 4096);
-      GAPID2_ASSERT(
-          PAGE_READONLY == old_protect || PAGE_READWRITE == old_protect,
-          "Unhandled : memory with both read and write in one page");
+      if (!rng.fast) {
+        const uintptr_t offs = base_addr - rng.dst_ptr;
+        memcpy(base_addr, rng.src_ptr + offs, 4096);
+        GAPID2_ASSERT(
+            PAGE_READONLY == old_protect || PAGE_READWRITE == old_protect,
+            "Unhandled : memory with both read and write in one page");
+      }
     }
     return true;
   }
@@ -91,13 +94,15 @@ class memory_tracker {
   void* AddTrackedRange(VkDeviceMemory mem,
                         void* mapped_loc,
                         VkDeviceSize mapped_offset,
-                        VkDeviceSize mapped_size) {
+                        VkDeviceSize mapped_size, void* fast_host = nullptr) {
     std::unique_lock<std::mutex> l(mut);
     // Don't use write-watch for this.
     mapped_size = (mapped_size + 4095) & ~4095;
-    void* ptr = VirtualAlloc(nullptr, mapped_size, MEM_COMMIT | MEM_RESERVE,
-                             PAGE_READWRITE);
-    memcpy(ptr, mapped_loc, mapped_size);
+    void* ptr = fast_host ? fast_host : VirtualAlloc(nullptr, mapped_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!fast_host) {
+      memcpy(ptr, mapped_loc, mapped_size);
+    }
+
     uintptr_t mapped_pages = mapped_size >> 12;
     DWORD dp = 0;
     auto prot = VirtualProtect(ptr, mapped_size, PAGE_READONLY, &dp);
@@ -108,6 +113,7 @@ class memory_tracker {
     it.first->second.dst_ptr = reinterpret_cast<char*>(ptr);
     it.first->second.mapped_size = mapped_size;
     it.first->second.mem = mem;
+    it.first->second.fast = fast_host;
     total_pages += mapped_pages;
     src_ranges[mem] = &it.first->second;
     return ptr;
@@ -117,8 +123,11 @@ class memory_tracker {
   void RemoveTrackedRange(VkDeviceMemory mem) {
     std::unique_lock<std::mutex> l(mut);
     auto sr = src_ranges[mem];
-    VirtualProtect(sr->dst_ptr, sr->mapped_size, PAGE_READWRITE, nullptr);
-    memcpy(sr->src_ptr, sr->dst_ptr, sr->mapped_size);
+    if (!sr->fast) {
+      VirtualProtect(sr->dst_ptr, sr->mapped_size, PAGE_READWRITE, nullptr);
+      memcpy(sr->src_ptr, sr->dst_ptr, sr->mapped_size);
+    }
+
     ranges.erase(sr->dst_ptr);
     src_ranges.erase(mem);
   }
@@ -139,28 +148,53 @@ class memory_tracker {
     if (gp == dirty_read_pages.end()) {
       gp = dirty_read_pages.begin();
     }
+
     // This means we got a read for something BEFORE our memory allocation.
     if (*gp < rd->dst_ptr) {
       return;
     }
+    auto start_page = *gp;
+    auto end_page = static_cast<char*>(nullptr);
+    auto process = [&start_page, &end_page, rd, &fn]() {
+      if (!end_page) {
+        return;
+      }
+      auto len = (end_page - start_page) + 4096;
+      uintptr_t offs = (start_page - rd->dst_ptr);
+      if (!rd->fast) {
+        memcpy(rd->src_ptr + offs, start_page, len);
+      }
+      DWORD old_protect;
+      VirtualProtect(start_page, len, PAGE_READONLY, &old_protect);
+      GAPID2_ASSERT(old_protect == PAGE_READWRITE, "Unexpected memory flags");
+      fn(rd->src_ptr + offs, len);
+    };
     while (gp != dirty_read_pages.end()) {
       if (*gp > end_ptr) {
         break;
       }
-
-      uintptr_t offs = (*gp - rd->dst_ptr);
-      memcpy(rd->src_ptr + offs, *gp, 4096);
-      DWORD old_protect;
-      VirtualProtect(*gp, 4096, PAGE_READONLY, &old_protect);
-      GAPID2_ASSERT(old_protect == PAGE_READWRITE, "Unexpected memory flags");
+      if (end_page == nullptr) {
+        end_page = *gp;
+      } else {
+        if (*gp != end_page + 4096) {
+          process();
+          end_page = nullptr;
+          start_page = *gp;
+          continue;
+        }
+      }
+      end_page = *gp;
       gp = dirty_read_pages.erase(gp);
-      fn(rd->src_ptr + offs, 4096);
     }
+    process();
   }
 
   void AddGPUWrite(VkDeviceMemory mem, VkDeviceSize offset, VkDeviceSize size) {
     std::unique_lock<std::mutex> l(mut);
     auto& rng = src_ranges[mem];
+    if (rng->fast) {
+      return;
+    }
     auto begin_range = reinterpret_cast<char*>(
         reinterpret_cast<uintptr_t>(rng->src_ptr + offset) >> 12);
     auto end_range = reinterpret_cast<char*>(
@@ -176,6 +210,9 @@ class memory_tracker {
                              VkDeviceSize size) {
     std::unique_lock<std::mutex> l(mut);
     auto& rng = src_ranges[mem];
+    if (rng->fast) {
+      return;
+    }
     memcpy(rng->dst_ptr + offset, rng->src_ptr + offset, size);
   }
 

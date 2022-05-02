@@ -68,11 +68,11 @@ struct encoder {
   }
 
   void reset() {
-    data_offset = 0;
-    current_ = &data_[data_offset];
-    for (size_t i = 0; i < data_.size(); ++i) {
+    for (size_t i = 0; i <= data_offset; ++i) {
       data_[i].left = data_[i].size;
     }
+    data_offset = 0;
+    current_ = &data_[data_offset];
   }
 
   std::vector<block> data_;

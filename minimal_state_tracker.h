@@ -23,7 +23,7 @@
 #include "temporary_allocator.h"
 
 namespace gapid2 {
-class minimal_state_tracker : public creation_tracker<VkDeviceMemory, VkDescriptorUpdateTemplate> {
+class minimal_state_tracker : public creation_tracker<VkDeviceMemory, VkDescriptorUpdateTemplate, VkCommandBuffer> {
  protected:
   using super = creation_tracker;
 

@@ -26,7 +26,8 @@ void base_caller::on_instance_created(const VkInstanceCreateInfo* create_info, V
   }
   instance_lock_.lock();
   for (uint32_t i = 0; i < count; ++i) {
-    instance_functions_.insert(std::make_pair(val[i], std::make_unique<instance_functions>(val[i], vkGetInstanceProcAddr_)));
+    auto it = instance_functions_.insert(std::make_pair(val[i], std::make_unique<instance_functions>(val[i], vkGetInstanceProcAddr_)));
+    it.first->second->vkGetInstanceProcAddr_ = vkGetInstanceProcAddr_;
   }
   instance_lock_.unlock();
 }

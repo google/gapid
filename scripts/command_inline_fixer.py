@@ -145,6 +145,7 @@ def fix(cmd, defintion, g):
     if has_return:
         g.print("// Sanity check")
         g.print("fix_.ensure_clean();")
+    g.print("fix_.undo_handles();")
     if cmd.ret.name != "void":
         g.print(f'return ret;')
 

@@ -243,7 +243,7 @@ configure_file(
 )
 
 
-set(HANDLE_TYPES
+add_library(HANDLE_TYPES STATIC
     handles/buffer_view.cpp
     handles/buffer_view.h
     handles/buffer.cpp
@@ -304,12 +304,11 @@ set(HANDLE_TYPES
     handles/swapchain.h
 )
 
-set(BASE_FILES 
+add_library(BASE_FILES STATIC
     base_caller.cpp
     helpers.cpp
     minimal_state_tracker.cpp
     state_block.cpp
-    ${HANDLE_TYPES}
     ${gapid2_BINARY_DIR}/forwards.h
     ${gapid2_BINARY_DIR}/struct_clone.h
     ${gapid2_BINARY_DIR}/device_functions.h
@@ -327,52 +326,53 @@ set(BASE_FILES
     ${gapid2_BINARY_DIR}/command_buffer_deserializer.h
     ${gapid2_BINARY_DIR}/command_serializer.h
     ${gapid2_BINARY_DIR}/command_serializer.cpp
-    ${gapid2_BINARY_DIR}/command_inline_fixer.h
-    ${gapid2_BINARY_DIR}/command_inline_fixer.cpp
     ${gapid2_BINARY_DIR}/command_deserializer.h
     ${gapid2_BINARY_DIR}/null_caller.h
 )
 
-set(LAYER_FILES 
+add_library(LAYER_FILES STATIC
     layer_setup.cpp
-    layer.def
     ${gapid2_BINARY_DIR}/call_forwards.h
     ${gapid2_BINARY_DIR}/call_forwards.cpp
 )
 
 add_library(test SHARED
     passthrough_layer.cpp
-    ${BASE_FILES}
-    ${LAYER_FILES}
+    layer.def
 )
 
+target_link_libraries(test BASE_FILES HANDLE_TYPES LAYER_FILES)
+
 add_library(gapii SHARED
-    ${BASE_FILES}
-    ${LAYER_FILES}
     spy.h
     spy.cpp
     gapii.cpp
     memory_tracker.h
     memory_tracker.cpp
+    layer.def
 )
 
+target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES)
+
 add_executable(gapir
-    ${BASE_FILES}
     replayer.cpp
     ${gapid2_BINARY_DIR}/handle_replacer.h
     ${gapid2_BINARY_DIR}/handle_replacer.cpp
+    ${gapid2_BINARY_DIR}/command_inline_fixer.h
+    ${gapid2_BINARY_DIR}/command_inline_fixer.cpp
     ${gapid2_BINARY_DIR}/fix_handles.h
 )
+target_link_libraries(gapir BASE_FILES HANDLE_TYPES)
 
 
 add_executable(printer
-    ${BASE_FILES}
     printer.cpp
     ${gapid2_BINARY_DIR}/struct_print.h
     ${gapid2_BINARY_DIR}/command_printer.h
 )
+target_link_libraries(printer BASE_FILES HANDLE_TYPES)
 
-foreach(L test gapii gapir printer)
+foreach(L test gapii gapir printer BASE_FILES HANDLE_TYPES LAYER_FILES)
     target_include_directories(${L} PRIVATE
         ${gapid2_SOURCE_DIR}
         ${gapid2_SOURCE_DIR}/handles

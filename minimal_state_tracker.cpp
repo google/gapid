@@ -116,8 +116,10 @@ VkResult minimal_state_tracker::vkQueueSubmit(VkQueue queue,
                                               uint32_t submitCount,
                                               const VkSubmitInfo* pSubmits,
                                               VkFence fence) {
+  std::vector<VkCommandBuffer> cbs;
   for (size_t i = 0; i < submitCount; ++i) {
     for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
+      cbs.push_back(pSubmits[i].pCommandBuffers[j]);
       auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
       for (auto& pf : cb->_pre_run_functions) {
         pf();
@@ -131,15 +133,14 @@ VkResult minimal_state_tracker::vkQueueSubmit(VkQueue queue,
   }
   for (size_t i = 0; i < submitCount; ++i) {
     for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
+      cbs.push_back(pSubmits[i].pCommandBuffers[j]);
       auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
       for (auto& pf : cb->_post_run_functions) {
         pf();
       }
     }
   }
-  //if (fence) {
-  //  m_pending_write_fences[fence] = std::move(m_write_bound_device_memories);
-  //}
+
   return res;
 }
 

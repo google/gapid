@@ -25,7 +25,7 @@
 namespace gapid2 {
 void VkDeviceMemoryWrapper::set_allocate_info(state_block* state_block_, const VkMemoryAllocateInfo* pAllocateInfo) {
   allocate_info = mem.get_typed_memory<VkMemoryAllocateInfo>(1);
-  clone(state_block_, pAllocateInfo[0], allocate_info[0], &mem);
+  clone(state_block_, pAllocateInfo[0], allocate_info[0], &mem, _VkMemoryAllocateInfo_VkImportMemoryHostPointerInfoEXT_pHostPointer_clone);
   _size = pAllocateInfo->allocationSize;
 }
 }  // namespace gapid2

@@ -23,26 +23,264 @@
 
 namespace gapid2 {
 
+void* spy::get_allocation(size_t i) {
+  i = (i + 4095) & ~4096;
+  void* v = VirtualAlloc(nullptr, i, MEM_RESERVE | MEM_COMMIT | MEM_WRITE_WATCH, PAGE_READWRITE);
+  return v;
+}
+void spy::foreach_write(void*) {
+}
+
+VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
+  std::vector<const char*> exts(pCreateInfo->enabledExtensionCount);
+
+  bool found = false;
+  for (size_t i = 0; i < exts.size(); ++i) {
+    exts[i] = pCreateInfo->ppEnabledExtensionNames[i];
+    if (!strcmp(exts[i], "VK_EXT_external_memory_host")) {
+      has_external_memory_host = true;
+    }
+  }
+  VkDeviceCreateInfo nci;
+  const VkDeviceCreateInfo* ci = pCreateInfo;
+  if (!has_external_memory_host) {
+    do {
+      uint32_t property_count;
+      if (VK_SUCCESS != transform_base::vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &property_count, nullptr)) {
+        break;
+      }
+      std::vector<VkExtensionProperties> props(property_count);
+      if (VK_SUCCESS != transform_base::vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &property_count, props.data())) {
+        break;
+      }
+
+      for (auto& i : props) {
+        if (!strcmp(i.extensionName, "VK_EXT_external_memory_host")) {
+          exts.push_back("VK_EXT_external_memory_host");
+          nci = *pCreateInfo;
+          nci.enabledExtensionCount += 1;
+          nci.ppEnabledExtensionNames = exts.data();
+          ci = &nci;
+          has_external_memory_host = true;
+          break;
+        }
+      }
+    } while (false);
+  }
+
+  if (!has_external_memory_host) {
+    OutputDebugStringA("Cannot use VK_EXT_external_memory_host so memory tracking will be less efficient");
+  } else {
+    OutputDebugStringA("Using VK_EXT_external_memory_host. This will cause slight inaccuracies, but increase performance");
+  }
+  VkResult ret;
+
+  if (ci != pCreateInfo) {
+    ret = transform_base::vkCreateDevice(physicalDevice, ci, pAllocator, pDevice);
+    noop_serializer.vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
+  } else {
+    ret = super::vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
+  }
+
+  if (has_external_memory_host) {
+    /* HANDLE h = CreateFileMappingA(
+        INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, 4096, nullptr);
+    GAPID2_ASSERT(h != 0, "Invalid file mapping, how did this happen");
+    void* v = MapViewOfFile(h, FILE_MAP_ALL_ACCESS, 0, 0, 4096);
+    void* v2 = MapViewOfFile(h, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 4096);
+    ((char*)(v))[0] = 1;
+    GAPID2_ASSERT(((char*)(v2))[0] == 1, "Weird memory map behavior");
+    VirtualProtect(v, 4096, PAGE_READONLY, nullptr);
+    */
+    auto t = get_allocation(4096);
+
+    VkMemoryHostPointerPropertiesEXT host_pointer_properties;
+    // Try to allocate a host pointer the same way we would in the memory tracker.
+    auto ret = transform_base::vkGetMemoryHostPointerPropertiesEXT(pDevice[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT, t, &host_pointer_properties);
+    VirtualFree(t, 0, MEM_RELEASE);
+
+    if (ret != VK_SUCCESS) {
+      GAPID2_ERROR("Could not determine pointer properties");
+    }
+    VkPhysicalDeviceMemoryProperties dev_mem_props;
+    transform_base::vkGetPhysicalDeviceMemoryProperties(physicalDevice, &dev_mem_props);
+
+    uint32_t memory_type = 0;
+    uint32_t memory_type_bits = host_pointer_properties.memoryTypeBits;
+    bool has_host_coherent = false;
+    bool has_host_visible = false;
+    uint32_t valid_memory = 0;
+    while (memory_type_bits) {
+      // If this is host_visible memory then make sure we can acutally use a host pointer for it
+      if (memory_type_bits & 0x1) {
+        bool hc = (dev_mem_props.memoryTypes[memory_type].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+        bool hv = (dev_mem_props.memoryTypes[memory_type].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
+        bool hcc = (dev_mem_props.memoryTypes[memory_type].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) != 0;
+        has_host_coherent |= hc;
+        has_host_visible |= hv;
+        // Remove all non host_cached memory for efficiency;
+        valid_memory |= ((hc | hv) & !hcc) << memory_type;
+      } else {
+        // If this is NOT host_visible memory then we are good
+        if (!(dev_mem_props.memoryTypes[memory_type].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+          valid_memory |= 1 << memory_type;
+        }
+      }
+      ++memory_type;
+      memory_type_bits >>= 1;
+    }
+    if (!has_host_coherent) {
+      OutputDebugStringA("Not VK_EXT_external_memory_host in the end, could not find requisite HOST_COHERENT heap");
+    } else {
+      std::unique_lock<std::shared_mutex>(dev_info_mutex);
+      dev_infos.insert(
+          std::make_pair(
+              pDevice[0], dev_info{
+                              .valid_memory_types = valid_memory,
+                              .dev_mem_props = dev_mem_props}));
+    }
+  }
+  return ret;
+}
+
+void spy::vkGetImageMemoryRequirements(VkDevice device, VkImage image, VkMemoryRequirements* pMemoryRequirements) {
+  super::vkGetImageMemoryRequirements(device, image, pMemoryRequirements);
+  std::shared_lock<std::shared_mutex> l(dev_info_mutex);
+  auto it = dev_infos.find(device);
+  if (it != dev_infos.end()) {
+    pMemoryRequirements->memoryTypeBits &= it->second.valid_memory_types;
+  }
+  GAPID2_ASSERT(pMemoryRequirements->memoryTypeBits != 0, "No valid place to put this now :|");
+}
+
+void spy::vkGetBufferMemoryRequirements(VkDevice device, VkBuffer buffer, VkMemoryRequirements* pMemoryRequirements) {
+  super::vkGetBufferMemoryRequirements(device, buffer, pMemoryRequirements);
+  std::shared_lock<std::shared_mutex> l(dev_info_mutex);
+  auto it = dev_infos.find(device);
+  if (it != dev_infos.end()) {
+    pMemoryRequirements->memoryTypeBits &= it->second.valid_memory_types;
+  }
+  GAPID2_ASSERT(pMemoryRequirements->memoryTypeBits != 0, "No valid place to put this now :|");
+}
+
+void spy::vkGetImageMemoryRequirements2(VkDevice device, const VkImageMemoryRequirementsInfo2* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
+  super::vkGetImageMemoryRequirements2(device, pInfo, pMemoryRequirements);
+  std::shared_lock<std::shared_mutex> l(dev_info_mutex);
+  auto it = dev_infos.find(device);
+  if (it != dev_infos.end()) {
+    pMemoryRequirements->memoryRequirements.memoryTypeBits &= it->second.valid_memory_types;
+  }
+  GAPID2_ASSERT(pMemoryRequirements->memoryRequirements.memoryTypeBits != 0, "No valid place to put this now :|");
+}
+
+void spy::vkGetBufferMemoryRequirements2(VkDevice device, const VkBufferMemoryRequirementsInfo2* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
+  super::vkGetBufferMemoryRequirements2(device, pInfo, pMemoryRequirements);
+  std::shared_lock<std::shared_mutex> l(dev_info_mutex);
+  auto it = dev_infos.find(device);
+  if (it != dev_infos.end()) {
+    pMemoryRequirements->memoryRequirements.memoryTypeBits &= it->second.valid_memory_types;
+  }
+  GAPID2_ASSERT(pMemoryRequirements->memoryRequirements.memoryTypeBits != 0, "No valid place to put this now :|");
+}
+
+VkResult spy::vkAllocateMemory(VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo, const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
+  bool special = false;
+  std::shared_lock<std::shared_mutex>(dev_info_mutex);
+  auto it = dev_infos.find(device);
+  if (it != dev_infos.end()) {
+    GAPID2_ASSERT((it->second.valid_memory_types & (1 << pAllocateInfo->memoryTypeIndex)),
+                  "Application is allocating a piece of memory that can never be used");
+    if (it->second.dev_mem_props.memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      special = true;
+    }
+  }
+
+  if (!special) {
+    return super::vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
+  }
+
+  auto allocationSize = (pAllocateInfo->allocationSize + 4095) & ~4095;
+
+  //// Insert fake call here instead of real call.
+  // HANDLE h = CreateFileMappingA(
+  //     INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, allocationSize, nullptr);
+  // GAPID2_ASSERT(h != 0, "Invalid file mapping, how did this happen");
+  //
+  // void* v = MapViewOfFile(h, FILE_MAP_ALL_ACCESS, 0, 0, allocationSize);
+  // void* v2 = MapViewOfFile(h, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, allocationSize);
+  void* t = get_allocation(allocationSize);
+  VkImportMemoryHostPointerInfoEXT import{
+      VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT,
+      pAllocateInfo->pNext,
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT,
+      t};
+
+  VkMemoryAllocateInfo inf = *pAllocateInfo;
+  inf.pNext = &import;
+  inf.allocationSize = allocationSize;
+
+  auto ret = transform_base::vkAllocateMemory(device, &inf, pAllocator, pMemory);
+  noop_serializer.vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
+  if (ret == VK_SUCCESS) {
+    std::unique_lock<std::shared_mutex> l(memory_alloc_info_mutex);
+    memory_infos.insert(std::make_pair(pMemory[0], memory_info{
+                                                       .v1 = t,
+                                                       .size = allocationSize,
+                                                       .dirty_page_cache = std::vector<void*>(allocationSize / 4096)}));
+  }
+  return ret;
+}
+
 VkResult spy::vkMapMemory(VkDevice device,
                           VkDeviceMemory memory,
                           VkDeviceSize offset,
                           VkDeviceSize size,
                           VkMemoryMapFlags flags,
                           void** ppData) {
-  auto res = super::vkMapMemory(device, memory, offset, size, flags, ppData);
-  if (res != VK_SUCCESS) {
+  memory_info mi;
+  bool special = false;
+  {
+    std::shared_lock<std::shared_mutex> l(memory_alloc_info_mutex);
+    auto it = memory_infos.find(memory);
+    if (it != memory_infos.end()) {
+      special = true;
+      mi = it->second;
+    }
+  }
+
+  if (special) {
+    noop_serializer.vkMapMemory(device, memory, offset, size, flags, ppData);
+
+    // Take over the memory mapping :D
+    ppData[0] = reinterpret_cast<char*>(mi.v1) + offset;
+
+    std::unique_lock<std::mutex> l(memory_mutex);
+    auto new_mem = state_block_->get(memory);
+    new_mem->_mapped_location = reinterpret_cast<char*>(ppData[0]);
+    if (size == VK_WHOLE_SIZE) {
+      size = new_mem->_size - offset;
+    }
+    // tracker.AddTrackedRange(memory, reinterpret_cast<char*>(mi.v1) + offset, offset, size, reinterpret_cast<char*>(mi.v2) + offset);
+    if (new_mem->_is_coherent) {
+      mapped_coherent_memories.insert(memory);
+    }
+    return VK_SUCCESS;
+  } else {
+    auto res = super::vkMapMemory(device, memory, offset, size, flags, ppData);
+    if (res != VK_SUCCESS) {
+      return res;
+    }
+    auto new_mem = state_block_->get(memory);
+    if (size == VK_WHOLE_SIZE) {
+      size = new_mem->_size - offset;
+    }
+    ppData[0] = tracker.AddTrackedRange(memory, ppData[0], offset, size);
+    std::unique_lock<std::mutex> l(memory_mutex);
+    if (new_mem->_is_coherent) {
+      mapped_coherent_memories.insert(memory);
+    }
     return res;
   }
-  auto new_mem = state_block_->get(memory);
-  if (size == VK_WHOLE_SIZE) {
-    size = new_mem->_size - offset;
-  }
-  ppData[0] = tracker.AddTrackedRange(memory, ppData[0], offset, size);
-  std::unique_lock<std::mutex> l(memory_mutex);
-  if (new_mem->_is_coherent) {
-    mapped_coherent_memories.insert(memory);
-  }
-  return res;
 }
 
 VkResult spy::vkEnumeratePhysicalDevices(
@@ -78,6 +316,11 @@ void spy::vkUnmapMemory(VkDevice device, VkDeviceMemory memory) {
 void spy::vkFreeMemory(VkDevice device,
                        VkDeviceMemory memory,
                        const VkAllocationCallbacks* pAllocator) {
+  {
+    std::unique_lock<std::shared_mutex> l(memory_alloc_info_mutex);
+    memory_infos.erase(memory);
+  }
+
   auto new_mem = state_block_->get(memory);
   if (new_mem->_mapped_location) {
     tracker.RemoveTrackedRange(memory);
@@ -98,6 +341,7 @@ VkResult spy::vkFlushMappedMemoryRanges(
     auto new_mem = state_block_->get(mr.memory);
     tracker.for_dirty_in_mem(mr.memory, [this, mr, new_mem](
                                             void* ptr, VkDeviceSize size) {
+      FlushViewOfFile(ptr, size);
       auto enc = get_encoder(0);
       auto offset = reinterpret_cast<char*>(ptr) - new_mem->_mapped_location;
       enc->encode<uint64_t>(0);
@@ -138,20 +382,30 @@ VkResult spy::vkQueueSubmit(VkQueue queue,
       auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
       cb->_pre_run_functions.push_back([this]() {
         std::unique_lock<std::mutex> l(memory_mutex);
+        std::shared_lock<std::shared_mutex> l2(memory_alloc_info_mutex);
         for (auto m : mapped_coherent_memories) {
           auto new_mem = state_block_->get(m);
+          auto& nn = memory_infos[m];
+          ULONG_PTR l = nn.dirty_page_cache.size();
+          DWORD ps = 0;
+          GetWriteWatch(WRITE_WATCH_FLAG_RESET, nn.v1, nn.size, nn.dirty_page_cache.data(), &l, &ps);
+          for (size_t i = 0; i < l; ++i) {
+            auto enc = get_encoder(0);
+            auto offset =
+                reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
+            enc->encode<uint64_t>(0);
+            enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(m));
+            enc->encode<uint64_t>(offset);
+            enc->encode<uint64_t>(4096);
+            enc->encode_primitive_array<char>(
+                reinterpret_cast<const char*>(nn.dirty_page_cache[i]), 4096);
+          }
+          /*
           tracker.for_dirty_in_mem(
               m, [this, m, new_mem](void* ptr, VkDeviceSize size) {
-                auto enc = get_encoder(0);
-                auto offset =
-                    reinterpret_cast<char*>(ptr) - new_mem->_mapped_location;
-                enc->encode<uint64_t>(0);
-                enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(m));
-                enc->encode<uint64_t>(offset);
-                enc->encode<uint64_t>(size);
-                enc->encode_primitive_array<char>(
-                    reinterpret_cast<const char*>(ptr), size);
-              });
+                FlushViewOfFile(ptr, size);
+
+              });*/
         }
       });
     }
@@ -169,14 +423,14 @@ VkResult spy::vkDeviceWaitIdle(VkDevice device) {
   if (res == VK_SUCCESS) {
     return res;
   }
-  //for (auto x : m_pending_write_fences) {
-  //  for (auto d : x.second) {
-  //    auto device_mem = state_block_->get(d);
-  //    if (device_mem->_mapped_location && device_mem->_is_coherent) {
-  //      tracker.AddGPUWrite(d, 0, device_mem->_mapped_size);
-  //    }
-  //  }
-  //}
+  // for (auto x : m_pending_write_fences) {
+  //   for (auto d : x.second) {
+  //     auto device_mem = state_block_->get(d);
+  //     if (device_mem->_mapped_location && device_mem->_is_coherent) {
+  //       tracker.AddGPUWrite(d, 0, device_mem->_mapped_size);
+  //     }
+  //   }
+  // }
   return res;
 }
 
@@ -198,17 +452,17 @@ VkResult spy::vkWaitForFences(VkDevice device,
     // Bypass serializing the call to GPDP
     if (transform_base::vkGetFenceStatus(device, pFences[i]) == VK_SUCCESS) {
       enc->encode<char>(1);
-      //auto it = m_pending_write_fences.find(pFences[i]);
-      //if (it == m_pending_write_fences.end()) {
-      //  continue;
-      //}
-      //for (auto d : it->second) {
-      //  auto device_mem = state_block_->get(d);
-      //  if (device_mem->_mapped_location && device_mem->_is_coherent) {
-      //    tracker.AddGPUWrite(d, 0, device_mem->_mapped_size);
-      //  }
-      //}
-      //m_pending_write_fences.erase(it);
+      // auto it = m_pending_write_fences.find(pFences[i]);
+      // if (it == m_pending_write_fences.end()) {
+      //   continue;
+      // }
+      // for (auto d : it->second) {
+      //   auto device_mem = state_block_->get(d);
+      //   if (device_mem->_mapped_location && device_mem->_is_coherent) {
+      //     tracker.AddGPUWrite(d, 0, device_mem->_mapped_size);
+      //   }
+      // }
+      // m_pending_write_fences.erase(it);
     } else {
       enc->encode<char>(0);
     }
@@ -216,15 +470,17 @@ VkResult spy::vkWaitForFences(VkDevice device,
   return res;
 }
 
-encoder_handle spy::get_encoder(uintptr_t) {
+encoder_handle spy::get_encoder(uintptr_t ptr) {
   encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
   if (!enc) {
     enc = new encoder();
     TlsSetValue(encoder_tls_key, enc);
   }
+  if (!ptr) {
+    enc = new encoder();
+  }
 
-  
-  return encoder_handle(enc, [this, enc]() {
+  return encoder_handle(enc, [this, enc, ptr]() {
     call_mutex.lock();
     uint64_t data_size = 0;
     for (size_t i = 0; i <= enc->data_offset; ++i) {
@@ -237,10 +493,12 @@ encoder_handle spy::get_encoder(uintptr_t) {
     for (size_t i = 0; i <= enc->data_offset; ++i) {
       out_file.write(enc->data_[i].data,
                      enc->data_[i].size - enc->data_[i].left);
-      enc->data_[i].left = enc->data_[i].size;
     }
-    enc->data_offset = 0;
+    enc->reset();
     call_mutex.unlock();
+    if (!ptr) {
+      delete enc;
+    }
   });
 }
 
@@ -264,9 +522,8 @@ encoder_handle spy::get_locked_encoder(uintptr_t) {
     for (size_t i = 0; i <= enc->data_offset; ++i) {
       out_file.write(enc->data_[i].data,
                      enc->data_[i].size - enc->data_[i].left);
-      enc->data_[i].left = enc->data_[i].size;
     }
-    enc->data_offset = 0;
+    enc->reset();
     call_mutex.unlock();
   });
 }

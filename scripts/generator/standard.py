@@ -53,7 +53,12 @@ def exts(plat):
         "VK_EXT_scalar_block_layout",
         "VK_AMD_shader_core_properties",
         "VK_EXT_sample_locations",
-        "VK_NV_shader_sm_builtins"
+        "VK_NV_shader_sm_builtins",
+
+        #Helpers
+        "VK_KHR_external_memory_capabilities",
+        "VK_KHR_external_memory",
+        "VK_EXT_external_memory_host"
     ]
     if plat.system() == "Windows":
         e.extend(

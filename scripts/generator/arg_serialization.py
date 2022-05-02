@@ -312,7 +312,8 @@ def output_command(cmd, definition, g, only_return=False, optional_serialize=Fal
     # Special case. Anything that can unblock the CPU we have to actually cause
     # block around call. Otherwise the returns might encode out of order
     # which means we deadlock on replay.
-    if (cmd.name == "vkWaitSemaphoresKHR" or cmd.name == "vkWaitSemaphores"):
+    if (cmd.name == "vkWaitSemaphoresKHR" or cmd.name == "vkWaitSemaphores" or cmd.name == "vkUpdateDescriptorSets"):
+
         g.print(
             f"auto enc = get_encoder(reinterpret_cast<uintptr_t>({cmd.args[0].name}));")
     else:

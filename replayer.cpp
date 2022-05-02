@@ -231,6 +231,9 @@ class replayer : public command_deserializer {
     if (dummy_runner) {
       return nullptr;
     }
+    if (!memory) {
+      return nullptr;
+    }
     auto mem = state_block_->get(memory);
     auto retval = mem->_mapped_location;
     GAPID2_ASSERT(retval != nullptr, "Expected memory to be mapped");

@@ -27,10 +27,10 @@ class gapii : public layer_base {
  public:
   gapii() : transform_base_(nullptr) {
     layer_base::initialize(&transform_base_);
-    //layerer_ = std::make_unique<gapid2::transform<gapid2::layerer>>(&transform_base_);
-    //layerer_->initializeLayers(gapid2::get_layers());
-    creation_tracker_ = std::make_unique<gapid2::transform<creation_tracker<VkCommandBuffer>>>(&transform_base_);
+    // layerer_ = std::make_unique<gapid2::transform<gapid2::layerer>>(&transform_base_);
+    // layerer_->initializeLayers(gapid2::get_layers());
     spy_ = std::make_unique<gapid2::transform<gapid2::spy>>(&transform_base_);
+    spy_->initialize();
   }
 
   gapid2::transform_base* get_top_level_functions() override {
@@ -39,7 +39,6 @@ class gapii : public layer_base {
 
  private:
   std::unique_ptr<gapid2::transform<gapid2::spy>> spy_;
-  std::unique_ptr<gapid2::transform<gapid2::creation_tracker<VkCommandBuffer>>> creation_tracker_;
   gapid2::transform<gapid2::transform_base> transform_base_;
 };
 }  // namespace gapid2

@@ -225,6 +225,17 @@ inline void _custom_serialize_vkMapMemory_ppData(state_block*,
       static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ppData[0])));
 }
 
+inline void _custom_serialize_vkGetMemoryHostPointerPropertiesEXT_pHostPointer(
+  state_block* state_block_, VkDevice device, VkExternalMemoryHandleTypeFlagBits handleType, const void* pHostPointer, VkMemoryHostPointerPropertiesEXT* pMemoryHostPointerProperties, encoder* enc) {
+  GAPID2_ERROR("Unimplemented: _custom_serialize_vkGetMemoryHostPointerPropertiesEXT_pHostPointer");
+}
+
+inline void _custom_deserialize_vkGetMemoryHostPointerPropertiesEXT_pHostPointer(
+    state_block* state_block_, VkDevice device, VkExternalMemoryHandleTypeFlagBits handleType, const void* pHostPointer, VkMemoryHostPointerPropertiesEXT* pMemoryHostPointerProperties, decoder* dec) {
+  GAPID2_ERROR("Unimplemented: _custom_deserialize_vkGetMemoryHostPointerPropertiesEXT_pHostPointer");
+}
+
+
 inline void _custom_serialize_vkGetQueryPoolResults_pData(state_block*,
                                                           VkDevice device,
                                                           VkQueryPool queryPool,
