@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exports_files([
-    "py_lint.py",
-    "py_test.py",
-    "pylintrc",
-    "requirements.txt",
-])
+import sys
+import pylint
+
+if __name__ == "__main__":
+    sys.exit(pylint.run_pylint(sys.argv[1:]))
