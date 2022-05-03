@@ -65,6 +65,9 @@ load("//tools/build/rules:lingo.bzl",\
 load("//tools/build/rules:mm.bzl",
     _mm_library = "mm_library",
 )
+load("//tools/build/python:python.bzl",
+    _py_test = "py_test",
+)
 load("//tools/build/rules:stringgen.bzl",
     _stringgen = "stringgen",
 )
@@ -97,5 +100,6 @@ go_stripped_binary = _go_stripped_binary
 java_grpc_library = _java_grpc_library
 lingo = _lingo
 mm_library = _mm_library
+py_test = _py_test
 stringgen = _stringgen
 extract = _extract

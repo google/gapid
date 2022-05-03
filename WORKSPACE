@@ -56,3 +56,11 @@ python_register_toolchains(
     name = "python3_9",
     python_version = "3.9",
 )
+
+load("@python3_9//:defs.bzl", "interpreter")
+load("@rules_python//python:pip.bzl", "pip_install")
+
+pip_install(
+    python_interpreter_target = interpreter,
+    requirements = "//tools/build/python:requirements.txt",
+)
