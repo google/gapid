@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_parser import struct_parser
-from vulkan_parser import types
+from vulkan_generator.vulkan_parser import struct_parser
+from vulkan_generator.vulkan_parser import types
 
 
 def test_vulkan_struct_with_members() -> None:

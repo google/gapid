@@ -22,9 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_parser import handle_parser
-from vulkan_parser import types
-
+from vulkan_generator.vulkan_parser import handle_parser
+from vulkan_generator.vulkan_parser import types
 
 def test_vulkan_handle_by_tag() -> None:
     """""Test the case if the handle name is in an XML tag"""

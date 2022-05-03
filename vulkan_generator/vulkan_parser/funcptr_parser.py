@@ -17,8 +17,8 @@
 from typing import List
 import xml.etree.ElementTree as ET
 
-from vulkan_parser import types
-from vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_utils import parsing_utils
 
 
 def parse_arguments(function_ptr_elem: ET.Element) -> List[types.VulkanFunctionArgument]:

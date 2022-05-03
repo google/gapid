@@ -17,7 +17,7 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from vulkan_parser import type_parser
+from vulkan_generator.vulkan_parser import type_parser
 
 
 def parse(filename: Path) -> type_parser.AllVulkanTypes:

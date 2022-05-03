@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""This is the entry point for Vulkan Code Generator"""
+load("@rules_python//python:defs.bzl", "py_library")
+load("//tools/build:rules.bzl", "py_lint")
 
-from pathlib import Path
-import sys
+py_library(
+    name = "vulkan_parser",
+    srcs = glob(["*.py"]),
+    srcs_version = "PY3",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//vulkan_generator/vulkan_utils",
+    ],
+)
 
-from vulkan_generator import generator
-
-def main() -> None:
-    """ Entry point """
-    generator.generate(Path(sys.argv[1]))
-
-
-if __name__ == "__main__":
-    main()
+py_lint(
+    name = "lint",
+    srcs = glob(["*.py"]),
+)
