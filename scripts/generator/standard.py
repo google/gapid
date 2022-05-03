@@ -96,3 +96,9 @@ HEADER = f'''#pragma once
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 '''
+
+CPPHEADER = f'''{COPYRIGHT}
+
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
+'''

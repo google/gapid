@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#pragma once
-
 #include "event.h"
 
 #define VK_NO_PROTOTYPES

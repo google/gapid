@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright (C) 2022 Google Inc.
  *

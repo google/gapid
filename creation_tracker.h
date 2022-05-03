@@ -536,6 +536,7 @@ class creation_tracker : public transform_base {
           device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
     }
   }
+#ifdef VK_USE_PLATFORM_WIN32_KHR
   VkResult vkCreateWin32SurfaceKHR(
       VkInstance instance,
       const VkWin32SurfaceCreateInfoKHR* pCreateInfo,
@@ -554,7 +555,7 @@ class creation_tracker : public transform_base {
                                             pSurface);
     }
   }
-
+#endif
   VkResult vkCreateSwapchainKHR(VkDevice device,
                                 const VkSwapchainCreateInfoKHR* pCreateInfo,
                                 const VkAllocationCallbacks* pAllocator,

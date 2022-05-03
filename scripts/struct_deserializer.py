@@ -87,7 +87,8 @@ def output_member_dec(x, struct_name, memberid, idx, vop, dec):
             dec.print(
                 f"_{struct_name}_{x.name}_deserialize({', '.join(prms)});")
             return
-
+        if type(tp.pointee) == vulkan.external_type:
+            return
         if x.len and x.len == 'null-terminated':
             if tp.get_noncv_type().name != 'char':
                 vulkan.error("Expected null-terminated char list")

@@ -152,6 +152,7 @@ def output_member_clone(x, xdst, struct_name, memberid, idx, vop, dop, clone):
             enc_type = "uint64_t"
         clone.print(
             f"{dop}{xdst.name}{idx} = {vop}{x.name}{idx};")
+        
         if x.noautovalidity:
             clone.leave_scope(f"}}")
     elif type(tp) == vulkan.platform_type:
@@ -166,6 +167,8 @@ def output_member_clone(x, xdst, struct_name, memberid, idx, vop, dop, clone):
         if x.noautovalidity:
             clone.leave_scope(f"}}")
     elif type(tp) == vulkan.pointer_type:
+        if type(tp.pointee) == vulkan.external_type:
+            return
         if (tp.pointee.name == "void"):
             prms = ["src", "dst", "mem"]
             clone.print(
@@ -259,7 +262,6 @@ def output_member_clone(x, xdst, struct_name, memberid, idx, vop, dop, clone):
         output_member_clone(xm, x2, struct_name, memberid + 1,
                             f"[i_{ii}]", vop, dop, clone)
         clone.leave_scope(f"}}")
-
 
 def output_struct_clone(x, clone):
     memberid = 0

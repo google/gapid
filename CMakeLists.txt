@@ -302,6 +302,7 @@ add_library(HANDLE_TYPES STATIC
     handles/surface.h
     handles/swapchain.cpp
     handles/swapchain.h
+    ${gapid2_BINARY_DIR}/forwards.h
 )
 
 add_library(BASE_FILES STATIC
@@ -309,7 +310,6 @@ add_library(BASE_FILES STATIC
     helpers.cpp
     minimal_state_tracker.cpp
     state_block.cpp
-    ${gapid2_BINARY_DIR}/forwards.h
     ${gapid2_BINARY_DIR}/struct_clone.h
     ${gapid2_BINARY_DIR}/device_functions.h
     ${gapid2_BINARY_DIR}/instance_functions.h
@@ -335,6 +335,9 @@ add_library(LAYER_FILES STATIC
     ${gapid2_BINARY_DIR}/call_forwards.h
     ${gapid2_BINARY_DIR}/call_forwards.cpp
 )
+
+target_link_libraries(LAYER_FILES PUBLIC 
+    BASE_FILES)
 
 add_library(test SHARED
     passthrough_layer.cpp

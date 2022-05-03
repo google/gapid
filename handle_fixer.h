@@ -28,10 +28,12 @@ class handle_fixer {
     if (!*t) {                                                                                                           \
       return;                                                                                                            \
     }                                                                                                                    \
-    if (sizeof(Type) == sizeof(uint32_t)) {                                                                              \
-      fixed_handles_32.push_back(std::make_pair<void*, uint32_t>(const_cast<Type*>(t), reinterpret_cast<uint32_t>(*t))); \
-    } else {                                                                                                             \
-      fixed_handles_64.push_back(std::make_pair<void*, uint64_t>(const_cast<Type*>(t), reinterpret_cast<uint64_t>(*t))); \
+    if constexpr (sizeof(Type) == sizeof(uint32_t)) {                                                                              \
+      uint32_t p = *reinterpret_cast<const uint32_t*>(t);\
+      fixed_handles_32.push_back(std::make_pair<void*, const uint32_t&>(const_cast<Type*>(t), p)); \
+    } else {                                                    \
+      uint64_t p = *reinterpret_cast<const uint64_t*>(t);\
+      fixed_handles_64.push_back(std::make_pair<void*, const uint64_t&>(const_cast<Type*>(t), p)); \
     }                                                                                                                    \
                                                                                                                          \
     auto it = Type##_map.find(*t);                                                                                       \

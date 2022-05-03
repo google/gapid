@@ -18,7 +18,7 @@ def output_recorder(definition, g):
 
 
 def output_cpp(definition, g):
-    g.print(standard.HEADER)
+    g.print(standard.CPPHEADER)
     g.print('#include "command_buffer_recorder.h"')
     g.print('#include "struct_serialization.h"')
     g.print('#include "forwards.h"')

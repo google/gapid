@@ -115,7 +115,8 @@ def output_member_enc(x, struct_name, memberid, idx, vop, enc):
             enc.print(
                 f"_{struct_name}_{x.name}_serialize({', '.join(prms)});")
             return
-
+        if type(tp.pointee) == vulkan.external_type:
+            return
         if x.len and x.len == 'null-terminated':
             if tp.get_noncv_type().name != 'char':
                 vulkan.error("Expected null-terminated char list")
@@ -191,7 +192,7 @@ def output_member_enc(x, struct_name, memberid, idx, vop, enc):
         output_member_enc(xm, struct_name, memberid + 1,
                           f"[i_{ii}]", vop, enc)
         enc.leave_scope(f"}}")
-
+    
 
 def output_struct_enc(x, enc):
 

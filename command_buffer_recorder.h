@@ -21,7 +21,7 @@ class command_buffer_recorder : public transform_base {
                        std::unique_ptr<command_buffer_recording>>::iterator it;
     it = cbrs.find(reinterpret_cast<VkCommandBuffer>(cb));
     if (it == cbrs.end()) {
-      OutputDebugStringA("Trying to rerecord an untracked command buffer");
+      GAPID2_ERROR("Trying to rerecord an untracked command buffer");
       return;
     }
     // Clone the contents in case we want to re-record AGAIN later.
