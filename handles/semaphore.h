@@ -29,8 +29,12 @@ struct VkSemaphoreWrapper : handle_base<VkSemaphore> {
   VkSemaphoreWrapper(VkSemaphore semaphore)
       : handle_base<VkSemaphore>(semaphore) {}
 
-  void set_create_info(state_block* state_block_, const VkSemaphoreCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkSemaphoreCreateInfo* pCreateInfo);
+  const VkSemaphoreCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device = VK_NULL_HANDLE;
   VkSemaphoreCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

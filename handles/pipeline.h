@@ -30,13 +30,21 @@ struct VkPipelineWrapper : handle_base<VkPipeline> {
   VkPipelineWrapper(VkPipeline pipeline)
       : handle_base<VkPipeline>(pipeline) {}
 
-  void set_create_info(state_block* state_block_, VkPipelineCache pipelineCache,
+  void set_create_info(VkDevice device_, state_block* state_block_, VkPipelineCache pipelineCache,
                        const VkGraphicsPipelineCreateInfo* info);
 
-  void set_create_info(state_block* state_block_, VkPipelineCache pipelineCache,
+  void set_create_info(VkDevice device_, state_block* state_block_, VkPipelineCache pipelineCache,
                        const VkComputePipelineCreateInfo* info);
 
-  VkPipelineCache cache;
+  const VkGraphicsPipelineCreateInfo* get_graphics_create_info() const {
+    return graphics_info;
+  }
+  const VkComputePipelineCreateInfo* get_compute_create_info() const {
+    return compute_info;
+  }
+
+  VkDevice device;
+  VkPipelineCache cache = VK_NULL_HANDLE;
   VkPipelineBindPoint bind;
   VkGraphicsPipelineCreateInfo* graphics_info = nullptr;
   VkComputePipelineCreateInfo* compute_info = nullptr;

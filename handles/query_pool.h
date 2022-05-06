@@ -28,7 +28,12 @@ struct VkQueryPoolWrapper : handle_base<VkQueryPool> {
   VkQueryPoolWrapper(VkQueryPool query_pool)
       : handle_base<VkQueryPool>(query_pool) {}
 
-  void set_create_info(state_block* state_block_, const VkQueryPoolCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkQueryPoolCreateInfo* pCreateInfo);
+  const VkQueryPoolCreateInfo* get_create_info() const {
+    return create_info;
+  }
+
+  VkDevice device;
 
   VkQueryPoolCreateInfo* create_info = nullptr;
   temporary_allocator mem;

@@ -24,8 +24,9 @@
 
 namespace gapid2 {
 
-void VkPipelineWrapper::set_create_info(state_block* state_block_, VkPipelineCache pipelineCache,
+void VkPipelineWrapper::set_create_info(VkDevice device_, state_block* state_block_, VkPipelineCache pipelineCache,
                                         const VkGraphicsPipelineCreateInfo* info) {
+  device = device_;
   cache = pipelineCache;
   bind = VK_PIPELINE_BIND_POINT_GRAPHICS;
   graphics_info = mem.get_typed_memory<VkGraphicsPipelineCreateInfo>(1);
@@ -52,8 +53,9 @@ void VkPipelineWrapper::set_create_info(state_block* state_block_, VkPipelineCac
       _VkGraphicsPipelineCreateInfo_basePipelineHandle_valid);
 }
 
-void VkPipelineWrapper::set_create_info(state_block* state_block_, VkPipelineCache pipelineCache,
+void VkPipelineWrapper::set_create_info(VkDevice device_, state_block* state_block_, VkPipelineCache pipelineCache,
                                         const VkComputePipelineCreateInfo* info) {
+  device = device_;
   cache = pipelineCache;
   compute_info = mem.get_typed_memory<VkComputePipelineCreateInfo>(1);
   bind = VK_PIPELINE_BIND_POINT_COMPUTE;

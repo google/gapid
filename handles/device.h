@@ -55,7 +55,16 @@ struct VkDeviceWrapper : handle_base<VkDevice, void> {
     vkSetDeviceLoaderData(_handle, this);
   }
 
-  void set_create_info(state_block* state_block_, const VkDeviceCreateInfo* pCreateInfo);
+  void set_create_info(VkPhysicalDevice physical_device,
+    state_block* state_block_,
+    const VkDeviceCreateInfo* pCreateInfo);
+
+  const VkDeviceCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  const VkPhysicalDevice get_physical_device() const {
+    return physical_device;
+  }
 
   PFN_vkSetDeviceLoaderData vkSetDeviceLoaderData;
   REGISTER_CHILD_TYPE(VkCommandBuffer);
@@ -87,6 +96,7 @@ struct VkDeviceWrapper : handle_base<VkDevice, void> {
  private:
   std::mutex child_mutex;
   VkDeviceCreateInfo* create_info = nullptr;
+  VkPhysicalDevice physical_device = VK_NULL_HANDLE;
   temporary_allocator mem;
 };
 }  // namespace gapid2

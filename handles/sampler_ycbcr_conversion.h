@@ -28,8 +28,12 @@ struct VkSamplerYcbcrConversionWrapper : handle_base<VkSamplerYcbcrConversion> {
   VkSamplerYcbcrConversionWrapper(VkSamplerYcbcrConversion sampler)
       : handle_base<VkSamplerYcbcrConversion>(sampler) {}
 
-  void set_create_info(state_block* state_block_, const VkSamplerYcbcrConversionCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkSamplerYcbcrConversionCreateInfo* pCreateInfo);
+  const VkSamplerYcbcrConversionCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device;
   VkSamplerYcbcrConversionCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

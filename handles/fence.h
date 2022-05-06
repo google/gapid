@@ -27,8 +27,11 @@ class state_block;
 struct VkFenceWrapper : handle_base<VkFence> {
   VkFenceWrapper(VkFence fence)
       : handle_base<VkFence>(fence) {}
-  void set_create_info(state_block* state_block_, const VkFenceCreateInfo* pCreateInfo);
-
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkFenceCreateInfo* pCreateInfo);
+  const VkFenceCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkFenceCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

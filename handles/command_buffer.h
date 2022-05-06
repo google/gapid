@@ -32,9 +32,13 @@ struct VkCommandBufferWrapper : handle_base<VkCommandBuffer, void> {
       : handle_base<VkCommandBuffer, void>(command_buffer) {
   }
 
-  void set_allocate_info(state_block* state_block_, const VkCommandBufferAllocateInfo* pAllocateInfo,
+  void set_allocate_info(VkDevice device_, state_block* state_block_, const VkCommandBufferAllocateInfo* pAllocateInfo,
                          uint32_t index);
 
+  const VkCommandBufferAllocateInfo* get_allocate_info() const {
+    return allocate_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkCommandBufferAllocateInfo* allocate_info = nullptr;
   temporary_allocator mem;
   uint32_t idx = 0xFFFFFFFF;

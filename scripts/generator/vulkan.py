@@ -470,6 +470,13 @@ class struct(base):
             self.members.append(subparam)
 
     def finalize(self, vk, api_definitions):
+        self.stype = None
+        member = self.t.find('member[1]')
+        if member != None:
+            nm = member.find('name')
+            if nm != None:
+                if nm.text == 'sType' and 'values' in member.attrib:
+                    self.stype = member.attrib['values'].split(',')[0]
         if 'structextends' in self.t.attrib:
             extends = self.t.attrib['structextends'].split(',')
             member = self.t.find('member[1]')

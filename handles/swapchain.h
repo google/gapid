@@ -28,9 +28,14 @@ struct VkSwapchainKHRWrapper : handle_base<VkSwapchainKHR> {
   VkSwapchainKHRWrapper(VkSwapchainKHR sampler)
       : handle_base<VkSwapchainKHR>(sampler) {}
 
-  void set_create_info(state_block* state_block_, const VkSwapchainCreateInfoKHR* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkSwapchainCreateInfoKHR* pCreateInfo);
+  const VkSwapchainCreateInfoKHR* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device = VK_NULL_HANDLE;
   VkSwapchainCreateInfoKHR* create_info = nullptr;
   temporary_allocator mem;
+  std::vector<VkImage> swapchain_images;
 };
 }  // namespace gapid2

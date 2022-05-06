@@ -28,8 +28,11 @@ struct VkDescriptorPoolWrapper : handle_base<VkDescriptorPool> {
   VkDescriptorPoolWrapper(VkDescriptorPool descriptor_pool)
       : handle_base<VkDescriptorPool>(descriptor_pool) {}
 
-  void set_create_info(state_block* state_block_, const VkDescriptorPoolCreateInfo* pCreateInfo);
-
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkDescriptorPoolCreateInfo* pCreateInfo);
+  const VkDescriptorPoolCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkDescriptorPoolCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

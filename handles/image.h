@@ -32,11 +32,20 @@ struct VkImageWrapper : handle_base<VkImage> {
   VkImageWrapper(VkImage image)
       : handle_base<VkImage>(image) {}
 
-  void set_create_info(state_block* state_block_, const VkImageCreateInfo* pCreateInfo);
-  void set_swapchain_info(VkSwapchainKHR swap, uint32_t i);
+  void set_create_info(VkDevice device, state_block* state_block_, const VkImageCreateInfo* pCreateInfo);
+  void set_swapchain_info(VkDevice device, VkSwapchainKHR swap, uint32_t i);
+
+  const VkImageCreateInfo* get_create_info() const {
+    return create_info;
+  }
+
+  VkSwapchainKHR get_swapchain() const {
+    return swapchain;
+  }
 
   VkImageCreateInfo* create_info = nullptr;
   VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+  VkDevice device = VK_NULL_HANDLE;
   uint32_t swapchain_idx = 0xFFFFFFFF;
   NullCloner cloner;
   temporary_allocator mem;

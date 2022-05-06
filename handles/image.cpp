@@ -24,13 +24,15 @@
 
 namespace gapid2 {
 
-void VkImageWrapper::set_create_info(state_block* state_block_, const VkImageCreateInfo* pCreateInfo) {
+void VkImageWrapper::set_create_info(VkDevice device_, state_block* state_block_, const VkImageCreateInfo* pCreateInfo) {
+  device = device_;
   create_info = mem.get_typed_memory<VkImageCreateInfo>(1);
   clone(state_block_, pCreateInfo[0], create_info[0], &mem,
         _VkImageCreateInfo_pQueueFamilyIndices_valid);
 }
 
-void VkImageWrapper::set_swapchain_info(VkSwapchainKHR swap, uint32_t i) {
+void VkImageWrapper::set_swapchain_info(VkDevice device_, VkSwapchainKHR swap, uint32_t i) {
+  device = device_;
   swapchain = swap;
   swapchain_idx = i;
 }

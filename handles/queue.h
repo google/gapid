@@ -30,12 +30,16 @@ struct VkQueueWrapper : handle_base<VkQueue, void> {
       : handle_base<VkQueue, void>(queue) {
   }
 
-  void set_create_info(uint32_t queueFamilyIndex, uint32_t queueIndex);
-  void set_create_info2(state_block* state_block_, const VkDeviceQueueInfo2* pQueueInfo);
+  void set_create_info(VkDevice device, uint32_t queueFamilyIndex, uint32_t queueIndex);
+  void set_create_info2(VkDevice device , state_block* state_block_, const VkDeviceQueueInfo2* pQueueInfo);
+
+  const VkDeviceQueueInfo2* get_info_2() const {
+    return create_info2;
+  }
 
   uint32_t queue_family_index = 0xFFFFFFFF;
   uint32_t queue_index = 0xFFFFFFFF;
-
+  VkDevice device = VK_NULL_HANDLE;
   VkDeviceQueueInfo2* create_info2 = nullptr;
   temporary_allocator mem;
 };

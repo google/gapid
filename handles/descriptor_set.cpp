@@ -34,8 +34,10 @@ void VkDescriptorSetWrapper::set_layout(VkDescriptorSetLayoutWrapper* layout) {
   }
 }
 
-void VkDescriptorSetWrapper::set_allocate_info(state_block* state_block_, const VkDescriptorSetAllocateInfo* pAllocateInfo,
+void VkDescriptorSetWrapper::set_allocate_info(VkDevice device_,
+                                               state_block* state_block_, const VkDescriptorSetAllocateInfo* pAllocateInfo,
                                                uint32_t index) {
+  device = device_;
   allocate_info = mem.get_typed_memory<VkDescriptorSetAllocateInfo>(1);
   clone(state_block_, pAllocateInfo[0], allocate_info[0], &mem);
   index = idx;

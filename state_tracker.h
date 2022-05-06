@@ -15,7 +15,6 @@
  */
 
 #pragma once
-#define NOMINMAX
 #include <externals/SPIRV-Reflect/spirv_reflect.h>
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
@@ -27,10 +26,9 @@
 #include "creation_data_tracker.h"
 
 namespace gapid2 {
-template <typename T>
-class StateTracker : public CreationDataTracker<T> {
+class state_tracker : public creation_data_tracker<> {
  protected:
-  using super = T;
+  using super = transform_base;
 
  public:
   VkResult vkCreateShaderModule(VkDevice device,
@@ -42,7 +40,7 @@ class StateTracker : public CreationDataTracker<T> {
     if (res != VK_SUCCESS) {
       return res;
     }
-    auto sm = this->updater_.cast_from_vk(pShaderModule[0]);
+    auto sm = state_block_->get(pShaderModule[0]);
 
     spv_reflect::ShaderModule smod(pCreateInfo->codeSize, pCreateInfo->pCode);
     if (smod.GetResult() != SPV_REFLECT_RESULT_SUCCESS) {
@@ -106,11 +104,11 @@ class StateTracker : public CreationDataTracker<T> {
     std::vector<descriptor_usage> usages;
 
     for (size_t i = 0; i < createInfoCount && !use_all; ++i) {
-      auto gp = this->updater_.cast_from_vk(pPipelines[i]);
+      auto gp = state_block_->get(pPipelines[i]);
       for (size_t j = 0; j < pCreateInfos[i].stageCount; ++j) {
         auto& mod = pCreateInfos[i].pStages[j].module;
         auto stage =
-            this->updater_.cast_from_vk(pCreateInfos[i].pStages[j].module);
+            state_block_->get(pCreateInfos[i].pStages[j].module);
         auto dsd = stage->_usage.find(pCreateInfos[i].pStages[j].pName);
         if (dsd == stage->_usage.end()) {
           use_all = true;
@@ -133,10 +131,10 @@ class StateTracker : public CreationDataTracker<T> {
         usages.clear();
         // If we could not find usages for a particular stage,
         // then we fallback to assuming every descriptor is used.
-        auto pl = this->updater_.cast_from_vk(pCreateInfos[i].layout);
+        auto pl = state_block_->get(pCreateInfos[i].layout);
         for (uint32_t j = 0; j < pl->create_info->setLayoutCount; ++j) {
           auto dsl =
-              this->updater_.cast_from_vk(pl->create_info->pSetLayouts[j]);
+              state_block_->get(pl->create_info->pSetLayouts[j]);
           for (uint32_t k = 0; k < dsl->create_info->bindingCount; ++k) {
             usages.push_back(descriptor_usage{
                 j, dsl->create_info->pBindings[k].binding,
@@ -146,20 +144,6 @@ class StateTracker : public CreationDataTracker<T> {
       }
       gp->usages = std::move(usages);
     }
-    return res;
-  }
-
-  VkResult vkCreatePipelineLayout(VkDevice device,
-                                  const VkPipelineLayoutCreateInfo* pCreateInfo,
-                                  const VkAllocationCallbacks* pAllocator,
-                                  VkPipelineLayout* pPipelineLayout) override {
-    auto res = super::vkCreatePipelineLayout(device, pCreateInfo, pAllocator,
-                                             pPipelineLayout);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto pl = this->updater_.cast_from_vk(pPipelineLayout[0]);
-    pl->set_create_info(pCreateInfo);
     return res;
   }
 
@@ -181,9 +165,9 @@ class StateTracker : public CreationDataTracker<T> {
     std::vector<descriptor_usage> usages;
     for (size_t i = 0; i < createInfoCount && !use_all; ++i) {
       usages.clear();
-      auto gp = this->updater_.cast_from_vk(pPipelines[i]);
+      auto gp = state_block_->get(pPipelines[i]);
       auto& mod = pCreateInfos[i].stage.module;
-      auto stage = this->updater_.cast_from_vk(pCreateInfos[i].stage.module);
+      auto stage = state_block_->get(pCreateInfos[i].stage.module);
       auto dsd = stage->_usage.find(pCreateInfos[i].stage.pName);
       if (dsd == stage->_usage.end()) {
         // If we could not find usages for this stage, it means
@@ -191,10 +175,10 @@ class StateTracker : public CreationDataTracker<T> {
         // This is a backup slow-path for such shaders. We
         // assume every descriptor accessible from the pipeline layout
         // is used.
-        auto pl = this->updater_.cast_from_vk(pCreateInfos[i].layout);
+        auto pl = state_block_->get(pCreateInfos[i].layout);
         for (uint32_t j = 0; j < pl->create_info->setLayoutCount; ++j) {
           auto dsl =
-              this->updater_.cast_from_vk(pl->create_info->pSetLayouts[j]);
+              state_block_->get(pl->create_info->pSetLayouts[j]);
           for (uint32_t k = 0; k < dsl->create_info->bindingCount; ++k) {
             usages.push_back(descriptor_usage{
                 j, dsl->create_info->pBindings[k].binding,
@@ -222,48 +206,6 @@ class StateTracker : public CreationDataTracker<T> {
     return res;
   }
 
-  VkResult vkCreateDescriptorSetLayout(
-      VkDevice device,
-      const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-      const VkAllocationCallbacks* pAllocator,
-      VkDescriptorSetLayout* pSetLayout) override {
-    auto res = super::vkCreateDescriptorSetLayout(device, pCreateInfo,
-                                                  pAllocator, pSetLayout);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto new_layout = this->updater_.cast_from_vk(pSetLayout[0]);
-    new_layout->set_create_info(pCreateInfo);
-    return res;
-  }
-
-  VkResult vkCreateImageView(VkDevice device,
-                             const VkImageViewCreateInfo* pCreateInfo,
-                             const VkAllocationCallbacks* pAllocator,
-                             VkImageView* pView) override {
-    auto res = super::vkCreateImageView(device, pCreateInfo, pAllocator, pView);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto new_view = this->updater_.cast_from_vk(pView[0]);
-    new_view->set_create_info(pCreateInfo);
-    return res;
-  }
-
-  VkResult vkCreateBufferView(VkDevice device,
-                              const VkBufferViewCreateInfo* pCreateInfo,
-                              const VkAllocationCallbacks* pAllocator,
-                              VkBufferView* pView) override {
-    auto res =
-        super::vkCreateBufferView(device, pCreateInfo, pAllocator, pView);
-    if (res != VK_SUCCESS) {
-      return res;
-    }
-    auto new_view = this->updater_.cast_from_vk(pView[0]);
-    new_view->set_create_info(pCreateInfo);
-    return res;
-  }
-
   VkResult vkAllocateDescriptorSets(
       VkDevice device,
       const VkDescriptorSetAllocateInfo* pAllocateInfo,
@@ -275,8 +217,8 @@ class StateTracker : public CreationDataTracker<T> {
     }
 
     for (size_t i = 0; i < pAllocateInfo->descriptorSetCount; ++i) {
-      auto set = this->updater_.cast_from_vk(pDescriptorSets[i]);
-      auto layout = this->updater_.cast_from_vk(pAllocateInfo->pSetLayouts[i]);
+      auto set = state_block_->get(pDescriptorSets[i]);
+      auto layout = state_block_->get(pAllocateInfo->pSetLayouts[i]);
       set->set_layout(layout);
     }
 
@@ -291,7 +233,7 @@ class StateTracker : public CreationDataTracker<T> {
       const VkCopyDescriptorSet* pDescriptorCopies) override {
     for (uint32_t i = 0; i < descriptorWriteCount; ++i) {
       auto& dw = pDescriptorWrites[i];
-      auto set = this->updater_.cast_from_vk(dw.dstSet);
+      auto set = state_block_->get(dw.dstSet);
       auto it = set->bindings.lower_bound(dw.dstBinding);
       auto elem = dw.dstArrayElement;
       for (size_t j = 0; j < dw.descriptorCount; ++j) {
@@ -339,7 +281,7 @@ class StateTracker : public CreationDataTracker<T> {
       for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
         graphics_state.m_bound_descriptors.clear();
         compute_state.m_bound_descriptors.clear();
-        auto cb = this->updater_.cast_from_vk(pSubmits[i].pCommandBuffers[j]);
+        auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
         for (auto& pf : cb->_pre_run_functions) {
           pf();
         }
@@ -352,7 +294,7 @@ class StateTracker : public CreationDataTracker<T> {
     }
     for (size_t i = 0; i < submitCount; ++i) {
       for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
-        auto cb = this->updater_.cast_from_vk(pSubmits[i].pCommandBuffers[j]);
+        auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
         for (auto& pf : cb->_post_run_functions) {
           pf();
         }
@@ -369,7 +311,7 @@ class StateTracker : public CreationDataTracker<T> {
       const VkImageMemoryRequirementsInfo2* pInfo,
       VkMemoryRequirements2* pMemoryRequirements) override {
     super::vkGetImageMemoryRequirements2(device, pInfo, pMemoryRequirements);
-    this->updater_.cast_from_vk(pInfo->image)->required_size =
+    state_block_->get(pInfo->image)->required_size =
         pMemoryRequirements->memoryRequirements.size;
   }
   void vkGetBufferMemoryRequirements(
@@ -377,7 +319,7 @@ class StateTracker : public CreationDataTracker<T> {
       VkBuffer buffer,
       VkMemoryRequirements* pMemoryRequirements) override {
     super::vkGetBufferMemoryRequirements(device, buffer, pMemoryRequirements);
-    this->updater_.cast_from_vk(buffer)->required_size =
+    state_block_->get(buffer)->required_size =
         pMemoryRequirements->size;
   }
   void vkGetBufferMemoryRequirements2(
@@ -385,7 +327,7 @@ class StateTracker : public CreationDataTracker<T> {
       const VkBufferMemoryRequirementsInfo2* pInfo,
       VkMemoryRequirements2* pMemoryRequirements) override {
     super::vkGetBufferMemoryRequirements2(device, pInfo, pMemoryRequirements);
-    this->updater_.cast_from_vk(pInfo->buffer)->required_size =
+    state_block_->get(pInfo->buffer)->required_size =
         pMemoryRequirements->memoryRequirements.size;
   }
 
@@ -394,7 +336,7 @@ class StateTracker : public CreationDataTracker<T> {
       VkImage image,
       VkMemoryRequirements* pMemoryRequirements) override {
     super::vkGetImageMemoryRequirements(device, image, pMemoryRequirements);
-    this->updater_.cast_from_vk(image)->required_size =
+    state_block_->get(image)->required_size =
         pMemoryRequirements->size;
   }
 
@@ -406,7 +348,7 @@ class StateTracker : public CreationDataTracker<T> {
     if (res != VK_SUCCESS) {
       return res;
     }
-    auto img = this->updater_.cast_from_vk(image);
+    auto img = state_block_->get(image);
     img->bindings.clear();
     img->bindings.push_back(
         memory_binding{memory, memoryOffset, img->required_size});
@@ -421,12 +363,13 @@ class StateTracker : public CreationDataTracker<T> {
     if (res != VK_SUCCESS) {
       return res;
     }
-    auto buff = this->updater_.cast_from_vk(buffer);
+    auto buff = state_block_->get(buffer);
     buff->bindings.clear();
     buff->bindings.push_back(
         memory_binding{memory, memoryOffset, buff->required_size});
     return res;
   }
+
   VkResult vkBindBufferMemory2(
       VkDevice device,
       uint32_t bindInfoCount,
@@ -437,13 +380,14 @@ class StateTracker : public CreationDataTracker<T> {
     }
     for (size_t i = 0; i < bindInfoCount; ++i) {
       auto bi = pBindInfos[i];
-      auto buff = this->updater_.cast_from_vk(bi.buffer);
+      auto buff = state_block_->get(bi.buffer);
       buff->bindings.clear();
       buff->bindings.push_back(
           memory_binding{bi.memory, bi.memoryOffset, buff->required_size});
     }
     return res;
   }
+
   VkResult vkBindImageMemory2(
       VkDevice device,
       uint32_t bindInfoCount,
@@ -454,13 +398,14 @@ class StateTracker : public CreationDataTracker<T> {
     }
     for (size_t i = 0; i < bindInfoCount; ++i) {
       auto mi = pBindInfos[i];
-      auto buff = this->updater_.cast_from_vk(mi.image);
+      auto buff = state_block_->get(mi.image);
       buff->bindings.clear();
       buff->bindings.push_back(
           memory_binding{mi.memory, mi.memoryOffset, buff->required_size});
     }
     return res;
   }
+
   void vkCmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                                VkPipelineBindPoint pipelineBindPoint,
                                VkPipelineLayout layout,
@@ -477,7 +422,7 @@ class StateTracker : public CreationDataTracker<T> {
       ds[i] = pDescriptorSets[i];
     }
 
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this, ids = std::move(ds), pipelineBindPoint, firstSet]() {
           std::unordered_map<uint32_t, VkDescriptorSet>* sets;
@@ -502,7 +447,7 @@ class StateTracker : public CreationDataTracker<T> {
                          VkPipelineBindPoint pipelineBindPoint,
                          VkPipeline pipeline) override {
     super::vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back([this, pipelineBindPoint, pipeline]() {
       switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
@@ -524,7 +469,7 @@ class StateTracker : public CreationDataTracker<T> {
                  uint32_t firstInstance) override {
     super::vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex,
                      firstInstance);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
   }
@@ -537,7 +482,7 @@ class StateTracker : public CreationDataTracker<T> {
                         uint32_t firstInstance) override {
     super::vkCmdDrawIndexed(commandBuffer, indexCount, instanceCount,
                             firstIndex, vertexOffset, firstInstance);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
   }
@@ -547,7 +492,7 @@ class StateTracker : public CreationDataTracker<T> {
                          uint32_t drawCount,
                          uint32_t stride) override {
     super::vkCmdDrawIndirect(commandBuffer, buffer, offset, drawCount, stride);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
   }
@@ -558,7 +503,7 @@ class StateTracker : public CreationDataTracker<T> {
                                 uint32_t stride) override {
     super::vkCmdDrawIndexedIndirect(commandBuffer, buffer, offset, drawCount,
                                     stride);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
   }
@@ -571,7 +516,7 @@ class StateTracker : public CreationDataTracker<T> {
                               uint32_t stride) override {
     super::vkCmdDrawIndirectCount(commandBuffer, buffer, offset, countBuffer,
                                   countBufferOffset, maxDrawCount, stride);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
   }
@@ -585,7 +530,7 @@ class StateTracker : public CreationDataTracker<T> {
     super::vkCmdDrawIndexedIndirectCount(commandBuffer, buffer, offset,
                                          countBuffer, countBufferOffset,
                                          maxDrawCount, stride);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
   }
@@ -595,7 +540,7 @@ class StateTracker : public CreationDataTracker<T> {
                      uint32_t groupCountY,
                      uint32_t groupCountZ) override {
     super::vkCmdDispatch(commandBuffer, groupCountX, groupCountY, groupCountZ);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE); });
   }
@@ -604,28 +549,28 @@ class StateTracker : public CreationDataTracker<T> {
                              VkBuffer buffer,
                              VkDeviceSize offset) override {
     super::vkCmdDispatchIndirect(commandBuffer, buffer, offset);
-    auto cb = this->updater_.cast_from_vk(commandBuffer);
+    auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
         [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE); });
   }
 
   void handle_descriptor_sets(VkPipelineBindPoint bind_point) {
-    decltype(this->updater_.cast_from_vk(VkPipeline(0))) pipeline;
+    decltype(state_block_->get(VkPipeline(0))) pipeline;
     std::unordered_map<uint32_t, VkDescriptorSet>* sets;
     switch (bind_point) {
       case VK_PIPELINE_BIND_POINT_GRAPHICS:
-        pipeline = this->updater_.cast_from_vk(graphics_state.current_pipeline);
+        pipeline = state_block_->get(graphics_state.current_pipeline);
         sets = &graphics_state.m_bound_descriptors;
         break;
       case VK_PIPELINE_BIND_POINT_COMPUTE:
-        pipeline = this->updater_.cast_from_vk(compute_state.current_pipeline);
+        pipeline = state_block_->get(compute_state.current_pipeline);
         sets = &compute_state.m_bound_descriptors;
         break;
       default:
         GAPID2_ERROR("Unknown bind point");
     }
     for (auto& usage : pipeline->usages) {
-      auto ds = this->updater_.cast_from_vk((*sets)[usage.set]);
+      auto ds = state_block_->get((*sets)[usage.set]);
       auto& bt = ds->bindings[usage.binding].descriptors;
       auto tp = ds->bindings[usage.binding].type;
       for (size_t i = 0; i < usage.count; ++i) {
@@ -637,11 +582,11 @@ class StateTracker : public CreationDataTracker<T> {
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
           case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
             if (bt[i].image_info.imageView) {
-              auto img = this->updater_.cast_from_vk(
-                  this->updater_.cast_from_vk(bt[i].image_info.imageView)
+              auto img = state_block_->get(
+                  state_block_->get(bt[i].image_info.imageView)
                       ->create_info->image);
               for (auto& b : img->bindings) {
-                auto mem = this->updater_.cast_from_vk(b.memory);
+                auto mem = state_block_->get(b.memory);
                 if (mem->_is_coherent && mem->_mapped_location) {
                   m_read_bound_device_memories.insert(b.memory);
                 }
@@ -656,11 +601,11 @@ class StateTracker : public CreationDataTracker<T> {
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
             if (bt[i].buffer_view_info) {
-              auto buffer = this->updater_.cast_from_vk(
-                  this->updater_.cast_from_vk(bt[i].buffer_view_info)
+              auto buffer = state_block_->get(
+                  state_block_->get(bt[i].buffer_view_info)
                       ->create_info->buffer);
               for (auto& b : buffer->bindings) {
-                auto mem = this->updater_.cast_from_vk(b.memory);
+                auto mem = state_block_->get(b.memory);
                 if (mem->_is_coherent && mem->_mapped_location) {
                   m_read_bound_device_memories.insert(b.memory);
                 }
@@ -668,7 +613,7 @@ class StateTracker : public CreationDataTracker<T> {
 
               if (tp == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
                 for (auto& b : buffer->bindings) {
-                  auto mem = this->updater_.cast_from_vk(b.memory);
+                  auto mem = state_block_->get(b.memory);
                   m_write_bound_device_memories.insert(b.memory);
                 }
               }
@@ -680,9 +625,9 @@ class StateTracker : public CreationDataTracker<T> {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             if (bt[i].buffer_info.buffer) {
               auto buffer =
-                  this->updater_.cast_from_vk(bt[i].buffer_info.buffer);
+                  state_block_->get(bt[i].buffer_info.buffer);
               for (auto& b : buffer->bindings) {
-                auto mem = this->updater_.cast_from_vk(b.memory);
+                auto mem = state_block_->get(b.memory);
                 if (mem->_is_coherent && mem->_mapped_location) {
                   m_read_bound_device_memories.insert(b.memory);
                 }
@@ -690,7 +635,7 @@ class StateTracker : public CreationDataTracker<T> {
               if (tp == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
                   tp == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
                 for (auto& b : buffer->bindings) {
-                  auto mem = this->updater_.cast_from_vk(b.memory);
+                  auto mem = state_block_->get(b.memory);
                   m_write_bound_device_memories.insert(b.memory);
                 }
               }

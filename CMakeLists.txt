@@ -211,6 +211,11 @@ generate_file(
 )
 
 generate_file(
+    scripts/stype_header.py
+    stype_header.h
+)
+
+generate_file(
     scripts/command_deserializer.py
     command_deserializer.h
 )
@@ -309,7 +314,13 @@ add_library(BASE_FILES STATIC
     base_caller.cpp
     helpers.cpp
     minimal_state_tracker.cpp
+    minimal_state_tracker.h
+    custom.h
+    custom.cpp
+    creation_data_tracker.h
+    creation_tracker.h
     state_block.cpp
+    utils.h
     ${gapid2_BINARY_DIR}/struct_clone.h
     ${gapid2_BINARY_DIR}/device_functions.h
     ${gapid2_BINARY_DIR}/instance_functions.h
@@ -328,10 +339,10 @@ add_library(BASE_FILES STATIC
     ${gapid2_BINARY_DIR}/command_serializer.cpp
     ${gapid2_BINARY_DIR}/command_deserializer.h
     ${gapid2_BINARY_DIR}/null_caller.h
+    ${gapid2_BINARY_DIR}/stype_header.h
 )
 
-add_library(LAYER_FILES STATIC
-    layer_setup.cpp
+add_library(LAYER_FILES OBJECT
     ${gapid2_BINARY_DIR}/call_forwards.h
     ${gapid2_BINARY_DIR}/call_forwards.cpp
 )
@@ -342,6 +353,7 @@ target_link_libraries(LAYER_FILES PUBLIC
 add_library(test SHARED
     passthrough_layer.cpp
     layer.def
+    layer_setup.cpp
 )
 
 target_link_libraries(test BASE_FILES HANDLE_TYPES LAYER_FILES)
@@ -350,12 +362,43 @@ add_library(gapii SHARED
     spy.h
     spy.cpp
     gapii.cpp
+    gapii.h
     memory_tracker.h
     memory_tracker.cpp
     layer.def
+    layer_setup.cpp
+    mec_capture/buffer_view.cpp
+    mec_capture/buffer.cpp
+    mec_capture/command_buffer.cpp
+    mec_capture/command_pool.cpp
+    mec_capture/descriptor_pool.cpp
+    mec_capture/descriptor_set_layout.cpp
+    mec_capture/descriptor_set.cpp
+    mec_capture/descriptor_update_template.cpp
+    mec_capture/device_memory.cpp
+    mec_capture/device.cpp
+    mec_capture/framebuffer.cpp
+    mec_capture/image_view.cpp
+    mec_capture/image.cpp
+    mec_capture/instance.cpp
+    mec_capture/mid_execution_generator.h
+    mec_capture/physical_device.cpp
+    mec_capture/pipeline_cache.cpp
+    mec_capture/pipeline_layout.cpp
+    mec_capture/pipeline.cpp
+    mec_capture/query_pool.cpp
+    mec_capture/queue.cpp
+    mec_capture/render_pass.cpp
+    mec_capture/sampler_ycbcr_conversion.cpp
+    mec_capture/sampler.cpp
+    mec_capture/shader_module.cpp
+    mec_capture/surface.cpp
+    mec_capture/swapchain.cpp
+    mec_capture/synchronization.cpp
 )
 
-target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES)
+target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect)
+target_compile_definitions(gapii PRIVATE MEC=1)
 
 add_executable(gapir
     replayer.cpp
@@ -365,8 +408,7 @@ add_executable(gapir
     ${gapid2_BINARY_DIR}/command_inline_fixer.cpp
     ${gapid2_BINARY_DIR}/fix_handles.h
 )
-target_link_libraries(gapir BASE_FILES HANDLE_TYPES)
-
+target_link_libraries(gapir BASE_FILES HANDLE_TYPES )
 
 add_executable(printer
     printer.cpp
@@ -385,3 +427,38 @@ foreach(L test gapii gapir printer BASE_FILES HANDLE_TYPES LAYER_FILES)
 
     target_compile_definitions(${L} PRIVATE ${ADDITIONAL_DEFINES} NOMINMAX=1)
 endforeach()
+
+
+function(set_directories target)
+    get_target_property(srcs ${target} SOURCES)
+    foreach(X ${srcs})
+        get_filename_component(comp ${X} EXT)
+        get_filename_component(abs ${X} ABSOLUTE)
+        file(RELATIVE_PATH rel_bin ${CMAKE_CURRENT_BINARY_DIR} ${abs})
+        file(RELATIVE_PATH rel_src ${CMAKE_CURRENT_SOURCE_DIR} ${abs})
+        string(FIND ${rel_bin} ".." fout)
+        if (fout EQUAL -1)
+            set(rel ${rel_bin})
+        else()
+            set(rel ${rel_src})
+        endif()
+
+        get_filename_component(reldir ${rel} DIRECTORY)
+        if (("${comp}" STREQUAL ".h") OR ("${comp}" STREQUAL ".hpp"))
+            message("SETTING ${X} to inc/${rel}")
+            source_group("inc/${reldir}" FILES ${X})
+        else()
+            message("SETTING ${X} to src/${rel}")
+            source_group("src/${reldir}" FILES ${X})
+        endif()
+        
+    endforeach()
+endfunction()
+
+set_directories(test)
+set_directories(gapii)
+set_directories(gapir)
+set_directories(printer)
+set_directories(BASE_FILES)
+set_directories(HANDLE_TYPES)
+set_directories(LAYER_FILES)

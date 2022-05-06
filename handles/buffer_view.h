@@ -29,8 +29,11 @@ struct VkBufferViewWrapper : handle_base<VkBufferView> {
   VkBufferViewWrapper(VkBufferView buffer_view)
       : handle_base<VkBufferView>(buffer_view) {}
 
-  void set_create_info(state_block* state_block_, const VkBufferViewCreateInfo* pCreateInfo);
-
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkBufferViewCreateInfo* pCreateInfo);
+  const VkBufferViewCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkBufferViewCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

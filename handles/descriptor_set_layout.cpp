@@ -24,7 +24,8 @@
 
 namespace gapid2 {
 
-void VkDescriptorSetLayoutWrapper::set_create_info(state_block* state_block_, const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
+void VkDescriptorSetLayoutWrapper::set_create_info(VkDevice device_, state_block* state_block_, const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
+  device = device_;
   create_info = mem.get_typed_memory<VkDescriptorSetLayoutCreateInfo>(1);
   clone(
       state_block_, pCreateInfo[0], create_info[0], &mem,

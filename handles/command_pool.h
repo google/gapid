@@ -28,8 +28,11 @@ struct VkCommandPoolWrapper : handle_base<VkCommandPool> {
   VkCommandPoolWrapper(VkCommandPool command_pool)
       : handle_base<VkCommandPool>(command_pool) {}
 
-  void set_create_info(state_block* state_block_, const VkCommandPoolCreateInfo* pCreateInfo);
-
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkCommandPoolCreateInfo* pCreateInfo);
+  const VkCommandPoolCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkCommandPoolCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

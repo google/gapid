@@ -25,13 +25,15 @@
 namespace gapid2 {
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-void VkSurfaceKHRWrapper::set_create_info(state_block* state_block_, const VkWin32SurfaceCreateInfoKHR* pCreateInfo) {
+void VkSurfaceKHRWrapper::set_create_info(VkInstance instance_, state_block* state_block_, const VkWin32SurfaceCreateInfoKHR* pCreateInfo) {
+  instance = instance_;
   create_info = mem.get_typed_memory<VkWin32SurfaceCreateInfoKHR>(1);
   clone(state_block_, pCreateInfo[0], create_info[0], &mem);
 }
 
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
-void VkSurfaceKHRWrapper::set_create_info(state_block* state_block_, const VkXcbSurfaceCreateInfoKHR* pCreateInfo) {
+void VkSurfaceKHRWrapper::set_create_info(VkInstance instance_, state_block* state_block_, const VkXcbSurfaceCreateInfoKHR* pCreateInfo) {
+  instance = instance_;
   create_info = mem.get_typed_memory<VkXcbSurfaceCreateInfoKHR>(1);
   clone(state_block_, pCreateInfo[0], create_info[0], &mem, _VkXcbSurfaceCreateInfoKHR_connection_valid);
 }

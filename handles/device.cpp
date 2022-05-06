@@ -28,8 +28,10 @@
 
 namespace gapid2 {
 
-void VkDeviceWrapper::set_create_info(state_block* state_block_, const VkDeviceCreateInfo* pCreateInfo) {
+void VkDeviceWrapper::set_create_info(VkPhysicalDevice physical_device_, state_block* state_block_,
+    const VkDeviceCreateInfo* pCreateInfo) {
   create_info = mem.get_typed_memory<VkDeviceCreateInfo>(1);
+  physical_device = physical_device_;
   clone(
       state_block_, pCreateInfo[0], create_info[0], &mem,
       _VkDeviceCreateInfo_VkPhysicalDeviceFeatures2_VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures_shaderSubgroupExtendedTypes_valid,

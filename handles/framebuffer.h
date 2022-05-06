@@ -28,8 +28,12 @@ struct VkFramebufferWrapper : handle_base<VkFramebuffer> {
   VkFramebufferWrapper(VkFramebuffer framebuffer)
       : handle_base<VkFramebuffer>(framebuffer) {}
 
-  void set_create_info(state_block* state_block_, const VkFramebufferCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkFramebufferCreateInfo* pCreateInfo);
+  const VkFramebufferCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device = VK_NULL_HANDLE;
   VkFramebufferCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

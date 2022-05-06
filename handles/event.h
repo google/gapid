@@ -28,8 +28,11 @@ struct VkEventWrapper : handle_base<VkEvent> {
   VkEventWrapper(VkEvent event)
       : handle_base<VkEvent>(event) {}
 
-  void set_create_info(state_block* state_block_, const VkEventCreateInfo* pCreateInfo);
-
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkEventCreateInfo* pCreateInfo);
+  const VkEventCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkEventCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

@@ -49,6 +49,13 @@ struct VkPhysicalDeviceWrapper : handle_base<VkPhysicalDevice, void> {
       : handle_base<VkPhysicalDevice, void>(physical_device) {
   }
 
+  void set_create_info(VkInstance instance_, uint32_t idx) {
+    instance = instance_;
+    physical_device_idx = idx;
+  }
+
+  VkInstance instance = VK_NULL_HANDLE;
+  uint32_t physical_device_idx = static_cast<uint32_t>(-1);
   std::mutex child_mutex;
   REGISTER_CHILD_TYPE(VkDevice);
 };

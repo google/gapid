@@ -28,8 +28,12 @@ struct VkPipelineLayoutWrapper : handle_base<VkPipelineLayout> {
   VkPipelineLayoutWrapper(VkPipelineLayout pipeline_layout)
       : handle_base<VkPipelineLayout>(pipeline_layout) {}
 
-  void set_create_info(state_block* state_block_, const VkPipelineLayoutCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkPipelineLayoutCreateInfo* pCreateInfo);
+  const VkPipelineLayoutCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device = VK_NULL_HANDLE;
   VkPipelineLayoutCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

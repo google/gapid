@@ -23,11 +23,10 @@
 #include "common.h"
 #include "state_block.h"
 #include "transform_base.h"
+#include "utils.h"
+#include "physical_device.h"
 
 namespace gapid2 {
-
-template <typename T, typename... Ts>
-constexpr bool args_contain() { return std::disjunction_v<std::is_same<T, Ts>...>; }
 
 template <typename... Args>
 class creation_tracker : public transform_base {
@@ -47,6 +46,28 @@ class creation_tracker : public transform_base {
       return res;
     } else {
       return super::vkCreateInstance(pCreateInfo, pAllocator, pInstance);
+    }
+  }
+
+  VkResult vkEnumeratePhysicalDevices(VkInstance instance,
+                                      uint32_t* pPhysicalDeviceCount,
+                                      VkPhysicalDevice* pPhysicalDevices) {
+    if constexpr (args_contain<VkPhysicalDevice, Args...>()) {
+      auto res =
+          super::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
+      if (res != VK_SUCCESS && res != VK_INCOMPLETE) {
+        return res;
+      }
+      if (pPhysicalDevices == nullptr) {
+        return res;
+      }
+      for (uint32_t i = 0; i < *pPhysicalDeviceCount; ++i) {
+        GAPID2_ASSERT(state_block_->get_or_create(pPhysicalDevices[i]), "PhysicalDevice already exists");
+        return res;
+      }
+      return res;
+    } else {
+      return super::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
     }
   }
 
@@ -600,6 +621,14 @@ class creation_tracker : public transform_base {
     if constexpr (args_contain<VkInstance, Args...>()) {
       if (instance) {
         GAPID2_ASSERT(state_block_->erase(instance), "Could not find instance to erase");
+      }
+    }
+
+    if constexpr (args_contain<VkPhysicalDevice, Args...>()) {
+      for (auto& it : state_block_->VkPhysicalDevices) {
+        if (it.second->instance == instance) {
+          state_block_->erase(it.first);
+        }
       }
     }
 

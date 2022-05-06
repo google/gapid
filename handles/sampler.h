@@ -27,8 +27,11 @@ class state_block;
 struct VkSamplerWrapper : handle_base<VkSampler> {
   VkSamplerWrapper(VkSampler sampler)
       : handle_base<VkSampler>(sampler) {}
-  void set_create_info(state_block* state_block_, const VkSamplerCreateInfo* pCreateInfo);
-
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkSamplerCreateInfo* pCreateInfo);
+  const VkSamplerCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkSamplerCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

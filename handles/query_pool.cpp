@@ -24,7 +24,8 @@
 
 namespace gapid2 {
 
-void VkQueryPoolWrapper::set_create_info(state_block* state_block_, const VkQueryPoolCreateInfo* pCreateInfo) {
+void VkQueryPoolWrapper::set_create_info(VkDevice device_, state_block* state_block_, const VkQueryPoolCreateInfo* pCreateInfo) {
+  device_ = device;
   create_info = mem.get_typed_memory<VkQueryPoolCreateInfo>(1);
   clone(state_block_, pCreateInfo[0], create_info[0], &mem,
         _VkQueryPoolCreateInfo_pipelineStatistics_valid);

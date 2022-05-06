@@ -28,15 +28,18 @@ struct VkSurfaceKHRWrapper : handle_base<VkSurfaceKHR> {
   VkSurfaceKHRWrapper(VkSurfaceKHR sampler)
       : handle_base<VkSurfaceKHR>(sampler) {}
 
+  const auto* get_create_info() const { return create_info;  }
+
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-  void set_create_info(state_block* state_block_, const VkWin32SurfaceCreateInfoKHR* pCreateInfo);
+  void set_create_info(VkInstance instance, state_block* state_block_, const VkWin32SurfaceCreateInfoKHR* pCreateInfo);
 
   VkWin32SurfaceCreateInfoKHR* create_info = nullptr;
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
-  void set_create_info(state_block* state_block_, const VkXcbSurfaceCreateInfoKHR* pCreateInfo);
+  void set_create_info(VkInstance instance, state_block* state_block_, const VkXcbSurfaceCreateInfoKHR* pCreateInfo);
 
   VkXcbSurfaceCreateInfoKHR* create_info = nullptr;
 #endif
+  VkInstance instance;
   temporary_allocator mem;
 };
 }  // namespace gapid2

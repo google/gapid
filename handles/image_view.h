@@ -28,8 +28,11 @@ struct VkImageViewWrapper : handle_base<VkImageView> {
   VkImageViewWrapper(VkImageView image_view)
       : handle_base<VkImageView>(image_view) {}
 
-  void set_create_info(state_block* state_block_, const VkImageViewCreateInfo* pCreateInfo);
-
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkImageViewCreateInfo* pCreateInfo);
+  const VkImageViewCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkImageViewCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

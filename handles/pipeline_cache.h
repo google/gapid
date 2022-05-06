@@ -28,8 +28,13 @@ struct VkPipelineCacheWrapper : handle_base<VkPipelineCache> {
   VkPipelineCacheWrapper(VkPipelineCache pipeline)
       : handle_base<VkPipelineCache>(pipeline) {}
 
-  void set_create_info(state_block* state_block_, const VkPipelineCacheCreateInfo* pCreateInfo);
+  void set_create_info(
+      VkDevice device_, state_block* state_block_, const VkPipelineCacheCreateInfo* pCreateInfo);
+  const VkPipelineCacheCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device = VK_NULL_HANDLE;
   VkPipelineCacheCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

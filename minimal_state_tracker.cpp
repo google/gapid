@@ -94,7 +94,7 @@ VkResult minimal_state_tracker::vkCreateDescriptorUpdateTemplate(
     return res;
   }
   auto pl = state_block_->get(pDescriptorUpdateTemplate[0]);
-  pl->set_create_info(state_block_, pCreateInfo);
+  pl->set_create_info(device, state_block_, pCreateInfo);
   return res;
 }
 

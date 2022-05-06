@@ -34,9 +34,14 @@ struct VkDescriptorSetWrapper : handle_base<VkDescriptorSet> {
 
   void set_layout(VkDescriptorSetLayoutWrapper* layout);
 
-  void set_allocate_info(state_block* state_block_, const VkDescriptorSetAllocateInfo* pAllocateInfo,
+  void set_allocate_info(VkDevice device_,
+                         state_block* state_block_, const VkDescriptorSetAllocateInfo* pAllocateInfo,
                          uint32_t index);
+  const VkDescriptorSetAllocateInfo* get_allocate_info() const {
+    return allocate_info;
+  }
 
+  VkDevice device;
   VkDescriptorSetAllocateInfo* allocate_info = nullptr;
   uint32_t idx = 0;
   temporary_allocator mem;

@@ -29,9 +29,12 @@ struct VkDescriptorUpdateTemplateWrapper
   VkDescriptorUpdateTemplateWrapper(VkDescriptorUpdateTemplate descriptor_set)
       : handle_base<VkDescriptorUpdateTemplate>(descriptor_set) {}
 
-  void set_create_info(state_block* state_block_,
+  void set_create_info(VkDevice device_, state_block* state_block_,
                        const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo);
-
+  const VkDescriptorUpdateTemplateCreateInfo* get_create_info() const {
+    return create_info;
+  }
+  VkDevice device = VK_NULL_HANDLE;
   VkDescriptorUpdateTemplateCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

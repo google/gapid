@@ -23,13 +23,15 @@
 #include "struct_clone.h"
 
 namespace gapid2 {
-void VkRenderPassWrapper::set_create_info(state_block* state_block_,
+void VkRenderPassWrapper::set_create_info(VkDevice device_, state_block* state_block_,
                                           const VkRenderPassCreateInfo* pCreateInfo) {
+  device = device_;
   create_info = mem.get_typed_memory<VkRenderPassCreateInfo>(1);
   clone(state_block_, pCreateInfo[0], create_info[0], &mem);
 }
 
-void VkRenderPassWrapper::set_create_info2(state_block* state_block_, const VkRenderPassCreateInfo2* pCreateInfo) {
+void VkRenderPassWrapper::set_create_info2(VkDevice device_, state_block* state_block_, const VkRenderPassCreateInfo2* pCreateInfo) {
+  device = device_;
   create_info2 = mem.get_typed_memory<VkRenderPassCreateInfo2>(1);
   clone(state_block_, pCreateInfo[0], create_info2[0], &mem,
         _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_depthResolveMode_valid,

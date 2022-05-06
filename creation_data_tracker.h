@@ -23,11 +23,9 @@
 #include "common.h"
 #include "state_block.h"
 #include "transform_base.h"
+#include "utils.h"
 
 namespace gapid2 {
-
-template <typename T, typename... Ts>
-constexpr bool args_contain() { return std::disjunction_v<std::is_same<T, Ts>...>; }
 
 template <typename... Args>
 class creation_data_tracker : public transform_base {
@@ -51,10 +49,33 @@ class creation_data_tracker : public transform_base {
     }
   }
 
-  VkResult vkCreateDevice(VkPhysicalDevice physicalDevice,
-                          const VkDeviceCreateInfo* pCreateInfo,
-                          const VkAllocationCallbacks* pAllocator,
-                          VkDevice* pDevice) override {
+  VkResult vkEnumeratePhysicalDevices(VkInstance instance,
+                                      uint32_t* pPhysicalDeviceCount,
+                                      VkPhysicalDevice* pPhysicalDevices) {
+    if constexpr (args_contain<VkPhysicalDevice, Args...>()) {
+      auto res =
+          super::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
+      if (res != VK_SUCCESS && res != VK_INCOMPLETE) {
+        return res;
+      }
+      if (pPhysicalDevices == nullptr) {
+        return res;
+      }
+      for (uint32_t i = 0; i < *pPhysicalDeviceCount; ++i) {
+        auto pl = state_block_->get(pPhysicalDevices[i]);
+        pl->set_create_info(instance, i);
+      }
+      return res;
+    } else {
+      return super::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
+    }
+  }
+
+  VkResult
+  vkCreateDevice(VkPhysicalDevice physicalDevice,
+                 const VkDeviceCreateInfo* pCreateInfo,
+                 const VkAllocationCallbacks* pAllocator,
+                 VkDevice* pDevice) override {
     if constexpr (args_contain<VkDevice, Args...>()) {
       auto res =
           super::vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
@@ -62,7 +83,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pDevice[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(physicalDevice, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
@@ -77,7 +98,7 @@ class creation_data_tracker : public transform_base {
       super::vkGetDeviceQueue(device, queueFamilyIndex, queueIndex, pQueue);
 
       auto pl = state_block_->get(pQueue[0]);
-      pl->set_create_info(state_block_, queueFamilyIndex, queueIndex);
+      pl->set_create_info(device, queueFamilyIndex, queueIndex);
     } else {
       super::vkGetDeviceQueue(device, queueFamilyIndex, queueIndex, pQueue);
     }
@@ -90,7 +111,7 @@ class creation_data_tracker : public transform_base {
       super::vkGetDeviceQueue2(device, pQueueInfo, pQueue);
 
       auto pl = state_block_->get(pQueue[0]);
-      pl->set_create_info2(pQueueInfo);
+      pl->set_create_info2(device, state_block_, pQueueInfo);
     } else {
       super::vkGetDeviceQueue2(device, pQueueInfo, pQueue);
     }
@@ -107,7 +128,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pMemory[0]);
-      pl->set_allocate_info(state_block_, pAllocateInfo);
+      pl->set_allocate_info(device, state_block_, pAllocateInfo);
       return res;
     } else {
       return super::vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
@@ -124,7 +145,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pFence[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateFence(device, pCreateInfo, pAllocator, pFence);
@@ -142,7 +163,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pSemaphore[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateSemaphore(device, pCreateInfo, pAllocator, pSemaphore);
@@ -159,7 +180,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pEvent[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateEvent(device, pCreateInfo, pAllocator, pEvent);
@@ -177,7 +198,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pQueryPool[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateQueryPool(device, pCreateInfo, pAllocator, pQueryPool);
@@ -194,7 +215,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pBuffer[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateBuffer(device, pCreateInfo, pAllocator, pBuffer);
@@ -212,7 +233,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pView[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateBufferView(device, pCreateInfo, pAllocator, pView);
@@ -229,7 +250,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pImage[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateImage(device, pCreateInfo, pAllocator, pImage);
@@ -246,7 +267,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pView[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateImageView(device, pCreateInfo, pAllocator, pView);
@@ -264,7 +285,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pShaderModule[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateShaderModule(device, pCreateInfo, pAllocator,
@@ -282,7 +303,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pPipelineCache[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreatePipelineCache(device, pCreateInfo, pAllocator,
@@ -306,7 +327,7 @@ class creation_data_tracker : public transform_base {
       }
       for (size_t i = 0; i < createInfoCount; ++i) {
         auto pl = state_block_->get(pPipelines[i]);
-        pl->set_create_info(state_block_, pipelineCache, &pCreateInfos[i]);
+        pl->set_create_info(device, state_block_, pipelineCache, &pCreateInfos[i]);
       }
       return res;
     } else {
@@ -331,7 +352,7 @@ class creation_data_tracker : public transform_base {
       }
       for (size_t i = 0; i < createInfoCount; ++i) {
         auto pl = state_block_->get(pPipelines[i]);
-        pl->set_create_info(state_block_, pipelineCache, &pCreateInfos[i]);
+        pl->set_create_info(device, state_block_, pipelineCache, &pCreateInfos[i]);
       }
       return res;
     } else {
@@ -350,7 +371,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pPipelineLayout[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreatePipelineLayout(device, pCreateInfo, pAllocator,
@@ -368,7 +389,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pSampler[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateSampler(device, pCreateInfo, pAllocator, pSampler);
@@ -387,7 +408,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pSetLayout[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateDescriptorSetLayout(device, pCreateInfo,
@@ -406,7 +427,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pDescriptorPool[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateDescriptorPool(device, pCreateInfo, pAllocator,
@@ -426,7 +447,7 @@ class creation_data_tracker : public transform_base {
       }
       for (uint32_t i = 0; i < pAllocateInfo->descriptorSetCount; ++i) {
         auto pl = state_block_->get(pDescriptorSets[i]);
-        pl->set_allocate_info(state_block_, mpAllocateInfo, i);
+        pl->set_allocate_info(device, state_block_, pAllocateInfo, i);
       }
       return res;
     } else {
@@ -444,7 +465,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pFramebuffer[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateFramebuffer(device, pCreateInfo, pAllocator,
@@ -463,7 +484,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pRenderPass[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateRenderPass(device, pCreateInfo, pAllocator, pRenderPass);
@@ -481,7 +502,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pRenderPass[0]);
-      pl->set_create_info2(pCreateInfo);
+      pl->set_create_info2(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateRenderPass2(device, pCreateInfo, pAllocator,
@@ -500,7 +521,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pCommandPool[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateCommandPool(device, pCreateInfo, pAllocator,
@@ -519,7 +540,7 @@ class creation_data_tracker : public transform_base {
       }
       for (uint32_t i = 0; i < pAllocateInfo->commandBufferCount; ++i) {
         auto pl = state_block_->get(pCommandBuffers[i]);
-        pl->set_allocate_info(state_block_, mpAllocateInfo, i);
+        pl->set_allocate_info(device, state_block_, pAllocateInfo, i);
       }
       return res;
     } else {
@@ -539,7 +560,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pYcbcrConversion[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateSamplerYcbcrConversion(
@@ -559,7 +580,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pDescriptorUpdateTemplate[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateDescriptorUpdateTemplate(
@@ -578,7 +599,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pSurface[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(instance, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateWin32SurfaceKHR(instance, pCreateInfo, pAllocator,
@@ -597,7 +618,7 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       auto pl = state_block_->get(pSwapchain[0]);
-      pl->set_create_info(state_block_, pCreateInfo);
+      pl->set_create_info(device, state_block_, pCreateInfo);
       return res;
     } else {
       return super::vkCreateSwapchainKHR(device, pCreateInfo, pAllocator,
@@ -616,9 +637,12 @@ class creation_data_tracker : public transform_base {
         return res;
       }
       if (pSwapchainImages != nullptr) {
+        auto swp = state_block_->get(swapchain);
+        swp->swapchain_images.clear();
         for (uint32_t i = 0; i < *pSwapchainImageCount; ++i) {
           auto pl = state_block_->get(pSwapchainImages[i]);
-          pl->set_swapchain_info(swapchain, i);
+          pl->set_swapchain_info(device, swapchain, i);
+          swp->swapchain_images.push_back(pSwapchainImages[i]);
         }
       }
       return res;
@@ -629,5 +653,5 @@ class creation_data_tracker : public transform_base {
   }
 
  protected:
-};
+};  // namespace gapid2
 }  // namespace gapid2

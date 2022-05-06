@@ -54,6 +54,9 @@ struct VkInstanceWrapper : handle_base<VkInstance, void> {
   }
 
   void set_create_info(state_block* state_block_, const VkInstanceCreateInfo* pCreateInfo);
+  const VkInstanceCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
   REGISTER_CHILD_TYPE(VkDevice);
   REGISTER_CHILD_TYPE(VkPhysicalDevice);

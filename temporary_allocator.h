@@ -19,6 +19,8 @@
 #include <malloc.h>
 #include "common.h"
 
+namespace gapid2 {
+
 struct temporary_allocator {
   temporary_allocator() { memory_blocks_.push_back(block{4096, init, 4096}); }
 
@@ -54,3 +56,4 @@ struct temporary_allocator {
   std::vector<block> memory_blocks_;
   size_t data_offset = 0;
 };
+}  // namespace gapid2

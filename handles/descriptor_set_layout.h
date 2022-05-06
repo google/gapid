@@ -28,8 +28,12 @@ struct VkDescriptorSetLayoutWrapper : handle_base<VkDescriptorSetLayout> {
   VkDescriptorSetLayoutWrapper(VkDescriptorSetLayout descriptor_set)
       : handle_base<VkDescriptorSetLayout>(descriptor_set) {}
 
-  void set_create_info(state_block* state_block_, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+  const VkDescriptorSetLayoutCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device = VK_NULL_HANDLE;
   VkDescriptorSetLayoutCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 };

@@ -31,9 +31,13 @@ struct VkBufferWrapper : handle_base<VkBuffer> {
   VkBufferWrapper(VkBuffer buffer)
       : handle_base<VkBuffer>(buffer) {}
 
-  void set_create_info(state_block* state_block_, const VkBufferCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkBufferCreateInfo* pCreateInfo);
+  const VkBufferCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
   VkBufferCreateInfo* create_info = nullptr;
+  VkDevice device = VK_NULL_HANDLE;
   temporary_allocator mem;
 
   VkDeviceSize required_size;

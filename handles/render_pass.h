@@ -28,11 +28,19 @@ struct VkRenderPassWrapper : handle_base<VkRenderPass> {
   VkRenderPassWrapper(VkRenderPass render_pass)
       : handle_base<VkRenderPass>(render_pass) {}
 
-  void set_create_info(state_block* state_block_,
+  void set_create_info(VkDevice device_, state_block* state_block_,
                        const VkRenderPassCreateInfo* pCreateInfo);
+  void set_create_info2(VkDevice device_, state_block* state_block_, const VkRenderPassCreateInfo2* pCreateInfo);
 
-  void set_create_info2(state_block* state_block_, const VkRenderPassCreateInfo2* pCreateInfo);
+  const VkRenderPassCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  const VkRenderPassCreateInfo2* get_create_info2() const {
+    return create_info2;
+  }
+
+  VkDevice device = VK_NULL_HANDLE;
   VkRenderPassCreateInfo* create_info = nullptr;
   VkRenderPassCreateInfo2* create_info2 = nullptr;
   temporary_allocator mem;

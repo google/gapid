@@ -135,6 +135,9 @@ class memory_tracker {
   void for_dirty_in_mem(VkDeviceMemory mem,
                         std::function<void(void*, VkDeviceSize)> fn) {
     std::unique_lock<std::mutex> l(mut);
+    if (src_ranges.empty()) {
+      return;
+    }
     auto& rd = src_ranges[mem];
     auto end_ptr = (rd->dst_ptr + rd->mapped_size);
     if (dirty_read_pages.empty()) {

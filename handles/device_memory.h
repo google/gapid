@@ -30,7 +30,10 @@ struct VkDeviceMemoryWrapper : handle_base<VkDeviceMemory> {
   VkDeviceMemoryWrapper(VkDeviceMemory fence)
       : handle_base<VkDeviceMemory>(fence) {}
 
-  void set_allocate_info(state_block* state_block_, const VkMemoryAllocateInfo* pAllocateInfo);
+  void set_allocate_info(VkDevice device_, state_block* state_block_, const VkMemoryAllocateInfo* pAllocateInfo);
+  const VkMemoryAllocateInfo* get_allocate_info() const {
+    return allocate_info;
+  }
 
   VkMemoryAllocateInfo* allocate_info = nullptr;
   temporary_allocator mem;
@@ -40,7 +43,7 @@ struct VkDeviceMemoryWrapper : handle_base<VkDeviceMemory> {
   char* _mapped_location = nullptr;
   bool _is_coherent = false;
   VkDeviceSize _size = 0;
-  ;
+  VkDevice device = VK_NULL_HANDLE;
 };
 
 struct memory_binding {

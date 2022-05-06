@@ -23,7 +23,8 @@
 #include "struct_clone.h"
 
 namespace gapid2 {
-void VkDeviceMemoryWrapper::set_allocate_info(state_block* state_block_, const VkMemoryAllocateInfo* pAllocateInfo) {
+void VkDeviceMemoryWrapper::set_allocate_info(VkDevice device_, state_block* state_block_, const VkMemoryAllocateInfo* pAllocateInfo) {
+  device = device_;
   allocate_info = mem.get_typed_memory<VkMemoryAllocateInfo>(1);
   clone(state_block_, pAllocateInfo[0], allocate_info[0], &mem, _VkMemoryAllocateInfo_VkImportMemoryHostPointerInfoEXT_pHostPointer_clone);
   _size = pAllocateInfo->allocationSize;

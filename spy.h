@@ -27,6 +27,7 @@
 #include "command_serializer.h"
 #include "encoder.h"
 #include "memory_tracker.h"
+#include "noop_serializer.h"
 #include "null_caller.h"
 #include "temporary_allocator.h"
 #include "transform.h"
@@ -36,13 +37,12 @@ class spy : public command_serializer {
  public:
   using super = command_serializer;
   spy() : out_file("file.trace", std::ios::out | std::ios::binary),
-          null_caller(&empty_),   
-            noop_serializer(&empty_) {
-    
+          null_caller(&empty_),
+          noop_serializer(&empty_) {
   }
 
   void initialize() {
-    noop_serializer.s = this;
+    noop_serializer.next = this;
     noop_serializer.state_block_ = state_block_;
     encoder_tls_key = TlsAlloc();
   }
@@ -130,18 +130,8 @@ class spy : public command_serializer {
   };
   std::unordered_map<VkDeviceMemory, memory_info> memory_infos;
   transform<null_caller> null_caller;
-  
-  class spy_serializer : public command_serializer {
-   public:
-    spy* s;
-    encoder_handle get_locked_encoder(uintptr_t key) override {
-      return s->get_locked_encoder(key);
-    }
-    encoder_handle get_encoder(uintptr_t key) override {
-      return s->get_encoder(key);
-    }
-  };
-  transform<spy_serializer> noop_serializer;
+
+  transform<noop_serializer> noop_serializer;
   transform_base empty_;
 };
 }  // namespace gapid2

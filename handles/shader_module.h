@@ -38,8 +38,12 @@ struct VkShaderModuleWrapper : handle_base<VkShaderModule> {
   VkShaderModuleWrapper(VkShaderModule semaphore)
       : handle_base<VkShaderModule>(semaphore) {}
 
-  void set_create_info(state_block* state_block_, const VkShaderModuleCreateInfo* pCreateInfo);
+  void set_create_info(VkDevice device_, state_block* state_block_, const VkShaderModuleCreateInfo* pCreateInfo);
+  const VkShaderModuleCreateInfo* get_create_info() const {
+    return create_info;
+  }
 
+  VkDevice device = VK_NULL_HANDLE;
   VkShaderModuleCreateInfo* create_info = nullptr;
   temporary_allocator mem;
 

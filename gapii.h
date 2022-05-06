@@ -22,15 +22,23 @@
 #include "creation_tracker.h"
 #include "layer_base.h"
 #include "spy.h"
+#include "state_tracker.h"
+
 namespace gapid2 {
 class gapii : public layer_base {
  public:
   gapii() : transform_base_(nullptr) {
     layer_base::initialize(&transform_base_);
-    // layerer_ = std::make_unique<gapid2::transform<gapid2::layerer>>(&transform_base_);
-    // layerer_->initializeLayers(gapid2::get_layers());
     spy_ = std::make_unique<gapid2::transform<gapid2::spy>>(&transform_base_);
+#ifdef MEC
+    state_block_ = std::make_unique<gapid2::transform<gapid2::state_block>>(&transform_base_);
+    state_tracker_ = std::make_unique<gapid2::transform<gapid2::state_tracker>>(&transform_base_);
+#endif
+
     spy_->initialize();
+  }
+
+  ~gapii() {
   }
 
   gapid2::transform_base* get_top_level_functions() override {
@@ -38,6 +46,9 @@ class gapii : public layer_base {
   }
 
  private:
+  std::unique_ptr<gapid2::transform<gapid2::state_tracker>> state_tracker_;
+  std::unique_ptr<gapid2::transform<gapid2::state_block>> state_block_;
+
   std::unique_ptr<gapid2::transform<gapid2::spy>> spy_;
   gapid2::transform<gapid2::transform_base> transform_base_;
 };
