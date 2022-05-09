@@ -1,5 +1,4 @@
 # Directories
-/.DS_Store
 /.idea
 /**/.vscode
 /bazel-*
@@ -21,6 +20,9 @@
 *ycm_extra_conf.py*
 gapir.log
 gapis.log
+
+# MacOS
+.DS_Store
 
 # Vim
 [._]*.s[a-w][a-z]
