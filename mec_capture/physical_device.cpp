@@ -23,13 +23,13 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_physical_devices(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_physical_devices(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkInstances) {
     std::map<uint32_t, VkPhysicalDevice> pd;
     for (auto i : state_block->VkPhysicalDevices) {
-      if (i.second->instance == it.first) {
-        GAPID2_ASSERT(pd.insert(std::make_pair(i.second->physical_device_idx,
-                                               i.second->_handle))
+      if (i.second.second->instance == it.first) {
+        GAPID2_ASSERT(pd.insert(std::make_pair(i.second.second->physical_device_idx,
+                                               i.second.second->_handle))
                               .second == true,
                       "Same device used twice for the same instance");
       }
@@ -42,13 +42,25 @@ void mid_execution_generator::capture_physical_devices(const state_block* state_
     }
     GAPID2_ASSERT(pds.size() == pd.size(),
                   "Lost a physical device");
-    uint32_t i = pds.size();
+    uint32_t ct = pds.size();
 
     serializer->vkEnumeratePhysicalDevices(
-        it.first, &i, nullptr);
+        it.first, &ct, nullptr);
 
     serializer->vkEnumeratePhysicalDevices(
-        it.first, &i, pds.data());
+        it.first, &ct, pds.data());
+
+    auto enc = serializer->get_encoder(reinterpret_cast<uintptr_t>(it.first));
+    if (enc) {
+      for (size_t i = 0; i < ct; ++i) {
+        VkPhysicalDeviceProperties properties;
+        // Bypass serializing the call to GPDP
+        bypass_caller->vkGetPhysicalDeviceProperties(pds[i], &properties);
+        enc->encode<uint32_t>(properties.deviceID);
+        enc->encode<uint32_t>(properties.vendorID);
+        enc->encode<uint32_t>(properties.driverVersion);
+      }
+    }
   }
 }
 

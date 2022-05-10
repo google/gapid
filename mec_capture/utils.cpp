@@ -14,26 +14,18 @@
  * limitations under the License.
  */
 
-#include "render_pass.h"
-
 #include "mid_execution_generator.h"
+#include "queue.h"
 #include "state_block.h"
-#include "utils.h"
+#include "swapchain.h"
 
 namespace gapid2 {
-
-void mid_execution_generator::capture_render_passes(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
-  for (auto& it : state_block->VkRenderPasss) {
-    VkRenderPassWrapper* rp = it.second.second;
-    VkRenderPass render_pass = it.first;
-    if (rp->get_create_info2()) {
-      serializer->vkCreateRenderPass2(rp->device,
-                                      rp->get_create_info2(), nullptr, &render_pass);
-    } else {
-      serializer->vkCreateRenderPass(rp->device,
-                                     rp->get_create_info(), nullptr, &render_pass);
+VkQueue mid_execution_generator::get_queue_for_device(const state_block* state_block, VkDevice device) const {
+  for (auto& q : state_block->VkQueues) {
+    if (q.second.second->device == device) {
+      return q.first;
     }
   }
+  return VK_NULL_HANDLE;
 }
-
 }  // namespace gapid2

@@ -14,30 +14,30 @@
  * limitations under the License.
  */
 
-#include "instance.h"
+#include "queue.h"
 
+#include "instance.h"
 #include "mid_execution_generator.h"
 #include "state_block.h"
-#include "queue.h"
 #include "utils.h"
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_queues(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_queues(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkQueues) {
     VkQueue queue = it.first;
-    if (it.second->get_info_2()) {
+    const VkQueueWrapper* wrapper = it.second.second;
+    if (wrapper->get_info_2()) {
       serializer->vkGetDeviceQueue2(
-          it.second->device,
-          it.second->get_info_2(),
+          wrapper->device,
+          wrapper->get_info_2(),
           &queue);
     } else {
       serializer->vkGetDeviceQueue(
-        it.second->device,
-        it.second->queue_family_index,
-        it.second->queue_index,
-        &queue
-      );
+          wrapper->device,
+          wrapper->queue_family_index,
+          wrapper->queue_index,
+          &queue);
     }
   }
 }

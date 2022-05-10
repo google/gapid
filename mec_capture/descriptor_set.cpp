@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_descriptor_sets(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_descriptor_sets(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkDescriptorSets) {
-    VkDescriptorSetWrapper* ds = it.second;
+    VkDescriptorSetWrapper* ds = it.second.second;
     VkDescriptorSet descriptor_set = it.first;
     serializer->vkAllocateDescriptorSets(ds->device,
                                          ds->get_allocate_info(), &descriptor_set);

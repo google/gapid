@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_shader_modules(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_shader_modules(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkShaderModules) {
-    VkShaderModuleWrapper* sm = it.second;
+    VkShaderModuleWrapper* sm = it.second.second;
     VkShaderModule shader_module = it.first;
     serializer->vkCreateShaderModule(sm->device,
                                      sm->get_create_info(), nullptr, &shader_module);

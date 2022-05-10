@@ -50,7 +50,7 @@ namespace gapid2 {
 state_block::~state_block() {
 #define PROCESS_HANDLE(Type) \
   for (auto& it : Type##s) { \
-    delete it.second;        \
+    delete it.second.second; \
   }
 
 #include "handle_defines.inl"
@@ -64,22 +64,22 @@ state_block::~state_block() {
       return nullptr;                                 \
     }                                                 \
     auto ret = new Type##Wrapper(t);                  \
-    Type##s[t] = ret;                                 \
+    Type##s[t] = std::make_pair(1, ret);              \
     return ret;                                       \
   }                                                   \
   Type##Wrapper* state_block::get_or_create(Type t) { \
     auto it = Type##s.find(t);                        \
     if (it != Type##s.end()) {                        \
-      return it->second;                              \
+      return it->second.second;                       \
     }                                                 \
     auto ret = new Type##Wrapper(t);                  \
-    Type##s[t] = ret;                                 \
+    Type##s[t] = std::make_pair(1, ret);              \
     return ret;                                       \
   }                                                   \
   Type##Wrapper* state_block::get(Type t) {           \
     auto it = Type##s.find(t);                        \
     if (it != Type##s.end()) {                        \
-      return it->second;                              \
+      return it->second.second;                       \
     }                                                 \
     return nullptr;                                   \
   }                                                   \
@@ -88,8 +88,10 @@ state_block::~state_block() {
     if (it == Type##s.end()) {                        \
       return false;                                   \
     }                                                 \
-    delete it->second;                                \
-    Type##s.erase(it);                                \
+    if (!--it->second.first) {                        \
+      delete it->second.second;                       \
+      Type##s.erase(it);                              \
+    }                                                 \
     return true;                                      \
   }
 #include "handle_defines.inl"

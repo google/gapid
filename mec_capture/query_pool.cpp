@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_query_pools(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_query_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkQueryPools) {
-    VkQueryPoolWrapper* qp = it.second;
+    VkQueryPoolWrapper* qp = it.second.second;
     VkQueryPool query_pool = it.first;
     serializer->vkCreateQueryPool(qp->device,
                                   qp->get_create_info(), nullptr, &query_pool);

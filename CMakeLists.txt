@@ -361,6 +361,10 @@ target_link_libraries(test BASE_FILES HANDLE_TYPES LAYER_FILES)
 add_library(gapii SHARED
     spy.h
     spy.cpp
+    spy_serializer.h
+    spy_serializer.cpp
+    mec_controller.h
+    mec_controller.cpp
     gapii.cpp
     gapii.h
     memory_tracker.h
@@ -395,6 +399,7 @@ add_library(gapii SHARED
     mec_capture/surface.cpp
     mec_capture/swapchain.cpp
     mec_capture/synchronization.cpp
+    mec_capture/utils.cpp
 )
 
 target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect)

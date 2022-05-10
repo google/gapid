@@ -39,6 +39,7 @@ void base_caller::on_physicaldevice_created(VkInstance instance, VkPhysicalDevic
   instance_lock_.lock_shared();
   physicaldevice_lock_.lock();
   for (uint32_t i = 0; i < count; ++i) {
+    //reinterpret_cast<void**>(val)[i] = reinterpret_cast<void**>(instance)[0];
     physicaldevice_functions_.insert(std::make_pair(val[i], instance_functions_[instance].get()));
   }
   physicaldevice_lock_.unlock();
@@ -53,6 +54,7 @@ void base_caller::on_device_created(VkPhysicalDevice physical_device, VkDevice* 
   physicaldevice_lock_.lock_shared();
   device_lock_.lock();
   for (uint32_t i = 0; i < count; ++i) {
+    //reinterpret_cast<void**>(val)[i] = reinterpret_cast<void**>(physical_device)[0];
     auto phys_dev_fns = physicaldevice_functions_[physical_device];
     auto inst = std::find_if(instance_functions_.begin(),
                              instance_functions_.end(),
@@ -78,6 +80,7 @@ void base_caller::on_queue_created(VkDevice device, VkQueue* val, uint32_t count
   device_lock_.lock_shared();
   queue_lock_.lock();
   for (uint32_t i = 0; i < count; ++i) {
+    //reinterpret_cast<void**>(val)[i] = reinterpret_cast<void**>(device)[0];
     queue_functions_.insert(std::make_pair(val[i], device_functions_[device].get()));
   }
   queue_lock_.unlock();
@@ -91,6 +94,7 @@ void base_caller::on_commandbuffer_created(VkDevice device, VkCommandBuffer* val
   device_lock_.lock_shared();
   commandbuffer_lock_.lock();
   for (uint32_t i = 0; i < count; ++i) {
+    //reinterpret_cast<void**>(val)[i] = reinterpret_cast<void**>(device)[0];
     commandbuffer_functions_.insert(std::make_pair(val[i], device_functions_[device].get()));
   }
   commandbuffer_lock_.unlock();

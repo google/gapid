@@ -14,22 +14,28 @@
  * limitations under the License.
  */
 
-#include "device.h"
+#define VK_NO_PROTOTYPES
+#include "mec_controller.h"
 
-#include "mid_execution_generator.h"
+#include <vulkan/vulkan.h>
+
+#include "mec_capture/mid_execution_generator.h"
 #include "state_block.h"
-namespace gapid2 {
 
-void mid_execution_generator::capture_devices(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
-  for (auto& it : state_block->VkDevices) {
-    VkDeviceWrapper* dev = it.second.second;
-    VkDevice device = it.first;
-    serializer->vkCreateDevice(
-        dev->get_physical_device(),
-        dev->get_create_info(),
-        nullptr,
-        &device);
+namespace gapid2 {
+void mec_controller::start_capture() {
+  for (auto i : state_block_->VkDevices) {
+    passthrough_caller_->vkDeviceWaitIdle(i.first);
   }
+
+  spy_serializer_->enable();
+  spy_->reset_memory_watch();
+  mid_execution_generator gen;
+  gen.begin_mid_execution_capture(state_block_, &noop_serializer, passthrough_caller_);
+}
+
+void mec_controller::end_capture() {
+  spy_serializer_->disable();
 }
 
 }  // namespace gapid2

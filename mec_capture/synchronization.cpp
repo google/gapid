@@ -23,24 +23,53 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_synchronization(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_synchronization(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkSemaphores) {
-    VkSemaphoreWrapper* sem = it.second;
+    VkSemaphoreWrapper* sem = it.second.second;
     VkSemaphore semaphore = it.first;
     serializer->vkCreateSemaphore(sem->device, sem->get_create_info(), nullptr, &semaphore);
+    auto tp = get_pNext<VkSemaphoreTypeCreateInfo>(sem->get_create_info());
+    if (tp && tp->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) {
+      GAPID2_ASSERT(false, "Timeline semaphores not quite ready yet");
+    }
+    if (sem->value) {
+      auto q = get_queue_for_device(state_block, sem->device);
+      GAPID2_ASSERT(q, "Cannot find queue for device .. how?");
+      VkSubmitInfo sub_info{
+          .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+          .pNext = nullptr,
+          .waitSemaphoreCount = 0,
+          .pWaitSemaphores = nullptr,
+          .commandBufferCount = 0,
+          .pCommandBuffers = nullptr,
+          .signalSemaphoreCount = 1,
+          .pSignalSemaphores = &semaphore};
+      serializer->vkQueueSubmit(q, 1, &sub_info, 0);
+    }
   }
+
   for (auto& it : state_block->VkFences) {
-    VkFenceWrapper* f = it.second;
+    VkFenceWrapper* f = it.second.second;
     VkFence fence = it.first;
-    serializer->vkCreateFence(f->device, f->get_create_info(), nullptr, &fence);
+    auto status = bypass_caller->vkGetFenceStatus(f->device, fence);
+    VkFenceCreateInfo ci = *f->get_create_info();
+    ci.flags = status == VK_SUCCESS ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
+    serializer->vkCreateFence(f->device, &ci, nullptr, &fence);
   }
+
   for (auto& it : state_block->VkEvents) {
-    VkEventWrapper* evt = it.second;
+    VkEventWrapper* evt = it.second.second;
     VkEvent event = it.first;
-    serializer->vkCreateEvent(evt->device, evt->get_create_info(), nullptr, &event);
+    VkEventCreateInfo eci = *evt->get_create_info();
+
+    serializer->vkCreateEvent(evt->device, &eci, nullptr, &event);
+
+    auto status = bypass_caller->vkGetEventStatus(evt->device, event);
+    if (status == VK_EVENT_SET) {
+      bypass_caller->vkSetEvent(evt->device, event);
+    }
   }
-#pragma TODO(awoloszyn, Get the actual synchronization states here)
-#pragma TODO(awoloszyn, Also we should set up any pending things on any queues)
+#pragma TODO(awoloszyn, We should set up any pending things on any queues)
 }
 
 }  // namespace gapid2

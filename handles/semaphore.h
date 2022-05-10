@@ -37,5 +37,7 @@ struct VkSemaphoreWrapper : handle_base<VkSemaphore> {
   VkDevice device = VK_NULL_HANDLE;
   VkSemaphoreCreateInfo* create_info = nullptr;
   temporary_allocator mem;
+
+  uint64_t value = 0;
 };
 }  // namespace gapid2

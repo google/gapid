@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_framebuffers(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_framebuffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkFramebuffers) {
-    VkFramebufferWrapper* fb = it.second;
+    VkFramebufferWrapper* fb = it.second.second;
     VkFramebuffer frame_buffer = it.first;
     serializer->vkCreateFramebuffer(fb->device,
                                     fb->get_create_info(), nullptr, &frame_buffer);

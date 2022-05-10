@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_buffer_views(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_buffer_views(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkBufferViews) {
-    VkBufferViewWrapper* buff = it.second;
+    VkBufferViewWrapper* buff = it.second.second;
     VkBufferView buffer_view = it.first;
     serializer->vkCreateBufferView(buff->device,
                                    buff->get_create_info(), nullptr, &buffer_view);

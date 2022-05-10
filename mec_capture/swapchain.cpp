@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
+#include "swapchain.h"
+
 #include "mid_execution_generator.h"
 #include "state_block.h"
-#include "swapchain.h"
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_swapchains(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_swapchains(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkSwapchainKHRs) {
-    VkSwapchainKHRWrapper* swap = it.second;
+    VkSwapchainKHRWrapper* swap = it.second.second;
     VkSwapchainKHR swapchain = it.first;
 
     serializer->vkCreateSwapchainKHR(
@@ -30,7 +31,7 @@ void mid_execution_generator::capture_swapchains(const state_block* state_block,
         swap->get_create_info(),
         nullptr,
         &swapchain);
-    
+
     std::vector<VkImage> images = swap->swapchain_images;
     uint32_t ct = images.size();
     serializer->vkGetSwapchainImagesKHR(
@@ -38,7 +39,6 @@ void mid_execution_generator::capture_swapchains(const state_block* state_block,
         swapchain,
         &ct,
         nullptr);
-    
   }
 }
 

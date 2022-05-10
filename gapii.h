@@ -21,7 +21,9 @@
 
 #include "creation_tracker.h"
 #include "layer_base.h"
+#include "mec_controller.h"
 #include "spy.h"
+#include "spy_serializer.h"
 #include "state_tracker.h"
 
 namespace gapid2 {
@@ -29,13 +31,19 @@ class gapii : public layer_base {
  public:
   gapii() : transform_base_(nullptr) {
     layer_base::initialize(&transform_base_);
+    serializer_ = std::make_unique<gapid2::transform<gapid2::spy_serializer>>(&transform_base_);
     spy_ = std::make_unique<gapid2::transform<gapid2::spy>>(&transform_base_);
 #ifdef MEC
     state_block_ = std::make_unique<gapid2::transform<gapid2::state_block>>(&transform_base_);
+    creation_tracker_ = std::make_unique<gapid2::transform<gapid2::creation_tracker<>>>(&transform_base_);
     state_tracker_ = std::make_unique<gapid2::transform<gapid2::state_tracker>>(&transform_base_);
+    mec_controller_ = std::make_unique<gapid2::transform<gapid2::mec_controller>>(&transform_base_);
+    spy_->initialize(serializer_.get(), minimal_state_tracker_.get());
+    mec_controller_->initialize(serializer_.get(), minimal_state_tracker_.get(), spy_.get());
+#else
+    spy_->initialize(serializer_.get(), minimal_state_tracker_.get());
+    serializer_->enable();
 #endif
-
-    spy_->initialize();
   }
 
   ~gapii() {
@@ -49,7 +57,10 @@ class gapii : public layer_base {
   std::unique_ptr<gapid2::transform<gapid2::state_tracker>> state_tracker_;
   std::unique_ptr<gapid2::transform<gapid2::state_block>> state_block_;
 
+  std::unique_ptr<gapid2::transform<gapid2::creation_tracker<>>> creation_tracker_;
+  std::unique_ptr<gapid2::transform<gapid2::spy_serializer>> serializer_;
   std::unique_ptr<gapid2::transform<gapid2::spy>> spy_;
+  std::unique_ptr<gapid2::transform<gapid2::mec_controller>> mec_controller_;
   gapid2::transform<gapid2::transform_base> transform_base_;
 };
 }  // namespace gapid2

@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  * Copyright (C) 2022 Google Inc.
  *
@@ -14,21 +16,31 @@
  * limitations under the License.
  */
 
-#include "pipeline_layout.h"
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 
-#include "mid_execution_generator.h"
-#include "state_block.h"
-#include "utils.h"
+#include <fstream>
+#include <mutex>
 
+#include "command_serializer.h"
 namespace gapid2 {
-
-void mid_execution_generator::capture_pipeline_layouts(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
-  for (auto& it : state_block->VkPipelineLayouts) {
-    VkPipelineLayoutWrapper* layout = it.second.second;
-    VkPipelineLayout pipeline_layout = it.first;
-    serializer->vkCreatePipelineLayout(layout->device,
-                                       layout->get_create_info(), nullptr, &pipeline_layout);
+class spy_serializer : public command_serializer {
+ public:
+  using super = transform_base;
+  spy_serializer() : out_file("file.trace", std::ios::out | std::ios::binary),
+                     enabled_(false) {
+    encoder_tls_key = TlsAlloc();
   }
-}
 
+  encoder_handle get_locked_encoder(uintptr_t key) override;
+  encoder_handle get_encoder(uintptr_t key) override;
+  void enable();
+  void disable();
+
+ private:
+  std::recursive_mutex call_mutex;
+  DWORD encoder_tls_key;
+  std::fstream out_file;
+  bool enabled_;
+};
 }  // namespace gapid2

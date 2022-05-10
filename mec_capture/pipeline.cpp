@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_pipelines(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_pipelines(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkPipelines) {
-    VkPipelineWrapper* pipe = it.second;
+    VkPipelineWrapper* pipe = it.second.second;
     VkPipeline pipeline = it.first;
     if (pipe->bind == VK_PIPELINE_BIND_POINT_COMPUTE) {
       auto create_info = *pipe->get_compute_create_info();

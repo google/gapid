@@ -21,10 +21,10 @@
 #include <type_traits>
 
 #include "common.h"
+#include "physical_device.h"
 #include "state_block.h"
 #include "transform_base.h"
 #include "utils.h"
-#include "physical_device.h"
 
 namespace gapid2 {
 
@@ -63,7 +63,6 @@ class creation_tracker : public transform_base {
       }
       for (uint32_t i = 0; i < *pPhysicalDeviceCount; ++i) {
         GAPID2_ASSERT(state_block_->get_or_create(pPhysicalDevices[i]), "PhysicalDevice already exists");
-        return res;
       }
       return res;
     } else {
@@ -626,7 +625,7 @@ class creation_tracker : public transform_base {
 
     if constexpr (args_contain<VkPhysicalDevice, Args...>()) {
       for (auto& it : state_block_->VkPhysicalDevices) {
-        if (it.second->instance == instance) {
+        if (it.second.second->instance == instance) {
           state_block_->erase(it.first);
         }
       }

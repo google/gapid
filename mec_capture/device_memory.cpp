@@ -15,25 +15,24 @@
  */
 
 #include "device_memory.h"
+
 #include "mid_execution_generator.h"
 #include "state_block.h"
 #include "utils.h"
 
-
 namespace gapid2 {
 
-void mid_execution_generator::capture_allocations(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_allocations(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkDeviceMemorys) {
-    VkDeviceMemoryWrapper* dev_mem = it.second;
+    VkDeviceMemoryWrapper* dev_mem = it.second.second;
     VkDeviceMemory device_memory = it.first;
-    
+
     serializer->vkAllocateMemory(
         dev_mem->device,
         dev_mem->allocate_info,
         nullptr,
-        &device_memory 
-    );
+        &device_memory);
   }
-} 
+}
 
 }  // namespace gapid2

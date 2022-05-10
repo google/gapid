@@ -28,7 +28,7 @@
 namespace gapid2 {
 class state_tracker : public creation_data_tracker<> {
  protected:
-  using super = transform_base;
+  using super = creation_data_tracker<>;
 
  public:
   VkResult vkCreateShaderModule(VkDevice device,
@@ -277,7 +277,14 @@ class state_tracker : public creation_data_tracker<> {
                          uint32_t submitCount,
                          const VkSubmitInfo* pSubmits,
                          VkFence fence) override {
+#pragma TODO(awoloszyn, "Handle timeline semaphores")
+
     for (size_t i = 0; i < submitCount; ++i) {
+      auto& sub = pSubmits[i];
+      for (uint32_t j = 0; j < sub.waitSemaphoreCount; ++j) {
+        auto sem = state_block_->get(sub.pWaitSemaphores[j]);
+        sem->value = 0;
+      }
       for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
         graphics_state.m_bound_descriptors.clear();
         compute_state.m_bound_descriptors.clear();
@@ -293,6 +300,11 @@ class state_tracker : public creation_data_tracker<> {
       return res;
     }
     for (size_t i = 0; i < submitCount; ++i) {
+      auto& sub = pSubmits[i];
+      for (uint32_t j = 0; j < sub.signalSemaphoreCount; ++j) {
+        auto sem = state_block_->get(sub.pSignalSemaphores[j]);
+        sem->value = 1;
+      }
       for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
         auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
         for (auto& pf : cb->_post_run_functions) {
@@ -646,6 +658,61 @@ class state_tracker : public creation_data_tracker<> {
         }
       }
     }
+  }
+
+  VkResult vkAcquireNextImageKHR(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex) {
+    auto ret = super::vkAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, pImageIndex);
+    if (ret != VK_SUCCESS) {
+      return ret;
+    }
+    if (semaphore) {
+      auto sem = state_block_->get(semaphore);
+      sem->value = 1;
+    }
+    return ret;
+  }
+  VkResult vkAcquireNextImage2KHR(VkDevice device, const VkAcquireNextImageInfoKHR* pAcquireInfo, uint32_t* pImageIndex) {
+    auto ret = super::vkAcquireNextImage2KHR(device, pAcquireInfo, pImageIndex);
+    if (ret != VK_SUCCESS) {
+      return ret;
+    }
+    if (pAcquireInfo->semaphore) {
+      auto sem = state_block_->get(pAcquireInfo->semaphore);
+      sem->value = 1;
+    }
+    return ret;
+  }
+
+  VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
+    for (size_t i = 0; i < pPresentInfo->waitSemaphoreCount; ++i) {
+      auto sem = state_block_->get(pPresentInfo->pWaitSemaphores[i]);
+      sem->value = 0;
+    }
+    auto ret = super::vkQueuePresentKHR(queue, pPresentInfo);
+    return ret;
+  }
+
+  VkResult vkQueueBindSparse(VkQueue queue, uint32_t bindInfoCount, const VkBindSparseInfo* pBindInfo, VkFence fence) {
+    for (size_t i = 0; i < bindInfoCount; ++i) {
+      auto& binds = pBindInfo[i];
+      for (uint32_t j = 0; j < binds.waitSemaphoreCount; ++j) {
+        auto sem = state_block_->get(binds.pWaitSemaphores[j]);
+        sem->value = 0;
+      }
+    }
+
+    auto ret = vkQueueBindSparse(queue, bindInfoCount, pBindInfo, fence);
+    if (ret != VK_SUCCESS) {
+      return ret;
+    }
+    for (size_t i = 0; i < bindInfoCount; ++i) {
+      auto& binds = pBindInfo[i];
+      for (uint32_t j = 0; j < binds.signalSemaphoreCount; ++j) {
+        auto sem = state_block_->get(binds.pSignalSemaphores[j]);
+        sem->value = 1;
+      }
+    }
+    return ret;
   }
 
  protected:

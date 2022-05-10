@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_descriptor_update_templates(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_descriptor_update_templates(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkDescriptorUpdateTemplates) {
-    VkDescriptorUpdateTemplateWrapper* dut = it.second;
+    VkDescriptorUpdateTemplateWrapper* dut = it.second.second;
     VkDescriptorUpdateTemplate descriptor_update_template = it.first;
     serializer->vkCreateDescriptorUpdateTemplate(dut->device,
                                                  dut->get_create_info(), nullptr, &descriptor_update_template);

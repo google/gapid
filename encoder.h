@@ -91,6 +91,16 @@ class encoder_handle {
       _on_return();
     }
   }
+  encoder_handle& operator=(encoder_handle&& _other) {
+    if (_on_return) {
+      _on_return();
+    }
+    _on_return = _other._on_return;
+    _encoder = _other._encoder;
+    _other._on_return = nullptr;
+    _other._encoder = nullptr;
+    return *this;
+  }
   encoder* operator*() { return _encoder; }
   encoder* operator->() { return _encoder; }
   operator encoder*() { return _encoder; }

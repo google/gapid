@@ -47,8 +47,8 @@ struct VkDeviceMemoryWrapper : handle_base<VkDeviceMemory> {
 };
 
 struct memory_binding {
-  VkDeviceMemory memory;
-  VkDeviceSize offset;
-  VkDeviceSize size;
+  VkDeviceMemory memory = VK_NULL_HANDLE;
+  VkDeviceSize offset = 0;
+  VkDeviceSize size = 0;
 };
 }  // namespace gapid2

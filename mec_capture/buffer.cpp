@@ -22,12 +22,26 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_buffers(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkBuffers) {
-    VkBufferWrapper* buff = it.second;
+    VkBufferWrapper* buff = it.second.second;
     VkBuffer buffer = it.first;
     serializer->vkCreateBuffer(buff->device,
                                buff->get_create_info(), nullptr, &buffer);
+  }
+}
+
+void mid_execution_generator::capture_bind_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  for (auto& it : state_block->VkBuffers) {
+    VkBufferWrapper* buff = it.second.second;
+    GAPID2_ASSERT(0 == buff->get_create_info()->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT, "We do not support sparse images yet");
+    GAPID2_ASSERT(buff->bindings.size() <= 1, "Invalid number of binds");
+
+#pragma TODO(awoloszyn, Handle the different special bind flags)
+    if (buff->bindings.empty()) {
+      continue;
+    }
+    serializer->vkBindBufferMemory(buff->device, it.first, buff->bindings[0].memory, buff->bindings[0].offset);
   }
 }
 

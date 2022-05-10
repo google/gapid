@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_sampler_ycbcr_conversions(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_sampler_ycbcr_conversions(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkSamplerYcbcrConversions) {
-    VkSamplerYcbcrConversionWrapper* smp = it.second;
+    VkSamplerYcbcrConversionWrapper* smp = it.second.second;
     VkSamplerYcbcrConversion sampler = it.first;
     serializer->vkCreateSamplerYcbcrConversion(smp->device,
                                                smp->get_create_info(), nullptr, &sampler);

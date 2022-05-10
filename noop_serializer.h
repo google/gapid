@@ -21,12 +21,12 @@ namespace gapid2 {
 
 class noop_serializer : public command_serializer {
  public:
-  command_serializer* next;
+  command_serializer* encoder;
   encoder_handle get_locked_encoder(uintptr_t key) override {
-    return next->get_locked_encoder(key);
+    return encoder->get_locked_encoder(key);
   }
   encoder_handle get_encoder(uintptr_t key) override {
-    return next->get_encoder(key);
+    return encoder->get_encoder(key);
   }
 };
 

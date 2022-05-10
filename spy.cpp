@@ -31,6 +31,18 @@ void* spy::get_allocation(size_t i) {
 void spy::foreach_write(void*) {
 }
 
+void spy::reset_memory_watch() {
+  std::unique_lock<std::mutex> l(memory_mutex);
+  std::shared_lock<std::shared_mutex> l2(memory_alloc_info_mutex);
+  for (auto m : mapped_coherent_memories) {
+    auto new_mem = state_block_->get(m);
+    auto& nn = memory_infos[m];
+    ULONG_PTR l = nn.dirty_page_cache.size();
+    DWORD ps = 0;
+    GetWriteWatch(WRITE_WATCH_FLAG_RESET, nn.v1, nn.size, nn.dirty_page_cache.data(), &l, &ps);
+  }
+}
+
 VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
   std::vector<const char*> exts(pCreateInfo->enabledExtensionCount);
 
@@ -46,11 +58,11 @@ VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCrea
   if (!has_external_memory_host) {
     do {
       uint32_t property_count;
-      if (VK_SUCCESS != transform_base::vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &property_count, nullptr)) {
+      if (VK_SUCCESS != bypass_caller->vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &property_count, nullptr)) {
         break;
       }
       std::vector<VkExtensionProperties> props(property_count);
-      if (VK_SUCCESS != transform_base::vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &property_count, props.data())) {
+      if (VK_SUCCESS != bypass_caller->vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &property_count, props.data())) {
         break;
       }
 
@@ -71,39 +83,30 @@ VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCrea
   if (!has_external_memory_host) {
     OutputDebugStringA("Cannot use VK_EXT_external_memory_host so memory tracking will be less efficient");
   } else {
-    OutputDebugStringA("Using VK_EXT_external_memory_host. This will cause slight inaccuracies, but increase performance");
+    OutputDebugStringA("Using VK_EXT_external_memory_host. This will cause slight performance inaccuracies, but increase trace performance");
   }
   VkResult ret;
 
   if (ci != pCreateInfo) {
-    ret = transform_base::vkCreateDevice(physicalDevice, ci, pAllocator, pDevice);
+    ret = bypass_caller->vkCreateDevice(physicalDevice, ci, pAllocator, pDevice);
     noop_serializer.vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
   } else {
     ret = super::vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
   }
 
   if (has_external_memory_host) {
-    /* HANDLE h = CreateFileMappingA(
-        INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, 4096, nullptr);
-    GAPID2_ASSERT(h != 0, "Invalid file mapping, how did this happen");
-    void* v = MapViewOfFile(h, FILE_MAP_ALL_ACCESS, 0, 0, 4096);
-    void* v2 = MapViewOfFile(h, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 4096);
-    ((char*)(v))[0] = 1;
-    GAPID2_ASSERT(((char*)(v2))[0] == 1, "Weird memory map behavior");
-    VirtualProtect(v, 4096, PAGE_READONLY, nullptr);
-    */
     auto t = get_allocation(4096);
 
     VkMemoryHostPointerPropertiesEXT host_pointer_properties;
     // Try to allocate a host pointer the same way we would in the memory tracker.
-    auto ret = transform_base::vkGetMemoryHostPointerPropertiesEXT(pDevice[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT, t, &host_pointer_properties);
+    auto ret = bypass_caller->vkGetMemoryHostPointerPropertiesEXT(pDevice[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT, t, &host_pointer_properties);
     VirtualFree(t, 0, MEM_RELEASE);
 
     if (ret != VK_SUCCESS) {
       GAPID2_ERROR("Could not determine pointer properties");
     }
     VkPhysicalDeviceMemoryProperties dev_mem_props;
-    transform_base::vkGetPhysicalDeviceMemoryProperties(physicalDevice, &dev_mem_props);
+    bypass_caller->vkGetPhysicalDeviceMemoryProperties(physicalDevice, &dev_mem_props);
 
     uint32_t memory_type = 0;
     uint32_t memory_type_bits = host_pointer_properties.memoryTypeBits;
@@ -200,14 +203,6 @@ VkResult spy::vkAllocateMemory(VkDevice device, const VkMemoryAllocateInfo* pAll
   }
 
   auto allocationSize = (pAllocateInfo->allocationSize + 4095) & ~4095;
-
-  //// Insert fake call here instead of real call.
-  // HANDLE h = CreateFileMappingA(
-  //     INVALID_HANDLE_VALUE, nullptr, PAGE_EXECUTE_READWRITE, 0, allocationSize, nullptr);
-  // GAPID2_ASSERT(h != 0, "Invalid file mapping, how did this happen");
-  //
-  // void* v = MapViewOfFile(h, FILE_MAP_ALL_ACCESS, 0, 0, allocationSize);
-  // void* v2 = MapViewOfFile(h, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, allocationSize);
   void* t = get_allocation(allocationSize);
   VkImportMemoryHostPointerInfoEXT import{
       VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT,
@@ -219,7 +214,7 @@ VkResult spy::vkAllocateMemory(VkDevice device, const VkMemoryAllocateInfo* pAll
   inf.pNext = &import;
   inf.allocationSize = allocationSize;
 
-  auto ret = transform_base::vkAllocateMemory(device, &inf, pAllocator, pMemory);
+  auto ret = bypass_caller->vkAllocateMemory(device, &inf, pAllocator, pMemory);
   noop_serializer.vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
   if (ret == VK_SUCCESS) {
     std::unique_lock<std::shared_mutex> l(memory_alloc_info_mutex);
@@ -293,14 +288,16 @@ VkResult spy::vkEnumeratePhysicalDevices(
     return ret;
   }
   if (pPhysicalDevices) {
-    auto enc = get_encoder(reinterpret_cast<uintptr_t>(instance));
-    for (size_t i = 0; i < *pPhysicalDeviceCount; ++i) {
-      VkPhysicalDeviceProperties properties;
-      // Bypass serializing the call to GPDP
-      transform_base::vkGetPhysicalDeviceProperties(pPhysicalDevices[i], &properties);
-      enc->encode<uint32_t>(properties.deviceID);
-      enc->encode<uint32_t>(properties.vendorID);
-      enc->encode<uint32_t>(properties.driverVersion);
+    auto enc = encoding_serializer_->get_encoder(reinterpret_cast<uintptr_t>(instance));
+    if (enc) {
+      for (size_t i = 0; i < *pPhysicalDeviceCount; ++i) {
+        VkPhysicalDeviceProperties properties;
+        // Bypass serializing the call to GPDP
+        bypass_caller->vkGetPhysicalDeviceProperties(pPhysicalDevices[i], &properties);
+        enc->encode<uint32_t>(properties.deviceID);
+        enc->encode<uint32_t>(properties.vendorID);
+        enc->encode<uint32_t>(properties.driverVersion);
+      }
     }
   }
   return ret;
@@ -336,21 +333,30 @@ VkResult spy::vkFlushMappedMemoryRanges(
     const VkMappedMemoryRange* pMemoryRanges) {
   auto res = super::vkFlushMappedMemoryRanges(device, memoryRangeCount,
                                               pMemoryRanges);
-  for (uint32_t i = 0; i < memoryRangeCount; ++i) {
-    auto& mr = pMemoryRanges[i];
-    auto new_mem = state_block_->get(mr.memory);
-    tracker.for_dirty_in_mem(mr.memory, [this, mr, new_mem](
-                                            void* ptr, VkDeviceSize size) {
-      FlushViewOfFile(ptr, size);
-      auto enc = get_encoder(0);
-      auto offset = reinterpret_cast<char*>(ptr) - new_mem->_mapped_location;
-      enc->encode<uint64_t>(0);
-      enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(mr.memory));
-      enc->encode<uint64_t>(offset);
-      enc->encode<uint64_t>(size);
-      enc->encode_primitive_array<char>(reinterpret_cast<const char*>(ptr),
-                                        size);
-    });
+  std::unique_lock<std::mutex> l(memory_mutex);
+  std::shared_lock<std::shared_mutex> l2(memory_alloc_info_mutex);
+  auto enc = encoding_serializer_->get_encoder(0);
+  if (enc) {
+    for (uint32_t i = 0; i < memoryRangeCount; ++i) {
+      auto& mr = pMemoryRanges[i];
+      auto new_mem = state_block_->get(mr.memory);
+      auto& nn = memory_infos[mr.memory];
+      ULONG_PTR l = nn.dirty_page_cache.size();
+      DWORD ps = 0;
+      GetWriteWatch(WRITE_WATCH_FLAG_RESET, nn.v1, nn.size, nn.dirty_page_cache.data(), &l, &ps);
+      for (size_t i = 0; i < l; ++i) {
+        auto offset =
+            reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
+        enc->encode<uint64_t>(0);
+        enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(mr.memory));
+        enc->encode<uint64_t>(offset);
+        enc->encode<uint64_t>(4096);
+        enc->encode_primitive_array<char>(
+            reinterpret_cast<const char*>(nn.dirty_page_cache[i]), 4096);
+        // reset the encoder to flush the write
+        enc = encoding_serializer_->get_encoder(0);
+      }
+    }
   }
   return res;
 }
@@ -381,6 +387,10 @@ VkResult spy::vkQueueSubmit(VkQueue queue,
     for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
       auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
       cb->_pre_run_functions.push_back([this]() {
+        auto enc = encoding_serializer_->get_encoder(0);
+        if (!enc) {
+          return;
+        }
         std::unique_lock<std::mutex> l(memory_mutex);
         std::shared_lock<std::shared_mutex> l2(memory_alloc_info_mutex);
         for (auto m : mapped_coherent_memories) {
@@ -390,7 +400,6 @@ VkResult spy::vkQueueSubmit(VkQueue queue,
           DWORD ps = 0;
           GetWriteWatch(WRITE_WATCH_FLAG_RESET, nn.v1, nn.size, nn.dirty_page_cache.data(), &l, &ps);
           for (size_t i = 0; i < l; ++i) {
-            auto enc = get_encoder(0);
             auto offset =
                 reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
             enc->encode<uint64_t>(0);
@@ -399,13 +408,9 @@ VkResult spy::vkQueueSubmit(VkQueue queue,
             enc->encode<uint64_t>(4096);
             enc->encode_primitive_array<char>(
                 reinterpret_cast<const char*>(nn.dirty_page_cache[i]), 4096);
+            // reset the encoder to flush
+            enc = encoding_serializer_->get_encoder(0);
           }
-          /*
-          tracker.for_dirty_in_mem(
-              m, [this, m, new_mem](void* ptr, VkDeviceSize size) {
-                FlushViewOfFile(ptr, size);
-
-              });*/
         }
       });
     }
@@ -423,14 +428,6 @@ VkResult spy::vkDeviceWaitIdle(VkDevice device) {
   if (res == VK_SUCCESS) {
     return res;
   }
-  // for (auto x : m_pending_write_fences) {
-  //   for (auto d : x.second) {
-  //     auto device_mem = state_block_->get(d);
-  //     if (device_mem->_mapped_location && device_mem->_is_coherent) {
-  //       tracker.AddGPUWrite(d, 0, device_mem->_mapped_size);
-  //     }
-  //   }
-  // }
   return res;
 }
 
@@ -447,85 +444,18 @@ VkResult spy::vkWaitForFences(VkDevice device,
   if (fenceCount == 1) {
     return res;
   }
-  auto enc = get_encoder(reinterpret_cast<uintptr_t>(device));
-  for (uint32_t i = 0; i < fenceCount; ++i) {
-    // Bypass serializing the call to GPDP
-    if (transform_base::vkGetFenceStatus(device, pFences[i]) == VK_SUCCESS) {
-      enc->encode<char>(1);
-      // auto it = m_pending_write_fences.find(pFences[i]);
-      // if (it == m_pending_write_fences.end()) {
-      //   continue;
-      // }
-      // for (auto d : it->second) {
-      //   auto device_mem = state_block_->get(d);
-      //   if (device_mem->_mapped_location && device_mem->_is_coherent) {
-      //     tracker.AddGPUWrite(d, 0, device_mem->_mapped_size);
-      //   }
-      // }
-      // m_pending_write_fences.erase(it);
-    } else {
-      enc->encode<char>(0);
+  auto enc = encoding_serializer_->get_encoder(reinterpret_cast<uintptr_t>(device));
+  if (enc) {
+    for (uint32_t i = 0; i < fenceCount; ++i) {
+      // Bypass serializing the call to GPDP
+      if (bypass_caller->vkGetFenceStatus(device, pFences[i]) == VK_SUCCESS) {
+        enc->encode<char>(1);
+      } else {
+        enc->encode<char>(0);
+      }
     }
   }
   return res;
-}
-
-encoder_handle spy::get_encoder(uintptr_t ptr) {
-  encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
-  if (!enc) {
-    enc = new encoder();
-    TlsSetValue(encoder_tls_key, enc);
-  }
-  if (!ptr) {
-    enc = new encoder();
-  }
-
-  return encoder_handle(enc, [this, enc, ptr]() {
-    call_mutex.lock();
-    uint64_t data_size = 0;
-    for (size_t i = 0; i <= enc->data_offset; ++i) {
-      data_size += enc->data_[i].size - enc->data_[i].left;
-    }
-    char dat[sizeof(data_size)];
-    memcpy(dat, &data_size, sizeof(data_size));
-    out_file.write(dat, sizeof(dat));
-
-    for (size_t i = 0; i <= enc->data_offset; ++i) {
-      out_file.write(enc->data_[i].data,
-                     enc->data_[i].size - enc->data_[i].left);
-    }
-    enc->reset();
-    call_mutex.unlock();
-    if (!ptr) {
-      delete enc;
-    }
-  });
-}
-
-encoder_handle spy::get_locked_encoder(uintptr_t) {
-  encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
-  if (!enc) {
-    enc = new encoder();
-    TlsSetValue(encoder_tls_key, enc);
-  }
-
-  call_mutex.lock();
-  return encoder_handle(enc, [this, enc]() {
-    uint64_t data_size = 0;
-    for (size_t i = 0; i <= enc->data_offset; ++i) {
-      data_size += enc->data_[i].size - enc->data_[i].left;
-    }
-    char dat[sizeof(data_size)];
-    memcpy(dat, &data_size, sizeof(data_size));
-    out_file.write(dat, sizeof(dat));
-
-    for (size_t i = 0; i <= enc->data_offset; ++i) {
-      out_file.write(enc->data_[i].data,
-                     enc->data_[i].size - enc->data_[i].left);
-    }
-    enc->reset();
-    call_mutex.unlock();
-  });
 }
 
 }  // namespace gapid2

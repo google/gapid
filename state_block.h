@@ -33,13 +33,12 @@ class state_block : public transform_base {
  public:
   ~state_block();
 
-#define PROCESS_HANDLE(Type)               \
-  Type##Wrapper* get_or_create(Type t);    \
-  Type##Wrapper* create(Type t);           \
-  Type##Wrapper* get(Type t);              \
-  bool erase(Type t);                      \
-  std::unordered_map<Type, Type##Wrapper*> \
-      Type##s;
+#define PROCESS_HANDLE(Type)            \
+  Type##Wrapper* get_or_create(Type t); \
+  Type##Wrapper* create(Type t);        \
+  Type##Wrapper* get(Type t);           \
+  bool erase(Type t);                   \
+  std::unordered_map<Type, std::pair<uint64_t, Type##Wrapper*>> Type##s;
 
 #include "handle_defines.inl"
 #undef PROCESS_HANDLE

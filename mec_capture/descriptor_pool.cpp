@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_descriptor_pools(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_descriptor_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkDescriptorPools) {
-    VkDescriptorPoolWrapper* pool = it.second;
+    VkDescriptorPoolWrapper* pool = it.second.second;
     VkDescriptorPool descriptor_pool = it.first;
     serializer->vkCreateDescriptorPool(pool->device,
                                        pool->get_create_info(), nullptr, &descriptor_pool);

@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_command_buffers(const state_block* state_block, noop_serializer* serializer, VkCommandBufferLevel level) const {
+void mid_execution_generator::capture_command_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, VkCommandBufferLevel level) const {
   for (auto& it : state_block->VkCommandBuffers) {
-    VkCommandBufferWrapper* buff = it.second;
+    VkCommandBufferWrapper* buff = it.second.second;
     if (buff->get_allocate_info()->level != level) {
       continue;
     }

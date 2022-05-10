@@ -22,9 +22,9 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_pipeline_caches(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_pipeline_caches(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkPipelineCaches) {
-    VkPipelineCacheWrapper* pc = it.second;
+    VkPipelineCacheWrapper* pc = it.second.second;
     VkPipelineCache pipeline_cache = it.first;
 #pragma TODO(awoloszyn, Actually pull the existing pipeline cache data out here so that we have an updated cache \n maybe make it optional as it will bloat the trace)
     serializer->vkCreatePipelineCache(pc->device,

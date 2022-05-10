@@ -22,16 +22,33 @@
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_images(const state_block* state_block, noop_serializer* serializer) const {
+void mid_execution_generator::capture_images(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   for (auto& it : state_block->VkImages) {
-    VkImageWrapper* img = it.second;
+    VkImageWrapper* img = it.second.second;
     // Swapchain images are already created for us during swapchain creation.
-    if (img->get_swapchain() == VK_NULL_HANDLE) {
+    if (img->get_swapchain() != VK_NULL_HANDLE) {
       continue;
     }
     VkImage image = it.first;
     serializer->vkCreateImage(img->device,
                               img->get_create_info(), nullptr, &image);
+  }
+}
+
+void mid_execution_generator::capture_bind_images(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  for (auto& it : state_block->VkImages) {
+    VkImageWrapper* img = it.second.second;
+    if (img->get_swapchain() != VK_NULL_HANDLE) {
+      continue;
+    }
+    GAPID2_ASSERT(0 == img->get_create_info()->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT, "We do not support sparse images yet");
+    GAPID2_ASSERT(img->bindings.size() <= 1, "Invalid number of binds");
+
+#pragma TODO(awoloszyn, Handle the different special bind flags)
+    if (img->bindings.empty()) {
+      continue;
+    }
+    serializer->vkBindImageMemory(img->device, it.first, img->bindings[0].memory, img->bindings[0].offset);
   }
 }
 
