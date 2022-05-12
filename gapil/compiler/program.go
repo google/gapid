@@ -15,37 +15,11 @@
 package compiler
 
 import (
-	"bytes"
-	"regexp"
-	"strings"
-
 	"github.com/google/gapid/core/codegen"
-	"github.com/google/gapid/gapil/semantic"
 )
 
 // Program is the output of a compilation.
 type Program struct {
-	// Settings used to compile the program.
-	Settings Settings
-
-	// APIs compiled for this program.
-	APIs []*semantic.API
-
-	// Commands is a map of command name to CommandInfo.
-	Commands map[string]*CommandInfo
-
-	// Structs is a map of struct name to StructInfo.
-	Structs map[string]*StructInfo
-
-	// Maps is a map of map name to MapInfo.
-	Maps map[string]*MapInfo
-
-	// Globals is the StructInfo of all the globals.
-	Globals *StructInfo
-
-	// Functions is a map of function name to plugin implemented functions.
-	Functions map[string]*codegen.Function
-
 	// Codegen is the codegen module.
 	Codegen *codegen.Module
 
@@ -75,52 +49,9 @@ type MapInfo struct {
 	Key      codegen.Type
 	Val      codegen.Type
 	Element  codegen.Type
-	MapMethods
-}
-
-// MapMethods are the functions that operate on a map.
-type MapMethods struct {
-	Contains  *codegen.Function // bool(M*, ctx*, K)
-	Index     *codegen.Function //   V*(M*, ctx*, K, addIfNotFound)
-	Remove    *codegen.Function // void(M*, ctx*, K)
-	Clear     *codegen.Function // void(M*, ctx*)
-	ClearKeep *codegen.Function // void(M*, ctx*)
 }
 
 // Dump returns the full LLVM IR for the program.
 func (p *Program) Dump() string {
 	return p.Codegen.String()
-}
-
-var reIRDefineFunc = regexp.MustCompile(`define \w* @(\w*)\([^\)]*\)`)
-
-// IR returns a map of function to IR.
-func (p *Program) IR() map[string]string {
-	ir := p.Codegen.String()
-	out := map[string]string{}
-	currentFunc, currentIR := "", &bytes.Buffer{}
-	flush := func() {
-		if currentFunc != "" {
-			out[currentFunc] = currentIR.String()
-			currentIR.Reset()
-			currentFunc = ""
-		}
-	}
-	for _, line := range strings.Split(ir, "\n") {
-		matches := reIRDefineFunc.FindStringSubmatch(line)
-		if len(matches) == 2 {
-			flush()
-			currentFunc = matches[1]
-			currentIR.WriteString(line)
-		} else if currentFunc != "" {
-			currentIR.WriteRune('\n')
-			currentIR.WriteString(line)
-		}
-		if line == "}" {
-			flush()
-			currentFunc = ""
-		}
-	}
-	flush()
-	return out
 }

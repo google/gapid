@@ -48,9 +48,6 @@ class String {
   // Makes this string refer to the RHS string.
   String& operator=(const String&);
 
-  // Appends data to this string.
-  String& operator+=(const String&);
-
   // Comparison operators. Strings are compared using their underlying data.
   bool operator==(const String& other) const;
   bool operator!=(const String& other) const;

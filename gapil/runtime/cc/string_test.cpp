@@ -123,44 +123,6 @@ TEST(StringTest, assignment) {
   EXPECT_EQ(arena.num_allocations(), 0);
 }
 
-TEST(StringTest, concat) {
-  core::Arena arena;
-
-  {
-    gapil::String str(&arena, "hello");
-
-    EXPECT_EQ(arena.num_allocations(), 1);
-
-    str += gapil::String(&arena, " world");
-
-    EXPECT_EQ(arena.num_allocations(), 1);
-    EXPECT_EQ(str.length(), 11);
-    EXPECT_STREQ(str.c_str(), "hello world");
-  }
-
-  {
-    gapil::String str(&arena, "meow");
-
-    str += gapil::String();
-
-    EXPECT_EQ(arena.num_allocations(), 1);
-    EXPECT_EQ(str.length(), 4);
-    EXPECT_STREQ(str.c_str(), "meow");
-  }
-
-  {
-    gapil::String str;
-
-    str += gapil::String(&arena, "meow");
-
-    EXPECT_EQ(arena.num_allocations(), 1);
-    EXPECT_EQ(str.length(), 4);
-    EXPECT_STREQ(str.c_str(), "meow");
-  }
-
-  EXPECT_EQ(arena.num_allocations(), 0);
-}
-
 TEST(StringTest, compare) {
   core::Arena arena;
 

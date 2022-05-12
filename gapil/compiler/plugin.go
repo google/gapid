@@ -18,7 +18,6 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/codegen"
-	"github.com/google/gapid/gapil/semantic"
 )
 
 // Plugin is a extension for the compiler.
@@ -43,60 +42,8 @@ func (l plugins) foreach(cb interface{}) {
 	}
 }
 
-// ContextField represents a single additional context field added by a
-// ContextDataPlugin.
-type ContextField struct {
-	Name string                              // Name of the field
-	Type codegen.Type                        // Type of the field
-	Init func(s *S, fieldPtr *codegen.Value) // Optional initializer
-	Term func(s *S, fieldPtr *codegen.Value) // Optional terminator
-}
-
-// ContextDataPlugin is the interface implemented by plugins that require
-// additional data to be stored in the runtime context.
-type ContextDataPlugin interface {
-	// OnPreBuildContext is called just before the context structure is built.
-	// This can be used to build any additional types that are returned by
-	// ContextData().
-	OnPreBuildContext(*C)
-
-	// ContextData returns a slice of additional ContextFields that will be
-	// augmented to the context structure.
-	ContextData(*C) []ContextField
-}
-
 // FunctionExposerPlugin is the interface implemented by plugins that build
 // public functions. These functions will be exposed on the output Program.
 type FunctionExposerPlugin interface {
 	Functions() map[string]*codegen.Function
-}
-
-// OnBeginCommandListener is the interface implemented by plugins that generate
-// custom logic at the start of the command.
-type OnBeginCommandListener interface {
-	OnBeginCommand(s *S, cmd *semantic.Function)
-}
-
-// OnFenceListener is the interface implemented by plugins that generate
-// custom logic at the fence of the command.
-type OnFenceListener interface {
-	OnFence(s *S)
-}
-
-// OnEndCommandListener is the interface implemented by plugins that generate
-// custom logic at the end of the command.
-type OnEndCommandListener interface {
-	OnEndCommand(s *S, cmd *semantic.Function)
-}
-
-// OnReadListener is the interface implemented by plugins that generate custom
-// logic when slices are read.
-type OnReadListener interface {
-	OnRead(s *S, slice *codegen.Value, ty *semantic.Slice)
-}
-
-// OnWriteListener is the interface implemented by plugins that generate custom
-// logic when slices are written.
-type OnWriteListener interface {
-	OnWrite(s *S, slice *codegen.Value, ty *semantic.Slice)
 }

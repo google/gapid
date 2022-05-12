@@ -52,9 +52,7 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
       mShouldTrace(false),
       mCurrentThread(core::Thread::current().id()) {
   // context_t initialization.
-  this->context_t::id = 0;
   this->context_t::next_pool_id = &spy->next_pool_id();
-  this->context_t::globals = nullptr;
   this->context_t::arena = reinterpret_cast<arena_t*>(spy->arena());
   mShouldTrace = mSpy->should_trace(mApi);
 

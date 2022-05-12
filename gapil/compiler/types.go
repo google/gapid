@@ -28,42 +28,22 @@ import "C"
 // Types augments the codegen.Types structure.
 type Types struct {
 	codegen.Types
-	Ctx             *codegen.Struct                        // context_t
-	CtxPtr          codegen.Type                           // context_t*
-	Pool            codegen.Type                           // pool_t
-	PoolPtr         codegen.Type                           // pool_t*
-	Sli             codegen.Type                           // slice_t
-	Str             *codegen.Struct                        // string_t
-	StrPtr          codegen.Type                           // string_t*
-	Arena           *codegen.Struct                        // arena_t
-	ArenaPtr        codegen.Type                           // arena_t*
-	Any             *codegen.Struct                        // gapil_any_t
-	AnyPtr          codegen.Type                           // gapil_any_t*
-	Msg             *codegen.Struct                        // gapil_msg_t
-	MsgPtr          codegen.Type                           // gapil_msg_t*
-	MsgArg          *codegen.Struct                        // gapil_msg_arg_t
-	MsgArgPtr       codegen.Type                           // gapil_msg_arg_t*
-	RTTI            *codegen.Struct                        // gapil_rtti
-	Uint8Ptr        codegen.Type                           // uint8_t*
-	VoidPtr         codegen.Type                           // void* (aliased of uint8_t*)
-	VoidPtrPtr      codegen.Type                           // void** (aliased of uint8_t**)
-	Globals         *codegen.Struct                        // API global variables structure.
-	GlobalsPtr      codegen.Type                           // Pointer to Globals.
-	Buf             codegen.Type                           // buffer_t
-	BufPtr          codegen.Type                           // buffer_t*
-	CmdParams       map[*semantic.Function]*codegen.Struct // struct holding all command parameters and return value.
-	DataAccess      codegen.Type
-	Maps            map[*semantic.Map]*MapInfo
-	mapImpls        []mapImpl
-	customCtxFields []ContextField
-	target          map[semantic.Type]codegen.Type
-	targetABI       *device.ABI
-	storage         map[memLayoutKey]*StorageTypes
-	CaptureTypes    *StorageTypes
-	captureToTarget map[semantic.Type]*codegen.Function
-	targetToCapture map[semantic.Type]*codegen.Function
-	mangled         map[codegen.Type]mangling.Type
-	rttis           map[semantic.Type]codegen.Global
+	Ctx       *codegen.Struct // context_t
+	CtxPtr    codegen.Type    // context_t*
+	Sli       codegen.Type    // slice_t
+	Str       *codegen.Struct // string_t
+	StrPtr    codegen.Type    // string_t*
+	Arena     *codegen.Struct // arena_t
+	ArenaPtr  codegen.Type    // arena_t*
+	VoidPtr   codegen.Type    // void* (aliased of uint8_t*)
+	Globals   *codegen.Struct // API global variables structure.
+	Buf       codegen.Type    // buffer_t
+	BufPtr    codegen.Type    // buffer_t*
+	Maps      map[*semantic.Map]*MapInfo
+	mapImpls  []mapImpl
+	target    map[semantic.Type]codegen.Type
+	targetABI *device.ABI
+	mangled   map[codegen.Type]mangling.Type
 }
 
 type memLayoutKey string
@@ -75,35 +55,17 @@ func (c *C) declareTypes() {
 	c.T.Ctx = c.T.DeclareStruct("context")
 	c.T.CtxPtr = c.T.Pointer(c.T.Ctx)
 	c.T.Globals = c.T.DeclareStruct("globals")
-	c.T.GlobalsPtr = c.T.Pointer(c.T.Globals)
-	c.T.Pool = c.T.TypeOf(C.pool{})
-	c.T.PoolPtr = c.T.Pointer(c.T.Pool)
 	c.T.Sli = c.T.TypeOf(C.slice{})
 	c.T.Str = c.T.TypeOf(C.string{}).(*codegen.Struct)
 	c.T.StrPtr = c.T.Pointer(c.T.Str)
-	c.T.Uint8Ptr = c.T.Pointer(c.T.Uint8)
-	c.T.Any = c.T.TypeOf(C.gapil_any{}).(*codegen.Struct)
-	c.T.AnyPtr = c.T.Pointer(c.T.Any)
-	c.T.Msg = c.T.TypeOf(C.gapil_msg{}).(*codegen.Struct)
-	c.T.MsgPtr = c.T.Pointer(c.T.Msg)
-	c.T.MsgArg = c.T.TypeOf(C.gapil_msg_arg{}).(*codegen.Struct)
-	c.T.MsgArgPtr = c.T.Pointer(c.T.MsgArg)
-	c.T.RTTI = c.T.TypeOf(C.gapil_rtti{}).(*codegen.Struct)
 	c.T.Arena = c.T.DeclareStruct("arena")
 	c.T.ArenaPtr = c.T.Pointer(c.T.Arena)
 	c.T.VoidPtr = c.T.Pointer(c.T.Void)
-	c.T.VoidPtrPtr = c.T.Pointer(c.T.VoidPtr)
 	c.T.Buf = c.T.TypeOf(C.buffer{})
 	c.T.BufPtr = c.T.Pointer(c.T.Buf)
 	c.T.Maps = map[*semantic.Map]*MapInfo{}
-	c.T.CmdParams = map[*semantic.Function]*codegen.Struct{}
-	c.T.DataAccess = c.T.Enum("gapil_data_access")
 	c.T.target = map[semantic.Type]codegen.Type{}
-	c.T.storage = map[memLayoutKey]*StorageTypes{}
-	c.T.captureToTarget = map[semantic.Type]*codegen.Function{}
-	c.T.targetToCapture = map[semantic.Type]*codegen.Function{}
 	c.T.mangled = map[codegen.Type]mangling.Type{}
-	c.T.rttis = map[semantic.Type]codegen.Global{}
 
 	for _, api := range c.APIs {
 		// Forward-declare all the class types.
@@ -129,11 +91,6 @@ func (c *C) declareTypes() {
 		// Forward-declare all the slice types.
 		for _, t := range api.Slices {
 			c.T.target[t] = c.T.Sli
-		}
-
-		// Forward-declare all the command parameter structs.
-		for _, f := range api.Functions {
-			c.T.CmdParams[f] = c.T.DeclareStruct(f.Name() + "Params")
 		}
 	}
 }
@@ -205,22 +162,10 @@ func (c *C) buildTypes() {
 				codegen.Field{Name: RefValue, Type: c.T.Target(t.To)},
 			)
 		}
-
-		// Build all the command parameter types.
-		for _, f := range api.Functions {
-			fields := make([]codegen.Field, 0, len(f.FullParameters)+1)
-			fields = append(fields, codegen.Field{Name: semantic.BuiltinThreadGlobal.Name(), Type: c.T.Uint64})
-			for _, p := range f.FullParameters {
-				fields = append(fields, codegen.Field{Name: p.Name(), Type: c.T.Target(p.Type)})
-			}
-			c.T.CmdParams[f].SetBody(false, fields...)
-		}
 	}
 
 	// Build all the map types.
 	c.defineMapTypes()
-
-	c.buildRefRels()
 
 	apiGlobals := make([]codegen.Field, len(c.APIs))
 	for i, api := range c.APIs {
@@ -234,64 +179,6 @@ func (c *C) buildTypes() {
 		}
 	}
 	c.T.Globals.SetBody(false, apiGlobals...)
-
-	// Build storage types for the capture's memory layout.
-	c.T.CaptureTypes = c.StorageTypes(c.Settings.CaptureABI.MemoryLayout, "S_")
-
-	if !c.Settings.CaptureABI.SameAs(c.T.targetABI) {
-		// Declare conversion functions between target and capture types.
-		for _, api := range c.APIs {
-			for _, t := range api.Classes {
-				if !semantic.IsStorageType(t) {
-					continue
-				}
-				captureTypePtr := c.T.Pointer(c.T.Capture(t))
-				targetTypePtr := c.T.Pointer(c.T.Target(t))
-
-				copyToTarget := c.M.Function(c.T.Void, "S_"+t.Name()+"_copy_to_target", c.T.CtxPtr, captureTypePtr, targetTypePtr).
-					LinkOnceODR().
-					Inline()
-
-				c.T.captureToTarget[t] = copyToTarget
-
-				copyToCapture := c.M.Function(c.T.Void, "T_"+t.Name()+"_copy_to_capture", c.T.CtxPtr, targetTypePtr, captureTypePtr).
-					LinkOnceODR().
-					Inline()
-
-				c.T.targetToCapture[t] = copyToCapture
-			}
-		}
-
-		// Build conversion functions between target and capture types.
-		for _, api := range c.APIs {
-			for _, t := range api.Classes {
-				if !semantic.IsStorageType(t) {
-					continue
-				}
-
-				c.Build(c.T.captureToTarget[t], func(s *S) {
-					src := s.Parameter(1).SetName("src")
-					dst := s.Parameter(2).SetName("dst")
-					for _, f := range t.Fields {
-						firstElem := src.Index(0, f.Name()).LoadUnaligned()
-						dst.Index(0, f.Name()).Store(c.castCaptureToTarget(s, f.Type, firstElem))
-					}
-				})
-
-				c.Build(c.T.targetToCapture[t], func(s *S) {
-					src := s.Parameter(1).SetName("src")
-					dst := s.Parameter(2).SetName("dst")
-					for _, f := range t.Fields {
-						firstElem := src.Index(0, f.Name()).Load()
-						dst.Index(0, f.Name()).StoreUnaligned(c.castTargetToCapture(s, f.Type, firstElem))
-					}
-				})
-			}
-		}
-	}
-
-	// Build all the map types.
-	c.buildMapTypes()
 }
 
 // Target returns the codegen type used to represent ty in the target-preferred
@@ -319,12 +206,6 @@ func (t *Types) Target(ty semantic.Type) codegen.Type {
 		fail("Target type not registered: '%v' (%T)", ty.Name(), t)
 	}
 	return t.basic(ty)
-}
-
-// Capture returns the codegen type used to represent ty when stored in a
-// capture's buffer.
-func (t *Types) Capture(ty semantic.Type) codegen.Type {
-	return t.CaptureTypes.Get(ty)
 }
 
 // AlignOf returns the alignment of this type in bytes for the given memory
@@ -453,8 +334,6 @@ func (t *Types) basic(ty semantic.Type) codegen.Type {
 	switch ty := ty.(type) {
 	case *semantic.Builtin:
 		switch ty {
-		case semantic.AnyType:
-			return t.AnyPtr
 		case semantic.VoidType:
 			return t.Void
 		case semantic.BoolType:
@@ -483,8 +362,6 @@ func (t *Types) basic(ty semantic.Type) codegen.Type {
 			return t.StrPtr
 		case semantic.CharType:
 			return t.Uint8 // TODO: dynamic length
-		case semantic.MessageType:
-			return t.MsgPtr
 		default:
 			fail("Unsupported builtin type %v", ty.Name())
 			return nil
@@ -497,49 +374,4 @@ func (t *Types) basic(ty semantic.Type) codegen.Type {
 		fail("Unsupported basic type %v (%T)", ty.Name(), ty)
 		return nil
 	}
-}
-
-func (c *C) initialValue(s *S, t semantic.Type) *codegen.Value {
-	t = semantic.Underlying(t)
-	switch t {
-	case semantic.StringType:
-		return c.emptyString.Value(s.Builder)
-	}
-	switch t := t.(type) {
-	case *semantic.Class:
-		class := s.Undef(c.T.Target(t))
-		for i, f := range t.Fields {
-			var val *codegen.Value
-			if f.Default != nil {
-				val = c.expression(s, f.Default)
-			} else {
-				val = c.initialValue(s, f.Type)
-			}
-			c.reference(s, val, f.Type)
-			class = class.Insert(i, val)
-		}
-		c.deferRelease(s, class, t)
-		return class
-	case *semantic.Map:
-		mapInfo := c.T.Maps[t]
-		m := c.Alloc(s, s.Scalar(uint64(1)), mapInfo.Type).SetName(t.String())
-		m.Index(0, MapRefCount).Store(s.Scalar(uint32(1)))
-		m.Index(0, MapArena).Store(s.Arena)
-		m.Index(0, MapCount).Store(s.Scalar(uint64(0)))
-		m.Index(0, MapCapacity).Store(s.Scalar(uint64(0)))
-		m.Index(0, MapElements).Store(s.Zero(c.T.Pointer(mapInfo.Elements)))
-		c.deferRelease(s, m, t)
-		return m
-	default:
-		return s.Zero(c.T.Target(t))
-	}
-}
-
-func (c *C) buildSlice(s *S, root, base, size, count, pool *codegen.Value) *codegen.Value {
-	return s.Undef(c.T.Sli).
-		Insert(SliceRoot, root).
-		Insert(SliceBase, base).
-		Insert(SliceSize, size).
-		Insert(SliceCount, count).
-		Insert(SlicePool, pool)
 }

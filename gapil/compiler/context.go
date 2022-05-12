@@ -14,36 +14,10 @@
 
 package compiler
 
-import "github.com/google/gapid/core/codegen"
-
 //#include "gapil/runtime/cc/runtime.h"
 import "C"
 
 func (c *C) declareContextType() {
 	fields := c.T.FieldsOf(C.context{})
-
-	c.plugins.foreach(func(p ContextDataPlugin) {
-		p.OnPreBuildContext(c)
-	})
-
-	// Append all the plugin context fields.
-	c.plugins.foreach(func(p ContextDataPlugin) {
-		customFields := p.ContextData(c)
-		for _, f := range customFields {
-			fields = append(fields, codegen.Field{
-				Name: f.Name,
-				Type: f.Type,
-			})
-		}
-		c.T.customCtxFields = append(c.T.customCtxFields, customFields...)
-	})
-
 	c.T.Ctx.SetBody(false, fields...)
-}
-
-func (c *C) buildContextFuncs() {
-	// Always declare these functions - their types may be used even if we're
-	// not emitting contexts.
-	c.ctx.create = c.M.Function(c.T.CtxPtr, "gapil_create_context", c.T.ArenaPtr)
-	c.ctx.destroy = c.M.Function(c.T.Void, "gapil_destroy_context", c.T.CtxPtr)
 }

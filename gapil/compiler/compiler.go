@@ -27,7 +27,6 @@ import (
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/host"
-	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/compiler/mangling/c"
 	"github.com/google/gapid/gapil/semantic"
@@ -74,37 +73,14 @@ type C struct {
 		term   *codegen.Function
 		append *codegen.Function
 	}
-	emptyString     codegen.Global
-	mappings        *semantic.Mappings
-	refRels         refRels
-	currentAPI      *semantic.API
-	currentFunc     *semantic.Function
-	statementStack  []semantic.Statement
-	expressionStack []semantic.Expression
-	isFence         bool // If true, a fence should be emitted for the given statement
-	callbacks       struct {
-		alloc          *codegen.Function
-		anyReference   *codegen.Function
-		anyRelease     *codegen.Function
-		applyReads     *codegen.Function
-		applyWrites    *codegen.Function
-		callExtern     *codegen.Function
-		copySlice      *codegen.Function
-		cstringToSlice *codegen.Function
-		free           *codegen.Function
-		freePool       *codegen.Function
-		freeString     *codegen.Function
-		logf           *codegen.Function
-		makePool       *codegen.Function
-		makeString     *codegen.Function
-		msgReference   *codegen.Function
-		msgRelease     *codegen.Function
-		realloc        *codegen.Function
-		sliceData      *codegen.Function
-		sliceToString  *codegen.Function
-		stringCompare  *codegen.Function
-		stringConcat   *codegen.Function
-		stringToSlice  *codegen.Function
+	emptyString codegen.Global
+	mappings    *semantic.Mappings
+	isFence     bool // If true, a fence should be emitted for the given statement
+	callbacks   struct {
+		alloc   *codegen.Function
+		free    *codegen.Function
+		logf    *codegen.Function
+		realloc *codegen.Function
 	}
 	module codegen.Global
 }
@@ -147,52 +123,13 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 
 	c.compile()
 
-	prog, err := c.program(s)
-	if err != nil {
-		return nil, err
-	}
+	prog := &Program{Codegen: c.M, Module: c.module}
 
 	if err := c.M.Verify(); err != nil {
 		return nil, err
 	}
 
 	return prog, nil
-}
-
-func (c *C) program(s Settings) (*Program, error) {
-	commands := make(map[string]*CommandInfo, len(c.commands))
-	for a, f := range c.commands {
-		commands[a.Name()] = &CommandInfo{
-			Execute:    f,
-			Parameters: c.T.CmdParams[a],
-		}
-	}
-
-	globals := &StructInfo{Type: c.T.Globals}
-
-	structs := map[string]*StructInfo{}
-	for _, t := range c.T.target {
-		if s, ok := t.(*codegen.Struct); ok {
-			structs[s.TypeName()] = &StructInfo{Type: s}
-		}
-	}
-
-	maps := map[string]*MapInfo{}
-	for m, mi := range c.T.Maps {
-		maps[m.Name()] = mi
-	}
-
-	return &Program{
-		Settings:  c.Settings,
-		APIs:      c.APIs,
-		Commands:  commands,
-		Structs:   structs,
-		Globals:   globals,
-		Functions: c.functions,
-		Maps:      maps,
-		Codegen:   c.M,
-		Module:    c.module,
-	}, nil
 }
 
 func err(err error) {
@@ -211,7 +148,6 @@ func (c *C) compile() {
 	c.declareCallbacks()
 	c.declareBufferFuncs()
 	c.declareContextType()
-	c.declareRefRels()
 
 	c.emptyString = c.M.Global("gapil_empty_string",
 		c.M.ConstStruct(
@@ -222,7 +158,6 @@ func (c *C) compile() {
 
 	c.buildTypes()
 	c.buildBufferFuncs()
-	c.buildContextFuncs()
 
 	c.plugins.foreach(func(p Plugin) { p.Build(c) })
 
@@ -231,33 +166,13 @@ func (c *C) compile() {
 			c.functions[n] = f
 		}
 	})
-
-	c.buildModule()
 }
 
 func (c *C) declareCallbacks() {
 	c.callbacks.alloc = c.M.ParseFunctionSignature(C.GoString(C.gapil_alloc_sig))
-	c.callbacks.anyReference = c.M.ParseFunctionSignature(C.GoString(C.gapil_any_reference_sig))
-	c.callbacks.anyRelease = c.M.ParseFunctionSignature(C.GoString(C.gapil_any_release_sig))
-	c.callbacks.applyReads = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_reads_sig))
-	c.callbacks.applyWrites = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_writes_sig))
-	c.callbacks.callExtern = c.M.ParseFunctionSignature(C.GoString(C.gapil_call_extern_sig))
-	c.callbacks.copySlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_copy_slice_sig))
-	c.callbacks.cstringToSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_cstring_to_slice_sig))
 	c.callbacks.free = c.M.ParseFunctionSignature(C.GoString(C.gapil_free_sig))
-	c.callbacks.freePool = c.M.ParseFunctionSignature(C.GoString(C.gapil_free_pool_sig))
-	c.callbacks.freeString = c.M.ParseFunctionSignature(C.GoString(C.gapil_free_string_sig))
 	c.callbacks.logf = c.M.ParseFunctionSignature(C.GoString(C.gapil_logf_sig))
-	c.callbacks.makePool = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_pool_sig))
-	c.callbacks.makeString = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_string_sig))
-	c.callbacks.msgReference = c.M.ParseFunctionSignature(C.GoString(C.gapil_msg_reference_sig))
-	c.callbacks.msgRelease = c.M.ParseFunctionSignature(C.GoString(C.gapil_msg_release_sig))
 	c.callbacks.realloc = c.M.ParseFunctionSignature(C.GoString(C.gapil_realloc_sig))
-	c.callbacks.sliceData = c.M.ParseFunctionSignature(C.GoString(C.gapil_slice_data_sig))
-	c.callbacks.sliceToString = c.M.ParseFunctionSignature(C.GoString(C.gapil_slice_to_string_sig))
-	c.callbacks.stringCompare = c.M.ParseFunctionSignature(C.GoString(C.gapil_string_compare_sig))
-	c.callbacks.stringConcat = c.M.ParseFunctionSignature(C.GoString(C.gapil_string_concat_sig))
-	c.callbacks.stringToSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_string_to_slice_sig))
 }
 
 // Build implements the function f by creating a new scope and calling do to
@@ -266,86 +181,19 @@ func (c *C) declareCallbacks() {
 // Arena scope fields are automatically assigned.
 func (c *C) Build(f *codegen.Function, do func(*S)) {
 	err(f.Build(func(b *codegen.Builder) {
-		s := &S{
-			Builder:    b,
-			Parameters: map[*semantic.Parameter]*codegen.Value{},
-			locals:     map[*semantic.Local]local{},
-		}
+		s := &S{Builder: b}
 		for i, p := range f.Type.Signature.Parameters {
 			if p == c.T.CtxPtr {
 				s.Ctx = b.Parameter(i).SetName("ctx")
-				if debugCtxNotNull {
-					s.If(s.Ctx.IsNull(), func(s *S) {
-						c.LogF(s, "Context is null")
-					})
-				}
-				s.Globals = s.Ctx.Index(0, ContextGlobals).Load().
-					SetName("globals").
-					EmitDebug("globals")
 				s.Arena = s.Ctx.Index(0, ContextArena).Load().
 					SetName("arena").
 					EmitDebug("arena")
-				s.CurrentThread = s.Ctx.Index(0, ContextThread).Load().
-					SetName("thread").
-					EmitDebug("$Thread")
 				break
 			}
 		}
 
 		do(s)
-		s.exit()
 	}))
-}
-
-// MakeSlice creates a new slice of the given size in bytes.
-func (c *C) MakeSlice(s *S, size, count *codegen.Value) *codegen.Value {
-	slice := s.Local("slice", c.T.Sli)
-	c.MakeSliceAt(s, size, count, slice)
-	return slice.Load()
-}
-
-// MakeSliceAt creates a new slice of the given size in bytes at the given
-// slice pointer.
-func (c *C) MakeSliceAt(s *S, size, count, slice *codegen.Value) {
-	pool := s.Call(c.callbacks.makePool, s.Ctx, size)
-	slice.Index(0, SlicePool).Store(pool)
-	slice.Index(0, SliceRoot).Store(s.Scalar(uint64(0)))
-	slice.Index(0, SliceBase).Store(s.Scalar(uint64(0)))
-	slice.Index(0, SliceSize).Store(size)
-	slice.Index(0, SliceCount).Store(count)
-}
-
-// CopySlice copies the contents of slice src to dst.
-func (c *C) CopySlice(s *S, dst, src *codegen.Value) {
-	pDst := s.LocalInit("dstPtr", dst)
-	pSrc := s.LocalInit("srcPtr", src)
-	c.CopySliceByPtr(s, pDst, pSrc)
-}
-
-// CopySliceByPtr copies the contents of slice at *src to the slice at *dst.
-func (c *C) CopySliceByPtr(s *S, dst, src *codegen.Value) {
-	s.Call(c.callbacks.copySlice, s.Ctx, dst, src)
-}
-
-// SliceDataForRead returns a pointer to an array of slice elements.
-// This pointer should be used to read (not write) from the slice.
-// The pointer is only valid until the slice is touched again.
-func (c *C) SliceDataForRead(s *S, slice *codegen.Value, elType codegen.Type) *codegen.Value {
-	access := s.Scalar(Read).Cast(c.T.DataAccess)
-	return s.Call(c.callbacks.sliceData, s.Ctx, slice, access).Cast(c.T.Pointer(elType))
-}
-
-// SliceDataForWrite returns a pointer to an array of slice elements.
-// This pointer should be used to write (not read) to the slice.
-// The pointer is only valid until the slice is touched again.
-func (c *C) SliceDataForWrite(s *S, slice *codegen.Value, elType codegen.Type) *codegen.Value {
-	access := s.Scalar(Write).Cast(c.T.DataAccess)
-	return s.Call(c.callbacks.sliceData, s.Ctx, slice, access).Cast(c.T.Pointer(elType))
-}
-
-// MakeString creates a new string from the specified data and length in bytes.
-func (c *C) MakeString(s *S, length, data *codegen.Value) *codegen.Value {
-	return s.Call(c.callbacks.makeString, s.Arena, length, data)
 }
 
 // Alloc calls gapil_alloc to allocate a buffer big enough to hold count
@@ -478,37 +326,6 @@ func (c *C) Delegate(from, to *codegen.Function) {
 	})
 }
 
-// StatementStack returns the current build stack of statements.
-func (c *C) StatementStack() []semantic.Statement {
-	return append([]semantic.Statement{}, c.statementStack...)
-}
-
-// ExpressionStack returns the current build stack of expressions.
-func (c *C) ExpressionStack() []semantic.Expression {
-	return append([]semantic.Expression{}, c.expressionStack...)
-}
-
-// CurrentAPI returns the API that is currently being built.
-func (c *C) CurrentAPI() *semantic.API {
-	return c.currentAPI
-}
-
-// CurrentStatement returns the statement that is currently being built.
-func (c *C) CurrentStatement() semantic.Statement {
-	if len(c.statementStack) == 0 {
-		return nil
-	}
-	return c.statementStack[len(c.statementStack)-1]
-}
-
-// CurrentExpression returns the expression that is currently being built.
-func (c *C) CurrentExpression() semantic.Expression {
-	if len(c.expressionStack) == 0 {
-		return nil
-	}
-	return c.expressionStack[len(c.expressionStack)-1]
-}
-
 // SourceLocation associates a semantic node with its location in a source file.
 type SourceLocation struct {
 	Node   semantic.Node
@@ -541,71 +358,10 @@ func (l SourceLocation) String() string {
 	return strings.Join(parts, ":")
 }
 
-// SourceLocationFor returns a string describing the source location of the
-// given semantic node.
-func (c *C) SourceLocationFor(n semantic.Node) SourceLocation {
-	if cst := c.mappings.CST(n); cst != nil {
-		l := c.SourceLocationForCST(cst)
-		l.Node = n
-		return l
-	}
-	return SourceLocation{Node: n}
-}
-
-// SourceLocationForCST returns a string describing the source location of the
-// given CST node.
-func (c *C) SourceLocationForCST(n cst.Node) SourceLocation {
-	tok := n.Tok()
-	line, col := tok.Cursor()
-	file := tok.Source.Filename
-	if i := strings.LastIndex(file, "gapid/"); i > 0 {
-		file = file[i+6:]
-	}
-	return SourceLocation{nil, file, line, col}
-}
-
 // SourceLocation returns the SoureLocation for the currently built expression,
 // statement or function.
 func (c *C) SourceLocation() SourceLocation {
-	if e := c.CurrentExpression(); e != nil {
-		return c.SourceLocationFor(e)
-	} else if s := c.CurrentStatement(); s != nil {
-		return c.SourceLocationFor(s)
-	} else if f := c.currentFunc; f != nil {
-		return c.SourceLocationFor(f)
-	}
 	return SourceLocation{}
-}
-
-func (c *C) setCurrentFunction(f *semantic.Function) *semantic.Function {
-	old := c.currentFunc
-	c.currentFunc = f
-	return old
-}
-
-func (c *C) pushStatement(s *S, n semantic.Statement) {
-	c.statementStack = append(c.statementStack, n)
-	c.onChangeStatement(s)
-}
-
-func (c *C) popStatement(s *S) {
-	c.statementStack = c.statementStack[:len(c.statementStack)-1]
-	c.onChangeStatement(s)
-}
-
-func (c *C) pushExpression(s *S, n semantic.Expression) {
-	c.expressionStack = append(c.expressionStack, n)
-}
-
-func (c *C) popExpression(s *S) {
-	c.expressionStack = c.expressionStack[:len(c.expressionStack)-1]
-}
-
-func (c *C) onChangeStatement(s *S) {
-	if n := c.CurrentStatement(); n != nil {
-		loc := c.SourceLocationFor(n)
-		s.SetLocation(loc.Line, loc.Column)
-	}
 }
 
 func (c *C) augmentPanics() {

@@ -75,8 +75,6 @@ context* create_context(arena* arena) {
   return ctx;
 }
 
-void destroy_context(context* ctx) {
-  gapil_free(ctx->arena, ctx);
-}
+void destroy_context(context* ctx) { gapil_free(ctx->arena, ctx); }
 
 }  // extern "C"

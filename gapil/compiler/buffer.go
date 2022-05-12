@@ -90,10 +90,3 @@ func (c *C) TermBuffer(s *S, bufPtr *codegen.Value) {
 func (c *C) AppendBuffer(s *S, bufPtr, size, bytes *codegen.Value) {
 	s.Call(c.buf.append, bufPtr, size, bytes)
 }
-
-// AppendBufferData appends a data to the buffer from the given pointer.
-func (c *C) AppendBufferData(s *S, bufPtr, ptr *codegen.Value) {
-	ptrTy := ptr.Type().(codegen.Pointer)
-	size := s.SizeOf(ptrTy.Element)
-	c.AppendBuffer(s, bufPtr, size.Cast(c.T.Uint32), ptr.Cast(c.T.VoidPtr))
-}
