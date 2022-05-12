@@ -122,9 +122,6 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 	if s.Mangler == nil {
 		s.Mangler = c.Mangle
 	}
-	if s.EmitExec {
-		s.EmitContext = true
-	}
 
 	c := &C{
 		M:        codegen.NewModule("api.executor", s.TargetABI),
@@ -234,10 +231,6 @@ func (c *C) compile() {
 			c.functions[n] = f
 		}
 	})
-
-	if c.Settings.EmitExec {
-		c.buildExec()
-	}
 
 	c.buildModule()
 }

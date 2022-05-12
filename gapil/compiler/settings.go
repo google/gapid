@@ -40,14 +40,6 @@ type Settings struct {
 	// EmitDebug is true if the compiler should emit DWARF debug info.
 	EmitDebug bool
 
-	// EmitContext is true if the compiler should generate context creation and
-	// destruction functions.
-	EmitContext bool
-
-	// EmitExec is true if the compiler should generate execution functions for
-	// each API command. Implies EmitContext.
-	EmitExec bool
-
 	// WriteToApplicationPool is true if writes to the application pool should
 	// be performed.
 	WriteToApplicationPool bool

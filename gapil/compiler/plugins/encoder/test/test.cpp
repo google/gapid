@@ -42,8 +42,6 @@ T* create_ref(arena* arena, ref** p) {
 
 extern "C" {
 
-extern gapil_module gapil_encoder_module;
-
 void create_map_u32(arena* arena, map** p) {
   create_map<gapil::Map<uint32_t, uint32_t, false> >(arena, p);
 }
@@ -72,11 +70,13 @@ inner_class* create_inner_class_ref(arena* a, ref** p) {
 }
 
 context* create_context(arena* arena) {
-  return gapil_encoder_module.create_context(arena);
+  context* ctx = (context_t*)gapil_alloc(arena, sizeof(context_t), 8);
+  ctx->arena = arena;
+  return ctx;
 }
 
 void destroy_context(context* ctx) {
-  return gapil_encoder_module.destroy_context(ctx);
+  gapil_free(ctx->arena, ctx);
 }
 
 }  // extern "C"

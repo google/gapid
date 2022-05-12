@@ -112,10 +112,6 @@ func (c *C) buildModule() {
 		"symbols":      symbolTbl.Cast(c.T.Pointer(symbolTy)),
 		"globals_size": c.M.SizeOf(c.T.Globals),
 	}
-	if c.Settings.EmitContext {
-		fields["create_context"] = c.ctx.create
-		fields["destroy_context"] = c.ctx.destroy
-	}
 
 	c.module = c.M.Global(
 		c.Settings.Module,

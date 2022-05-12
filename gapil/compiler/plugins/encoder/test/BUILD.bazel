@@ -25,11 +25,7 @@ api_library(
 apic_compile(
     name = "api_compiled",
     apis = [":api"],
-    emit = [
-        "encode",
-        "context",
-    ],
-    module = "gapil_encoder_module",
+    emit = ["encode"],
     symbols = "c",
 )
 

@@ -68,9 +68,7 @@ type compileVerb struct {
 	Output  string `help:"The output file path"`
 	Module  string `help:"The name of the global module variable to emit"`
 	Emit    struct {
-		Encode  bool `help:"Emit encoder logic"`
-		Exec    bool `help:"Emit executor logic. Implies --emit-context"`
-		Context bool `help:"Emit context constructor / destructor"`
+		Encode bool `help:"Emit encoder logic"`
 	}
 	Namespace string        `help:"Dot-delimited root namespace(s)"`
 	Symbols   symbols       `help:"Symbol generation method"`
@@ -127,12 +125,10 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	settings := compiler.Settings{
-		Module:      v.Module,
-		TargetABI:   targetABI,
-		CaptureABI:  captureABI,
-		Namespaces:  namespaces,
-		EmitExec:    v.Emit.Exec,
-		EmitContext: v.Emit.Context,
+		Module:     v.Module,
+		TargetABI:  targetABI,
+		CaptureABI: captureABI,
+		Namespaces: namespaces,
 	}
 
 	if v.Emit.Encode {
