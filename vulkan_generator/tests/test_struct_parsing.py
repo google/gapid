@@ -46,14 +46,14 @@ def test_vulkan_struct_with_members() -> None:
     assert typ.typename == "VkDevicePrivateDataCreateInfo"
 
     assert len(typ.members) == 3
-    assert "sType" in typ.members
-    assert typ.members["sType"].typename == "VkStructureType"
+    assert typ.member_order[0] == "sType"
+    assert typ.members["sType"].variable_type == "VkStructureType"
 
-    assert "pNext" in typ.members
-    assert typ.members["pNext"].typename == "const void*"
+    assert typ.member_order[1] == "pNext"
+    assert typ.members["pNext"].variable_type == "const void*"
 
-    assert "privateDataSlotRequestCount" in typ.members
-    assert typ.members["privateDataSlotRequestCount"].typename == "uint32_t"
+    assert typ.member_order[2] == "privateDataSlotRequestCount"
+    assert typ.members["privateDataSlotRequestCount"].variable_type == "uint32_t"
 
 
 def test_vulkan_struct_with_const_and_pointer() -> None:
@@ -83,8 +83,7 @@ def test_vulkan_struct_with_const_and_pointer() -> None:
     assert isinstance(typ, types.VulkanStruct)
     assert typ.typename == "VkInstanceCreateInfo"
 
-    assert "ppEnabledLayerNames" in typ.members
-    assert typ.members["ppEnabledLayerNames"].typename == "const char* const*"
+    assert typ.members["ppEnabledLayerNames"].variable_type == "const char* const*"
 
 
 def test_vulkan_struct_with_expected_value() -> None:
@@ -103,6 +102,7 @@ def test_vulkan_struct_with_expected_value() -> None:
 
     typ = struct_parser.parse(ET.fromstring(xml))
     assert isinstance(typ, types.VulkanStruct)
+
     expected_value = "VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO"
     assert typ.members["sType"].expected_value == expected_value
 
@@ -160,7 +160,9 @@ def test_vulkan_struct_with_dynamic_array() -> None:
     assert isinstance(typ, types.VulkanStruct)
 
     reference = typ.members["pBinds"].array_reference
+
     assert reference in typ.members
+    assert reference == typ.member_order[1]
 
 
 def test_vulkan_struct_with_static_array() -> None:
@@ -191,7 +193,6 @@ def test_vulkan_struct_with_static_array() -> None:
     typ = struct_parser.parse(ET.fromstring(xml))
     assert isinstance(typ, types.VulkanStruct)
 
-    assert "deviceName" in typ.members
     assert typ.members["deviceName"].variable_size == "VK_MAX_PHYSICAL_DEVICE_NAME_SIZE"
 
 

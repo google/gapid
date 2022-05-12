@@ -15,13 +15,22 @@
 """ This module is responsible for parsing Vulkan structs and aliases of them"""
 
 from typing import Dict
+from typing import List
+from typing import NamedTuple
+
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_utils import parsing_utils
 from vulkan_generator.vulkan_parser import types
 
 
-def parse_struct_members(struct_element: ET.Element) -> Dict[str, types.VulkanStructMember]:
+class MemberInformation(NamedTuple):
+    """Temporary class to return member information"""
+    member_order: List[str]
+    members: Dict[str, types.VulkanStructMember]
+
+
+def parse_struct_members(struct_element: ET.Element) -> MemberInformation:
     """Parses a Vulkan Struct member
 
     This is a bit of an irregular code because the XML itself has quite irregularities that
@@ -43,6 +52,7 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, types.VulkanSt
     # This is not the code we wanted but it's the code that we needed and it's contained in a
     # small place so that XML irregularities does not leak into the rest of the code.
 
+    member_order: List[str] = []
     members: Dict[str, types.VulkanStructMember] = {}
 
     for member_element in struct_element:
@@ -54,8 +64,8 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, types.VulkanSt
             raise SyntaxError(
                 f"No member tag found in : {ET.tostring(member_element, 'utf-8')}")
 
-        typename = parsing_utils.get_text_from_tag(member_element, "type")
-        variable_name = parsing_utils.get_text_from_tag(member_element, "name")
+        variable_type = parsing_utils.get_text_from_tag_in_children(member_element, "type")
+        variable_name = parsing_utils.get_text_from_tag_in_children(member_element, "name")
 
         # Type attributes(const, struct) and pointer attributes(*, const*, *const,*const*)
         # are usually in the text field of the member tag.
@@ -72,18 +82,16 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, types.VulkanSt
         # * const*      <name>ppEnabledLayerNames</name>
         #
 
-        type_attributes = parsing_utils.try_get_text_from_tag(
-            member_element, "member")
-
+        type_attributes = member_element.text
         # some times it's just empty space or endline character
         if type_attributes:
             type_attributes = parsing_utils.clean_type_string(type_attributes)
 
             # It might be empty string after cleaning
             if type_attributes:
-                typename = f"{type_attributes} {typename}"
+                variable_type = f"{type_attributes} {variable_type}"
 
-        pointers = parsing_utils.try_get_tail_from_tag(member_element, "type")
+        pointers = parsing_utils.try_get_tail_from_tag_in_children(member_element, "type")
         if pointers:
             pointers = parsing_utils.clean_type_string(pointers)
 
@@ -91,23 +99,21 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, types.VulkanSt
             if pointers:
                 # Add space between "*" and "const"
                 pointers = pointers.replace("const", " const")
-                typename = f"{typename}{pointers}"
-                print(typename)
+                variable_type = f"{variable_type}{pointers}"
 
-        if not typename:
+        if not variable_type:
             raise SyntaxError(
-                f"No typename found in : {ET.tostring(member_element, 'utf-8')}")
+                f"No variable_type found in : {ET.tostring(member_element, 'utf-8')}")
 
         if not variable_name:
             raise SyntaxError(
                 f"No variable name found in : {ET.tostring(member_element, 'utf-8')}")
 
         # Variable size is optional
-        variable_size = parsing_utils.try_get_text_from_tag(member_element, "enum")
+        variable_size = parsing_utils.try_get_text_from_tag_in_children(member_element, "enum")
 
         # Currently if this attribute exists, it's always true
-        no_auto_validity = parsing_utils.try_get_attribute(
-            member_element, "noautovalidity") == "true"
+        no_auto_validity = parsing_utils.try_get_attribute(member_element, "noautovalidity") == "true"
 
         # This is useful for the sType where the correct value is already known
         expected_value = parsing_utils.try_get_attribute(member_element, "values")
@@ -123,8 +129,9 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, types.VulkanSt
             array_reference = array_reference.replace("null-terminated", "")
             array_reference = parsing_utils.clean_type_string(array_reference)
 
+        member_order.append(variable_name)
         members[variable_name] = types.VulkanStructMember(
-            typename=typename,
+            variable_type=variable_type,
             variable_name=variable_name,
             variable_size=variable_size,
             no_auto_validity=no_auto_validity,
@@ -133,7 +140,10 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, types.VulkanSt
             optional=optional
         )
 
-    return members
+    return MemberInformation(
+        member_order=member_order,
+        members=members
+    )
 
 
 def parse(struct_elem: ET.Element) -> types.VulkanType:
@@ -157,9 +167,12 @@ def parse(struct_elem: ET.Element) -> types.VulkanType:
 
     struct_name = struct_elem.attrib["name"]
 
-    if "alias" in struct_elem.attrib:
-        return types.VulkanStructAlias(typename=struct_name,
-                                       aliased_typename=struct_elem.attrib["alias"])
+    alias_name = parsing_utils.try_get_attribute(struct_elem,"alias")
+    if alias_name:
+        return types.VulkanStructAlias(typename=struct_name, aliased_typename=alias_name)
 
-    members = parse_struct_members(struct_elem)
-    return types.VulkanStruct(struct_name, members)
+    member_info = parse_struct_members(struct_elem)
+    return types.VulkanStruct(
+        typename=struct_name,
+        member_order=member_info.member_order,
+        members=member_info.members)

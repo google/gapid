@@ -17,13 +17,14 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_parser import type_parser
 
 
-def parse(filename: Path) -> type_parser.AllVulkanTypes:
+def parse(filename: Path) -> types.AllVulkanTypes:
     """ Parse the Vulkan XML to extract every information that is needed for code generation"""
     tree = ET.parse(filename)
-    all_types = type_parser.AllVulkanTypes()
+    all_types = types.AllVulkanTypes()
 
     for child in tree.iter():
         if child.tag == "types":

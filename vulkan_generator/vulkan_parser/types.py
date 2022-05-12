@@ -43,8 +43,9 @@ class VulkanHandleAlias(VulkanType):
 
 
 @dataclass
-class VulkanStructMember(VulkanType):
+class VulkanStructMember:
     """The meta data defines a Vulkan Handle"""
+    variable_type: str
     variable_name: str
 
     # Some member variables are static arrays with a default size
@@ -73,20 +74,23 @@ class VulkanStructMember(VulkanType):
 
 @dataclass
 class VulkanStruct(VulkanType):
-    """The meta data defines a Vulkan Handle"""
-    members: Dict[str, VulkanStructMember] = field(
-        default_factory=dict)
+    """The meta data defines a Vulkan Struct"""
+
+    # These give us both what are the members are and their order
+    member_order: List[str] = field(default_factory=list)
+    members: Dict[str, VulkanStructMember] = field(default_factory=dict)
 
 
 @dataclass
 class VulkanStructAlias(VulkanType):
-    """The meta data defines a Vulkan Handle alias"""
+    """The meta data defines a Vulkan Struct alias"""
     aliased_typename: str
 
 
 @dataclass
-class VulkanFunctionArgument(VulkanType):
+class VulkanFunctionArgument:
     """The meta data defines a Function argument"""
+    argument_type: str
     argument_name: str
 
 
@@ -94,5 +98,28 @@ class VulkanFunctionArgument(VulkanType):
 class VulkanFunctionPtr(VulkanType):
     """The meta data defines a Function Pointer"""
     return_type: str
-    arguments: List[VulkanFunctionArgument] = field(
-        default_factory=list)
+
+    # These give us both what are the arguments are and their order
+    argument_order: List[str] = field(default_factory=list)
+    arguments: Dict[str, VulkanFunctionArgument] = field(default_factory=dict)
+
+@dataclass
+class AllVulkanTypes:
+    """
+    This class holds the information parsed from Vulkan XML
+    This class should have all the information needed to generate code
+    """
+    # This class holds every Vulkan Type as [typename -> type]
+
+    # Melih TODO: We probably need the map in two ways while generating code
+    # both type -> alias and alias -> type
+    # For now, lets store as the other types but when we do code generation,
+    # We may have an extra step to convert the map to other direction.
+
+    handles: Dict[str, VulkanHandle] = field(default_factory=dict)
+    handle_aliases: Dict[str, VulkanHandleAlias] = field(default_factory=dict)
+
+    structs: Dict[str, VulkanStruct] = field(default_factory=dict)
+    struct_aliases: Dict[str, VulkanStructAlias] = field(default_factory=dict)
+
+    funcpointers: Dict[str, VulkanFunctionPtr] = field(default_factory=dict)

@@ -21,7 +21,6 @@
 #   https://google.github.io/styleguide/pylintrc
 
 [MASTER]
-
 # Files or directories to be skipped. They should be base names, not paths.
 ignore=third_party
 
@@ -279,9 +278,9 @@ generated-members=
 
 [FORMAT]
 
-# Melih : We deviate from Google Standard here and using line-lenght 100 instead of 80
+# Melih : We deviate from Google Standard here and using line-lenght 120 instead of 80
 # Maximum number of characters on a single line.
-max-line-length=100
+max-line-length=120
 
 # TODO(https://github.com/PyCQA/pylint/issues/3352): Direct pylint to exempt
 # lines made too long by directives to pytype.

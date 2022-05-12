@@ -44,17 +44,17 @@ def test_vulkan_func_pointer() -> None:
     assert funcptr.return_type == "void"
     assert len(funcptr.arguments) == 4
 
-    assert funcptr.arguments[0].typename == "void*"
-    assert funcptr.arguments[0].argument_name == "pUserData"
+    assert funcptr.argument_order[0] == "pUserData"
+    assert funcptr.arguments["pUserData"].argument_type == "void*"
 
-    assert funcptr.arguments[1].typename == "size_t"
-    assert funcptr.arguments[1].argument_name == "size"
+    assert funcptr.argument_order[1] == "size"
+    assert funcptr.arguments["size"].argument_type == "size_t"
 
-    assert funcptr.arguments[2].typename == "VkInternalAllocationType"
-    assert funcptr.arguments[2].argument_name == "allocationType"
+    assert funcptr.argument_order[2] == "allocationType"
+    assert funcptr.arguments["allocationType"].argument_type == "VkInternalAllocationType"
 
-    assert funcptr.arguments[3].typename == "VkSystemAllocationScope"
-    assert funcptr.arguments[3].argument_name == "allocationScope"
+    assert funcptr.argument_order[3] == "allocationScope"
+    assert funcptr.arguments["allocationScope"].argument_type == "VkSystemAllocationScope"
 
 
 def test_vulkan_func_pointer_with_pointer_return_value() -> None:
@@ -92,6 +92,5 @@ def test_vulkan_func_pointer_with_const_member() -> None:
     """
 
     funcptr = funcptr_parser.parse(ET.fromstring(xml))
-
-    assert funcptr.arguments[4].argument_name == "messageCode"
-    assert funcptr.arguments[5].typename == "const char*"
+    assert funcptr.argument_order[4] == "messageCode"
+    assert funcptr.arguments["pLayerPrefix"].argument_type == "const char*"

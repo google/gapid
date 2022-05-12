@@ -31,8 +31,7 @@ def parse_handle_by_attribute(root: ET.Element) -> types.VulkanHandleAlias:
     """
     name = root.attrib["name"]
     alias = root.attrib["alias"]
-    vulkan_handle = types.VulkanHandleAlias(
-        typename=name, aliased_typename=alias)
+    vulkan_handle = types.VulkanHandleAlias(typename=name, aliased_typename=alias)
     return vulkan_handle
 
 
@@ -44,7 +43,7 @@ def parse_handle_by_tag(root: ET.Element) -> types.VulkanHandle:
     <type>VK_DEFINE_HANDLE</type>(<name>VkQueue</name>)</type>
     """
 
-    name = parsing_utils.get_text_from_tag(root, "name")
+    name = parsing_utils.get_text_from_tag_in_children(root, "name")
     vulkan_handle = types.VulkanHandle(typename=name)
     return vulkan_handle
 

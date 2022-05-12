@@ -32,7 +32,7 @@ def test_vulkan_handle_by_tag() -> None:
     <type category="handle" parent="VkDevice" objtypeenum="VK_OBJECT_TYPE_QUEUE">
     <type>VK_DEFINE_HANDLE</type>(<name>VkQueue</name>)</type>"""
 
-    handle = handle_parser.parse_handle_by_tag(ET.fromstring(xml))
+    handle = handle_parser.parse(ET.fromstring(xml))
 
     assert isinstance(handle, types.VulkanHandle)
     assert handle.typename == "VkQueue"
@@ -46,7 +46,7 @@ def test_vulkan_handle_by_attribute() -> None:
         alias="VkDescriptorUpdateTemplate"/>
     """
 
-    handle = handle_parser.parse_handle_by_attribute(ET.fromstring(xml))
+    handle = handle_parser.parse(ET.fromstring(xml))
 
     assert isinstance(handle, types.VulkanHandleAlias)
     assert handle.typename == "VkDescriptorUpdateTemplateKHR"

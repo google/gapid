@@ -14,16 +14,26 @@
 
 """ This module is responsible for parsing Vulkan function pointers"""
 
+from typing import Dict
 from typing import List
+from typing import NamedTuple
+
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_utils import parsing_utils
 
 
-def parse_arguments(function_ptr_elem: ET.Element) -> List[types.VulkanFunctionArgument]:
+class ArgumentInformation(NamedTuple):
+    """Temporary class to return argument information"""
+    argument_order: List[str]
+    arguments: Dict[str, types.VulkanFunctionArgument]
+
+
+def parse_arguments(function_ptr_elem: ET.Element) -> ArgumentInformation:
     """Parses the arguments of a Vulkan Function Pointer"""
-    arguments: List[types.VulkanFunctionArgument] = []
+    argument_order: List[str] = []
+    arguments: Dict[str, types.VulkanFunctionArgument] = {}
 
     # In the XML const modifier of the type is part of the
     # previous argument of the function
@@ -35,43 +45,45 @@ def parse_arguments(function_ptr_elem: ET.Element) -> List[types.VulkanFunctionA
         if elem.tag != "type":
             continue
 
-        typename = parsing_utils.clean_type_string(
-            parsing_utils.get_text_from_tag(elem, "type"))
-        argument_name = parsing_utils.clean_type_string(
-            parsing_utils.get_tail_from_tag(elem, "type"))
+        argument_type = parsing_utils.clean_type_string(elem.text)
+        argument_name = parsing_utils.clean_type_string(elem.tail)
 
         # Multiple const are not supported
         if argument_name.count("const") > 1:
-            raise SyntaxError(f"Double const are not supported: {typename} {argument_name}")
+            raise SyntaxError(f"Double const are not supported: {argument_type} {argument_name}")
 
         # Multiple pointers are not supported
         if argument_name.count("*") > 1:
-            raise SyntaxError(f"Double pointers are not supported: {typename} {argument_name}")
+            raise SyntaxError(f"Double pointers are not supported: {argument_type} {argument_name}")
 
         # This means previous argument has the const modifier for this type
         if is_next_type_const:
-            typename = f"const {typename}"
+            argument_type = f"const {argument_type}"
             is_next_type_const = False
 
         if "const" in argument_name:
             if not argument_name.endswith("const"):
                 raise SyntaxError(f"""This is probably a const pointer which is not supported:
-                    {typename} {argument_name}""")
+                    {argument_type} {argument_name}""")
 
             is_next_type_const = True
             argument_name = argument_name.replace("const", "")
 
         # Pointers of the type is actually in the argument name
         if "*" in argument_name:
-            typename = typename + "*"
+            argument_type = argument_type + "*"
             argument_name = argument_name[1:]
 
-        arguments.append(types.VulkanFunctionArgument(
-            typename=typename,
+        argument_order.append(argument_name)
+        arguments[argument_name] = types.VulkanFunctionArgument(
+            argument_type=argument_type,
             argument_name=argument_name,
-        ))
+        )
 
-    return arguments
+    return ArgumentInformation(
+        argument_order=argument_order,
+        arguments=arguments
+    )
 
 
 def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
@@ -86,15 +98,19 @@ def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
     < type > VkSystemAllocationScope < /type > allocationScope); < /type >
     """
 
-    function_name = parsing_utils.get_text_from_tag(func_ptr_elem, "name")
+    function_name = parsing_utils.get_text_from_tag_in_children(func_ptr_elem, "name")
 
     # Return type is in the type tag's text field with some extra information
     # e.g typedef void (VKAPI_PTR *
-    return_type = parsing_utils.get_text_from_tag(func_ptr_elem, "type")
+    return_type = func_ptr_elem.text
     # remove the function pointer boilers around type
     return_type = return_type.split("(")[0]
     return_type = return_type.replace("typedef", "")
     return_type = parsing_utils.clean_type_string(return_type)
 
-    arguments = parse_arguments(func_ptr_elem)
-    return types.VulkanFunctionPtr(function_name, return_type, arguments)
+    argument_info = parse_arguments(func_ptr_elem)
+    return types.VulkanFunctionPtr(
+        typename=function_name,
+        return_type=return_type,
+        argument_order=argument_info.argument_order,
+        arguments=argument_info.arguments)

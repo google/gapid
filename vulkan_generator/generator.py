@@ -17,11 +17,11 @@
 from pathlib import Path
 import pprint
 
-from vulkan_parser import parser as vulkan_parser
-from vulkan_parser import type_parser
+from vulkan_generator.vulkan_parser import parser as vulkan_parser
+from vulkan_generator.vulkan_parser import types
 
 
-def print_vulkan_metaadata(vulkan_metadata: type_parser.AllVulkanTypes) -> None:
+def print_vulkan_metaadata(vulkan_metadata: types.AllVulkanTypes) -> None:
     """Prints all the vulkan information that is extracted"""
 
     pretty_printer = pprint.PrettyPrinter(depth=4)
