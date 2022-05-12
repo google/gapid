@@ -68,11 +68,9 @@ type compileVerb struct {
 	Output  string `help:"The output file path"`
 	Module  string `help:"The name of the global module variable to emit"`
 	Emit    struct {
-		Clone   bool `help:"Emit clone methods"`
 		Encode  bool `help:"Emit encoder logic"`
 		Exec    bool `help:"Emit executor logic. Implies --emit-context"`
 		Context bool `help:"Emit context constructor / destructor"`
-		Replay  bool `help:"Emit replay generation methods"`
 	}
 	Namespace string        `help:"Dot-delimited root namespace(s)"`
 	Symbols   symbols       `help:"Symbol generation method"`
@@ -139,14 +137,6 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	if v.Emit.Encode {
 		settings.Plugins = append(settings.Plugins, encoder.Plugin())
-	}
-	if v.Emit.Clone {
-		//settings.Plugins = append(settings.Plugins, cloner.Plugin())
-		return fmt.Errorf("The clone plugin is disabled in the apic build")
-	}
-	if v.Emit.Replay {
-		//settings.Plugins = append(settings.Plugins, replay.Plugin(nil))
-		return fmt.Errorf("The replay plugin is disabled in the apic build")
 	}
 
 	switch v.Symbols {
