@@ -3494,6 +3494,36 @@ func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 		temporaryRenderPass = GetState(sb.newState).RenderPasses().Get(fb.RenderPass().VulkanHandle())
 	}
 
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if fb.ImagelessFramebufferAttachmentInfo().Len() > 0 {
+		attachmentImageInfos := []VkFramebufferAttachmentImageInfo{}
+		for _, i := range fb.ImagelessFramebufferAttachmentInfo().Keys() {
+			info := fb.ImagelessFramebufferAttachmentInfo().Get(i)
+			attachmentImageInfos = append(attachmentImageInfos,
+				NewVkFramebufferAttachmentImageInfo(
+					VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO, // sType
+					0,                                // pNext
+					info.Flags(),                     // flags
+					info.Usage(),                     // usage
+					info.Width(),                     // width
+					info.Height(),                    // height
+					info.LayerCount(),                // layerCount
+					uint32(info.ViewFormats().Len()), // viewFormatCount
+					NewVkFormatᶜᵖ(sb.MustUnpackReadMap(info.ViewFormats().All()).Ptr()), // pViewFormats
+				),
+			)
+		}
+
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkFramebufferAttachmentsCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO, // sType
+				pNext, // pNext
+				uint32(fb.ImagelessFramebufferAttachmentInfo().Len()),                                   // attachmentImageInfoCount
+				NewVkFramebufferAttachmentImageInfoᶜᵖ(sb.MustAllocReadData(attachmentImageInfos).Ptr()), // pAttachmentImageInfos
+			),
+		).Ptr())
+	}
+
 	imageViews := []VkImageView{}
 	for _, v := range fb.ImageAttachments().Keys() {
 		imageViews = append(imageViews, fb.ImageAttachments().Get(v).VulkanHandle())
@@ -3503,8 +3533,8 @@ func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 		fb.Device(),
 		sb.MustAllocReadData(NewVkFramebufferCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, // sType
-			0,                              // pNext
-			0,                              // flags
+			pNext,                          // pNext
+			fb.Flags(),                     // flags
 			fb.RenderPass().VulkanHandle(), // renderPass
 			uint32(len(imageViews)),        // attachmentCount
 			NewVkImageViewᶜᵖ(sb.MustAllocReadData(imageViews).Ptr()), // pAttachments

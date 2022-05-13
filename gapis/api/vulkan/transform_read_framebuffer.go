@@ -163,7 +163,7 @@ func (t *readFramebuffer) Depth(ctx context.Context, requestId api.SubCmdIdx, re
 
 			w, h := fb.Width(), fb.Height()
 
-			imageViewDepth := fb.ImageAttachments().Get(bufferIdx)
+			imageViewDepth := cmdBuff.PreviousFramebufferAttachments().Get(bufferIdx)
 			if imageViewDepth.IsNil() {
 				res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Invalid depth attachment in the framebuffer, the attachment VkImageView might have been destroyed")})
 				return nil
@@ -212,9 +212,9 @@ func (t *readFramebuffer) Color(ctx context.Context, requestId api.SubCmdIdx, wi
 					return nil
 				}
 
-				imageView, ok := fb.ImageAttachments().Lookup(bufferIdx)
+				imageView, ok := cmdBuff.PreviousFramebufferAttachments().Lookup(bufferIdx)
 				if !ok {
-					res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("There has been no attchment in the framebuffer")})
+					res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("There has been no attachment in the framebuffer")})
 					return nil
 				}
 				if imageView.IsNil() {

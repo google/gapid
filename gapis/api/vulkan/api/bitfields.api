@@ -378,7 +378,10 @@ type VkFlags VkDescriptorPoolCreateFlags
 
 type VkFlags VkDescriptorPoolResetFlags
 
-type VkFlags VkFramebufferCreateFlags
+bitfield VkFramebufferCreateFlags {
+  // Vulkan 1.2 core
+  VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT = 0x00000001,
+}
 
 type VkFlags VkRenderPassCreateFlags
 

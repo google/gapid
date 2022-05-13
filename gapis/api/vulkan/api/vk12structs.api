@@ -188,3 +188,50 @@ class VkPhysicalDeviceUniformBufferStandardLayoutFeatures {
 class PhysicalDeviceUniformBufferStandardLayoutFeatures {
   VkBool32 UniformBufferStandardLayout
 }
+
+class VkPhysicalDeviceImagelessFramebufferFeatures {
+    VkStructureType     sType
+    void*               pNext
+    VkBool32            imagelessFramebuffer
+}
+
+@internal
+class PhysicalDeviceImagelessFramebufferFeatures {
+    VkBool32            ImagelessFramebuffer
+}
+
+class VkFramebufferAttachmentsCreateInfo {
+    VkStructureType                         sType
+    const void*                             pNext
+    u32                                     attachmentImageInfoCount
+    const VkFramebufferAttachmentImageInfo* pAttachmentImageInfos
+}
+
+class VkFramebufferAttachmentImageInfo {
+    VkStructureType     sType
+    const void*         pNext
+    VkImageCreateFlags  flags
+    VkImageUsageFlags   usage
+    u32                 width
+    u32                 height
+    u32                 layerCount
+    u32                 viewFormatCount
+    const VkFormat*     pViewFormats
+}
+
+@internal
+class FramebufferAttachmentImageInfo {
+    VkImageCreateFlags  Flags
+    VkImageUsageFlags   Usage
+    u32                 Width
+    u32                 Height
+    u32                 LayerCount
+    map!(u32, VkFormat) ViewFormats
+}
+
+class VkRenderPassAttachmentBeginInfo {
+    VkStructureType     sType
+    const void*         pNext
+    u32                 attachmentCount
+    const VkImageView*  pAttachments
+}

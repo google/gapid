@@ -87,13 +87,13 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
             ->mSubpassDescriptions[lastDrawInfo.mLastSubpass]
             .mColorAttachments[0]
             .mAttachment;
-    if (!lastDrawInfo.mFramebuffer->mImageAttachments.contains(
+    if (!lastDrawInfo.mFramebufferAttachments.contains(
             color_attachment_index)) {
       return false;
     }
 
     auto& imageView =
-        lastDrawInfo.mFramebuffer->mImageAttachments[color_attachment_index];
+        lastDrawInfo.mFramebufferAttachments[color_attachment_index];
     image = imageView->mImage;
     *w = lastDrawInfo.mFramebuffer->mWidth;
     *h = lastDrawInfo.mFramebuffer->mHeight;

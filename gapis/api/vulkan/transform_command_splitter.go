@@ -403,6 +403,7 @@ func (splitter *commandSplitter) rewriteRenderPass(
 					arg.RenderPassBeginInfo().RenderArea(),
 					arg.RenderPassBeginInfo().ClearValues(),
 					arg.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+					arg.RenderPassBeginInfo().ImagelessFramebufferBeginInfo(),
 				),
 				NewSubpassBeginInfoʳ(
 					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
@@ -422,6 +423,7 @@ func (splitter *commandSplitter) rewriteRenderPass(
 					currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
 					currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
 					currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+					currentRenderPassArgs.RenderPassBeginInfo().ImagelessFramebufferBeginInfo(),
 				),
 				NewSubpassBeginInfoʳ(
 					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
@@ -442,6 +444,7 @@ func (splitter *commandSplitter) rewriteRenderPass(
 					currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
 					currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
 					currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+					currentRenderPassArgs.RenderPassBeginInfo().ImagelessFramebufferBeginInfo(),
 				),
 				NewSubpassBeginInfoʳ(
 					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
@@ -456,6 +459,7 @@ func (splitter *commandSplitter) rewriteRenderPass(
 					currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
 					currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
 					currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+					currentRenderPassArgs.RenderPassBeginInfo().ImagelessFramebufferBeginInfo(),
 				),
 				NewSubpassBeginInfoʳ(
 					VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,
@@ -926,6 +930,7 @@ func (splitter *commandSplitter) insertInsertionCommand(
 				currentRenderPassArgs.RenderPassBeginInfo().RenderArea(),
 				currentRenderPassArgs.RenderPassBeginInfo().ClearValues(),
 				currentRenderPassArgs.RenderPassBeginInfo().DeviceGroupBeginInfo(),
+				currentRenderPassArgs.RenderPassBeginInfo().ImagelessFramebufferBeginInfo(),
 			),
 			NewSubpassBeginInfoʳ(
 				VkSubpassContents_VK_SUBPASS_CONTENTS_INLINE,

@@ -246,7 +246,7 @@ func newFramegraphAttachment(desc AttachmentDescription, state *State, imgView I
 	}
 }
 
-func newFramegraphSubpass(subpassDesc SubpassDescription, state *State, framebuffer FramebufferObjectʳ, renderpass RenderPassObjectʳ) *api.FramegraphSubpass {
+func newFramegraphSubpass(subpassDesc SubpassDescription, state *State, framebuffer FramebufferObjectʳ, framebufferAttachments U32ːImageViewObjectʳᵐ, renderpass RenderPassObjectʳ) *api.FramegraphSubpass {
 	inputAtts := subpassDesc.InputAttachments()
 	colorAtts := subpassDesc.ColorAttachments()
 	resolveAtts := subpassDesc.ResolveAttachments()
@@ -263,7 +263,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, state *State, framebuf
 			continue
 		}
 		desc := renderpass.AttachmentDescriptions().Get(idx)
-		imgView := framebuffer.ImageAttachments().Get(idx)
+		imgView := framebufferAttachments.Get(idx)
 		sp.Input[i] = newFramegraphAttachment(desc, state, imgView, false)
 	}
 
@@ -274,7 +274,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, state *State, framebuf
 			continue
 		}
 		desc := renderpass.AttachmentDescriptions().Get(idx)
-		imgView := framebuffer.ImageAttachments().Get(idx)
+		imgView := framebufferAttachments.Get(idx)
 		sp.Color[i] = newFramegraphAttachment(desc, state, imgView, false)
 	}
 
@@ -285,7 +285,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, state *State, framebuf
 			continue
 		}
 		desc := renderpass.AttachmentDescriptions().Get(idx)
-		imgView := framebuffer.ImageAttachments().Get(idx)
+		imgView := framebufferAttachments.Get(idx)
 		sp.Resolve[i] = newFramegraphAttachment(desc, state, imgView, false)
 	}
 
@@ -295,7 +295,7 @@ func newFramegraphSubpass(subpassDesc SubpassDescription, state *State, framebuf
 		idx := depthStencilAtt.Attachment()
 		if idx != VK_ATTACHMENT_UNUSED {
 			desc := renderpass.AttachmentDescriptions().Get(idx)
-			imgView := framebuffer.ImageAttachments().Get(idx)
+			imgView := framebufferAttachments.Get(idx)
 			sp.DepthStencil = newFramegraphAttachment(desc, state, imgView, true)
 		}
 	}
@@ -522,11 +522,17 @@ func (helpers *framegraphInfoHelpers) processSubCommand(ctx context.Context, dep
 		renderPassBeginInfo := args.RenderPassBeginInfo()
 		framebuffer := vkState.Framebuffers().Get(renderPassBeginInfo.Framebuffer())
 		renderpassObj := vkState.RenderPasses().Get(renderPassBeginInfo.RenderPass())
+		var framebufferAttachments U32ːImageViewObjectʳᵐ
+		if !renderPassBeginInfo.ImagelessFramebufferBeginInfo().IsNil() {
+			framebufferAttachments = renderPassBeginInfo.ImagelessFramebufferBeginInfo().ImageAttachments()
+		} else {
+			framebufferAttachments = framebuffer.ImageAttachments()
+		}
 		subpassesDesc := renderpassObj.SubpassDescriptions()
 		subpasses := make([]*api.FramegraphSubpass, subpassesDesc.Len())
 		for i := 0; i < len(subpasses); i++ {
 			subpassDesc := subpassesDesc.Get(uint32(i))
-			subpasses[i] = newFramegraphSubpass(subpassDesc, vkState, framebuffer, renderpassObj)
+			subpasses[i] = newFramegraphSubpass(subpassDesc, vkState, framebuffer, framebufferAttachments, renderpassObj)
 		}
 
 		renderpass := &api.FramegraphRenderpass{

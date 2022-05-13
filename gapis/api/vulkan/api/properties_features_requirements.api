@@ -423,6 +423,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
             _ = as!VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+            _ = as!VkPhysicalDeviceImagelessFramebufferFeatures*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -513,6 +516,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
             write(as!VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+            write(as!VkPhysicalDeviceImagelessFramebufferFeatures*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext

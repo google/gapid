@@ -49,6 +49,8 @@
   @unused u32                       Height
   @unused u32                       Layers
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  VkFramebufferCreateFlags          Flags
+  map!(u32, ref!FramebufferAttachmentImageInfo) ImagelessFramebufferAttachmentInfo
 }
 
 @spy_disabled
@@ -70,6 +72,12 @@ cmd VkResult vkCreateFramebuffer(
   if pCreateInfo == null { vkErrorNullPointer("VkFramebufferCreateInfo") }
   create_info := pCreateInfo[0]
   if !(create_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(create_info.renderPass) }
+  framebufferObject := new!FramebufferObject(Device: device,
+    Flags:                    create_info.flags,
+    Width:                    create_info.width,
+    Height:                   create_info.height,
+    Layers:                   create_info.layers,
+    RenderPass:               RenderPasses[create_info.renderPass])
   // handle pNext
   if create_info.pNext != null {
     numPNext := numberOfPNext(create_info.pNext)
@@ -77,20 +85,39 @@ cmd VkResult vkCreateFramebuffer(
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0]
       switch (sType) {
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO: {
+          ext := as!VkFramebufferAttachmentsCreateInfo*(next.Ptr)[0]
+          attachmentImageInfos := ext.pAttachmentImageInfos[0:ext.attachmentImageInfoCount]
+          for j in (0 .. ext.attachmentImageInfoCount) {
+            attachmentImageInfo := attachmentImageInfos[j]
+            framebufferAttachmentImageInfo := new!FramebufferAttachmentImageInfo(
+              Flags:       attachmentImageInfo.flags,
+              Usage:       attachmentImageInfo.usage,
+              Width:       attachmentImageInfo.width,
+              Height:      attachmentImageInfo.height,
+              LayerCount:  attachmentImageInfo.layerCount,
+            )
+            viewFormats := attachmentImageInfo.pViewFormats[0:attachmentImageInfo.viewFormatCount]
+            for k in (0 .. attachmentImageInfo.viewFormatCount) {
+              framebufferAttachmentImageInfo.ViewFormats[k] = viewFormats[k]
+            }
+            framebufferObject.ImagelessFramebufferAttachmentInfo[j] = framebufferAttachmentImageInfo
+          }
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
-  attachments := create_info.pAttachments[0:create_info.attachmentCount]
 
-  framebufferObject := new!FramebufferObject(Device: device,
-    Width:                    create_info.width,
-    Height:                   create_info.height,
-    Layers:                   create_info.layers,
-    RenderPass:               RenderPasses[create_info.renderPass])
-  for i in (0 .. create_info.attachmentCount) {
-    if !(attachments[i] in ImageViews) { vkErrorInvalidImageView(attachments[i]) }
-    framebufferObject.ImageAttachments[i] = ImageViews[attachments[i]]
+  // Framebuffers created with VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT will get ImageView handles at vkBeginRenderPass
+  isImagelessFramebuffer := (as!u32(create_info.flags) & as!u32(VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT)) != 0
+  if !isImagelessFramebuffer {
+    attachments := create_info.pAttachments[0:create_info.attachmentCount]
+
+    for i in (0 .. create_info.attachmentCount) {
+      if !(attachments[i] in ImageViews) { vkErrorInvalidImageView(attachments[i]) }
+      framebufferObject.ImageAttachments[i] = ImageViews[attachments[i]]
+    }
   }
 
   handle := ?
@@ -585,6 +612,10 @@ cmd void vkGetRenderAreaGranularity(
   map!(u32, VkRect2D) RenderAreas
 }
 
+@internal class ImagelessFramebufferBeginInfo {
+  map!(u32, ref!ImageViewObject) ImageAttachments
+}
+
 @internal class RenderPassBeginInfo {
   VkRenderPass            RenderPass
   VkFramebuffer           Framebuffer
@@ -593,6 +624,9 @@ cmd void vkGetRenderAreaGranularity(
 
   // @extension("VK_KHR_device_group_creation")
   ref!DeviceGroupBeginInfo DeviceGroupBeginInfo
+
+  // @extension("VK_KHR_imageless_framebuffer")
+  ref!ImagelessFramebufferBeginInfo ImagelessFramebufferBeginInfo
 }
 
 @internal class
@@ -612,8 +646,12 @@ sub void dovkCmdBeginRenderPassX(ref!vkCmdBeginRenderPassXArgs args) {
   ldi.LastSubpass = 0
   ldi.RenderPass = RenderPasses[renderPassBeginInfo.RenderPass]
   ldi.InRenderPass = true
-  attachments := ldi.Framebuffer.ImageAttachments
-  n := len(attachments)
+  if renderPassBeginInfo.ImagelessFramebufferBeginInfo != null {
+    ldi.FramebufferAttachments = renderPassBeginInfo.ImagelessFramebufferBeginInfo.ImageAttachments
+  } else {
+    ldi.FramebufferAttachments = ldi.Framebuffer.ImageAttachments
+  }
+  n := len(ldi.FramebufferAttachments)
   for i in (0 .. n) {
     loadImageAttachment(as!u32(i))
   }
@@ -633,7 +671,7 @@ sub void recordSubpassBegin(ref!CommandBufferObject cb, u32 subpass) {
       l := v.Layout
       aspect := MutableAspect(as!VkImageAspectFlags(0))
       aspect.aspect = v.AspectMask
-      view := cb.CurrentRecordingFramebuffer.ImageAttachments[v.Attachment]
+      view := cb.CurrentRecordingFramebufferAttachments[v.Attachment]
       rng := view.SubresourceRange
       if aspect.aspect != as!VkImageAspectFlags(0) {
         rng.aspectMask = aspect.aspect
@@ -674,6 +712,15 @@ sub ref!RenderPassBeginInfo createRenderPassBeginInfo(const VkRenderPassBeginInf
           rects := ext.pDeviceRenderAreas[0:ext.deviceRenderAreaCount]
           for j in (0 .. ext.deviceRenderAreaCount) {
             beginInfo.DeviceGroupBeginInfo.RenderAreas[j] = rects[j]
+          }
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
+          ext := as!VkRenderPassAttachmentBeginInfo*(next.Ptr)[0]
+          attachments := ext.pAttachments[0:ext.attachmentCount]
+          beginInfo.ImagelessFramebufferBeginInfo = new!ImagelessFramebufferBeginInfo()
+          for j in (0 .. ext.attachmentCount) {
+            if !(attachments[j] in ImageViews) { vkErrorInvalidImageView(attachments[j]) }
+            beginInfo.ImagelessFramebufferBeginInfo.ImageAttachments[j] = ImageViews[attachments[j]]
           }
         }
       }
@@ -738,6 +785,13 @@ sub void recordBeginRenderPass(ref!CommandBufferObject commandBuffer, ref!Render
   commandBuffer.CurrentRecordingFramebuffer = Framebuffers[beginInfo.Framebuffer]
   commandBuffer.PreviouslyStartedRenderpass = RenderPasses[beginInfo.RenderPass]
   commandBuffer.PreviousFramebuffer = Framebuffers[beginInfo.Framebuffer]
+  if (beginInfo.ImagelessFramebufferBeginInfo != null) {
+    commandBuffer.CurrentRecordingFramebufferAttachments = beginInfo.ImagelessFramebufferBeginInfo.ImageAttachments
+  } else {
+    commandBuffer.CurrentRecordingFramebufferAttachments = commandBuffer.CurrentRecordingFramebuffer.ImageAttachments
+  }
+  commandBuffer.PreviousFramebufferAttachments = commandBuffer.CurrentRecordingFramebufferAttachments
+
   recordSubpassBegin(commandBuffer, 0)
 }
 
@@ -819,20 +873,20 @@ sub void transitionSubpassAttachmentLayouts(u32 subpass) {
   if subpass < len(ldi.RenderPass.SubpassDescriptions) {
     subpassDesc := ldi.RenderPass.SubpassDescriptions[subpass]
     for _, _, a in subpassDesc.InputAttachments {
-      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.FramebufferAttachments[a.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpassDesc.ColorAttachments {
-      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.FramebufferAttachments[a.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpassDesc.ResolveAttachments {
-      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.FramebufferAttachments[a.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     if subpassDesc.DepthStencilAttachment != null {
       dsRef := subpassDesc.DepthStencilAttachment
-      attachment := ldi.Framebuffer.ImageAttachments[dsRef.Attachment]
+      attachment := ldi.FramebufferAttachments[dsRef.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, dsRef.Layout)
     }
   }
@@ -922,8 +976,8 @@ sub void recordEndRenderpass(ref!CommandBufferObject commandBuffer) {
     } else {
       rpo := commandBuffer.CurrentRecordingRenderpass
       for _, i, at in rpo.AttachmentDescriptions {
-        if (i < len(commandBuffer.CurrentRecordingFramebuffer.ImageAttachments)) {
-          view := commandBuffer.CurrentRecordingFramebuffer.ImageAttachments[i]
+        if (i < len(commandBuffer.CurrentRecordingFramebufferAttachments)) {
+          view := commandBuffer.CurrentRecordingFramebufferAttachments[i]
           rng := view.SubresourceRange
           RecordLayoutTransition(commandBuffer, view.Image, rng, at.FinalLayout)
         }
@@ -932,6 +986,7 @@ sub void recordEndRenderpass(ref!CommandBufferObject commandBuffer) {
 
     commandBuffer.CurrentRecordingRenderpass = null
     commandBuffer.CurrentRecordingFramebuffer = null
+    commandBuffer.CurrentRecordingFramebufferAttachments = null
     commandBuffer.CurrentRecordingSubpass = 0
 }
 
@@ -985,7 +1040,7 @@ cmd void vkCmdEndRenderPass2(
 sub void loadImageAttachment(u32 attachmentID) {
   if attachmentID != VK_ATTACHMENT_UNUSED {
     ldi := lastDrawInfo()
-    attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
+    attachment := ldi.FramebufferAttachments[attachmentID]
     desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       switch desc.LoadOp {
@@ -1007,7 +1062,7 @@ sub void loadImageAttachment(u32 attachmentID) {
 sub void storeImageAttachment(u32 attachmentID) {
   if attachmentID != VK_ATTACHMENT_UNUSED {
     ldi := lastDrawInfo()
-    attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
+    attachment := ldi.FramebufferAttachments[attachmentID]
     desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       if desc.InitialLayout != desc.FinalLayout {

@@ -522,13 +522,35 @@ func createVkRenderPassBeginInfo(
 		pNext = NewVoidᶜᵖ(pNextData.Ptr())
 	}
 
+	if !renderPassBeginInfo.ImagelessFramebufferBeginInfo().IsNil() {
+		ifbi := renderPassBeginInfo.ImagelessFramebufferBeginInfo()
+
+		attachments := make([]VkImageView, ifbi.ImageAttachments().Len())
+		for i := range attachments {
+			attachments[i] = ifbi.ImageAttachments().Get(uint32(i)).VulkanHandle()
+		}
+		attachmentMem := s.AllocDataOrPanic(ctx, attachments)
+		mem = append(mem, attachmentMem)
+
+		pNextData := s.AllocDataOrPanic(ctx,
+			NewVkRenderPassAttachmentBeginInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO, // sType
+				pNext,                                 // pNext
+				uint32(ifbi.ImageAttachments().Len()), // attachmentCount
+				NewVkImageViewᶜᵖ(attachmentMem.Ptr()), // pAttachments
+			),
+		)
+		mem = append(mem, pNextData)
+		pNext = NewVoidᶜᵖ(pNextData.Ptr())
+	}
+
 	begin := NewVkRenderPassBeginInfo(
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // sType
-		0,                                 // pNext
-		renderPassBeginInfo.RenderPass(),  // renderPass
-		renderPassBeginInfo.Framebuffer(), // framebuffer
-		renderPassBeginInfo.RenderArea(),  // renderArea
-		uint32(len(clearValues)),          // clearValueCount
+		pNext,                                    // pNext
+		renderPassBeginInfo.RenderPass(),         // renderPass
+		renderPassBeginInfo.Framebuffer(),        // framebuffer
+		renderPassBeginInfo.RenderArea(),         // renderArea
+		uint32(len(clearValues)),                 // clearValueCount
 		NewVkClearValueᶜᵖ(clearValuesData.Ptr()), // pClearValues
 	)
 

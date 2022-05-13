@@ -273,9 +273,10 @@ type renderInfo struct {
 
 func (overdrawTransform *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
 	inputState *api.GlobalState,
-	oldRenderPass VkRenderPass,
-	oldFramebuffer VkFramebuffer) (renderInfo, error) {
+	oldBeginInfo RenderPassBeginInfoʳ) (renderInfo, error) {
 
+	oldRenderPass := oldBeginInfo.RenderPass()
+	oldFramebuffer := oldBeginInfo.Framebuffer()
 	st := GetState(inputState)
 	oldRpInfo, ok := st.RenderPasses().Lookup(oldRenderPass)
 	if !ok {
@@ -287,6 +288,11 @@ func (overdrawTransform *stencilOverdraw) createNewRenderPassFramebuffer(ctx con
 		return renderInfo{}, fmt.Errorf("Invalid framebuffer %v", oldFramebuffer)
 	}
 
+	oldFbAttachments := oldFbInfo.ImageAttachments()
+	if !oldBeginInfo.ImagelessFramebufferBeginInfo().IsNil() {
+		oldFbAttachments = oldBeginInfo.ImagelessFramebufferBeginInfo().ImageAttachments()
+	}
+
 	attachDesc, depthIdx, err := getStencilAttachmentDescription(ctx, inputState, oldRpInfo)
 	if err != nil {
 		return renderInfo{}, err
@@ -296,7 +302,7 @@ func (overdrawTransform *stencilOverdraw) createNewRenderPassFramebuffer(ctx con
 	// If we have a pre-existing depth image match our width and height to
 	// that for when we render from one to the other.
 	if depthIdx != ^uint32(0) {
-		depthImage := oldFbInfo.ImageAttachments().Get(depthIdx).Image()
+		depthImage := oldFbAttachments.Get(depthIdx).Image()
 		width = depthImage.Info().Extent().Width()
 		height = depthImage.Info().Extent().Height()
 	}
@@ -317,7 +323,7 @@ func (overdrawTransform *stencilOverdraw) createNewRenderPassFramebuffer(ctx con
 		return renderInfo{}, err
 	}
 
-	framebuffer, err := overdrawTransform.createFramebuffer(ctx, inputState, device, oldFbInfo, renderPass, imageView)
+	framebuffer, err := overdrawTransform.createFramebuffer(ctx, inputState, device, oldFbInfo, oldFbAttachments, renderPass, imageView)
 	if err != nil {
 		return renderInfo{}, err
 	}
@@ -563,10 +569,11 @@ func (overdrawTransform *stencilOverdraw) createFramebuffer(ctx context.Context,
 	inputState *api.GlobalState,
 	device VkDevice,
 	fbInfo FramebufferObjectʳ,
+	fbAttachments U32ːImageViewObjectʳᵐ,
 	renderPass VkRenderPass,
 	stencilImageView VkImageView) (VkFramebuffer, error) {
 
-	attachments := fbInfo.ImageAttachments().All()
+	attachments := fbAttachments.All()
 	newAttachments := make([]VkImageView, len(attachments)+1)
 	for idx, imageView := range attachments {
 		newAttachments[idx] = imageView.VulkanHandle()
@@ -1750,8 +1757,7 @@ func (overdrawTransform *stencilOverdraw) rewriteQueueSubmit(ctx context.Context
 		return res
 	}
 
-	renderInfo, err := overdrawTransform.createNewRenderPassFramebuffer(
-		ctx, inputState, rpBeginArgs.RenderPassBeginInfo().RenderPass(), rpBeginArgs.RenderPassBeginInfo().Framebuffer())
+	renderInfo, err := overdrawTransform.createNewRenderPassFramebuffer(ctx, inputState, rpBeginArgs.RenderPassBeginInfo())
 	if err != nil {
 		return stencilImage{}, err
 	}

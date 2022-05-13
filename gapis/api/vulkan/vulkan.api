@@ -316,6 +316,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_uniform_buffer_standard_layout"] = true
   supported.ExtensionNames["VK_QCOM_render_pass_store_ops"] = true
   supported.ExtensionNames["VK_EXT_load_store_op_none"] = true
+  supported.ExtensionNames["VK_KHR_imageless_framebuffer"] = true
   return supported
 }
 
@@ -365,6 +366,10 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   // Transform Feedback buffers used for the draw. This is a map of binding number to
   // buffer bound do that binding.
   map!(u32, BoundBuffer) BoundTransformFeedbackBuffers
+
+  // A map of the current framebuffer attachements, either from
+  // VkFramebufferCreateInfo or VkRenderPassAttachmentBeginInfo
+  map!(u32, ref!ImageViewObject) FramebufferAttachments
 }
 
 @internal class DynamicPipelineState {
