@@ -254,37 +254,48 @@ func ExtractDebugSource(shader []uint32) (string, string, bool, error) {
 	var options C.spvc_compiler_options = nil
 	var result *C.char = nil
 
+	var retSource string = ""
+	var retError error = nil
+
 	C.spvc_context_create(&context)
 	C.spvc_context_parse_spirv(context, (*C.uint)(shaderPtr), (C.size_t)(len(shader)), &ir)
 	switch sourceLanguage {
 	case "GLSL":
-		if C.spvc_context_create_compiler(context, C.SPVC_BACKEND_GLSL, ir, C.SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) == C.SPVC_ERROR_INVALID_ARGUMENT {
-			return "", sourceLanguage, false, errors.New("Could not create compiler")
+		if C.spvc_context_create_compiler(context, C.SPVC_BACKEND_GLSL, ir, C.SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) == C.SPVC_SUCCESS {
+			C.spvc_compiler_create_compiler_options(compiler, &options)
+			C.spvc_compiler_options_set_uint(options, C.SPVC_COMPILER_OPTION_GLSL_VERSION, module.source_language_version)
+			C.spvc_compiler_options_set_bool(options, C.SPVC_COMPILER_OPTION_GLSL_VULKAN_SEMANTICS, C.SPVC_TRUE)
+			C.spvc_compiler_install_compiler_options(compiler, options)
+
+			C.spvc_compiler_compile(compiler, &result)
+			retSource = C.GoString(result)
+		} else {
+			retError = errors.New("Could not create GLSL compiler")
 		}
-
-		C.spvc_compiler_create_compiler_options(compiler, &options)
-		C.spvc_compiler_options_set_uint(options, C.SPVC_COMPILER_OPTION_GLSL_VERSION, module.source_language_version)
-		C.spvc_compiler_options_set_bool(options, C.SPVC_COMPILER_OPTION_GLSL_VULKAN_SEMANTICS, C.SPVC_TRUE)
-		C.spvc_compiler_install_compiler_options(compiler, options)
-
-		C.spvc_compiler_compile(compiler, &result)
-		return C.GoString(result), sourceLanguage, true, nil
+		break
 
 	case "HLSL":
-		if C.spvc_context_create_compiler(context, C.SPVC_BACKEND_HLSL, ir, C.SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) == C.SPVC_ERROR_INVALID_ARGUMENT {
-			return "", sourceLanguage, false, errors.New("Could not create compiler")
+		if C.spvc_context_create_compiler(context, C.SPVC_BACKEND_HLSL, ir, C.SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler) == C.SPVC_SUCCESS {
+			C.spvc_compiler_create_compiler_options(compiler, &options)
+			C.spvc_compiler_options_set_uint(options, C.SPVC_COMPILER_OPTION_HLSL_SHADER_MODEL, module.source_language_version)
+			C.spvc_compiler_install_compiler_options(compiler, options)
+
+			C.spvc_compiler_compile(compiler, &result)
+			retSource = C.GoString(result)
+		} else {
+			retError = errors.New("Could not create HLSL compiler")
 		}
-
-		C.spvc_compiler_create_compiler_options(compiler, &options)
-		C.spvc_compiler_options_set_uint(options, C.SPVC_COMPILER_OPTION_HLSL_SHADER_MODEL, module.source_language_version)
-		C.spvc_compiler_install_compiler_options(compiler, options)
-
-		C.spvc_compiler_compile(compiler, &result)
-		return C.GoString(result), sourceLanguage, true, nil
+		break
 
 	default:
-		return "", sourceLanguage, false, errors.New("Source language not supported")
+		retError = errors.New("Source language \"" + sourceLanguage + "\" is not supported")
 	}
+
+	// Free all context related memory
+	C.spvc_context_destroy(context)
+	var isCrossCompiled bool = (retError == nil)
+
+	return retSource, sourceLanguage, isCrossCompiled, retError
 }
 
 // ParseAllDescriptorSets determines what descriptor sets are implied by the
