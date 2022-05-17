@@ -43,19 +43,84 @@ void spy::reset_memory_watch() {
   }
 }
 
+VkResult spy::vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
+                               const VkAllocationCallbacks* pAllocator,
+                               VkInstance* pInstance) {
+  bool has_physical_device_properties2 = false;
+  std::vector<const char*> exts(pCreateInfo->enabledExtensionCount);
+  for (size_t i = 0; i < exts.size(); ++i) {
+    exts[i] = pCreateInfo->ppEnabledExtensionNames[i];
+    if (!strcmp(exts[i], "VK_KHR_external_memory_capabilities")) {
+      has_external_memory_capabilities = true;
+    }
+    if (!strcmp(exts[i], "VK_KHR_get_physical_device_properties2")) {
+      has_physical_device_properties2 = true;
+    }
+  }
+  VkInstanceCreateInfo nci = *pCreateInfo;
+  const VkInstanceCreateInfo* ci = pCreateInfo;
+  if (!has_external_memory_capabilities) {
+#pragma TODO(awoloszyn, We should really enable the following code but the loader is broken here)
+    /*do {
+      uint32_t property_count;
+      if (VK_SUCCESS != bypass_caller->vkEnumerateInstanceExtensionProperties("", &property_count, nullptr)) {
+        break;
+      }
+      std::vector<VkExtensionProperties> props(property_count);
+      if (VK_SUCCESS != bypass_caller->vkEnumerateInstanceExtensionProperties(nullptr, &property_count, props.data())) {
+        break;
+      }
+
+      for (auto& i : props) {
+        if (!strcmp(i.extensionName, "VK_KHR_external_memory_capabilities")) {
+          exts.push_back("VK_KHR_external_memory_capabilities");
+          nci = *pCreateInfo;
+          nci.enabledExtensionCount += 1;
+          nci.ppEnabledExtensionNames = exts.data();
+          ci = &nci;
+          has_external_memory_capabilities = true;
+          continue;
+        }
+      }
+    } while (false);*/
+    // We can't actually check for the extension :(
+    exts.push_back("VK_KHR_external_memory_capabilities");
+    nci.enabledExtensionCount += 1;
+    nci.ppEnabledExtensionNames = exts.data();
+    ci = &nci;
+    has_external_memory_capabilities = true;
+  }
+  if (!has_physical_device_properties2) {
+    has_physical_device_properties2 = true;
+    exts.push_back("VK_KHR_get_physical_device_properties2");
+    nci.enabledExtensionCount += 1;
+    nci.ppEnabledExtensionNames = exts.data();
+    ci = &nci;
+  }
+
+  if (!has_external_memory_capabilities) {
+    OutputDebugStringA("Cannot use VK_KHR_external_memory_capabilities so memory tracking will be less efficient\n");
+  } else {
+    OutputDebugStringA("Using VK_KHR_external_memory_capabilities. This will cause slight performance inaccuracies, but increase trace performance\n");
+  }
+  return super::vkCreateInstance(ci, pAllocator, pInstance);
+}
+
 VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
   std::vector<const char*> exts(pCreateInfo->enabledExtensionCount);
 
-  bool found = false;
   for (size_t i = 0; i < exts.size(); ++i) {
     exts[i] = pCreateInfo->ppEnabledExtensionNames[i];
     if (!strcmp(exts[i], "VK_EXT_external_memory_host")) {
       has_external_memory_host = true;
     }
+    if (!strcmp(exts[i], "VK_KHR_external_memory")) {
+      has_external_memory = true;
+    }
   }
-  VkDeviceCreateInfo nci;
+  VkDeviceCreateInfo nci = *pCreateInfo;
   const VkDeviceCreateInfo* ci = pCreateInfo;
-  if (!has_external_memory_host) {
+  if (!has_external_memory_host || !has_external_memory) {
     do {
       uint32_t property_count;
       if (VK_SUCCESS != bypass_caller->vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &property_count, nullptr)) {
@@ -67,23 +132,35 @@ VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCrea
       }
 
       for (auto& i : props) {
-        if (!strcmp(i.extensionName, "VK_EXT_external_memory_host")) {
+        if (!strcmp(i.extensionName, "VK_EXT_external_memory_host") && !has_external_memory_host) {
           exts.push_back("VK_EXT_external_memory_host");
-          nci = *pCreateInfo;
           nci.enabledExtensionCount += 1;
           nci.ppEnabledExtensionNames = exts.data();
           ci = &nci;
           has_external_memory_host = true;
-          break;
+          continue;
+        }
+        if (!strcmp(i.extensionName, "VK_KHR_external_memory")) {
+          exts.push_back("VK_KHR_external_memory");
+          nci.enabledExtensionCount += 1;
+          nci.ppEnabledExtensionNames = exts.data();
+          ci = &nci;
+          has_external_memory = true;
+          continue;
         }
       }
     } while (false);
   }
 
   if (!has_external_memory_host) {
-    OutputDebugStringA("Cannot use VK_EXT_external_memory_host so memory tracking will be less efficient");
+    OutputDebugStringA("Cannot use VK_EXT_external_memory_host so memory tracking will be less efficient\n");
   } else {
-    OutputDebugStringA("Using VK_EXT_external_memory_host. This will cause slight performance inaccuracies, but increase trace performance");
+    OutputDebugStringA("Using VK_EXT_external_memory_host. This will cause slight performance inaccuracies, but increase trace performance\n");
+  }
+  if (!has_external_memory) {
+    OutputDebugStringA("Cannot use VK_KHR_external_memory so memory tracking will be less efficient\n");
+  } else {
+    OutputDebugStringA("Using VK_KHR_external_memory. This will cause slight performance inaccuracies, but increase trace performance\n");
   }
   VkResult ret;
 
@@ -98,6 +175,8 @@ VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCrea
     auto t = get_allocation(4096);
 
     VkMemoryHostPointerPropertiesEXT host_pointer_properties;
+    host_pointer_properties.sType = VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT;
+    host_pointer_properties.pNext = nullptr;
     // Try to allocate a host pointer the same way we would in the memory tracker.
     auto ret = bypass_caller->vkGetMemoryHostPointerPropertiesEXT(pDevice[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT, t, &host_pointer_properties);
     VirtualFree(t, 0, MEM_RELEASE);
@@ -186,6 +265,20 @@ void spy::vkGetBufferMemoryRequirements2(VkDevice device, const VkBufferMemoryRe
   GAPID2_ASSERT(pMemoryRequirements->memoryRequirements.memoryTypeBits != 0, "No valid place to put this now :|");
 }
 
+VkResult spy::vkCreateBuffer(VkDevice device,
+                             const VkBufferCreateInfo* pCreateInfo,
+                             const VkAllocationCallbacks* pAllocator,
+                             VkBuffer* pBuffer) {
+  VkExternalMemoryBufferCreateInfo embci = {
+      .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO,
+      .pNext = pCreateInfo->pNext,
+      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT};
+
+  auto ci = *pCreateInfo;
+  ci.pNext = &embci;
+  return super::vkCreateBuffer(device, &ci, pAllocator, pBuffer);
+}
+
 VkResult spy::vkAllocateMemory(VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo, const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
   bool special = false;
   std::shared_lock<std::shared_mutex>(dev_info_mutex);
@@ -244,10 +337,14 @@ VkResult spy::vkMapMemory(VkDevice device,
   }
 
   if (special) {
-    noop_serializer.vkMapMemory(device, memory, offset, size, flags, ppData);
-
+    auto res = super::vkMapMemory(device, memory, offset, size, flags, ppData);
+    if (res != VK_SUCCESS) {
+      return res;
+    }
     // Take over the memory mapping :D
     ppData[0] = reinterpret_cast<char*>(mi.v1) + offset;
+
+    noop_serializer.vkMapMemory(device, memory, offset, size, flags, ppData);
 
     std::unique_lock<std::mutex> l(memory_mutex);
     auto new_mem = state_block_->get(memory);

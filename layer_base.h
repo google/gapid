@@ -36,6 +36,9 @@ class layer_base {
   void set_nexts(PFN_vkCreateInstance create_instance, PFN_vkGetInstanceProcAddr get_instance_proc_addr) {
     base_caller_->vkCreateInstance_ = create_instance;
     base_caller_->vkGetInstanceProcAddr_ = get_instance_proc_addr;
+    base_caller_->vkEnumerateInstanceExtensionProperties_ =
+        reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(get_instance_proc_addr(nullptr, "vkEnumerateInstanceExtensionProperties"));
+    base_caller_->vkEnumerateInstanceLayerProperties_ = reinterpret_cast<PFN_vkEnumerateInstanceLayerProperties>(get_instance_proc_addr(nullptr, "vkEnumerateInstanceLayerProperties"));
   }
 
   void set_device_nexts(PFN_vkGetDeviceProcAddr get_device_proc_addr) {

@@ -83,6 +83,13 @@ state_block::~state_block() {
     }                                                 \
     return nullptr;                                   \
   }                                                   \
+  const Type##Wrapper* state_block::get(Type t) const { \
+    auto it = Type##s.find(t);                        \
+    if (it != Type##s.end()) {                        \
+      return it->second.second;                       \
+    }                                                 \
+    return nullptr;                                   \
+   }                                                  \
   bool state_block::erase(Type t) {                   \
     auto it = Type##s.find(t);                        \
     if (it == Type##s.end()) {                        \

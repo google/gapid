@@ -52,7 +52,11 @@ class spy : public transform_base {
                        VkDeviceSize size,
                        VkMemoryMapFlags flags,
                        void** ppData) override;
-
+  VkResult vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkInstance* pInstance) override;
+  VkResult vkCreateBuffer(VkDevice device,
+                          const VkBufferCreateInfo* pCreateInfo,
+                          const VkAllocationCallbacks* pAllocator,
+                          VkBuffer* pBuffer) override;
   VkResult vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) override;
   VkResult vkEnumeratePhysicalDevices(
       VkInstance instance,
@@ -108,6 +112,8 @@ class spy : public transform_base {
   temporary_allocator allocator;
   memory_tracker tracker;
   bool has_external_memory_host = false;
+  bool has_external_memory = false;
+  bool has_external_memory_capabilities = false;
   std::shared_mutex dev_info_mutex;
   struct dev_info {
     uint32_t valid_memory_types;

@@ -235,6 +235,11 @@ generate_file(
     command_printer.h
 )
 
+generate_file(
+    scripts/command_buffer_invalidator.py
+    command_buffer_invalidator.h
+)
+
 configure_file(
     manifest.json.in 
     ${gapid2_BINARY_DIR}/manifest.json
@@ -338,6 +343,7 @@ add_library(BASE_FILES STATIC
     ${gapid2_BINARY_DIR}/command_serializer.h
     ${gapid2_BINARY_DIR}/command_serializer.cpp
     ${gapid2_BINARY_DIR}/command_deserializer.h
+    ${gapid2_BINARY_DIR}/command_buffer_invalidator.h
     ${gapid2_BINARY_DIR}/null_caller.h
     ${gapid2_BINARY_DIR}/stype_header.h
 )
@@ -367,10 +373,12 @@ add_library(gapii SHARED
     mec_controller.cpp
     gapii.cpp
     gapii.h
+    state_tracker.h
     memory_tracker.h
     memory_tracker.cpp
     layer.def
     layer_setup.cpp
+    command_buffer_invalidator.cpp
     mec_capture/buffer_view.cpp
     mec_capture/buffer.cpp
     mec_capture/command_buffer.cpp

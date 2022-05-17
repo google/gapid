@@ -28,7 +28,7 @@ class spy_serializer : public command_serializer {
  public:
   using super = transform_base;
   spy_serializer() : out_file("file.trace", std::ios::out | std::ios::binary),
-                     enabled_(false) {
+                     enabled_(true) {
     encoder_tls_key = TlsAlloc();
   }
 

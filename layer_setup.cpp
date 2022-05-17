@@ -181,7 +181,7 @@ gapid2_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
   VkResult result =
       gapid2::get_layer_base()->get_top_level_functions()->vkCreateInstance(pCreateInfo, pAllocator, pInstance);
 
-  return result;
+    return result;
 }
 }  // namespace
 

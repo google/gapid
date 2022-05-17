@@ -38,8 +38,10 @@ class mid_execution_generator {
     capture_bind_images(state_block, mid_execution_serializer, bypass_caller);
     capture_bind_buffers(state_block, mid_execution_serializer, bypass_caller);
 
-    //capture_image_data(state_block, mid_execution_serializer, bypass_caller)
-    //capture_buffer_data(state_block, mid_execution_serializer, bypass_caller)
+    // capture_buffer_data
+    // capture_image_data
+
+    // capture_image_layouts_and_queues
 
     capture_sampler_ycbcr_conversions(state_block, mid_execution_serializer, bypass_caller);
     capture_samplers(state_block, mid_execution_serializer, bypass_caller);
@@ -56,6 +58,9 @@ class mid_execution_generator {
     capture_descriptor_pools(state_block, mid_execution_serializer, bypass_caller);
     capture_framebuffers(state_block, mid_execution_serializer, bypass_caller);
     capture_descriptor_sets(state_block, mid_execution_serializer, bypass_caller);
+
+    capture_descriptor_set_contents(state_block, mid_execution_serializer, bypass_caller);
+
     capture_query_pools(state_block, mid_execution_serializer, bypass_caller);
     capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_SECONDARY);
     capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -89,6 +94,7 @@ class mid_execution_generator {
   void capture_descriptor_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_framebuffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_descriptor_sets(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
+  void capture_descriptor_set_contents(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_query_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_command_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, VkCommandBufferLevel level) const;
   void capture_synchronization(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;

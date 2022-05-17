@@ -268,6 +268,50 @@ class state_tracker : public creation_data_tracker<> {
         }
       }
     }
+    for (uint32_t i = 0; i < descriptorCopyCount; ++i) {
+      auto& dw = pDescriptorCopies[i];
+      auto dst = state_block_->get(dw.dstSet);
+      auto src = state_block_->get(dw.srcSet);
+      auto src_it = src->bindings.lower_bound(dw.srcBinding);
+      auto dst_it = dst->bindings.lower_bound(dw.dstBinding);
+
+      auto src_elem = dw.srcArrayElement;
+      auto dst_elem = dw.dstArrayElement;
+      for (size_t j = 0; j < dw.descriptorCount; ++j) {
+        while (src_elem >= src_it->second.descriptors.size()) {
+          ++src_it;
+          src_elem = 0;
+        }
+        while (dst_elem >= dst_it->second.descriptors.size()) {
+          ++dst_it;
+          dst_elem = 0;
+        }
+        switch (src_it->second.type) {
+          case VK_DESCRIPTOR_TYPE_SAMPLER:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+            dst_it->second.descriptors[dst_elem++].image_info = src_it->second.descriptors[src_elem++].image_info;
+            break;
+          }
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+            dst_it->second.descriptors[dst_elem++].buffer_view_info = src_it->second.descriptors[src_elem++].buffer_view_info;
+            break;
+          }
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+            dst_it->second.descriptors[dst_elem++].buffer_info = src_it->second.descriptors[src_elem++].buffer_info;
+            break;
+          }
+          default:
+            GAPID2_ERROR("Unknown descriptor type");
+        }
+      }
+    }
     super::vkUpdateDescriptorSets(device, descriptorWriteCount,
                                   pDescriptorWrites, descriptorCopyCount,
                                   pDescriptorCopies);
@@ -713,6 +757,38 @@ class state_tracker : public creation_data_tracker<> {
       }
     }
     return ret;
+  }
+
+  VkResult vkCreateBufferView(VkDevice device,
+                              const VkBufferViewCreateInfo* pCreateInfo,
+                              const VkAllocationCallbacks* pAllocator,
+                              VkBufferView* pView) override {
+    auto res =
+        super::vkCreateBufferView(device, pCreateInfo, pAllocator, pView);
+    if (res != VK_SUCCESS) {
+      return res;
+    }
+    auto view = state_block_->get(pView[0]);
+    auto buffer = state_block_->get(pCreateInfo->buffer);
+    buffer->invalidates(view);
+
+    return res;
+  }
+
+  VkResult vkCreateImageView(VkDevice device,
+                             const VkImageViewCreateInfo* pCreateInfo,
+                             const VkAllocationCallbacks* pAllocator,
+                             VkImageView* pView) override {
+    auto res =
+        super::vkCreateImageView(device, pCreateInfo, pAllocator, pView);
+    if (res != VK_SUCCESS) {
+      return res;
+    }
+    auto view = state_block_->get(pView[0]);
+    auto image = state_block_->get(pCreateInfo->image);
+    image->invalidates(view);
+
+    return res;
   }
 
  protected:

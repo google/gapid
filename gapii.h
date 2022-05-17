@@ -19,6 +19,7 @@
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+#include "command_buffer_invalidator.h"
 #include "creation_tracker.h"
 #include "layer_base.h"
 #include "mec_controller.h"
@@ -33,9 +34,10 @@ class gapii : public layer_base {
     layer_base::initialize(&transform_base_);
     serializer_ = std::make_unique<gapid2::transform<gapid2::spy_serializer>>(&transform_base_);
     spy_ = std::make_unique<gapid2::transform<gapid2::spy>>(&transform_base_);
-#ifdef MEC
+#if defined(MEC)
     state_block_ = std::make_unique<gapid2::transform<gapid2::state_block>>(&transform_base_);
     creation_tracker_ = std::make_unique<gapid2::transform<gapid2::creation_tracker<>>>(&transform_base_);
+    command_buffer_invalidator_ = std::make_unique<gapid2::transform<gapid2::command_buffer_invalidator>>(&transform_base_);
     state_tracker_ = std::make_unique<gapid2::transform<gapid2::state_tracker>>(&transform_base_);
     mec_controller_ = std::make_unique<gapid2::transform<gapid2::mec_controller>>(&transform_base_);
     spy_->initialize(serializer_.get(), minimal_state_tracker_.get());
@@ -55,6 +57,7 @@ class gapii : public layer_base {
 
  private:
   std::unique_ptr<gapid2::transform<gapid2::state_tracker>> state_tracker_;
+  std::unique_ptr<gapid2::transform<gapid2::command_buffer_invalidator>> command_buffer_invalidator_;
   std::unique_ptr<gapid2::transform<gapid2::state_block>> state_block_;
 
   std::unique_ptr<gapid2::transform<gapid2::creation_tracker<>>> creation_tracker_;

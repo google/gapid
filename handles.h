@@ -17,6 +17,10 @@
 #pragma once
 #include <atomic>
 #include <deque>
+#include <mutex>
+#include <unordered_set>
+
+#include "common.h"
 #include "handle_templates.h"
 
 namespace gapid2 {
@@ -26,8 +30,76 @@ struct handle_type {
 };
 
 struct dummy {};
+
+struct base_handle {
+  ~base_handle() {
+    invalidate();
+    std::unordered_set<base_handle*> i;
+    {
+      std::unique_lock<std::mutex> l(invalidation_mutex);
+      i = std::move(invalidations_by);
+    }
+
+    for (auto& x : i) {
+      x->no_longer_invalidates(this);
+    }
+  }
+
+  bool invalidated = false;
+
+  void invalidates(base_handle* other) {
+    {
+      std::unique_lock<std::mutex> l(invalidation_mutex);
+      GAPID2_ASSERT(!invalidated, "Trying to use an invalid handle");
+      invalidations.insert(other);
+    }
+    other->invalidated_by(this);
+  }
+
+  void no_longer_invalidates(base_handle* other) {
+    std::unique_lock<std::mutex> l(invalidation_mutex);
+    invalidations.erase(other);
+    other->no_longer_invalidated_by(this);
+  }
+
+  void invalidate() {
+    invalidated = true;
+    std::unordered_set<base_handle*> i;
+
+    {
+      std::unique_lock<std::mutex> l(invalidation_mutex);
+      i = std::move(invalidations);
+    }
+
+    for (auto& x : i) {
+      x->no_longer_invalidated_by(this);
+      x->invalidate();
+    }
+  }
+
+  void reset_invalidations() {
+    std::unique_lock<std::mutex> l(invalidation_mutex);
+    invalidated = false;
+    invalidations.clear();
+  }
+
+  private:
+  void invalidated_by(base_handle* other) {
+     std::unique_lock<std::mutex> l(invalidation_mutex);
+     GAPID2_ASSERT(!invalidated, "Trying to use an invalid handle");
+     invalidations_by.insert(other);
+  }
+  void no_longer_invalidated_by(base_handle* other) {
+    std::unique_lock<std::mutex> l(invalidation_mutex);
+    invalidations_by.erase(other);
+  }
+  std::mutex invalidation_mutex;
+  std::unordered_set<base_handle*> invalidations;
+  std::unordered_set<base_handle*> invalidations_by;
+};
+
 template <typename T, typename DISPATCH = dummy>
-struct handle_base {
+struct handle_base : public base_handle {
   handle_base(T t) : _handle(t) {}
   using base_type = T;
   DISPATCH* dispatch = nullptr;
