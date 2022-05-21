@@ -69,7 +69,7 @@ func (e *encoder) Build(c *compiler.C) {
 
 	e.parseCallbacks()
 
-	e.entities.build(e)
+	e.entities.buildTypes(e)
 
 	e.buildWriteFuncs()
 	e.buildEncoderFuncs()
@@ -146,10 +146,16 @@ func (e *encoder) buildEncoderFuncs() {
 func (e *encoder) buildClassEncodeToBufFuncs() {
 	for _, api := range e.APIs {
 		for _, ty := range api.Classes {
+			if !e.hasEntity(ty) {
+				continue
+			}
 			e.funcs.encodeToBuf[ty] = e.Method(false, e.T.Target(ty), e.T.Void, "encode_to_buf", e.T.CtxPtr, e.T.BufPtr).
 				LinkPrivate()
 		}
 		for _, class := range api.Classes {
+			if !e.hasEntity(class) {
+				continue
+			}
 			e.C.Build(e.funcs.encodeToBuf[class], func(s *compiler.S) {
 				this, buf := s.Parameter(0), s.Parameter(2)
 				for i, f := range class.Fields {
