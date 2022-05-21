@@ -43,7 +43,7 @@ using MakerTestIntegerTypes =
     ::testing::Types<uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t,
                      uint64_t, int64_t>;
 
-TYPED_TEST_CASE(MakerTestInteger, MakerTestIntegerTypes);
+TYPED_TEST_SUITE(MakerTestInteger, MakerTestIntegerTypes);
 
 TYPED_TEST(MakerTestInteger, make_integer) {
   EXPECT_EQ(0, gapil::make<TypeParam>(&this->MakerTest::arena));

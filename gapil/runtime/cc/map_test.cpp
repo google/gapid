@@ -35,7 +35,7 @@ using MapTestTypes = ::testing::Types<gapil::Map<uint32_t, uint32_t, false>,
                                       gapil::Map<uint16_t, uint32_t, false>,
                                       gapil::Map<uint32_t, uint64_t, false>>;
 
-TYPED_TEST_CASE(MapTest, MapTestTypes);
+TYPED_TEST_SUITE(MapTest, MapTestTypes);
 
 TYPED_TEST(MapTest, basic_insert) {
   using key_type = typename TypeParam::key_type;

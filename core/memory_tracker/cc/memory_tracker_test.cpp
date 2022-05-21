@@ -377,7 +377,7 @@ class MarkListTest : public ::testing::Test {
 
 using MarkListTestTypes = ::testing::Types<uint32_t, uint64_t>;
 
-TYPED_TEST_CASE(MarkListTest, MarkListTestTypes);
+TYPED_TEST_SUITE(MarkListTest, MarkListTestTypes);
 
 TYPED_TEST(MarkListTest, NoSpace) {
   auto m = this->CreateMarkList(0);

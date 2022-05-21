@@ -117,8 +117,8 @@ TEST_P(reallocate_memory_tests, reallocate) {
   EXPECT_EQ(got, pattern);
 }
 
-INSTANTIATE_TEST_CASE_P(many_values, reallocate_memory_tests,
-                        ::testing::Values(1, 15, 16, 31, 32, 44, 1024, 4093));
+INSTANTIATE_TEST_SUITE_P(many_values, reallocate_memory_tests,
+                         ::testing::Values(1, 15, 16, 31, 32, 44, 1024, 4093));
 
 using memory_protection_tests = ::testing::TestWithParam<uint32_t>;
 
@@ -149,8 +149,8 @@ TEST_P(memory_protection_tests, unprotect_memory) {
 // DO NOT add another death test.
 // There is some wonderful weirdness about how this will handle
 // the offsets.
-INSTANTIATE_TEST_CASE_P(many_values, memory_protection_tests,
-                        ::testing::Values(1, 31, 32, 44, 1024, 4093));
+INSTANTIATE_TEST_SUITE_P(many_values, memory_protection_tests,
+                         ::testing::Values(1, 31, 32, 44, 1024, 4093));
 
 }  // namespace test
 }  // namespace core

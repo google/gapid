@@ -113,7 +113,7 @@ TEST(StringTest, assignment) {
     EXPECT_EQ(arena.num_allocations(),
               1);  // strB now exclusively owns the allocation
 
-    strB = strB;
+    strA = strB;
 
     EXPECT_EQ(arena.num_allocations(), 1);
 

@@ -28,7 +28,6 @@ namespace {
 
 const uint32_t MEMORY_SIZE = 4096;
 const uint32_t STACK_CAPACITY = 128;
-const uint32_t CONSTANT_SIZE = 128;
 
 class StackTest : public ::testing::Test {
  protected:

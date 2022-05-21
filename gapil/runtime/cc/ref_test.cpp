@@ -25,7 +25,7 @@ using RefTestTypes =
     ::testing::Types<gapil::Ref<uint32_t>, gapil::Ref<uint16_t>,
                      gapil::Ref<uint64_t>>;
 
-TYPED_TEST_CASE(RefTest, RefTestTypes);
+TYPED_TEST_SUITE(RefTest, RefTestTypes);
 
 TYPED_TEST(RefTest, null) {
   auto ref = TypeParam();
@@ -77,7 +77,7 @@ TYPED_TEST(RefTest, assignment) {
     EXPECT_EQ(arena.num_allocations(),
               1);  // refB now exclusively owns the allocation
 
-    refB = refB;
+    refA = refB;
 
     EXPECT_EQ(arena.num_allocations(), 1);
   }
