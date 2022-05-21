@@ -167,6 +167,9 @@ func (e *encoder) buildClassEncodeToBufFuncs() {
 func (e *encoder) buildClassEncodeFuncs() {
 	for _, api := range e.APIs {
 		for _, class := range api.Classes {
+			if class.Annotations.GetAnnotation("serialize") == nil {
+				continue
+			}
 			e.C.Build(e.Method(true, e.T.Target(class), e.T.VoidPtr, "encode", e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
 				this, isGroup := s.Parameter(0), s.Parameter(2)
 

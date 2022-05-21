@@ -140,7 +140,7 @@
     {{Template "DeclareType" (TypeOf $f)}}
   {{end}}
 
-  {{$serializable := not (GetAnnotation $ "noserialize")}}
+  {{$serializable := (GetAnnotation $ "serialize")}}
   {{$name := Macro "C++.Type" $}}
   class {{$name}} {
     «public:»
