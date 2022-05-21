@@ -71,19 +71,19 @@
   @unused ref!PhysicalDeviceCustomBorderColorPropertiesEXT PhysicalDeviceCustomBorderColorPropertiesEXT
 }
 
-@internal class PhysicalDevicesAndProperties {
+@internal @serialize class PhysicalDevicesAndProperties {
   map!(VkPhysicalDevice, VkPhysicalDeviceProperties) PhyDevToProperties
 }
 
-@internal class PhysicalDevicesMemoryProperties {
+@internal @serialize class PhysicalDevicesMemoryProperties {
   map!(VkPhysicalDevice, VkPhysicalDeviceMemoryProperties) PhyDevToMemoryProperties
 }
 
-@internal class PhysicalDevicesAndQueueFamilyProperties {
+@internal @serialize class PhysicalDevicesAndQueueFamilyProperties {
   map!(VkPhysicalDevice, map!(u32, VkQueueFamilyProperties)) PhyDevToQueueFamilyProperties
 }
 
-@internal class PhysicalDevicesFormatProperties {
+@internal @serialize class PhysicalDevicesFormatProperties {
   map!(VkPhysicalDevice, map!(VkFormat, VkFormatProperties)) PhyDevToFormatProperties
 }
 

@@ -381,6 +381,7 @@ class VkMappedMemoryRange {
   VkDeviceSize    size   /// Size of the range within the mapped memory
 }
 
+@serialize
 class VkMemoryRequirements {
   VkDeviceSize size           /// Specified in bytes
   VkDeviceSize alignment      /// Specified in bytes

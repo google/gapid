@@ -845,7 +845,7 @@ cmd void vkDestroyPipeline(
   u32 DescriptorCount
 }
 
-@internal class DescriptorInfo {
+@internal @serialize class DescriptorInfo {
   map!(string, map!(u32, DescriptorUsage)) Descriptors
 }
 

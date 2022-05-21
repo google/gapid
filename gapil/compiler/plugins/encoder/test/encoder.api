@@ -38,6 +38,7 @@ class int_types {
     s32    g
 }
 
+@serialize
 class basic_types {
     u8     a
     s8     b
@@ -59,10 +60,12 @@ class inner_class {
     basic_types a
 }
 
+@serialize
 class nested_classes {
     inner_class a
 }
 
+@serialize
 class map_types {
     map!(u32, u32)       a
     map!(string, string) b
@@ -70,6 +73,7 @@ class map_types {
     map!(string, string) d
 }
 
+@serialize
 class ref_types {
     ref!basic_types a
     ref!inner_class b
@@ -77,6 +81,7 @@ class ref_types {
     ref!inner_class d
 }
 
+@serialize
 class slice_types {
     u8[]        a
     f32[]       b

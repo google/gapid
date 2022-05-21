@@ -145,12 +145,12 @@
   VkSparseMemoryBindFlags Flags
 }
 
-@internal class FetchedImageMemoryRequirements {
+@internal @serialize class FetchedImageMemoryRequirements {
   map!(VkImageAspectFlagBits, VkMemoryRequirements)             PlaneBitsToMemoryRequirements
   map!(VkImageAspectFlagBits, VkSparseImageMemoryRequirements)  AspectBitsToSparseMemoryRequirements
 }
 
-@internal class LinearImageLayouts {
+@internal @serialize class LinearImageLayouts {
   map!(u32, ref!LinearImageAspectLayouts) AspectLayouts
 }
 
