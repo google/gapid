@@ -26,6 +26,18 @@ def print_vulkan_metaadata(vulkan_metadata: types.AllVulkanTypes) -> None:
 
     pretty_printer = pprint.PrettyPrinter(depth=4)
 
+    print("=== Vulkan Bitmasks ===")
+    pretty_printer.pprint(vulkan_metadata.bitmasks)
+
+    print("=== Vulkan Bitmask Aliases ===")
+    pretty_printer.pprint(vulkan_metadata.bitmask_aliases)
+
+    print("=== Vulkan Enums ===")
+    pretty_printer.pprint(vulkan_metadata.enums)
+
+    print("=== Vulkan Enums Aliases ===")
+    pretty_printer.pprint(vulkan_metadata.enum_aliases)
+
     print("=== Vulkan Handles ===")
     pretty_printer.pprint(vulkan_metadata.handles)
 

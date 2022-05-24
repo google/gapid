@@ -19,6 +19,7 @@ import sys
 
 from vulkan_generator import generator
 
+
 def main() -> None:
     """ Entry point """
     generator.generate(Path(sys.argv[1]))

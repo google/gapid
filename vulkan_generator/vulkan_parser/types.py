@@ -103,6 +103,65 @@ class VulkanFunctionPtr(VulkanType):
     argument_order: List[str] = field(default_factory=list)
     arguments: Dict[str, VulkanFunctionArgument] = field(default_factory=dict)
 
+
+@dataclass
+class VulkanEnumField:
+    """The meta data defines a value in an Enum"""
+    name: str
+
+    # Python3 int's are limitless
+    value: int
+
+    # Enum fields are sometimes represented hexadecimal especially in bitmasks.
+    # It can be pretty irregular in the spec. Therefore, we can explicitly
+    # state the representation when necessary.
+    representation: str
+
+
+@dataclass
+class VulkanEnum(VulkanType):
+    """The meta data defines an Enum"""
+    field_order: List[str]
+    fields: Dict[str, VulkanEnumField]
+
+    # Enum fields can be aliases of other values especially around
+    # the extensions. Moreover, these aliases can be chained.
+    # In the spec and header they are pretty irregular in terms of where
+    # they have been defined.
+    # Therefore we keep them separate so that the field order does not
+    # get mixed.
+    aliases: Dict[str, str]
+
+    # Is this enum have bitmask fields
+    bitmask: bool
+
+    # Is this enum is 64 bits
+    bit64: bool
+
+
+@dataclass
+class VulkanEnumAlias(VulkanType):
+    """The meta data defines an alias to an Enum"""
+    aliased_typename: str
+
+
+@dataclass
+class VulkanBitmask(VulkanType):
+    """The meta data defines a bitmask type"""
+    # Type of the field which is an enum
+    # if this field is empty, it means that it is reserved for the future
+    field_type: Optional[str]
+
+    # Base type of the field e.g. VkFlags, VkFlags64
+    field_basetype: str
+
+
+@dataclass
+class VulkanBitmaskAlias(VulkanType):
+    """The meta data defines an alias to a bitmask type"""
+    aliased_typename: str
+
+
 @dataclass
 class AllVulkanTypes:
     """
@@ -123,3 +182,9 @@ class AllVulkanTypes:
     struct_aliases: Dict[str, VulkanStructAlias] = field(default_factory=dict)
 
     funcpointers: Dict[str, VulkanFunctionPtr] = field(default_factory=dict)
+
+    bitmasks: Dict[str, VulkanBitmask] = field(default_factory=dict)
+    bitmask_aliases: Dict[str, VulkanBitmaskAlias] = field(default_factory=dict)
+
+    enums: Dict[str, VulkanEnum] = field(default_factory=dict)
+    enum_aliases: Dict[str, VulkanEnumAlias] = field(default_factory=dict)

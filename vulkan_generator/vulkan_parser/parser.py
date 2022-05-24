@@ -19,6 +19,20 @@ import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_parser import type_parser
+from vulkan_generator.vulkan_parser import enums_parser
+
+
+def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) -> None:
+    """Process the parsing of Vulkan enums"""
+    # Enums are not under the types tag in the XML.
+    # Therefore, they have to be handled separately.
+    vulkan_enum = enums_parser.parse(enum_element)
+
+    if not vulkan_enum:
+        # API constants
+        return
+
+    vulkan_types.enums[vulkan_enum.typename] = vulkan_enum
 
 
 def parse(filename: Path) -> types.AllVulkanTypes:
@@ -29,6 +43,8 @@ def parse(filename: Path) -> types.AllVulkanTypes:
     for child in tree.iter():
         if child.tag == "types":
             all_types = type_parser.parse(child)
+        if child.tag == "enums":
+            process_enums(all_types, child)
 
     # Melih TODO: In the future this should return not only types
     # but other information that is needed as well. e.g. functions, comments etc.
