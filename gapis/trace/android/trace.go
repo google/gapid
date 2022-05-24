@@ -93,7 +93,7 @@ func newValidator(dev bind.Device) validate.Validator {
 	return nil
 }
 
-func deviceValidationTraceOptions(ctx context.Context, v validate.Validator) (*service.TraceOptions, error) {
+func deviceValidationTraceOptions(ctx context.Context, v validate.Validator) *service.TraceOptions {
 	counters := v.GetCounters()
 	ids := make([]uint32, len(counters))
 	for i, counter := range counters {
@@ -123,7 +123,7 @@ func deviceValidationTraceOptions(ctx context.Context, v validate.Validator) (*s
 				},
 			},
 		},
-	}, nil
+	}
 }
 
 func (t *androidTracer) GetDevice() bind.Device {
@@ -181,24 +181,30 @@ func (t *androidTracer) Validate(ctx context.Context, enableLocalFiles bool) (*s
 	ctx = status.Start(ctx, "Android Device Validation")
 	defer status.Finish(ctx)
 
-	if t.v == nil {
-		return nil, log.Errf(ctx, nil, "No validator found for device %d", t.b.Instance().ID.ID())
-	}
 	d := t.b.(adb.Device)
 	osConfiguration := d.Instance().GetConfiguration()
+	if t.v == nil {
+		return &service.DeviceValidationResult{
+			ErrorCode:            service.DeviceValidationResult_FAILED_PRECONDITION,
+			ValidationFailureMsg: fmt.Sprintf("Unsupported GPU (%s) detected on device (%d)", osConfiguration.GetHardware().GetGPU(), d.Instance().ID.ID()),
+		}, nil
+	}
 	if osConfiguration.GetOS().GetAPIVersion() < minimumSupportedApiLevel {
 		return &service.DeviceValidationResult{
-			ValidationFailureMsg: fmt.Sprintf("Device OS (%d) is below the minimum supported version (API level) (%d)", osConfiguration.GetOS().GetAPIVersion(), minimumSupportedApiLevel),
+			ErrorCode:            service.DeviceValidationResult_FAILED_PRECONDITION,
+			ValidationFailureMsg: fmt.Sprintf("OS version (%d) is below the minimum supported API level (%d)", osConfiguration.GetOS().GetAPIVersion(), minimumSupportedApiLevel),
 		}, nil
 	}
 	if osConfiguration.GetPerfettoCapability() == nil {
 		return &service.DeviceValidationResult{
-			ValidationFailureMsg: fmt.Sprintf("No Perfetto Capability found on device %d", d.Instance().ID.ID()),
+			ErrorCode:            service.DeviceValidationResult_FAILED_PRECONDITION,
+			ValidationFailureMsg: fmt.Sprintf("Perfetto Capability not detected on device (%d)", d.Instance().ID.ID()),
 		}, nil
 	}
 	if gpuProfiling := osConfiguration.GetPerfettoCapability().GetGpuProfiling(); gpuProfiling == nil || gpuProfiling.GetGpuCounterDescriptor() == nil {
 		return &service.DeviceValidationResult{
-			ValidationFailureMsg: fmt.Sprintf("Device (%d) does not support GPU profiling or profiling support was not detected", d.Instance().ID.ID()),
+			ErrorCode:            service.DeviceValidationResult_FAILED_PRECONDITION,
+			ValidationFailureMsg: fmt.Sprintf("GPU profiling support not detected on device (%d)", d.Instance().ID.ID()),
 		}, nil
 	}
 
@@ -207,22 +213,19 @@ func (t *androidTracer) Validate(ctx context.Context, enableLocalFiles bool) (*s
 	packages, _ := d.InstalledPackages(ctx)
 	pkg := packages.FindByName(gapidPackage)
 	if pkg == nil {
-		return nil, log.Errf(ctx, nil, "Package %v not found", gapidPackage)
+		return nil, log.Errf(ctx, nil, "Package %v not found.", gapidPackage)
 	}
 	activityAction := pkg.ActivityActions.FindByName(intentAction, activityName)
 	if activityAction == nil {
-		return nil, log.Errf(ctx, nil, "Activity %v not found in %v", activityName, gapidPackage)
+		return nil, log.Errf(ctx, nil, "Activity %v not found in package %v", activityName, gapidPackage)
 	}
 
 	// Construct trace config
-	traceOpts, err := deviceValidationTraceOptions(ctx, t.v)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Could not get the trace configuration")
-	}
+	traceOpts := deviceValidationTraceOptions(ctx, t.v)
 	process, cleanup, err := perfetto_android.Start(ctx, d, activityAction, traceOpts, nil, []string{})
 	if err != nil {
 		cleanup.Invoke(ctx)
-		return nil, log.Err(ctx, err, "Error when start Perfetto tracing.")
+		return nil, log.Err(ctx, err, "Error when starting Perfetto trace.")
 	}
 	defer cleanup.Invoke(ctx)
 
@@ -263,7 +266,7 @@ func (t *androidTracer) Validate(ctx context.Context, enableLocalFiles bool) (*s
 	if enableLocalFiles {
 		temp, err = file.TempWithExt("validation", "perfetto")
 		if err != nil {
-			return nil, log.Err(ctx, err, "Failed to create a temp file for trace")
+			return nil, log.Err(ctx, err, "Failed to create a temp file for trace.")
 		}
 	}
 
@@ -272,20 +275,20 @@ func (t *androidTracer) Validate(ctx context.Context, enableLocalFiles bool) (*s
 	status.Do(ctx, "Trace loading", func(ctx context.Context) {
 		processor, err = perfetto.NewProcessor(ctx, buf.Bytes())
 		if err != nil {
-			traceLoadingErr = log.Err(ctx, err, "Failed to initialize the perfetto processor")
+			traceLoadingErr = log.Err(ctx, err, "Failed to initialize the perfetto processor.")
 			return
 		}
 
 		file, err := os.OpenFile(temp.System(), os.O_APPEND|os.O_WRONLY, fs.ModeAppend)
 		if err != nil {
-			traceLoadingErr = log.Err(ctx, err, "Failed to open temp file")
+			traceLoadingErr = log.Err(ctx, err, "Failed to open temp file.")
 			return
 		}
 		defer file.Close()
 
 		numWritten, err := file.Write(buf.Bytes())
 		if err != nil {
-			traceLoadingErr = log.Err(ctx, err, "Failed to write trace to temp file")
+			traceLoadingErr = log.Err(ctx, err, "Failed to write trace to temp file.")
 			return
 		}
 		log.I(ctx, "Writing trace size %v bytes to %v", numWritten, file.Name())
@@ -302,9 +305,11 @@ func (t *androidTracer) Validate(ctx context.Context, enableLocalFiles bool) (*s
 
 	err = t.v.Validate(ctx, processor)
 	if err != nil {
+		res.ErrorCode = service.DeviceValidationResult_FAILED_TRACE_VALIDATION
 		res.ValidationFailureMsg = err.Error()
 	}
 
+	res.ErrorCode = service.DeviceValidationResult_OK
 	return res, nil
 }
 

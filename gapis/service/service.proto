@@ -1506,6 +1506,24 @@ message ValidateDeviceResponse {
 }
 
 message DeviceValidationResult {
+  enum ErrorCode {
+    // Default, never set to any actual value.
+    INVALID = 0;
+
+    // Passed validation.
+    OK = 1;
+
+    // Not supported in some kind of way (e.g. unsupported device, custom
+    // build).
+    FAILED_PRECONDITION = 2;
+
+    // Validating the Perfetto trace file failed (i.e. mismatched GPU counters).
+    FAILED_TRACE_VALIDATION = 3;
+  }
+
+  // Includes whether a device passes validation and a reason for failure.
+  ErrorCode error_code = 3;
+
   // Message with details of how the device failed validation (doesn't
   // include internal errors where we somehow failed to start validation).
   string validation_failure_msg = 1;
