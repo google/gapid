@@ -47,7 +47,7 @@ class CallObserver : public context_t {
   using enable_if_encodable = typename std::enable_if<
       std::is_member_function_pointer<decltype(&T::encode)>::value>::type;
 
-  typedef std::function<void(slice_t*)> OnSliceEncodedCallback;
+  typedef std::function<void(const slice_t*)> OnSliceEncodedCallback;
 
   CallObserver(SpyBase* spy_p, CallObserver* parent, uint8_t api);
 
@@ -83,7 +83,7 @@ class CallObserver : public context_t {
   }
 
   // slice_encoded should be called whenever a slice is encoded.
-  inline void slice_encoded(slice_t* slice) {
+  inline void slice_encoded(const slice_t* slice) {
     if (mOnSliceEncoded) {
       mOnSliceEncoded(slice);
     }

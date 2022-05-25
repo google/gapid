@@ -25,7 +25,7 @@ void StateSerializer::prepareForState(
   mObserver->enter(&global);
 
   serialize_buffers(this);
-  mObserver->on_slice_encoded([&](slice_t* slice) {
+  mObserver->on_slice_encoded([&](const slice_t* slice) {
     auto p = slice->pool;
     if (p != nullptr && mSeenPools.count(p->id) == 0) {
       mSeenPools.insert(p->id);
