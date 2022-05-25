@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-This package is responsible for testing Vulkan Parser
+This module is responsible for testing Vulkan structs and aliases
 
 Examples in this files stems from vk.xml that relesed by Khronos.
 Anytime the particular xml updated, test should be checked

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-This package is responsible for testing Vulkan Parser
+This module is responsible for testing Vulkan handles and aliases
 
 Examples in this files stems from vk.xml that relesed by Khronos.
 Anytime the particular xml updated, test should be checked
@@ -24,6 +24,7 @@ import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import handle_parser
 from vulkan_generator.vulkan_parser import types
+
 
 def test_vulkan_handle_by_tag() -> None:
     """""Test the case if the handle name is in an XML tag"""

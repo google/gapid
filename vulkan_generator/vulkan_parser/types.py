@@ -17,6 +17,7 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Dict
+from typing import OrderedDict
 from typing import List
 from typing import Optional
 
@@ -163,6 +164,12 @@ class VulkanBitmaskAlias(VulkanType):
 
 
 @dataclass
+class VulkanDefine:
+    variable_name: str
+    value: str
+
+
+@dataclass
 class AllVulkanTypes:
     """
     This class holds the information parsed from Vulkan XML
@@ -188,3 +195,5 @@ class AllVulkanTypes:
 
     enums: Dict[str, VulkanEnum] = field(default_factory=dict)
     enum_aliases: Dict[str, VulkanEnumAlias] = field(default_factory=dict)
+
+    defines: OrderedDict[str, VulkanDefine] = field(default_factory=OrderedDict)

@@ -26,13 +26,22 @@ def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) 
     """Process the parsing of Vulkan enums"""
     # Enums are not under the types tag in the XML.
     # Therefore, they have to be handled separately.
-    vulkan_enum = enums_parser.parse(enum_element)
+    vulkan_enums = enums_parser.parse(enum_element)
 
-    if not vulkan_enum:
-        # API constants
+    if not vulkan_enums:
+        raise SyntaxError(f"Enum could not be parsed {ET.tostring(enum_element, 'utf-8')}")
+
+    if isinstance(vulkan_enums, types.VulkanEnum):
+        vulkan_types.enums[vulkan_enums.typename] = vulkan_enums
         return
 
-    vulkan_types.enums[vulkan_enum.typename] = vulkan_enum
+    # Some Vulkan defines are under enums tag. Therefore we need to parse them here.
+    if isinstance(vulkan_enums, dict):
+        for define in vulkan_enums.values():
+            vulkan_types.defines[define.variable_name] = define
+        return
+
+    raise SyntaxError(f"Unknown define or enum {vulkan_enums}")
 
 
 def parse(filename: Path) -> types.AllVulkanTypes:

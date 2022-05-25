@@ -23,6 +23,17 @@ from vulkan_generator.vulkan_parser import handle_parser
 from vulkan_generator.vulkan_parser import struct_parser
 from vulkan_generator.vulkan_parser import funcptr_parser
 from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser import defines_parser
+
+
+def process_defines(vulkan_types: types.AllVulkanTypes, define_element: ET.Element) -> None:
+    vulkan_define = defines_parser.parse(define_element)
+
+    if isinstance(vulkan_define, types.VulkanDefine):
+        vulkan_types.defines[vulkan_define.variable_name] = vulkan_define
+        return
+
+    raise SyntaxError(f"Unknown Define: {vulkan_define}")
 
 
 def process_bitmask_alises(vulkan_types: types.AllVulkanTypes, bitmask_element: ET.Element) -> None:
@@ -91,7 +102,9 @@ def parse(types_root: ET.Element) -> types.AllVulkanTypes:
     for type_element in types_root.iter():
         if "category" in type_element.attrib:
             type_category = type_element.attrib["category"]
-            if type_category == "bitmask":
+            if type_category == "define":
+                process_defines(vulkan_types, type_element)
+            elif type_category == "bitmask":
                 process_bitmask_alises(vulkan_types, type_element)
             elif type_category == "enum":
                 process_enum_alises(vulkan_types, type_element)
@@ -101,6 +114,5 @@ def parse(types_root: ET.Element) -> types.AllVulkanTypes:
                 process_struct(vulkan_types, type_element)
             elif type_category == "funcpointer":
                 process_funcpointer(vulkan_types, type_element)
-
 
     return vulkan_types

@@ -13,7 +13,16 @@
 # limitations under the License.
 
 """
-This package is responsible for testing Vulkan Parser
+This module is responsible for testing Vulkan enums and bitmasks
+
+Because the XML is irregular, unfortunately the test structure is also irregular.
+
+This module tests:
+- Parsing enum aliases with enum_aliases_parser
+- Parsing bitmask aliases with bitmask_parser
+- Parsing bitmask types with bitmasks_parser
+- Parsing enums with value fields with enums_parser
+- Parsing enums with bitmask fields with enums_parser
 
 Examples in this files stems from vk.xml that relesed by Khronos.
 Anytime the particular xml updated, test should be checked

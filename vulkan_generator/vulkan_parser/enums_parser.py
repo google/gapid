@@ -14,15 +14,15 @@
 
 """ This module is responsible for parsing Vulkan enums"""
 
-from typing import Dict
-from typing import NamedTuple
-from typing import List
-from typing import Optional
-
-import xml.etree.ElementTree as ET
-
-from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import types
+import xml.etree.ElementTree as ET
+from typing import Optional
+from typing import List
+from typing import NamedTuple
+from typing import Union
+from typing import OrderedDict
+from typing import Dict
 
 
 class EnumInformation(NamedTuple):
@@ -143,15 +143,25 @@ def parse_bitmask_fields(enum_elem: ET.Element, bit64: bool) -> EnumInformation:
     )
 
 
-def parse(enum_elem: ET.Element) -> Optional[types.VulkanEnum]:
+def parse_api_constants(enum_elem: ET.Element) -> OrderedDict[str, types.VulkanDefine]:
+    constants: OrderedDict[str, types.VulkanDefine] = {}
+
+    for enum in enum_elem:
+        name = enum.attrib["name"]
+        value = enum.attrib["value"] if "value" in enum.attrib else enum.attrib["alias"]
+        constants[name] = types.VulkanDefine(variable_name=name, value=value)
+
+    return constants
+
+
+# We have to return union because api constants are defined under Enums, even though they are not enum
+def parse(enum_elem: ET.Element) -> Union[OrderedDict[str, types.VulkanDefine], Optional[types.VulkanEnum]]:
     """Returns a Vulkan enum from the XML element that defines it"""
 
     enum_name = enum_elem.attrib["name"]
 
     if enum_name == "API Constants":
-        # API Constants defined under enum tag
-        # Melih TODO: Support parsing them
-        return None
+        return parse_api_constants(enum_elem)
 
     enum_type = enum_elem.attrib["type"]
     if enum_type not in ("enum", "bitmask"):
