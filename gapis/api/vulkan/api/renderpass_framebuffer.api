@@ -393,7 +393,7 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
   attachments := info.pAttachments[0:info.attachmentCount]
   for i in (0 .. info.attachmentCount) {
     attachment := attachments[i]
-    renderPass.AttachmentDescriptions[i] = AttachmentDescription(
+    attachmentDescription := AttachmentDescription(
       Flags: attachment.flags,
       Format: attachment.format,
       Samples: attachment.samples,
@@ -413,7 +413,7 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
         switch sType {
           case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
             ext := as!VkAttachmentDescriptionStencilLayout*(next.Ptr)[0]
-            renderPass.AttachmentDescriptions[j].StencilLayout = new!AttachmentDescriptionStencilLayout(
+            attachmentDescription.StencilLayout = new!AttachmentDescriptionStencilLayout(
               StencilInitialLayout: ext.stencilInitialLayout,
               StencilFinalLayout: ext.stencilFinalLayout,
             )
@@ -421,6 +421,7 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
         }
       }
     }
+    renderPass.AttachmentDescriptions[i] = attachmentDescription
   }
 
   subpasses := info.pSubpasses[0:info.subpassCount]
