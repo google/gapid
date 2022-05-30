@@ -30,13 +30,11 @@ apic_template(
 )
 
 apic_compile(
-    name = "apis_compiled",
+    name = "vulkan_encoders",
     apis = [
         "//gapis/api/vulkan:api",
     ],
-    emit = ["encode"],
     namespace = "gapii",
-    optimize = True,
 )
 
 cc_library(
@@ -51,7 +49,7 @@ cc_library(
             "*_test.cpp",
         ],
     ) + [
-        ":apis_compiled",
+        ":vulkan_encoders",
         ":vulkan_templated",
     ],
     copts = cc_copts() + select({

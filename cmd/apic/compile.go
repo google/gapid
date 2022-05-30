@@ -17,18 +17,11 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/gapil/compiler"
-	"github.com/google/gapid/gapil/compiler/mangling/c"
-	"github.com/google/gapid/gapil/compiler/mangling/ia64"
-	"github.com/google/gapid/gapil/compiler/plugins/encoder"
+	"github.com/google/gapid/gapil/encoder"
 	"github.com/google/gapid/gapil/resolver"
 )
 
@@ -40,64 +33,10 @@ func init() {
 	})
 }
 
-type symbols int
-
-const (
-	cSym = symbols(iota)
-	cppSym
-)
-
-func (s symbols) String() string {
-	switch s {
-	case cSym:
-		return "c"
-	case cppSym:
-		return "c++"
-	default:
-		return ""
-	}
-}
-
-func (s *symbols) Choose(v interface{}) {
-	*s = v.(symbols)
-}
-
 type compileVerb struct {
-	Target  string `help:"The target device ABI"`
-	Capture string `help:"The capture device ABI. Defaults to target"`
-	Output  string `help:"The output file path"`
-	Module  string `help:"The name of the global module variable to emit"`
-	Emit    struct {
-		Encode bool `help:"Emit encoder logic"`
-	}
-	Namespace string        `help:"Dot-delimited root namespace(s)"`
-	Symbols   symbols       `help:"Symbol generation method"`
-	Optimize  bool          `help:"Optimize generated code"`
-	Dump      bool          `help:"Dump LLVM IR to stderr"`
+	Output    string        `help:"The output file path"`
+	Namespace string        `help:"C++ namespace for the generated code"`
 	Search    file.PathList `help:"The set of paths to search for includes"`
-}
-
-func parseABI(s string) (*device.ABI, error) {
-	switch s { // Must match values in: tools/build/BUILD.bazel
-	case "":
-		return nil, nil // host
-	case "k8":
-		return device.LinuxX86_64, nil
-	case "darwin_x86_64":
-		return device.OSXX86_64, nil
-	case "x64_windows":
-		return device.WindowsX86_64, nil
-	case "armeabi-v7a":
-		return device.AndroidARMv7a, nil
-	case "arm64-v8a":
-		return device.AndroidARM64v8a, nil
-	case "x86":
-		return device.AndroidX86, nil
-	case "aarch64":
-		return device.FuchsiaARM64, nil
-	default:
-		return nil, fmt.Errorf("Unrecognised target: '%v'", s)
-	}
 }
 
 func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -106,64 +45,16 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	targetABI, err := parseABI(v.Target)
+	out, err := os.Create(v.Output)
 	if err != nil {
 		return err
 	}
+	defer out.Close()
 
-	captureABI := targetABI
-	if v.Capture != "" {
-		captureABI, err = parseABI(v.Capture)
-		if err != nil {
-			return err
-		}
+	settings := encoder.Settings{
+		Namespace: v.Namespace,
+		Out:       out,
 	}
 
-	var namespaces []string
-	if v.Namespace != "" {
-		namespaces = strings.Split(v.Namespace, ".")
-	}
-
-	settings := compiler.Settings{
-		Module:     v.Module,
-		TargetABI:  targetABI,
-		CaptureABI: captureABI,
-		Namespaces: namespaces,
-	}
-
-	if v.Emit.Encode {
-		settings.Plugins = append(settings.Plugins, encoder.Plugin())
-	}
-
-	switch v.Symbols {
-	case cSym:
-		settings.Mangler = c.Mangle
-	default:
-		settings.Mangler = ia64.Mangle
-	}
-
-	prog, err := compiler.Compile(apis, mappings, settings)
-	if err != nil {
-		return err
-	}
-
-	if v.Optimize {
-		prog.Codegen.Optimize()
-	}
-
-	if v.Dump {
-		fmt.Fprintln(os.Stderr, prog.Codegen.String())
-		return fmt.Errorf("IR dump")
-	}
-
-	obj, err := prog.Codegen.Object(v.Optimize)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(v.Output, obj, 0666); err != nil {
-		return err
-	}
-
-	return nil
+	return encoder.GenerateEncoders(apis, mappings, settings)
 }

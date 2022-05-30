@@ -79,36 +79,19 @@ def _apic_compile_impl(ctx):
     for api in ctx.attr.apis:
         apilist += api.includes.to_list()
 
-    cc_toolchain = find_cpp_toolchain(ctx)
-    target = cc_toolchain.cpu
-    outputs = [ctx.actions.declare_file(ctx.label.name + ".o")]
+    outputs = [ctx.actions.declare_file(ctx.label.name + ".cpp")]
 
     ctx.actions.run(
         inputs = apilist,
         outputs = outputs,
         arguments = [
-                        "compile",
-                        "--search",
-                        api_search_path(apilist),
-                        "--target",
-                        target,
-                        "--capture",
-                        ctx.attr.capture,
-                        "--module",
-                        ctx.attr.module,
-                        "--output",
-                        outputs[0].path,
-                        "--optimize=%s" % ctx.attr.optimize,
-                        "--dump=%s" % ctx.attr.dump,
-                        "--namespace",
-                        ctx.attr.namespace,
-                        "--symbols",
-                        ctx.attr.symbols,
-                    ] +
-                    ["--emit-" + emit for emit in ctx.attr.emit] +
-                    [api.main.path for api in apis],
+            "compile",
+            "--search", api_search_path(apilist),
+            "--namespace", ctx.attr.namespace,
+            "--output", outputs[0].path,
+        ] + [ api.main.path for api in apis ],
         mnemonic = "apic",
-        progress_message = "apic compiling apis for " + target,
+        progress_message = "apic compiling apis",
         executable = ctx.executable._apic,
         use_default_shell_env = True,
     )
@@ -129,27 +112,8 @@ apic_compile = rule(
                 "includes",
             ],
         ),
-        "optimize": attr.bool(default = False),
-        "dump": attr.bool(default = False),
-        "emit": attr.string_list(
-            allow_empty = True,
-            mandatory = True,
-        ),
-        "capture": attr.string(
-            default = "",
-            mandatory = False,
-        ),
-        "module": attr.string(
-            default = "",
-            mandatory = False,
-        ),
         "namespace": attr.string(
-            default = "",
-            mandatory = False,
-        ),
-        "symbols": attr.string(
-            default = "c++",
-            mandatory = False,
+            mandatory = True,
         ),
         "_apic": attr.label(
             executable = True,
@@ -157,11 +121,7 @@ apic_compile = rule(
             allow_files = True,
             default = Label("//cmd/apic:apic"),
         ),
-        "_cc_toolchain": attr.label(
-            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
-        ),
     },
-    toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )
 
 def _apic_template_impl(ctx):

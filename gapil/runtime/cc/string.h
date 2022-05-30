@@ -56,6 +56,9 @@ class String {
   bool operator>(const String& other) const;
   bool operator>=(const String& other) const;
 
+  // Returns true if the string is not empty.
+  operator bool() const;
+
   // Returns the length of the string in bytes.
   size_t length() const;
 

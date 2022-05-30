@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Google Inc.
+// Copyright (C) 2022 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@ package encoder
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/text/cases"
-	"github.com/google/gapid/gapil/compiler"
 	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapil/serialization"
 )
@@ -49,9 +48,11 @@ type entity struct {
 	// fqn is the the fully qualified name for this entity.
 	fqn string
 
-	// encode is the function used to encode this entitiy.
-	// Only set for message types.
-	encodeType *codegen.Function // u32(encoder*)
+	// encodeType is the name of the function used to encode this type's type.
+	encodeType string
+
+	// encodeToBuf is the name of the function used to encode this type's data.
+	encodeToBuf string
 }
 
 // entities holds all the entities for the API.
@@ -110,6 +111,33 @@ func (e *encoder) ent(ty semantic.Type) *entity {
 	return e.entities.ty(ty)
 }
 
+// api is a helper method for getting
+func (e *encoder) state(api *semantic.API) *entity {
+	ent, ok := e.entities.state[api]
+	if !ok {
+		panic(fmt.Errorf("No entity for type %T %v", api, api))
+	}
+	return ent
+}
+
+// command is a helper method for getting
+func (e *encoder) command(cmd *semantic.Function) *entity {
+	ent, ok := e.entities.funcParams[cmd]
+	if !ok {
+		panic(fmt.Errorf("No entity for type %T %v", cmd, cmd))
+	}
+	return ent
+}
+
+// commandCall is a helper method for getting
+func (e *encoder) commandCall(cmd *semantic.Function) *entity {
+	ent, ok := e.entities.funcCalls[cmd]
+	if !ok {
+		panic(fmt.Errorf("No entity for type %T %v", cmd, cmd))
+	}
+	return ent
+}
+
 // ty returns the entity for the given semantic type. ty will panic if there is
 // no entitiy declared for the given type.
 func (e *entities) ty(ty semantic.Type) *entity {
@@ -122,26 +150,22 @@ func (e *entities) ty(ty semantic.Type) *entity {
 
 // buildTypes builds all the entities.
 func (e *entities) buildTypes(enc *encoder) {
-	c := enc.C
 
 	// Declare all the entities as a first pass. This is required as we may need
 	// to build cyclic graphs of proto descriptors.
-	e.declBuiltins(c)
-	e.declEnums(c)
-	e.declPointers(c)
-	e.declSlices(c)
+	e.declBuiltins(enc)
+	e.declEnums(enc)
+	e.declPointers(enc)
+	e.declSlices(enc)
 
 	// Build all the entities and their proto descriptors.
-	e.buildState(c)
-	e.buildExtras(c)
-	e.buildFunctions(c)
-
-	// Build the encode functions
-	e.buildEncodeTypeFuncs(c, enc.callbacks.encodeType)
+	e.buildState(enc)
+	e.buildExtras(enc)
+	e.buildFunctions(enc)
 }
 
 // declBuiltins creates an entity for each semantic.Builtin type.
-func (e *entities) declBuiltins(c *compiler.C) {
+func (e *entities) declBuiltins(enc *encoder) {
 	for _, ty := range semantic.BuiltinTypes {
 		ent := &entity{
 			node: ty,
@@ -168,7 +192,7 @@ func (e *entities) declBuiltins(c *compiler.C) {
 			ty == semantic.AnyType:
 			continue
 		default:
-			c.Fail("Unsupported builtin type: %T %v", ty, ty)
+			panic(fmt.Sprintf("Unsupported builtin type: %T %v", ty, ty))
 		}
 		e.types[ty] = ent
 	}
@@ -176,8 +200,8 @@ func (e *entities) declBuiltins(c *compiler.C) {
 
 // declEnums creates an entity for each API enum type.
 // declEnums needs to be called after declBuiltins.
-func (e *entities) declEnums(c *compiler.C) {
-	for _, api := range c.APIs {
+func (e *entities) declEnums(enc *encoder) {
+	for _, api := range enc.APIs {
 		for _, ty := range api.Enums {
 			e.types[ty] = e.ty(ty.NumberType)
 		}
@@ -185,8 +209,8 @@ func (e *entities) declEnums(c *compiler.C) {
 }
 
 // declPointers creates an entity for each API pointer type.
-func (e *entities) declPointers(c *compiler.C) {
-	for _, api := range c.APIs {
+func (e *entities) declPointers(enc *encoder) {
+	for _, api := range enc.APIs {
 		for _, ty := range api.Pointers {
 			e.types[ty] = &entity{
 				node:    ty,
@@ -199,7 +223,7 @@ func (e *entities) declPointers(c *compiler.C) {
 
 // declSlices creates a single entity for all slices, which is shared for each
 // API slice type.
-func (e *entities) declSlices(c *compiler.C) {
+func (e *entities) declSlices(enc *encoder) {
 	u64 := entity{
 		protoTy: descriptor.FieldDescriptorProto_TYPE_UINT64,
 		wireTy:  proto.WireVarint,
@@ -224,7 +248,7 @@ func (e *entities) declSlices(c *compiler.C) {
 		wireTy:  proto.WireBytes,
 		fqn:     "memory.Slice",
 	}
-	for _, api := range c.APIs {
+	for _, api := range enc.APIs {
 		for _, ty := range api.Slices {
 			e.types[ty] = e.slice
 		}
@@ -232,29 +256,29 @@ func (e *entities) declSlices(c *compiler.C) {
 }
 
 // buildType builds the proto descriptor for the given type, if it has not been built already.
-func (e *entities) buildType(c *compiler.C, api string, ty semantic.Type) *entity {
+func (e *entities) buildType(api string, ty semantic.Type) *entity {
 	if entity, ok := e.types[ty]; ok {
 		return entity
 	}
 
 	switch ty := ty.(type) {
 	case *semantic.Class:
-		return e.buildClass(c, api, ty)
+		return e.buildClass(api, ty)
 	case *semantic.Map:
-		return e.buildMap(c, api, ty)
+		return e.buildMap(api, ty)
 	case *semantic.Pseudonym:
-		return e.buildPseudonym(c, api, ty)
+		return e.buildPseudonym(api, ty)
 	case *semantic.Reference:
-		return e.buildReference(c, api, ty)
+		return e.buildReference(api, ty)
 	case *semantic.StaticArray:
-		return e.buildStaticArray(c, api, ty)
+		return e.buildStaticArray(api, ty)
 	default:
 		panic(fmt.Sprintf("Unexpected semantic node type: %T", ty))
 	}
 }
 
 // buildClass builds the proto descriptor for the given class and all its members.
-func (e *entities) buildClass(c *compiler.C, api string, ty *semantic.Class) *entity {
+func (e *entities) buildClass(api string, ty *semantic.Class) *entity {
 	entity := &entity{
 		node:    ty,
 		desc:    &descriptor.DescriptorProto{},
@@ -268,7 +292,7 @@ func (e *entities) buildClass(c *compiler.C, api string, ty *semantic.Class) *en
 	fields := []*descriptor.FieldDescriptorProto{}
 	for i, f := range ty.Fields {
 		fields = append(fields,
-			e.buildType(c, api, f.Type).protoDescField(f.Name(), serialization.ClassFieldStart+serialization.ProtoFieldID(i)),
+			e.buildType(api, f.Type).protoDescField(f.Name(), serialization.ClassFieldStart+serialization.ProtoFieldID(i)),
 		)
 	}
 	entity.desc = &descriptor.DescriptorProto{
@@ -279,7 +303,7 @@ func (e *entities) buildClass(c *compiler.C, api string, ty *semantic.Class) *en
 }
 
 // buildMap builds the proto descriptor for the given map, as well as its key and value types.
-func (e *entities) buildMap(c *compiler.C, api string, ty *semantic.Map) *entity {
+func (e *entities) buildMap(api string, ty *semantic.Map) *entity {
 	entity := &entity{
 		node:    ty,
 		protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
@@ -291,8 +315,8 @@ func (e *entities) buildMap(c *compiler.C, api string, ty *semantic.Map) *entity
 
 	// Note that we're making copies of the entities here, since we'll encode the key and values
 	// as repeated, but only for the maps, not elsewhere these types may be used.
-	keyTI := *e.buildType(c, api, ty.KeyType)
-	valTI := *e.buildType(c, api, ty.ValueType)
+	keyTI := *e.buildType(api, ty.KeyType)
+	valTI := *e.buildType(api, ty.ValueType)
 	keyTI.repeated = true
 	valTI.repeated = true
 
@@ -309,9 +333,9 @@ func (e *entities) buildMap(c *compiler.C, api string, ty *semantic.Map) *entity
 
 // buildPseudonym builds the proto descriptor for the underlying type and uses it for the
 // pseudonym type as well.
-func (e *entities) buildPseudonym(c *compiler.C, api string, ty *semantic.Pseudonym) *entity {
+func (e *entities) buildPseudonym(api string, ty *semantic.Pseudonym) *entity {
 	if underlying := semantic.Underlying(ty.To); underlying != semantic.VoidType {
-		entity := e.buildType(c, api, underlying)
+		entity := e.buildType(api, underlying)
 		e.types[ty] = entity
 		return entity
 	}
@@ -319,7 +343,7 @@ func (e *entities) buildPseudonym(c *compiler.C, api string, ty *semantic.Pseudo
 }
 
 // buildReference builds the proto descriptor for the given reference type.
-func (e *entities) buildReference(c *compiler.C, api string, ty *semantic.Reference) *entity {
+func (e *entities) buildReference(api string, ty *semantic.Reference) *entity {
 	entity := &entity{
 		node:    ty,
 		desc:    &descriptor.DescriptorProto{},
@@ -330,7 +354,7 @@ func (e *entities) buildReference(c *compiler.C, api string, ty *semantic.Refere
 	// Assign type before recursing on fields to allow cycles.
 	e.types[ty] = entity
 
-	to := e.buildType(c, api, ty.To)
+	to := e.buildType(api, ty.To)
 
 	entity.desc = &descriptor.DescriptorProto{
 		Name: proto.String(serialization.ProtoTypeName(ty)),
@@ -343,8 +367,8 @@ func (e *entities) buildReference(c *compiler.C, api string, ty *semantic.Refere
 }
 
 // buildStaticArray builds the proto descriptor for the given static array type.
-func (e *entities) buildStaticArray(c *compiler.C, api string, ty *semantic.StaticArray) *entity {
-	valTi := e.buildType(c, api, semantic.Underlying(ty.ValueType))
+func (e *entities) buildStaticArray(api string, ty *semantic.StaticArray) *entity {
+	valTi := e.buildType(api, semantic.Underlying(ty.ValueType))
 	ent := &entity{
 		node:     ty,
 		repeated: true,
@@ -361,12 +385,12 @@ func (e *entities) buildStaticArray(c *compiler.C, api string, ty *semantic.Stat
 }
 
 // buildState builds the proto descriptor for the API state and all types referenced from it.
-func (e *entities) buildState(c *compiler.C) {
-	for _, api := range c.APIs {
+func (e *entities) buildState(enc *encoder) {
+	for _, api := range enc.APIs {
 		fields := []*descriptor.FieldDescriptorProto{}
 		for i, g := range encodeableGlobals(api) {
 			fields = append(fields,
-				e.buildType(c, api.Name(), g.Type).protoDescField(g.Name(), serialization.StateStart+serialization.ProtoFieldID(i)),
+				e.buildType(api.Name(), g.Type).protoDescField(g.Name(), serialization.StateStart+serialization.ProtoFieldID(i)),
 			)
 		}
 		e.state[api] = &entity{
@@ -383,11 +407,11 @@ func (e *entities) buildState(c *compiler.C) {
 }
 
 // buildExtras builds the proto descriptor for the serialized command extras.
-func (e *entities) buildExtras(c *compiler.C) {
-	for _, api := range c.APIs {
+func (e *entities) buildExtras(enc *encoder) {
+	for _, api := range enc.APIs {
 		for _, class := range api.Classes {
 			if class.Annotations.GetAnnotation("serialize") != nil {
-				e.buildClass(c, api.Name(), class)
+				e.buildClass(api.Name(), class)
 			}
 		}
 	}
@@ -395,16 +419,19 @@ func (e *entities) buildExtras(c *compiler.C) {
 
 // buildFunctions builds the proto descriptors for all command parameter and
 // call messages.
-func (e *entities) buildFunctions(c *compiler.C) {
-	for _, api := range c.APIs {
+func (e *entities) buildFunctions(enc *encoder) {
+	for _, api := range enc.APIs {
 		for _, f := range api.Functions {
+			if f.Annotations.GetAnnotation("pfn") != nil {
+				continue
+			}
 			{ // Parameters
 				fields := []*descriptor.FieldDescriptorProto{
 					e.ty(semantic.Uint64Type).protoDescField("thread", serialization.CmdThread),
 				}
 				for i, p := range f.CallParameters() {
 					fields = append(fields,
-						e.buildType(c, api.Name(), p.Type).protoDescField(p.Name(), serialization.CmdFieldStart+serialization.ProtoFieldID(i)),
+						e.buildType(api.Name(), p.Type).protoDescField(p.Name(), serialization.CmdFieldStart+serialization.ProtoFieldID(i)),
 					)
 				}
 				e.funcParams[f] = &entity{
@@ -416,7 +443,7 @@ func (e *entities) buildFunctions(c *compiler.C) {
 				}
 			}
 			if f.Return.Type != semantic.VoidType {
-				ret := e.buildType(c, api.Name(), f.Return.Type)
+				ret := e.buildType(api.Name(), f.Return.Type)
 				name := f.Name() + "Call"
 				e.funcCalls[f] = &entity{
 					desc: &descriptor.DescriptorProto{
@@ -464,18 +491,17 @@ type slice struct {
 	size   int
 }
 
-// createDescriptors marshals the proto descriptors and stores these into a
-// single, packed global byte buffer. createDescriptors returns the global
-// holding all the marshalled proto descriptors and a map that locates the
-// entity's descriptor in the packed global.
-func (e *entities) createDescriptors(c *compiler.C, l []*entity) (codegen.Global, map[*entity]slice) {
+// emitDescriptors marshals the proto descriptors and stores these into a
+// single, packed global byte buffer. createDescriptors returns a map that
+// locates the entity's descriptor in the packed global.
+func (e *entities) emitDescriptors(enc *encoder, l []*entity) map[*entity]slice {
 	slices := make(map[*entity]slice, len(l))
 
 	datas := [][]byte{}
 	for _, ent := range l {
 		data, err := proto.Marshal(ent.desc)
 		if err != nil {
-			c.Fail("Could not encode proto desc %v: %v", ent.desc.Name, err)
+			panic(fmt.Sprintf("Could not encode proto desc %v: %v", ent.desc.Name, err))
 		}
 		slices[ent] = slice{size: len(data)}
 		datas = append(datas, data)
@@ -490,21 +516,30 @@ func (e *entities) createDescriptors(c *compiler.C, l []*entity) (codegen.Global
 		indices = indices[1:]
 	}
 
-	global := c.M.Global("proto-descriptors", c.M.Scalar(packed)).
-		LinkPrivate()
+	enc.Line("const unsigned char proto_descriptors[] = {")
+	enc.out.Increase()
+	for i := range packed {
+		fmt.Fprintf(enc.out, " 0x%02x,", packed[i])
+		if (i % 16) == 15 {
+			enc.out.EOL()
+		}
+	}
+	enc.out.EOL()
+	enc.out.Decrease()
+	enc.Line("};")
+	enc.empty()
 
-	return global, slices
+	return slices
 }
 
-// buildEncodeTypeFuncs declares all the functions used to encode entity types.
+// emitEncodeTypeFuncs declares all the functions used to encode entity types.
 // The encode function will declare the entity's type and all transitive
 // entity types.
-func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType *codegen.Function) {
-	l := e.allWithDescriptor(c.APIs)
+func (e *entities) emitEncodeTypeFuncs(enc *encoder) {
+	l := e.allWithDescriptor(enc.APIs)
+	descs := e.emitDescriptors(enc, l)
 
-	descs, descSlices := e.createDescriptors(c, l)
-
-	// impls is a map of type mangled name to the public implementation of the
+	// impls is a map of type name to the public implementation of the
 	// encode_type function.
 	// This is used to deduplicate types that have the same underlying type when
 	// lowered.
@@ -515,39 +550,28 @@ func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType *codegen.Funct
 		if ent.repeated {
 			ext = "_array"
 		}
-		name := fmt.Sprintf("encode_type_%s%s", ent.fqn, ext)
+		name := strings.ReplaceAll(ent.fqn, ".", "_") + ext
+		ent.encodeType = "encode_type_" + name
+		ent.encodeToBuf = "encode_to_buf_" + name
 
 		// Check whether this is the first time we've seen this lowered type.
-		if impl, seen := impls[name]; seen {
-			ent.encodeType = impl.encodeType // Reuse the encodeType impl.
-		} else {
+		if _, seen := impls[ent.encodeType]; !seen {
 			// First time we've seen this lowered type. Declare the encode_type
 			// function.
-			f := c.M.Function(c.T.Uint32, name, c.T.CtxPtr).LinkPrivate()
-			ent.encodeType = f
-			impls[name] = ent
+			enc.Line("uint32_t %s(context* ctx);", ent.encodeType)
+			impls[ent.encodeType] = ent
 		}
 	}
+	enc.empty()
 
-	// Note: This is intentionally split into two passes to allow cyclic
-	// encodes.
+	// Note: This is intentionally split into two passes to allow cyclic encodes.
 
-	for _, ent := range impls {
-		c.Build(ent.encodeType, func(s *compiler.S) {
-			encoder := s.Parameter(0)
+	for name, ent := range impls {
+		desc := descs[ent]
 
-			descSlice := descSlices[ent]
-			ptr := descs.Value(s.Builder).Index(0, descSlice.offset)
-			signedTypeID := s.Call(encodeType,
-				encoder,
-				s.Scalar(ent.fqn),
-				s.Scalar(uint32(descSlice.size)),
-				ptr)
-
-			newType := s.GreaterOrEqualTo(signedTypeID, s.Scalar(int64(0)))
-			typeID := s.Select(newType, signedTypeID, s.Negate(signedTypeID))
-
-			s.If(newType, func(s *compiler.S) {
+		enc.Function(fmt.Sprintf("uint32_t %s(context* ctx)", strings.ReplaceAll(name, ".", "_")), func() {
+			enc.Line("int64_t typeId = gapil_encode_type(ctx, \"%s\", %d, &proto_descriptors[%d]);", ent.fqn, desc.size, desc.offset)
+			enc.If("typeId > 0", func() {
 				// Encode dependent types.
 				deps := []*entity{}
 				seen := map[*entity]bool{}
@@ -585,11 +609,13 @@ func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType *codegen.Funct
 				}
 
 				for _, ent := range deps {
-					s.Call(ent.encodeType, encoder)
+					enc.Line("%s(ctx);", ent.encodeType)
 				}
-			})
 
-			s.Return(typeID.Cast(c.T.Uint32))
+				enc.Line("return typeId;")
+			})
+			enc.Line("return -typeId;")
 		})
+
 	}
 }

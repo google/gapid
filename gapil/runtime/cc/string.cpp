@@ -104,6 +104,8 @@ bool String::operator>=(const String& other) const {
   return gapil_string_compare(ptr, other.ptr) >= 0;
 }
 
+String::operator bool() const { return ptr->length; }
+
 size_t String::length() const { return ptr->length; }
 
 const char* String::c_str() const { return reinterpret_cast<char*>(ptr->data); }

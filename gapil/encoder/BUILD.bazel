@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2022 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,26 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["ia64.go"],
-    importpath = "github.com/google/gapid/gapil/compiler/mangling/ia64",
+    srcs = [
+        "encoder.go",
+        "entities.go",
+    ],
+    importpath = "github.com/google/gapid/gapil/encoder",
     visibility = ["//visibility:public"],
     deps = [
-        "//gapil/compiler/mangling:go_default_library",
-    ],
-)
-
-go_test(
-    name = "go_default_test",
-    size = "small",
-    srcs = ["ia64_test.go"],
-    deps = [
-        ":go_default_library",
-        "//core/assert:go_default_library",
-        "//core/log:go_default_library",
-        "//gapil/compiler/mangling:go_default_library",
+        "//core/data:go_default_library",
+        "//core/text/cases:go_default_library",
+        "//core/text/reflow:go_default_library",
+        "//gapil/semantic:go_default_library",
+        "//gapil/serialization:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@io_bazel_rules_go//proto/wkt:descriptor_go_proto",
     ],
 )

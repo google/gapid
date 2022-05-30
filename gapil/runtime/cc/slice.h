@@ -62,6 +62,12 @@ class Slice {
   // Equality operator.
   inline bool operator==(const Slice<T>& other) const;
 
+  // Returns the root of the slice.
+  inline uint64_t root() const;
+
+  // Returns the root of the slice.
+  inline uint64_t base() const;
+
   // Returns the number of elements in the slice.
   inline uint64_t count() const;
 
@@ -76,6 +82,9 @@ class Slice {
 
   // Returns the underlying pool.
   inline const pool_t* pool() const;
+
+  // instance_ptr returns an opaque pointer to the underlying slice data.
+  inline const void* instance_ptr() const;
 
   // Returns true if the slice contains the specified value.
   inline bool contains(const T& value) const;

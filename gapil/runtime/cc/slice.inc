@@ -126,6 +126,16 @@ bool Slice<T>::operator == (const Slice<T>& other) const {
 }
 
 template <typename T>
+uint64_t Slice<T>::root() const {
+    return data.root;
+}
+
+template <typename T>
+uint64_t Slice<T>::base() const {
+    return data.base;
+}
+
+template <typename T>
 uint64_t Slice<T>::count() const {
     return data.count;
 }
@@ -148,6 +158,11 @@ uint32_t Slice<T>::pool_id() const {
 template <typename T>
 const pool_t* Slice<T>::pool() const {
     return data.pool;
+}
+
+template <typename T>
+const void* Slice<T>::instance_ptr() const {
+    return &data;
 }
 
 template <typename T>

@@ -1,0 +1,80 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+# Copyright (C) 2018 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//tools/build:rules.bzl", "api_library", "apic_compile", "apic_template", "cc_copts")
+
+api_library(
+    name = "api",
+    api = "encoder.api",
+    apiname = "encoder",
+)
+
+apic_template(
+    name = "api_templated",
+    api = ":api",
+    templates = [
+        "//gapis/api/templates:api_types.h",
+        "//gapis/api/templates:api_types.cpp",
+    ],
+)
+
+apic_template(
+    name = "api_proto",
+    api = "//gapil/encoder/test:api",
+    templates = ["//gapis/api/templates:proto"],
+)
+
+apic_compile(
+    name = "api_encoders",
+    apis = [":api"],
+    namespace = "gapii",
+)
+
+proto_library(
+    name = "proto",
+    srcs = [":api_proto"],  # keep
+    deps = ["//gapis/memory/memory_pb:memory_pb_proto"],  # keep
+)
+
+cc_proto_library(
+    name = "api_cc_proto",
+    deps = [":proto"],
+)
+
+cc_library(
+    name = "cc",
+    srcs = [
+        "api_templated",
+        ":api_encoders",
+    ],
+    copts = cc_copts(),
+    deps = [
+        "//core/memory/arena/cc",
+        "//gapil/runtime/cc",
+    ],
+)
+
+cc_test(
+    name = "encoder_test",
+    size = "small",
+    srcs = ["encoder_test.cpp"],
+    copts = cc_copts(),
+    deps = [
+        ":api_cc_proto",
+        ":cc",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
