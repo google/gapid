@@ -54,7 +54,6 @@ var externals = map[string]string{
 	"org_golang_x_text":                filepath.Join("golang.org", "x", "text"),
 	"org_golang_x_tools":               filepath.Join("golang.org", "x", "tools"),
 	"org_golang_x_sys":                 filepath.Join("golang.org", "x", "sys"),
-	"llvm":                             "llvm",
 }
 
 var (

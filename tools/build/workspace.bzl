@@ -179,24 +179,6 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
 
     maybe_repository(
         github_repository,
-        name = "llvm",
-        locals = locals,
-        organization = "llvm-mirror",
-        project = "llvm",
-        commit = "e562960fe303c0ffab6f3458fcdb1544b56fd81e",
-        build_file = "@gapid//tools/build/third_party:llvm.BUILD",
-        sha256 = "3ef3d905849d547b6481b16d8e7b473a84efafbe90131e7bc90a0c6aae4cd8e6",
-        # This patch fixes missing standard library includes which leads to compilation
-        # issues in recent gcc. This issue is fixed on recent llvm versions (since
-        # https://github.com/llvm-mirror/llvm/commit/e0402b5c9813a2458b8dd3f640883110db280395),
-        # but updating our llvm version leads to other errors.
-        patches = [
-            "@gapid//tools/build/third_party:llvm_fix.patch",
-        ],
-    )
-
-    maybe_repository(
-        github_repository,
         name = "stb",
         locals = locals,
         organization = "nothings",

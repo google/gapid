@@ -22,7 +22,6 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build:rules.bzl", "copy_to", "copy_tree")
 
 # gazelle:prefix github.com/google/gapid
-# gazelle:resolve go    go    llvm/bindings/go/llvm                        @llvm//:go
 # gazelle:resolve go    go    protos/perfetto/common                       //tools/build/third_party/perfetto:common_go_proto
 # gazelle:resolve go    go    protos/perfetto/config                       //tools/build/third_party/perfetto:config_go_proto
 # gazelle:resolve go    go    protos/perfetto/ipc                          //tools/build/third_party/perfetto:ipc_go_proto
@@ -232,7 +231,6 @@ test_suite(
         "//core/app/flags:go_default_test",
         "//core/assert:go_default_test",
         "//core/cc:tests",
-        "//core/codegen:go_default_test",
         "//core/context/keys:go_default_test",
         "//core/data:go_default_test",
         "//core/data/binary:go_default_test",
@@ -359,7 +357,6 @@ test_suite(
         "//core/app/flags:go_default_test",
         "//core/assert:go_default_test",
         "//core/cc:tests",
-        "//core/codegen:go_default_test",
         "//core/context/keys:go_default_test",
         "//core/data:go_default_test",
         "//core/data/binary:go_default_test",

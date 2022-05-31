@@ -15,37 +15,7 @@
 exports_files(glob([
     "*.BUILD",
     "*.h",
-    "llvm/rules.bzl",
 ]))
-
-cc_library(
-    name = "llvm-platform-config",
-    hdrs = select({
-        "//tools/build:linux": glob(["llvm/include-linux/**/*"]),
-        "//tools/build:darwin": glob(["llvm/include-darwin/**/*"]),
-        "//tools/build:windows": glob(["llvm/include-windows/**/*"]),
-        "//tools/build:android-armeabi-v7a": glob(["llvm/include-armeabi/**/*"]),
-        "//tools/build:android-arm64-v8a": glob(["llvm/include-aarch64/**/*"]),
-        "//tools/build:android-x86": glob(["llvm/include-x86/**/*"]),
-    }),
-    strip_include_prefix = select({
-        "//tools/build:linux": "llvm/include-linux",
-        "//tools/build:darwin": "llvm/include-darwin",
-        "//tools/build:windows": "llvm/include-windows",
-        "//tools/build:android-armeabi-v7a": "llvm/include-armeabi",
-        "//tools/build:android-arm64-v8a": "llvm/include-aarch64",
-        "//tools/build:android-x86": "llvm/include-x86",
-    }),
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "llvm-config",
-    hdrs = glob(["llvm/include/**/*"]),
-    strip_include_prefix = "llvm/include",
-    visibility = ["//visibility:public"],
-    deps = [":llvm-platform-config"],
-)
 
 cc_library(
     name = "spirv-tools-generated",
