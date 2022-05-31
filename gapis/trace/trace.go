@@ -121,7 +121,7 @@ func Validate(ctx context.Context, device *path.Device, enableLocalFiles bool) (
 	}
 
 	result, err := t.Validate(ctx, enableLocalFiles)
-	if err == nil || result.ErrorCode != service.DeviceValidationResult_OK {
+	if err == nil && result.ErrorCode != service.DeviceValidationResult_OK {
 		// Do an info log here, since it's an expected failure.
 		log.I(ctx, "Device validation failed with error code (%d) and reason: %s", result.ErrorCode, result.ValidationFailureMsg)
 	}
