@@ -18,7 +18,6 @@
 #define GAPII_SPY_BASE_H
 
 #include "abort_exception.h"
-#include "call_observer.h"
 #include "pack_encoder.h"
 
 #include "core/cc/assert.h"
@@ -35,7 +34,7 @@
 
 #include "core/memory_tracker/cc/memory_tracker.h"
 
-#include "gapil/runtime/cc/slice.h"
+#include "gapil/runtime/cc/slice.inc"
 
 #include <stdint.h>
 
@@ -49,14 +48,13 @@ namespace gapii {
 const uint8_t kAllAPIs = 0xFF;
 
 // Forward declaration
+class CallObserver;
 class PackEncoder;
 
 class SpyBase {
  public:
   SpyBase();
   virtual ~SpyBase() {}
-
-  void init(CallObserver* observer);
 
   // Set whether to observe the application pool. If true, the default,
   // then reads and writes to the application pools are observed, but
@@ -77,7 +75,7 @@ class SpyBase {
   inline core::Arena* arena() { return &mArena; }
 
   // returns a handle to the identifier of the next pool to be allocated.
-  inline uint32_t& next_pool_id() { return mNextPoolId; }
+  inline uint32_t nextPoolID() { return mNextPoolId++; }
 
   // Returns the transimission encoder.
   // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -248,7 +246,7 @@ inline void SpyBase::setObserveApplicationPool(bool observeApplicationPool) {
 
 template <typename T>
 inline gapil::Slice<T> SpyBase::make(CallObserver* cb, uint64_t count) {
-  return gapil::Slice<T>::create(cb, count);
+  return gapil::Slice<T>::create(&mArena, nextPoolID(), count);
 }
 
 template <typename T>

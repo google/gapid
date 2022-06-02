@@ -16,7 +16,6 @@
 #define __GAPIL_RUNTIME_REF_H__
 
 #include "maker.h"
-#include "runtime.h"
 
 #include "core/memory/arena/cc/arena.h"
 
@@ -71,7 +70,7 @@ class Ref {
  private:
   struct Allocation {
     uint32_t ref_count;
-    arena_t* arena;  // arena that owns this object allocation.
+    core::Arena* arena;  // arena that owns this object allocation.
     T object;
 
     void reference();
@@ -89,7 +88,7 @@ Ref<T> Ref<T>::create(core::Arena* arena, ARGS&&... args) {
   auto buf = arena->allocate(sizeof(Allocation), alignof(Allocation));
   auto ptr = reinterpret_cast<Allocation*>(buf);
   ptr->ref_count = 1;
-  ptr->arena = reinterpret_cast<arena_t*>(arena);
+  ptr->arena = arena;
   inplace_new(&ptr->object, arena, std::forward<ARGS>(args)...);
   return Ref(ptr);
 }

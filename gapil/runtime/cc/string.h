@@ -15,8 +15,6 @@
 #ifndef __GAPIL_RUNTIME_STRING_H__
 #define __GAPIL_RUNTIME_STRING_H__
 
-#include "runtime.h"
-
 #include <stddef.h>
 #include <stdint.h>
 

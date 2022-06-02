@@ -41,14 +41,11 @@ TEST(SliceTest, app_pool) {
 
 TEST(SliceTest, new_pool) {
   core::Arena arena;
-  context_t ctx;
-  ctx.arena = reinterpret_cast<arena_t*>(&arena);
-  ctx.next_pool_id = arena.create<uint32_t>(1);
 
   auto initial_allocs = arena.num_allocations();
 
   {
-    auto sli = gapil::Slice<uint32_t>::create(&ctx, 4);
+    auto sli = gapil::Slice<uint32_t>::create(&arena, 2, 4);
     EXPECT_NE(arena.num_allocations(), initial_allocs);
 
     sli[0] = 2;

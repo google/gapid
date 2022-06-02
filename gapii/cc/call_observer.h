@@ -19,9 +19,10 @@
 
 #include "abort_exception.h"
 #include "pack_encoder.h"
+#include "spy_base.h"
 
 #include "gapil/runtime/cc/encoder.h"
-#include "gapil/runtime/cc/runtime.h"
+#include "gapil/runtime/cc/pool.h"
 #include "gapil/runtime/cc/slice.inc"
 #include "gapil/runtime/cc/string.h"
 
@@ -42,13 +43,13 @@ class SpyBase;
 // CallObserver collects observation data in API function calls. It is supposed
 // to be created at the beginning of each intercepted API function call and
 // deleted at the end.
-class CallObserver : public context_t, gapil::Encoder {
+class CallObserver : gapil::Encoder {
  public:
   template <class T>
   using enable_if_encodable = typename std::enable_if<
       std::is_member_function_pointer<decltype(&T::encode)>::value>::type;
 
-  typedef std::function<void(const pool_t*)> OnSliceEncodedCallback;
+  typedef std::function<void(const gapil::Pool*)> OnSliceEncodedCallback;
 
   CallObserver(SpyBase* spy_p, CallObserver* parent, uint8_t api);
 
@@ -102,14 +103,14 @@ class CallObserver : public context_t, gapil::Encoder {
 
   // sliceEncoded is called whenever a slice is encoded. This callback
   // can be used to write the slice's data into the encoder's stream.
-  inline void sliceEncoded(const pool_t* pool) override {
+  inline void sliceEncoded(const gapil::Pool* pool) override {
     if (mOnSliceEncoded) {
       mOnSliceEncoded(pool);
     }
   }
 
   // arena returns the active memory arena.
-  core::Arena* arena() const override;
+  core::Arena* arena() const override { return mSpy->arena(); }
 
   // read is called to make a read memory observation of size bytes, starting
   // at base. It only records the range of the read memory, the actual
@@ -309,7 +310,7 @@ inline gapil::Slice<T> CallObserver::clone(const gapil::Slice<T>& src) {
 
 template <typename T>
 inline gapil::Slice<T> CallObserver::make(uint64_t count) {
-  return gapil::Slice<T>::create(this, count);
+  return gapil::Slice<T>::create(mSpy->arena(), mSpy->nextPoolID(), count);
 }
 
 inline PackEncoder::SPtr CallObserver::encoder() { return mEncoderStack.top(); }

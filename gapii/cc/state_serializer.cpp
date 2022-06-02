@@ -25,33 +25,28 @@ void StateSerializer::prepareForState(
   mObserver->enter(&global);
 
   serialize_buffers(this);
-  mObserver->on_slice_encoded([&](const pool_t* pool) {
-    if (pool != nullptr && mSeenPools.count(pool->id) == 0) {
-      mSeenPools.insert(pool->id);
+  mObserver->on_slice_encoded([&](const gapil::Pool* pool) {
+    if (pool != nullptr && mSeenPools.count(pool->id()) == 0) {
+      mSeenPools.insert(pool->id());
 
       memory::Observation observation;
-      observation.set_pool(pool->id);
+      observation.set_pool(pool->id());
       observation.set_base(0);
-      sendData(&observation, true, pool->buffer, pool->size);
+      sendData(&observation, true, pool->buffer(), pool->size());
     }
   });
 }
 
-pool_t* StateSerializer::createPool(
+gapil::Pool* StateSerializer::createPool(
     uint64_t pool_size,
     std::function<void(memory::Observation*)> init_observation) {
   auto arena = mSpy->arena();
-  auto pool = arena->create<pool_t>();
-  pool->arena = reinterpret_cast<arena_t*>(arena);
-  pool->id = (*mObserver->next_pool_id)++;
-  pool->size = pool_size;
-  pool->ref_count = 1;
-  pool->buffer = nullptr;
+  auto pool = arena->create<gapil::Pool>(arena, mSpy->nextPoolID(), pool_size);
 
-  mSeenPools.insert(pool->id);
+  mSeenPools.insert(pool->id());
 
   memory::Observation observation;
-  observation.set_pool(pool->id);
+  observation.set_pool(pool->id());
   observation.set_base(0);
   if (init_observation != nullptr) {
     init_observation(&observation);

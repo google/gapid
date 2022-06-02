@@ -43,14 +43,10 @@ SpyBase::SpyBase()
       mCurrentABI(nullptr),
       mResources{{core::Id{{0}}, 0}},
       mObserveApplicationPool(true),
+      mIsSuspended(false),
       mWatchedApis(0xFFFFFFFF),
       mIsRecordingState(false),
       mRecordTimestamps(false) {
-}
-
-void SpyBase::init(CallObserver* observer) {
-  mObserveApplicationPool = true;
-  mIsSuspended = false;
 }
 
 void SpyBase::lock() { mSpinLock.Lock(); }

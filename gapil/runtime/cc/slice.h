@@ -15,13 +15,9 @@
 #ifndef __GAPIL_RUNTIME_SLICE_H__
 #define __GAPIL_RUNTIME_SLICE_H__
 
-#include "runtime.h"
+#include "pool.h"
 
 #include <functional>
-
-namespace core {
-class Arena;
-}  // namespace core
 
 namespace gapil {
 
@@ -46,21 +42,22 @@ class Slice {
               reinterpret_cast<uint64_t>(base), count * sizeof(T), count) {}
 
   // Constructs a new slice given the full explicit parameters.
-  inline Slice(pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
+  inline Slice(Pool* pool, uint64_t root, uint64_t base, uint64_t size,
                uint64_t count, bool add_ref = true)
       : pool_(pool), root_(root), base_(base), size_(size), count_(count) {
     if (add_ref && pool != nullptr) {
-      reference();
+      pool->reference();
     }
   }
 
   // Creates and returns a new slice wrapping the given pool.
   // If add_ref is true then the pool's reference count will be incremented.
-  inline static Slice create(pool_t* pool, bool add_ref);
+  inline static Slice create(Pool* pool, bool add_ref);
 
   // Creates and returns a new slice and pool sized to the given number of
   // elements.
-  inline static Slice create(context_t* ctx, uint64_t count);
+  inline static Slice create(core::Arena* arena, uint32_t pool_id,
+                             uint64_t count);
 
   inline Slice(Slice<T>&& other)
       : Slice(other.pool_, other.root_, other.base_, other.size_,
@@ -68,7 +65,11 @@ class Slice {
     other.pool_ = nullptr;
   }
 
-  inline ~Slice();
+  inline ~Slice() {
+    if (pool_ != nullptr) {
+      pool_->release();
+    }
+  }
 
   // Copy assignment
   inline Slice<T>& operator=(const Slice<T>& other);
@@ -92,10 +93,12 @@ class Slice {
   inline bool is_app_pool() const { return pool_ == nullptr; }
 
   // Returns the underlying pool identifier.
-  inline uint32_t pool_id() const { return (pool_ != nullptr) ? pool_->id : 0; }
+  inline uint32_t pool_id() const {
+    return (pool_ != nullptr) ? pool_->id() : 0;
+  }
 
   // Returns the underlying pool.
-  inline const pool_t* pool() const { return pool_; }
+  inline const Pool* pool() const { return pool_; }
 
   // Returns true if the slice contains the specified value.
   inline bool contains(const T& value) const;
@@ -127,7 +130,7 @@ class Slice {
   void release();
 
   // the underlying pool. nullptr represents the application pool.
-  pool_t* pool_;
+  Pool* pool_;
 
   // original offset in bytes from pool base that this slice derives from.
   uint64_t root_;

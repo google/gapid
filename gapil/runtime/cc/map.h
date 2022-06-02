@@ -19,7 +19,14 @@
 #include <stdint.h>
 
 #include "maker.h"
-#include "runtime.h"
+
+#define GAPIL_MAP_ELEMENT_EMPTY 0
+#define GAPIL_MAP_ELEMENT_FULL 1
+#define GAPIL_MAP_ELEMENT_USED 2
+
+#define GAPIL_MAP_GROW_MULTIPLIER 4
+#define GAPIL_MIN_MAP_SIZE 32
+#define GAPIL_MAP_MAX_CAPACITY 0.8f
 
 namespace core {
 class Arena;

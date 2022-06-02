@@ -22,30 +22,24 @@
 namespace gapil {
 
 template <typename T>
-Slice<T>::~Slice() {
-    if (pool_ != nullptr) {
-        release();
-    }
-}
-
-template <typename T>
-Slice<T> Slice<T>::create(pool_t* pool, bool add_ref) {
+Slice<T> Slice<T>::create(Pool* pool, bool add_ref) {
     return Slice<T>(/* pool */ pool,
                     /* root */ 0,
                     /* base */ 0,
-                    /* size */ pool->size,
-                    /* count */ pool->size / sizeof(T),
+                    /* size */ pool->size(),
+                    /* count */ pool->size() / sizeof(T),
                     /* add_ref */ add_ref);
 }
 
 template <typename T>
-Slice<T> Slice<T>::create(context_t* ctx, uint64_t count) {
+Slice<T> Slice<T>::create(core::Arena* arena, uint32_t pool_id, uint64_t count) {
     auto size = count * sizeof(T);
-    auto pool = gapil_make_pool(ctx, size);
+    auto pool = arena->create<Pool>(arena, pool_id, size);
+    pool->allocate();
     return Slice<T>(/* pool */ pool,
                     /* root */ 0,
                     /* base */ 0,
-                    /* size */ pool->size,
+                    /* size */ size,
                     /* count */ count,
                     /* add_ref */ false);
 }
@@ -54,11 +48,11 @@ template <typename T>
 Slice<T>& Slice<T>::operator = (const Slice<T>& other) {
     if (pool_ != other.pool_) {
         if (pool_ != nullptr) {
-            release();
+            pool_->release();
         }
         pool_ = other.pool_;
         if (pool_ != nullptr) {
-            reference();
+            pool_->reference();
         }
     }
     root_ = other.root_;
@@ -130,7 +124,7 @@ template <typename T>
 T* Slice<T>::begin() const {
     uint64_t pool_base = 0;
     if (pool_ != nullptr) {
-        pool_base = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(pool_->buffer));
+        pool_base = pool_->base();
     }
     return reinterpret_cast<T*>(pool_base + base_);
 }
@@ -138,22 +132,6 @@ T* Slice<T>::begin() const {
 template <typename T>
 T* Slice<T>::end() const {
     return begin() + count();
-}
-
-template <typename T>
-void Slice<T>::release() {
-    GAPID_ASSERT_MSG(pool_->ref_count > 0, "attempting to release freed pool");
-    pool_->ref_count--;
-    if (pool_->ref_count == 0) {
-        gapil_free_pool(pool_);
-    }
-    pool_ = nullptr;
-}
-
-template <typename T>
-void Slice<T>::reference() const {
-    GAPID_ASSERT_MSG(pool_->ref_count > 0, "attempting to reference freed pool");
-    pool_->ref_count++;
 }
 
 }  // namespace gapil

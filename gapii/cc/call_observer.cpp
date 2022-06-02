@@ -51,9 +51,6 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
       mApi(api),
       mShouldTrace(false),
       mCurrentThread(core::Thread::current().id()) {
-  // context_t initialization.
-  this->context_t::next_pool_id = &spy->next_pool_id();
-  this->context_t::arena = reinterpret_cast<arena_t*>(spy->arena());
   mShouldTrace = mSpy->should_trace(mApi);
 
   if (parent) {
@@ -67,8 +64,6 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
 
 // Releases the observation data memory at the end.
 CallObserver::~CallObserver() {}
-
-core::Arena* CallObserver::arena() const { return mSpy->arena(); }
 
 int64_t CallObserver::encodeType(const char* name, uint32_t desc_size,
                                  const void* desc) {

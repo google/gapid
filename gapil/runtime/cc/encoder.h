@@ -17,13 +17,13 @@
 
 #include <stdint.h>
 
-typedef struct pool_t pool;
-
 namespace core {
 class Arena;
 }  // namespace core
 
 namespace gapil {
+
+class Pool;
 
 // Encoder is an interface for the generated struct encoders to serialize the
 // encoded bytes to a stream.
@@ -48,7 +48,7 @@ class Encoder {
 
   // sliceEncoded is called whenever a slice is encoded. This callback
   // can be used to write the slice's data into the encoder's stream.
-  virtual void sliceEncoded(const pool_t* pool) = 0;
+  virtual void sliceEncoded(const Pool* pool) = 0;
 
   virtual core::Arena* arena() const = 0;
 };

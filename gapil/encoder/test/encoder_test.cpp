@@ -24,7 +24,6 @@
 #include "gapil/encoder/test/api.pb.h"
 #include "gapil/encoder/test/encoder_types.h"
 #include "gapil/runtime/cc/encoder.h"
-#include "gapil/runtime/cc/runtime.h"
 
 using testing::_;
 using testing::DoAll;
@@ -48,7 +47,7 @@ class MockEncoder : public gapil::Encoder {
   MOCK_METHOD(int64_t, encodeType,
               (const char* name, uint32_t desc_size, const void* desc),
               (override));
-  MOCK_METHOD(void, sliceEncoded, (const pool_t* pool), (override));
+  MOCK_METHOD(void, sliceEncoded, (const gapil::Pool* pool), (override));
   MOCK_METHOD(core::Arena*, arena, (), (const, override));
 };
 
@@ -524,7 +523,7 @@ TEST_F(EncoderTest, TestRefTypes) {
 }
 
 TEST_F(EncoderTest, TestSliceTypes) {
-  pool pool1{1, 0x11}, pool2{1, 0x12};
+  gapil::Pool pool1(arena, 0x11, 0), pool2(arena, 0x12, 0);
   gapii::slice_types val(
       gapil::Slice<uint8_t>(nullptr, 0x1000, 0x2000, 0x10, 0x10),
       gapil::Slice<float>(&pool1, 0x2000, 0x3000, 0x80, 0x20),

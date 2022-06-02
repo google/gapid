@@ -19,6 +19,7 @@
 
 #include "gapii/cc/call_observer.h"
 #include "gapii/cc/spy_base.h"
+#include "gapil/runtime/cc/pool.h"
 #include "gapil/runtime/cc/slice.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
 
@@ -56,7 +57,7 @@ class StateSerializer {
 
  private:
   void prepareForState(std::function<void(StateSerializer*)> serialize_buffers);
-  pool_t* createPool(
+  gapil::Pool* createPool(
       uint64_t pool_size,
       std::function<void(memory::Observation*)> init_observation);
 
