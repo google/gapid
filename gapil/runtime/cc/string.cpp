@@ -21,7 +21,33 @@
 
 namespace gapil {
 
-string_t String::EMPTY = {1, nullptr, 0, {0}};
+String::Allocation String::EMPTY = {1, nullptr, 0, {0}};
+
+String::Allocation* String::make_allocation(core::Arena* arena, uint64_t length,
+                                            const void* data) {
+  String::Allocation* str = reinterpret_cast<String::Allocation*>(
+      arena->allocate(sizeof(String::Allocation) + length + 1, 1));
+  str->arena = arena;
+  str->ref_count = 1;
+  str->length = length;
+
+  if (data != nullptr) {
+    memcpy(str->data, data, length);
+    str->data[length] = 0;
+  } else {
+    memset(str->data, 0, length + 1);
+  }
+  return str;
+}
+
+int32_t String::compare(String::Allocation* a, String::Allocation* b) {
+  if (a == b) {
+    return 0;
+  }
+  return strncmp(reinterpret_cast<const char*>(a->data),
+                 reinterpret_cast<const char*>(b->data),
+                 std::max(a->length, b->length));
+}
 
 String::String() {
   ptr = &EMPTY;
@@ -40,27 +66,23 @@ String::String(String&& s) {
 
 String::String(core::Arena* arena, const char* s) {
   auto len = strlen(s);
-  ptr = gapil_make_string(reinterpret_cast<arena_t*>(arena), len,
-                          const_cast<char*>(s));
+  ptr = make_allocation(arena, len, s);
 }
 
 String::String(core::Arena* arena, std::initializer_list<char> s) {
-  ptr = gapil_make_string(reinterpret_cast<arena_t*>(arena), s.size(),
-                          const_cast<char*>(s.begin()));
+  ptr = make_allocation(arena, s.size(), s.begin());
 }
 
 String::String(core::Arena* arena, const char* start, const char* end) {
   auto len = end - start;
-  ptr = gapil_make_string(reinterpret_cast<arena_t*>(arena), len,
-                          const_cast<char*>(start));
+  ptr = make_allocation(arena, len, start);
 }
 
 String::String(core::Arena* arena, const char* s, size_t len) {
-  ptr = gapil_make_string(reinterpret_cast<arena_t*>(arena), len,
-                          const_cast<char*>(s));
+  ptr = make_allocation(arena, len, s);
 }
 
-String::String(string_t* p) : ptr(p) {}
+String::String(String::Allocation* p) : ptr(p) {}
 
 String::~String() {
   if (ptr != nullptr) {  // note: nullptr is only valid in the case of a move
@@ -81,27 +103,27 @@ String& String::operator=(const String& other) {
 }
 
 bool String::operator==(const String& other) const {
-  return gapil_string_compare(ptr, other.ptr) == 0;
+  return compare(ptr, other.ptr) == 0;
 }
 
 bool String::operator!=(const String& other) const {
-  return gapil_string_compare(ptr, other.ptr) != 0;
+  return compare(ptr, other.ptr) != 0;
 }
 
 bool String::operator<(const String& other) const {
-  return gapil_string_compare(ptr, other.ptr) < 0;
+  return compare(ptr, other.ptr) < 0;
 }
 
 bool String::operator<=(const String& other) const {
-  return gapil_string_compare(ptr, other.ptr) <= 0;
+  return compare(ptr, other.ptr) <= 0;
 }
 
 bool String::operator>(const String& other) const {
-  return gapil_string_compare(ptr, other.ptr) > 0;
+  return compare(ptr, other.ptr) > 0;
 }
 
 bool String::operator>=(const String& other) const {
-  return gapil_string_compare(ptr, other.ptr) >= 0;
+  return compare(ptr, other.ptr) >= 0;
 }
 
 String::operator bool() const { return ptr->length; }
@@ -121,7 +143,7 @@ void String::release() {
                    "attempting to release freed string (%s)", ptr->data);
   ptr->ref_count--;
   if (ptr->ref_count == 0) {
-    gapil_free_string(ptr);
+    ptr->arena->free(ptr);
   }
   ptr = nullptr;
 }

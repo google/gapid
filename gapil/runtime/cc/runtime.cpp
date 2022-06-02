@@ -72,46 +72,4 @@ void gapil_free_pool(pool* pool) {
   arena->destroy(pool);
 }
 
-string* gapil_make_string(arena* a, uint64_t length, void* data) {
-  Arena* arena = reinterpret_cast<Arena*>(a);
-
-  auto str = reinterpret_cast<string_t*>(
-      arena->allocate(sizeof(string_t) + length + 1, 1));
-  str->arena = a;
-  str->ref_count = 1;
-  str->length = length;
-
-  if (data != nullptr) {
-    memcpy(str->data, data, length);
-    str->data[length] = 0;
-  } else {
-    memset(str->data, 0, length + 1);
-  }
-
-  DEBUG_PRINT("gapil_make_string(arena: %p, length: %" PRIu64
-              ", data: '%s') -> %p",
-              a, length, data, str);
-
-  return str;
-}
-
-void gapil_free_string(string* str) {
-  DEBUG_PRINT("gapil_free_string(str: %p, ref_count: %" PRIu32 ", len: %" PRIu64
-              ", str: '%s' (%p))",
-              str, str->ref_count, str->length, str->data, str->data);
-
-  Arena* arena = reinterpret_cast<Arena*>(str->arena);
-  arena->free(str);
-}
-
-int32_t gapil_string_compare(string* a, string* b) {
-  DEBUG_PRINT("gapil_string_compare(a: '%s', b: '%s')", a->data, b->data);
-  if (a == b) {
-    return 0;
-  }
-  return strncmp(reinterpret_cast<const char*>(a->data),
-                 reinterpret_cast<const char*>(b->data),
-                 std::max(a->length, b->length));
-}
-
 }  // extern "C"

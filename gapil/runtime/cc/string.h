@@ -17,6 +17,9 @@
 
 #include "runtime.h"
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <functional>
 
 namespace core {
@@ -72,19 +75,28 @@ class String {
   inline core::Arena* arena() const;
 
  private:
-  static string_t EMPTY;
+  // The shared data of this string.
+  struct Allocation {
+    uint32_t ref_count;  // number of owners of this string.
+    core::Arena* arena;  // arena that owns this string allocation.
+    uint64_t length;     // size of this string (including null-terminator).
+    uint8_t data[1];     // the null-terminated string bytes.
+  };
 
-  String(string_t*);
+  static Allocation EMPTY;
+  static Allocation* make_allocation(core::Arena* arena, uint64_t length,
+                                     const void* data);
+  static int32_t compare(Allocation* a, Allocation* b);
+
+  String(Allocation*);
 
   void reference();
   void release();
 
-  string_t* ptr;
+  Allocation* ptr;
 };
 
-inline core::Arena* String::arena() const {
-  return reinterpret_cast<core::Arena*>(ptr->arena);
-}
+inline core::Arena* String::arena() const { return ptr->arena; }
 
 }  // namespace gapil
 

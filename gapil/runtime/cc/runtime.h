@@ -24,7 +24,6 @@ extern "C" {
 
 typedef struct arena_t arena;
 typedef struct pool_t pool;
-typedef struct string_t string;
 
 #define GAPIL_MAP_ELEMENT_EMPTY 0
 #define GAPIL_MAP_ELEMENT_FULL 1
@@ -50,15 +49,6 @@ typedef struct pool_t {
   void* buffer;  // nullptr for application pool
 } pool;
 
-// string is the shared data of a gapil string type.
-// A string is a pointer to this struct.
-typedef struct string_t {
-  uint32_t ref_count;  // number of owners of this string.
-  arena* arena;        // arena that owns this string allocation.
-  uint64_t length;  // size in bytes of this string (including null-terminator).
-  uint8_t data[1];  // the null-terminated string bytes.
-} string;
-
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,16 +58,6 @@ pool* gapil_make_pool(context*, uint64_t size);
 
 // frees a pool previously allocated with gapil_make_pool.
 void gapil_free_pool(pool*);
-
-// allocates a new string with the given data and length.
-// length excludes a null-pointer.
-string* gapil_make_string(arena*, uint64_t length, void* data);
-
-// frees a string allocated with gapil_make_string.
-void gapil_free_string(string*);
-
-// compares two strings lexicographically, using the same rules as strcmp.
-int32_t gapil_string_compare(string*, string*);
 
 #ifdef __cplusplus
 }  // extern "C"
