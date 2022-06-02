@@ -18,8 +18,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-
 #include <array>
 #include <atomic>
 #include <list>
@@ -161,38 +159,5 @@ inline void Arena::destroy(T* ptr) {
 }
 
 }  // namespace core
-
-extern "C" {
-#endif
-
-// C handle for an arena.
-typedef struct arena_t arena;
-
-// arena_create constructs and returns a new arena.
-arena* arena_create();
-
-// arena_destroy destructs the specified arena, freeing all allocations
-// made by that arena. Once destroyed, you must not use the arena.
-void arena_destroy(arena* arena);
-
-// arena_alloc creates a memory allocation in the specified arena of the
-// given size and alignment.
-void* arena_alloc(arena* arena, uint32_t size, uint32_t align);
-
-// arena_realloc reallocates the memory at ptr to the new size and
-// alignment. ptr must have been allocated from arena.
-void* arena_realloc(arena* arena, void* ptr, uint32_t size, uint32_t align);
-
-// arena_free deallocates the memory at ptr. ptr must have been allocated
-// from arena.
-void arena_free(arena* arena, void* ptr);
-
-// arena_stats returns statistics of the current state of the arena.
-void arena_stats(arena* arena, size_t* num_allocations,
-                 size_t* num_bytes_allocated);
-
-#ifdef __cplusplus
-}  // extern "C"
-#endif
 
 #endif  //  CORE_ARENA_H

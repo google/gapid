@@ -352,31 +352,3 @@ void Arena::unprotect() {
 }
 
 }  // namespace core
-
-extern "C" {
-
-arena* arena_create() { return reinterpret_cast<arena*>(new core::Arena()); }
-
-void arena_destroy(arena* a) { delete reinterpret_cast<core::Arena*>(a); }
-
-void* arena_alloc(arena* a, uint32_t size, uint32_t align) {
-  return reinterpret_cast<core::Arena*>(a)->allocate(size, align);
-}
-
-void* arena_realloc(arena* a, void* ptr, uint32_t size, uint32_t align) {
-  return reinterpret_cast<core::Arena*>(a)->reallocate(ptr, size, align);
-}
-
-void arena_free(arena* a, void* ptr) {
-  reinterpret_cast<core::Arena*>(a)->free(ptr);
-}
-
-// arena_stats returns statistics of the current state of the arena.
-void arena_stats(arena* a, size_t* num_allocations,
-                 size_t* num_bytes_allocated) {
-  auto arena = reinterpret_cast<core::Arena*>(a);
-  *num_allocations = arena->num_allocations();
-  *num_bytes_allocated = arena->num_bytes_allocated();
-}
-
-}  // extern "C"
