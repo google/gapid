@@ -18,7 +18,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "binary.go",
-        "compile.go",
+        "encoders.go",
         "format.go",
         "main.go",
         "resolve.go",

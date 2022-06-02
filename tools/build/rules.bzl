@@ -17,7 +17,7 @@ load("//tools/build/rules:android.bzl",
     _android_native_binary = "android_native_binary",
 )
 load("//tools/build/rules:apic.bzl",
-    _apic_compile = "apic_compile",
+    _apic_encoders = "apic_encoders",
     _apic_template = "apic_template",
 )
 load("//tools/build/rules:cc.bzl",
@@ -78,7 +78,7 @@ load("//tools/build/rules:zip.bzl",
 
 android_native = _android_native
 android_native_binary = _android_native_binary
-apic_compile = _apic_compile
+apic_encoders = _apic_encoders
 apic_template = _apic_template
 cc_copts = _cc_copts
 cc_stripped_binary = _cc_stripped_binary

@@ -73,7 +73,7 @@ apic_binary = rule(
     },
 )
 
-def _apic_compile_impl(ctx):
+def _apic_encoders_impl(ctx):
     apis = ctx.attr.apis
     apilist = []
     for api in ctx.attr.apis:
@@ -85,13 +85,13 @@ def _apic_compile_impl(ctx):
         inputs = apilist,
         outputs = outputs,
         arguments = [
-            "compile",
+            "encoders",
             "--search", api_search_path(apilist),
             "--namespace", ctx.attr.namespace,
             "--output", outputs[0].path,
         ] + [ api.main.path for api in apis ],
         mnemonic = "apic",
-        progress_message = "apic compiling apis",
+        progress_message = "apic generating encoders",
         executable = ctx.executable._apic,
         use_default_shell_env = True,
     )
@@ -100,9 +100,9 @@ def _apic_compile_impl(ctx):
         DefaultInfo(files = depset(outputs)),
     ]
 
-"""Adds an API compile rule"""
-apic_compile = rule(
-    _apic_compile_impl,
+"""Adds an API encoder generator rule"""
+apic_encoders = rule(
+    _apic_encoders_impl,
     attrs = {
         "apis": attr.label_list(
             allow_files = False,

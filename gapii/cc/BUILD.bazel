@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "android_dynamic_library", "apic_compile", "apic_template", "cc_copts", "cc_dynamic_library")
+load("//tools/build:rules.bzl", "android_dynamic_library", "apic_encoders", "apic_template", "cc_copts", "cc_dynamic_library")
 
 apic_template(
     name = "vulkan_templated",
@@ -29,7 +29,7 @@ apic_template(
     ],
 )
 
-apic_compile(
+apic_encoders(
     name = "vulkan_encoders",
     apis = [
         "//gapis/api/vulkan:api",

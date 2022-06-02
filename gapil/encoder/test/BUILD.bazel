@@ -14,7 +14,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "api_library", "apic_compile", "apic_template", "cc_copts")
+load("//tools/build:rules.bzl", "api_library", "apic_encoders", "apic_template", "cc_copts")
 
 api_library(
     name = "api",
@@ -37,7 +37,7 @@ apic_template(
     templates = ["//gapis/api/templates:proto"],
 )
 
-apic_compile(
+apic_encoders(
     name = "api_encoders",
     apis = [":api"],
     namespace = "gapii",

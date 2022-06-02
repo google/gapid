@@ -27,19 +27,19 @@ import (
 
 func init() {
 	app.AddVerb(&app.Verb{
-		Name:      "compile",
-		ShortHelp: "Emits code generated from .api files",
-		Action:    &compileVerb{},
+		Name:      "encoders",
+		ShortHelp: "Emits generated code to encode types from .api files",
+		Action:    &encodersVerb{},
 	})
 }
 
-type compileVerb struct {
+type encodersVerb struct {
 	Output    string        `help:"The output file path"`
 	Namespace string        `help:"C++ namespace for the generated code"`
 	Search    file.PathList `help:"The set of paths to search for includes"`
 }
 
-func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+func (v *encodersVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	apis, mappings, err := resolve(ctx, flags.Args(), v.Search, resolver.Options{})
 	if err != nil {
 		return err
