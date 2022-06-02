@@ -63,16 +63,6 @@ typedef struct string_t {
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
-// allocates memory using the arena with the given size and alignment.
-void* gapil_alloc(arena*, uint64_t size, uint64_t align);
-
-// re-allocates memory previously allocated with the arena to a new size and
-// alignment.
-void* gapil_realloc(arena*, void* ptr, uint64_t size, uint64_t align);
-
-// frees memory previously allocated with gapil_alloc or gapil_realloc.
-void gapil_free(arena*, void* ptr);
-
 // allocates a new slice and underlying pool with the given size.
 pool* gapil_make_pool(context*, uint64_t size);
 

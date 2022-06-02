@@ -41,30 +41,6 @@ using core::Arena;
 
 extern "C" {
 
-void* gapil_alloc(arena_t* a, uint64_t size, uint64_t align) {
-  Arena* arena = reinterpret_cast<Arena*>(a);
-  void* ptr = arena->allocate(size, align);
-  DEBUG_PRINT("gapil_alloc(size: 0x%" PRIx64 ", align: 0x%" PRIx64 ") -> %p",
-              size, align, ptr);
-  return ptr;
-}
-
-void* gapil_realloc(arena_t* a, void* ptr, uint64_t size, uint64_t align) {
-  Arena* arena = reinterpret_cast<Arena*>(a);
-  void* retptr = arena->reallocate(ptr, size, align);
-  DEBUG_PRINT("gapil_realloc(ptr: %p, 0x%" PRIx64 ", align: 0x%" PRIx64
-              ") -> %p",
-              ptr, size, align, retptr);
-  return retptr;
-}
-
-void gapil_free(arena_t* a, void* ptr) {
-  DEBUG_PRINT("gapil_free(ptr: %p)", ptr);
-
-  Arena* arena = reinterpret_cast<Arena*>(a);
-  arena->free(ptr);
-}
-
 pool* gapil_make_pool(context* ctx, uint64_t size) {
   Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
 
