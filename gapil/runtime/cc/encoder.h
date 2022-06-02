@@ -17,6 +17,8 @@
 
 #include <stdint.h>
 
+typedef struct pool_t pool;
+
 namespace core {
 class Arena;
 }  // namespace core
@@ -46,7 +48,7 @@ class Encoder {
 
   // sliceEncoded is called whenever a slice is encoded. This callback
   // can be used to write the slice's data into the encoder's stream.
-  virtual void sliceEncoded(const void* slice) = 0;
+  virtual void sliceEncoded(const pool_t* pool) = 0;
 
   virtual core::Arena* arena() const = 0;
 };

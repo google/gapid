@@ -50,16 +50,6 @@ typedef struct pool_t {
   void* buffer;  // nullptr for application pool
 } pool;
 
-// slice is the data of a gapil slice type (elty foo[]).
-typedef struct slice_t {
-  pool* pool;  // the underlying pool. nullptr represents the application pool.
-  uint64_t root;   // original offset in bytes from pool base that this slice
-                   // derives from.
-  uint64_t base;   // offset in bytes from pool base of the first element.
-  uint64_t size;   // size in bytes of the slice.
-  uint64_t count;  // total number of elements in the slice.
-} slice;
-
 // string is the shared data of a gapil string type.
 // A string is a pointer to this struct.
 typedef struct string_t {

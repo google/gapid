@@ -48,7 +48,7 @@ class MockEncoder : public gapil::Encoder {
   MOCK_METHOD(int64_t, encodeType,
               (const char* name, uint32_t desc_size, const void* desc),
               (override));
-  MOCK_METHOD(void, sliceEncoded, (const void* slice), (override));
+  MOCK_METHOD(void, sliceEncoded, (const pool_t* pool), (override));
   MOCK_METHOD(core::Arena*, arena, (), (const, override));
 };
 
@@ -537,9 +537,9 @@ TEST_F(EncoderTest, TestSliceTypes) {
             compare_descriptors(test::slice_types::descriptor(), desc, size);
           })),
           Return(-100)));
-  EXPECT_CALL(encoder, sliceEncoded(&val.ma)).Times(1);
-  EXPECT_CALL(encoder, sliceEncoded(&val.mb)).Times(1);
-  EXPECT_CALL(encoder, sliceEncoded(&val.mc)).Times(1);
+  EXPECT_CALL(encoder, sliceEncoded(nullptr)).Times(1);
+  EXPECT_CALL(encoder, sliceEncoded(&pool1)).Times(1);
+  EXPECT_CALL(encoder, sliceEncoded(&pool2)).Times(1);
   EXPECT_CALL(encoder, encodeObject(1, 100, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&val](uint32_t size, const void* data) {

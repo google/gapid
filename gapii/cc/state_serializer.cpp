@@ -25,15 +25,14 @@ void StateSerializer::prepareForState(
   mObserver->enter(&global);
 
   serialize_buffers(this);
-  mObserver->on_slice_encoded([&](const slice_t* slice) {
-    auto p = slice->pool;
-    if (p != nullptr && mSeenPools.count(p->id) == 0) {
-      mSeenPools.insert(p->id);
+  mObserver->on_slice_encoded([&](const pool_t* pool) {
+    if (pool != nullptr && mSeenPools.count(pool->id) == 0) {
+      mSeenPools.insert(pool->id);
 
       memory::Observation observation;
-      observation.set_pool(p->id);
+      observation.set_pool(pool->id);
       observation.set_base(0);
-      sendData(&observation, true, p->buffer, p->size);
+      sendData(&observation, true, pool->buffer, pool->size);
     }
   });
 }

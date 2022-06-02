@@ -482,7 +482,7 @@ func (e *encoder) encodeValue(buf buffer, val value, ty semantic.Type) {
 				e.Line("write_var_int(%P, %s.pool_id());", buf, val)
 			})
 		})
-		e.Line("enc->sliceEncoded(%s.instance_ptr());", val)
+		e.Line("enc->sliceEncoded(%s.pool());", val)
 		return
 	}
 

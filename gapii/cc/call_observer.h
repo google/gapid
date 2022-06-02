@@ -48,7 +48,7 @@ class CallObserver : public context_t, gapil::Encoder {
   using enable_if_encodable = typename std::enable_if<
       std::is_member_function_pointer<decltype(&T::encode)>::value>::type;
 
-  typedef std::function<void(const slice_t*)> OnSliceEncodedCallback;
+  typedef std::function<void(const pool_t*)> OnSliceEncodedCallback;
 
   CallObserver(SpyBase* spy_p, CallObserver* parent, uint8_t api);
 
@@ -102,9 +102,9 @@ class CallObserver : public context_t, gapil::Encoder {
 
   // sliceEncoded is called whenever a slice is encoded. This callback
   // can be used to write the slice's data into the encoder's stream.
-  inline void sliceEncoded(const void*) override {
+  inline void sliceEncoded(const pool_t* pool) override {
     if (mOnSliceEncoded) {
-      mOnSliceEncoded(reinterpret_cast<const slice_t*>(slice));
+      mOnSliceEncoded(pool);
     }
   }
 
