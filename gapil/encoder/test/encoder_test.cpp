@@ -23,6 +23,7 @@
 
 #include "gapil/encoder/test/api.pb.h"
 #include "gapil/encoder/test/encoder_types.h"
+#include "gapil/runtime/cc/encoder.h"
 #include "gapil/runtime/cc/runtime.h"
 
 using testing::_;
@@ -34,24 +35,41 @@ using testing::StrEq;
 using testing::StrictMock;
 using testing::WithArgs;
 
+namespace gapii {
+
 namespace {
 
-class Recorder : public context_t {
+class MockEncoder : public gapil::Encoder {
  public:
-  Recorder() { context_t::arena = arena_create(); }
-  ~Recorder() { arena_destroy(arena); }
-
-  gapil::String makeString(const char* str) {
-    return gapil::String(reinterpret_cast<core::Arena*>(arena), str);
-  }
-
-  MOCK_METHOD(int64_t, encodeBackref, (const void* object), ());
+  MOCK_METHOD(int64_t, encodeBackref, (const void* object), (override));
   MOCK_METHOD(void*, encodeObject,
               (uint8_t is_group, uint32_t type, uint32_t data_size, void* data),
-              ());
+              (override));
   MOCK_METHOD(int64_t, encodeType,
-              (const char* name, uint32_t desc_size, const void* desc), ());
-  MOCK_METHOD(void, sliceEncoded, (const void* slice), ());
+              (const char* name, uint32_t desc_size, const void* desc),
+              (override));
+  MOCK_METHOD(void, sliceEncoded, (const void* slice), (override));
+  MOCK_METHOD(core::Arena*, arena, (), (const, override));
+};
+
+class EncoderTest : public testing::Test {
+ protected:
+  virtual void SetUp() {
+    arena = new core::Arena();
+    EXPECT_CALL(encoder, arena()).WillRepeatedly(Return(arena));
+  }
+
+  virtual void TearDown() {
+    Mock::VerifyAndClear(&encoder);
+    delete arena;
+  }
+
+  gapil::String makeString(const char* str) {
+    return gapil::String(arena, str);
+  }
+
+  core::Arena* arena;
+  StrictMock<MockEncoder> encoder;
 };
 
 // A very basic comparison, just does some spot checks.
@@ -82,32 +100,7 @@ void compare_slice(const gapil::Slice<T>* expected,
 
 }  // namespace
 
-extern "C" {
-
-int64_t gapil_encode_backref(context* ctx, const void* object) {
-  return reinterpret_cast<Recorder*>(ctx)->encodeBackref(object);
-}
-
-void* gapil_encode_object(context* ctx, uint8_t is_group, uint32_t type,
-                          uint32_t data_size, void* data) {
-  return reinterpret_cast<Recorder*>(ctx)->encodeObject(is_group, type,
-                                                        data_size, data);
-}
-
-int64_t gapil_encode_type(context* ctx, const char* name, uint32_t desc_size,
-                          const void* desc) {
-  return reinterpret_cast<Recorder*>(ctx)->encodeType(name, desc_size, desc);
-}
-
-void gapil_slice_encoded(context* ctx, const void* slice) {
-  reinterpret_cast<Recorder*>(ctx)->sliceEncoded(slice);
-}
-
-}  // extern "C"
-
-namespace gapii {
-
-TEST(EncoderTest, TestCmdInts) {
+TEST_F(EncoderTest, TestCmdInts) {
   gapii::cmd::cmd_ints cmd{
       0x12345678,  // thread
       std::numeric_limits<uint8_t>::max(),
@@ -125,14 +118,13 @@ TEST(EncoderTest, TestCmdInts) {
   void* resultPtr1 = reinterpret_cast<void*>(0xF00D);
   void* resultPtr2 = reinterpret_cast<void*>(0xCAFE);
 
-  StrictMock<Recorder> recorder;
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.cmd_ints"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.cmd_ints"), _, _))
       .WillOnce(
           DoAll(WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
                   compare_descriptors(test::cmd_ints::descriptor(), desc, size);
                 })),
                 Return(42)));
-  EXPECT_CALL(recorder, encodeObject(1, 42, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 42, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&cmd](uint32_t size, const void* data) {
                   test::cmd_ints actual;
@@ -148,13 +140,13 @@ TEST(EncoderTest, TestCmdInts) {
                   ASSERT_EQ(cmd.h, actual.h());
                 })),
                 Return(resultPtr1)));
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.cmd_intsCall"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.cmd_intsCall"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::cmd_intsCall::descriptor(), desc, size);
           })),
           Return(21)));
-  EXPECT_CALL(recorder, encodeObject(1, 21, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 21, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&call](uint32_t size, const void* data) {
                   test::cmd_intsCall actual;
@@ -163,25 +155,22 @@ TEST(EncoderTest, TestCmdInts) {
                 })),
                 Return(resultPtr2)));
 
-  EXPECT_EQ(resultPtr1, cmd.encode(&recorder, true));
-  EXPECT_EQ(resultPtr2, call.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr1, cmd.encode(&encoder, true));
+  EXPECT_EQ(resultPtr2, call.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestCmdFloats) {
+TEST_F(EncoderTest, TestCmdFloats) {
   gapii::cmd::cmd_floats cmd{0x10,  // thread
                              1234.5678f, 123456789.987654321};
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  StrictMock<Recorder> recorder;
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.cmd_floats"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.cmd_floats"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::cmd_floats::descriptor(), desc, size);
           })),
           Return(22)));
-  EXPECT_CALL(recorder, encodeObject(1, 22, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 22, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&cmd](uint32_t size, const void* data) {
                   test::cmd_floats actual;
@@ -192,12 +181,10 @@ TEST(EncoderTest, TestCmdFloats) {
                 })),
                 Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, cmd.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, cmd.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestCmdEnums) {
+TEST_F(EncoderTest, TestCmdEnums) {
   gapii::cmd::cmd_enums cmd{
       0x23,  // thread
       100,
@@ -205,14 +192,13 @@ TEST(EncoderTest, TestCmdEnums) {
   };
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  StrictMock<Recorder> recorder;
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.cmd_enums"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.cmd_enums"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::cmd_enums::descriptor(), desc, size);
           })),
           Return(11)));
-  EXPECT_CALL(recorder, encodeObject(1, 11, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 11, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&cmd](uint32_t size, const void* data) {
                   test::cmd_enums actual;
@@ -223,12 +209,10 @@ TEST(EncoderTest, TestCmdEnums) {
                 })),
                 Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, cmd.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, cmd.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestCmdArrays) {
+TEST_F(EncoderTest, TestCmdArrays) {
   gapii::cmd::cmd_arrays cmd{
       0x88,  // thread
       {1},
@@ -237,14 +221,13 @@ TEST(EncoderTest, TestCmdArrays) {
   };
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  StrictMock<Recorder> recorder;
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.cmd_arrays"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.cmd_arrays"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::cmd_arrays::descriptor(), desc, size);
           })),
           Return(77)));
-  EXPECT_CALL(recorder, encodeObject(1, 77, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 77, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&cmd](uint32_t size, const void* data) {
                   test::cmd_arrays actual;
@@ -262,12 +245,10 @@ TEST(EncoderTest, TestCmdArrays) {
                 })),
                 Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, cmd.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, cmd.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestCmdPointers) {
+TEST_F(EncoderTest, TestCmdPointers) {
   gapii::cmd::cmd_pointers cmd{
       0xaa,  // thread
       reinterpret_cast<uint8_t*>(0x12345678),
@@ -276,14 +257,13 @@ TEST(EncoderTest, TestCmdPointers) {
   };
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  StrictMock<Recorder> recorder;
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.cmd_pointers"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.cmd_pointers"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::cmd_pointers::descriptor(), desc, size);
           })),
           Return(33)));
-  EXPECT_CALL(recorder, encodeObject(1, 33, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 33, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&cmd](uint32_t size, const void* data) {
                   test::cmd_pointers actual;
@@ -295,13 +275,10 @@ TEST(EncoderTest, TestCmdPointers) {
                 })),
                 Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, cmd.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, cmd.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestBasicTypes) {
-  StrictMock<Recorder> recorder;
+TEST_F(EncoderTest, TestBasicTypes) {
   gapii::basic_types val{
       10,
       20,
@@ -316,17 +293,17 @@ TEST(EncoderTest, TestBasicTypes) {
       1,
       0x10,
       reinterpret_cast<uint32_t*>(0x1234),
-      recorder.makeString("meow"),
+      makeString("meow"),
   };
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.basic_types"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.basic_types"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::basic_types::descriptor(), desc, size);
           })),
           Return(100)));
-  EXPECT_CALL(recorder, encodeObject(1, 100, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 100, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&val](uint32_t size, const void* data) {
                   test::basic_types actual;
@@ -348,16 +325,12 @@ TEST(EncoderTest, TestBasicTypes) {
                 })),
                 Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, val.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, val.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestNestedClasses) {
-  StrictMock<Recorder> recorder;
+TEST_F(EncoderTest, TestNestedClasses) {
   gapii::basic_types basic{
-      10, 0, 0, 0, 50, 60,      0,
-      80, 0, 0, 1, 0,  nullptr, recorder.makeString("woof"),
+      10, 0, 0, 0, 50, 60, 0, 80, 0, 0, 1, 0, nullptr, makeString("woof"),
   };
   gapii::inner_class inner{
       basic,
@@ -367,19 +340,19 @@ TEST(EncoderTest, TestNestedClasses) {
   };
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.nested_classes"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.nested_classes"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::nested_classes::descriptor(), desc, size);
           })),
           Return(100)));
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.inner_class"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.inner_class"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::inner_class::descriptor(), desc, size);
           })),
           Return(-101)));
-  EXPECT_CALL(recorder, encodeObject(1, 100, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 100, _, _))
       .WillOnce(DoAll(
           WithArgs<2, 3>(Invoke([&basic](uint32_t size, const void* data) {
             test::nested_classes actual;
@@ -403,56 +376,52 @@ TEST(EncoderTest, TestNestedClasses) {
           })),
           Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, nested.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, nested.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestMapTypes) {
-  StrictMock<Recorder> recorder;
-  gapii::map_types val(reinterpret_cast<core::Arena*>(recorder.arena));
+TEST_F(EncoderTest, TestMapTypes) {
+  gapii::map_types val(arena);
   val.ma[10] = 200;
   val.ma[20] = 100;
   val.ma[30] = 300;
-  val.mb[recorder.makeString("snake")] = recorder.makeString("hiss");
-  val.mb[recorder.makeString("cat")] = recorder.makeString("meow");
-  val.mb[recorder.makeString("dog")] = recorder.makeString("woof");
-  val.mb[recorder.makeString("fox")] = recorder.makeString("???");
+  val.mb[makeString("snake")] = makeString("hiss");
+  val.mb[makeString("cat")] = makeString("meow");
+  val.mb[makeString("dog")] = makeString("woof");
+  val.mb[makeString("fox")] = makeString("???");
   val.mc = val.ma;
   val.md = val.mb;
 
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.map_types"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.map_types"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::map_types::descriptor(), desc, size);
           })),
           Return(100)));
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.sint64_to_sint64_map"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.sint64_to_sint64_map"), _, _))
       .WillOnce(
           DoAll(WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
                   compare_descriptors(test::sint64_to_sint64_map::descriptor(),
                                       desc, size);
                 })),
                 Return(101)));
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.string_to_string_map"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.string_to_string_map"), _, _))
       .WillOnce(
           DoAll(WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
                   compare_descriptors(test::string_to_string_map::descriptor(),
                                       desc, size);
                 })),
                 Return(102)));
-  EXPECT_CALL(recorder, encodeBackref(val.ma.instance_ptr()))
+  EXPECT_CALL(encoder, encodeBackref(val.ma.instance_ptr()))
       .WillOnce(Return(200))
       .WillOnce(Return(-200));
-  EXPECT_CALL(recorder, encodeBackref(val.mb.instance_ptr()))
+  EXPECT_CALL(encoder, encodeBackref(val.mb.instance_ptr()))
       .WillOnce(Return(201))
       .WillOnce(Return(-201));
-  EXPECT_CALL(recorder, encodeObject(1, 100, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 100, _, _))
       .WillOnce(DoAll(
-          WithArgs<2, 3>(Invoke([&val, &recorder](uint32_t size,
-                                                  const void* data) {
+          WithArgs<2, 3>(Invoke([this, &val](uint32_t size, const void* data) {
             test::map_types actual;
             ASSERT_TRUE(actual.ParseFromArray(data, size));
             ASSERT_EQ(200, actual.a().referenceid());
@@ -466,8 +435,7 @@ TEST(EncoderTest, TestMapTypes) {
             ASSERT_EQ(val.mb.count(), actual.b().keys_size());
             ASSERT_EQ(val.mb.count(), actual.b().values_size());
             for (uint64_t i = 0; i < val.mb.count(); i++) {
-              gapil::String key =
-                  recorder.makeString(actual.b().keys(i).c_str());
+              gapil::String key = makeString(actual.b().keys(i).c_str());
               ASSERT_TRUE(val.mb.contains(key)) << "key " << actual.b().keys(i);
               EXPECT_STREQ(val.mb[key].c_str(), actual.b().values(i).c_str());
             }
@@ -480,37 +448,33 @@ TEST(EncoderTest, TestMapTypes) {
           })),
           Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, val.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, val.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestRefTypes) {
-  StrictMock<Recorder> recorder;
+TEST_F(EncoderTest, TestRefTypes) {
   gapil::Ref<gapii::basic_types> basic1 =
-      gapil::Ref<gapii::basic_types>::create(
-          reinterpret_cast<core::Arena*>(recorder.arena), 10, 0, 0, 0, 50, 60,
-          0, 80, 0, 0, 1, 0, nullptr, recorder.makeString("slurp"));
+      gapil::Ref<gapii::basic_types>::create(arena, 10, 0, 0, 0, 50, 60, 0, 80,
+                                             0, 0, 1, 0, nullptr,
+                                             makeString("slurp"));
   gapil::Ref<gapii::inner_class> inner = gapil::Ref<gapii::inner_class>::create(
-      reinterpret_cast<core::Arena*>(recorder.arena),
-      basic_types(20, 0, 0, 0, 40, 70, 0, 60, 0, 0, 2, 0, nullptr,
-                  recorder.makeString("crunch")));
+      arena, basic_types(20, 0, 0, 0, 40, 70, 0, 60, 0, 0, 2, 0, nullptr,
+                         makeString("crunch")));
   gapii::ref_types val(basic1, inner, basic1, inner);
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.ref_types"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.ref_types"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::ref_types::descriptor(), desc, size);
           })),
           Return(-100)));
-  EXPECT_CALL(recorder, encodeBackref(val.ma.get()))
+  EXPECT_CALL(encoder, encodeBackref(val.ma.get()))
       .WillOnce(Return(200))
       .WillOnce(Return(-200));
-  EXPECT_CALL(recorder, encodeBackref(val.mb.get()))
+  EXPECT_CALL(encoder, encodeBackref(val.mb.get()))
       .WillOnce(Return(201))
       .WillOnce(Return(-201));
-  EXPECT_CALL(recorder, encodeObject(1, 100, _, _))
+  EXPECT_CALL(encoder, encodeObject(1, 100, _, _))
       .WillOnce(DoAll(
           WithArgs<2, 3>(Invoke([&val](uint32_t size, const void* data) {
             test::ref_types actual;
@@ -556,13 +520,10 @@ TEST(EncoderTest, TestRefTypes) {
           })),
           Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, val.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, val.encode(&encoder, true));
 }
 
-TEST(EncoderTest, TestSliceTypes) {
-  StrictMock<Recorder> recorder;
+TEST_F(EncoderTest, TestSliceTypes) {
   pool pool1{1, 0x11}, pool2{1, 0x12};
   gapii::slice_types val(
       gapil::Slice<uint8_t>(nullptr, 0x1000, 0x2000, 0x10, 0x10),
@@ -570,16 +531,16 @@ TEST(EncoderTest, TestSliceTypes) {
       gapil::Slice<int_types>(&pool2, 0x3000, 0x4000, 0xc0, 0x30));
   void* resultPtr = reinterpret_cast<void*>(0xF00D);
 
-  EXPECT_CALL(recorder, encodeType(StrEq("encoder.slice_types"), _, _))
+  EXPECT_CALL(encoder, encodeType(StrEq("encoder.slice_types"), _, _))
       .WillOnce(DoAll(
           WithArgs<1, 2>(Invoke([](uint32_t size, const void* desc) {
             compare_descriptors(test::slice_types::descriptor(), desc, size);
           })),
           Return(-100)));
-  EXPECT_CALL(recorder, sliceEncoded(&val.ma)).Times(1);
-  EXPECT_CALL(recorder, sliceEncoded(&val.mb)).Times(1);
-  EXPECT_CALL(recorder, sliceEncoded(&val.mc)).Times(1);
-  EXPECT_CALL(recorder, encodeObject(1, 100, _, _))
+  EXPECT_CALL(encoder, sliceEncoded(&val.ma)).Times(1);
+  EXPECT_CALL(encoder, sliceEncoded(&val.mb)).Times(1);
+  EXPECT_CALL(encoder, sliceEncoded(&val.mc)).Times(1);
+  EXPECT_CALL(encoder, encodeObject(1, 100, _, _))
       .WillOnce(
           DoAll(WithArgs<2, 3>(Invoke([&val](uint32_t size, const void* data) {
                   test::slice_types actual;
@@ -590,9 +551,7 @@ TEST(EncoderTest, TestSliceTypes) {
                 })),
                 Return(resultPtr)));
 
-  EXPECT_EQ(resultPtr, val.encode(&recorder, true));
-
-  Mock::VerifyAndClear(&recorder);
+  EXPECT_EQ(resultPtr, val.encode(&encoder, true));
 }
 
 }  // namespace gapii

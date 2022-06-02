@@ -176,7 +176,7 @@ func (e *encoder) emitClassEncodeToBufFuncs() {
 	for _, api := range e.APIs {
 		for _, class := range api.Classes {
 			if e.hasEntity(class) {
-				e.Line("void %s(context* ctx, buffer* buf, const %s::%s* v);",
+				e.Line("void %s(gapil::Encoder* enc, buffer* buf, const %s::%s* v);",
 					e.ent(class).encodeToBuf, e.namespace, class.Name())
 			}
 		}
@@ -188,7 +188,7 @@ func (e *encoder) emitClassEncodeToBufFuncs() {
 	for _, api := range e.APIs {
 		for _, class := range api.Classes {
 			if e.hasEntity(class) {
-				sig := fmt.Sprintf("void %s(context* ctx, buffer* buf, const %s::%s* v)", e.ent(class).encodeToBuf, e.namespace, class.Name())
+				sig := fmt.Sprintf("void %s(gapil::Encoder* enc, buffer* buf, const %s::%s* v)", e.ent(class).encodeToBuf, e.namespace, class.Name())
 				e.Function(sig, func() {
 					buf := buffer{"buf", true}
 					val := value{"v", true}
@@ -211,13 +211,12 @@ func (e *encoder) emitClassEncodeFuncs() {
 			if class.Annotations.GetAnnotation("serialize") == nil {
 				continue
 			}
-			e.Function(fmt.Sprintf("void* %s::encode(void* _ctx, bool is_group) const", class.Name()), func() {
-				e.Line("context* ctx = reinterpret_cast<context*>(_ctx);")
-				e.Line("int32_t typeId = %s(ctx);", e.ent(class).encodeType)
+			e.Function(fmt.Sprintf("void* %s::encode(gapil::Encoder* enc, bool is_group) const", class.Name()), func() {
+				e.Line("int32_t typeId = %s(enc);", e.ent(class).encodeType)
 				e.Line("void* result;")
 				e.withBuffer(func(buf buffer) {
-					e.Line("%s(ctx, %P, this);", e.ent(class).encodeToBuf, buf)
-					e.Line("result = gapil_encode_object(ctx, is_group, typeId, %s.size, %s.data);", buf, buf)
+					e.Line("%s(enc, %P, this);", e.ent(class).encodeToBuf, buf)
+					e.Line("result = enc->encodeObject(is_group, typeId, %s.size, %s.data);", buf, buf)
 				})
 				e.Line("return result;")
 			})
@@ -230,16 +229,15 @@ func (e *encoder) emitClassEncodeFuncs() {
 // the proto message with gapil_encode_object.
 func (e *encoder) emitStateEncodeFunc() {
 	for _, api := range e.APIs {
-		e.Function(fmt.Sprintf("void* %sState::encode(void* _ctx, bool is_group) const", cases.Title(api.Name())), func() {
-			e.Line("context* ctx = reinterpret_cast<context*>(_ctx);")
-			e.Line("int32_t typeId = %s(ctx);", e.state(api).encodeType)
+		e.Function(fmt.Sprintf("void* %sState::encode(gapil::Encoder* enc, bool is_group) const", cases.Title(api.Name())), func() {
+			e.Line("int32_t typeId = %s(enc);", e.state(api).encodeType)
 			e.Line("void* result;")
 			e.withBuffer(func(buf buffer) {
 				for i, g := range encodeableGlobals(api) {
 					e.Line("// encoding %sState.%s", api.Name(), g.Name())
 					e.encodeField(buf, value{g.Name(), false}, serialization.StateStart+serialization.ProtoFieldID(i), g.Type)
 				}
-				e.Line("result = gapil_encode_object(ctx, is_group, typeId, %s.size, %s.data);", buf, buf)
+				e.Line("result = enc->encodeObject(is_group, typeId, %s.size, %s.data);", buf, buf)
 			})
 			e.Line("return result;")
 		})
@@ -256,28 +254,26 @@ func (e *encoder) emitCommandEncodeFuncs() {
 			if cmd.Annotations.GetAnnotation("pfn") != nil {
 				continue
 			}
-			e.Function(fmt.Sprintf("void* cmd::%s::encode(void* _ctx, bool is_group) const", cmd.Name()), func() {
-				e.Line("context* ctx = reinterpret_cast<context*>(_ctx);")
-				e.Line("int32_t typeId = %s(ctx);", e.command(cmd).encodeType)
+			e.Function(fmt.Sprintf("void* cmd::%s::encode(gapil::Encoder* enc, bool is_group) const", cmd.Name()), func() {
+				e.Line("int32_t typeId = %s(enc);", e.command(cmd).encodeType)
 				e.Line("void* result;")
 				e.withBuffer(func(buf buffer) {
 					e.encodeField(buf, value{"thread", false}, serialization.CmdThread, semantic.Uint64Type)
 					for i, p := range cmd.CallParameters() {
 						e.encodeField(buf, value{p.Name(), false}, serialization.CmdFieldStart+serialization.ProtoFieldID(i), p.Type)
 					}
-					e.Line("result = gapil_encode_object(ctx, is_group, typeId, %s.size, %s.data);", buf, buf)
+					e.Line("result = enc->encodeObject(is_group, typeId, %s.size, %s.data);", buf, buf)
 				})
 				e.Line("return result;")
 			})
 
 			if cmd.Return.Type != semantic.VoidType {
-				e.Function(fmt.Sprintf("void* cmd::%sCall::encode(void* _ctx, bool is_group) const", cmd.Name()), func() {
-					e.Line("context* ctx = reinterpret_cast<context*>(_ctx);")
-					e.Line("int32_t typeId = %s(ctx);", e.commandCall(cmd).encodeType)
+				e.Function(fmt.Sprintf("void* cmd::%sCall::encode(gapil::Encoder* enc, bool is_group) const", cmd.Name()), func() {
+					e.Line("int32_t typeId = %s(enc);", e.commandCall(cmd).encodeType)
 					e.Line("void* _result;")
 					e.withBuffer(func(buf buffer) {
 						e.encodeField(buf, value{"result", false}, serialization.CmdResult, cmd.Return.Type)
-						e.Line("_result = gapil_encode_object(ctx, is_group, typeId, %s.size, %s.data);", buf, buf)
+						e.Line("_result = enc->encodeObject(is_group, typeId, %s.size, %s.data);", buf, buf)
 					})
 					e.Line("return _result;")
 				})
@@ -394,12 +390,12 @@ func (e *encoder) encodeValue(buf buffer, val value, ty semantic.Type) {
 		panic("Must be handled in encodeField")
 	case *semantic.Class:
 		e.writeBlob(buf, func(buf buffer) {
-			e.Line("%s(ctx, %P, %P);", e.ent(ty).encodeToBuf, buf, val)
+			e.Line("%s(enc, %P, %P);", e.ent(ty).encodeToBuf, buf, val)
 		})
 		return
 	case *semantic.Reference:
 		e.IfElse(val.String(), func() {
-			e.Line("int64_t refId = gapil_encode_backref(ctx, %s.get());", val)
+			e.Line("int64_t refId = enc->encodeBackref(%s.get());", val)
 			e.writeBlob(buf, func(buf buffer) {
 				e.writeWireAndTag(buf, proto.WireVarint, serialization.RefRef)
 				e.IfElse("refId > 0", func() {
@@ -416,7 +412,7 @@ func (e *encoder) encodeValue(buf buffer, val value, ty semantic.Type) {
 		return
 	case *semantic.Map:
 		e.writeBlob(buf, func(buf buffer) {
-			e.Line("int64_t refId = gapil_encode_backref(ctx, %s.instance_ptr());", val)
+			e.Line("int64_t refId = enc->encodeBackref(%s.instance_ptr());", val)
 			e.writeWireAndTag(buf, proto.WireVarint, serialization.MapRef)
 			e.IfElse("refId > 0", func() {
 				e.Line("write_zig_zag(%P, refId);", buf)
@@ -425,11 +421,11 @@ func (e *encoder) encodeValue(buf buffer, val value, ty semantic.Type) {
 					valEntity := e.ent(ty.ValueType)
 					if keyEntity.isPacked() {
 						e.Line("buffer_t keyBuf;")
-						e.Line("gapil_buffer_init(ctx, &keyBuf, %d);", initialBufferCapacity)
+						e.Line("gapil_buffer_init(enc->arena(), &keyBuf, %d);", initialBufferCapacity)
 					}
 					if valEntity.isPacked() {
 						e.Line("buffer_t valBuf;")
-						e.Line("gapil_buffer_init(ctx, &valBuf, %d);", initialBufferCapacity)
+						e.Line("gapil_buffer_init(enc->arena(), &valBuf, %d);", initialBufferCapacity)
 					}
 					e.ForIter(val, func(it value) {
 						if keyEntity.isPacked() {
@@ -449,13 +445,13 @@ func (e *encoder) encodeValue(buf buffer, val value, ty semantic.Type) {
 						e.writeWireAndTag(buf, proto.WireBytes, serialization.MapKey)
 						e.Line("write_var_int(%P, keyBuf.size);", buf)
 						e.Line("gapil_buffer_append(%P, keyBuf.size, keyBuf.data);", buf)
-						e.Line("gapil_free(ctx->arena, keyBuf.data);")
+						e.Line("enc->arena()->free(keyBuf.data);")
 					}
 					if valEntity.isPacked() {
 						e.writeWireAndTag(buf, proto.WireBytes, serialization.MapVal)
 						e.Line("write_var_int(%P, valBuf.size);", buf)
 						e.Line("gapil_buffer_append(%P, valBuf.size, valBuf.data);", buf)
-						e.Line("gapil_free(ctx->arena, valBuf.data);")
+						e.Line("enc->arena()->free(valBuf.data);")
 					}
 				})
 			}, func() {
@@ -486,7 +482,7 @@ func (e *encoder) encodeValue(buf buffer, val value, ty semantic.Type) {
 				e.Line("write_var_int(%P, %s.pool_id());", buf, val)
 			})
 		})
-		e.Line("gapil_slice_encoded(ctx, %s.instance_ptr());", val)
+		e.Line("enc->sliceEncoded(%s.instance_ptr());", val)
 		return
 	}
 
@@ -509,9 +505,9 @@ func (e *encoder) withBuffer(inner func(buf buffer)) {
 	e.Line("{")
 	e.out.Increase()
 	e.Line("buffer_t %s;", buf)
-	e.Line("gapil_buffer_init(ctx, &%s, %d);", buf, initialBufferCapacity)
+	e.Line("gapil_buffer_init(enc->arena(), &%s, %d);", buf, initialBufferCapacity)
 	inner(buffer{buf, false})
-	e.Line("gapil_free(ctx->arena, %s.data);", buf)
+	e.Line("enc->arena()->free(%s.data);", buf)
 	e.out.Decrease()
 	e.Line("}")
 	e.lastBuffer--

@@ -15,39 +15,42 @@
 #ifndef __GAPIL_RUNTIME_ENCODER_H__
 #define __GAPIL_RUNTIME_ENCODER_H__
 
-#include "runtime.h"
+#include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
+namespace core {
+class Arena;
+}  // namespace core
 
-////////////////////////////////////////////////////////////////////////////////
-// Serialization callbacks                                                    //
-////////////////////////////////////////////////////////////////////////////////
+namespace gapil {
 
-// gapil_encode_type returns a new positive unique reference identifer if
-// the type has not been encoded before in this scope, otherwise it returns the
-// negated ID of the previously encoded type identifier.
-int64_t gapil_encode_type(context* ctx, const char* name, uint32_t desc_size,
-                          const void* desc);
+// Encoder is an interface for the generated struct encoders to serialize the
+// encoded bytes to a stream.
+class Encoder {
+ public:
+  // encodeType returns a new positive unique reference identifer if
+  // the type has not been encoded before in this scope, otherwise it returns
+  // the negated ID of the previously encoded type identifier.
+  virtual int64_t encodeType(const char* name, uint32_t desc_size,
+                             const void* desc) = 0;
 
-// gapil_encode_object encodes the object.
-// If is_group is true, a new encoder will be returned for encoding sub-objects.
-// If is_group is false then gapil_encode_object will return null.
-void* gapil_encode_object(context* ctx, uint8_t is_group, uint32_t type,
-                          uint32_t data_size, void* data);
+  // encodeObject encodes the object.
+  // If is_group is true, a new encoder will be returned for encoding
+  // sub-objects. If is_group is false then encodeObject will return null.
+  virtual void* encodeObject(uint8_t is_group, uint32_t type,
+                             uint32_t data_size, void* data) = 0;
 
-// gapil_encode_backref returns a new positive unique reference identifer if
-// object has not been encoded before in this scope, otherwise it returns the
-// negated ID of the previously encoded object identifier.
-int64_t gapil_encode_backref(context* ctx, const void* object);
+  // encodeBackref returns a new positive unique reference identifer if
+  // object has not been encoded before in this scope, otherwise it returns the
+  // negated ID of the previously encoded object identifier.
+  virtual int64_t encodeBackref(const void* object) = 0;
 
-// gapil_slice_encoded is called whenever a slice is encoded. This callback
-// can be used to write the slice's data into the encoder's stream.
-void gapil_slice_encoded(context* ctx, const void* slice);
+  // sliceEncoded is called whenever a slice is encoded. This callback
+  // can be used to write the slice's data into the encoder's stream.
+  virtual void sliceEncoded(const void* slice) = 0;
 
-#ifdef __cplusplus
-}  // extern "C"
-#endif  // __cplusplus
+  virtual core::Arena* arena() const = 0;
+};
+
+}  // namespace gapil
 
 #endif  // __GAPIL_RUNTIME_ENCODER_H__

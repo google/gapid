@@ -24,7 +24,7 @@ namespace {
 // buffer is a structure used to hold a variable size byte array.
 // buffer is used internally by the compiler to write out variable length data.
 typedef struct buffer_t {
-  arena* arena;        // the arena that owns the buffer data.
+  core::Arena* arena;  // the arena that owns the buffer data.
   uint8_t* data;       // buffer data.
   uint32_t capacity;   // total capacity of the buffer.
   uint32_t size;       // current size of the buffer.
@@ -33,9 +33,9 @@ typedef struct buffer_t {
 
 // gapil_buffer_init initializes a buffer allocating space with the given
 // initial capacity.
-void gapil_buffer_init(context* ctx, buffer* buf, uint32_t capacity) {
-  buf->data = static_cast<uint8_t*>(gapil_alloc(ctx->arena, capacity, 1));
-  buf->arena = ctx->arena;
+void gapil_buffer_init(core::Arena* arena, buffer* buf, uint32_t capacity) {
+  buf->data = static_cast<uint8_t*>(arena->allocate(capacity, 1));
+  buf->arena = arena;
   buf->capacity = capacity;
   buf->size = 0;
   buf->alignment = 16;
@@ -47,7 +47,7 @@ void gapil_buffer_append(buffer* buf, uint32_t size, const void* data) {
   if (new_size > buf->capacity) {
     uint32_t new_capacity = 2 * new_size;
     uint8_t* new_data = static_cast<uint8_t*>(
-        gapil_realloc(buf->arena, buf->data, new_capacity, 1));
+        buf->arena->reallocate(buf->data, new_capacity, 1));
     buf->data = new_data;
     buf->capacity = new_capacity;
     memcpy(&new_data[buf->size], data, size);

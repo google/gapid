@@ -20,6 +20,7 @@
 #include "abort_exception.h"
 #include "pack_encoder.h"
 
+#include "gapil/runtime/cc/encoder.h"
 #include "gapil/runtime/cc/runtime.h"
 #include "gapil/runtime/cc/slice.inc"
 #include "gapil/runtime/cc/string.h"
@@ -41,7 +42,7 @@ class SpyBase;
 // CallObserver collects observation data in API function calls. It is supposed
 // to be created at the beginning of each intercepted API function call and
 // deleted at the end.
-class CallObserver : public context_t {
+class CallObserver : public context_t, gapil::Encoder {
  public:
   template <class T>
   using enable_if_encodable = typename std::enable_if<
@@ -51,7 +52,7 @@ class CallObserver : public context_t {
 
   CallObserver(SpyBase* spy_p, CallObserver* parent, uint8_t api);
 
-  ~CallObserver();
+  virtual ~CallObserver();
 
   inline CallObserver* getParent() { return mParent; }
 
@@ -82,15 +83,33 @@ class CallObserver : public context_t {
     mOnSliceEncoded = f;
   }
 
-  // slice_encoded should be called whenever a slice is encoded.
-  inline void slice_encoded(const slice_t* slice) {
+  // encodeType returns a new positive unique reference identifer if
+  // the type has not been encoded before in this scope, otherwise it returns
+  // the negated ID of the previously encoded type identifier.
+  int64_t encodeType(const char* name, uint32_t desc_size,
+                     const void* desc) override;
+
+  // encodeObject encodes the object.
+  // If is_group is true, a new encoder will be returned for encoding
+  // sub-objects. If is_group is false then encodeObject will return null.
+  void* encodeObject(uint8_t is_group, uint32_t type, uint32_t data_size,
+                     void* data) override;
+
+  // encodeBackref returns a new positive unique reference identifer if
+  // object has not been encoded before in this scope, otherwise it returns the
+  // negated ID of the previously encoded object identifier.
+  int64_t encodeBackref(const void* object) override;
+
+  // sliceEncoded is called whenever a slice is encoded. This callback
+  // can be used to write the slice's data into the encoder's stream.
+  inline void sliceEncoded(const void*) override {
     if (mOnSliceEncoded) {
-      mOnSliceEncoded(slice);
+      mOnSliceEncoded(reinterpret_cast<const slice_t*>(slice));
     }
   }
 
   // arena returns the active memory arena.
-  core::Arena* arena() const;
+  core::Arena* arena() const override;
 
   // read is called to make a read memory observation of size bytes, starting
   // at base. It only records the range of the read memory, the actual

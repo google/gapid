@@ -31,6 +31,7 @@
   #ifndef {{$guard}}
   #define {{$guard}}
 ¶
+  #include "gapil/runtime/cc/encoder.h"
   #include "gapil/runtime/cc/ref.inc"
   #include "gapil/runtime/cc/map.inc"
   #include "gapil/runtime/cc/slice.inc"
@@ -164,7 +165,7 @@
     {{end}}
 
     {{if $serializable}}
-      void* encode(void* encoder, bool is_group) const;
+      void* encode(gapil::Encoder* encoder, bool is_group) const;
     {{end}}
 ¶
     {{range $f := $.Fields}}
@@ -196,7 +197,7 @@
 
     explicit {{$name}}(core::Arena*);
 
-    void* encode(void* encoder, bool is_group) const;
+    void* encode(gapil::Encoder* encoder, bool is_group) const;
 ¶
     {{range $g := $.Globals}}
       {{Template "C++.Type" $g}} {{$g.Name}};
@@ -288,7 +289,7 @@
   {{if not (GetAnnotation $ "pfn")}}
 ¶
     struct {{$name}} {
-      void* encode(void* encoder, bool is_group) const;
+      void* encode(gapil::Encoder* encoder, bool is_group) const;
 ¶
       uint64_t thread;¶
       {{range $p := $.CallParameters}}
@@ -298,7 +299,7 @@
     };
     {{if not (IsVoid $.Return.Type)}}¶
       struct {{$name}}Call {
-        void* encode(void* encoder, bool is_group) const;
+        void* encode(gapil::Encoder* encoder, bool is_group) const;
 ¶
         {{Template "C++.Type" $.Return.Type}} result;
       };

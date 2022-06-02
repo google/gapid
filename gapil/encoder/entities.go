@@ -558,7 +558,7 @@ func (e *entities) emitEncodeTypeFuncs(enc *encoder) {
 		if _, seen := impls[ent.encodeType]; !seen {
 			// First time we've seen this lowered type. Declare the encode_type
 			// function.
-			enc.Line("uint32_t %s(context* ctx);", ent.encodeType)
+			enc.Line("uint32_t %s(gapil::Encoder* enc);", ent.encodeType)
 			impls[ent.encodeType] = ent
 		}
 	}
@@ -569,8 +569,8 @@ func (e *entities) emitEncodeTypeFuncs(enc *encoder) {
 	for name, ent := range impls {
 		desc := descs[ent]
 
-		enc.Function(fmt.Sprintf("uint32_t %s(context* ctx)", strings.ReplaceAll(name, ".", "_")), func() {
-			enc.Line("int64_t typeId = gapil_encode_type(ctx, \"%s\", %d, &proto_descriptors[%d]);", ent.fqn, desc.size, desc.offset)
+		enc.Function(fmt.Sprintf("uint32_t %s(gapil::Encoder* enc)", strings.ReplaceAll(name, ".", "_")), func() {
+			enc.Line("int64_t typeId = enc->encodeType(\"%s\", %d, &proto_descriptors[%d]);", ent.fqn, desc.size, desc.offset)
 			enc.If("typeId > 0", func() {
 				// Encode dependent types.
 				deps := []*entity{}
@@ -609,7 +609,7 @@ func (e *entities) emitEncodeTypeFuncs(enc *encoder) {
 				}
 
 				for _, ent := range deps {
-					enc.Line("%s(ctx);", ent.encodeType)
+					enc.Line("%s(enc);", ent.encodeType)
 				}
 
 				enc.Line("return typeId;")

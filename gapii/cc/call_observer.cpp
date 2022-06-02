@@ -70,6 +70,28 @@ CallObserver::~CallObserver() {}
 
 core::Arena* CallObserver::arena() const { return mSpy->arena(); }
 
+int64_t CallObserver::encodeType(const char* name, uint32_t desc_size,
+                                 const void* desc) {
+  auto res = encoder()->type(name, desc_size, desc);
+  int64_t id = static_cast<int64_t>(res.first);
+  return res.second ? id : -id;
+}
+
+void* CallObserver::encodeObject(uint8_t is_group, uint32_t type,
+                                 uint32_t data_size, void* data) {
+  if (is_group) {
+    return encoder()->group(type, data_size, data);
+  }
+  encoder()->object(type, data_size, data);
+  return nullptr;
+}
+
+int64_t CallObserver::encodeBackref(const void* object) {
+  auto res = reference_id(object);
+  int64_t id = static_cast<int64_t>(res.first);
+  return res.second ? id : -id;
+}
+
 void CallObserver::read(const void* base, uint64_t size) {
   if (!mShouldTrace) return;
   if (size > 0) {
