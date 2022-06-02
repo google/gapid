@@ -37,7 +37,7 @@ Map<K, V, DENSE>::Map(core::Arena* a) {
     new(buf) Map<K, V, DENSE>::Allocation();
     Map<K, V, DENSE>::SVOAllocation* svo = static_cast<Map<K, V, DENSE>::SVOAllocation*>(buf);
     ptr = static_cast<Map<K, V, DENSE>::Allocation*>(buf);
-    ptr->arena = reinterpret_cast<arena_t*>(a);
+    ptr->arena = a;
     ptr->capacity = GAPIL_MIN_MAP_SIZE;
     ptr->count = 0;
     ptr->elements = &svo->els;
@@ -96,7 +96,6 @@ inline void Map<K, V, DENSE>::Allocation::release() {
     if (ref_count > 0) {
         return;
     }
-    auto arena = reinterpret_cast<core::Arena*>(this->arena);
     if (elements != nullptr) {
         clear_for_delete();
     }
@@ -150,7 +149,7 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
                     while(capacity < hash) {
                         capacity >>= 1;
                     }
-                    elements = gapil_alloc(arena, sizeof(element) * capacity, alignof(V));
+                    elements = arena->allocate(sizeof(element) * capacity, alignof(V));
                     for (uint64_t i = 0; i < capacity; ++i) {
                         this->els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                     }
@@ -163,7 +162,7 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
                     while(capacity < hash) {
                         capacity >>= 1;
                     }
-                    elements = gapil_alloc(arena, sizeof(element) * capacity, alignof(V));
+                    elements = arena->allocate(sizeof(element) * capacity, alignof(V));
                     for (uint64_t i = 0; i < capacity; ++i) {
                         els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                     }
@@ -178,7 +177,7 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
                         }
                     }
                     if (oldCapacity != GAPIL_MIN_MAP_SIZE) {
-                        gapil_free(arena, oldElements);
+                        arena->free(oldElements);
                     }
                 }
             } else {
@@ -190,9 +189,8 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
             return &elems[hash].second;
         } else if (insert) {
             count++;
-            auto a = reinterpret_cast<core::Arena*>(arena);
-            inplace_new(&elems[hash].second, a);
-            inplace_new(&elems[hash].first, a, key);
+            inplace_new(&elems[hash].second, arena);
+            inplace_new(&elems[hash].first, arena, key);
             elems[hash].used = GAPIL_MAP_ELEMENT_FULL;
             return &elems[hash].second;
         }
@@ -244,7 +242,7 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
         if (resize) {
             if (elements == nullptr) {
                 capacity = GAPIL_MIN_MAP_SIZE;
-                elements = gapil_alloc(arena, sizeof(element) * GAPIL_MIN_MAP_SIZE, alignof(V));
+                elements = arena->allocate(sizeof(element) * GAPIL_MIN_MAP_SIZE, alignof(V));
                 for (uint64_t i = 0; i < capacity; ++i) {
                     this->els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
@@ -253,7 +251,7 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
                  auto oldCapacity = capacity;
 
                  capacity = capacity * GAPIL_MAP_GROW_MULTIPLIER;
-                 elements = gapil_alloc(arena, sizeof(element) * capacity, alignof(V));
+                 elements = arena->allocate(sizeof(element) * capacity, alignof(V));
                  for (uint64_t i = 0; i < capacity; ++i) {
                     els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
                  }
@@ -269,15 +267,14 @@ V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
                      }
                  }
                  if (oldCapacity != GAPIL_MIN_MAP_SIZE) {
-                    gapil_free(arena, oldElements);
+                    arena->free(oldElements);
                  }
              }
         }
 
         uint64_t bucket_location = storageBucket(hasher(key));
-        auto a = reinterpret_cast<core::Arena*>(arena);
-        inplace_new(&els()[bucket_location].second, a);
-        inplace_new(&els()[bucket_location].first, a, key);
+        inplace_new(&els()[bucket_location].second, arena);
+        inplace_new(&els()[bucket_location].first, arena, key);
         els()[bucket_location].used = GAPIL_MAP_ELEMENT_FULL;
         count++;
 
@@ -347,7 +344,7 @@ void Map<K, V, DENSE>::Allocation::clear_for_delete() {
         }
     }
     if (capacity != GAPIL_MIN_MAP_SIZE) {
-        gapil_free(arena, elements);
+        arena->free(elements);
         capacity = 0;
         elements = nullptr;
     }

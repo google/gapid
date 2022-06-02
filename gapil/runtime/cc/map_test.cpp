@@ -173,26 +173,26 @@ class non_movable_object {
     arena = nullptr;
   }
 
-  non_movable_object(arena_t* a, uint64_t i) {
+  non_movable_object(core::Arena* a, uint64_t i) {
     size = i;
-    v = gapil_alloc(a, i, 1);
+    v = a->allocate(i, 1);
     arena = a;
   }
 
   non_movable_object& operator=(const non_movable_object& _other) {
     size = _other.size;
     arena = _other.arena;
-    v = gapil_alloc(arena, size, 1);
+    v = arena->allocate(size, 1);
     return *this;
   }
 
   ~non_movable_object() {
     if (arena != nullptr) {
-      gapil_free(arena, v);
+      arena->free(v);
     }
   }
   non_movable_object(const non_movable_object& _other) {
-    v = gapil_alloc(_other.arena, _other.size, 1);
+    v = _other.arena->allocate(_other.size, 1);
     arena = _other.arena;
     size = _other.size;
   }
@@ -200,23 +200,22 @@ class non_movable_object {
  private:
   void* v;
   uint64_t size;
-  arena_t* arena;
+  core::Arena* arena;
 };
 
 TEST_F(CppMapTest, non_movable_object) {
   auto map = gapil::Map<uint32_t, non_movable_object, false>(&arena);
 
-  auto a = reinterpret_cast<arena_t*>(&arena);
-
   uint64_t resize_threshold =
       static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
   for (uint64_t i = 0; i <= resize_threshold; ++i) {
-    map[i] = non_movable_object(a, i + 10);
+    map[i] = non_movable_object(&arena, i + 10);
   }
   EXPECT_EQ(resize_threshold + 1, map.count());
   EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 
-  map[resize_threshold + 1] = non_movable_object(a, 10 + resize_threshold + 1);
+  map[resize_threshold + 1] =
+      non_movable_object(&arena, 10 + resize_threshold + 1);
   EXPECT_EQ(resize_threshold + 2, map.count());
   EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
 }
@@ -229,8 +228,8 @@ class movable_object {
     arena = nullptr;
   }
 
-  movable_object(arena_t* a, uint64_t i) {
-    v = gapil_alloc(a, i, 1);
+  movable_object(core::Arena* a, uint64_t i) {
+    v = a->allocate(i, 1);
     size = i;
     arena = a;
   }
@@ -247,7 +246,7 @@ class movable_object {
 
   ~movable_object() {
     if (arena != nullptr) {
-      gapil_free(arena, v);
+      arena->free(v);
     }
   }
   movable_object(movable_object&& _other) { *this = std::move(_other); }
@@ -255,23 +254,21 @@ class movable_object {
  private:
   void* v;
   uint64_t size;
-  arena_t* arena;
+  core::Arena* arena;
 };
 
 TEST_F(CppMapTest, movable_object) {
   auto map = gapil::Map<uint32_t, movable_object, false>(&arena);
 
-  auto a = reinterpret_cast<arena_t*>(&arena);
-
   uint64_t resize_threshold =
       static_cast<uint64_t>(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_MAX_CAPACITY);
   for (uint64_t i = 0; i <= resize_threshold; ++i) {
-    map[i] = movable_object(a, i + 10);
+    map[i] = movable_object(&arena, i + 10);
   }
   EXPECT_EQ(resize_threshold + 1, map.count());
   EXPECT_EQ(GAPIL_MIN_MAP_SIZE, map.capacity());
 
-  map[resize_threshold + 1] = movable_object(a, 10 + resize_threshold + 1);
+  map[resize_threshold + 1] = movable_object(&arena, 10 + resize_threshold + 1);
   EXPECT_EQ(resize_threshold + 2, map.count());
   EXPECT_EQ(GAPIL_MIN_MAP_SIZE * GAPIL_MAP_GROW_MULTIPLIER, map.capacity());
 }

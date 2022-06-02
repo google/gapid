@@ -69,16 +69,6 @@ typedef struct string_t {
   uint8_t data[1];  // the null-terminated string bytes.
 } string;
 
-// map is the shared data of a gapil map type.
-// A map is a pointer to this struct.
-typedef struct map_t {
-  uint32_t ref_count;  // number of owners of this map.
-  arena* arena;  // arena that owns this map allocation and its elements buffer.
-  uint64_t count;     // number of elements in the map.
-  uint64_t capacity;  // size of the elements buffer.
-  void* elements;     // pointer to the elements buffer.
-} map;
-
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
