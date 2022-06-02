@@ -21,6 +21,16 @@
 
 namespace {
 
+// buffer is a structure used to hold a variable size byte array.
+// buffer is used internally by the compiler to write out variable length data.
+typedef struct buffer_t {
+  arena* arena;        // the arena that owns the buffer data.
+  uint8_t* data;       // buffer data.
+  uint32_t capacity;   // total capacity of the buffer.
+  uint32_t size;       // current size of the buffer.
+  uint32_t alignment;  // min alignment in bytes of the data allocation.
+} buffer;
+
 // gapil_buffer_init initializes a buffer allocating space with the given
 // initial capacity.
 void gapil_buffer_init(context* ctx, buffer* buf, uint32_t capacity) {

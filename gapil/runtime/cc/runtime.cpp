@@ -22,11 +22,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#if TARGET_OS == GAPID_OS_ANDROID
-// for snprintf
-#include <cstdio>
-#endif
-
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
@@ -45,22 +40,6 @@
 using core::Arena;
 
 extern "C" {
-
-void gapil_logf(uint8_t severity, uint8_t* file, uint32_t line, uint8_t* fmt,
-                ...) {
-  // core/log/severity.go is in reverse order to log.h! :(
-  severity = 5 - severity;
-  if (GAPID_SHOULD_LOG(severity)) {
-    va_list args;
-    va_start(args, fmt);
-    auto f =
-        (file != nullptr) ? reinterpret_cast<const char*>(file) : "<unknown>";
-
-    ::core::Logger::instance().vlogf(severity, f, line,
-                                     reinterpret_cast<const char*>(fmt), args);
-    va_end(args);
-  }
-}
 
 void* gapil_alloc(arena_t* a, uint64_t size, uint64_t align) {
   Arena* arena = reinterpret_cast<Arena*>(a);

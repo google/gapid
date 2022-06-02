@@ -26,11 +26,6 @@ typedef struct arena_t arena;
 typedef struct pool_t pool;
 typedef struct string_t string;
 
-typedef uint8_t gapil_char;
-
-#define GAPIL_ERR_SUCCESS 0
-#define GAPIL_ERR_ABORTED 1
-
 #define GAPIL_MAP_ELEMENT_EMPTY 0
 #define GAPIL_MAP_ELEMENT_FULL 1
 #define GAPIL_MAP_ELEMENT_USED 2
@@ -84,94 +79,35 @@ typedef struct map_t {
   void* elements;     // pointer to the elements buffer.
 } map;
 
-// ref is the shared data of a gapil ref!T type.
-// A ref is a pointer to this struct.
-typedef struct ref_t {
-  uint32_t ref_count;  // number of owners of this ref.
-  arena* arena;        // arena that owns this ref allocation.
-  /* T */              // referenced object immediately follows.
-} ref;
-
-// buffer is a structure used to hold a variable size byte array.
-// buffer is used internally by the compiler to write out variable length data.
-typedef struct buffer_t {
-  arena* arena;        // the arena that owns the buffer data.
-  uint8_t* data;       // buffer data.
-  uint32_t capacity;   // total capacity of the buffer.
-  uint32_t size;       // current size of the buffer.
-  uint32_t alignment;  // min alignment in bytes of the data allocation.
-} buffer;
-
-#define GAPIL_KIND_BOOL 1
-#define GAPIL_KIND_U8 2
-#define GAPIL_KIND_S8 3
-#define GAPIL_KIND_U16 4
-#define GAPIL_KIND_S16 5
-#define GAPIL_KIND_F32 6
-#define GAPIL_KIND_U32 7
-#define GAPIL_KIND_S32 8
-#define GAPIL_KIND_F64 9
-#define GAPIL_KIND_U64 10
-#define GAPIL_KIND_S64 11
-#define GAPIL_KIND_INT 12
-#define GAPIL_KIND_UINT 13
-#define GAPIL_KIND_SIZE 14
-#define GAPIL_KIND_CHAR 15
-#define GAPIL_KIND_ARRAY 16
-#define GAPIL_KIND_CLASS 17
-#define GAPIL_KIND_ENUM 18
-#define GAPIL_KIND_MAP 19
-#define GAPIL_KIND_POINTER 20
-#define GAPIL_KIND_REFERENCE 21
-#define GAPIL_KIND_SLICE 22
-#define GAPIL_KIND_STRING 23
-
-typedef uint8_t GAPIL_BOOL;
-
-#define GAPIL_FALSE 0
-#define GAPIL_TRUE 1
-
-#ifndef DECL_GAPIL_CB
-#define DECL_GAPIL_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
 // allocates memory using the arena with the given size and alignment.
-DECL_GAPIL_CB(void*, gapil_alloc, arena*, uint64_t size, uint64_t align);
+void* gapil_alloc(arena*, uint64_t size, uint64_t align);
 
 // re-allocates memory previously allocated with the arena to a new size and
 // alignment.
-DECL_GAPIL_CB(void*, gapil_realloc, arena*, void* ptr, uint64_t size,
-              uint64_t align);
+void* gapil_realloc(arena*, void* ptr, uint64_t size, uint64_t align);
 
 // frees memory previously allocated with gapil_alloc or gapil_realloc.
-DECL_GAPIL_CB(void, gapil_free, arena*, void* ptr);
+void gapil_free(arena*, void* ptr);
 
 // allocates a new slice and underlying pool with the given size.
-DECL_GAPIL_CB(pool*, gapil_make_pool, context*, uint64_t size);
+pool* gapil_make_pool(context*, uint64_t size);
 
 // frees a pool previously allocated with gapil_make_pool.
-DECL_GAPIL_CB(void, gapil_free_pool, pool*);
+void gapil_free_pool(pool*);
 
 // allocates a new string with the given data and length.
 // length excludes a null-pointer.
-DECL_GAPIL_CB(string*, gapil_make_string, arena*, uint64_t length, void* data);
+string* gapil_make_string(arena*, uint64_t length, void* data);
 
 // frees a string allocated with gapil_make_string.
-DECL_GAPIL_CB(void, gapil_free_string, string*);
+void gapil_free_string(string*);
 
 // compares two strings lexicographically, using the same rules as strcmp.
-DECL_GAPIL_CB(int32_t, gapil_string_compare, string*, string*);
-
-// logs a message to the current logger.
-// fmt is a printf-style message.
-DECL_GAPIL_CB(void, gapil_logf, uint8_t severity, uint8_t* file, uint32_t line,
-              uint8_t* fmt, ...);
-
-#undef DECL_GAPIL_CB
+int32_t gapil_string_compare(string*, string*);
 
 #ifdef __cplusplus
 }  // extern "C"

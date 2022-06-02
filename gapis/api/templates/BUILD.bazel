@@ -86,13 +86,6 @@ api_template(
 )
 
 api_template(
-    name = "ctypes_h",
-    includes = ["c_common.tmpl"],
-    outputs = ["ctypes.h"],
-    template = "go_ctypes.h.tmpl",
-)
-
-api_template(
     name = "state_serialize",
     includes = [
         ":go_common_deps",
