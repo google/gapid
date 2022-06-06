@@ -991,6 +991,58 @@ func processExternalImageBarriers(barriers *[]VkImageMemoryBarrier) bool {
 	return hasExternImageBarrier
 }
 
+func (a *VkGetMemoryFdKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	return a.mutate(ctx, id, s, nil, w)
+}
+
+func (a *VkGetMemoryFdPropertiesKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	return a.mutate(ctx, id, s, nil, w)
+}
+
+func (a *VkAllocateMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	if b == nil {
+		return a.mutate(ctx, id, s, b, w)
+	}
+
+	a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
+	hijack := cb.VkAllocateMemory(a.Device(), a.PAllocateInfo(), a.PAllocator(), a.PMemory(), a.Result())
+	hijack.Extras().MustClone(a.Extras().All()...)
+
+	// Remove VkImportMemoryFdInfoKHR structs from the pNext chain,
+	// because the fd will be invalid at replay time
+	pHeader := NewVulkanStructHeaderᵖ(hijack.PAllocateInfo())
+	header := pHeader.MustRead(ctx, a, s, nil)
+
+	var allocated []*api.AllocResult
+	defer func() {
+		for _, d := range allocated {
+			d.Free()
+		}
+	}()
+
+	for !header.PNext().IsNullptr() {
+		pNext := NewVulkanStructHeaderᵖ(header.PNext())
+		next := pNext.MustRead(ctx, a, s, nil)
+		if next.SType() == VkStructureType_VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR {
+			// update header.pNext
+			header.SetPNext(next.PNext())
+
+			// add a memory observation at pHeader, whose data is the new header value (with modified pNext)
+			newHeaderData := s.AllocDataOrPanic(ctx, header) // dummy allocation, just to get an ID for the header data
+			newHeaderRange, newHeaderID := newHeaderData.Data()
+			newHeaderRange.Base = pHeader.Address() // move the observation range to start at pHeader, to pretend we observed this modified header value
+			allocated = append(allocated, &newHeaderData)
+			hijack.AddRead(newHeaderRange, newHeaderID) // attach this observation to hijack, so that the new value is seen on the replay side
+		} else {
+			pHeader = pNext
+			header = next
+		}
+	}
+
+	return hijack.mutate(ctx, id, s, b, w)
+}
+
 type vkQueueSubmitHijack struct {
 	ctx               context.Context
 	id                api.CmdID

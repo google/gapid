@@ -71,6 +71,7 @@
 @threadSafety("system")
 @indirect("VkDevice")
 @override
+@custom
 cmd VkResult vkAllocateMemory(
     VkDevice                     device,
     const VkMemoryAllocateInfo*  pAllocateInfo,
@@ -119,6 +120,7 @@ cmd VkResult vkAllocateMemory(
             DeviceMask: ext.deviceMask,
           )
         }
+        case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR: {}
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
