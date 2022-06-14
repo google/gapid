@@ -35,6 +35,7 @@ class VulkanType:
 class VulkanHandle(VulkanType):
     """The meta data defines a Vulkan Handle"""
     # Melih TODO: Vulkan Handles have object type in the XML that might be required in the future
+    dispatchable: bool
 
 
 @dataclass

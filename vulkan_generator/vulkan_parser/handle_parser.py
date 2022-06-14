@@ -44,7 +44,14 @@ def parse_handle_by_tag(root: ET.Element) -> types.VulkanHandle:
     """
 
     name = parsing_utils.get_text_from_tag_in_children(root, "name")
-    vulkan_handle = types.VulkanHandle(typename=name)
+    handle_definer = parsing_utils.get_text_from_tag_in_children(root, "type")
+
+    if handle_definer not in ["VK_DEFINE_HANDLE", "VK_DEFINE_NON_DISPATCHABLE_HANDLE"]:
+        raise SyntaxError(f"Unknown Handle definer {ET.tostring(root, 'utf-8')}")
+
+    dispatchable = handle_definer == "VK_DEFINE_HANDLE"
+
+    vulkan_handle = types.VulkanHandle(typename=name, dispatchable=dispatchable)
     return vulkan_handle
 
 

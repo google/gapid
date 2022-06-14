@@ -52,3 +52,31 @@ def test_vulkan_handle_by_attribute() -> None:
     assert isinstance(handle, types.VulkanHandleAlias)
     assert handle.typename == "VkDescriptorUpdateTemplateKHR"
     assert handle.aliased_typename == "VkDescriptorUpdateTemplate"
+
+
+def test_dispatchable_vulkan_handle() -> None:
+    """""Test the case if the handle name is in an XML attribute"""
+
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <type category="handle" parent="VkDevice" objtypeenum="VK_OBJECT_TYPE_QUEUE">
+        <type>VK_DEFINE_HANDLE</type>(<name>VkQueue</name>)</type>
+    """
+
+    handle = handle_parser.parse(ET.fromstring(xml))
+
+    assert isinstance(handle, types.VulkanHandle)
+    assert handle.dispatchable
+
+
+def test_non_dispatchable_vulkan_handle() -> None:
+    """""Test the case if the handle name is in an XML attribute"""
+
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <type category="handle" parent="VkDevice" objtypeenum="VK_OBJECT_TYPE_SAMPLER">
+        <type>VK_DEFINE_NON_DISPATCHABLE_HANDLE</type>(<name>VkSampler</name>)</type>
+    """
+
+    handle = handle_parser.parse(ET.fromstring(xml))
+
+    assert isinstance(handle, types.VulkanHandle)
+    assert not handle.dispatchable
