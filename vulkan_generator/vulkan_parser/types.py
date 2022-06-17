@@ -64,7 +64,7 @@ class VulkanStructMember:
 
     # If the member is an array, it's size is defined by another
     # member in the struct. This is the name of the referring member
-    array_reference: Optional[str]
+    array_size_reference: Optional[str]
 
     # Is this field has to be set and/or not-null
     optional: Optional[bool]
@@ -171,10 +171,58 @@ class VulkanDefine:
 
 
 @dataclass
+class VulkanCommandParam:
+    """The metadata defines a Vulkan Command's parameter"""
+    parameter_type: str
+    parameter_name: str
+
+    # Is this field has to be set and/or not-null
+    optional: Optional[bool]
+
+    # Is this parameter must be externally synced
+    externally_synced: Optional[bool]
+
+    # If the parameter is an array, it's size is defined by another
+    # parameter of the command. This is the name of the referring parameter.
+    array_size_reference: Optional[str]
+
+
+@dataclass
+class VulkanCommand:
+    """The metadata defines a Vulkan Command"""
+    name: str
+    return_type: str
+
+    # Can this command be called inside or outside
+    # of a renderpass, or both
+    renderpass_allowance: Optional[str]
+
+    success_codes: Optional[List[str]]
+    error_codes: Optional[List[str]]
+
+    # Which queues this command can be used
+    queues: Optional[List[str]]
+
+    # Which command
+    command_buffer_levels: Optional[List[str]]
+
+    # These give us both what are the parameters are and their order
+    parameter_order: List[str] = field(default_factory=list)
+    parameters: Dict[str, VulkanCommandParam] = field(default_factory=dict)
+
+
+@dataclass
+class VulkanCommandAlias:
+    """The metadata defines a Vulkan Command alias"""
+    command_name: str
+    aliased_command_name: str
+
+
+@dataclass
 class AllVulkanTypes:
     """
-    This class holds the information parsed from Vulkan XML
-    This class should have all the information needed to generate code
+    This class holds the information of parsed types from Vulkan XML
+    This class should have all the information needed to generate code for types
     """
     # This class holds every Vulkan Type as [typename -> type]
 
@@ -182,6 +230,8 @@ class AllVulkanTypes:
     # both type -> alias and alias -> type
     # For now, lets store as the other types but when we do code generation,
     # We may have an extra step to convert the map to other direction.
+
+    defines: OrderedDict[str, VulkanDefine] = field(default_factory=OrderedDict)
 
     handles: Dict[str, VulkanHandle] = field(default_factory=dict)
     handle_aliases: Dict[str, VulkanHandleAlias] = field(default_factory=dict)
@@ -197,4 +247,22 @@ class AllVulkanTypes:
     enums: Dict[str, VulkanEnum] = field(default_factory=dict)
     enum_aliases: Dict[str, VulkanEnumAlias] = field(default_factory=dict)
 
-    defines: OrderedDict[str, VulkanDefine] = field(default_factory=OrderedDict)
+
+@dataclass
+class AllVulkanCommands:
+    """
+    This class holds the information of parsed commands from Vulkan XML
+    This class should have all the information needed to generate code for commands
+    """
+    commands: Dict[str, VulkanCommand] = field(default_factory=dict)
+    command_aliases: Dict[str, VulkanCommandAlias] = field(default_factory=dict)
+
+
+@dataclass
+class VulkanMetadata:
+    """
+    This class holds the information parsed from Vulkan XML
+    This class should have all the information needed to generate code
+    """
+    types: AllVulkanTypes
+    commands: AllVulkanCommands

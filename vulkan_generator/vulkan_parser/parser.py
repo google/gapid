@@ -20,6 +20,7 @@ import xml.etree.ElementTree as ET
 from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_parser import type_parser
 from vulkan_generator.vulkan_parser import enums_parser
+from vulkan_generator.vulkan_parser import commands_parser
 
 
 def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) -> None:
@@ -44,17 +45,18 @@ def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) 
     raise SyntaxError(f"Unknown define or enum {vulkan_enums}")
 
 
-def parse(filename: Path) -> types.AllVulkanTypes:
+def parse(filename: Path) -> types.VulkanMetadata:
     """ Parse the Vulkan XML to extract every information that is needed for code generation"""
     tree = ET.parse(filename)
     all_types = types.AllVulkanTypes()
+    all_commands = types.AllVulkanCommands()
 
     for child in tree.iter():
         if child.tag == "types":
             all_types = type_parser.parse(child)
-        if child.tag == "enums":
+        elif child.tag == "enums":
             process_enums(all_types, child)
+        elif child.tag == "commands":
+            all_commands = commands_parser.parse(child)
 
-    # Melih TODO: In the future this should return not only types
-    # but other information that is needed as well. e.g. functions, comments etc.
-    return all_types
+    return types.VulkanMetadata(types=all_types, commands=all_commands)

@@ -15,6 +15,7 @@
 """This module contains the utility functions that needed elsewhere while parsing Vulkan XML"""
 
 import xml.etree.ElementTree as ET
+from typing import List
 from typing import Optional
 import os
 
@@ -104,6 +105,18 @@ def try_get_attribute(elem: ET.Element, attrib: str) -> Optional[str]:
         return None
 
     return elem.attrib[attrib]
+
+
+def try_get_attribute_as_list(elem: ET.Element, attrib: str) -> Optional[List[str]]:
+    """Tries to get an attribute from XML and returns None if the attribute does not exists"""
+    if attrib not in elem.attrib:
+        return None
+
+    attrib_str = elem.attrib[attrib]
+    if not attrib_str:
+        return None
+
+    return attrib_str.split(",")
 
 
 def clean_type_string(string: str) -> str:

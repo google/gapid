@@ -21,44 +21,54 @@ from vulkan_generator.vulkan_parser import parser as vulkan_parser
 from vulkan_generator.vulkan_parser import types
 
 
-def print_vulkan_metaadata(vulkan_metadata: types.AllVulkanTypes) -> None:
+def print_vulkan_metadata(vulkan_metadata: types.VulkanMetadata) -> None:
     """Prints all the vulkan information that is extracted"""
 
     pretty_printer = pprint.PrettyPrinter(depth=4)
 
+    vulkan_types = vulkan_metadata.types
+
     print("=== Vulkan Defines ===")
-    pretty_printer.pprint(vulkan_metadata.defines)
+    pretty_printer.pprint(vulkan_types.defines)
 
     print("=== Vulkan Bitmasks ===")
-    pretty_printer.pprint(vulkan_metadata.bitmasks)
+    pretty_printer.pprint(vulkan_types.bitmasks)
 
     print("=== Vulkan Bitmask Aliases ===")
-    pretty_printer.pprint(vulkan_metadata.bitmask_aliases)
+    pretty_printer.pprint(vulkan_types.bitmask_aliases)
 
     print("=== Vulkan Enums ===")
-    pretty_printer.pprint(vulkan_metadata.enums)
+    pretty_printer.pprint(vulkan_types.enums)
 
     print("=== Vulkan Enums Aliases ===")
-    pretty_printer.pprint(vulkan_metadata.enum_aliases)
+    pretty_printer.pprint(vulkan_types.enum_aliases)
 
     print("=== Vulkan Handles ===")
-    pretty_printer.pprint(vulkan_metadata.handles)
+    pretty_printer.pprint(vulkan_types.handles)
 
     print("=== Vulkan Handle Aliases ===")
-    pretty_printer.pprint(vulkan_metadata.handle_aliases)
+    pretty_printer.pprint(vulkan_types.handle_aliases)
 
     print("=== Vulkan Structs ===")
-    pretty_printer.pprint(vulkan_metadata.structs)
+    pretty_printer.pprint(vulkan_types.structs)
 
     print("=== Vulkan Struct Aliases ===")
-    pretty_printer.pprint(vulkan_metadata.struct_aliases)
+    pretty_printer.pprint(vulkan_types.struct_aliases)
 
     print("=== Vulkan Function Pointers ===")
-    pretty_printer.pprint(vulkan_metadata.funcpointers)
+    pretty_printer.pprint(vulkan_types.funcpointers)
+
+    vulkan_commands = vulkan_metadata.commands
+
+    print("=== Vulkan Commands ===")
+    pretty_printer.pprint(vulkan_commands.commands)
+
+    print("=== Vulkan Command Aliases ===")
+    pretty_printer.pprint(vulkan_commands.command_aliases)
 
 
 def generate(vulkan_xml_path: Path) -> bool:
     """ Generator function """
-    all_vulkan_types = vulkan_parser.parse(vulkan_xml_path)
-    print_vulkan_metaadata(all_vulkan_types)
+    vulkan_info = vulkan_parser.parse(vulkan_xml_path)
+    print_vulkan_metadata(vulkan_info)
     return True

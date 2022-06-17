@@ -159,7 +159,7 @@ def test_vulkan_struct_with_dynamic_array() -> None:
     typ = struct_parser.parse(ET.fromstring(xml))
     assert isinstance(typ, types.VulkanStruct)
 
-    reference = typ.members["pBinds"].array_reference
+    reference = typ.members["pBinds"].array_size_reference
 
     assert reference in typ.members
     assert reference == typ.member_order[1]
