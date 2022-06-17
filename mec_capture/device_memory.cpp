@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_allocations(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecAllocations");
   for (auto& it : state_block->VkDeviceMemorys) {
     VkDeviceMemoryWrapper* dev_mem = it.second.second;
     VkDeviceMemory device_memory = it.first;
@@ -32,6 +33,11 @@ void mid_execution_generator::capture_allocations(const state_block* state_block
         dev_mem->allocate_info,
         nullptr,
         &device_memory);
+    if (dev_mem->_mapped_location != nullptr && dev_mem->_mapped_size != 0) {
+      void* ml = dev_mem->_mapped_location;
+      serializer->vkMapMemory(dev_mem->device, device_memory, dev_mem->_mapped_offset,
+                              dev_mem->_mapped_size, dev_mem->_mapped_flags, &ml);
+    }
   }
 }
 

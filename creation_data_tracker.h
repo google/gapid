@@ -91,8 +91,8 @@ class creation_data_tracker : public transform_base {
   }
 
   void vkGetDeviceQueue(VkDevice device,
-                        uint32_t queueFamilyIndex,
-                        uint32_t queueIndex,
+                        const uint32_t queueFamilyIndex,
+                        const uint32_t queueIndex,
                         VkQueue* pQueue) override {
     if constexpr (args_contain<VkQueue, Args...>()) {
       super::vkGetDeviceQueue(device, queueFamilyIndex, queueIndex, pQueue);
@@ -641,7 +641,7 @@ class creation_data_tracker : public transform_base {
         swp->swapchain_images.clear();
         for (uint32_t i = 0; i < *pSwapchainImageCount; ++i) {
           auto pl = state_block_->get(pSwapchainImages[i]);
-          pl->set_swapchain_info(device, swapchain, i);
+          pl->set_swapchain_info(device, state_block_, swapchain, i);
           swp->swapchain_images.push_back(pSwapchainImages[i]);
         }
       }

@@ -14,32 +14,36 @@
  * limitations under the License.
  */
 
-#include "minimal_state_tracker.h"
-
 #include "command_buffer.h"
 #include "descriptor_update_template.h"
 #include "device_memory.h"
+#include "minimal_state_tracker.h"
 #include "struct_clone.h"
 
 namespace gapid2 {
 class state_block;
-void minimal_state_tracker::vkGetPhysicalDeviceMemoryProperties(
+
+template <typename... Args>
+void minimal_state_tracker_impl<Args...>::vkGetPhysicalDeviceMemoryProperties(
     VkPhysicalDevice physicalDevice,
     VkPhysicalDeviceMemoryProperties* pMemoryProperties) {
   super::vkGetPhysicalDeviceMemoryProperties(physicalDevice,
                                              pMemoryProperties);
-  clone(state_block_, pMemoryProperties[0], memory_properties, &mem);
+  clone(super::state_block_, pMemoryProperties[0], memory_properties, &mem);
 }
-void minimal_state_tracker::vkGetPhysicalDeviceMemoryProperties2(
+
+template <typename... Args>
+void minimal_state_tracker_impl<Args...>::vkGetPhysicalDeviceMemoryProperties2(
     VkPhysicalDevice physicalDevice,
     VkPhysicalDeviceMemoryProperties2* pMemoryProperties) {
   super::vkGetPhysicalDeviceMemoryProperties2(physicalDevice,
                                               pMemoryProperties);
-  clone(state_block_, pMemoryProperties->memoryProperties,
+  clone(super::state_block_, pMemoryProperties->memoryProperties,
         memory_properties, &mem);
 }
 
-VkResult minimal_state_tracker::vkAllocateMemory(VkDevice device,
+template <typename... Args>
+VkResult minimal_state_tracker_impl<Args...>::vkAllocateMemory(VkDevice device,
                                                  const VkMemoryAllocateInfo* pAllocateInfo,
                                                  const VkAllocationCallbacks* pAllocator,
                                                  VkDeviceMemory* pMemory) {
@@ -48,7 +52,7 @@ VkResult minimal_state_tracker::vkAllocateMemory(VkDevice device,
   if (res != VK_SUCCESS) {
     return res;
   }
-  auto new_mem = state_block_->get(*pMemory);
+  auto new_mem = super::state_block_->get(*pMemory);
   auto type = memory_properties.memoryTypes[pAllocateInfo->memoryTypeIndex];
   new_mem->_is_coherent =
       (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
@@ -56,7 +60,8 @@ VkResult minimal_state_tracker::vkAllocateMemory(VkDevice device,
   return res;
 }
 
-VkResult minimal_state_tracker::vkMapMemory(VkDevice device,
+template <typename... Args>
+VkResult minimal_state_tracker_impl<Args...>::vkMapMemory(VkDevice device,
                                             VkDeviceMemory memory,
                                             VkDeviceSize offset,
                                             VkDeviceSize size,
@@ -66,7 +71,7 @@ VkResult minimal_state_tracker::vkMapMemory(VkDevice device,
   if (res != VK_SUCCESS) {
     return res;
   }
-  auto new_mem = state_block_->get(memory);
+  auto new_mem = super::state_block_->get(memory);
   if (size == VK_WHOLE_SIZE) {
     size = new_mem->_size - offset;
   }
@@ -74,16 +79,19 @@ VkResult minimal_state_tracker::vkMapMemory(VkDevice device,
   new_mem->_mapped_location = reinterpret_cast<char*>(ppData[0]);
   new_mem->_mapped_offset = offset;
   new_mem->_mapped_size = size;
+  new_mem->_mapped_flags = flags;
   return res;
 }
 
-void minimal_state_tracker::vkUnmapMemory(VkDevice device, VkDeviceMemory memory) {
-  auto new_mem = state_block_->get(memory);
+template <typename... Args>
+void minimal_state_tracker_impl<Args...>::vkUnmapMemory(VkDevice device, VkDeviceMemory memory) {
+  auto new_mem = super::state_block_->get(memory);
   new_mem->_mapped_location = nullptr;
   super::vkUnmapMemory(device, memory);
 }
 
-VkResult minimal_state_tracker::vkCreateDescriptorUpdateTemplate(
+template <typename... Args>
+VkResult minimal_state_tracker_impl<Args...>::vkCreateDescriptorUpdateTemplate(
     VkDevice device,
     const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator,
@@ -93,25 +101,27 @@ VkResult minimal_state_tracker::vkCreateDescriptorUpdateTemplate(
   if (res != VK_SUCCESS) {
     return res;
   }
-  auto pl = state_block_->get(pDescriptorUpdateTemplate[0]);
-  pl->set_create_info(device, state_block_, pCreateInfo);
+  auto pl = super::state_block_->get(pDescriptorUpdateTemplate[0]);
+  pl->set_create_info(device, super::state_block_, pCreateInfo);
   return res;
 }
 
-VkResult minimal_state_tracker::vkBeginCommandBuffer(
+template <typename... Args>
+VkResult minimal_state_tracker_impl<Args...>::vkBeginCommandBuffer(
     VkCommandBuffer commandBuffer,
     const VkCommandBufferBeginInfo* pBeginInfo) {
   auto res = super::vkBeginCommandBuffer(commandBuffer, pBeginInfo);
   if (res != VK_SUCCESS) {
     return res;
   }
-  auto cb = state_block_->get(commandBuffer);
+  auto cb = super::state_block_->get(commandBuffer);
   cb->_pre_run_functions.clear();
   cb->_post_run_functions.clear();
   return res;
 }
 
-VkResult minimal_state_tracker::vkQueueSubmit(VkQueue queue,
+template <typename... Args>
+VkResult minimal_state_tracker_impl<Args...>::vkQueueSubmit(VkQueue queue,
                                               uint32_t submitCount,
                                               const VkSubmitInfo* pSubmits,
                                               VkFence fence) {
@@ -119,9 +129,9 @@ VkResult minimal_state_tracker::vkQueueSubmit(VkQueue queue,
   for (size_t i = 0; i < submitCount; ++i) {
     for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
       cbs.push_back(pSubmits[i].pCommandBuffers[j]);
-      auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
+      auto cb = super::state_block_->get(pSubmits[i].pCommandBuffers[j]);
       for (auto& pf : cb->_pre_run_functions) {
-        pf();
+        pf(queue);
       }
     }
   }
@@ -133,9 +143,9 @@ VkResult minimal_state_tracker::vkQueueSubmit(VkQueue queue,
   for (size_t i = 0; i < submitCount; ++i) {
     for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
       cbs.push_back(pSubmits[i].pCommandBuffers[j]);
-      auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
+      auto cb = super::state_block_->get(pSubmits[i].pCommandBuffers[j]);
       for (auto& pf : cb->_post_run_functions) {
-        pf();
+        pf(queue);
       }
     }
   }

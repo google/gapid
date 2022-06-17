@@ -14,23 +14,28 @@
  * limitations under the License.
  */
 
-#include "device.h"
+#pragma once
 
-#include "mid_execution_generator.h"
-#include "state_block.h"
 namespace gapid2 {
 
-void mid_execution_generator::capture_devices(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
-  serializer->insert_annotation("MecDevices");
-  for (auto& it : state_block->VkDevices) {
-    VkDeviceWrapper* dev = it.second.second;
-    VkDevice device = it.first;
-    serializer->vkCreateDevice(
-        dev->get_physical_device(),
-        dev->get_create_info(),
-        nullptr,
-        &device);
-  }
+enum class flags : uint64_t {
+  NONE = 0,
+  MID_EXECUTION = 1 << 0
+};
+
+inline flags operator|(const flags& a, const flags& b) {
+  return static_cast<flags>(static_cast<uint64_t>(a) |
+                            static_cast<uint64_t>(b));
+}
+
+inline flags operator&(const flags& a, const flags& b) {
+  return static_cast<flags>(static_cast<uint64_t>(a) |
+                            static_cast<uint64_t>(b));
+}
+
+inline flags operator^(const flags& a, const flags& b) {
+  return static_cast<flags>(static_cast<uint64_t>(a) |
+                            static_cast<uint64_t>(b));
 }
 
 }  // namespace gapid2

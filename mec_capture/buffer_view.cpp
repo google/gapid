@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_buffer_views(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecBufferViews");
   for (auto& it : state_block->VkBufferViews) {
     VkBufferViewWrapper* buff = it.second.second;
     VkBufferView buffer_view = it.first;

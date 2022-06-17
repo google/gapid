@@ -16,7 +16,7 @@
  */
 
 #include "command_serializer.h"
-
+#include "enums.h"
 namespace gapid2 {
 
 class noop_serializer : public command_serializer {
@@ -28,6 +28,17 @@ class noop_serializer : public command_serializer {
   encoder_handle get_encoder(uintptr_t key) override {
     return encoder->get_encoder(key);
   }
+
+  uint64_t get_flags() const override {
+    return static_cast<uint64_t>(flags_);
+  }
+
+  void set_flags(flags flag) {
+    flags_ = flag;
+  }
+
+ private:
+  flags flags_ = flags::NONE;
 };
 
-}
+}  // namespace gapid2

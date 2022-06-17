@@ -19,10 +19,17 @@
 #include "mid_execution_generator.h"
 #include "state_block.h"
 #include "utils.h"
+#include "command_buffer_recorder.h"
 
 namespace gapid2 {
 
-void mid_execution_generator::capture_command_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, VkCommandBufferLevel level) const {
+void mid_execution_generator::capture_command_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, VkCommandBufferLevel level,
+    command_buffer_recorder* cbr) const {
+  if (level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+    serializer->insert_annotation("MecPrimaryCommandBuffers");
+  } else {
+    serializer->insert_annotation("MecSecondaryCommandBuffers");
+  }
   for (auto& it : state_block->VkCommandBuffers) {
     VkCommandBufferWrapper* buff = it.second.second;
     if (buff->get_allocate_info()->level != level) {
@@ -34,6 +41,10 @@ void mid_execution_generator::capture_command_buffers(const state_block* state_b
     inf.commandBufferCount = 1;
     serializer->vkAllocateCommandBuffers(buff->device,
                                          &inf, &command_buffer);
+    if (buff->invalidated) {
+      continue;
+    }
+    cbr->RerecordCommandBuffer(command_buffer, serializer);
   }
 }
 

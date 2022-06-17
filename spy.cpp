@@ -445,6 +445,7 @@ VkResult spy::vkFlushMappedMemoryRanges(
         auto offset =
             reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
         enc->encode<uint64_t>(0);
+        enc->encode<uint64_t>(encoding_serializer_->get_flags());
         enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(mr.memory));
         enc->encode<uint64_t>(offset);
         enc->encode<uint64_t>(4096);
@@ -483,7 +484,7 @@ VkResult spy::vkQueueSubmit(VkQueue queue,
   for (size_t i = 0; i < submitCount; ++i) {
     for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
       auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
-      cb->_pre_run_functions.push_back([this]() {
+      cb->_pre_run_functions.push_back([this](VkQueue) {
         auto enc = encoding_serializer_->get_encoder(0);
         if (!enc) {
           return;
@@ -500,6 +501,7 @@ VkResult spy::vkQueueSubmit(VkQueue queue,
             auto offset =
                 reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
             enc->encode<uint64_t>(0);
+            enc->encode<uint64_t>(encoding_serializer_->get_flags());
             enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(m));
             enc->encode<uint64_t>(offset);
             enc->encode<uint64_t>(4096);

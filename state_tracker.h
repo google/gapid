@@ -334,7 +334,7 @@ class state_tracker : public creation_data_tracker<> {
         compute_state.m_bound_descriptors.clear();
         auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
         for (auto& pf : cb->_pre_run_functions) {
-          pf();
+          pf(queue);
         }
       }
     }
@@ -352,7 +352,7 @@ class state_tracker : public creation_data_tracker<> {
       for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
         auto cb = state_block_->get(pSubmits[i].pCommandBuffers[j]);
         for (auto& pf : cb->_post_run_functions) {
-          pf();
+          pf(queue);
         }
       }
     }
@@ -462,6 +462,15 @@ class state_tracker : public creation_data_tracker<> {
     return res;
   }
 
+  VkResult vkCreateBuffer(VkDevice device,
+                          const VkBufferCreateInfo* pCreateInfo,
+                          const VkAllocationCallbacks* pAllocator,
+                          VkBuffer* pBuffer) override {
+    VkBufferCreateInfo bci = *pCreateInfo;
+    bci.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    return super::vkCreateBuffer(device, &bci, nullptr, pBuffer);
+  }
+
   void vkCmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                                VkPipelineBindPoint pipelineBindPoint,
                                VkPipelineLayout layout,
@@ -480,7 +489,7 @@ class state_tracker : public creation_data_tracker<> {
 
     auto cb = state_block_->get(commandBuffer);
     cb->_pre_run_functions.push_back(
-        [this, ids = std::move(ds), pipelineBindPoint, firstSet]() {
+        [this, ids = std::move(ds), pipelineBindPoint, firstSet](VkQueue) {
           std::unordered_map<uint32_t, VkDescriptorSet>* sets;
           switch (pipelineBindPoint) {
             case VK_PIPELINE_BIND_POINT_GRAPHICS:
@@ -499,208 +508,128 @@ class state_tracker : public creation_data_tracker<> {
         });
   }
 
-  void vkCmdBindPipeline(VkCommandBuffer commandBuffer,
-                         VkPipelineBindPoint pipelineBindPoint,
-                         VkPipeline pipeline) override {
-    super::vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back([this, pipelineBindPoint, pipeline]() {
-      switch (pipelineBindPoint) {
-        case VK_PIPELINE_BIND_POINT_GRAPHICS:
-          graphics_state.current_pipeline = pipeline;
-          break;
-        case VK_PIPELINE_BIND_POINT_COMPUTE:
-          compute_state.current_pipeline = pipeline;
-          break;
-        default:
-          GAPID2_ERROR("Unknown bind point");
+  void vkCmdPipelineBarrier(VkCommandBuffer commandBuffer,
+                            VkPipelineStageFlags srcStageMask,
+                            VkPipelineStageFlags dstStageMask,
+                            VkDependencyFlags dependencyFlags,
+                            uint32_t memoryBarrierCount,
+                            const VkMemoryBarrier* pMemoryBarriers,
+                            uint32_t bufferMemoryBarrierCount,
+                            const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+                            uint32_t imageMemoryBarrierCount,
+                            const VkImageMemoryBarrier* pImageMemoryBarriers) override {
+    super::vkCmdPipelineBarrier(commandBuffer,
+                                srcStageMask,
+                                dstStageMask,
+                                dependencyFlags,
+                                memoryBarrierCount,
+                                pMemoryBarriers,
+                                bufferMemoryBarrierCount,
+                                pBufferMemoryBarriers,
+                                imageMemoryBarrierCount,
+                                pImageMemoryBarriers);
+
+    struct buffer_barrier {
+      uint32_t src_queue_index;
+      uint32_t dst_queue_index;
+      VkBuffer buffer;
+    };
+
+    std::vector<buffer_barrier> buffers;
+    for (uint32_t i = 0; i < bufferMemoryBarrierCount; ++i) {
+      // If we have not assigned a queue family index OR 
+      //   if that queue family index is changing, then we should record this.
+      if (state_block_->get(pBufferMemoryBarriers[i].buffer)->src_queue ==
+          VK_QUEUE_FAMILY_IGNORED || pBufferMemoryBarriers[i].srcQueueFamilyIndex != 
+        pBufferMemoryBarriers[i].dstQueueFamilyIndex) {
+        buffers.push_back(
+          buffer_barrier{
+                .src_queue_index = pBufferMemoryBarriers[i].srcQueueFamilyIndex,
+                .dst_queue_index = pBufferMemoryBarriers[i].dstQueueFamilyIndex,
+                .buffer = pBufferMemoryBarriers[i].buffer
+          });
       }
-    });
-  }
-
-  void vkCmdDraw(VkCommandBuffer commandBuffer,
-                 uint32_t vertexCount,
-                 uint32_t instanceCount,
-                 uint32_t firstVertex,
-                 uint32_t firstInstance) override {
-    super::vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex,
-                     firstInstance);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
-  }
-
-  void vkCmdDrawIndexed(VkCommandBuffer commandBuffer,
-                        uint32_t indexCount,
-                        uint32_t instanceCount,
-                        uint32_t firstIndex,
-                        int32_t vertexOffset,
-                        uint32_t firstInstance) override {
-    super::vkCmdDrawIndexed(commandBuffer, indexCount, instanceCount,
-                            firstIndex, vertexOffset, firstInstance);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
-  }
-  void vkCmdDrawIndirect(VkCommandBuffer commandBuffer,
-                         VkBuffer buffer,
-                         VkDeviceSize offset,
-                         uint32_t drawCount,
-                         uint32_t stride) override {
-    super::vkCmdDrawIndirect(commandBuffer, buffer, offset, drawCount, stride);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
-  }
-  void vkCmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
-                                VkBuffer buffer,
-                                VkDeviceSize offset,
-                                uint32_t drawCount,
-                                uint32_t stride) override {
-    super::vkCmdDrawIndexedIndirect(commandBuffer, buffer, offset, drawCount,
-                                    stride);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
-  }
-  void vkCmdDrawIndirectCount(VkCommandBuffer commandBuffer,
-                              VkBuffer buffer,
-                              VkDeviceSize offset,
-                              VkBuffer countBuffer,
-                              VkDeviceSize countBufferOffset,
-                              uint32_t maxDrawCount,
-                              uint32_t stride) override {
-    super::vkCmdDrawIndirectCount(commandBuffer, buffer, offset, countBuffer,
-                                  countBufferOffset, maxDrawCount, stride);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
-  }
-  void vkCmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
-                                     VkBuffer buffer,
-                                     VkDeviceSize offset,
-                                     VkBuffer countBuffer,
-                                     VkDeviceSize countBufferOffset,
-                                     uint32_t maxDrawCount,
-                                     uint32_t stride) override {
-    super::vkCmdDrawIndexedIndirectCount(commandBuffer, buffer, offset,
-                                         countBuffer, countBufferOffset,
-                                         maxDrawCount, stride);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS); });
-  }
-
-  void vkCmdDispatch(VkCommandBuffer commandBuffer,
-                     uint32_t groupCountX,
-                     uint32_t groupCountY,
-                     uint32_t groupCountZ) override {
-    super::vkCmdDispatch(commandBuffer, groupCountX, groupCountY, groupCountZ);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE); });
-  }
-
-  void vkCmdDispatchIndirect(VkCommandBuffer commandBuffer,
-                             VkBuffer buffer,
-                             VkDeviceSize offset) override {
-    super::vkCmdDispatchIndirect(commandBuffer, buffer, offset);
-    auto cb = state_block_->get(commandBuffer);
-    cb->_pre_run_functions.push_back(
-        [this]() { handle_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE); });
-  }
-
-  void handle_descriptor_sets(VkPipelineBindPoint bind_point) {
-    decltype(state_block_->get(VkPipeline(0))) pipeline;
-    std::unordered_map<uint32_t, VkDescriptorSet>* sets;
-    switch (bind_point) {
-      case VK_PIPELINE_BIND_POINT_GRAPHICS:
-        pipeline = state_block_->get(graphics_state.current_pipeline);
-        sets = &graphics_state.m_bound_descriptors;
-        break;
-      case VK_PIPELINE_BIND_POINT_COMPUTE:
-        pipeline = state_block_->get(compute_state.current_pipeline);
-        sets = &compute_state.m_bound_descriptors;
-        break;
-      default:
-        GAPID2_ERROR("Unknown bind point");
     }
-    for (auto& usage : pipeline->usages) {
-      auto ds = state_block_->get((*sets)[usage.set]);
-      auto& bt = ds->bindings[usage.binding].descriptors;
-      auto tp = ds->bindings[usage.binding].type;
-      for (size_t i = 0; i < usage.count; ++i) {
-        switch (tp) {
-          case VK_DESCRIPTOR_TYPE_SAMPLER:
-            break;
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
-            if (bt[i].image_info.imageView) {
-              auto img = state_block_->get(
-                  state_block_->get(bt[i].image_info.imageView)
-                      ->create_info->image);
-              for (auto& b : img->bindings) {
-                auto mem = state_block_->get(b.memory);
-                if (mem->_is_coherent && mem->_mapped_location) {
-                  m_read_bound_device_memories.insert(b.memory);
-                }
-              }
-              if (tp == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-                for (auto& b : img->bindings) {
-                  m_write_bound_device_memories.insert(b.memory);
-                }
-              }
-            }
-          } break;
-          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-            if (bt[i].buffer_view_info) {
-              auto buffer = state_block_->get(
-                  state_block_->get(bt[i].buffer_view_info)
-                      ->create_info->buffer);
-              for (auto& b : buffer->bindings) {
-                auto mem = state_block_->get(b.memory);
-                if (mem->_is_coherent && mem->_mapped_location) {
-                  m_read_bound_device_memories.insert(b.memory);
-                }
-              }
 
-              if (tp == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
-                for (auto& b : buffer->bindings) {
-                  auto mem = state_block_->get(b.memory);
-                  m_write_bound_device_memories.insert(b.memory);
-                }
-              }
-            }
-          } break;
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-            if (bt[i].buffer_info.buffer) {
-              auto buffer =
-                  state_block_->get(bt[i].buffer_info.buffer);
-              for (auto& b : buffer->bindings) {
-                auto mem = state_block_->get(b.memory);
-                if (mem->_is_coherent && mem->_mapped_location) {
-                  m_read_bound_device_memories.insert(b.memory);
-                }
-              }
-              if (tp == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-                  tp == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-                for (auto& b : buffer->bindings) {
-                  auto mem = state_block_->get(b.memory);
-                  m_write_bound_device_memories.insert(b.memory);
-                }
-              }
-            }
-          } break;
-          default:
-            GAPID2_ERROR("Unknown descriptor type");
-        }
+    struct image_barrier {
+      uint32_t src_queue_index;
+      uint32_t dst_queue_index;
+      VkImage image;
+      VkImageLayout layout;
+      VkImageSubresourceRange range;
+    };
+    std::vector<image_barrier> images;
+    for (uint32_t i = 0; i < imageMemoryBarrierCount; ++i) {
+      // If we have not assigned a queue family index OR
+      //   if that queue family index is changing, then we should record this.
+      auto img = state_block_->get(pImageMemoryBarriers[i].image);
+      bool add = pImageMemoryBarriers[i].srcQueueFamilyIndex != pImageMemoryBarriers[i].dstQueueFamilyIndex ||
+                 pImageMemoryBarriers[i].oldLayout != pImageMemoryBarriers[i].newLayout;
+      if (!add) {
+        img->for_each_subresource_in(pImageMemoryBarriers[i].subresourceRange,
+                                     [&cAdd = add, cImg = img](uint32_t mip_level, uint32_t array_layer, VkImageAspectFlagBits aspect) {
+                                       if (cAdd) {
+                                         return;
+                                       }
+                                       auto subresource_idx = cImg->get_subresource_idx(mip_level, array_layer, aspect);
+                                       if (cImg->sr_data[subresource_idx].src_queue_idx == VK_QUEUE_FAMILY_IGNORED) {
+                                         cAdd = true;
+                                       }
+                                     });
       }
+      if (add) {
+        images.push_back(image_barrier{
+            .src_queue_index = pImageMemoryBarriers[i].srcQueueFamilyIndex,
+            .dst_queue_index = pImageMemoryBarriers[i].dstQueueFamilyIndex,
+            .image = pImageMemoryBarriers[i].image,
+            .layout = pImageMemoryBarriers[i].newLayout,
+            .range = pImageMemoryBarriers[i].subresourceRange});
+      }
+    }
+
+
+    auto cb = state_block_->get(commandBuffer);
+    if (!images.empty() || !buffers.empty()) {
+      cb->_post_run_functions.push_back([this, cB = std::move(buffers), cI = std::move(images)](VkQueue queue) {
+        auto q = state_block_->get(queue);
+        for (const auto b : cB) {
+          auto buff = state_block_->get(b.buffer);
+          if (b.src_queue_index == b.dst_queue_index) {
+            buff->src_queue = q->queue_family_index;
+            buff->dst_queue = q->queue_family_index;
+          } else {
+            // This is a release operation, so record it as such
+            if (b.src_queue_index == q->queue_family_index) {
+              buff->src_queue = b.src_queue_index;
+              buff->dst_queue = b.dst_queue_index;
+            } else {  // This is an acquire operation, so record it as such (meaning we are done and now on the new queue)
+              buff->src_queue = b.dst_queue_index;
+              buff->dst_queue = b.dst_queue_index;
+            }
+          }
+        }
+        for (const auto i : cI) {
+          auto img = state_block_->get(i.image);
+          img->for_each_subresource_in(i.range, [&cI = i, cImg = img, cQ = q](uint32_t mip_level, uint32_t array_layer, VkImageAspectFlagBits aspect) {
+            auto sr = cImg->get_subresource_idx(mip_level, array_layer, aspect);
+            auto& srdata = cImg->sr_data[sr];
+            srdata.layout = cI.layout;
+            if (cI.src_queue_index == cI.dst_queue_index) {
+              srdata.src_queue_idx = cQ->queue_family_index;
+              srdata.dst_queue_idx = cQ->queue_family_index;
+            } else {
+              if (cI.src_queue_index == cQ->queue_family_index) {
+                srdata.src_queue_idx = cI.src_queue_index;
+                srdata.dst_queue_idx = cI.dst_queue_index;
+              } else {  // This is an acquire operation, so record it as such (meaning we are done and now on the new queue)
+                srdata.src_queue_idx = cI.dst_queue_index;
+                srdata.dst_queue_idx = cI.dst_queue_index;
+              }
+            }
+
+          });
+        }
+      });
     }
   }
 

@@ -21,6 +21,8 @@ def output_recorder(definition, g):
     g.line()
     g.print("virtual encoder_handle get_locked_encoder(uintptr_t key) = 0;")
     g.print("virtual encoder_handle get_encoder(uintptr_t key) = 0;")
+    g.print("void insert_annotation(const char* data);")
+    g.print("virtual uint64_t get_flags() const { return 0; }")
     g.leave_scope("};")
     g.print("}")
 

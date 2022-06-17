@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_command_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecCommandPools");
   for (auto& it : state_block->VkCommandPools) {
     VkCommandPoolWrapper* comm_pool = it.second.second;
     VkCommandPool command_pool = it.first;

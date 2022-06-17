@@ -40,6 +40,9 @@ struct VkBufferWrapper : handle_base<VkBuffer> {
   VkDevice device = VK_NULL_HANDLE;
   temporary_allocator mem;
 
+  uint32_t src_queue = VK_QUEUE_FAMILY_IGNORED;
+  uint32_t dst_queue = VK_QUEUE_FAMILY_IGNORED;
+
   VkDeviceSize required_size;
   std::vector<memory_binding> bindings;
 };

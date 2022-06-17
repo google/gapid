@@ -112,6 +112,7 @@ def output_printer(definition, g):
     g.print('#include "struct_print.h"')
     g.print('#include "printer.h"')
     g.print('#include "custom.h"')
+    g.print('#include <functional>')
     g.print('namespace gapid2 {')
     g.enter_scope(
         'class command_printer : public transform_base {')
@@ -120,6 +121,10 @@ def output_printer(definition, g):
         g.enter_scope(f"{cmd.short_str()} override {{")
         g.print(f"printer_->begin_object(\"\");")
         g.print(f"printer_->print_string(\"name\", \"{cmd.name}\");")
+        g.enter_scope(
+            'if (get_flags) {')
+        g.print(f"printer_->print(\"tracer_flags\", get_flags());")
+        g.leave_scope('}')
         for x in cmd.args:
             output_arg_print(cmd, x, g)
         args = ", ".join(x.name for x in cmd.args)
@@ -132,6 +137,7 @@ def output_printer(definition, g):
         if (cmd.ret.name != 'void'):
             g.print(f"return ret;")
         g.leave_scope(f"}}")
+    g.print('std::function<uint64_t()> get_flags;')
     g.print('printer* printer_;')
     g.leave_scope('};')
     g.print('} // namespace gapid2')

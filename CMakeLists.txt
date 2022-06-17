@@ -1,12 +1,27 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(gapid2)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(MSVC)
+  add_compile_options("/ZI")
+  add_link_options("/INCREMENTAL")
+endif()
 
 include_directories(${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include)
 include_directories(${gapid2_SOURCE_DIR}/externals/digestpp)
 add_subdirectory(externals/vk_callback_swapchain)
+
+## Glslang options, disable as much as we can
+set(BUILD_EXTERNAL OFF)
+set(SKIP_GLSLANG_INSTALL ON)
+set(ENABLE_SPVREMAPPER OFF)
+set(ENABLE_GLSLANG_BINARIES OFF)
+set(ENABLE_OPT OFF)
+set(ENABLE_CTEST OFF)
+set(ENABLE_HLSL OFF)
+add_subdirectory(externals/glslang)
 
 add_library(spirv-reflect STATIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/externals/SPIRV-Reflect/spirv_reflect.h
@@ -318,7 +333,7 @@ add_library(HANDLE_TYPES STATIC
 add_library(BASE_FILES STATIC
     base_caller.cpp
     helpers.cpp
-    minimal_state_tracker.cpp
+    minimal_state_tracker.inl
     minimal_state_tracker.h
     custom.h
     custom.cpp
@@ -326,6 +341,8 @@ add_library(BASE_FILES STATIC
     creation_tracker.h
     state_block.cpp
     utils.h
+    command_serializer_fns.cpp
+    enums.h
     ${gapid2_BINARY_DIR}/struct_clone.h
     ${gapid2_BINARY_DIR}/device_functions.h
     ${gapid2_BINARY_DIR}/instance_functions.h
@@ -408,9 +425,17 @@ add_library(gapii SHARED
     mec_capture/swapchain.cpp
     mec_capture/synchronization.cpp
     mec_capture/utils.cpp
+    mec_capture/staging_resource_manager.cpp
+    mec_capture/staging_resource_manager.h
+    mec_capture/image_copier.cpp
+    mec_capture/image_copier.h
+    mec_capture/shader_manager.h
+    mec_capture/shader_manager.cpp
+    ${glslang_SOURCE_DIR}/Standalone/ResourceLimits.cpp
+    ${glslang_SOURCE_DIR}/Standalone/resource_limits_c.cpp
 )
 
-target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect)
+target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect glslang SPIRV)
 target_compile_definitions(gapii PRIVATE MEC=1)
 
 add_executable(gapir

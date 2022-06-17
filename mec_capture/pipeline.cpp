@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_pipelines(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecPipelines");
   for (auto& it : state_block->VkPipelines) {
     VkPipelineWrapper* pipe = it.second.second;
     VkPipeline pipeline = it.first;

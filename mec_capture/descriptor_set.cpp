@@ -28,6 +28,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_descriptor_sets(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecDescriptorSets");
   for (auto& it : state_block->VkDescriptorSets) {
     VkDescriptorSetWrapper* ds = it.second.second;
     VkDescriptorSet descriptor_set = it.first;
@@ -37,13 +38,14 @@ void mid_execution_generator::capture_descriptor_sets(const state_block* state_b
 }
 
 void mid_execution_generator::capture_descriptor_set_contents(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecDescriptorSetContents");
   for (auto& it : state_block->VkDescriptorSets) {
     VkDescriptorSetWrapper* ds = it.second.second;
     VkDescriptorSet descriptor_set = it.first;
     std::vector<VkWriteDescriptorSet> writes;
-    std::vector<VkDescriptorImageInfo> image_infos;
-    std::vector<VkDescriptorBufferInfo> buffer_infos;
-    std::vector<VkBufferView> buffer_views;
+    std::list<VkDescriptorImageInfo> image_infos;
+    std::list<VkDescriptorBufferInfo> buffer_infos;
+    std::list<VkBufferView> buffer_views;
     
     for (auto& b : ds->bindings) {
       for (uint32_t i = 0; i < b.second.descriptors.size(); ++i) {
@@ -97,6 +99,7 @@ void mid_execution_generator::capture_descriptor_set_contents(const state_block*
 
             buffer_infos.push_back(b.second.descriptors[i].buffer_info);
             dws.pBufferInfo = &buffer_infos.back();
+            break;
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             if (state_block->get(b.second.descriptors[i].buffer_view_info) &&

@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_sampler_ycbcr_conversions(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecSamplerYcbcrConversions");
   for (auto& it : state_block->VkSamplerYcbcrConversions) {
     VkSamplerYcbcrConversionWrapper* smp = it.second.second;
     VkSamplerYcbcrConversion sampler = it.first;

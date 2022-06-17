@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  * Copyright (C) 2022 Google Inc.
  *
@@ -14,23 +16,17 @@
  * limitations under the License.
  */
 
-#include "device.h"
+#include "command_serializer.h"
+#include <cstring>
 
-#include "mid_execution_generator.h"
-#include "state_block.h"
 namespace gapid2 {
 
-void mid_execution_generator::capture_devices(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
-  serializer->insert_annotation("MecDevices");
-  for (auto& it : state_block->VkDevices) {
-    VkDeviceWrapper* dev = it.second.second;
-    VkDevice device = it.first;
-    serializer->vkCreateDevice(
-        dev->get_physical_device(),
-        dev->get_create_info(),
-        nullptr,
-        &device);
-  }
+void command_serializer::insert_annotation(const char* data) {
+  auto len = strlen(data);
+  auto enc = get_encoder(0);
+  enc->encode<uint64_t>(1);
+  enc->encode<uint64_t>(get_flags());
+  enc->encode<uint64_t>(len+1);
+  enc->encode_primitive_array(data, len + 1);
 }
-
-}  // namespace gapid2
+}

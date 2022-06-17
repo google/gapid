@@ -14,15 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "command_buffer_recorder.h"
 #include "command_serializer.h"
 #include "transform_base.h"
+#include "shader_manager.h"
 
 namespace gapid2 {
-
 class mid_execution_generator {
  public:
+  mid_execution_generator(VkDeviceSize max_copy_overhead_bytes = 1024 * 1024 * 128) : max_copy_overhead_bytes_(max_copy_overhead_bytes) {
+  }
+
   void begin_mid_execution_capture(
-      const state_block* state_block, command_serializer* mid_execution_serializer, transform_base* bypass_caller) {
+      const state_block* state_block, command_serializer* mid_execution_serializer, transform_base* bypass_caller, command_buffer_recorder* cbr) {
+    shader_manager sm;
     capture_instances(state_block, mid_execution_serializer, bypass_caller);
     capture_physical_devices(state_block, mid_execution_serializer, bypass_caller);
     capture_surfaces(state_block, mid_execution_serializer, bypass_caller);
@@ -35,14 +40,13 @@ class mid_execution_generator {
     capture_images(state_block, mid_execution_serializer, bypass_caller);
     capture_allocations(state_block, mid_execution_serializer, bypass_caller);
 
-    capture_bind_images(state_block, mid_execution_serializer, bypass_caller);
     capture_bind_buffers(state_block, mid_execution_serializer, bypass_caller);
+    capture_bind_images(state_block, mid_execution_serializer, bypass_caller, &sm);
 
-    // capture_buffer_data
-    // capture_image_data
-
+    capture_buffer_data(state_block, mid_execution_serializer, bypass_caller, &sm);
     // capture_image_layouts_and_queues
 
+    // capture_device_memory_maps
     capture_sampler_ycbcr_conversions(state_block, mid_execution_serializer, bypass_caller);
     capture_samplers(state_block, mid_execution_serializer, bypass_caller);
     capture_command_pools(state_block, mid_execution_serializer, bypass_caller);
@@ -62,9 +66,11 @@ class mid_execution_generator {
     capture_descriptor_set_contents(state_block, mid_execution_serializer, bypass_caller);
 
     capture_query_pools(state_block, mid_execution_serializer, bypass_caller);
-    capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-    capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_SECONDARY, cbr);
+    capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_PRIMARY, cbr);
     capture_synchronization(state_block, mid_execution_serializer, bypass_caller);
+
+    mid_execution_serializer->insert_annotation("Mec Finished");
   }
 
  private:
@@ -76,7 +82,7 @@ class mid_execution_generator {
   void capture_swapchains(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_images(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
-  void capture_bind_images(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
+  void capture_bind_images(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, shader_manager* sm) const;
   void capture_bind_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_allocations(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_sampler_ycbcr_conversions(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
@@ -96,10 +102,19 @@ class mid_execution_generator {
   void capture_descriptor_sets(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_descriptor_set_contents(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_query_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
-  void capture_command_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, VkCommandBufferLevel level) const;
+  void capture_command_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, VkCommandBufferLevel level, command_buffer_recorder* cbr) const;
   void capture_synchronization(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
+  void capture_buffer_data(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, shader_manager* sm) const;
 
   VkQueue get_queue_for_device(const state_block* state_block, VkDevice device) const;
+
+  // How many bytes we are allowed to use for buffer/image copies.
+  // The only case in which we may exceed this much additional
+  // memory is if we have a single image subresource that is smaller
+  // than this value. In which case we will use the size of
+  // the image subresource .
+
+  const VkDeviceSize max_copy_overhead_bytes_ = 0;
 };
 
 }  // namespace gapid2

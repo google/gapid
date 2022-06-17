@@ -42,7 +42,7 @@ struct VkCommandBufferWrapper : handle_base<VkCommandBuffer, void> {
   VkCommandBufferAllocateInfo* allocate_info = nullptr;
   temporary_allocator mem;
   uint32_t idx = 0xFFFFFFFF;
-  std::deque<std::function<void()>> _pre_run_functions;
-  std::deque<std::function<void()>> _post_run_functions;
+  std::deque<std::function<void(VkQueue)>> _pre_run_functions;
+  std::deque<std::function<void(VkQueue)>> _post_run_functions;
 };
 }  // namespace gapid2

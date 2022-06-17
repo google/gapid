@@ -24,9 +24,9 @@
 
 namespace gapid2 {
 
-void VkQueueWrapper::set_create_info(VkDevice device_, uint32_t queueFamilyIndex, uint32_t queueIndex) {
-  queue_family_index = queue_family_index;
-  queue_index = queue_index;
+void VkQueueWrapper::set_create_info(VkDevice device_, const uint32_t queueFamilyIndex_, const uint32_t queueIndex_) {
+  queue_family_index = queueFamilyIndex_;
+  queue_index = queueIndex_;
   device = device_;
 }
 

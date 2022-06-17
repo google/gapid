@@ -120,7 +120,7 @@ def output_arg_dec(cmd, x, vop, arg_idx, idx, g):
         g.leave_scope(f"}}")
 
 
-def output_command_deserializer(cmd, definition, g, serialize_return=True):
+def output_command_deserializer(cmd, definition, g, serialize_return=True, use_next=False):
     arg_idx = 0
     g.print(f"// -------- Args ------")
     for arg in cmd.args:
@@ -204,7 +204,10 @@ def output_command_deserializer(cmd, definition, g, serialize_return=True):
             g.print(f"(void)current_return_;")
     g.print(f"// -------- Call ------")
     args = ", ".join(x.name for x in cmd.args)
-    g.print(f"{cmd.name}({args});")
+    if use_next:
+        g.print(f"next->{cmd.name}({args});")
+    else:
+        g.print(f"{cmd.name}({args});")
 
 
 def output_arg_enc(cmd, x, vop, arg_idx, idx, g):
@@ -326,6 +329,7 @@ def output_command(cmd, definition, g, only_return=False, optional_serialize=Fal
         if optional_serialize:
             g.enter_scope("if (enc) {")
         g.print(f"enc->template encode<uint64_t>({sha}u);")
+        g.print(f"enc->template encode<uint64_t>(get_flags());")
         arg_idx = 0
         for arg in cmd.args:
             if arg.name == 'pAllocator':

@@ -24,26 +24,29 @@ def output_deserializer(definition, g):
         arg_serialization.output_command_deserializer(
             cmd, definition, g, True)
         g.leave_scope('}')
-    g.print(
+    g.enter_scope(
         "void DeserializeStream(decoder* decoder_, bool raw_stream = false) {")
-    g.print("do {")
+    g.print("uint64_t current_command_index = 0; // For debugging")
+    g.enter_scope("do {")
     g.print("if (!raw_stream) {")
     g.print("const uint64_t data_left = decoder_->data_left();")
-    g.print("if (data_left < sizeof(uint64_t)) { return; }")
+    g.print("if (data_left < sizeof(uint64_t) * 2) { return; }")
     g.print(
-        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>()) { return; } ")
+        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>() * 2) { return; } ")
     g.print("} else {")
     g.print(
         "if (!decoder_->has_data_left()) { return; } ")
     g.print("}")
     g.print("uint64_t command_idx = decoder_->decode<uint64_t>();")
+    g.print("uint64_t flags = decoder_->decode<uint64_t>();")
+    g.print("notify_flag(flags);")
     g.print("switch(command_idx) {")
 
     for cmd in definition.commands.values():
         sha = int.from_bytes(hashlib.sha256(
             cmd.name.encode('utf-8')).digest()[:8], 'little')
         g.print(
-            f"case {sha}u: call_{cmd.name}(decoder_); continue;")
+            f"case {sha}u: call_{cmd.name}(decoder_); break;")
     g.print('default:')
     g.print('std::abort();')
     g.enter_scope('case 0:  { // mapped_memory_write')
@@ -59,17 +62,29 @@ def output_deserializer(definition, g):
     g.print(
         'decoder_->drop_primitive_array<char>(size);')
     g.leave_scope('}')
-    g.print('continue;')
+    g.print('break;')
     g.leave_scope('}')
-
+    g.enter_scope('case 1:  { // annotation')
+    g.print('uint64_t annotation_size = decoder_->decode<uint64_t>();')
+    g.print("std::vector<char> my_s;")
+    g.print("my_s.resize(annotation_size);")
+    g.print("decoder_->decode_primitive_array(my_s.data(), annotation_size);")
+    g.print("annotation(my_s.data());")
+    g.print("continue; // We dont want to increment the command idx here")
+    g.leave_scope('}')
     g.print("}")
-    g.print("} while(true);")
-    g.print("}")
+    g.print("current_command_index++;")
+    g.leave_scope("} while(true);")
+    g.leave_scope("}")
+    g.print(
+        'virtual void notify_flag(uint64_t flag) {}')
     g.enter_scope(
         'virtual void *get_memory_write_location(VkDeviceMemory, VkDeviceSize, VkDeviceSize) {')
     g.print('return nullptr;')
     g.leave_scope('}')
-
+    g.enter_scope(
+        'virtual void annotation(const char* annotation) {')
+    g.leave_scope('}')
     g.leave_scope('};')
     g.print('} // namespace gapid2')
 

@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_framebuffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecFramebuffers");
   for (auto& it : state_block->VkFramebuffers) {
     VkFramebufferWrapper* fb = it.second.second;
     VkFramebuffer frame_buffer = it.first;

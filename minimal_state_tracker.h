@@ -23,9 +23,11 @@
 #include "temporary_allocator.h"
 
 namespace gapid2 {
-class minimal_state_tracker : public creation_tracker<VkDeviceMemory, VkDescriptorUpdateTemplate, VkCommandBuffer> {
+
+template <typename... Args>
+class minimal_state_tracker_impl : public creation_tracker<Args...> {
  protected:
-  using super = creation_tracker;
+  using super = creation_tracker<Args...>;
 
  public:
   void vkGetPhysicalDeviceMemoryProperties(
@@ -67,4 +69,10 @@ class minimal_state_tracker : public creation_tracker<VkDeviceMemory, VkDescript
   NullCloner cloner;
   temporary_allocator mem;
 };
+
+using minimal_state_tracker = minimal_state_tracker_impl<VkDeviceMemory, VkDescriptorUpdateTemplate, VkCommandBuffer>;
+using minimal_creation_state_tracker = minimal_state_tracker_impl<>;
+
 }  // namespace gapid2
+
+#include "minimal_state_tracker.inl"

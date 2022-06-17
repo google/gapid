@@ -35,10 +35,15 @@ struct foo {
     if (last_data.empty()) {
       return;
     }
+    output_image();
+    OutputDebugString("Image has been output\n");
+  }
+
+  void output_image() {
     stbi_write_png_compression_level = 0;
     stbi_write_force_png_filter = 0;
     OutputDebugString("Dumping Image\n");
-    if (false && format == VK_FORMAT_B8G8R8A8_UNORM) {
+    if (format == VK_FORMAT_B8G8R8A8_UNORM) {
       for (size_t i = 0; i < last_data.size() / 4; ++i) {
         const size_t offs = i * 4;
         const uint8_t dat = last_data[offs + 2];
@@ -50,7 +55,6 @@ struct foo {
     image_name += std::to_string(i);
     image_name += ".png";
     stbi_write_png(image_name.data(), width, height, 4, last_data.data(), 0);
-    OutputDebugString("Image has been output\n");
   }
 
   size_t i = 0;
@@ -103,6 +107,7 @@ override_vkCreateSwapchainKHR(VkDevice device,
           f.i++;
           f.last_data.resize(size);
           memcpy(f.last_data.data(), data, size);
+          f.output_image();
         },
         nullptr);
   }

@@ -24,6 +24,7 @@
 #include "spy.h"
 #include "spy_serializer.h"
 #include "transform.h"
+#include "command_buffer_recorder.h"
 
 namespace gapid2 {
 class mec_controller : public transform_base {
@@ -33,12 +34,15 @@ class mec_controller : public transform_base {
 
   void initialize(spy_serializer* spy_serializer,
                   transform_base* passthrough_caller,
-                  spy* spy) {
+                  spy* spy,
+                  command_buffer_recorder* cbr) {
     spy_ = spy;
     spy_serializer_ = spy_serializer;
     noop_serializer.encoder = spy_serializer_;
     noop_serializer.state_block_ = state_block_;
+    noop_serializer.set_flags(flags::MID_EXECUTION);
     passthrough_caller_ = passthrough_caller;
+    cbr_ = cbr;
   }
 
   VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
@@ -61,9 +65,10 @@ class mec_controller : public transform_base {
   transform_base* passthrough_caller_;
   spy* spy_;
   size_t capture_frame = 100;
-  size_t frames_to_capture = 100;
+  size_t frames_to_capture = -1;
   transform_base empty_;
   transform<null_caller> null_caller_;
   transform<noop_serializer> noop_serializer;
+  command_buffer_recorder* cbr_;
 };
 }  // namespace gapid2

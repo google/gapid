@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_descriptor_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecDescriptorPools");
   for (auto& it : state_block->VkDescriptorPools) {
     VkDescriptorPoolWrapper* pool = it.second.second;
     VkDescriptorPool descriptor_pool = it.first;

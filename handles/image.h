@@ -25,6 +25,8 @@
 #include "device_memory.h"
 #include "handles.h"
 #include "temporary_allocator.h"
+#include <map>
+#include <functional>
 
 namespace gapid2 {
 class state_block;
@@ -33,7 +35,7 @@ struct VkImageWrapper : handle_base<VkImage> {
       : handle_base<VkImage>(image) {}
 
   void set_create_info(VkDevice device, state_block* state_block_, const VkImageCreateInfo* pCreateInfo);
-  void set_swapchain_info(VkDevice device, VkSwapchainKHR swap, uint32_t i);
+  void set_swapchain_info(VkDevice device, state_block* state_block_, VkSwapchainKHR swap, uint32_t i);
 
   const VkImageCreateInfo* get_create_info() const {
     return create_info;
@@ -43,7 +45,13 @@ struct VkImageWrapper : handle_base<VkImage> {
     return swapchain;
   }
 
+  uint32_t get_subresource_idx(uint32_t mip_level, uint32_t array_layer, VkImageAspectFlagBits aspect_flag) const;
+  uint32_t get_aspect_index(VkImageAspectFlagBits aspect) const ;
+
+  void for_each_subresource_in(VkImageSubresourceRange range, const std::function<void(uint32_t mip_level, uint32_t array_layer, VkImageAspectFlagBits aspect)>& fn);
+
   VkImageCreateInfo* create_info = nullptr;
+  VkImageCreateInfo swapchain_create_info;
   VkSwapchainKHR swapchain = VK_NULL_HANDLE;
   VkDevice device = VK_NULL_HANDLE;
   uint32_t swapchain_idx = 0xFFFFFFFF;
@@ -52,5 +60,13 @@ struct VkImageWrapper : handle_base<VkImage> {
 
   VkDeviceSize required_size;
   std::vector<memory_binding> bindings;
+  
+  struct subresource_data {
+    uint32_t src_queue_idx;
+    uint32_t dst_queue_idx;
+    VkImageLayout layout;
+  };
+
+  std::map<uint32_t, subresource_data> sr_data;
 };
 }  // namespace gapid2

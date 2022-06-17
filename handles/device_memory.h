@@ -40,6 +40,7 @@ struct VkDeviceMemoryWrapper : handle_base<VkDeviceMemory> {
 
   VkDeviceSize _mapped_size;
   VkDeviceSize _mapped_offset;
+  VkMemoryMapFlags _mapped_flags = 0;
   char* _mapped_location = nullptr;
   bool _is_coherent = false;
   VkDeviceSize _size = 0;

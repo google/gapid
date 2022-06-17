@@ -66,7 +66,7 @@ class trace_printer : public command_deserializer {
 
     VkResult current_return_ = decoder_->decode<VkResult>();
 
-    call_through->vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount,
+    super::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount,
                                              pPhysicalDevices);
     if (!pPhysicalDevices) {
       return;
@@ -89,10 +89,35 @@ class trace_printer : public command_deserializer {
     }
   }
 
+  void* get_memory_write_location(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size) override {
+    printer->begin_object("");
+    printer->print_string("name", "MemoryObservation");
+    printer->print("tracer_flags", last_flag);
+    printer->print("deviceMemory", reinterpret_cast<uintptr_t>(memory));
+    printer->print("size", size);
+    printer->print("offset", offset);
+    printer->end_object();
+    return nullptr;
+  }
+
+  virtual void annotation(const char* content) {
+    printer->begin_object("");
+    printer->print_string("name", "Annotation");
+    printer->print("tracer_flags", last_flag);
+    printer->print_string("annotation", content);
+    printer->end_object();
+  }
+
+  virtual void notify_flag(uint64_t flag) {
+    last_flag = flag;
+  }
+
  public:
   transform_base* call_through;
   trace_printer() {}
   temporary_allocator allocator;
+  printer* printer;
+  uint64_t last_flag = 0;
 };
 }  // namespace gapid2
 
@@ -132,12 +157,16 @@ int main(int argc, const char** argv) {
   gapid2::transform<gapid2::minimal_state_tracker> minimal_state_tracker_(&printer);
   gapid2::transform<gapid2::command_printer> command_printer(&printer);
   printer.call_through = &minimal_state_tracker_;
+  command_printer.get_flags = [cPrinter = &printer]() {
+    return cPrinter->last_flag;
+  };
   gapid2::json_printer jp;
   if (argc > 2) {
     jp.set_file(argv[2]);
   }
 
   command_printer.printer_ = &jp;
+  printer.printer = &jp;
 
   std::vector<block> b({block{static_cast<uint64_t>(fileSize.QuadPart),
                               reinterpret_cast<char*>(loc), 0}});

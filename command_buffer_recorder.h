@@ -15,7 +15,7 @@
 namespace gapid2 {
 class command_buffer_recorder : public transform_base {
  public:
-  void RerecordCommandBuffer(VkCommandBuffer cb) {
+  void RerecordCommandBuffer(VkCommandBuffer cb, transform_base* next) {
     std::shared_lock<std::shared_mutex> l(command_buffers_mutex);
     std::unordered_map<VkCommandBuffer,
                        std::unique_ptr<command_buffer_recording>>::iterator it;
@@ -29,7 +29,7 @@ class command_buffer_recorder : public transform_base {
     decoder dec(std::move(v));
 
     command_buffer_deserializer deserializer;
-    *static_cast<transform_base*>(&deserializer) = *static_cast<transform_base*>(this);
+    deserializer.next = next;
     deserializer.DeserializeStream(&dec, true);
   }
 
@@ -116,6 +116,10 @@ class command_buffer_recorder : public transform_base {
   virtual encoder_handle get_locked_encoder(uintptr_t key) {
     // We don't need a locked encoder for any command buffers.
     return get_encoder(key);
+  }
+
+  uint64_t get_flags() const {
+    return 0;
   }
 
 #include "command_buffer_recorder.inl"

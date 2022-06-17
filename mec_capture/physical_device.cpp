@@ -24,6 +24,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_physical_devices(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecPhysicalDevices");
   for (auto& it : state_block->VkInstances) {
     std::map<uint32_t, VkPhysicalDevice> pd;
     for (auto i : state_block->VkPhysicalDevices) {

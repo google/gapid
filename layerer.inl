@@ -51,7 +51,7 @@ inline void* layerer::ResolveHelperFunction(const char* name,
 
 void call_rerecord(void* data, VkCommandBuffer cb) {
   auto* cbr = reinterpret_cast<command_buffer_recorder*>(data);
-  return cbr->RerecordCommandBuffer(cb);
+  return cbr->RerecordCommandBuffer(cb, cbr);
 }
 
 inline void layerer::RunUserSetup(HMODULE module) {

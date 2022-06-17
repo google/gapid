@@ -24,6 +24,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_synchronization(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecSemaphores");
   for (auto& it : state_block->VkSemaphores) {
     VkSemaphoreWrapper* sem = it.second.second;
     VkSemaphore semaphore = it.first;
@@ -47,7 +48,7 @@ void mid_execution_generator::capture_synchronization(const state_block* state_b
       serializer->vkQueueSubmit(q, 1, &sub_info, 0);
     }
   }
-
+  serializer->insert_annotation("MecFences");
   for (auto& it : state_block->VkFences) {
     VkFenceWrapper* f = it.second.second;
     VkFence fence = it.first;
@@ -56,7 +57,7 @@ void mid_execution_generator::capture_synchronization(const state_block* state_b
     ci.flags = status == VK_SUCCESS ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
     serializer->vkCreateFence(f->device, &ci, nullptr, &fence);
   }
-
+  serializer->insert_annotation("MecEvents");
   for (auto& it : state_block->VkEvents) {
     VkEventWrapper* evt = it.second.second;
     VkEvent event = it.first;

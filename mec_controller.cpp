@@ -31,7 +31,7 @@ void mec_controller::start_capture() {
   spy_serializer_->enable();
   spy_->reset_memory_watch();
   mid_execution_generator gen;
-  gen.begin_mid_execution_capture(state_block_, &noop_serializer, passthrough_caller_);
+  gen.begin_mid_execution_capture(state_block_, &noop_serializer, passthrough_caller_, cbr_);
 }
 
 void mec_controller::end_capture() {

@@ -13,3 +13,6 @@
 [submodule "externals/digestpp"]
 	path = externals/digestpp
 	url = https://github.com/kerukuro/digestpp
+[submodule "externals/glslang"]
+	path = externals/glslang
+	url = https://github.com/KhronosGroup/glslang.git

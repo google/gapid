@@ -23,6 +23,7 @@
 namespace gapid2 {
 
 void mid_execution_generator::capture_samplers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
+  serializer->insert_annotation("MecSamplers");
   for (auto& it : state_block->VkSamplers) {
     VkSamplerWrapper* smp = it.second.second;
     VkSampler sampler = it.first;

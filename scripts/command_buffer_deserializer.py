@@ -24,7 +24,7 @@ def output_deserializer(definition, g):
         prms = [x.short_str() for x in cmd.args]
         g.enter_scope(f'void call_{cmd.name}(decoder* decoder_) {{')
         arg_serialization.output_command_deserializer(
-            cmd, definition, g, False)
+            cmd, definition, g, False, True)
         g.leave_scope('}')
     g.print(
         "void DeserializeStream(decoder* decoder_, bool raw_stream = false) {")
@@ -33,12 +33,14 @@ def output_deserializer(definition, g):
     g.print("const uint64_t data_left = decoder_->data_left();")
     g.print("if (data_left < sizeof(uint64_t)) { return; }")
     g.print(
-        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>()) { return; } ")
+        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>() * 2) { return; } ")
     g.print("} else {")
     g.print(
         "if (!decoder_->has_data_left()) { return; } ")
     g.print("}")
     g.print("uint64_t command_idx = decoder_->decode<uint64_t>();")
+    g.print("uint64_t flags = decoder_->decode<uint64_t>();")
+    g.print("(void)flags;")
     g.print("switch(command_idx) {")
 
     for cmd in definition.commands.values():
@@ -53,6 +55,7 @@ def output_deserializer(definition, g):
     g.print("}")
     g.print("} while(true);")
     g.print("}")
+    g.print("transform_base* next = nullptr;")
     g.leave_scope('};')
     g.print('} // namespace gapid2')
 

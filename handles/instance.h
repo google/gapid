@@ -27,25 +27,6 @@
 #include "handles.h"
 #include "temporary_allocator.h"
 
-#define REGISTER_CHILD_TYPE(type)           \
- public:                                    \
-  void* get_and_increment_child(type t) {   \
-    std::unique_lock l(child_mutex);        \
-    auto it = __##type##s.find(t);          \
-    if (it == __##type##s.end()) {          \
-      return VK_NULL_HANDLE;                \
-    }                                       \
-    it->second.second++;                    \
-    return it->second.first;                \
-  }                                         \
-  void add_child(type t, void* _t) {        \
-    std::unique_lock l(child_mutex);        \
-    __##type##s[t] = std::make_pair(_t, 1); \
-  }                                         \
-                                            \
- private:                                   \
-  std::unordered_map<type, std::pair<void*, uint32_t>> __##type##s;
-
 namespace gapid2 {
 class state_block;
 struct VkInstanceWrapper : handle_base<VkInstance, void> {
@@ -58,10 +39,6 @@ struct VkInstanceWrapper : handle_base<VkInstance, void> {
     return create_info;
   }
 
-  REGISTER_CHILD_TYPE(VkDevice);
-  REGISTER_CHILD_TYPE(VkPhysicalDevice);
-  REGISTER_CHILD_TYPE(VkSurfaceKHR);
-
  private:
   std::mutex child_mutex;
 
@@ -69,5 +46,3 @@ struct VkInstanceWrapper : handle_base<VkInstance, void> {
   temporary_allocator mem;
 };
 }  // namespace gapid2
-
-#undef REGISTER_CHILD_TYPE
