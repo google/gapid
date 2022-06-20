@@ -15,24 +15,8 @@
 load("//tools/build:rules.bzl", "py_lint", "py_test")
 
 py_test(
-    name = "test_funcptr_parsing",
-    srcs = ["test_funcptr_parsing.py"],
-    deps = [
-        "//vulkan_generator/vulkan_parser",
-    ],
-)
-
-py_test(
-    name = "test_handle_parsing",
-    srcs = ["test_handle_parsing.py"],
-    deps = [
-        "//vulkan_generator/vulkan_parser",
-    ],
-)
-
-py_test(
-    name = "test_struct_parsing",
-    srcs = ["test_struct_parsing.py"],
+    name = "test_vulkan_parsing",
+    srcs = glob(["*.py"]),
     deps = [
         "//vulkan_generator/vulkan_parser",
     ],

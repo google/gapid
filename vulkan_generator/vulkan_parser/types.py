@@ -32,6 +32,13 @@ class VulkanType:
 
 
 @dataclass
+class VulkanBaseType(VulkanType):
+    """Base class for a Vulkan basetype"""
+    # If there is no base type, then it is a forward declaration
+    basetype: Optional[str]
+
+
+@dataclass
 class VulkanHandle(VulkanType):
     """The meta data defines a Vulkan Handle"""
     # Melih TODO: Vulkan Handles have object type in the XML that might be required in the future
@@ -232,6 +239,8 @@ class AllVulkanTypes:
     # We may have an extra step to convert the map to other direction.
 
     defines: OrderedDict[str, VulkanDefine] = field(default_factory=OrderedDict)
+
+    basetypes: OrderedDict[str, VulkanBaseType] = field(default_factory=OrderedDict)
 
     handles: Dict[str, VulkanHandle] = field(default_factory=dict)
     handle_aliases: Dict[str, VulkanHandleAlias] = field(default_factory=dict)

@@ -24,6 +24,7 @@ from vulkan_generator.vulkan_parser import struct_parser
 from vulkan_generator.vulkan_parser import funcptr_parser
 from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_parser import defines_parser
+from vulkan_generator.vulkan_parser import basetype_parser
 
 
 def process_defines(vulkan_types: types.AllVulkanTypes, define_element: ET.Element) -> None:
@@ -34,6 +35,16 @@ def process_defines(vulkan_types: types.AllVulkanTypes, define_element: ET.Eleme
         return
 
     raise SyntaxError(f"Unknown Define: {vulkan_define}")
+
+
+def process_basetype(vulkan_types: types.AllVulkanTypes, define_element: ET.Element) -> None:
+    vulkan_basetype = basetype_parser.parse(define_element)
+
+    if isinstance(vulkan_basetype, types.VulkanBaseType):
+        vulkan_types.basetypes[vulkan_basetype.typename] = vulkan_basetype
+        return
+
+    raise SyntaxError(f"Unknown Basetype: {vulkan_basetype}")
 
 
 def process_bitmask_alises(vulkan_types: types.AllVulkanTypes, bitmask_element: ET.Element) -> None:
@@ -104,6 +115,8 @@ def parse(types_root: ET.Element) -> types.AllVulkanTypes:
             type_category = type_element.attrib["category"]
             if type_category == "define":
                 process_defines(vulkan_types, type_element)
+            elif type_category == "basetype":
+                process_basetype(vulkan_types, type_element)
             elif type_category == "bitmask":
                 process_bitmask_alises(vulkan_types, type_element)
             elif type_category == "enum":
