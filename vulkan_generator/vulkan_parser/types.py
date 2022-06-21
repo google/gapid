@@ -268,6 +268,54 @@ class AllVulkanCommands:
 
 
 @dataclass
+class SpirvExtension:
+    """
+    The metadata that defines a Spirv Extension
+    """
+    name: str
+
+    # Set if this extension part of a Vulkan version
+    version: Optional[str]
+
+    # Vulkan extension enabled by this Spirv extension
+    extension: str
+
+
+@dataclass
+class SpirvCapability:
+    """
+    The metadata that defines a Spirv Capability
+
+    Attribures:
+        feature     This capability enables 'Vk*Features::feature'
+        property    This capability enables 'vk*Properties::property_group::property'
+    """
+    name: str
+
+    # Set if this extension part of a Vulkan version
+    version: Optional[str]
+
+    # Which Vulkan feature this capabiliy enables
+    feature: Optional[str]
+
+    # Which Vulkan property this capabiliy enables
+    property: Optional[str]
+
+    # Vulkan extension enabled by this Spirv extension
+    extension: str
+
+
+@dataclass
+class SpirvMetadata:
+    """
+    This class holds the information of Spirv features from Vulkan XML
+    This class should have all the information needed to generate code related to Spirv
+    """
+    extensions: Dict[str, SpirvExtension] = field(default_factory=dict)
+    capabilities: Dict[str, SpirvCapability] = field(default_factory=dict)
+
+
+@dataclass
 class VulkanMetadata:
     """
     This class holds the information parsed from Vulkan XML
@@ -275,3 +323,4 @@ class VulkanMetadata:
     """
     types: AllVulkanTypes
     commands: AllVulkanCommands
+    spirv_metadata: SpirvMetadata

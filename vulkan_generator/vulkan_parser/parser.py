@@ -21,6 +21,7 @@ from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_parser import type_parser
 from vulkan_generator.vulkan_parser import enums_parser
 from vulkan_generator.vulkan_parser import commands_parser
+from vulkan_generator.vulkan_parser import spirv_parser
 
 
 def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) -> None:
@@ -50,13 +51,16 @@ def parse(filename: Path) -> types.VulkanMetadata:
     tree = ET.parse(filename)
     all_types = types.AllVulkanTypes()
     all_commands = types.AllVulkanCommands()
+    spirv_metadata = types.SpirvMetadata()
 
-    for child in tree.iter():
+    for child in tree.getroot():
         if child.tag == "types":
             all_types = type_parser.parse(child)
         elif child.tag == "enums":
             process_enums(all_types, child)
         elif child.tag == "commands":
             all_commands = commands_parser.parse(child)
+        elif child.tag.startswith("spirv"):
+            spirv_metadata = spirv_parser.parse(child)
 
-    return types.VulkanMetadata(types=all_types, commands=all_commands)
+    return types.VulkanMetadata(types=all_types, commands=all_commands, spirv_metadata=spirv_metadata)

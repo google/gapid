@@ -66,6 +66,14 @@ def print_vulkan_metadata(vulkan_metadata: types.VulkanMetadata) -> None:
     print("=== Vulkan Command Aliases ===")
     pretty_printer.pprint(vulkan_commands.command_aliases)
 
+    spirv_metadata = vulkan_metadata.spirv_metadata
+
+    print("=== Spirv Extensions ===")
+    pretty_printer.pprint(spirv_metadata.extensions)
+
+    print("=== Spirv Capabilities ===")
+    pretty_printer.pprint(spirv_metadata.capabilities)
+
 
 def generate(vulkan_xml_path: Path) -> bool:
     """ Generator function """
