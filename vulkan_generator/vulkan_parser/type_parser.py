@@ -110,7 +110,7 @@ def parse(types_root: ET.Element) -> types.AllVulkanTypes:
     """ Parses all the Vulkan types and returns them in an object with dictionaries to each type """
     vulkan_types = types.AllVulkanTypes()
 
-    for type_element in types_root.iter():
+    for type_element in types_root:
         if "category" in type_element.attrib:
             type_category = type_element.attrib["category"]
             if type_category == "define":
