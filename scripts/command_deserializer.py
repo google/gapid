@@ -32,7 +32,7 @@ def output_deserializer(definition, g):
     g.print("const uint64_t data_left = decoder_->data_left();")
     g.print("if (data_left < sizeof(uint64_t) * 2) { return; }")
     g.print(
-        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>() * 2) { return; } ")
+        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>()) { return; } ")
     g.print("} else {")
     g.print(
         "if (!decoder_->has_data_left()) { return; } ")

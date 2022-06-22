@@ -32,14 +32,60 @@ void mid_execution_generator::capture_pipelines(const state_block* state_block, 
 #pragma TODO(awoloszyn, Figure out if we want to handle pipeline inheritance.In theory it only matters for performance)
       create_info.basePipelineHandle = VK_NULL_HANDLE;
       create_info.basePipelineIndex = -1;
+
+      if (state_block->VkShaderModules.count(create_info.stage.module) == 0) {
+        // The shader module was removed, create a temporary one.
+        VkShaderModuleCreateInfo inf{
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .codeSize = pipe->shader_code[0]->size() * sizeof(uint32_t),
+            .pCode = pipe->shader_code[0]->data()};
+
+        GAPID2_ASSERT(VK_SUCCESS == bypass_caller->vkCreateShaderModule(pipe->device, &inf, nullptr, &create_info.stage.module),
+                      "Could not create shader module");
+        serializer->vkCreateShaderModule(pipe->device, &inf, nullptr, &create_info.stage.module);
+      }
+
       serializer->vkCreateComputePipelines(pipe->device, pipe->cache, 1, &create_info, nullptr, &pipeline);
+
+      if (create_info.stage.module != pipe->get_compute_create_info()->stage.module) {
+        bypass_caller->vkDestroyShaderModule(pipe->device, create_info.stage.module, nullptr);
+        serializer->vkDestroyShaderModule(pipe->device, create_info.stage.module, nullptr);
+      }
     } else {
       GAPID2_ASSERT(pipe->bind == VK_PIPELINE_BIND_POINT_GRAPHICS, "Unknown pipeline type")
       auto create_info = *pipe->get_graphics_create_info();
 #pragma TODO(awoloszyn, Figure out if we want to handle pipeline inheritance.In theory it only matters for performance)
       create_info.basePipelineHandle = VK_NULL_HANDLE;
       create_info.basePipelineIndex = -1;
+
+      std::vector<VkPipelineShaderStageCreateInfo> stages(
+          create_info.pStages, create_info.pStages + create_info.stageCount);
+      create_info.pStages = stages.data();
+      for (uint32_t i = 0; i < create_info.stageCount; ++i) {
+        if (0 == state_block->VkShaderModules.count(stages[i].module)) {
+          // The shader module was removed, create a temporary one.
+          VkShaderModuleCreateInfo inf{
+              .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+              .pNext = nullptr,
+              .flags = 0,
+              .codeSize = pipe->shader_code[i]->size() * sizeof(uint32_t),
+              .pCode = pipe->shader_code[i]->data()};
+
+          GAPID2_ASSERT(VK_SUCCESS == bypass_caller->vkCreateShaderModule(pipe->device, &inf, nullptr, &stages[i].module),
+                        "Could not create shader module");
+          serializer->vkCreateShaderModule(pipe->device, &inf, nullptr, &stages[i].module);
+        }
+      }
       serializer->vkCreateGraphicsPipelines(pipe->device, pipe->cache, 1, &create_info, nullptr, &pipeline);
+
+      for (uint32_t i = 0; i < create_info.stageCount; ++i) {
+        if (create_info.pStages[i].module != pipe->get_graphics_create_info()->pStages[i].module) {
+          bypass_caller->vkDestroyShaderModule(pipe->device, create_info.pStages[i].module, nullptr);
+          serializer->vkDestroyShaderModule(pipe->device, create_info.pStages[i].module, nullptr);
+        }
+      }
     }
   }
 }

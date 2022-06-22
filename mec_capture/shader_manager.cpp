@@ -335,9 +335,9 @@ vec2 positions[6] = vec2[](
 	vec2(1.0, -1.0),
 	vec2(-1.0, -1.0)
 );
-void main() {
+void main() {{
 	gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
-})")
+}})")
                                                                .c_str());
   }
 
@@ -357,9 +357,9 @@ const std::vector<uint32_t>& shader_manager::get_copy_by_rendering_color_shader(
 	precision highp float;
 	layout(location = 0) out {}vec4 out_color;
 	layout(input_attachment_index = 0, binding = 0, set = 0) uniform {}subpassInput in_color;
-	void main() {
+	void main() {{
 		out_color = subpassLoad(in_color);
-	})",
+	}})",
                                             unit, unit)
                                     .c_str());
   }
@@ -378,13 +378,13 @@ const std::vector<uint32_t>& shader_manager::get_copy_stencil_by_render_shader(V
 	precision highp int;
 	precision highp float;
 	layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_stencil;
-	layout (push_constant) uniform mask_data { uint current_bit; };
-	void main() {
+	layout (push_constant) uniform mask_data {{ uint current_bit; }};
+	void main() {{
 		uint stencil_value = subpassLoad(in_stencil).r;
 		if ((stencil_value & (0x1 << current_bit)) == 0) {
 			discard;
 		}
-	})")
+	}})")
                                     .c_str());
   }
 
@@ -419,12 +419,12 @@ const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_color_shader
 precision highp int;
 layout(location = 0) out uvec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = subpassLoad(in_color).r;
 	out_color.g = subpassLoad(in_color).g;
 	out_color.b = subpassLoad(in_color).b;
 	out_color.a = subpassLoad(in_color).a;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R8_SINT:
@@ -451,12 +451,12 @@ void main() {
 precision highp int;
 layout(location = 0) out ivec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = int(subpassLoad(in_color).r);
 	out_color.g = int(subpassLoad(in_color).g);
 	out_color.b = int(subpassLoad(in_color).b);
 	out_color.a = int(subpassLoad(in_color).a);
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R8_UNORM:
@@ -481,12 +481,12 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = subpassLoad(in_color).r/255.0;
 	out_color.g = subpassLoad(in_color).g/255.0;
 	out_color.b = subpassLoad(in_color).b/255.0;
 	out_color.a = subpassLoad(in_color).a/255.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R16_UNORM:
@@ -501,12 +501,12 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = subpassLoad(in_color).r/65535.0;
 	out_color.g = subpassLoad(in_color).g/65535.0;
 	out_color.b = subpassLoad(in_color).b/65535.0;
 	out_color.a = subpassLoad(in_color).a/65535.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R4G4_UNORM_PACK8:
@@ -520,12 +520,12 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = subpassLoad(in_color).r/15.0;
 	out_color.g = subpassLoad(in_color).g/15.0;
 	out_color.b = subpassLoad(in_color).b/15.0;
 	out_color.a = subpassLoad(in_color).a/15.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R5G6B5_UNORM_PACK16:
@@ -538,11 +538,11 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = subpassLoad(in_color).r/31.0;
 	out_color.g = subpassLoad(in_color).g/63.0;
 	out_color.b = subpassLoad(in_color).b/31.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
@@ -556,12 +556,12 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = subpassLoad(in_color).r/31.0;
 	out_color.g = subpassLoad(in_color).g/31.0;
 	out_color.b = subpassLoad(in_color).b/31.0;
 	out_color.a = subpassLoad(in_color).a/1.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
@@ -574,12 +574,12 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = subpassLoad(in_color).r/1023.0;
 	out_color.g = subpassLoad(in_color).g/1023.0;
 	out_color.b = subpassLoad(in_color).b/1023.0;
 	out_color.a = subpassLoad(in_color).a/3.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R8_SNORM:
@@ -597,15 +597,15 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-float snorm(in uint u, in float d) {
+float snorm(in uint u, in float d) {{
 	return (int(u) * 2.0  + 1.0) / d;
-}
-void main() {
+}}
+void main() {{
 	out_color.r = snorm(subpassLoad(in_color).r, 255.0);
 	out_color.g = snorm(subpassLoad(in_color).g, 255.0);
 	out_color.b = snorm(subpassLoad(in_color).b, 255.0);
 	out_color.a = snorm(subpassLoad(in_color).a, 255.0);
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R16_SNORM:
@@ -620,15 +620,15 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-float snorm(in uint u, in float d) {
+float snorm(in uint u, in float d) {{
 	return (int(u) * 2.0  + 1.0) / d;
-}
-void main() {
+}}
+void main() {{
 	out_color.r = snorm(subpassLoad(in_color).r, 65535.0);
 	out_color.g = snorm(subpassLoad(in_color).g, 65535.0);
 	out_color.b = snorm(subpassLoad(in_color).b, 65535.0);
 	out_color.a = snorm(subpassLoad(in_color).a, 65535.0);
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
@@ -641,15 +641,15 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-float snorm(in uint u, in float d) {
+float snorm(in uint u, in float d) {{
 	return (int(u) * 2.0  + 1.0) / d;
-}
-void main() {
+}}
+void main() {{
 	out_color.r = snorm(subpassLoad(in_color).r, 1023.0);
 	out_color.g = snorm(subpassLoad(in_color).g, 1023.0);
 	out_color.b = snorm(subpassLoad(in_color).b, 1023.0);
 	out_color.a = snorm(subpassLoad(in_color).a, 1.0);
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_R16_SFLOAT:
@@ -670,12 +670,12 @@ precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
-void main() {
+void main() {{
 	out_color.r = uintBitsToFloat(subpassLoad(in_color).r);
 	out_color.g = uintBitsToFloat(subpassLoad(in_color).g);
 	out_color.b = uintBitsToFloat(subpassLoad(in_color).b);
 	out_color.a = uintBitsToFloat(subpassLoad(in_color).a);
-})")
+}})")
                                         .c_str());
         break;
       default:
@@ -700,9 +700,9 @@ precision highp int;
 precision highp float;
 out float gl_FragDepth;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
-void main() {
+void main() {{
 	gl_FragDepth = subpassLoad(in_depth).r / 65535.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_D24_UNORM_S8_UINT:
@@ -715,9 +715,9 @@ precision highp int;
 precision highp float;
 out float gl_FragDepth;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
-void main() {
+void main() {{
 	gl_FragDepth = (subpassLoad(in_depth).r & 0x00FFFFFF) / 16777215.0;
-})")
+}})")
                                         .c_str());
         break;
       case VK_FORMAT_D32_SFLOAT:
@@ -730,9 +730,9 @@ precision highp int;
 precision highp float;
 out float gl_FragDepth;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
-void main() {
+void main() {{
 	gl_FragDepth = uintBitsToFloat(subpassLoad(in_depth).r);
-})")
+}})")
                                         .c_str());
         break;
       default:
@@ -751,13 +751,13 @@ const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_stencil_shad
                                 std::format(R"(#version 450
 precision highp int;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_stencil;
-layout (push_constant) uniform mask_data { uint current_bit; };
-void main() {
+layout (push_constant) uniform mask_data {{ uint current_bit; }};
+void main() {{
   uint stencil_value = subpassLoad(in_stencil).r;
-  if ((stencil_value & (0x1 << current_bit)) == 0) {
+  if ((stencil_value & (0x1 << current_bit)) == 0) {{
     discard;
-  }
-})")
+  }}
+}})")
                                     .c_str());
   }
   return prime_by_rendering_stencil_shader_spirv;
@@ -783,20 +783,20 @@ const std::vector<uint32_t>& shader_manager::get_prime_by_compute_copy_shader(Vk
 	layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 	layout ({}, set = 0, binding = {}) uniform {}{} output_img;
 	layout ({}, set = 0, binding = {}) uniform {}{} input_img;
-	layout (push_constant) uniform metadata {
+	layout (push_constant) uniform metadata {{
 		uint offset_x;
 		uint offset_y;
 		uint offset_z;
 		// Reserved for handling image formats wider than 32 bit per channel
 		uint input_img_index;
-	};
-	void main() {
+	}};
+	void main() {{
 		int x = int(gl_GlobalInvocationID.x + offset_x);
 		int y = int(gl_GlobalInvocationID.y + offset_y);
 		int z = int(gl_GlobalInvocationID.z + offset_z);
 		{}
 		imageStore(output_img, pos, imageLoad(input_img, pos));
-	})",
+	}})",
                                                                              fmtStr, k_store_output_image_binding, unit, imgTypeStr,
                                                                              fmtStr, k_store_input_image_binding, unit, imgTypeStr,
                                                                              pos)
@@ -944,21 +944,21 @@ const std::vector<uint32_t>& shader_manager::get_prime_by_compute_store_shader(V
 	layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 	layout ({}, set = 0, binding = {}) uniform {}{} output_img;
 	layout ({}, set = 0, binding = {}) uniform {}{} input_img;
-	layout (push_constant) uniform metadata {
+	layout (push_constant) uniform metadata {{
 		uint offset_x;
 		uint offset_y;
 		uint offset_z;
 		// Reserved for handling image formats wider than 32 bit per channel
 		uint input_img_index;
-	};
-	void main() {
+	}};
+	void main() {{
 		int x = int(gl_GlobalInvocationID.x + offset_x);
 		int y = int(gl_GlobalInvocationID.y + offset_y);
 		int z = int(gl_GlobalInvocationID.z + offset_z);
 		{}
 		{}
 		imageStore(output_img, pos, color);
-	})",
+	}})",
                                                                              output_fmt_str, k_store_output_image_binding, output_g, image_type_str,
                                                                              input_fmt_str, k_store_input_image_binding, input_g, image_type_str,
                                                                              pos, color)

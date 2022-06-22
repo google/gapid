@@ -43,6 +43,16 @@ class mec_controller : public transform_base {
     noop_serializer.set_flags(flags::MID_EXECUTION);
     passthrough_caller_ = passthrough_caller;
     cbr_ = cbr;
+    t = std::thread([this]() { 
+      BOOL b = RegisterHotKey(NULL, 1, MOD_CONTROL | MOD_ALT, 0x50); 
+      MSG msg = {0};
+      while (GetMessage(&msg, NULL, 0, 0) != 0) {
+        if (msg.message == WM_HOTKEY) {
+          capture_frame = 1;
+          frames_to_capture = 10;
+        }
+      }
+    });
   }
 
   VkResult vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
@@ -64,11 +74,12 @@ class mec_controller : public transform_base {
   spy_serializer* spy_serializer_;
   transform_base* passthrough_caller_;
   spy* spy_;
-  size_t capture_frame = 100;
-  size_t frames_to_capture = -1;
+  std::atomic<size_t> capture_frame = -1;
+  std::atomic<size_t> frames_to_capture = -1;
   transform_base empty_;
   transform<null_caller> null_caller_;
   transform<noop_serializer> noop_serializer;
   command_buffer_recorder* cbr_;
+  std::thread t;
 };
 }  // namespace gapid2

@@ -111,7 +111,7 @@ class spy : public transform_base {
   std::mutex map_mutex;
   temporary_allocator allocator;
   memory_tracker tracker;
-  bool has_external_memory_host = false;
+  std::unordered_map<VkDevice, bool> has_external_memory_host_;
   bool has_external_memory = false;
   bool has_external_memory_capabilities = false;
   std::shared_mutex dev_info_mutex;

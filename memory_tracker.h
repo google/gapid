@@ -122,6 +122,9 @@ class memory_tracker {
   // Helpfully DeviceMemory can only be mapped a single time.
   void RemoveTrackedRange(VkDeviceMemory mem) {
     std::unique_lock<std::mutex> l(mut);
+    if (!src_ranges.count(mem)) {
+      return;
+    }
     auto sr = src_ranges[mem];
     if (!sr->fast) {
       VirtualProtect(sr->dst_ptr, sr->mapped_size, PAGE_READWRITE, nullptr);

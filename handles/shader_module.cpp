@@ -28,6 +28,7 @@ void VkShaderModuleWrapper::set_create_info(VkDevice device_, state_block* state
   create_info = mem.get_typed_memory<VkShaderModuleCreateInfo>(1);
   clone(state_block_, pCreateInfo[0], create_info[0], &mem,
         _VkShaderModuleCreateInfo_pCode_length);
+  words = std::make_shared<std::vector<uint32_t>>(pCreateInfo->pCode, pCreateInfo->pCode + (pCreateInfo->codeSize / sizeof(uint32_t)));
 }
 
 }  // namespace gapid2

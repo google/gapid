@@ -26,6 +26,9 @@ void mid_execution_generator::capture_framebuffers(const state_block* state_bloc
   serializer->insert_annotation("MecFramebuffers");
   for (auto& it : state_block->VkFramebuffers) {
     VkFramebufferWrapper* fb = it.second.second;
+    if (fb->invalidated) {
+      continue;
+    }
     VkFramebuffer frame_buffer = it.first;
     serializer->vkCreateFramebuffer(fb->device,
                                     fb->get_create_info(), nullptr, &frame_buffer);

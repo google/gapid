@@ -57,50 +57,87 @@ state_block::~state_block() {
 #undef PROCESS_HANDLE
 }
 
-#define PROCESS_HANDLE(Type)                          \
-  Type##Wrapper* state_block::create(Type t) {        \
-    auto it = Type##s.find(t);                        \
-    if (it != Type##s.end()) {                        \
-      return nullptr;                                 \
-    }                                                 \
-    auto ret = new Type##Wrapper(t);                  \
-    Type##s[t] = std::make_pair(1, ret);              \
-    return ret;                                       \
-  }                                                   \
-  Type##Wrapper* state_block::get_or_create(Type t) { \
-    auto it = Type##s.find(t);                        \
-    if (it != Type##s.end()) {                        \
-      return it->second.second;                       \
-    }                                                 \
-    auto ret = new Type##Wrapper(t);                  \
-    Type##s[t] = std::make_pair(1, ret);              \
-    return ret;                                       \
-  }                                                   \
-  Type##Wrapper* state_block::get(Type t) {           \
-    auto it = Type##s.find(t);                        \
-    if (it != Type##s.end()) {                        \
-      return it->second.second;                       \
-    }                                                 \
-    return nullptr;                                   \
-  }                                                   \
-  const Type##Wrapper* state_block::get(Type t) const { \
-    auto it = Type##s.find(t);                        \
-    if (it != Type##s.end()) {                        \
-      return it->second.second;                       \
-    }                                                 \
-    return nullptr;                                   \
-   }                                                  \
-  bool state_block::erase(Type t) {                   \
-    auto it = Type##s.find(t);                        \
-    if (it == Type##s.end()) {                        \
-      return false;                                   \
-    }                                                 \
-    if (!--it->second.first) {                        \
-      delete it->second.second;                       \
-      Type##s.erase(it);                              \
-    }                                                 \
-    return true;                                      \
+#define PROCESS_HANDLE(Type)                                               \
+  Type##Wrapper* state_block::create(Type t) {                             \
+    Type##mut.lock_shared();                                               \
+    auto it = Type##s.find(t);                                             \
+    if (it != Type##s.end()) {                                             \
+      Type##mut.unlock_shared();                                           \
+      return nullptr;                                                      \
+    }                                                                      \
+    Type##mut.unlock_shared();                                             \
+    Type##mut.lock();                                                      \
+    auto ret = new Type##Wrapper(t);                                       \
+    Type##s[t] = std::make_pair(1, ret);                                   \
+    Type##mut.unlock();                                                    \
+    return ret;                                                            \
+  }                                                                        \
+  Type##Wrapper* state_block::get_or_create(Type t) {                      \
+    Type##mut.lock_shared();                                               \
+    auto it = Type##s.find(t);                                             \
+    if (it != Type##s.end()) {                                             \
+      auto i = it->second.second;                                          \
+      Type##mut.unlock_shared();                                           \
+      return i;                                                            \
+    }                                                                      \
+    Type##mut.unlock_shared();                                             \
+    auto ret = new Type##Wrapper(t);                                       \
+    Type##mut.lock();                                                      \
+    Type##s[t] = std::make_pair(1, ret);                                   \
+    Type##mut.unlock();                                                    \
+    return ret;                                                            \
+  }                                                                        \
+  Type##Wrapper* state_block::get(Type t) {                                \
+    Type##mut.lock_shared();                                               \
+    auto it = Type##s.find(t);                                             \
+    if (it != Type##s.end()) {                                             \
+      auto i = it->second.second;                                          \
+      Type##mut.unlock_shared();                                           \
+      return i;                                                            \
+    }                                                                      \
+    Type##mut.unlock_shared();                                             \
+    return nullptr;                                                        \
+  }                                                                        \
+  const Type##Wrapper* state_block::get(Type t) const {                    \
+    Type##mut.lock_shared();                                               \
+    auto it = Type##s.find(t);                                             \
+    if (it != Type##s.end()) {                                             \
+      auto i = it->second.second;                                          \
+      Type##mut.unlock_shared();                                           \
+      return i;                                                            \
+    }                                                                      \
+    Type##mut.unlock_shared();                                             \
+    return nullptr;                                                        \
+  }                                                                        \
+  bool state_block::erase(Type t) {                                        \
+    Type##mut.lock();                                                      \
+    auto it = Type##s.find(t);                                             \
+    if (it == Type##s.end()) {                                             \
+      Type##mut.unlock();                                                  \
+      return false;                                                        \
+    }                                                                      \
+    if (!--it->second.first) {                                             \
+      delete it->second.second;                                            \
+      Type##s.erase(it);                                                   \
+    }                                                                      \
+    Type##mut.unlock();                                                    \
+    return true;                                                           \
+  }                                                                        \
+  void state_block::erase_if(std::function<bool(Type##Wrapper * w)> fun) { \
+    Type##mut.lock();                                                      \
+    for (auto it = Type##s.begin(); it != Type##s.end();) {                \
+      if (fun(it->second.second)) {                                        \
+        if (0 == --it->second.first) {                                     \
+          delete it->second.second;                                        \
+          it = Type##s.erase(it);                                          \
+          continue;                                                        \
+        }                                                                  \
+      }                                                                    \
+      it++;                                                                \
+    }                                                                      \
+    Type##mut.unlock();                                                    \
   }
+
 #include "handle_defines.inl"
 #undef PROCESS_HANDLE
 

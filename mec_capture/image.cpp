@@ -53,7 +53,7 @@ void mid_execution_generator::capture_bind_images(const state_block* state_block
       if (img->get_swapchain() != VK_NULL_HANDLE) {
         continue;
       }
-      GAPID2_ASSERT(0 == img->get_create_info()->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT, "We do not support sparse images yet");
+      GAPID2_ASSERT(0 == (img->get_create_info()->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT), "We do not support sparse images yet");
       GAPID2_ASSERT(img->bindings.size() <= 1, "Invalid number of binds");
 
 #pragma TODO(awoloszyn, Handle the different special bind flags)
@@ -107,6 +107,7 @@ void mid_execution_generator::capture_bind_images(const state_block* state_block
                                      };
                                      VkOffset3D offs{0, 0, 0};
                                      copier.get_image_content(img, array_layer, mip_level, serializer, bypass_caller, offs, xe, aspect);
+
                                    });
     }
   }

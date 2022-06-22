@@ -21,19 +21,21 @@
 
 #include <fstream>
 #include <mutex>
+#include <thread>
 
 #include "command_serializer.h"
 namespace gapid2 {
 class spy_serializer : public command_serializer {
  public:
   using super = transform_base;
-  spy_serializer() : out_file("file.trace", std::ios::out | std::ios::binary),
+  spy_serializer() : out_file("D:\\src\\file.trace", std::ios::out | std::ios::binary),
                      enabled_(false) {
     encoder_tls_key = TlsAlloc();
   }
 
   encoder_handle get_locked_encoder(uintptr_t key) override;
   encoder_handle get_encoder(uintptr_t key) override;
+  void enable_with_mec();
   void enable();
   void disable();
 
@@ -42,5 +44,6 @@ class spy_serializer : public command_serializer {
   DWORD encoder_tls_key;
   std::fstream out_file;
   bool enabled_;
+  std::atomic<std::thread::id> tid_ = std::thread::id();
 };
 }  // namespace gapid2

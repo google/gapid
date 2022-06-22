@@ -31,6 +31,7 @@
 #include "query_pool.h"
 #include "render_pass.h"
 #include "state_block.h"
+#include "image_view.h"
 
 namespace gapid2 {
 
@@ -58,8 +59,10 @@ void command_buffer_invalidator::vkCmdBindIndexBuffer(VkCommandBuffer commandBuf
 void command_buffer_invalidator::vkCmdBindVertexBuffers(VkCommandBuffer commandBuffer, uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* pBuffers, const VkDeviceSize* pOffsets) {
   auto cb = state_block_->get(commandBuffer);
   for (uint32_t i = 0; i < bindingCount; ++i) {
-    auto b = state_block_->get(pBuffers[i]);
-    b->invalidates(cb);
+    if (pBuffers[i]) {
+      auto b = state_block_->get(pBuffers[i]);
+      b->invalidates(cb);
+    }
   }
   return super::vkCmdBindVertexBuffers(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets);
 }
@@ -152,8 +155,10 @@ void command_buffer_invalidator::vkCmdDrawIndexedIndirectCount(VkCommandBuffer c
 void command_buffer_invalidator::vkCmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer, uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* pBuffers, const VkDeviceSize* pOffsets, const VkDeviceSize* pSizes, const VkDeviceSize* pStrides) {
   auto cb = state_block_->get(commandBuffer);
   for (uint32_t i = 0; i < bindingCount; ++i) {
-    auto b = state_block_->get(pBuffers[i]);
-    b->invalidates(cb);
+    if (pBuffers[i]) {
+      auto b = state_block_->get(pBuffers[i]);
+      b->invalidates(cb);
+    }
   }
   return super::vkCmdBindVertexBuffers2EXT(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes, pStrides);
 }
@@ -331,6 +336,14 @@ void command_buffer_invalidator::vkCmdBeginRenderPass2(VkCommandBuffer commandBu
   state_block_->get(pRenderPassBegin->framebuffer)->invalidates(cb);
   state_block_->get(pRenderPassBegin->renderPass)->invalidates(cb);
   return super::vkCmdBeginRenderPass2(commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
+}
+
+VkResult command_buffer_invalidator::vkCreateFramebuffer(VkDevice device, const VkFramebufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkFramebuffer* pFramebuffer) {
+  auto ret = super::vkCreateFramebuffer(device, pCreateInfo, pAllocator, pFramebuffer);
+  for (uint32_t i = 0; i < pCreateInfo->attachmentCount; ++i) {
+    state_block_->get(pCreateInfo->pAttachments[i])->invalidates(state_block_->get(*pFramebuffer));
+  }
+  return ret;
 }
 
 }  // namespace gapid2

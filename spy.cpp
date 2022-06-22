@@ -108,7 +108,7 @@ VkResult spy::vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
 
 VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
   std::vector<const char*> exts(pCreateInfo->enabledExtensionCount);
-
+  bool has_external_memory_host = false;
   for (size_t i = 0; i < exts.size(); ++i) {
     exts[i] = pCreateInfo->ppEnabledExtensionNames[i];
     if (!strcmp(exts[i], "VK_EXT_external_memory_host")) {
@@ -170,6 +170,10 @@ VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCrea
   } else {
     ret = super::vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
   }
+  if (ret != VK_SUCCESS) {
+    return ret;
+  }
+  has_external_memory_host_[*pDevice] = has_external_memory_host;
 
   if (has_external_memory_host) {
     auto t = get_allocation(4096);
@@ -222,6 +226,7 @@ VkResult spy::vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCrea
                               .dev_mem_props = dev_mem_props}));
     }
   }
+
   return ret;
 }
 
@@ -419,8 +424,10 @@ void spy::vkFreeMemory(VkDevice device,
   if (new_mem->_mapped_location) {
     tracker.RemoveTrackedRange(memory);
   }
-  std::unique_lock<std::mutex> l(memory_mutex);
-  mapped_coherent_memories.erase(memory);
+  {
+    std::unique_lock<std::mutex> l(memory_mutex);
+    mapped_coherent_memories.erase(memory);
+  }
   super::vkFreeMemory(device, memory, pAllocator);
 }
 

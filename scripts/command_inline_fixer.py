@@ -82,6 +82,11 @@ def output_arg(cmd, arg, arg_idx, defintion, g):
         type(tp) == vulkan.pointer_type and tp.const)
     while(type(tp) == vulkan.const_type):
         tp = tp.child
+    if type(tp) == vulkan.pointer_type and tp.pointee.name == "void":
+        # This takes a void pointer, we need to handle it somehow.
+        cargs = [x.name for x in cmd.args]
+        g.print(
+            f'custom_fix_{cmd.name}_{arg.name}(state_block_, fix_, {", ".join(cargs)});')
     if not tp.has_handle():
         return
     if type(tp) == vulkan.pointer_type and not const:

@@ -72,6 +72,8 @@ inline element_and_block_size get_element_and_block_size(VkFormat format) {
       return element_and_block_size{1, texel_block_size{1, 1}};
     case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
     case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+    case VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT:
+    case VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT:
     case VK_FORMAT_R5G6B5_UNORM_PACK16:
     case VK_FORMAT_B5G6R5_UNORM_PACK16:
     case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
@@ -747,6 +749,14 @@ const inline image_layout* get_buffer_layout_for_aspect(VkFormat format, VkImage
     }
     case VK_FORMAT_B4G4R4A4_UNORM_PACK16: {
       static image_layout x{4, 16, {{4, data_type::unorm, e_channel_name::b}, {4, data_type::unorm, e_channel_name::g}, {4, data_type::unorm, e_channel_name::r}, {4, data_type::unorm, e_channel_name::a}}};
+      return &x;
+    }
+    case VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT: {
+      static image_layout x{4, 16, {{4, data_type::unorm, e_channel_name::a}, {4, data_type::unorm, e_channel_name::r}, {4, data_type::unorm, e_channel_name::g}, {4, data_type::unorm, e_channel_name::b}}};
+      return &x;
+    }
+    case VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT: {
+      static image_layout x{4, 16, {{4, data_type::unorm, e_channel_name::a}, {4, data_type::unorm, e_channel_name::b}, {4, data_type::unorm, e_channel_name::g}, {4, data_type::unorm, e_channel_name::r}}};
       return &x;
     }
     case VK_FORMAT_R5G6B5_UNORM_PACK16: {

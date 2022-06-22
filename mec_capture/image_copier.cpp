@@ -54,12 +54,11 @@ bool image_copier::get_image_content(
 
   element_and_block_size sz = get_element_and_block_size_for_aspect(image->get_create_info()->format, aspect);
 
-  const uint32_t bytes_per_row = (sz.element_size * extent.width) / sz.texel_block_size.width;
+  const uint32_t bytes_per_row = ((sz.element_size * extent.width) / sz.texel_block_size.width) * extent.depth;
   const uint32_t rows_per_depth_layer = extent.height / sz.texel_block_size.height;
 
   uint32_t row = 0;
-  uint32_t remainin_rows_in_this_level = rows_per_depth_layer;
-  uint32_t remaining_rows = rows_per_depth_layer * extent.depth;
+  uint32_t remaining_rows = rows_per_depth_layer;
 
   if (!remaining_rows) {
     return false;
@@ -623,6 +622,7 @@ bool image_copier::get_image_content(
       VK_PIPELINE_STAGE_HOST_BIT,
       0, 0, nullptr, 0, nullptr, 1, &img_memory_barrier);
 
+  m_resource_manager->flush();
   return true;
 }  // namespace gapid2
 
@@ -673,10 +673,10 @@ void image_copier::convert_data_to_rgba32(const char* data, VkDeviceSize data_si
   auto nElements = data_size / (bl->stride_bits / 8);
   GAPID2_ASSERT(extent.width * extent.height * extent.depth == nElements, "Weird image size");
   out_data->resize(sizeof(uint32_t) * 4 * extent.width * extent.height * extent.depth);
-  uint32_t* d = reinterpret_cast<uint32_t*>(out_data->size());
+  uint32_t* d = reinterpret_cast<uint32_t*>(out_data->data());
 
-  uint8_t rgba_elems[] = {static_cast<uint8_t>(~0), static_cast<uint8_t>(~0), static_cast<uint8_t>(~0), static_cast<uint8_t>(~0)};
-  uint8_t offsets[] = {static_cast<uint8_t>(~0), static_cast<uint8_t>(~0), static_cast<uint8_t>(~0), static_cast<uint8_t>(~0)};
+  uint8_t rgba_elems[] = {0xFF, 0xFF, 0xFF, 0xFF};
+  uint8_t offsets[] = {0xFF, 0xFF, 0xFF, 0xFF};
   for (size_t i = 0; i < bl->n_channels; ++i) {
     if (bl->channels[i].name == e_channel_name::r) {
       rgba_elems[0] = i;
@@ -686,24 +686,36 @@ void image_copier::convert_data_to_rgba32(const char* data, VkDeviceSize data_si
       rgba_elems[2] = i;
     } else if (bl->channels[i].name == e_channel_name::a) {
       rgba_elems[3] = i;
+    } else if (bl->channels[i].name == e_channel_name::d) {
+      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+        rgba_elems[0] = i;
+      } else {
+        continue;
+      }
+    } else if (bl->channels[i].name == e_channel_name::s) {
+      if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+        rgba_elems[0] = i;
+      } else {
+        continue;
+      }
     } else {
       GAPID2_ERROR("Unhandled channel type");
     }
   }
 
   for (size_t i = 0; i < 4; ++i) {
-    if (rgba_elems[i] == ~0) {
+    if (rgba_elems[i] == 0xFF) {
       continue;
     }
-    offsets[i] = std::accumulate(&bl->channels[0], &bl->channels[0] + rgba_elems[i], 1, [](uint8_t a, const channel_info& ci) { return a + ci.nbits; });
+    offsets[i] = std::accumulate(&bl->channels[0], &bl->channels[0] + rgba_elems[i], 0, [](uint8_t a, const channel_info& ci) { return a + ci.nbits; });
   }
 
   for (size_t i = 0; i < nElements; ++i) {
     for (size_t j = 0; j < 4; ++j) {
-      if (rgba_elems[j] == ~0) {
+      if (rgba_elems[j] == 0xFF) {
         continue;
       }
-      uint32_t bits = get_bits(data, offsets[j], bl->channels[rgba_elems[j]].nbits);
+      uint32_t bits = get_bits(data + i, offsets[j], bl->channels[rgba_elems[j]].nbits);
       auto ch = &bl->channels[rgba_elems[j]];
       switch (ch->type) {
         case data_type::sint:

@@ -32,6 +32,7 @@
 #include "minimal_state_tracker.h"
 #include "null_caller.h"
 #include "transform_base.h"
+#include "creation_data_tracker.h"
 
 namespace gapid2 {
 
@@ -290,6 +291,10 @@ int main(int argc, const char** argv) {
       replayer(nullptr);
   gapid2::transform<gapid2::base_caller> base_caller(dummy ? nullptr : &replayer);
   gapid2::transform<gapid2::null_caller> null_caller(dummy ? &replayer : nullptr);
+  // Unfortunately we need the next 3 transforms for the descriptorupdatetemplates
+  gapid2::transform<gapid2::state_block> fixer_state_block(&replayer); 
+  gapid2::transform<gapid2::creation_tracker<VkDescriptorUpdateTemplate>> fixer_creation_tracker(&replayer);
+  gapid2::transform<gapid2::creation_data_tracker<VkDescriptorUpdateTemplate>> fixer_data_tracker(&replayer);
   gapid2::transform<gapid2::command_inline_fixer> inline_fixer(&replayer);
   gapid2::transform<gapid2::state_block> state_block_(&replayer);
   gapid2::transform<gapid2::minimal_state_tracker> minimal_state_tracker_(&replayer);

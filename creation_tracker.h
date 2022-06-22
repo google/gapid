@@ -21,6 +21,7 @@
 #include <type_traits>
 
 #include "common.h"
+#include "descriptor_set.h"
 #include "physical_device.h"
 #include "state_block.h"
 #include "transform_base.h"
@@ -586,6 +587,21 @@ class creation_tracker : public transform_base {
       if (res != VK_SUCCESS) {
         return res;
       }
+      if (pCreateInfo->oldSwapchain) {
+        std::vector<VkImage> destroy;
+        state_block_->VkImagemut.lock();
+        for (auto& it : state_block_->VkImages) {
+          if (it.second.second->swapchain == pCreateInfo->oldSwapchain) {
+            destroy.push_back(it.first);
+          }
+        }
+        state_block_->VkImagemut.unlock();
+        for (auto& it : destroy) {
+          state_block_->erase(it);
+        }
+        state_block_->create(pCreateInfo->oldSwapchain);
+      }
+
       GAPID2_ASSERT(state_block_->create(*pSwapchain), "Swapchain already exists");
       return res;
     } else {
@@ -606,7 +622,7 @@ class creation_tracker : public transform_base {
       }
       if (pSwapchainImages != nullptr) {
         for (uint32_t i = 0; i < *pSwapchainImageCount; ++i) {
-          GAPID2_ASSERT(state_block_->create(pSwapchainImages[i]), "Swapchain Image already exists");
+          GAPID2_ASSERT(state_block_->get_or_create(pSwapchainImages[i]), "Swapchain Image already exists");
         }
       }
       return res;
@@ -665,8 +681,8 @@ class creation_tracker : public transform_base {
   VkResult vkFreeDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) override {
     if constexpr (args_contain<VkDescriptorSet, Args...>()) {
       for (size_t i = 0; i < descriptorSetCount; ++i) {
-        if (pDescriptorSets[0]) {
-          GAPID2_ASSERT(state_block_->erase(pDescriptorSets[0]), "Could not find pDescriptorSets to erase");
+        if (pDescriptorSets[i]) {
+          GAPID2_ASSERT(state_block_->erase(pDescriptorSets[i]), "Could not find pDescriptorSets to erase");
         }
       }
     }
@@ -802,9 +818,31 @@ class creation_tracker : public transform_base {
     if constexpr (args_contain<VkDescriptorPool, Args...>()) {
       if (descriptorPool) {
         GAPID2_ASSERT(state_block_->erase(descriptorPool), "Could not find descriptorPool to erase");
+        state_block_->erase_if([descriptorPool](VkDescriptorSetWrapper* wrapper) -> bool { return wrapper->get_allocate_info()->descriptorPool == descriptorPool; });
       }
     }
     return super::vkDestroyDescriptorPool(device, descriptorPool, pAllocator);
+  }
+
+  VkResult vkResetDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorPoolResetFlags flags) override {
+    if constexpr (args_contain<VkDescriptorPool, Args...>()) {
+      if (descriptorPool) {
+        std::vector<VkDescriptorSet> destroy;
+#pragma TODO(awoloszyn, "This pattern is racy, we should really track child descriptor sets in the pool")
+#pragma TODO(awoloszyn, " Otherwise creation of new descriptors can race with this (esp setting allocate info)")
+        state_block_->VkDescriptorSetmut.lock();
+        for (auto& it : state_block_->VkDescriptorSets) {
+          if (it.second.second->get_allocate_info() && it.second.second->get_allocate_info()->descriptorPool == descriptorPool) {
+            destroy.push_back(it.first);
+          }
+        }
+        state_block_->VkDescriptorSetmut.unlock();
+        for (auto& it : destroy) {
+          state_block_->erase(it);
+        }
+      }
+    }
+    return super::vkResetDescriptorPool(device, descriptorPool, flags);
   }
 
   void vkDestroyFramebuffer(VkDevice device, VkFramebuffer framebuffer, const VkAllocationCallbacks* pAllocator) override {
@@ -829,6 +867,9 @@ class creation_tracker : public transform_base {
     if constexpr (args_contain<VkCommandPool, Args...>()) {
       if (commandPool) {
         GAPID2_ASSERT(state_block_->erase(commandPool), "Could not find commandPool to erase");
+        state_block_->erase_if([commandPool](VkCommandBufferWrapper* wrapper) -> bool {
+          return wrapper->get_allocate_info()->commandPool == commandPool;
+        });
       }
     }
     return super::vkDestroyCommandPool(device, commandPool, pAllocator);
@@ -865,8 +906,20 @@ class creation_tracker : public transform_base {
     if constexpr (args_contain<VkSwapchainKHR, Args...>()) {
       if (swapchain) {
         GAPID2_ASSERT(state_block_->erase(swapchain), "Could not find swapchain to erase");
+        std::vector<VkImage> destroy;
+        state_block_->VkImagemut.lock();
+        for (auto& it : state_block_->VkImages) {
+          if (it.second.second->swapchain == swapchain) {
+            destroy.push_back(it.first);
+          }
+        }
+        state_block_->VkImagemut.unlock();
+        for (auto& it : destroy) {
+          state_block_->erase(it);
+        }
       }
     }
+
     return super::vkDestroySwapchainKHR(device, swapchain, pAllocator);
   }
 

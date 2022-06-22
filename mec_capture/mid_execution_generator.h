@@ -16,8 +16,8 @@
  */
 #include "command_buffer_recorder.h"
 #include "command_serializer.h"
-#include "transform_base.h"
 #include "shader_manager.h"
+#include "transform_base.h"
 
 namespace gapid2 {
 class mid_execution_generator {
@@ -49,11 +49,10 @@ class mid_execution_generator {
     // capture_device_memory_maps
     capture_sampler_ycbcr_conversions(state_block, mid_execution_serializer, bypass_caller);
     capture_samplers(state_block, mid_execution_serializer, bypass_caller);
-    capture_command_pools(state_block, mid_execution_serializer, bypass_caller);
     capture_pipeline_caches(state_block, mid_execution_serializer, bypass_caller);
     capture_descriptor_set_layouts(state_block, mid_execution_serializer, bypass_caller);
-    capture_descriptor_update_templates(state_block, mid_execution_serializer, bypass_caller);
     capture_pipeline_layouts(state_block, mid_execution_serializer, bypass_caller);
+    capture_descriptor_update_templates(state_block, mid_execution_serializer, bypass_caller);
     capture_render_passes(state_block, mid_execution_serializer, bypass_caller);
     capture_shader_modules(state_block, mid_execution_serializer, bypass_caller);
     capture_pipelines(state_block, mid_execution_serializer, bypass_caller);
@@ -66,6 +65,7 @@ class mid_execution_generator {
     capture_descriptor_set_contents(state_block, mid_execution_serializer, bypass_caller);
 
     capture_query_pools(state_block, mid_execution_serializer, bypass_caller);
+    capture_command_pools(state_block, mid_execution_serializer, bypass_caller);
     capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_SECONDARY, cbr);
     capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_PRIMARY, cbr);
     capture_synchronization(state_block, mid_execution_serializer, bypass_caller);
@@ -90,8 +90,8 @@ class mid_execution_generator {
   void capture_command_pools(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_pipeline_caches(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_descriptor_set_layouts(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
-  void capture_descriptor_update_templates(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_pipeline_layouts(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
+  void capture_descriptor_update_templates(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_render_passes(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_shader_modules(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;
   void capture_pipelines(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const;

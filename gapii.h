@@ -44,6 +44,7 @@ class gapii : public layer_base {
     mec_controller_ = std::make_unique<gapid2::transform<gapid2::mec_controller>>(&transform_base_);
     spy_->initialize(serializer_.get(), minimal_state_tracker_.get());
     mec_controller_->initialize(serializer_.get(), minimal_state_tracker_.get(), spy_.get(), command_buffer_recorder_.get());
+    //serializer_->enable();
 #else
     spy_->initialize(serializer_.get(), minimal_state_tracker_.get());
     serializer_->enable();

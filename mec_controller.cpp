@@ -24,14 +24,15 @@
 
 namespace gapid2 {
 void mec_controller::start_capture() {
-  for (auto i : state_block_->VkDevices) {
+    for (auto i : state_block_->VkDevices) {
     passthrough_caller_->vkDeviceWaitIdle(i.first);
   }
 
-  spy_serializer_->enable();
+  spy_serializer_->enable_with_mec();
   spy_->reset_memory_watch();
   mid_execution_generator gen;
   gen.begin_mid_execution_capture(state_block_, &noop_serializer, passthrough_caller_, cbr_);
+  spy_serializer_->enable();
 }
 
 void mec_controller::end_capture() {

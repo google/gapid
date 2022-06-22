@@ -31,7 +31,7 @@ class VkDescriptorSetLayoutWrapper;
 struct VkDescriptorSetWrapper : handle_base<VkDescriptorSet> {
   VkDescriptorSetWrapper(VkDescriptorSet descriptor_set)
       : handle_base<VkDescriptorSet>(descriptor_set) {}
-
+  ~VkDescriptorSetWrapper() {}
   void set_layout(VkDescriptorSetLayoutWrapper* layout);
 
   void set_allocate_info(VkDevice device_,

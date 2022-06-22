@@ -48,6 +48,7 @@ struct VkPipelineWrapper : handle_base<VkPipeline> {
   VkPipelineBindPoint bind;
   VkGraphicsPipelineCreateInfo* graphics_info = nullptr;
   VkComputePipelineCreateInfo* compute_info = nullptr;
+  std::vector<std::shared_ptr<std::vector<uint32_t>>> shader_code;
   std::vector<descriptor_usage> usages;
   temporary_allocator mem;
 };

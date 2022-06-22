@@ -186,4 +186,14 @@ void custom_register_pPhysicalDeviceGroupProperties(VkPhysicalDeviceGroupPropert
 
 void custom_process_pPhysicalDeviceGroupProperties(VkPhysicalDeviceGroupProperties* props,
                                                           handle_fixer& fix_);
+
+void custom_fix_vkGetQueryPoolResults_pData(state_block* state_block, handle_fixer& fix_, VkDevice device, VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount, size_t dataSize, void* pData, VkDeviceSize stride, VkQueryResultFlags flags);
+void custom_fix_vkGetPipelineCacheData_pData(state_block* state_block, handle_fixer& fix_, VkDevice device, VkPipelineCache pipelineCache, size_t* pDataSize, void* pData);
+void custom_fix_vkCmdUpdateBuffer_pData(state_block* state_block, handle_fixer& fix_, VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize dataSize, const void* pData);
+void custom_fix_vkCmdPushConstants_pValues(state_block* state_block, handle_fixer& fix_, VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues);
+void custom_fix_vkUpdateDescriptorSetWithTemplate_pData(state_block* state_block, handle_fixer& fix_, VkDevice device, VkDescriptorSet descriptorSet, VkDescriptorUpdateTemplate descriptorUpdateTemplate, const void* pData);
+void custom_fix_vkGetMemoryHostPointerPropertiesEXT_pHostPointer(state_block* state_block, handle_fixer& fix_, VkDevice device, VkExternalMemoryHandleTypeFlagBits handleType, const void* pHostPointer, VkMemoryHostPointerPropertiesEXT* pMemoryHostPointerProperties);
+
+
+
 }  // namespace gapid2

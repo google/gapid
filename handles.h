@@ -83,11 +83,10 @@ struct base_handle {
     invalidations.clear();
   }
 
-  private:
+ private:
   void invalidated_by(base_handle* other) {
-     std::unique_lock<std::mutex> l(invalidation_mutex);
-     GAPID2_ASSERT(!invalidated, "Trying to use an invalid handle");
-     invalidations_by.insert(other);
+    std::unique_lock<std::mutex> l(invalidation_mutex);
+    invalidations_by.insert(other);
   }
   void no_longer_invalidated_by(base_handle* other) {
     std::unique_lock<std::mutex> l(invalidation_mutex);

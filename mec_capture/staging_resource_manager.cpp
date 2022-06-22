@@ -506,8 +506,8 @@ staging_resource_manager::render_pipeline_data staging_resource_manager::get_pip
 
       if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT || aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
         output_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        descs[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        descs[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        descs[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        descs[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         subpass_desc.pDepthStencilAttachment = &output_ref;
       } else {
         subpass_desc.colorAttachmentCount = 1;
@@ -571,7 +571,7 @@ staging_resource_manager::render_pipeline_data staging_resource_manager::get_pip
 
       GAPID2_ASSERT(VK_SUCCESS == callee->vkCreatePipelineLayout(device, &create_info, nullptr, &dd.pipeline_layout_for_prime_by_render),
                     "Could not create pipeline layout");
-      callee->vkCreatePipelineLayout(device, &create_info, nullptr, &dd.pipeline_layout_for_prime_by_render);
+      serializer->vkCreatePipelineLayout(device, &create_info, nullptr, &dd.pipeline_layout_for_prime_by_render);
     }
 
     VkShaderModule vertex_module;
@@ -799,8 +799,8 @@ staging_resource_manager::render_pipeline_data staging_resource_manager::get_pip
 }
 
 void staging_resource_manager::cleanup_after_pipeline(const render_pipeline_data& data) {
-  serializer->vkDestroyRenderPass(data.device, data.render_pass, nullptr);
-  callee->vkDestroyRenderPass(data.device, data.render_pass, nullptr);
+  //serializer->vkDestroyRenderPass(data.device, data.render_pass, nullptr);
+  //callee->vkDestroyRenderPass(data.device, data.render_pass, nullptr);
 
   serializer->vkFreeDescriptorSets(data.device, data.pool, 1, &data.render_ds);
   callee->vkFreeDescriptorSets(data.device, data.pool, 1, &data.render_ds);
@@ -871,7 +871,7 @@ staging_resource_manager::copy_pipeline_data staging_resource_manager::get_pipel
 
       GAPID2_ASSERT(VK_SUCCESS == callee->vkCreatePipelineLayout(device, &create_info, nullptr, &dd.pipeline_layout_for_prime_by_copy),
                     "Could not create pipeline layout");
-      callee->vkCreatePipelineLayout(device, &create_info, nullptr, &dd.pipeline_layout_for_prime_by_copy);
+      serializer->vkCreatePipelineLayout(device, &create_info, nullptr, &dd.pipeline_layout_for_prime_by_copy);
     }
 
     VkShaderModule compute_shader;

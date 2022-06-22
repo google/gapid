@@ -35,7 +35,6 @@ void mid_execution_generator::capture_command_buffers(const state_block* state_b
     if (buff->get_allocate_info()->level != level) {
       continue;
     }
-#pragma TODO(awoloszyn, Track the command buffer contents here)
     VkCommandBuffer command_buffer = it.first;
     VkCommandBufferAllocateInfo inf = *buff->get_allocate_info();
     inf.commandBufferCount = 1;

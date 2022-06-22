@@ -18,7 +18,9 @@
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+#include <functional>
 #include <memory>
+#include <shared_mutex>
 #include <unordered_map>
 
 #include "transform_base.h"
@@ -33,12 +35,14 @@ class state_block : public transform_base {
  public:
   ~state_block();
 
-#define PROCESS_HANDLE(Type)            \
-  Type##Wrapper* get_or_create(Type t); \
-  Type##Wrapper* create(Type t);        \
-  Type##Wrapper* get(Type t);           \
-  const Type##Wrapper* get(Type t) const;  \
-  bool erase(Type t);                   \
+#define PROCESS_HANDLE(Type)                                 \
+  Type##Wrapper* get_or_create(Type t);                      \
+  Type##Wrapper* create(Type t);                             \
+  Type##Wrapper* get(Type t);                                \
+  const Type##Wrapper* get(Type t) const;                    \
+  bool erase(Type t);                                        \
+  void erase_if(std::function<bool(Type##Wrapper * w)> fun); \
+  mutable std::shared_mutex Type##mut;                       \
   std::unordered_map<Type, std::pair<uint64_t, Type##Wrapper*>> Type##s;
 
 #include "handle_defines.inl"
