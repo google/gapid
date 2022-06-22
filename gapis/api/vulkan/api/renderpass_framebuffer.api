@@ -224,13 +224,197 @@ Thefore there is no need to repeat the KHR structs
   @unused RenderPassVersion                  Version
 }
 
-sub AttachmentReference convertAttachment(VkAttachmentReference attachment) {
-  return AttachmentReference(
-    Attachment: attachment.attachment,
-    Layout: attachment.layout,
-    AspectMask: 0, // This will be updated by VkRenderPassInputAttachmentAspectCreateInfo
+sub AttachmentDescription createAttachmentDescriptionObjectFromOld(VkAttachmentDescription attachmentDescription) {
+ internalAttachmentDescription := AttachmentDescription(
+    Flags: attachmentDescription.flags,
+    Format: attachmentDescription.format,
+    Samples: attachmentDescription.samples,
+    LoadOp: attachmentDescription.loadOp,
+    StoreOp: attachmentDescription.storeOp,
+    StencilLoadOp: attachmentDescription.stencilLoadOp,
+    StencilStoreOp: attachmentDescription.stencilStoreOp,
+    InitialLayout: attachmentDescription.initialLayout,
+    FinalLayout: attachmentDescription.finalLayout,
     StencilLayout: null,
   )
+  return internalAttachmentDescription
+}
+
+sub AttachmentDescription createAttachmentDescriptionObjectFrom2(VkAttachmentDescription2 attachmentDescription2) {
+  internalAttachmentDescription := AttachmentDescription(
+    Flags: attachmentDescription2.flags,
+    Format: attachmentDescription2.format,
+    Samples: attachmentDescription2.samples,
+    LoadOp: attachmentDescription2.loadOp,
+    StoreOp: attachmentDescription2.storeOp,
+    StencilLoadOp: attachmentDescription2.stencilLoadOp,
+    StencilStoreOp: attachmentDescription2.stencilStoreOp,
+    InitialLayout: attachmentDescription2.initialLayout,
+    FinalLayout: attachmentDescription2.finalLayout,
+    StencilLayout: null,
+  )
+  if attachmentDescription2.pNext != null {
+    numPNext := numberOfPNext(attachmentDescription2.pNext)
+    next := MutableVoidPtr(as!void*(attachmentDescription2.pNext))
+    for j in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
+          ext := as!VkAttachmentDescriptionStencilLayout*(next.Ptr)[0]
+          internalAttachmentDescription.StencilLayout = new!AttachmentDescriptionStencilLayout(
+            StencilInitialLayout: ext.stencilInitialLayout,
+            StencilFinalLayout: ext.stencilFinalLayout,
+          )
+        }
+      }
+    }
+  }
+  return internalAttachmentDescription
+}
+
+sub SubpassDescription createSubpassDescriptionObjectFromOld(VkSubpassDescription subpassDescription) {
+  internalSubpassDescription := SubpassDescription(
+    Flags: subpassDescription.flags,
+    ViewMask: 0, // This will be updated by KHR_multiview extension.
+    PipelineBindPoint: subpassDescription.pipelineBindPoint,
+  )
+
+  inputAttachments := subpassDescription.pInputAttachments[0:subpassDescription.inputAttachmentCount]
+  for j in (0 .. subpassDescription.inputAttachmentCount) {
+    attachmentReference := inputAttachments[j]
+    internalSubpassDescription.InputAttachments[j] = createAttachmentReferenceObjectFromOld(attachmentReference)
+  }
+
+  colorAttachments := subpassDescription.pColorAttachments[0:subpassDescription.colorAttachmentCount]
+  for j in (0 .. subpassDescription.colorAttachmentCount) {
+    attachmentReference := colorAttachments[j]
+      internalSubpassDescription.ColorAttachments[j] = createAttachmentReferenceObjectFromOld(attachmentReference)
+  }
+
+  if subpassDescription.pResolveAttachments != null {
+    resolveAttachments := subpassDescription.pResolveAttachments[0:subpassDescription.colorAttachmentCount]
+    for j in (0 .. subpassDescription.colorAttachmentCount) {
+      attachmentReference := resolveAttachments[j]
+        internalSubpassDescription.ResolveAttachments[j] = createAttachmentReferenceObjectFromOld(attachmentReference)
+    }
+  }
+
+  if (subpassDescription.pDepthStencilAttachment != null) {
+    attachmentReference := subpassDescription.pDepthStencilAttachment[0]
+    attachmentReferenceObject := createAttachmentReferenceObjectFromOld(attachmentReference)
+    internalSubpassDescription.DepthStencilAttachment = new!AttachmentReference(attachmentReferenceObject)
+  }
+
+  preserveAttachments := subpassDescription.pPreserveAttachments[0:subpassDescription.preserveAttachmentCount]
+  for j in (0 .. subpassDescription.preserveAttachmentCount) {
+    internalSubpassDescription.PreserveAttachments[j] = preserveAttachments[j]
+  }
+  return internalSubpassDescription
+}
+
+sub SubpassDescription createSubpassDescriptionObjectFrom2(VkSubpassDescription2 subpassDescription2) {
+  internalSubpassDescription := SubpassDescription(
+    Flags: subpassDescription2.flags,
+    ViewMask: subpassDescription2.viewMask,
+    PipelineBindPoint: subpassDescription2.pipelineBindPoint,
+  )
+
+  inputAttachments := subpassDescription2.pInputAttachments[0:subpassDescription2.inputAttachmentCount]
+  for j in (0 .. subpassDescription2.inputAttachmentCount) {
+    attachmentReference2 := inputAttachments[j]
+    internalSubpassDescription.InputAttachments[j] = createAttachmentReferenceObjectFrom2(attachmentReference2)
+  }
+
+  colorAttachments := subpassDescription2.pColorAttachments[0:subpassDescription2.colorAttachmentCount]
+  for j in (0 .. subpassDescription2.colorAttachmentCount) {
+    attachmentReference2 := colorAttachments[j]
+      internalSubpassDescription.ColorAttachments[j] = createAttachmentReferenceObjectFrom2(attachmentReference2)
+  }
+
+  if subpassDescription2.pResolveAttachments != null {
+    resolveAttachments := subpassDescription2.pResolveAttachments[0:subpassDescription2.colorAttachmentCount]
+    for j in (0 .. subpassDescription2.colorAttachmentCount) {
+      attachmentReference2 := resolveAttachments[j]
+        internalSubpassDescription.ResolveAttachments[j] = createAttachmentReferenceObjectFrom2(attachmentReference2)
+    }
+  }
+
+  if (subpassDescription2.pDepthStencilAttachment != null) {
+    attachmentReference2 := subpassDescription2.pDepthStencilAttachment[0]
+    attachmentReference2Object := createAttachmentReferenceObjectFrom2(attachmentReference2)
+    internalSubpassDescription.DepthStencilAttachment = new!AttachmentReference(attachmentReference2Object)
+  }
+
+  preserveAttachments := subpassDescription2.pPreserveAttachments[0:subpassDescription2.preserveAttachmentCount]
+  for j in (0 .. subpassDescription2.preserveAttachmentCount) {
+    internalSubpassDescription.PreserveAttachments[j] = preserveAttachments[j]
+  }
+  return internalSubpassDescription
+}
+
+sub SubpassDependency createSubpassDependencyObjectFromOld(VkSubpassDependency subpassDependency) {
+  internalSubpassDependency := SubpassDependency(
+      SrcSubpass: subpassDependency.srcSubpass,
+      DstSubpass: subpassDependency.dstSubpass,
+      SrcStageMask: subpassDependency.srcStageMask,
+      DstStageMask: subpassDependency.dstStageMask,
+      SrcAccessMask: subpassDependency.srcAccessMask,
+      DstAccessMask: subpassDependency.dstAccessMask,
+      DependencyFlags: subpassDependency.dependencyFlags,
+      ViewOffset: 0, // This will be updated by vk_KHR_multivew extension
+    )
+  return internalSubpassDependency
+}
+
+sub SubpassDependency createSubpassDependencyObjectFrom2(VkSubpassDependency2 subpassDependency2) {
+  internalSubpassDependency := SubpassDependency(
+      SrcSubpass: subpassDependency2.srcSubpass,
+      DstSubpass: subpassDependency2.dstSubpass,
+      SrcStageMask: subpassDependency2.srcStageMask,
+      DstStageMask: subpassDependency2.dstStageMask,
+      SrcAccessMask: subpassDependency2.srcAccessMask,
+      DstAccessMask: subpassDependency2.dstAccessMask,
+      DependencyFlags: subpassDependency2.dependencyFlags,
+      ViewOffset: 0,
+    )
+  return internalSubpassDependency
+}
+
+sub AttachmentReference createAttachmentReferenceObjectFromOld(VkAttachmentReference attachmentReference) {
+   internalAttachmentReference := AttachmentReference(
+      Attachment: attachmentReference.attachment,
+      Layout: attachmentReference.layout,
+      AspectMask: 0,
+      StencilLayout: null,
+    )
+    return internalAttachmentReference
+}
+
+sub AttachmentReference createAttachmentReferenceObjectFrom2(VkAttachmentReference2 attachmentReference2) {
+   internalAttachmentReference := AttachmentReference(
+      Attachment: attachmentReference2.attachment,
+      Layout: attachmentReference2.layout,
+      AspectMask: attachmentReference2.aspectMask,
+      StencilLayout: null,
+    )
+    if attachmentReference2.pNext != null {
+      numPNext := numberOfPNext(attachmentReference2.pNext)
+      next := MutableVoidPtr(as!void*(attachmentReference2.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0]
+        switch sType {
+          case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT: {
+            ext := as!VkAttachmentReferenceStencilLayout*(next.Ptr)[0]
+            internalAttachmentReference.StencilLayout = new!AttachmentReferenceStencilLayout(
+              StencilLayout: ext.stencilLayout
+            )
+          }
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
+    }
+
+    return internalAttachmentReference
 }
 
 sub ref!RenderPassObject createRenderPassObjectFromInfo(
@@ -243,78 +427,21 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo(
   attachments := info.pAttachments[0:info.attachmentCount]
   for i in (0 .. info.attachmentCount) {
     attachment := attachments[i]
-    renderPass.AttachmentDescriptions[i] = AttachmentDescription(
-      Flags: attachment.flags,
-      Format: attachment.format,
-      Samples: attachment.samples,
-      LoadOp: attachment.loadOp,
-      StoreOp: attachment.storeOp,
-      StencilLoadOp: attachment.stencilLoadOp,
-      StencilStoreOp: attachment.stencilStoreOp,
-      InitialLayout: attachment.initialLayout,
-      FinalLayout: attachment.finalLayout,
-      StencilLayout: null,
-    )
+    renderPass.AttachmentDescriptions[i] = createAttachmentDescriptionObjectFromOld(attachment)
   }
 
   subpasses := info.pSubpasses[0:info.subpassCount]
   read(subpasses)
   for i in (0 .. info.subpassCount) {
     subpass := subpasses[i]
-    description := SubpassDescription(
-      Flags: subpass.flags,
-      ViewMask: 0, // This will be updated by KHR_multiview extension.
-      PipelineBindPoint: subpass.pipelineBindPoint,
-    )
 
-    inputAttachments := subpass.pInputAttachments[0:subpass.inputAttachmentCount]
-    for j in (0 .. subpass.inputAttachmentCount) {
-      description.InputAttachments[j] = convertAttachment(inputAttachments[j])
-    }
-    colorAttachments := subpass.pColorAttachments[0:subpass.colorAttachmentCount]
-    for j in (0 .. subpass.colorAttachmentCount) {
-      description.ColorAttachments[j] = convertAttachment(colorAttachments[j])
-    }
-
-    if subpass.pResolveAttachments != null {
-      resolveAttachments := subpass.pResolveAttachments[0:subpass.colorAttachmentCount]
-      for j in (0 .. subpass.colorAttachmentCount) {
-        description.ResolveAttachments[j] = convertAttachment(resolveAttachments[j])
-      }
-    }
-
-    if (subpass.pDepthStencilAttachment != null) {
-      attachment := subpass.pDepthStencilAttachment[0]
-      // Cannot call convert
-      description.DepthStencilAttachment = new!AttachmentReference(
-        Attachment: attachment.attachment,
-        Layout: attachment.layout,
-        AspectMask: 0, // This will be updated by VkRenderPassInputAttachmentAspectCreateInfo
-        StencilLayout: null,
-      )
-    }
-
-    preserveAttachments := subpass.pPreserveAttachments[0:subpass.preserveAttachmentCount]
-    for j in (0 .. subpass.preserveAttachmentCount) {
-      description.PreserveAttachments[j] = preserveAttachments[j]
-    }
-
-    renderPass.SubpassDescriptions[i] = description
+    renderPass.SubpassDescriptions[i] = createSubpassDescriptionObjectFromOld(subpass)
   }
 
   dependencies := info.pDependencies[0:info.dependencyCount]
   for i in (0 .. info.dependencyCount) {
     dependency := dependencies[i]
-    renderPass.SubpassDependencies[i] = SubpassDependency(
-      SrcSubpass: dependency.srcSubpass,
-      DstSubpass: dependency.dstSubpass,
-      SrcStageMask: dependency.srcStageMask,
-      DstStageMask: dependency.dstStageMask,
-      SrcAccessMask: dependency.srcAccessMask,
-      DstAccessMask: dependency.dstAccessMask,
-      DependencyFlags: dependency.dependencyFlags,
-      ViewOffset: 0, // This will be updated by KHR_multiview extension.
-    )
+    renderPass.SubpassDependencies[i] = createSubpassDependencyObjectFromOld(dependency)
   }
 
   // CorrelatedViewMasks will be updated by KHR_multiview extension.
@@ -393,129 +520,20 @@ sub ref!RenderPassObject createRenderPassObjectFromInfo2(
   attachments := info.pAttachments[0:info.attachmentCount]
   for i in (0 .. info.attachmentCount) {
     attachment := attachments[i]
-    attachmentDescription := AttachmentDescription(
-      Flags: attachment.flags,
-      Format: attachment.format,
-      Samples: attachment.samples,
-      LoadOp: attachment.loadOp,
-      StoreOp: attachment.storeOp,
-      StencilLoadOp: attachment.stencilLoadOp,
-      StencilStoreOp: attachment.stencilStoreOp,
-      InitialLayout: attachment.initialLayout,
-      FinalLayout: attachment.finalLayout,
-      StencilLayout: null,
-    )
-    if attachment.pNext != null {
-      numPNext := numberOfPNext(attachment.pNext)
-      next := MutableVoidPtr(as!void*(attachment.pNext))
-      for j in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0]
-        switch sType {
-          case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
-            ext := as!VkAttachmentDescriptionStencilLayout*(next.Ptr)[0]
-            attachmentDescription.StencilLayout = new!AttachmentDescriptionStencilLayout(
-              StencilInitialLayout: ext.stencilInitialLayout,
-              StencilFinalLayout: ext.stencilFinalLayout,
-            )
-          }
-        }
-      }
-    }
-    renderPass.AttachmentDescriptions[i] = attachmentDescription
+    renderPass.AttachmentDescriptions[i] = createAttachmentDescriptionObjectFrom2(attachment)
   }
 
   subpasses := info.pSubpasses[0:info.subpassCount]
   read(subpasses)
   for i in (0 .. info.subpassCount) {
     subpass := subpasses[i]
-    description := SubpassDescription(
-      Flags: subpass.flags,
-      ViewMask: subpass.viewMask,
-      PipelineBindPoint: subpass.pipelineBindPoint,
-    )
-
-    inputAttachments := subpass.pInputAttachments[0:subpass.inputAttachmentCount]
-    for j in (0 .. subpass.inputAttachmentCount) {
-      attachment := inputAttachments[j]
-      description.InputAttachments[j] = AttachmentReference(
-        Attachment: attachment.attachment,
-        Layout: attachment.layout,
-        AspectMask: attachment.aspectMask,
-        StencilLayout: null,
-      )
-    }
-
-    colorAttachments := subpass.pColorAttachments[0:subpass.colorAttachmentCount]
-    for j in (0 .. subpass.colorAttachmentCount) {
-      attachment := colorAttachments[j]
-      description.ColorAttachments[j] = AttachmentReference(
-        Attachment: attachment.attachment,
-        Layout: attachment.layout,
-        AspectMask: attachment.aspectMask,
-        StencilLayout: null,
-      )
-    }
-
-    if subpass.pResolveAttachments != null {
-      resolveAttachments := subpass.pResolveAttachments[0:subpass.colorAttachmentCount]
-      for j in (0 .. subpass.colorAttachmentCount) {
-        attachment := resolveAttachments[j]
-        description.ResolveAttachments[j] = AttachmentReference(
-          Attachment: attachment.attachment,
-          Layout: attachment.layout,
-          AspectMask: attachment.aspectMask,
-          StencilLayout: null,
-        )
-      }
-    }
-
-    if (subpass.pDepthStencilAttachment != null) {
-      attachment := subpass.pDepthStencilAttachment[0]
-      description.DepthStencilAttachment = new!AttachmentReference(
-        Attachment: attachment.attachment,
-        Layout: attachment.layout,
-        AspectMask: attachment.aspectMask,
-        StencilLayout: null,
-      )
-      if attachment.pNext != null {
-        numPNext := numberOfPNext(attachment.pNext)
-        next := MutableVoidPtr(as!void*(attachment.pNext))
-        for i in (0 .. numPNext) {
-          sType := as!const VkStructureType*(next.Ptr)[0]
-          switch sType {
-            case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT: {
-              ext := as!VkAttachmentReferenceStencilLayout*(next.Ptr)[0]
-              description.DepthStencilAttachment.StencilLayout = new!AttachmentReferenceStencilLayout(
-                StencilLayout: ext.stencilLayout
-              )
-            }
-          }
-        }
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
-      }
-    }
-
-    preserveAttachments := subpass.pPreserveAttachments[0:subpass.preserveAttachmentCount]
-    for j in (0 .. subpass.preserveAttachmentCount) {
-      description.PreserveAttachments[j] = preserveAttachments[j]
-    }
-
-    renderPass.SubpassDescriptions[i] = description
+    renderPass.SubpassDescriptions[i] = createSubpassDescriptionObjectFrom2(subpass)
   }
 
   dependencies := info.pDependencies[0:info.dependencyCount]
   for i in (0 .. info.dependencyCount) {
     dependency := dependencies[i]
-    renderPass.SubpassDependencies[i] = SubpassDependency(
-      SrcSubpass: dependency.srcSubpass,
-      DstSubpass: dependency.dstSubpass,
-      SrcStageMask: dependency.srcStageMask,
-      DstStageMask: dependency.dstStageMask,
-      SrcAccessMask: dependency.srcAccessMask,
-      DstAccessMask: dependency.dstAccessMask,
-      DependencyFlags: dependency.dependencyFlags,
-      ViewOffset: dependency.viewOffset,
-    )
+    renderPass.SubpassDependencies[i] = createSubpassDependencyObjectFrom2(dependency)
   }
 
   if info.pCorrelatedViewMasks != null {
