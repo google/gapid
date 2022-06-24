@@ -347,6 +347,20 @@ test_suite(
 )
 
 test_suite(
+    name = "tests-vulkan-generator",
+    tests = [
+        # Linting
+        "//vulkan_generator:lint",
+        "//vulkan_generator/tests:lint",
+        "//vulkan_generator/vulkan_parser:lint",
+        "//vulkan_generator/vulkan_utils:lint",
+
+        # Tests
+        "//vulkan_generator/tests:test_vulkan_parsing",
+    ],
+)
+
+test_suite(
     name = "tests",
     tests = [
         # __BEGIN_TESTS

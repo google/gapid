@@ -74,3 +74,4 @@ test tests-gapis-other
 test tests-gapir
 test tests-gapil
 test tests-general
+test tests-vulkan-generator
