@@ -268,6 +268,63 @@ class AllVulkanCommands:
 
 
 @dataclass
+class ImageFormatComponent:
+    """
+    The metadata that defines a component of a Vulkan image format
+    """
+    name: str
+    numeric_format: str
+
+    # bitsize for non-compressed images
+    bits: Optional[int]
+
+    # Is this image format is compressed
+    compressed: bool
+
+
+@dataclass
+class ImageFormatPlane:
+    """
+    The metadata that defines a plane of a multi-planar Vulkan image format
+    """
+    index: int
+    width_divisor: int
+    height_divisor: int
+    compatible: str
+
+
+@dataclass
+class ImageFormat:
+    """
+    The metadata that defines a Vulkan image format
+    """
+    name: str
+    format_class: str
+    block_size: int
+    texels_per_block: int
+
+    # Pack size for the packed formats
+    packed: Optional[int]
+
+    # if this format has a corresponding Spir-V format
+    spirv_format: Optional[str]
+
+    components: OrderedDict[str, ImageFormatComponent] = field(default_factory=OrderedDict)
+
+    # Plane information for multi-planar images
+    planes: List[ImageFormatPlane] = field(default_factory=list)
+
+
+@dataclass
+class ImageFormatMetadata:
+    """
+    This class holds the information of all image formats from Vulkan XML
+    This class should have all the information needed to generate code related to Image formats
+    """
+    formats: Dict[str, ImageFormat] = field(default_factory=dict)
+
+
+@dataclass
 class SpirvExtension:
     """
     The metadata that defines a Spirv Extension
@@ -323,4 +380,5 @@ class VulkanMetadata:
     """
     types: AllVulkanTypes
     commands: AllVulkanCommands
+    image_format_metadata: ImageFormatMetadata
     spirv_metadata: SpirvMetadata
