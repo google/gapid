@@ -22,7 +22,18 @@ from vulkan_generator import generator
 
 def main() -> None:
     """ Entry point """
-    generator.generate(Path(sys.argv[1]))
+    if len(sys.argv) == 4:
+        generator.generate(target = sys.argv[1], output_dir = Path(sys.argv[2]), vulkan_xml_path = Path(sys.argv[3]))
+    elif len(sys.argv) == 2:
+        generator.generate("", "", sys.argv[1])
+    else:
+        print("""
+            Please run this as one of the following:
+            1) ./main.py <path to xml>
+                This will parse the XML file and print a report.
+            2) ./main.py <target to generate> <path to generate code files> <path to xml>
+                This will parse the XML file and generate the requested code into a source directory.
+            """)
 
 
 if __name__ == "__main__":
