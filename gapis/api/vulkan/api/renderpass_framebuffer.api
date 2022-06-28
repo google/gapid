@@ -165,16 +165,16 @@ Thefore there is no need to repeat the KHR structs
 }
 
 @internal class AttachmentDescription {
-    VkAttachmentDescriptionFlags           Flags
-    VkFormat                               Format
-    VkSampleCountFlagBits                  Samples
-    VkAttachmentLoadOp                     LoadOp
-    VkAttachmentStoreOp                    StoreOp
-    VkAttachmentLoadOp                     StencilLoadOp
-    VkAttachmentStoreOp                    StencilStoreOp
-    VkImageLayout                          InitialLayout
-    VkImageLayout                          FinalLayout
-    ref!AttachmentDescriptionStencilLayout StencilLayout
+    VkAttachmentDescriptionFlags              Flags
+    VkFormat                                  Format
+    VkSampleCountFlagBits                     Samples
+    VkAttachmentLoadOp                        LoadOp
+    VkAttachmentStoreOp                       StoreOp
+    VkAttachmentLoadOp                        StencilLoadOp
+    VkAttachmentStoreOp                       StencilStoreOp
+    VkImageLayout                             InitialLayout
+    VkImageLayout                             FinalLayout
+    ref!AttachmentDescriptionStencilLayout    StencilLayout
 }
 
 @internal class AttachmentReferenceStencilLayout {
@@ -188,15 +188,22 @@ Thefore there is no need to repeat the KHR structs
     ref!AttachmentReferenceStencilLayout  StencilLayout
 }
 
+@internal class SubpassDescriptionDepthStencilResolve {
+    VkResolveModeFlagBits      DepthResolveMode
+    VkResolveModeFlagBits      StencilResolveMode
+    AttachmentReference        DepthStencilResolveAttachment
+}
+
 @internal class SubpassDescription {
-  VkSubpassDescriptionFlags         Flags
-  u32                               ViewMask
-  VkPipelineBindPoint               PipelineBindPoint
-  map!(u32, AttachmentReference)    InputAttachments
-  map!(u32, AttachmentReference)    ColorAttachments
-  map!(u32, AttachmentReference)    ResolveAttachments
-  ref!AttachmentReference           DepthStencilAttachment
-  map!(u32, u32)                    PreserveAttachments
+  VkSubpassDescriptionFlags                 Flags
+  u32                                       ViewMask
+  VkPipelineBindPoint                       PipelineBindPoint
+  map!(u32, AttachmentReference)            InputAttachments
+  map!(u32, AttachmentReference)            ColorAttachments
+  map!(u32, AttachmentReference)            ResolveAttachments
+  ref!AttachmentReference                   DepthStencilAttachment
+  map!(u32, u32)                            PreserveAttachments
+  ref!SubpassDescriptionDepthStencilResolve DepthStencilResolve
 }
 
 @internal class SubpassDependency {
@@ -318,6 +325,26 @@ sub SubpassDescription createSubpassDescriptionObjectFrom2(VkSubpassDescription2
     ViewMask: subpassDescription2.viewMask,
     PipelineBindPoint: subpassDescription2.pipelineBindPoint,
   )
+
+  if subpassDescription2.pNext != null {
+    numPNext := numberOfPNext(subpassDescription2.pNext)
+    next := MutableVoidPtr(as!void*(subpassDescription2.pNext))
+    for j in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE: {
+          ext := as!VkSubpassDescriptionDepthStencilResolve*(next.Ptr)[0]
+          internalSubpassDescription.DepthStencilResolve = new!SubpassDescriptionDepthStencilResolve(
+            DepthResolveMode: ext.depthResolveMode,
+            StencilResolveMode: ext.stencilResolveMode,
+          )
+          attachmentReference2 := ext.pDepthStencilResolveAttachment[0]
+          internalSubpassDescription.DepthStencilResolve.DepthStencilResolveAttachment =
+              createAttachmentReferenceObjectFrom2(attachmentReference2)
+        }
+      }
+    }
+  }
 
   inputAttachments := subpassDescription2.pInputAttachments[0:subpassDescription2.inputAttachmentCount]
   for j in (0 .. subpassDescription2.inputAttachmentCount) {

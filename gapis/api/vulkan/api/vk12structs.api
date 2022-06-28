@@ -235,3 +235,28 @@ class VkRenderPassAttachmentBeginInfo {
     u32                 attachmentCount
     const VkImageView*  pAttachments
 }
+
+class VkPhysicalDeviceDepthStencilResolveProperties {
+    VkStructureType       sType
+    void*                 pNext
+    VkResolveModeFlags    supportedDepthResolveModes
+    VkResolveModeFlags    supportedStencilResolveModes
+    VkBool32              independentResolveNone
+    VkBool32              independentResolve
+}
+
+@internal
+class PhysicalDeviceDepthStencilResolveProperties {
+    VkResolveModeFlags    SupportedDepthResolveModes
+    VkResolveModeFlags    SupportedStencilResolveModes
+    VkBool32              IndependentResolveNone
+    VkBool32              IndependentResolve
+}
+
+class VkSubpassDescriptionDepthStencilResolve {
+    VkStructureType                  sType
+    const void*                      pNext
+    VkResolveModeFlagBits            depthResolveMode
+    VkResolveModeFlagBits            stencilResolveMode
+    const VkAttachmentReference2*    pDepthStencilResolveAttachment
+}

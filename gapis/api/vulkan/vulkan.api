@@ -317,6 +317,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_QCOM_render_pass_store_ops"] = true
   supported.ExtensionNames["VK_EXT_load_store_op_none"] = true
   supported.ExtensionNames["VK_KHR_imageless_framebuffer"] = true
+  supported.ExtensionNames["VK_KHR_depth_stencil_resolve"] = true
   return supported
 }
 

@@ -596,3 +596,6 @@ bitfield VkSemaphoreWaitFlagBits {
     VK_SEMAPHORE_WAIT_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
 }
 type VkFlags VkSemaphoreWaitFlags
+
+//@extension("VK_KHR_depth_stencil_resolve")
+type VkFlags VkResolveModeFlags

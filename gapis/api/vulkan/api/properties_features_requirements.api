@@ -695,6 +695,10 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
             _ = as!VkPhysicalDeviceSamplerFilterMinmaxProperties*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+            _ = as!VkPhysicalDeviceDepthStencilResolveProperties*(next.Ptr)[0]
+          }
+
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -875,6 +879,15 @@ sub void GetPhysicalDeviceProperties2(
               phyDev.PhysicalDeviceSamplerFilterMinmaxProperties = new!PhysicalDeviceSamplerFilterMinmaxProperties(
                 FilterMinmaxSingleComponentFormats: ext.filterMinmaxSingleComponentFormats,
                 FilterMinmaxImageComponentMapping: ext.filterMinmaxImageComponentMapping,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+              ext := as!VkPhysicalDeviceDepthStencilResolveProperties*(next.Ptr)[0]
+              phyDev.PhysicalDeviceDepthStencilResolveProperties = new!PhysicalDeviceDepthStencilResolveProperties(
+                SupportedDepthResolveModes: ext.supportedDepthResolveModes,
+                SupportedStencilResolveModes: ext.supportedStencilResolveModes,
+                IndependentResolveNone: ext.independentResolveNone,
+                IndependentResolve: ext.independentResolve,
               )
             }
           }
