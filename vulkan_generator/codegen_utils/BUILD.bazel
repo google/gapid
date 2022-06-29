@@ -12,36 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
-load("//tools/build/python:python.bzl", "py_lint")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//tools/build:rules.bzl", "py_lint")
 
 py_library(
-    name = "vulkan_generator",
-    srcs = glob(
-        ["*.py"],
-        exclude = ["main.py"],
-    ),
+    name = "codegen_utils",
+    srcs = glob(["*.py"]),
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
-    deps = [
-        "//vulkan_generator/handle_remapper",
-        "//vulkan_generator/vulkan_parser",
-    ],
-)
-
-py_binary(
-    name = "main",
-    srcs = ["main.py"],
-    args = [
-        "$(location @vulkan-headers//:vk.xml)",
-    ],
-    data = [
-        "@vulkan-headers//:vk.xml",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":vulkan_generator",
-    ],
 )
 
 py_lint(

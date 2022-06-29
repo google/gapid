@@ -448,6 +448,8 @@ test_suite(
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
         "//vulkan_generator:lint",
+        "//vulkan_generator/codegen_utils:lint",
+        "//vulkan_generator/handle_remapper:lint",
         "//vulkan_generator/tests:lint",
         "//vulkan_generator/tests:test_vulkan_parsing",
         "//vulkan_generator/vulkan_parser:lint",

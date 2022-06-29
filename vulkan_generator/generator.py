@@ -93,7 +93,7 @@ def basic_generate(target: str,
 
     generate_header(os.path.join(output_dir, target + ".h"), all_vulkan_types)
     generate_cpp(os.path.join(output_dir, target + ".cc"), all_vulkan_types)
-    generate_test(os.path.join(output_dir, target + "_tests.cpp"), all_vulkan_types)
+    generate_test(os.path.join(output_dir, target + "_tests.cc"), all_vulkan_types)
 
 def generate(target: str, output_dir: Path, vulkan_xml_path: Path) -> bool:
 
