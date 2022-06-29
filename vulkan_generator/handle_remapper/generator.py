@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import List
 
 from textwrap import dedent
-from vulkan_parser import types
-from codegen_utils import codegen
+from vulkan_generator.vulkan_parser import types
+from vulkan_generator.codegen_utils import codegen
 
 def handle_map_name(handle: str) -> str:
     return f"""{handle[0:1].lower() + handle[1:]}_handle_map_"""
