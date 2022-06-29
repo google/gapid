@@ -121,11 +121,13 @@ def test_enum_with_value_fields() -> None:
     assert not vulkan_enum.bitmask
     assert not vulkan_enum.bit64
 
-    assert vulkan_enum.field_order[0] == "VK_COMMAND_BUFFER_LEVEL_PRIMARY"
+    field_names = list(vulkan_enum.fields.keys())
+
+    assert field_names[0] == "VK_COMMAND_BUFFER_LEVEL_PRIMARY"
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_PRIMARY"].value == 0
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_PRIMARY"].representation == "0"
 
-    assert vulkan_enum.field_order[1] == "VK_COMMAND_BUFFER_LEVEL_SECONDARY"
+    assert field_names[1] == "VK_COMMAND_BUFFER_LEVEL_SECONDARY"
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_SECONDARY"].value == 1
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_SECONDARY"].representation == "1"
 
@@ -147,11 +149,13 @@ def test_enum_with_bitmask_fields() -> None:
     assert vulkan_enum.bitmask
     assert not vulkan_enum.bit64
 
-    assert vulkan_enum.field_order[0] == "VK_COMMAND_POOL_CREATE_TRANSIENT_BIT"
+    field_names = list(vulkan_enum.fields.keys())
+
+    assert field_names[0] == "VK_COMMAND_POOL_CREATE_TRANSIENT_BIT"
     assert vulkan_enum.fields["VK_COMMAND_POOL_CREATE_TRANSIENT_BIT"].value == 1
     assert vulkan_enum.fields["VK_COMMAND_POOL_CREATE_TRANSIENT_BIT"].representation == "0x00000001"
 
-    assert vulkan_enum.field_order[1] == "VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT"
+    assert field_names[1] == "VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT"
     assert vulkan_enum.fields["VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT"].value == 2
     assert vulkan_enum.fields["VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT"].representation == "0x00000002"
 
@@ -173,11 +177,13 @@ def test_enum_with_64bit_bitmask_fields() -> None:
     assert vulkan_enum.bitmask
     assert vulkan_enum.bit64
 
-    assert vulkan_enum.field_order[0] == "VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT"
+    field_names = list(vulkan_enum.fields.keys())
+
+    assert field_names[0] == "VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT"
     assert vulkan_enum.fields["VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT"].value == 1
     assert vulkan_enum.fields["VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT"].representation == "0x00000001ULL"
 
-    assert vulkan_enum.field_order[1] == "VK_ACCESS_2_SHADER_SAMPLED_READ_BIT"
+    assert field_names[1] == "VK_ACCESS_2_SHADER_SAMPLED_READ_BIT"
     assert vulkan_enum.fields["VK_ACCESS_2_SHADER_SAMPLED_READ_BIT"].value == 2 ** 32
     assert vulkan_enum.fields["VK_ACCESS_2_SHADER_SAMPLED_READ_BIT"].representation == "0x100000000ULL"
 
@@ -223,5 +229,7 @@ def test_enum_with_aliased_fields() -> None:
     vulkan_enum = enums_parser.parse(ET.fromstring(xml))
     assert isinstance(vulkan_enum, types.VulkanEnum)
 
-    assert vulkan_enum.field_order[0] == "VK_COLOR_SPACE_SRGB_NONLINEAR_KHR"
+    field_names = list(vulkan_enum.fields.keys())
+
+    assert field_names[0] == "VK_COLOR_SPACE_SRGB_NONLINEAR_KHR"
     assert vulkan_enum.aliases["VK_COLORSPACE_SRGB_NONLINEAR_KHR"] == "VK_COLOR_SPACE_SRGB_NONLINEAR_KHR"

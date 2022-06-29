@@ -14,9 +14,7 @@
 
 """ This module is responsible for parsing Vulkan commands and aliases of them"""
 
-from typing import Dict
-from typing import List
-from typing import NamedTuple
+from typing import OrderedDict
 
 import xml.etree.ElementTree as ET
 
@@ -24,17 +22,10 @@ from vulkan_generator.vulkan_utils import parsing_utils
 from vulkan_generator.vulkan_parser import types
 
 
-class ParameterInformation(NamedTuple):
-    """Temporary class to return argument information"""
-    parameter_order: List[str]
-    parameters: Dict[str, types.VulkanFunctionArgument]
-
-
-def parse_arguments(command_elem: ET.Element) -> ParameterInformation:
+def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, types.VulkanCommandParam]:
     """Parses the arguments of Vulkan Commands"""
 
-    parameter_order: List[str] = []
-    parameters: Dict[str, types.VulkanCommandParam] = {}
+    parameters: OrderedDict[str, types.VulkanCommandParam] = OrderedDict()
 
     for param_elem in command_elem:
         if param_elem.tag == "proto":
@@ -99,7 +90,6 @@ def parse_arguments(command_elem: ET.Element) -> ParameterInformation:
             array_size_reference = array_size_reference.replace("null-terminated", "")
             array_size_reference = parsing_utils.clean_type_string(array_size_reference)
 
-        parameter_order.append(parameter_name)
         parameters[parameter_name] = types.VulkanCommandParam(
             parameter_name=parameter_name,
             parameter_type=parameter_type,
@@ -108,7 +98,7 @@ def parse_arguments(command_elem: ET.Element) -> ParameterInformation:
             array_size_reference=array_size_reference,
         )
 
-    return ParameterInformation(parameter_order=parameter_order, parameters=parameters)
+    return parameters
 
 
 def parse_command(command_elem: ET.Element) -> types.VulkanCommand:
@@ -140,7 +130,7 @@ def parse_command(command_elem: ET.Element) -> types.VulkanCommand:
     name = parsing_utils.get_text_from_tag_in_children(command_elem[0], "name")
     return_type = parsing_utils.get_text_from_tag_in_children(command_elem[0], "type")
 
-    parameter_info = parse_arguments(command_elem)
+    parameters = parse_arguments(command_elem)
     return types.VulkanCommand(
         name=name,
         return_type=return_type,
@@ -149,8 +139,7 @@ def parse_command(command_elem: ET.Element) -> types.VulkanCommand:
         queues=queues,
         command_buffer_levels=command_buffer_levels,
         error_codes=error_codes,
-        parameter_order=parameter_info.parameter_order,
-        parameters=parameter_info.parameters)
+        parameters=parameters)
 
 
 def parse_command_alias(command_elem: ET.Element) -> types.VulkanCommandAlias:

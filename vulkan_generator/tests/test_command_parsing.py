@@ -48,8 +48,10 @@ def test_vulkan_command() -> None:
     assert command.return_type == "void"
 
     assert len(command.parameters) == 1
-    assert command.parameter_order[0] == "queue"
 
+    parameter_names = list(command.parameters.keys())
+
+    assert parameter_names[0] == "queue"
     assert command.parameters["queue"].parameter_type == "VkQueue"
     assert command.parameters["queue"].parameter_name == "queue"
 

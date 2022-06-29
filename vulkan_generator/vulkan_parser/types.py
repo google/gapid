@@ -86,8 +86,7 @@ class VulkanStruct(VulkanType):
     """The meta data defines a Vulkan Struct"""
 
     # These give us both what are the members are and their order
-    member_order: List[str] = field(default_factory=list)
-    members: Dict[str, VulkanStructMember] = field(default_factory=dict)
+    members: OrderedDict[str, VulkanStructMember] = field(default_factory=OrderedDict)
 
 
 @dataclass
@@ -109,8 +108,7 @@ class VulkanFunctionPtr(VulkanType):
     return_type: str
 
     # These give us both what are the arguments are and their order
-    argument_order: List[str] = field(default_factory=list)
-    arguments: Dict[str, VulkanFunctionArgument] = field(default_factory=dict)
+    arguments: OrderedDict[str, VulkanFunctionArgument] = field(default_factory=OrderedDict)
 
 
 @dataclass
@@ -130,8 +128,11 @@ class VulkanEnumField:
 @dataclass
 class VulkanEnum(VulkanType):
     """The meta data defines an Enum"""
-    field_order: List[str]
-    fields: Dict[str, VulkanEnumField]
+    # Is this enum have bitmask fields
+    bitmask: bool
+
+    # Is this enum is 64 bits
+    bit64: bool
 
     # Enum fields can be aliases of other values especially around
     # the extensions. Moreover, these aliases can be chained.
@@ -139,13 +140,8 @@ class VulkanEnum(VulkanType):
     # they have been defined.
     # Therefore we keep them separate so that the field order does not
     # get mixed.
-    aliases: Dict[str, str]
-
-    # Is this enum have bitmask fields
-    bitmask: bool
-
-    # Is this enum is 64 bits
-    bit64: bool
+    aliases: Dict[str, str] = field(default_factory=dict)
+    fields: OrderedDict[str, VulkanEnumField] = field(default_factory=OrderedDict)
 
 
 @dataclass
@@ -214,8 +210,7 @@ class VulkanCommand:
     command_buffer_levels: Optional[List[str]]
 
     # These give us both what are the parameters are and their order
-    parameter_order: List[str] = field(default_factory=list)
-    parameters: Dict[str, VulkanCommandParam] = field(default_factory=dict)
+    parameters: OrderedDict[str, VulkanCommandParam] = field(default_factory=OrderedDict)
 
 
 @dataclass
@@ -240,7 +235,7 @@ class AllVulkanTypes:
 
     defines: OrderedDict[str, VulkanDefine] = field(default_factory=OrderedDict)
 
-    basetypes: OrderedDict[str, VulkanBaseType] = field(default_factory=OrderedDict)
+    basetypes: Dict[str, VulkanBaseType] = field(default_factory=dict)
 
     handles: Dict[str, VulkanHandle] = field(default_factory=dict)
     handle_aliases: Dict[str, VulkanHandleAlias] = field(default_factory=dict)

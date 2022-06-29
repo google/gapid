@@ -14,26 +14,16 @@
 
 """ This module is responsible for parsing Vulkan function pointers"""
 
-from typing import Dict
-from typing import List
-from typing import NamedTuple
-
+from typing import OrderedDict
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_utils import parsing_utils
 
 
-class ArgumentInformation(NamedTuple):
-    """Temporary class to return argument information"""
-    argument_order: List[str]
-    arguments: Dict[str, types.VulkanFunctionArgument]
-
-
-def parse_arguments(function_ptr_elem: ET.Element) -> ArgumentInformation:
+def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, types.VulkanFunctionArgument]:
     """Parses the arguments of a Vulkan Function Pointer"""
-    argument_order: List[str] = []
-    arguments: Dict[str, types.VulkanFunctionArgument] = {}
+    arguments: OrderedDict[str, types.VulkanFunctionArgument] = OrderedDict()
 
     # In the XML const modifier of the type is part of the
     # previous argument of the function
@@ -74,16 +64,12 @@ def parse_arguments(function_ptr_elem: ET.Element) -> ArgumentInformation:
             argument_type = argument_type + "*"
             argument_name = argument_name[1:]
 
-        argument_order.append(argument_name)
         arguments[argument_name] = types.VulkanFunctionArgument(
             argument_type=argument_type,
             argument_name=argument_name,
         )
 
-    return ArgumentInformation(
-        argument_order=argument_order,
-        arguments=arguments
-    )
+    return arguments
 
 
 def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
@@ -103,14 +89,16 @@ def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
     # Return type is in the type tag's text field with some extra information
     # e.g typedef void (VKAPI_PTR *
     return_type = func_ptr_elem.text
+    if not return_type:
+        raise SyntaxError(f"No return type found for the function pointer: {ET.tostring(func_ptr_elem, 'utf-8')!r}")
+
     # remove the function pointer boilers around type
     return_type = return_type.split("(")[0]
     return_type = return_type.replace("typedef", "")
     return_type = parsing_utils.clean_type_string(return_type)
 
-    argument_info = parse_arguments(func_ptr_elem)
+    arguments = parse_arguments(func_ptr_elem)
     return types.VulkanFunctionPtr(
         typename=function_name,
         return_type=return_type,
-        argument_order=argument_info.argument_order,
-        arguments=argument_info.arguments)
+        arguments=arguments)
