@@ -12,20 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
-load("//tools/build:rules.bzl", "py_lint")
+load("//tools/build/rules:vulkan_generator.bzl", "basic_vulkan_generator")
 
-py_library(
+basic_vulkan_generator(
+    name = "handle_remapper_src",
+    target = "handle_remapper",
+)
+
+cc_library(
     name = "handle_remapper",
-    srcs = glob(["*.py"]),
-    srcs_version = "PY3",
+    srcs = glob(
+        [":handle_remapper_src"],
+        exclude = ["*_test.cpp"],
+    ),
     visibility = ["//visibility:public"],
     deps = [
-        "//vulkan_generator/codegen_utils",
+        "//replay2/core_utils",
     ],
 )
 
-py_lint(
-    name = "lint",
-    srcs = glob(["*.py"]),
+cc_test(
+    name = "handle_remapper_test",
+    srcs = [":handle_remapper_src"],
+    deps = [
+        "//replay2/core_utils",
+        "//replay2/vulkan_base",
+        "@com_google_googletest//:gtest_main",
+    ],
 )

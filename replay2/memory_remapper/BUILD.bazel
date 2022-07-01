@@ -12,20 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
-load("//tools/build:rules.bzl", "py_lint")
-
-py_library(
-    name = "handle_remapper",
-    srcs = glob(["*.py"]),
-    srcs_version = "PY3",
+cc_library(
+    name = "memory_remapper",
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
     visibility = ["//visibility:public"],
-    deps = [
-        "//vulkan_generator/codegen_utils",
-    ],
-)
-
-py_lint(
-    name = "lint",
-    srcs = glob(["*.py"]),
 )

@@ -144,19 +144,11 @@ def generate_handle_remapper_h(file_path : Path, vulkan_metadata : types.VulkanM
             #include <iostream>
             #include <map>
 
+            #include "replay2/core_utils/non_copyable.h"
+            #include "replay2/vulkan_base/vulkan_handle.h"
+
             namespace agi {
             namespace replay2 {
-
-            // TODO: This is just a placeholder type for now. This type will not be generated.
-            typedef uint64_t Handle;
-
-            // TODO: This is just a placeholder type for now. This type will not be generated.
-            class noncopyable {
-                public:
-                noncopyable() {};
-                noncopyable(const noncopyable& rhs) = delete;
-                noncopyable& operator=(const noncopyable& rhs) = delete;
-            };
 
         """))
 
@@ -173,25 +165,25 @@ def generate_handle_remapper_h(file_path : Path, vulkan_metadata : types.VulkanM
 
         for handle in vulkan_metadata.types.handles:
 
-            private_members.append(f"""std::map<Handle, Handle> {handle_map_name(handle)};""")
+            private_members.append(f"""std::map<VulkanHandle, VulkanHandle> {handle_map_name(handle)};""")
 
             if not vulkan_metadata.types.handles[handle].dispatchable:
-                private_members.append(f"""std::map<Handle, int> {handle_count_map_name(handle)};""")
+                private_members.append(f"""std::map<VulkanHandle, int> {handle_count_map_name(handle)};""")
 
             private_members.append("")
 
             public_functions.append(codegen.create_function_declaration(handle_add_name(handle),
-                                                                        arguments = {"captureHandle" : "Handle",
-                                                                                           "replayHandle" : "Handle"}))
+                                                                        arguments = {"captureHandle" : "VulkanHandle",
+                                                                                           "replayHandle" : "VulkanHandle"}))
             public_functions.append(codegen.create_function_declaration(handle_remove_name(handle),
-                                                                        arguments = {"captureHandle" : "Handle"}))
+                                                                        arguments = {"captureHandle" : "VulkanHandle"}))
             public_functions.append(codegen.create_function_declaration(handle_remap_name(handle),
-                                                                        return_type = "Handle",
-                                                                        arguments = {"captureHandle" : "Handle"}))
+                                                                        return_type = "VulkanHandle",
+                                                                        arguments = {"captureHandle" : "VulkanHandle"}))
             public_functions.append("")
 
         remapper_class_def = codegen.create_class_definition("VulkanHandleRemapper",
-                                                             public_inheritance = ["noncopyable"],
+                                                             public_inheritance = ["non_copyable"],
                                                              public_functions = public_functions,
                                                              public_members = public_members,
                                                              private_members = private_members)
@@ -227,19 +219,19 @@ def generate_handle_remapper_cpp(file_path : Path, vulkan_metadata : types.Vulka
 
             add_definition = codegen.create_function_definition(
                                 f"""VulkanHandleRemapper::{handle_add_name(handle)}""",
-                                arguments = {"captureHandle" : "Handle",
-                                           "replayHandle" : "Handle"},
+                                arguments = {"captureHandle" : "VulkanHandle",
+                                           "replayHandle" : "VulkanHandle"},
                                 code = implgenerator.handle_add_code(handle))
 
             remove_definition = codegen.create_function_definition(
                                     f"""VulkanHandleRemapper::{handle_remove_name(handle)}""",
-                                    arguments = {"captureHandle" : "Handle"},
+                                    arguments = {"captureHandle" : "VulkanHandle"},
                                     code = implgenerator.handle_remove_code(handle))
 
             remap_definition = codegen.create_function_definition(
                                     f"""VulkanHandleRemapper::{handle_remap_name(handle)}""",
-                                    arguments = {"captureHandle" : "Handle"},
-                                    return_type = "Handle",
+                                    arguments = {"captureHandle" : "VulkanHandle"},
+                                    return_type = "VulkanHandle",
                                     code = implgenerator.handle_remap_code(handle))
 
             remapper_cpp.write(codegen.comment_code(code = add_definition,
