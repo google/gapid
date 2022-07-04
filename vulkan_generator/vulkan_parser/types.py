@@ -354,7 +354,7 @@ class SpirvCapability:
     property: Optional[str]
 
     # Vulkan extension enabled by this Spirv extension
-    extension: str
+    extension: Optional[str]
 
 
 @dataclass

@@ -45,12 +45,16 @@ sudo apt-get install -y clang-format-6.0
 # Get recent Android build tools.
 echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;30.0.3'
 
+# Python Format tool
+python3 -m pip install autopep8==1.6.0 --user
+
 # Setup environment.
 export ANDROID_NDK_HOME=/opt/android-ndk-r16b
 export BAZEL=$BUILD_ROOT/bazel/bin/bazel
 export BUILDIFIER=$BUILD_ROOT/tools/bin/buildifier
 export BUILDOZER=$BUILD_ROOT/tools/bin/buildozer
 export CLANG_FORMAT=clang-format-6.0
+export AUTOPEP8=~/.local/bin/autopep8
 
 cd $SRC
 

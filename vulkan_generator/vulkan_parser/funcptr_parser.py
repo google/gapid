@@ -35,6 +35,12 @@ def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, types.Vul
         if elem.tag != "type":
             continue
 
+        if not elem.text:
+            raise SyntaxError(f"Argument type could not found: {ET.tostring(elem, 'utf-8')!r}")
+
+        if not elem.tail:
+            raise SyntaxError(f"Argument name could not found: {ET.tostring(elem, 'utf-8')!r}")
+
         argument_type = parsing_utils.clean_type_string(elem.text)
         argument_name = parsing_utils.clean_type_string(elem.tail)
 

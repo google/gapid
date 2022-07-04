@@ -18,6 +18,7 @@ BAZEL=${BAZEL:-bazel}
 BUILDIFIER=${BUILDIFIER:-buildifier}
 BUILDOZER=${BUILDOZER:-buildozer}
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
+AUTOPEP8=${AUTOPEP8:-autopep8}
 
 if test -t 1; then
   ncolors=$(tput colors)
@@ -85,10 +86,39 @@ function run_buildozer() {
 }
 
 function run_enumerate_tests() {
-  TARGETS="$($BAZEL query --deleted_packages=//gapii/fuchsia --output label 'kind(".*_test rule", //...)' | sort -t: -k1,1 | awk '{print "        \""$0"\","}')"
+  # Get all the test targets in all packages except gapii/fuschia
+  TARGETS=$($BAZEL query --deleted_packages=//gapii/fuchsia --output label 'kind(".*_test rule", //...)')
+
+  # Exclude linting targets from tests
+  TARGETS=$(echo "$TARGETS" | grep -v ":lint_")
+
+  # Sort the test targets alphabetically
+  TARGETS=$(echo "$TARGETS" | sort -t: -k1,1)
+
+  # Indent the test target names to match the BUILD.bazel file
+  TARGETS=$(echo "$TARGETS" | awk '{print "        \""$0"\","}')
+
   OUT=$(mktemp)
   cp BUILD.bazel $OUT
   cat $OUT | awk -v "targets=${TARGETS//$'\n'/\\n}" 'begin {a=0} /__END_TESTS/ {a=0} { if (a==0) print $0;} /__BEGIN_TESTS/ { a=1; print targets }' > BUILD.bazel
+}
+
+function run_enumerate_lints() {
+  # Get all the linting test targets in Vulkan generator
+  TARGETS=$($BAZEL query 'attr(generator_function, py_lint, //vulkan_generator/...)')
+
+  # Exclude the sub targets to prevent repetation
+  TARGETS=$(echo "$TARGETS" | grep -v "_flake8" | grep -v "_mypy" | grep -v "_pylint")
+
+  # Sort the linting targets alphabetically
+  TARGETS=$(echo "$TARGETS" | sort -t: -k1,1)
+
+  # Indent the linting target names to match the BUILD.bazel file
+  TARGETS=$(echo "$TARGETS" | awk '{print "        \""$0"\","}')
+
+  OUT=$(mktemp)
+  cp BUILD.bazel $OUT
+  cat $OUT | awk -v "targets=${TARGETS//$'\n'/\\n}" 'begin {a=0} /__END_LINT/ {a=0} { if (a==0) print $0;} /__BEGIN_LINT/ { a=1; print targets }' > BUILD.bazel
 }
 
 function run_gazelle() {
@@ -102,14 +132,15 @@ function run_gofmt() {
   find . -name "*.go" | xargs $GOFMT -w
 }
 
+function run_autopep8() {
+  $AUTOPEP8 --global-config=tools/build/python/pep8 -r --in-place vulkan_generator
+}
+
 # Ensure we are clean to start out with.
 check "git workspace must be clean" true
 
 # Check copyright headers
 check copyright-headers run_copyright_headers
-
-# Check clang-format.
-check clang-format run_clang_format
 
 # Check buildifier.
 check buildifier run_buildifier
@@ -120,12 +151,21 @@ check "buildozer fix" run_buildozer
 # Check that the //:tests target contains all tests.
 check "//:tests contains all tests" run_enumerate_tests
 
+# Check that "//:lint" target contains all lints
+check "//:lint contains all lints" run_enumerate_lints
+
 # Check gazelle.
 check "gazelle" run_gazelle
 
 # Check gofmt. This needs to be done AFTER Gazelle, such that Bazel has
 # installed its Go SDK (as a dependency to run Gazelle).
 check gofmt run_gofmt
+
+# Check python Formatter(autopep8)
+check autopep8 run_autopep8
+
+# Check clang-format.
+check clang-format run_clang_format
 
 echo
 echo "${green}All check completed successfully.$normal"

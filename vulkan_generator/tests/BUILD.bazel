@@ -25,4 +25,7 @@ py_test(
 py_lint(
     name = "lint",
     srcs = glob(["*.py"]),
+    deps = [
+        "test_vulkan_parsing",
+    ],
 )

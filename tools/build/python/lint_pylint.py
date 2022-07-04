@@ -12,23 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
-load("//tools/build:rules.bzl", "py_lint")
+import sys
+import pylint
 
-py_library(
-    name = "vulkan_parser",
-    srcs = glob(["*.py"]),
-    srcs_version = "PY3",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//vulkan_generator/vulkan_utils",
-    ],
-)
 
-py_lint(
-    name = "lint",
-    srcs = glob(["*.py"]),
-    deps = [
-        "vulkan_parser",
-    ],
-)
+if __name__ == "__main__":
+    pylint.run_pylint(sys.argv[1:])

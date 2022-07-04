@@ -30,6 +30,9 @@ def parse_define_by_attribute(define_elem: ET.Element) -> types.VulkanDefine:
     name = define_elem.attrib["name"]
     value = define_elem.text
 
+    if not value:
+        raise SyntaxError(f"Vulkan define does not have definition: {ET.tostring(define_elem, 'utf-8')!r}")
+
     return types.VulkanDefine(
         variable_name=name,
         value=value

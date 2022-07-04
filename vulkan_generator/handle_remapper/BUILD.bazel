@@ -22,10 +22,14 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//vulkan_generator/codegen_utils",
+        "//vulkan_generator/vulkan_parser",
     ],
 )
 
 py_lint(
     name = "lint",
     srcs = glob(["*.py"]),
+    deps = [
+        "handle_remapper",
+    ],
 )

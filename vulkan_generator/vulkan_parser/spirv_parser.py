@@ -23,11 +23,11 @@ from vulkan_generator.vulkan_parser import spirv_capabilities_parser
 
 def process_spirv_extensions(spirv_metadata: types.SpirvMetadata, spirv_extensions_element: ET.Element) -> None:
     """Process all the spirv extensions parsed from the Vulkan XML"""
-    for child in spirv_extensions_element:
-        spirv_extension = spirv_extensions_parser.parse(child)
+    for extension_element in spirv_extensions_element:
+        spirv_extension = spirv_extensions_parser.parse(extension_element)
 
         if not spirv_extension:
-            raise SyntaxError(f"Spirv Extension could not found: {ET.tostring(spirv_extension, 'utf-8')}")
+            raise SyntaxError(f"Spirv Extension could not found: {ET.tostring(extension_element, 'utf-8')}")
 
         spirv_metadata.extensions[spirv_extension.name] = spirv_extension
 

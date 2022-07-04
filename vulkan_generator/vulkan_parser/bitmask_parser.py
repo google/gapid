@@ -45,7 +45,7 @@ def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> types.VulkanBitmaskA
     return types.VulkanBitmaskAlias(typename=name, aliased_typename=alias)
 
 
-def parse_bitmask_by_tag(bitmask_elem: ET.Element) -> types.VulkanBitmaskAlias:
+def parse_bitmask_by_tag(bitmask_elem: ET.Element) -> types.VulkanBitmask:
     bitmask_name = parsing_utils.get_text_from_tag_in_children(bitmask_elem, "name")
     # This is optional because there are flags that are not used but reserved for the future.
     bitfield_type = parsing_utils.try_get_attribute(bitmask_elem, "requires")

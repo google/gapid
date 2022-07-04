@@ -38,10 +38,11 @@ def parse(basetype_elem: ET.Element) -> types.VulkanBaseType:
     name = parsing_utils.get_text_from_tag_in_children(basetype_elem, "name")
     basetype = parsing_utils.try_get_text_from_tag_in_children(basetype_elem, "type")
 
-    # If basetype is a pointer, pointer attribute is in the tail of the type
-    basetype_attribute = parsing_utils.try_get_tail_from_tag_in_children(basetype_elem, "type")
-    if basetype_attribute:
-        basetype_attribute = parsing_utils.clean_type_string(basetype_attribute)
-        basetype += basetype_attribute
+    if basetype:
+        # If basetype is a pointer, pointer attribute is in the tail of the type
+        basetype_attribute = parsing_utils.try_get_tail_from_tag_in_children(basetype_elem, "type")
+        if basetype_attribute:
+            basetype_attribute = parsing_utils.clean_type_string(basetype_attribute)
+            basetype = f"{basetype}{basetype_attribute}"
 
     return types.VulkanBaseType(typename=name, basetype=basetype)

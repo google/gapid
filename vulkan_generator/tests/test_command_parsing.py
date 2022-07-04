@@ -75,10 +75,12 @@ def test_vulkan_command_with_success_and_error_code() -> None:
 
     assert command.return_type == "VkResult"
 
-    assert len(command.error_codes) == 2
+    assert command.error_codes
+    assert command.error_codes and len(command.error_codes) == 2
     assert "VK_ERROR_OUT_OF_HOST_MEMORY" in command.error_codes
     assert "VK_ERROR_OUT_OF_DEVICE_MEMORY" in command.error_codes
 
+    assert command.success_codes
     assert len(command.success_codes) == 2
     assert "VK_SUCCESS" in command.success_codes
     assert "VK_INCOMPLETE" in command.success_codes
@@ -116,6 +118,7 @@ def test_vulkan_command_with_command_buffer_levels() -> None:
     typ = commands_parser.parse(ET.fromstring(xml))
     command = typ.commands["vkCmdSetLineWidth"]
 
+    assert command.command_buffer_levels
     assert len(command.command_buffer_levels) == 2
     assert "primary" in command.command_buffer_levels
     assert "secondary" in command.command_buffer_levels
@@ -137,6 +140,8 @@ def test_vulkan_command_with_queues() -> None:
 
     typ = commands_parser.parse(ET.fromstring(xml))
     command = typ.commands["vkCmdExecuteCommands"]
+
+    assert command.queues
     assert len(command.queues) == 3
     assert "transfer" in command.queues
     assert "graphics" in command.queues

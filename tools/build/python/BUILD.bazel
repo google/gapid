@@ -13,7 +13,11 @@
 # limitations under the License.
 
 exports_files([
-    "py_lint.py",
+    "lint_flake8.py",
+    "lint_mypy.py",
+    "lint_pylint.py",
+    "flake8",
+    "mypy.ini",
     "py_test.py",
     "pylintrc",
     "requirements.txt",

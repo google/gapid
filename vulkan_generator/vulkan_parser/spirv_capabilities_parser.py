@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 from vulkan_generator.vulkan_parser import types
 
 
-def parse(spriv_element: ET.Element) -> types.SpirvCapability:
+def parse(spirv_element: ET.Element) -> types.SpirvCapability:
     """Parses a Spirv capability or alias from the XML element that defines it
 
     A sample spirv capability:
@@ -32,13 +32,13 @@ def parse(spriv_element: ET.Element) -> types.SpirvCapability:
     </spirvcapability>
     """
 
-    name = spriv_element.attrib["name"]
+    name = spirv_element.attrib["name"]
     version: Optional[str] = None
     feature: Optional[str] = None
     vulkan_property: Optional[str] = None
     extension: Optional[str] = None
 
-    for enable in spriv_element:
+    for enable in spirv_element:
         if "version" in enable.attrib:
             version = enable.attrib["version"]
         elif "struct" in enable.attrib:
@@ -50,7 +50,7 @@ def parse(spriv_element: ET.Element) -> types.SpirvCapability:
         elif "extension" in enable.attrib:
             extension = enable.attrib["extension"]
         else:
-            raise SyntaxError(f"Unknown Spirv capability type: {ET.tostring(spriv_element, 'utf-8')}")
+            raise SyntaxError(f"Unknown Spirv capability type: {ET.tostring(spirv_element, 'utf-8')}")
 
     return types.SpirvCapability(
         name=name,

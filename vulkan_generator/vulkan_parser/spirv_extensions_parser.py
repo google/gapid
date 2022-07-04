@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 from vulkan_generator.vulkan_parser import types
 
 
-def parse(spriv_element: ET.Element) -> types.SpirvExtension:
+def parse(spirv_element: ET.Element) -> types.SpirvExtension:
     """Returns a Spirv extension or alias from the XML element that defines it
 
     A sample Spirv extension:
@@ -30,16 +30,20 @@ def parse(spriv_element: ET.Element) -> types.SpirvExtension:
     </spirvextension>
     """
 
-    name = spriv_element.attrib["name"]
+    name = spirv_element.attrib["name"]
     version: Optional[str] = None
     extension: Optional[str] = None
 
-    for enable in spriv_element:
+    for enable in spirv_element:
         if "version" in enable.attrib:
             version = enable.attrib["version"]
         elif "extension" in enable.attrib:
             extension = enable.attrib["extension"]
         else:
-            raise SyntaxError(f"Unknown Spirv capability type: {ET.tostring(spriv_element, 'utf-8')}")
+            raise SyntaxError(f"Unknown Spirv capability type: {ET.tostring(spirv_element, 'utf-8')}")
+
+    if not extension:
+        raise SyntaxError(
+            f"Vulkan extension for the Spirv extension could not found:{ET.tostring(spirv_element, 'utf-8')!r}")
 
     return types.SpirvExtension(name=name, version=version, extension=extension)

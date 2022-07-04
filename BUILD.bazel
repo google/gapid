@@ -347,15 +347,24 @@ test_suite(
 )
 
 test_suite(
-    name = "tests-vulkan-generator",
+    name = "lint",
     tests = [
-        # Linting
+        # __BEGIN_LINT
         "//vulkan_generator:lint",
+        "//vulkan_generator/codegen_utils:lint",
+        "//vulkan_generator/handle_remapper:lint",
         "//vulkan_generator/tests:lint",
         "//vulkan_generator/vulkan_parser:lint",
         "//vulkan_generator/vulkan_utils:lint",
+        # __END_LINT
+    ],
+)
 
-        # Tests
+test_suite(
+    name = "tests-vulkan-generator",
+    tests = [
+        # Run the linting as part of Vulkan generator tests
+        "//:lint",  # DO NOT REMOVE!
         "//vulkan_generator/tests:test_vulkan_parsing",
     ],
 )
@@ -448,13 +457,7 @@ test_suite(
         "//replay2/handle_remapper:handle_remapper_test",
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
-        "//vulkan_generator:lint",
-        "//vulkan_generator/codegen_utils:lint",
-        "//vulkan_generator/handle_remapper:lint",
-        "//vulkan_generator/tests:lint",
         "//vulkan_generator/tests:test_vulkan_parsing",
-        "//vulkan_generator/vulkan_parser:lint",
-        "//vulkan_generator/vulkan_utils:lint",
         # __END_TESTS
     ],
 )

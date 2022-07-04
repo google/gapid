@@ -66,6 +66,12 @@ function test {
         $@
 }
 
+ # If linting fails we do not need to wait entire AGI tests
+test lint
+
+# Test Vulkan Generator first as its much smaller and independent than other packages
+test tests-vulkan-generator
+
 # Running all the tests in one go leads to an out-of-memory error on Kokoro, hence the division in smaller test sets
 test tests-core
 test tests-gapis-api
@@ -74,4 +80,3 @@ test tests-gapis-other
 test tests-gapir
 test tests-gapil
 test tests-general
-test tests-vulkan-generator
