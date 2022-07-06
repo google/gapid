@@ -61,13 +61,12 @@ def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
             aliases[name] = alias
             continue
 
-        representation = field_element.attrib["value"]
-        value = int(representation, 0)
+        field = parsing_utils.get_enum_field_from_value(field_element.attrib["value"])
 
         fields[name] = types.VulkanEnumField(
             name=name,
-            value=value,
-            representation=representation)
+            value=field.value,
+            representation=field.representation)
 
     return EnumInformation(
         fields=fields,
@@ -91,15 +90,11 @@ def get_bitfield_info(field_elem: ET.Element, bit64: bool) -> BitfieldInfo:
             representation=value_string
         )
 
-    bitpos = int(field_elem.attrib["bitpos"])
-    value = 1 << bitpos
-    representation = f"0x{value:08x}"
-    if bit64:
-        representation = f"{representation}ULL"
+    field = parsing_utils.get_enum_field_from_bitpos(field_elem.attrib["bitpos"], bit64)
 
     return BitfieldInfo(
-        value=value,
-        representation=representation
+        value=field.value,
+        representation=field.representation
     )
 
 

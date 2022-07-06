@@ -70,6 +70,23 @@ def print_vulkan_metadata(vulkan_metadata: types.VulkanMetadata) -> None:
     print("=== Vulkan Command Aliases ===")
     pretty_printer.pprint(vulkan_commands.command_aliases)
 
+    versions = vulkan_metadata.core_versions
+    print("=== Vulkan 1.0 ===")
+    pretty_printer.pprint(versions["VK_VERSION_1_0"])
+
+    print("=== Vulkan 1.1 ===")
+    pretty_printer.pprint(versions["VK_VERSION_1_1"])
+
+    print("=== Vulkan 1.2 ===")
+    pretty_printer.pprint(versions["VK_VERSION_1_2"])
+
+    print("=== Vulkan 1.3 ===")
+    pretty_printer.pprint(versions["VK_VERSION_1_3"])
+
+    extension = vulkan_metadata.extensions
+    print("=== Vulkan Extensions ===")
+    pretty_printer.pprint(extension)
+
     image_format_metadata = vulkan_metadata.image_format_metadata
 
     print("=== Vulkan Image Formats ===")

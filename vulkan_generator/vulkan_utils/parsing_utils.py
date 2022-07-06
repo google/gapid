@@ -15,9 +15,17 @@
 """This module contains the utility functions that needed elsewhere while parsing Vulkan XML"""
 
 import xml.etree.ElementTree as ET
+
+from dataclasses import dataclass
 from typing import List
 from typing import Optional
 import os
+
+################################
+#                              #
+#           XML Utils          #
+#                              #
+################################
 
 
 def get_text_from_tag_in_children(elem: ET.Element, tag: str, recursive: bool = False) -> str:
@@ -122,3 +130,66 @@ def try_get_attribute_as_list(elem: ET.Element, attrib: str) -> Optional[List[st
 def clean_type_string(string: str) -> str:
     """Cleans the string from whitespace and ',' and ');'"""
     return string.replace(os.linesep, "").replace(" ", "").replace(",", "").replace(");", "")
+
+################################
+#                              #
+#          Enum Utils          #
+#                              #
+################################
+
+
+@dataclass
+class EnumFieldRepresentation:
+    value: int
+    representation: str
+
+
+def get_enum_field_from_value(value_str: str) -> EnumFieldRepresentation:
+    """
+    Returns an enum field representation from given value
+    """
+    representation = value_str
+    value = int(representation, 0)
+
+    return EnumFieldRepresentation(value=value, representation=representation)
+
+
+def get_enum_field_from_bitpos(bitpos_str: str, bit64: bool) -> EnumFieldRepresentation:
+    """
+    Returns an enum field representation from bit position
+    """
+    bitpos = int(bitpos_str)
+    value = 1 << bitpos
+    representation = f"0x{value:08x}"
+    if bit64:
+        representation = f"{representation}ULL"
+
+    return EnumFieldRepresentation(value=value, representation=representation)
+
+
+def get_enum_field_from_offset(
+        extnumber_str: Optional[str],
+        offset_str: str,
+        sign_str: Optional[str]) -> EnumFieldRepresentation:
+    """
+    Returns an enum field representation from an offset based on extension number and sign
+    """
+    # Representation format for extension enums:
+    # 1000EEEOOO
+    # e.g. Extension Number: 123, offset:4 => 1000123004
+
+    if not extnumber_str:
+        # Sometimes extension enums does not have extnumber
+        # In that case extension number in the enum fied should be 0
+        # but because all extension numbers are off by 1 in the enum
+        # we set it to 1
+        extnumber_str = "1"
+
+    sign = sign_str or ""
+    extnumber = int(extnumber_str)
+    offset = int(offset_str)
+
+    representation = f"{sign}1000{(extnumber- 1):03}{offset:03}"
+    value = int(representation)
+
+    return EnumFieldRepresentation(value=value, representation=representation)
