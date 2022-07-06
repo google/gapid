@@ -44,6 +44,9 @@ const (
 	// Global settings for opting to use prerelease driver.
 	oldDeveloperDriverSettingVariable = "game_driver_prerelease_opt_in_apps"
 	developerDriverSettingVariable    = "updatable_driver_prerelease_opt_in_apps"
+
+	// File that gates ability to access GPU counters on certain Adreno GPUs.
+	adrenoGpuCounterPath = "/sys/class/kgsl/kgsl-3d0/perfcounter"
 )
 
 var (
@@ -288,6 +291,14 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		i.GenID()
 	}
 
+	// Certain Adreno GPUs require an extra step to activate counters.
+	gpuName := d.Instance().GetConfiguration().GetHardware().GetGPU().GetName()
+	if strings.Contains(gpuName, "Adreno") {
+		if err := d.enableAdrenoGpuCounters(ctx); err != nil {
+			return d, err
+		}
+	}
+
 	return d, nil
 }
 
@@ -410,6 +421,23 @@ func (b *binding) NativeBridgeABI(ctx context.Context, emulated *device.ABI) *de
 
 func (b *binding) IsLocal(ctx context.Context) (bool, error) {
 	return true, nil
+}
+
+// Enable GPU counters on Adreno GPUs
+func (b *binding) enableAdrenoGpuCounters(ctx context.Context) error {
+	lsResult, err := b.Shell(fmt.Sprintf("ls %s", adrenoGpuCounterPath)).Call(ctx)
+	if err != nil {
+		return err
+	}
+
+	// If the file does not exist, then counters are enabled by default on this
+	// Adreno GPU.
+	if lsResult != adrenoGpuCounterPath {
+		return nil
+	}
+
+	_, err = b.Shell(fmt.Sprintf("echo 1 > %s", adrenoGpuCounterPath)).Call(ctx)
+	return err
 }
 
 var abiToISAs = []struct {
