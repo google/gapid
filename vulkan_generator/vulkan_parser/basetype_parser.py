@@ -22,7 +22,7 @@
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 
 
 def parse(basetype_elem: ET.Element) -> types.VulkanBaseType:
@@ -35,14 +35,14 @@ def parse(basetype_elem: ET.Element) -> types.VulkanBaseType:
     <type category="basetype">struct <name>ANativeWindow</name>;</type>
     """
 
-    name = parsing_utils.get_text_from_tag_in_children(basetype_elem, "name")
-    basetype = parsing_utils.try_get_text_from_tag_in_children(basetype_elem, "type")
+    name = parser_utils.get_text_from_tag_in_children(basetype_elem, "name")
+    basetype = parser_utils.try_get_text_from_tag_in_children(basetype_elem, "type")
 
     if basetype:
         # If basetype is a pointer, pointer attribute is in the tail of the type
-        basetype_attribute = parsing_utils.try_get_tail_from_tag_in_children(basetype_elem, "type")
+        basetype_attribute = parser_utils.try_get_tail_from_tag_in_children(basetype_elem, "type")
         if basetype_attribute:
-            basetype_attribute = parsing_utils.clean_type_string(basetype_attribute)
+            basetype_attribute = parser_utils.clean_type_string(basetype_attribute)
             basetype = f"{basetype}{basetype_attribute}"
 
     return types.VulkanBaseType(typename=name, basetype=basetype)

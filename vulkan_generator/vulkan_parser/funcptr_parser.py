@@ -18,7 +18,7 @@ from typing import OrderedDict
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 
 
 def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, types.VulkanFunctionArgument]:
@@ -41,8 +41,8 @@ def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, types.Vul
         if not elem.tail:
             raise SyntaxError(f"Argument name could not found: {ET.tostring(elem, 'utf-8')!r}")
 
-        argument_type = parsing_utils.clean_type_string(elem.text)
-        argument_name = parsing_utils.clean_type_string(elem.tail)
+        argument_type = parser_utils.clean_type_string(elem.text)
+        argument_name = parser_utils.clean_type_string(elem.tail)
 
         # Multiple const are not supported
         if argument_name.count("const") > 1:
@@ -90,7 +90,7 @@ def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
     < type > VkSystemAllocationScope < /type > allocationScope); < /type >
     """
 
-    function_name = parsing_utils.get_text_from_tag_in_children(func_ptr_elem, "name")
+    function_name = parser_utils.get_text_from_tag_in_children(func_ptr_elem, "name")
 
     # Return type is in the type tag's text field with some extra information
     # e.g typedef void (VKAPI_PTR *
@@ -101,7 +101,7 @@ def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
     # remove the function pointer boilers around type
     return_type = return_type.split("(")[0]
     return_type = return_type.replace("typedef", "")
-    return_type = parsing_utils.clean_type_string(return_type)
+    return_type = parser_utils.clean_type_string(return_type)
 
     arguments = parse_arguments(func_ptr_elem)
     return types.VulkanFunctionPtr(

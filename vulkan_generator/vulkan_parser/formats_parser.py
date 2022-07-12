@@ -20,7 +20,7 @@ from typing import Optional
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 from vulkan_generator.vulkan_parser import types
 
 
@@ -122,7 +122,7 @@ def parse_format(format_element: ET.Element) -> types.ImageFormat:
 
     # Pack size for the packed formats
     packed: Optional[int] = None
-    packed_str = parsing_utils.try_get_attribute(format_element, "packed")
+    packed_str = parser_utils.try_get_attribute(format_element, "packed")
     if packed_str:
         packed = int(format_element.attrib["packed"], 0)
 

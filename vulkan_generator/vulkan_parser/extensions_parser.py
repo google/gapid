@@ -20,7 +20,6 @@ import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
 from vulkan_generator.vulkan_parser import parser_utils
-from vulkan_generator.vulkan_utils import parsing_utils
 
 
 def parse(extensions_element: ET.Element) -> Dict[str, types.VulkanExtension]:
@@ -41,10 +40,10 @@ def parse(extensions_element: ET.Element) -> Dict[str, types.VulkanExtension]:
         number = int(extension_element.attrib["number"])
 
         # if this extension promoted to a core version which version it is
-        promoted = parsing_utils.try_get_attribute(extension_element, "promotedto")
+        promoted = parser_utils.try_get_attribute(extension_element, "promotedto")
 
         # if another extension deprecated this extension
-        deprecated = parsing_utils.try_get_attribute(extension_element, "deprecatedby")
+        deprecated = parser_utils.try_get_attribute(extension_element, "deprecatedby")
         if deprecated == "":
             deprecated = None
 
@@ -52,10 +51,10 @@ def parse(extensions_element: ET.Element) -> Dict[str, types.VulkanExtension]:
         extension_type = extension_element.attrib["type"]
 
         # Which extensions this extension requires
-        required_extensions = parsing_utils.try_get_attribute_as_list(extension_element, "requires")
+        required_extensions = parser_utils.try_get_attribute_as_list(extension_element, "requires")
 
         # If this extension is limited to a platform, which platform it is
-        platform = parsing_utils.try_get_attribute(extension_element, "platform")
+        platform = parser_utils.try_get_attribute(extension_element, "platform")
 
         requirements: List[types.VulkanExtensionRequirement] = []
         for requirement_element in extension_element:

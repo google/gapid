@@ -22,7 +22,7 @@ from typing import Optional
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 
 
 def parse(enum_elem: ET.Element) -> Optional[types.VulkanEnumAlias]:
@@ -32,7 +32,7 @@ def parse(enum_elem: ET.Element) -> Optional[types.VulkanEnumAlias]:
     <type category="enum" name="VkSemaphoreTypeKHR" alias="VkSemaphoreType"/>
     """
 
-    alias_name = parsing_utils.try_get_attribute(enum_elem, "alias")
+    alias_name = parser_utils.try_get_attribute(enum_elem, "alias")
 
     if not alias_name:
         # The actual enums and their fields of enums are defined under enums tag

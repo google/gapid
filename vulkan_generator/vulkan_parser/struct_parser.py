@@ -18,7 +18,7 @@ from typing import OrderedDict
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 from vulkan_generator.vulkan_parser import types
 
 
@@ -55,8 +55,8 @@ def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.V
             raise SyntaxError(
                 f"No member tag found in : {ET.tostring(member_element, 'utf-8')}")
 
-        variable_type = parsing_utils.get_text_from_tag_in_children(member_element, "type")
-        variable_name = parsing_utils.get_text_from_tag_in_children(member_element, "name")
+        variable_type = parser_utils.get_text_from_tag_in_children(member_element, "type")
+        variable_name = parser_utils.get_text_from_tag_in_children(member_element, "name")
 
         # Type attributes(const, struct) and pointer attributes(*, const*, *const,*const*)
         # are usually in the text field of the member tag.
@@ -76,15 +76,15 @@ def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.V
         type_attributes = member_element.text
         # some times it's just empty space or endline character
         if type_attributes:
-            type_attributes = parsing_utils.clean_type_string(type_attributes)
+            type_attributes = parser_utils.clean_type_string(type_attributes)
 
             # It might be empty string after cleaning
             if type_attributes:
                 variable_type = f"{type_attributes} {variable_type}"
 
-        pointers = parsing_utils.try_get_tail_from_tag_in_children(member_element, "type")
+        pointers = parser_utils.try_get_tail_from_tag_in_children(member_element, "type")
         if pointers:
-            pointers = parsing_utils.clean_type_string(pointers)
+            pointers = parser_utils.clean_type_string(pointers)
 
             # It might be empty string after cleaning
             if pointers:
@@ -101,13 +101,13 @@ def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.V
                 f"No variable name found in : {ET.tostring(member_element, 'utf-8')}")
 
         # Variable size is optional
-        variable_size = parsing_utils.try_get_text_from_tag_in_children(member_element, "enum")
+        variable_size = parser_utils.try_get_text_from_tag_in_children(member_element, "enum")
 
         # Currently if this attribute exists, it's always true
-        no_auto_validity = parsing_utils.try_get_attribute(member_element, "noautovalidity") == "true"
+        no_auto_validity = parser_utils.try_get_attribute(member_element, "noautovalidity") == "true"
 
         # This is useful for the sType where the correct value is already known
-        expected_value = parsing_utils.try_get_attribute(member_element, "values")
+        expected_value = parser_utils.try_get_attribute(member_element, "values")
 
         # Is this field optional or has to be set
         # When this field is "false, true"  it's always for the length of the array
@@ -119,15 +119,15 @@ def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.V
         # Instead of the count member, the actual array member is "false, true"
         # I think it's actually a bug in XML.
         # Melih TODO: Check if VkDescriptorBindingFlags is buggy in the XML
-        optional = parsing_utils.try_get_attribute(member_element, "optional") == "true"
+        optional = parser_utils.try_get_attribute(member_element, "optional") == "true"
 
         # This is useful when the member is an pointer to an array
         # with a length given by another member
-        array_size_reference = parsing_utils.try_get_attribute(member_element, "len")
+        array_size_reference = parser_utils.try_get_attribute(member_element, "len")
         if array_size_reference:
             # pointer to char array has this property, which is redundant
             array_size_reference = array_size_reference.replace("null-terminated", "")
-            array_size_reference = parsing_utils.clean_type_string(array_size_reference)
+            array_size_reference = parser_utils.clean_type_string(array_size_reference)
 
         members[variable_name] = types.VulkanStructMember(
             variable_type=variable_type,
@@ -163,7 +163,7 @@ def parse(struct_elem: ET.Element) -> types.VulkanType:
 
     struct_name = struct_elem.attrib["name"]
 
-    alias_name = parsing_utils.try_get_attribute(struct_elem, "alias")
+    alias_name = parser_utils.try_get_attribute(struct_elem, "alias")
     if alias_name:
         return types.VulkanStructAlias(typename=struct_name, aliased_typename=alias_name)
 

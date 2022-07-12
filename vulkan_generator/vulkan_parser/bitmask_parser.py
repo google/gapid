@@ -27,7 +27,7 @@
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 
 
 def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> types.VulkanBitmaskAlias:
@@ -46,10 +46,10 @@ def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> types.VulkanBitmaskA
 
 
 def parse_bitmask_by_tag(bitmask_elem: ET.Element) -> types.VulkanBitmask:
-    bitmask_name = parsing_utils.get_text_from_tag_in_children(bitmask_elem, "name")
+    bitmask_name = parser_utils.get_text_from_tag_in_children(bitmask_elem, "name")
     # This is optional because there are flags that are not used but reserved for the future.
-    bitfield_type = parsing_utils.try_get_attribute(bitmask_elem, "requires")
-    bitfield_basetype = parsing_utils.get_text_from_tag_in_children(bitmask_elem, "type")
+    bitfield_type = parser_utils.try_get_attribute(bitmask_elem, "requires")
+    bitfield_basetype = parser_utils.get_text_from_tag_in_children(bitmask_elem, "type")
 
     return types.VulkanBitmask(
         typename=bitmask_name,

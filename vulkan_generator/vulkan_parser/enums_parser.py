@@ -22,7 +22,7 @@ from typing import Dict
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 from vulkan_generator.vulkan_parser import types
 
 
@@ -56,12 +56,12 @@ def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
             continue
 
         name = field_element.attrib["name"]
-        alias = parsing_utils.try_get_attribute(field_element, "alias")
+        alias = parser_utils.try_get_attribute(field_element, "alias")
         if alias:
             aliases[name] = alias
             continue
 
-        field = parsing_utils.get_enum_field_from_value(field_element.attrib["value"])
+        field = parser_utils.get_enum_field_from_value(field_element.attrib["value"])
 
         fields[name] = types.VulkanEnumField(
             name=name,
@@ -83,14 +83,14 @@ def get_bitfield_info(field_elem: ET.Element, bit64: bool) -> BitfieldInfo:
     """Parses the value and representation of a bitfield in an enum"""
 
     # Sometimes instead of a bitpos, bitfield has a direct value
-    value_string = parsing_utils.try_get_attribute(field_elem, "value")
+    value_string = parser_utils.try_get_attribute(field_elem, "value")
     if value_string:
         return BitfieldInfo(
             value=int(value_string, 0),
             representation=value_string
         )
 
-    field = parsing_utils.get_enum_field_from_bitpos(field_elem.attrib["bitpos"], bit64)
+    field = parser_utils.get_enum_field_from_bitpos(field_elem.attrib["bitpos"], bit64)
 
     return BitfieldInfo(
         value=field.value,
@@ -113,7 +113,7 @@ def parse_bitmask_fields(enum_elem: ET.Element, bit64: bool) -> EnumInformation:
     for field_element in enum_elem:
         name = field_element.attrib["name"]
 
-        alias = parsing_utils.try_get_attribute(field_element, "alias")
+        alias = parser_utils.try_get_attribute(field_element, "alias")
         if alias:
             aliases[name] = alias
             continue
@@ -156,7 +156,7 @@ def parse(enum_elem: ET.Element) -> Union[OrderedDict[str, types.VulkanDefine], 
     if enum_type not in ("enum", "bitmask"):
         raise SyntaxError(f"Unknown enum type : {ET.tostring(enum_elem)!r}")
 
-    bitwidth = parsing_utils.try_get_attribute(enum_elem, "bitwidth")
+    bitwidth = parser_utils.try_get_attribute(enum_elem, "bitwidth")
     if bitwidth and bitwidth != "64":
         raise SyntaxError(f"Unknown bitwidth: {ET.tostring(enum_elem)!r}")
 

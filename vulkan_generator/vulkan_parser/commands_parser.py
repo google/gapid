@@ -18,7 +18,7 @@ from typing import OrderedDict
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 from vulkan_generator.vulkan_parser import types
 
 
@@ -39,8 +39,8 @@ def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, types.VulkanCo
         if param_elem.tag != "param":
             raise SyntaxError(f"Unknown tag in function parameters: {param_elem}")
 
-        parameter_type = parsing_utils.get_text_from_tag_in_children(param_elem, "type")
-        parameter_name = parsing_utils.get_text_from_tag_in_children(param_elem, "name")
+        parameter_type = parser_utils.get_text_from_tag_in_children(param_elem, "type")
+        parameter_name = parser_utils.get_text_from_tag_in_children(param_elem, "name")
 
         # This part(attributes and pointers) is very similar to parsing typenames in struct
         # But as we cannot guarantee that it will stay similar
@@ -51,15 +51,15 @@ def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, types.VulkanCo
         type_attributes = param_elem.text
         # some times it's just empty space or endline character
         if type_attributes:
-            type_attributes = parsing_utils.clean_type_string(type_attributes)
+            type_attributes = parser_utils.clean_type_string(type_attributes)
             # it might be empty after cleaning
             if type_attributes:
                 parameter_type = f"{type_attributes} {parameter_type}"
 
-        pointers = parsing_utils.try_get_tail_from_tag_in_children(param_elem, "type")
+        pointers = parser_utils.try_get_tail_from_tag_in_children(param_elem, "type")
         # some times it's just empty space or endline character
         if pointers:
-            pointers = parsing_utils.clean_type_string(pointers)
+            pointers = parser_utils.clean_type_string(pointers)
             # it might be empty after cleaning
             if pointers:
                 # Add space between "*" and "const"
@@ -77,18 +77,18 @@ def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, types.VulkanCo
         # Is this parameter optional or has to be not null
         # When this field is "false, true"  it's always for the length of the array
         # Therefore it does not give any extra information.
-        optional = parsing_utils.try_get_attribute(param_elem, "optional") == "true"
+        optional = parser_utils.try_get_attribute(param_elem, "optional") == "true"
 
         # Is this parameter must be externally synced
-        externally_synced = parsing_utils.try_get_attribute(param_elem, "externsync") == "true"
+        externally_synced = parser_utils.try_get_attribute(param_elem, "externsync") == "true"
 
         # This is useful when the parameter is a pointer to an array
         # with a length given by another parameter
-        array_size_reference = parsing_utils.try_get_attribute(param_elem, "len")
+        array_size_reference = parser_utils.try_get_attribute(param_elem, "len")
         if array_size_reference:
             # pointer to char array has this property, which is redundant
             array_size_reference = array_size_reference.replace("null-terminated", "")
-            array_size_reference = parsing_utils.clean_type_string(array_size_reference)
+            array_size_reference = parser_utils.clean_type_string(array_size_reference)
 
         parameters[parameter_name] = types.VulkanCommandParam(
             parameter_name=parameter_name,
@@ -120,15 +120,15 @@ def parse_command(command_elem: ET.Element) -> types.VulkanCommand:
     </command>
     """
 
-    success_codes = parsing_utils.try_get_attribute_as_list(command_elem, "successcodes")
-    error_codes = parsing_utils.try_get_attribute_as_list(command_elem, "errorcodes")
-    queues = parsing_utils.try_get_attribute_as_list(command_elem, "queues")
-    command_buffer_levels = parsing_utils.try_get_attribute_as_list(command_elem, "cmdbufferlevel")
+    success_codes = parser_utils.try_get_attribute_as_list(command_elem, "successcodes")
+    error_codes = parser_utils.try_get_attribute_as_list(command_elem, "errorcodes")
+    queues = parser_utils.try_get_attribute_as_list(command_elem, "queues")
+    command_buffer_levels = parser_utils.try_get_attribute_as_list(command_elem, "cmdbufferlevel")
 
-    renderpass_allowance = parsing_utils.try_get_attribute(command_elem, "renderpass")
+    renderpass_allowance = parser_utils.try_get_attribute(command_elem, "renderpass")
 
-    name = parsing_utils.get_text_from_tag_in_children(command_elem[0], "name")
-    return_type = parsing_utils.get_text_from_tag_in_children(command_elem[0], "type")
+    name = parser_utils.get_text_from_tag_in_children(command_elem[0], "name")
+    return_type = parser_utils.get_text_from_tag_in_children(command_elem[0], "type")
 
     parameters = parse_arguments(command_elem)
     return types.VulkanCommand(

@@ -355,7 +355,6 @@ test_suite(
         "//vulkan_generator/handle_remapper:lint",
         "//vulkan_generator/tests:lint",
         "//vulkan_generator/vulkan_parser:lint",
-        "//vulkan_generator/vulkan_utils:lint",
         # __END_LINT
     ],
 )

@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 import pprint
 
-from vulkan_generator.vulkan_parser import parser as vulkan_parser
+from vulkan_generator.vulkan_parser import parser as vk_parser
 from vulkan_generator.vulkan_parser import types
 
 from vulkan_generator.handle_remapper import generator as handle_remapper_generator
@@ -115,7 +115,7 @@ def basic_generate(target: str,
 
 def generate(target: str, output_dir: Path, vulkan_xml_path: Path) -> bool:
     """ Generator function """
-    vulkan_metadata = vulkan_parser.parse(vulkan_xml_path)
+    vulkan_metadata = vk_parser.parse(vulkan_xml_path)
     print_vulkan_metadata(vulkan_metadata)
 
     if output_dir == "":

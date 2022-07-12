@@ -16,7 +16,7 @@
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_utils import parsing_utils
+from vulkan_generator.vulkan_parser import parser_utils
 from vulkan_generator.vulkan_parser import types
 
 
@@ -43,8 +43,8 @@ def parse_handle_by_tag(root: ET.Element) -> types.VulkanHandle:
     <type>VK_DEFINE_HANDLE</type>(<name>VkQueue</name>)</type>
     """
 
-    name = parsing_utils.get_text_from_tag_in_children(root, "name")
-    handle_definer = parsing_utils.get_text_from_tag_in_children(root, "type")
+    name = parser_utils.get_text_from_tag_in_children(root, "name")
+    handle_definer = parser_utils.get_text_from_tag_in_children(root, "type")
 
     if handle_definer not in ["VK_DEFINE_HANDLE", "VK_DEFINE_NON_DISPATCHABLE_HANDLE"]:
         raise SyntaxError(f"Unknown Handle definer {ET.tostring(root, 'utf-8')}")
