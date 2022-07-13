@@ -12,15 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace agi {
-namespace replay2 {
-
-class NonCopyable {
-   public:
-    NonCopyable(void){};
-    NonCopyable(const NonCopyable& rhs) = delete;
-    NonCopyable& operator=(const NonCopyable& rhs) = delete;
-};
-
-}  // namespace replay2
-}  // namespace agi
+#include "replay_address.h"

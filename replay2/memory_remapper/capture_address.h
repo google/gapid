@@ -12,15 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef REPLAY2_MEMORY_REMAPPER_CAPTURE_ADDRESS_H
+#define REPLAY2_MEMORY_REMAPPER_CAPTURE_ADDRESS_H
+
+#include "typesafe_address.h"
+
+#include <cstddef>
+
 namespace agi {
 namespace replay2 {
 
-class NonCopyable {
+class CaptureAddress : public TypesafeAddress {
    public:
-    NonCopyable(void){};
-    NonCopyable(const NonCopyable& rhs) = delete;
-    NonCopyable& operator=(const NonCopyable& rhs) = delete;
+    explicit CaptureAddress(std::byte* address) : TypesafeAddress(address) {}
+    CaptureAddress offsetByBytes(ptrdiff_t offset) const { return CaptureAddress(address_ + offset); }
 };
 
 }  // namespace replay2
 }  // namespace agi
+
+#endif

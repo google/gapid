@@ -12,15 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef REPLAY2_MEMORY_REMAPPER_TYPESAFE_ADDRESS_H
+#define REPLAY2_MEMORY_REMAPPER_TYPESAFE_ADDRESS_H
+
+#include <cstddef>
+
 namespace agi {
 namespace replay2 {
 
-class NonCopyable {
+class TypesafeAddress {
    public:
-    NonCopyable(void){};
-    NonCopyable(const NonCopyable& rhs) = delete;
-    NonCopyable& operator=(const NonCopyable& rhs) = delete;
+    explicit TypesafeAddress(std::byte* address) : address_(address) {}
+    std::byte* bytePtr() const { return address_; }
+
+    bool operator==(const TypesafeAddress& rhs) const { return address_ == rhs.address_; }
+    bool operator!=(const TypesafeAddress& rhs) const { return !(*this == rhs); }
+
+   protected:
+    std::byte* address_;
 };
 
 }  // namespace replay2
 }  // namespace agi
+
+#endif

@@ -12,4 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-void foo(int var);
+#ifndef REPLAY2_MEMORY_REMAPPER_MEMORY_REMAPPER_H
+#define REPLAY2_MEMORY_REMAPPER_MEMORY_REMAPPER_H
+
+#include "address_range.h"
+#include "capture_address.h"
+#include "memory_observation.h"
+#include "replay_address.h"
+
+#include <assert.h>
+#include <map>
+
+#include "replay2/core_utils/non_copyable.h"
+
+namespace agi {
+namespace replay2 {
+
+class MemoryRemapper : public NonCopyable {
+   public:
+    ReplayAddress AddMapping(const MemoryObservation& observation);
+    void RemoveMapping(const CaptureAddress& captureAddress);
+
+    ReplayAddress RemapCaptureAddress(const CaptureAddress& captureAddress) const;
+
+    class AddressNotMappedException : public std::exception {};
+    class AddressAlreadyMappedException : public std::exception {};
+    class RemoveMappingOffsetAddressException : public std::exception {};
+    class CannotMapZeroLengthAddressRange : public std::exception {};
+
+   private:
+    const std::pair<const ReplayAddressRange*, intptr_t> findReplayAddressRangeAndOffset(
+        const CaptureAddress& captureAddress) const;
+
+    std::map<CaptureAddressRange, ReplayAddressRange> captureAddressRanges_;
+};
+
+}  // namespace replay2
+}  // namespace agi
+
+#endif

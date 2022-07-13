@@ -13,21 +13,12 @@
 # limitations under the License.
 
 cc_library(
-    name = "memory_remapper",
+    name = "replay_context",
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     visibility = ["//visibility:public"],
     deps = [
-        "//replay2/core_utils",
-    ],
-)
-
-cc_test(
-    name = "memory_remapper_test",
-    srcs = glob(["tests/*.cc"]),
-    deps = [
-        "memory_remapper",
-        "//replay2/core_utils",
-        "@com_google_googletest//:gtest_main",
+        "//replay2/handle_remapper",
+        "//replay2/memory_remapper",
     ],
 )

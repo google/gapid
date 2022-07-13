@@ -12,15 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef REPLAY2_MEMORY_REMAPPER_MEMORY_OBSERVATION_H
+#define REPLAY2_MEMORY_REMAPPER_MEMORY_OBSERVATION_H
+
+#include "capture_address.h"
+#include "resource_generator.h"
+
 namespace agi {
 namespace replay2 {
 
-class NonCopyable {
+class MemoryObservation {
    public:
-    NonCopyable(void){};
-    NonCopyable(const NonCopyable& rhs) = delete;
-    NonCopyable& operator=(const NonCopyable& rhs) = delete;
+    MemoryObservation(const CaptureAddress& captureAddress, ResourceGeneratorPtr resourceGenerator)
+        : captureAddress_(captureAddress), resourceGenerator_(resourceGenerator) {}
+
+    const CaptureAddress& captureAddress() const { return captureAddress_; }
+    ResourceGeneratorPtr resourceGenerator() const { return resourceGenerator_; }
+
+   private:
+    CaptureAddress captureAddress_;
+    ResourceGeneratorPtr resourceGenerator_;
 };
 
 }  // namespace replay2
 }  // namespace agi
+
+#endif

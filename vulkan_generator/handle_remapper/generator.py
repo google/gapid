@@ -194,7 +194,7 @@ def generate_handle_remapper_h(file_path: Path, vulkan_metadata: types.VulkanMet
             public_functions.append("")
 
         remapper_class_def = codegen.create_class_definition("VulkanHandleRemapper",
-                                                             public_inheritance=["non_copyable"],
+                                                             public_inheritance=["NonCopyable"],
                                                              public_functions=public_functions,
                                                              public_members=public_members,
                                                              private_members=private_members)

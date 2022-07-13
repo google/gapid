@@ -454,6 +454,7 @@ test_suite(
         "//gapis/stringtable/parser:go_default_test",
         "//gapis/vertex:go_default_test",
         "//replay2/handle_remapper:handle_remapper_test",
+        "//replay2/memory_remapper:memory_remapper_test",
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
         "//vulkan_generator/tests:test_vulkan_parsing",
