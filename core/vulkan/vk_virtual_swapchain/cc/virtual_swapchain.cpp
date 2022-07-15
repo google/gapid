@@ -90,6 +90,15 @@ VirtualSwapchain::VirtualSwapchain(
       always_get_acquired_image_(always_get_acquired_image),
       base_swapchain_(nullptr) {
   VkPhysicalDeviceMemoryProperties properties = *memory_properties;
+  VkCommandPoolCreateInfo command_pool_info{
+      VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,       // sType
+      nullptr,                                          // pNext
+      VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,  // flags
+      queue_                                            // queueFamilyIndex
+  };
+  EXPECT_SUCCESS(functions_->vkCreateCommandPool(device_, &command_pool_info,
+                                                 pAllocator, &command_pool_));
+
   build_swapchain_image_data_ = [this, properties, pAllocator]() {
     SwapchainImageData image_data;
 
@@ -138,16 +147,6 @@ VirtualSwapchain::VirtualSwapchain(
         0,                                     // queueFamilyIndexCount
         nullptr                                // pQueueFamilyIndices
     };
-
-    VkCommandPoolCreateInfo command_pool_info{
-        VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,       // sType
-        nullptr,                                          // pNext
-        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,  // flags
-        queue_                                            // queueFamilyIndex
-    };
-
-    EXPECT_SUCCESS(functions_->vkCreateCommandPool(device_, &command_pool_info,
-                                                   pAllocator, &command_pool_));
 
     VkCommandBufferAllocateInfo command_buffer_info{
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,  // sType

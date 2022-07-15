@@ -27,3 +27,6 @@ gapis.log
 # Vim
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
+
+# Sublime
+BUILD.sublime-workspace
