@@ -18,14 +18,14 @@ from typing import OrderedDict
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import parser_utils
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, types.VulkanCommandParam]:
+def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, internal_types.VulkanCommandParam]:
     """Parses the arguments of Vulkan Commands"""
 
-    parameters: OrderedDict[str, types.VulkanCommandParam] = OrderedDict()
+    parameters: OrderedDict[str, internal_types.VulkanCommandParam] = OrderedDict()
 
     for param_elem in command_elem:
         if param_elem.tag == "proto":
@@ -90,7 +90,7 @@ def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, types.VulkanCo
             array_size_reference = array_size_reference.replace("null-terminated", "")
             array_size_reference = parser_utils.clean_type_string(array_size_reference)
 
-        parameters[parameter_name] = types.VulkanCommandParam(
+        parameters[parameter_name] = internal_types.VulkanCommandParam(
             parameter_name=parameter_name,
             parameter_type=parameter_type,
             optional=optional,
@@ -101,7 +101,7 @@ def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, types.VulkanCo
     return parameters
 
 
-def parse_command(command_elem: ET.Element) -> types.VulkanCommand:
+def parse_command(command_elem: ET.Element) -> internal_types.VulkanCommand:
     """Returns a Vulkan command from the XML element that defines it.
 
     A sample Vulkan command:
@@ -131,7 +131,7 @@ def parse_command(command_elem: ET.Element) -> types.VulkanCommand:
     return_type = parser_utils.get_text_from_tag_in_children(command_elem[0], "type")
 
     parameters = parse_arguments(command_elem)
-    return types.VulkanCommand(
+    return internal_types.VulkanCommand(
         name=name,
         return_type=return_type,
         renderpass_allowance=renderpass_allowance,
@@ -142,7 +142,7 @@ def parse_command(command_elem: ET.Element) -> types.VulkanCommand:
         parameters=parameters)
 
 
-def parse_command_alias(command_elem: ET.Element) -> types.VulkanCommandAlias:
+def parse_command_alias(command_elem: ET.Element) -> internal_types.VulkanCommandAlias:
     """Returns a Vulkan command alias from the XML element that defines it.
 
     A sample Vulkan command alias:
@@ -150,12 +150,12 @@ def parse_command_alias(command_elem: ET.Element) -> types.VulkanCommandAlias:
     """
     alias = command_elem.attrib["alias"]
     name = command_elem.attrib["name"]
-    return types.VulkanCommandAlias(command_name=name, aliased_command_name=alias)
+    return internal_types.VulkanCommandAlias(command_name=name, aliased_command_name=alias)
 
 
-def parse(commands_elem: ET.Element) -> types.AllVulkanCommands:
+def parse(commands_elem: ET.Element) -> internal_types.AllVulkanCommands:
     """Parses all the Vulkan commands and aliases"""
-    vulkan_commands = types.AllVulkanCommands()
+    vulkan_commands = internal_types.AllVulkanCommands()
 
     for command_elem in commands_elem:
         if command_elem.tag != "command":

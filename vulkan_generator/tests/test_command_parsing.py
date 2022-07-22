@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import commands_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import commands_parser
 
 
 def test_vulkan_command() -> None:
@@ -43,7 +43,7 @@ def test_vulkan_command() -> None:
     assert "vkQueueEndDebugUtilsLabelEXT" in typ.commands
 
     command = typ.commands["vkQueueEndDebugUtilsLabelEXT"]
-    assert isinstance(command, types.VulkanCommand)
+    assert isinstance(command, internal_types.VulkanCommand)
 
     assert command.return_type == "void"
 
@@ -222,6 +222,6 @@ def test_vulkan_command_alias() -> None:
 
     alias = typ.command_aliases["vkCmdEndRenderingKHR"]
 
-    assert isinstance(alias, types.VulkanCommandAlias)
+    assert isinstance(alias, internal_types.VulkanCommandAlias)
     assert alias.command_name == "vkCmdEndRenderingKHR"
     assert alias.aliased_command_name == "vkCmdEndRendering"

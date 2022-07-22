@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import formats_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import formats_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_image_format() -> None:
@@ -41,7 +41,7 @@ def test_vulkan_image_format() -> None:
 
     image_format = image_format_metadata.formats["VK_FORMAT_R8_USCALED"]
 
-    assert isinstance(image_format, types.ImageFormat)
+    assert isinstance(image_format, internal_types.ImageFormat)
     assert image_format.name == "VK_FORMAT_R8_USCALED"
     assert image_format.format_class == "8-bit"
     assert image_format.block_size == 1

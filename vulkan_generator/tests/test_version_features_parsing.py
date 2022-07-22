@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import version_features_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import version_features_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_core_version() -> None:
@@ -41,7 +41,7 @@ def test_vulkan_core_version() -> None:
     </feature>"""
 
     vulkan_version = version_features_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_version, types.VulkanCoreVersion)
+    assert isinstance(vulkan_version, internal_types.VulkanCoreVersion)
     assert vulkan_version.name == "VK_VERSION_1_0"
     assert vulkan_version.number == "1.0"
 
@@ -65,14 +65,14 @@ def test_vulkan_core_version_enum_extension_offset() -> None:
     </feature>"""
 
     vulkan_version = version_features_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_version, types.VulkanCoreVersion)
+    assert isinstance(vulkan_version, internal_types.VulkanCoreVersion)
 
     assert vulkan_version.features["VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES"].feature_type == "enum"
     assert vulkan_version.features["VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES"].feature_extension
 
     feature_extension = vulkan_version.features[
         "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES"].feature_extension
-    assert isinstance(feature_extension, types.VulkanFeatureExtensionEnum)
+    assert isinstance(feature_extension, internal_types.VulkanFeatureExtensionEnum)
     assert feature_extension.basetype == "VkStructureType"
     assert feature_extension.extnumber == "95"
     assert feature_extension.offset == "0"
@@ -94,13 +94,13 @@ def test_vulkan_core_version_enum_extension_bitpos() -> None:
     </feature>"""
 
     vulkan_version = version_features_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_version, types.VulkanCoreVersion)
+    assert isinstance(vulkan_version, internal_types.VulkanCoreVersion)
 
     assert vulkan_version.features["VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT"].feature_type == "enum"
     assert vulkan_version.features["VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT"].feature_extension
 
     feature_extension = vulkan_version.features["VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT"].feature_extension
-    assert isinstance(feature_extension, types.VulkanFeatureExtensionEnum)
+    assert isinstance(feature_extension, internal_types.VulkanFeatureExtensionEnum)
     assert feature_extension.basetype == "VkPipelineCreateFlagBits"
     assert feature_extension.bitpos == "9"
 
@@ -127,12 +127,12 @@ def test_vulkan_core_version_enum_extension_value() -> None:
     </feature>"""
 
     vulkan_version = version_features_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_version, types.VulkanCoreVersion)
+    assert isinstance(vulkan_version, internal_types.VulkanCoreVersion)
 
     assert vulkan_version.features["VK_IMAGE_ASPECT_NONE"].feature_type == "enum"
     assert vulkan_version.features["VK_IMAGE_ASPECT_NONE"].feature_extension
 
     feature_extension = vulkan_version.features["VK_IMAGE_ASPECT_NONE"].feature_extension
-    assert isinstance(feature_extension, types.VulkanFeatureExtensionEnum)
+    assert isinstance(feature_extension, internal_types.VulkanFeatureExtensionEnum)
     assert feature_extension.basetype == "VkImageAspectFlagBits"
     assert feature_extension.value == "0"

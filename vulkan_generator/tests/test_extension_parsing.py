@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import extensions_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import extensions_parser
 
 
 def test_vulkan_extension() -> None:
@@ -45,7 +45,7 @@ def test_vulkan_extension() -> None:
     assert "VK_NV_glsl_shader" in vulkan_extensions
 
     extension = vulkan_extensions["VK_NV_glsl_shader"]
-    assert isinstance(extension, types.VulkanExtension)
+    assert isinstance(extension, internal_types.VulkanExtension)
     assert extension.name == "VK_NV_glsl_shader"
     assert extension.number == 13
     assert extension.extension_type == "device"
@@ -92,7 +92,7 @@ def test_vulkan_extension_adding_enum_field_with_sign() -> None:
     assert new_feature.name == "VK_ERROR_INVALID_SHADER_NV"
     assert new_feature.feature_type == "enum"
 
-    assert isinstance(new_feature.feature_extension, types.VulkanFeatureExtensionEnum)
+    assert isinstance(new_feature.feature_extension, internal_types.VulkanFeatureExtensionEnum)
     assert new_feature.feature_extension.offset == "0"
     assert new_feature.feature_extension.basetype == "VkResult"
     assert new_feature.feature_extension.sign == "-"
@@ -123,6 +123,6 @@ def test_vulkan_extension_adding_enum_field_alias() -> None:
     vulkan_extensions = extensions_parser.parse(ET.fromstring(xml))
     features = vulkan_extensions["VK_EXT_sampler_filter_minmax"].requirements[0].features
     feature_extension = features["VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT"].feature_extension
-    assert isinstance(feature_extension, types.VulkanFeatureExtensionEnum)
+    assert isinstance(feature_extension, internal_types.VulkanFeatureExtensionEnum)
     assert feature_extension.basetype == "VkSamplerReductionMode"
     assert feature_extension.alias == "VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE"

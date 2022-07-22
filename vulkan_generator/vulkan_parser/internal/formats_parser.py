@@ -20,18 +20,18 @@ from typing import Optional
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import parser_utils
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse_format_planes(format_element: ET.Element) -> List[types.ImageFormatPlane]:
+def parse_format_planes(format_element: ET.Element) -> List[internal_types.ImageFormatPlane]:
     """
     Parser for the image format planes if format is multi-planar
 
     Sample image format plane:
     <plane index="0" widthDivisor="1" heightDivisor="1" compatible="VK_FORMAT_R8_UNORM"/>
     """
-    planes: List[types.ImageFormatPlane] = []
+    planes: List[internal_types.ImageFormatPlane] = []
 
     for plane in format_element:
         if plane.tag == "spirvimageformat":
@@ -48,7 +48,7 @@ def parse_format_planes(format_element: ET.Element) -> List[types.ImageFormatPla
             height_divisor = int(plane.attrib["heightDivisor"], 0)
             compatible = plane.attrib["compatible"]
 
-            planes.append(types.ImageFormatPlane(
+            planes.append(internal_types.ImageFormatPlane(
                 index=index,
                 width_divisor=with_divisor,
                 height_divisor=height_divisor,
@@ -60,14 +60,14 @@ def parse_format_planes(format_element: ET.Element) -> List[types.ImageFormatPla
     return planes
 
 
-def parse_format_components(format_element: ET.Element) -> OrderedDict[str, types.ImageFormatComponent]:
+def parse_format_components(format_element: ET.Element) -> OrderedDict[str, internal_types.ImageFormatComponent]:
     """
     Parser for the image formats components
 
     Sample image format component:
     <component name="R" bits="compressed" numericFormat="SRGB"/>
     """
-    components: OrderedDict[str, types.ImageFormatComponent] = OrderedDict()
+    components: OrderedDict[str, internal_types.ImageFormatComponent] = OrderedDict()
 
     for component in format_element:
         if component.tag == "spirvimageformat":
@@ -88,7 +88,7 @@ def parse_format_components(format_element: ET.Element) -> OrderedDict[str, type
             if not compressed:
                 bits = int(component.attrib["bits"], 0)
 
-            components[name] = types.ImageFormatComponent(
+            components[name] = internal_types.ImageFormatComponent(
                 name=name,
                 numeric_format=numeric_format,
                 bits=bits,
@@ -100,7 +100,7 @@ def parse_format_components(format_element: ET.Element) -> OrderedDict[str, type
     return components
 
 
-def parse_format(format_element: ET.Element) -> types.ImageFormat:
+def parse_format(format_element: ET.Element) -> internal_types.ImageFormat:
     """
     Parser for the Vulkan image formats
 
@@ -138,7 +138,7 @@ def parse_format(format_element: ET.Element) -> types.ImageFormat:
     # this list will be empty
     planes = parse_format_planes(format_element)
 
-    return types.ImageFormat(
+    return internal_types.ImageFormat(
         name=name,
         format_class=format_class,
         block_size=block_size,
@@ -149,8 +149,8 @@ def parse_format(format_element: ET.Element) -> types.ImageFormat:
         planes=planes)
 
 
-def parse(formats_element: ET.Element) -> types.ImageFormatMetadata:
-    format_metadata = types.ImageFormatMetadata()
+def parse(formats_element: ET.Element) -> internal_types.ImageFormatMetadata:
+    format_metadata = internal_types.ImageFormatMetadata()
 
     for format_element in formats_element:
         image_format = parse_format(format_element)

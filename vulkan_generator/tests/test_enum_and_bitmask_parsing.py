@@ -31,10 +31,10 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import bitmask_parser
-from vulkan_generator.vulkan_parser import enums_parser
-from vulkan_generator.vulkan_parser import enum_aliases_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import bitmask_parser
+from vulkan_generator.vulkan_parser.internal import enums_parser
+from vulkan_generator.vulkan_parser.internal import enum_aliases_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_bitmask_with_require() -> None:
@@ -46,7 +46,7 @@ def test_vulkan_bitmask_with_require() -> None:
 
     bitmask = bitmask_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(bitmask, types.VulkanBitmask)
+    assert isinstance(bitmask, internal_types.VulkanBitmask)
     assert bitmask.typename == "VkFramebufferCreateFlags"
     assert bitmask.field_type == "VkFramebufferCreateFlagBits"
     assert bitmask.field_basetype == "VkFlags"
@@ -61,7 +61,7 @@ def test_vulkan_bitmask_without_require() -> None:
 
     bitmask = bitmask_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(bitmask, types.VulkanBitmask)
+    assert isinstance(bitmask, internal_types.VulkanBitmask)
     assert bitmask.field_type is None
     assert bitmask.field_basetype == "VkFlags"
 
@@ -75,7 +75,7 @@ def test_vulkan_64_bit_bitmask() -> None:
 
     bitmask = bitmask_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(bitmask, types.VulkanBitmask)
+    assert isinstance(bitmask, internal_types.VulkanBitmask)
     assert bitmask.field_basetype == "VkFlags64"
 
 
@@ -87,7 +87,7 @@ def test_vulkan_bitmask_alias() -> None:
 
     bitmask = bitmask_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(bitmask, types.VulkanBitmaskAlias)
+    assert isinstance(bitmask, internal_types.VulkanBitmaskAlias)
     assert bitmask.typename == "VkDescriptorBindingFlagsEXT"
     assert bitmask.aliased_typename == "VkDescriptorBindingFlags"
 
@@ -100,7 +100,7 @@ def test_enum_alias() -> None:
     """
 
     enum_alias = enum_aliases_parser.parse(ET.fromstring(xml))
-    assert isinstance(enum_alias, types.VulkanEnumAlias)
+    assert isinstance(enum_alias, internal_types.VulkanEnumAlias)
     assert enum_alias.typename == "VkResolveModeFlagBitsKHR"
     assert enum_alias.aliased_typename == "VkResolveModeFlagBits"
 
@@ -116,7 +116,7 @@ def test_enum_with_value_fields() -> None:
     """
 
     vulkan_enum = enums_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_enum, types.VulkanEnum)
+    assert isinstance(vulkan_enum, internal_types.VulkanEnum)
     assert vulkan_enum.typename == "VkCommandBufferLevel"
     assert not vulkan_enum.bitmask
     assert not vulkan_enum.bit64
@@ -144,7 +144,7 @@ def test_enum_with_bitmask_fields() -> None:
     """
 
     vulkan_enum = enums_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_enum, types.VulkanEnum)
+    assert isinstance(vulkan_enum, internal_types.VulkanEnum)
     assert vulkan_enum.typename == "VkCommandPoolCreateFlagBits"
     assert vulkan_enum.bitmask
     assert not vulkan_enum.bit64
@@ -172,7 +172,7 @@ def test_enum_with_64bit_bitmask_fields() -> None:
     """
 
     vulkan_enum = enums_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_enum, types.VulkanEnum)
+    assert isinstance(vulkan_enum, internal_types.VulkanEnum)
     assert vulkan_enum.typename == "VkAccessFlagBits2"
     assert vulkan_enum.bitmask
     assert vulkan_enum.bit64
@@ -202,7 +202,7 @@ def test_enum_with_both_value_and_bitmask_fields() -> None:
     """
 
     vulkan_enum = enums_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_enum, types.VulkanEnum)
+    assert isinstance(vulkan_enum, internal_types.VulkanEnum)
 
     assert vulkan_enum.fields["VK_CULL_MODE_NONE"].value == 0
     assert vulkan_enum.fields["VK_CULL_MODE_NONE"].representation == "0"
@@ -227,7 +227,7 @@ def test_enum_with_aliased_fields() -> None:
     """
 
     vulkan_enum = enums_parser.parse(ET.fromstring(xml))
-    assert isinstance(vulkan_enum, types.VulkanEnum)
+    assert isinstance(vulkan_enum, internal_types.VulkanEnum)
 
     field_names = list(vulkan_enum.fields.keys())
 

@@ -22,13 +22,13 @@ from typing import Dict
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import parser_utils
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 class EnumInformation(NamedTuple):
     """Temporary class to return argument information"""
-    fields: OrderedDict[str, types.VulkanEnumField]
+    fields: OrderedDict[str, internal_types.VulkanEnumField]
     aliases: Dict[str, str]
 
 
@@ -42,7 +42,7 @@ def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
     </enums>
     """
 
-    fields: OrderedDict[str, types.VulkanEnumField] = OrderedDict()
+    fields: OrderedDict[str, internal_types.VulkanEnumField] = OrderedDict()
     aliases: Dict[str, str] = {}
 
     for field_element in enum_elem:
@@ -63,7 +63,7 @@ def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
 
         field = parser_utils.get_enum_field_from_value(field_element.attrib["value"])
 
-        fields[name] = types.VulkanEnumField(
+        fields[name] = internal_types.VulkanEnumField(
             name=name,
             value=field.value,
             representation=field.representation)
@@ -107,7 +107,7 @@ def parse_bitmask_fields(enum_elem: ET.Element, bit64: bool) -> EnumInformation:
                            comment="If set, heap represents device memory"/>
     </enums>
     """
-    fields: OrderedDict[str, types.VulkanEnumField] = OrderedDict()
+    fields: OrderedDict[str, internal_types.VulkanEnumField] = OrderedDict()
     aliases: Dict[str, str] = {}
 
     for field_element in enum_elem:
@@ -120,7 +120,7 @@ def parse_bitmask_fields(enum_elem: ET.Element, bit64: bool) -> EnumInformation:
 
         bitfield_info = get_bitfield_info(field_element, bit64)
 
-        fields[name] = types.VulkanEnumField(
+        fields[name] = internal_types.VulkanEnumField(
             name=name,
             value=bitfield_info.value,
             representation=bitfield_info.representation
@@ -132,19 +132,21 @@ def parse_bitmask_fields(enum_elem: ET.Element, bit64: bool) -> EnumInformation:
     )
 
 
-def parse_api_constants(enum_elem: ET.Element) -> OrderedDict[str, types.VulkanDefine]:
-    constants: OrderedDict[str, types.VulkanDefine] = OrderedDict()
+def parse_api_constants(enum_elem: ET.Element) -> OrderedDict[str, internal_types.VulkanDefine]:
+    constants: OrderedDict[str, internal_types.VulkanDefine] = OrderedDict()
 
     for enum in enum_elem:
         name = enum.attrib["name"]
         value = enum.attrib["value"] if "value" in enum.attrib else enum.attrib["alias"]
-        constants[name] = types.VulkanDefine(variable_name=name, value=value)
+        constants[name] = internal_types.VulkanDefine(variable_name=name, value=value)
 
     return constants
 
 
 # We have to return union because api constants are defined under Enums, even though they are not enum
-def parse(enum_elem: ET.Element) -> Union[OrderedDict[str, types.VulkanDefine], Optional[types.VulkanEnum]]:
+def parse(enum_elem: ET.Element) -> Union[
+        OrderedDict[str, internal_types.VulkanDefine],
+        Optional[internal_types.VulkanEnum]]:
     """Returns a Vulkan enum from the XML element that defines it"""
 
     enum_name = enum_elem.attrib["name"]
@@ -169,7 +171,7 @@ def parse(enum_elem: ET.Element) -> Union[OrderedDict[str, types.VulkanDefine], 
     else:
         enum_info = parse_value_fields(enum_elem)
 
-    enum = types.VulkanEnum(
+    enum = internal_types.VulkanEnum(
         typename=enum_name,
         fields=enum_info.fields,
         aliases=enum_info.aliases,

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" This module is responsible for parsing Vulkan basetypes.
+""" This module is responsible for parsing Vulkan baseinternal_types.
 
     Vulkan basetypes can be considered as C++ typedefs for
     either type declaration or forward declaration
@@ -21,11 +21,11 @@
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import parser_utils
 
 
-def parse(basetype_elem: ET.Element) -> types.VulkanBaseType:
+def parse(basetype_elem: ET.Element) -> internal_types.VulkanBaseType:
     """Returns a Vulkan Basetype from the XML element that defines it.
 
     A sample Vulkan Basetype:
@@ -45,4 +45,4 @@ def parse(basetype_elem: ET.Element) -> types.VulkanBaseType:
             basetype_attribute = parser_utils.clean_type_string(basetype_attribute)
             basetype = f"{basetype}{basetype_attribute}"
 
-    return types.VulkanBaseType(typename=name, basetype=basetype)
+    return internal_types.VulkanBaseType(typename=name, basetype=basetype)

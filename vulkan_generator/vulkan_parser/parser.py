@@ -17,9 +17,9 @@
 
 from pathlib import Path
 
-from vulkan_generator.vulkan_parser import xml_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import parser as internal_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse(filename: Path) -> types.VulkanMetadata:
-    return xml_parser.parse(filename)
+def parse(filename: Path) -> internal_types.VulkanMetadata:
+    return internal_parser.parse(filename)

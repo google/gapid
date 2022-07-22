@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import basetype_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import basetype_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_basetype_type_declaration() -> None:
@@ -34,7 +34,7 @@ def test_vulkan_basetype_type_declaration() -> None:
 
     basetype = basetype_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(basetype, types.VulkanBaseType)
+    assert isinstance(basetype, internal_types.VulkanBaseType)
     assert basetype.typename == "VkSampleMask"
     assert basetype.basetype == "uint32_t"
 
@@ -47,7 +47,7 @@ def test_vulkan_basetype_forward_declaration() -> None:
 
     basetype = basetype_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(basetype, types.VulkanBaseType)
+    assert isinstance(basetype, internal_types.VulkanBaseType)
     assert basetype.typename == "ANativeWindow"
     assert not basetype.basetype
 
@@ -60,5 +60,5 @@ def test_vulkan_basetype_with_pointer() -> None:
 
     basetype = basetype_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(basetype, types.VulkanBaseType)
+    assert isinstance(basetype, internal_types.VulkanBaseType)
     assert basetype.basetype == "void*"

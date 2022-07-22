@@ -19,18 +19,18 @@ from typing import Dict
 from typing import Optional
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import parser_utils
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import version_features_parser
-from vulkan_generator.vulkan_parser import extensions_parser
-from vulkan_generator.vulkan_parser import formats_parser
-from vulkan_generator.vulkan_parser import type_parser
-from vulkan_generator.vulkan_parser import enums_parser
-from vulkan_generator.vulkan_parser import commands_parser
-from vulkan_generator.vulkan_parser import spirv_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import parser_utils
+from vulkan_generator.vulkan_parser.internal import version_features_parser
+from vulkan_generator.vulkan_parser.internal import extensions_parser
+from vulkan_generator.vulkan_parser.internal import formats_parser
+from vulkan_generator.vulkan_parser.internal import type_parser
+from vulkan_generator.vulkan_parser.internal import enums_parser
+from vulkan_generator.vulkan_parser.internal import commands_parser
+from vulkan_generator.vulkan_parser.internal import spirv_parser
 
 
-def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) -> None:
+def process_enums(vulkan_types: internal_types.AllVulkanTypes, enum_element: ET.Element) -> None:
     """Process the parsing of Vulkan enums"""
     # Enums are not under the types tag in the XML.
     # Therefore, they have to be handled separately.
@@ -39,7 +39,7 @@ def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) 
     if not vulkan_enums:
         raise SyntaxError(f"Enum could not be parsed {ET.tostring(enum_element, 'utf-8')}")
 
-    if isinstance(vulkan_enums, types.VulkanEnum):
+    if isinstance(vulkan_enums, internal_types.VulkanEnum):
         vulkan_types.enums[vulkan_enums.typename] = vulkan_enums
         return
 
@@ -52,7 +52,9 @@ def process_enums(vulkan_types: types.AllVulkanTypes, enum_element: ET.Element) 
     raise SyntaxError(f"Unknown define or enum {vulkan_enums}")
 
 
-def process_core_versions(core_versions: Dict[str, types.VulkanCoreVersion], feature_element: ET.Element) -> None:
+def process_core_versions(
+        core_versions: Dict[str, internal_types.VulkanCoreVersion],
+        feature_element: ET.Element) -> None:
     """Processes the parsing of Vulkan core versions"""
     features = version_features_parser.parse(feature_element)
 
@@ -63,7 +65,7 @@ def process_core_versions(core_versions: Dict[str, types.VulkanCoreVersion], fea
 
 
 def get_enum_field_for_extension(
-        extension: types.VulkanFeatureExtensionEnum,
+        extension: internal_types.VulkanFeatureExtensionEnum,
         bit64: bool) -> Optional[parser_utils.EnumFieldRepresentation]:
     """Gets the enum value based on how its defined on XML"""
     if extension.value:
@@ -79,7 +81,9 @@ def get_enum_field_for_extension(
     return None
 
 
-def append_field_to_enum_or_bitfield(feature: types.VulkanFeature, vulkan_types: types.AllVulkanTypes) -> None:
+def append_field_to_enum_or_bitfield(
+        feature: internal_types.VulkanFeature,
+        vulkan_types: internal_types.AllVulkanTypes) -> None:
     """Appends an enum extension to their corresponding enum"""
     if feature.feature_type != "enum":
         raise SyntaxError(f"Feature is not an enum {feature.name}:{feature.feature_type}")
@@ -88,7 +92,7 @@ def append_field_to_enum_or_bitfield(feature: types.VulkanFeature, vulkan_types:
         raise SyntaxError(f"Enum feature does not have extension{feature.name}")
 
     feature_extension = feature.feature_extension
-    if not isinstance(feature_extension, types.VulkanFeatureExtensionEnum):
+    if not isinstance(feature_extension, internal_types.VulkanFeatureExtensionEnum):
         raise SyntaxError(f"Enum feauture should have enum extension {feature.feature_extension}")
 
     enum_name = feature_extension.basetype
@@ -102,7 +106,7 @@ def append_field_to_enum_or_bitfield(feature: types.VulkanFeature, vulkan_types:
     if not field:
         raise SyntaxError(f"Enum field for {enum_name}:{field_name} could not be generated")
 
-    vulkan_types.enums[enum_name].fields[field_name] = types.VulkanEnumField(
+    vulkan_types.enums[enum_name].fields[field_name] = internal_types.VulkanEnumField(
         name=field_name,
         value=field.value,
         representation=field.representation,
@@ -110,9 +114,9 @@ def append_field_to_enum_or_bitfield(feature: types.VulkanFeature, vulkan_types:
 
 
 def append_extended_enum_and_bitfield_fields(
-        core_versions: Dict[str, types.VulkanCoreVersion],
-        extensions: Dict[str, types.VulkanExtension],
-        vulkan_types: types.AllVulkanTypes) -> None:
+        core_versions: Dict[str, internal_types.VulkanCoreVersion],
+        extensions: Dict[str, internal_types.VulkanExtension],
+        vulkan_types: internal_types.AllVulkanTypes) -> None:
     """
     Appends the enum/bit fields that defined by a core version or a Vulkan extension
     to their corresponding enums and bitfields
@@ -134,15 +138,15 @@ def append_extended_enum_and_bitfield_fields(
                 append_field_to_enum_or_bitfield(feature, vulkan_types)
 
 
-def parse(filename: Path) -> types.VulkanMetadata:
+def parse(filename: Path) -> internal_types.VulkanMetadata:
     """ Parse the Vulkan XML to extract every information that is needed for code generation"""
     tree = ET.parse(filename)
-    all_types = types.AllVulkanTypes()
-    all_commands = types.AllVulkanCommands()
-    format_metadata = types.ImageFormatMetadata()
-    spirv_metadata = types.SpirvMetadata()
-    core_versions: Dict[str, types.VulkanCoreVersion] = {}
-    extensions: Dict[str, types.VulkanExtension] = {}
+    all_types = internal_types.AllVulkanTypes()
+    all_commands = internal_types.AllVulkanCommands()
+    format_metadata = internal_types.ImageFormatMetadata()
+    spirv_metadata = internal_types.SpirvMetadata()
+    core_versions: Dict[str, internal_types.VulkanCoreVersion] = {}
+    extensions: Dict[str, internal_types.VulkanExtension] = {}
 
     for child in tree.getroot():
         if child.tag == "types":
@@ -163,7 +167,7 @@ def parse(filename: Path) -> types.VulkanMetadata:
     # Because extended enum fields are not part of the enum tags in XML, we need to add them later
     append_extended_enum_and_bitfield_fields(core_versions, extensions, all_types)
 
-    return types.VulkanMetadata(
+    return internal_types.VulkanMetadata(
         types=all_types,
         commands=all_commands,
         core_versions=core_versions,

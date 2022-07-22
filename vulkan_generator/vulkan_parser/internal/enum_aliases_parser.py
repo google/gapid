@@ -21,11 +21,11 @@
 from typing import Optional
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import parser_utils
 
 
-def parse(enum_elem: ET.Element) -> Optional[types.VulkanEnumAlias]:
+def parse(enum_elem: ET.Element) -> Optional[internal_types.VulkanEnumAlias]:
     """Returns a Vulkan enum alias from the XML element that defines it.
 
     A sample Vulkan Enum Alias:
@@ -40,4 +40,4 @@ def parse(enum_elem: ET.Element) -> Optional[types.VulkanEnumAlias]:
         return None
 
     enum_name = enum_elem.attrib["name"]
-    return types.VulkanEnumAlias(typename=enum_name, aliased_typename=alias_name)
+    return internal_types.VulkanEnumAlias(typename=enum_name, aliased_typename=alias_name)

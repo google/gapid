@@ -16,14 +16,14 @@
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import spirv_extensions_parser
-from vulkan_generator.vulkan_parser import spirv_capabilities_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import spirv_extensions_parser
+from vulkan_generator.vulkan_parser.internal import spirv_capabilities_parser
 
 
-def process_spirv_extensions(spirv_metadata: types.SpirvMetadata, spirv_extensions_element: ET.Element) -> None:
+def process_spirv_extensions(spirv_metadata: internal_types.SpirvMetadata, spirv_extensions_elem: ET.Element) -> None:
     """Process all the spirv extensions parsed from the Vulkan XML"""
-    for extension_element in spirv_extensions_element:
+    for extension_element in spirv_extensions_elem:
         spirv_extension = spirv_extensions_parser.parse(extension_element)
 
         if not spirv_extension:
@@ -32,20 +32,22 @@ def process_spirv_extensions(spirv_metadata: types.SpirvMetadata, spirv_extensio
         spirv_metadata.extensions[spirv_extension.name] = spirv_extension
 
 
-def process_spirv_capabilities(spirv_metadata: types.SpirvMetadata, spirv_capabilities_element: ET.Element) -> None:
+def process_spirv_capabilities(
+        spirv_metadata: internal_types.SpirvMetadata,
+        spirv_capabilities_elem: ET.Element) -> None:
     """Process all the spirv capabilities parsed from the Vulkan XML"""
-    for child in spirv_capabilities_element:
+    for child in spirv_capabilities_elem:
         spirv_capability = spirv_capabilities_parser.parse(child)
 
         if not spirv_capability:
-            raise SyntaxError(f"Spirv Capability could not found: {ET.tostring(spirv_capabilities_element, 'utf-8')!r}")
+            raise SyntaxError(f"Spirv Capability could not found: {ET.tostring(spirv_capabilities_elem, 'utf-8')!r}")
 
         spirv_metadata.capabilities[spirv_capability.name] = spirv_capability
 
 
-def parse(spirv_element: ET.Element) -> types.SpirvMetadata:
+def parse(spirv_element: ET.Element) -> internal_types.SpirvMetadata:
     """Returns Spirv metadata parsed from the XML element"""
-    spirv_metadata = types.SpirvMetadata()
+    spirv_metadata = internal_types.SpirvMetadata()
 
     if spirv_element.tag == "spirvextensions":
         process_spirv_extensions(spirv_metadata, spirv_element)

@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import funcptr_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import funcptr_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_func_pointer() -> None:
@@ -38,7 +38,7 @@ def test_vulkan_func_pointer() -> None:
     """
     funcptr = funcptr_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(funcptr, types.VulkanFunctionPtr)
+    assert isinstance(funcptr, internal_types.VulkanFunctionPtr)
 
     assert funcptr.typename == "PFN_vkInternalAllocationNotification"
     assert funcptr.return_type == "void"
@@ -73,7 +73,7 @@ def test_vulkan_func_pointer_with_pointer_return_value() -> None:
 
     funcptr = funcptr_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(funcptr, types.VulkanFunctionPtr)
+    assert isinstance(funcptr, internal_types.VulkanFunctionPtr)
     assert funcptr.return_type == "void*"
 
 

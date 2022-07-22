@@ -18,11 +18,11 @@ from typing import OrderedDict
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import parser_utils
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.VulkanStructMember]:
+def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, internal_types.VulkanStructMember]:
     """Parses a Vulkan Struct member
 
     This is a bit of an irregular code because the XML itself has quite irregularities that
@@ -44,7 +44,7 @@ def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.V
     # This is not the code we wanted but it's the code that we needed and it's contained in a
     # small place so that XML irregularities does not leak into the rest of the code.
 
-    members: OrderedDict[str, types.VulkanStructMember] = OrderedDict()
+    members: OrderedDict[str, internal_types.VulkanStructMember] = OrderedDict()
 
     for member_element in struct_element:
         if member_element.tag == "comment":
@@ -129,7 +129,7 @@ def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.V
             array_size_reference = array_size_reference.replace("null-terminated", "")
             array_size_reference = parser_utils.clean_type_string(array_size_reference)
 
-        members[variable_name] = types.VulkanStructMember(
+        members[variable_name] = internal_types.VulkanStructMember(
             variable_type=variable_type,
             variable_name=variable_name,
             variable_size=variable_size,
@@ -142,7 +142,7 @@ def parse_struct_members(struct_element: ET.Element) -> OrderedDict[str, types.V
     return members
 
 
-def parse(struct_elem: ET.Element) -> types.VulkanType:
+def parse(struct_elem: ET.Element) -> internal_types.VulkanType:
     """Returns a Vulkan struct or alias from the XML element that defines it.
 
     A sample Vulkan struct:
@@ -165,9 +165,9 @@ def parse(struct_elem: ET.Element) -> types.VulkanType:
 
     alias_name = parser_utils.try_get_attribute(struct_elem, "alias")
     if alias_name:
-        return types.VulkanStructAlias(typename=struct_name, aliased_typename=alias_name)
+        return internal_types.VulkanStructAlias(typename=struct_name, aliased_typename=alias_name)
 
     members = parse_struct_members(struct_elem)
-    return types.VulkanStruct(
+    return internal_types.VulkanStruct(
         typename=struct_name,
         members=members)

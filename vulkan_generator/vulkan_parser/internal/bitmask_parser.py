@@ -26,11 +26,11 @@
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import parser_utils
 
 
-def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> types.VulkanBitmaskAlias:
+def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> internal_types.VulkanBitmaskAlias:
     """Parses a Vulkan Bitmask if it has the attribute "name" and returns it.
 
     if any bitmask defined like this, they are always an alias of an existing type
@@ -42,23 +42,23 @@ def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> types.VulkanBitmaskA
 
     name = bitmask_elem.attrib["name"]
     alias = bitmask_elem.attrib["alias"]
-    return types.VulkanBitmaskAlias(typename=name, aliased_typename=alias)
+    return internal_types.VulkanBitmaskAlias(typename=name, aliased_typename=alias)
 
 
-def parse_bitmask_by_tag(bitmask_elem: ET.Element) -> types.VulkanBitmask:
+def parse_bitmask_by_tag(bitmask_elem: ET.Element) -> internal_types.VulkanBitmask:
     bitmask_name = parser_utils.get_text_from_tag_in_children(bitmask_elem, "name")
     # This is optional because there are flags that are not used but reserved for the future.
     bitfield_type = parser_utils.try_get_attribute(bitmask_elem, "requires")
     bitfield_basetype = parser_utils.get_text_from_tag_in_children(bitmask_elem, "type")
 
-    return types.VulkanBitmask(
+    return internal_types.VulkanBitmask(
         typename=bitmask_name,
         field_type=bitfield_type,
         field_basetype=bitfield_basetype,
     )
 
 
-def parse(bitmask_elem: ET.Element) -> types.VulkanType:
+def parse(bitmask_elem: ET.Element) -> internal_types.VulkanType:
     """Returns a Vulkan bitmask or it's alias from the XML element that defines it.
 
     A sample Vulkan Bitmask:

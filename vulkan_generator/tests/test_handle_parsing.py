@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import handle_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import handle_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_handle_by_tag() -> None:
@@ -35,7 +35,7 @@ def test_vulkan_handle_by_tag() -> None:
 
     handle = handle_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(handle, types.VulkanHandle)
+    assert isinstance(handle, internal_types.VulkanHandle)
     assert handle.typename == "VkQueue"
 
 
@@ -49,7 +49,7 @@ def test_vulkan_handle_by_attribute() -> None:
 
     handle = handle_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(handle, types.VulkanHandleAlias)
+    assert isinstance(handle, internal_types.VulkanHandleAlias)
     assert handle.typename == "VkDescriptorUpdateTemplateKHR"
     assert handle.aliased_typename == "VkDescriptorUpdateTemplate"
 
@@ -64,7 +64,7 @@ def test_dispatchable_vulkan_handle() -> None:
 
     handle = handle_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(handle, types.VulkanHandle)
+    assert isinstance(handle, internal_types.VulkanHandle)
     assert handle.dispatchable
 
 
@@ -78,5 +78,5 @@ def test_non_dispatchable_vulkan_handle() -> None:
 
     handle = handle_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(handle, types.VulkanHandle)
+    assert isinstance(handle, internal_types.VulkanHandle)
     assert not handle.dispatchable

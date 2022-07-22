@@ -17,10 +17,10 @@
 from typing import Optional
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse(spirv_element: ET.Element) -> types.SpirvCapability:
+def parse(spirv_element: ET.Element) -> internal_types.SpirvCapability:
     """Parses a Spirv capability or alias from the XML element that defines it
 
     A sample spirv capability:
@@ -52,7 +52,7 @@ def parse(spirv_element: ET.Element) -> types.SpirvCapability:
         else:
             raise SyntaxError(f"Unknown Spirv capability type: {ET.tostring(spirv_element, 'utf-8')}")
 
-    return types.SpirvCapability(
+    return internal_types.SpirvCapability(
         name=name,
         version=version,
         feature=feature,

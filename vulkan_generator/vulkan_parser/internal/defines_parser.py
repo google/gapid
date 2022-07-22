@@ -19,10 +19,10 @@
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse_define_by_attribute(define_elem: ET.Element) -> types.VulkanDefine:
+def parse_define_by_attribute(define_elem: ET.Element) -> internal_types.VulkanDefine:
     """Parses a define that has a name attribute
 
     If a define has name attribute, it's usually a preprocessor decision logic
@@ -33,13 +33,13 @@ def parse_define_by_attribute(define_elem: ET.Element) -> types.VulkanDefine:
     if not value:
         raise SyntaxError(f"Vulkan define does not have definition: {ET.tostring(define_elem, 'utf-8')!r}")
 
-    return types.VulkanDefine(
+    return internal_types.VulkanDefine(
         variable_name=name,
         value=value
     )
 
 
-def parse_define_by_tag(define_elem: ET.Element) -> types.VulkanDefine:
+def parse_define_by_tag(define_elem: ET.Element) -> internal_types.VulkanDefine:
     """Parses a define that has a name tag
 
     If a define has a name tag, it's "usually" a macro
@@ -92,13 +92,13 @@ def parse_define_by_tag(define_elem: ET.Element) -> types.VulkanDefine:
     # Remove the leading whitespace
     value = value.lstrip(" ")
 
-    return types.VulkanDefine(
+    return internal_types.VulkanDefine(
         variable_name=name,
         value=value
     )
 
 
-def parse(define_elem: ET.Element) -> types.VulkanDefine:
+def parse(define_elem: ET.Element) -> internal_types.VulkanDefine:
     """Returns a Vulkan define from the XML element that defines it.
 
     A sample Vulkan Define:

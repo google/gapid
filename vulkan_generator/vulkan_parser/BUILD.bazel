@@ -16,28 +16,12 @@ load("@rules_python//python:defs.bzl", "py_library")
 load("//tools/build:rules.bzl", "py_lint")
 
 py_library(
-    name = "vulkan_parser_internal",
-    srcs = glob(
-        ["*.py"],
-        exclude = [
-            "types.py",
-            "parser.py",
-        ],
-    ),
-    srcs_version = "PY3",
-    visibility = ["//visibility:private"],
-)
-
-py_library(
     name = "vulkan_parser",
-    srcs = [
-        "parser.py",
-        "types.py",
-    ],
+    srcs = glob(["*.py"]),
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
     deps = [
-        "vulkan_parser_internal",
+        "//vulkan_generator/vulkan_parser/internal",
     ],
 )
 

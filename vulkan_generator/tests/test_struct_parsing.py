@@ -22,8 +22,8 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import struct_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import struct_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_struct_with_members() -> None:
@@ -42,7 +42,7 @@ def test_vulkan_struct_with_members() -> None:
 
     typ = struct_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(typ, types.VulkanStruct)
+    assert isinstance(typ, internal_types.VulkanStruct)
     assert typ.typename == "VkDevicePrivateDataCreateInfo"
 
     assert len(typ.members) == 3
@@ -83,7 +83,7 @@ def test_vulkan_struct_with_const_and_pointer() -> None:
     """
     typ = struct_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(typ, types.VulkanStruct)
+    assert isinstance(typ, internal_types.VulkanStruct)
     assert typ.typename == "VkInstanceCreateInfo"
 
     assert typ.members["ppEnabledLayerNames"].variable_type == "const char* const*"
@@ -104,7 +104,7 @@ def test_vulkan_struct_with_expected_value() -> None:
     """
 
     typ = struct_parser.parse(ET.fromstring(xml))
-    assert isinstance(typ, types.VulkanStruct)
+    assert isinstance(typ, internal_types.VulkanStruct)
 
     expected_value = "VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO"
     assert typ.members["sType"].expected_value == expected_value
@@ -125,7 +125,7 @@ def test_vulkan_struct_with_optional() -> None:
     """
     typ = struct_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(typ, types.VulkanStruct)
+    assert isinstance(typ, internal_types.VulkanStruct)
     assert typ.members["pNext"].optional
 
 
@@ -145,7 +145,7 @@ def test_vulkan_struct_with_no_auto_validity() -> None:
     """
     typ = struct_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(typ, types.VulkanStruct)
+    assert isinstance(typ, internal_types.VulkanStruct)
     assert typ.members["size"].no_auto_validity
 
 
@@ -160,7 +160,7 @@ def test_vulkan_struct_with_dynamic_array() -> None:
         </type>
     """
     typ = struct_parser.parse(ET.fromstring(xml))
-    assert isinstance(typ, types.VulkanStruct)
+    assert isinstance(typ, internal_types.VulkanStruct)
 
     reference = typ.members["pBinds"].array_size_reference
     assert reference in typ.members
@@ -195,7 +195,7 @@ def test_vulkan_struct_with_static_array() -> None:
     """
 
     typ = struct_parser.parse(ET.fromstring(xml))
-    assert isinstance(typ, types.VulkanStruct)
+    assert isinstance(typ, internal_types.VulkanStruct)
 
     assert typ.members["deviceName"].variable_size == "VK_MAX_PHYSICAL_DEVICE_NAME_SIZE"
 
@@ -209,6 +209,6 @@ def test_vulkan_struct_alias() -> None:
 
     typ = struct_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(typ, types.VulkanStructAlias)
+    assert isinstance(typ, internal_types.VulkanStructAlias)
     assert typ.typename == "VkDevicePrivateDataCreateInfoEXT"
     assert typ.aliased_typename == "VkDevicePrivateDataCreateInfo"

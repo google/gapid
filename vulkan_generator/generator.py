@@ -19,13 +19,13 @@ import os
 from pathlib import Path
 import pprint
 
-from vulkan_generator.vulkan_parser import parser as vk_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import parser as vk_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 from vulkan_generator.handle_remapper import generator as handle_remapper_generator
 
 
-def print_vulkan_metadata(vulkan_metadata: types.VulkanMetadata) -> None:
+def print_vulkan_metadata(vulkan_metadata: internal_types.VulkanMetadata) -> None:
     """Prints all the vulkan information that is extracted"""
 
     pretty_printer = pprint.PrettyPrinter(depth=4)
@@ -103,7 +103,7 @@ def print_vulkan_metadata(vulkan_metadata: types.VulkanMetadata) -> None:
 
 def basic_generate(target: str,
                    output_dir: Path,
-                   all_vulkan_types: types.VulkanMetadata,
+                   all_vulkan_types: internal_types.VulkanMetadata,
                    generate_header,
                    generate_cpp,
                    generate_test):

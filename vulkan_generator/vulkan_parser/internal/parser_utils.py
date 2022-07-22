@@ -21,7 +21,7 @@ from typing import Optional
 import os
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 ################################
@@ -198,7 +198,7 @@ def get_enum_field_from_offset(
     return EnumFieldRepresentation(value=value, representation=representation)
 
 
-def parse_enum_extension(enum_element: ET.Element) -> Optional[types.VulkanFeatureExtensionEnum]:
+def parse_enum_extension(enum_element: ET.Element) -> Optional[internal_types.VulkanFeatureExtensionEnum]:
     """Parses the enum field extension added by the core version"""
     basetype = try_get_attribute(enum_element, "extends")
     if not basetype:
@@ -211,7 +211,7 @@ def parse_enum_extension(enum_element: ET.Element) -> Optional[types.VulkanFeatu
     value = try_get_attribute(enum_element, "value")
     sign = try_get_attribute(enum_element, "dir")
 
-    return types.VulkanFeatureExtensionEnum(
+    return internal_types.VulkanFeatureExtensionEnum(
         basetype=basetype,
         alias=alias,
         extnumber=extnumber,
@@ -228,9 +228,9 @@ def parse_enum_extension(enum_element: ET.Element) -> Optional[types.VulkanFeatu
 ################################
 
 
-def parse_requirement(require_element: ET.Element) -> types.VulkanExtensionRequirement:
+def parse_requirement(require_element: ET.Element) -> internal_types.VulkanExtensionRequirement:
     """Parses requirement for Vulkan Core versions and extensions"""
-    features: Dict[str, types.VulkanFeature] = {}
+    features: Dict[str, internal_types.VulkanFeature] = {}
 
     version = try_get_attribute(require_element, "feature")
     extension = try_get_attribute(require_element, "extension")
@@ -243,7 +243,7 @@ def parse_requirement(require_element: ET.Element) -> types.VulkanExtensionRequi
         feature_type = required_feature_element.tag
         feature_value: Optional[str] = None
 
-        feature_extension: Optional[types.VulkanFeatureExtension] = None
+        feature_extension: Optional[internal_types.VulkanFeatureExtension] = None
         if required_feature_element.tag == "enum":
             # Enums are expanded in core versions
             feature_extension = parse_enum_extension(required_feature_element)
@@ -252,13 +252,13 @@ def parse_requirement(require_element: ET.Element) -> types.VulkanExtensionRequi
                 feature_type = "type"
                 feature_value = try_get_attribute(required_feature_element, "value")
 
-        features[feature_name] = types.VulkanFeature(
+        features[feature_name] = internal_types.VulkanFeature(
             name=feature_name,
             feature_type=feature_type,
             value=feature_value,
             feature_extension=feature_extension)
 
-    return types.VulkanExtensionRequirement(
+    return internal_types.VulkanExtensionRequirement(
         required_version=version,
         required_extension=extension,
         features=features,

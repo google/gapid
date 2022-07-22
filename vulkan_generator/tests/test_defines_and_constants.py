@@ -28,9 +28,9 @@ if they reflect the new XML
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import enums_parser
-from vulkan_generator.vulkan_parser import defines_parser
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import enums_parser
+from vulkan_generator.vulkan_parser.internal import defines_parser
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
 def test_vulkan_constant_with_value() -> None:
@@ -68,7 +68,7 @@ def test_vulkan_define_with_name_tag() -> None:
 
     define = defines_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(define, types.VulkanDefine)
+    assert isinstance(define, internal_types.VulkanDefine)
     assert define.variable_name == "VK_VERSION_MAJOR(version)"
     assert define.value == "((uint32_t)(version) >> 22)"
 
@@ -84,7 +84,7 @@ def test_vulkan_define_with_name_tag_multiline() -> None:
 
     define = defines_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(define, types.VulkanDefine)
+    assert isinstance(define, internal_types.VulkanDefine)
     assert define.variable_name == "VK_MAKE_VERSION(major, minor, patch)"
     assert define.value == """\\
     ((((uint32_t)(major)) << 22) | (((uint32_t)(minor)) << 12) | ((uint32_t)(patch)))"""
@@ -109,7 +109,7 @@ def test_vulkan_define_with_name_attrib() -> None:
 
     define = defines_parser.parse(ET.fromstring(xml))
 
-    assert isinstance(define, types.VulkanDefine)
+    assert isinstance(define, internal_types.VulkanDefine)
     assert define.variable_name == "VK_USE_64_BIT_PTR_DEFINES"
     assert define.value == """
 #ifndef VK_USE_64_BIT_PTR_DEFINES

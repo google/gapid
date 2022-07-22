@@ -18,13 +18,13 @@ from typing import Dict
 from typing import List
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import parser_utils
 
 
-def parse(extensions_element: ET.Element) -> Dict[str, types.VulkanExtension]:
+def parse(extensions_element: ET.Element) -> Dict[str, internal_types.VulkanExtension]:
     """Returns Vulkan extensions and/or aliases from the XML element that defines it"""
-    extensions: Dict[str, types.VulkanExtension] = {}
+    extensions: Dict[str, internal_types.VulkanExtension] = {}
 
     for extension_element in extensions_element:
         if extension_element.attrib["supported"] == "disabled":
@@ -56,11 +56,11 @@ def parse(extensions_element: ET.Element) -> Dict[str, types.VulkanExtension]:
         # If this extension is limited to a platform, which platform it is
         platform = parser_utils.try_get_attribute(extension_element, "platform")
 
-        requirements: List[types.VulkanExtensionRequirement] = []
+        requirements: List[internal_types.VulkanExtensionRequirement] = []
         for requirement_element in extension_element:
             requirements.append(parser_utils.parse_requirement(requirement_element))
 
-        extensions[name] = types.VulkanExtension(
+        extensions[name] = internal_types.VulkanExtension(
             name=name,
             number=number,
             promoted_version=promoted,

@@ -17,13 +17,13 @@
 from typing import OrderedDict
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import parser_utils
 
 
-def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, types.VulkanFunctionArgument]:
+def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, internal_types.VulkanFunctionArgument]:
     """Parses the arguments of a Vulkan Function Pointer"""
-    arguments: OrderedDict[str, types.VulkanFunctionArgument] = OrderedDict()
+    arguments: OrderedDict[str, internal_types.VulkanFunctionArgument] = OrderedDict()
 
     # In the XML const modifier of the type is part of the
     # previous argument of the function
@@ -70,7 +70,7 @@ def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, types.Vul
             argument_type = argument_type + "*"
             argument_name = argument_name[1:]
 
-        arguments[argument_name] = types.VulkanFunctionArgument(
+        arguments[argument_name] = internal_types.VulkanFunctionArgument(
             argument_type=argument_type,
             argument_name=argument_name,
         )
@@ -78,7 +78,7 @@ def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, types.Vul
     return arguments
 
 
-def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
+def parse(func_ptr_elem: ET.Element) -> internal_types.VulkanFunctionPtr:
     """Returns a Vulkan function pointer from the XML element that defines it.
 
     A sample Vulkan function_pointer:
@@ -104,7 +104,7 @@ def parse(func_ptr_elem: ET.Element) -> types.VulkanFunctionPtr:
     return_type = parser_utils.clean_type_string(return_type)
 
     arguments = parse_arguments(func_ptr_elem)
-    return types.VulkanFunctionPtr(
+    return internal_types.VulkanFunctionPtr(
         typename=function_name,
         return_type=return_type,
         arguments=arguments)

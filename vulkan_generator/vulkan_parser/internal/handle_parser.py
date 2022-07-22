@@ -16,11 +16,11 @@
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import parser_utils
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse_handle_by_attribute(root: ET.Element) -> types.VulkanHandleAlias:
+def parse_handle_by_attribute(root: ET.Element) -> internal_types.VulkanHandleAlias:
     """Parses a Vulkan Handle if it has the attribute "name" and returns it.
 
     if any handle defined like this, they are always an alias of an existing type
@@ -31,11 +31,11 @@ def parse_handle_by_attribute(root: ET.Element) -> types.VulkanHandleAlias:
     """
     name = root.attrib["name"]
     alias = root.attrib["alias"]
-    vulkan_handle = types.VulkanHandleAlias(typename=name, aliased_typename=alias)
+    vulkan_handle = internal_types.VulkanHandleAlias(typename=name, aliased_typename=alias)
     return vulkan_handle
 
 
-def parse_handle_by_tag(root: ET.Element) -> types.VulkanHandle:
+def parse_handle_by_tag(root: ET.Element) -> internal_types.VulkanHandle:
     """Parses a Vulkan Handle if it has the tag "name" and returns it.
 
     Example from Vk.xml
@@ -51,11 +51,11 @@ def parse_handle_by_tag(root: ET.Element) -> types.VulkanHandle:
 
     dispatchable = handle_definer == "VK_DEFINE_HANDLE"
 
-    vulkan_handle = types.VulkanHandle(typename=name, dispatchable=dispatchable)
+    vulkan_handle = internal_types.VulkanHandle(typename=name, dispatchable=dispatchable)
     return vulkan_handle
 
 
-def parse(root: ET.Element) -> types.VulkanType:
+def parse(root: ET.Element) -> internal_types.VulkanType:
     """Returns a Vulkan handle or alias from the XML element that defines it"""
     if "name" in root.attrib:
         return parse_handle_by_attribute(root)

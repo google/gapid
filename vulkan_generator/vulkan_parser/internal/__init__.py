@@ -12,24 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
-load("//tools/build:rules.bzl", "py_lint")
-
-py_library(
-    name = "handle_remapper",
-    srcs = glob(["*.py"]),
-    srcs_version = "PY3",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//vulkan_generator/codegen_utils",
-        "//vulkan_generator/vulkan_parser/internal",
-    ],
-)
-
-py_lint(
-    name = "lint",
-    srcs = glob(["*.py"]),
-    deps = [
-        "handle_remapper",
-    ],
-)
+""" This package is responsible for internals of parsing Vulkan XML """

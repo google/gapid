@@ -17,10 +17,10 @@
 from typing import Optional
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
+from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse(spirv_element: ET.Element) -> types.SpirvExtension:
+def parse(spirv_element: ET.Element) -> internal_types.SpirvExtension:
     """Returns a Spirv extension or alias from the XML element that defines it
 
     A sample Spirv extension:
@@ -46,4 +46,4 @@ def parse(spirv_element: ET.Element) -> types.SpirvExtension:
         raise SyntaxError(
             f"Vulkan extension for the Spirv extension could not found:{ET.tostring(spirv_element, 'utf-8')!r}")
 
-    return types.SpirvExtension(name=name, version=version, extension=extension)
+    return internal_types.SpirvExtension(name=name, version=version, extension=extension)

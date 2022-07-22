@@ -17,11 +17,11 @@
 from typing import Dict
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser import types
-from vulkan_generator.vulkan_parser import parser_utils
+from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.internal import parser_utils
 
 
-def parse(feature_element: ET.Element) -> types.VulkanCoreVersion:
+def parse(feature_element: ET.Element) -> internal_types.VulkanCoreVersion:
     """Parses features required by a specific Vulkan version"""
     if feature_element.attrib["api"] != "vulkan":
         raise SyntaxError(f"Unknown API {ET.tostring(feature_element, 'utf-8')!r}")
@@ -29,7 +29,7 @@ def parse(feature_element: ET.Element) -> types.VulkanCoreVersion:
     version_name = feature_element.attrib["name"]
     version_number = feature_element.attrib["number"]
 
-    features: Dict[str, types.VulkanFeature] = {}
+    features: Dict[str, internal_types.VulkanFeature] = {}
 
     for require_element in feature_element:
         if require_element.tag != "require":
@@ -38,7 +38,7 @@ def parse(feature_element: ET.Element) -> types.VulkanCoreVersion:
         requirement = parser_utils.parse_requirement(require_element=require_element)
         features.update(requirement.features)
 
-    return types.VulkanCoreVersion(
+    return internal_types.VulkanCoreVersion(
         name=version_name,
         number=version_number,
         features=features
