@@ -114,6 +114,9 @@ public class Logging {
 
   private static final Listener NULL_LISTENER = (m) -> { /* do nothing */ };
 
+  private static final String SERVER_LOG_FILE = "gapis.log";
+  private static final String CLIENT_LOG_FILE = "gapic.log";
+
   private static Listener listener = NULL_LISTENER;
   private static long timeOfLastThrottledMessage = 0;
 
@@ -144,7 +147,7 @@ public class Logging {
       File dir = new File(logDir.get());
       dir.mkdirs();
 
-      File file = new File(dir, "gapic.log");
+      File file = new File(dir, CLIENT_LOG_FILE);
       for (int i = 0; i < 10; i++) {
         if (!file.exists() || file.canWrite()) {
           try {
@@ -170,6 +173,14 @@ public class Logging {
 
   public static File getLogDir() {
     return logDir.get().isEmpty() ? null : new File(logDir.get());
+  }
+
+  public static File getServerLogFile() {
+    return new File(getLogDir(), SERVER_LOG_FILE);
+  }
+
+  public static File getClientLogFile() {
+    return new File(getLogDir(), CLIENT_LOG_FILE);
   }
 
   public static String getGapisLogLevel() {

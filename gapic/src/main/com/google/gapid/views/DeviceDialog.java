@@ -131,7 +131,7 @@ public class DeviceDialog implements Devices.Listener, Capture.Listener {
           && models.devices.getReplayDevices().size() == 1) {
         device = models.devices.getReplayDevices().get(0);
         DeviceValidationResult cachedResult = models.devices.getCachedValidationStatus(device);
-        skipDialog = cachedResult.passed || cachedResult.skipped;
+        skipDialog = cachedResult.passedOrSkipped();
       }
 
       if (skipDialog) {

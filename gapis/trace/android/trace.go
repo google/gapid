@@ -183,6 +183,19 @@ func (t *androidTracer) Validate(ctx context.Context, enableLocalFiles bool) (*s
 
 	d := t.b.(adb.Device)
 	osConfiguration := d.Instance().GetConfiguration()
+
+	// Get ActivityAction
+	gapidPackage := gapidapk.PackageName(osConfiguration.PreferredABI(nil))
+	packages, _ := d.InstalledPackages(ctx)
+	pkg := packages.FindByName(gapidPackage)
+	if pkg == nil {
+		return nil, log.Errf(ctx, nil, "Package %v not found.", gapidPackage)
+	}
+	activityAction := pkg.ActivityActions.FindByName(intentAction, activityName)
+	if activityAction == nil {
+		return nil, log.Errf(ctx, nil, "Activity %v not found in package %v", activityName, gapidPackage)
+	}
+
 	if t.v == nil {
 		return &service.DeviceValidationResult{
 			ErrorCode:            service.DeviceValidationResult_FAILED_PRECONDITION,
@@ -206,18 +219,6 @@ func (t *androidTracer) Validate(ctx context.Context, enableLocalFiles bool) (*s
 			ErrorCode:            service.DeviceValidationResult_FAILED_PRECONDITION,
 			ValidationFailureMsg: fmt.Sprintf("GPU profiling support not detected on device (%d)", d.Instance().ID.ID()),
 		}, nil
-	}
-
-	// Get ActivityAction
-	gapidPackage := gapidapk.PackageName(osConfiguration.PreferredABI(nil))
-	packages, _ := d.InstalledPackages(ctx)
-	pkg := packages.FindByName(gapidPackage)
-	if pkg == nil {
-		return nil, log.Errf(ctx, nil, "Package %v not found.", gapidPackage)
-	}
-	activityAction := pkg.ActivityActions.FindByName(intentAction, activityName)
-	if activityAction == nil {
-		return nil, log.Errf(ctx, nil, "Activity %v not found in package %v", activityName, gapidPackage)
 	}
 
 	// Construct trace config

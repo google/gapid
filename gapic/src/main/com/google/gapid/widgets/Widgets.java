@@ -524,6 +524,12 @@ public class Widgets {
     return link;
   }
 
+  public static void removeAllSelectionListeners(Widget widget) {
+    for (Listener listener : widget.getListeners(SWT.Selection)) {
+      widget.removeListener(SWT.Selection, listener);
+    }
+  }
+
   /**
    * Use this to create a {@link Table} that you will later wrap in a {@link TableViewer} using
    * {@link #createTableViewer(Table)}.

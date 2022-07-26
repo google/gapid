@@ -454,45 +454,79 @@ public class Devices {
   }
 
   public static class DeviceValidationResult {
-    public static final DeviceValidationResult PASSED = new DeviceValidationResult(null, null, "", true, false);
-    public static final DeviceValidationResult FAILED = new DeviceValidationResult(null, null, "", false, false);
-    public static final DeviceValidationResult SKIPPED = new DeviceValidationResult(null, null, "", true, true);
+    public static final DeviceValidationResult PASSED = new DeviceValidationResult(
+      Service.DeviceValidationResult.ErrorCode.OK, "", "",  false);
+    public static final DeviceValidationResult FAILED = new DeviceValidationResult(
+      Service.DeviceValidationResult.ErrorCode.FAILED_PRECONDITION, "", "", false);
+    public static final DeviceValidationResult SKIPPED = new DeviceValidationResult(
+      Service.DeviceValidationResult.ErrorCode.OK, "", "", true);
 
-    public final RpcException internalErr;
-    public final String validationFailureMsg;
-    public final String tracePath;
-    public final boolean passed;
-    public final boolean skipped;
-
-    public DeviceValidationResult(RpcException internalErr, String validationFailureMsg, String tracePath, boolean passed, boolean skipped) {
-      this.internalErr = internalErr;
-      this.validationFailureMsg = validationFailureMsg;
-      this.tracePath = tracePath;
-      this.passed = passed;
-      this.skipped = skipped;
+    // Corresponds to the error code from service.proto, but also includes Internal
+    public static enum ErrorCode {
+      Invalid,
+      Ok,
+      FailedPrecondition,
+      FailedTraceValidation,
+      Internal,
     }
 
+    public final ErrorCode errorCode;
+    public final String validationFailureMsg;
+    public final String tracePath;
+    public final boolean skipped;
+
     public DeviceValidationResult(Service.DeviceValidationResult r) {
-      this(null,
+      this(r.getErrorCode(),
            r.getValidationFailureMsg(),
-           r.getTracePath(),
-           r.getValidationFailureMsg().length() == 0,
+           r.getTracePath(),   
            false);
     }
 
     public DeviceValidationResult(RpcException e) {
-      this(e, e.toString(), "", false, false);
+      this(ErrorCode.Internal, e.toString(), "", false);
+    }
+
+    private DeviceValidationResult(Service.DeviceValidationResult.ErrorCode errorCode, String validationFailureMsg, String tracePath, boolean skipped) {
+      this.errorCode = ConvertErrorCode(errorCode);
+      this.validationFailureMsg = validationFailureMsg;
+      this.tracePath = tracePath;
+      this.skipped = skipped;
+    }
+
+    private DeviceValidationResult(ErrorCode errorCode, String validationFailureMsg, String tracePath, boolean skipped) {
+      this.errorCode = errorCode;
+      this.validationFailureMsg = validationFailureMsg;
+      this.tracePath = tracePath;
+      this.skipped = skipped;
+    }
+
+    private ErrorCode ConvertErrorCode(Service.DeviceValidationResult.ErrorCode errorCode) {
+      switch (errorCode) {
+        case OK:
+          return ErrorCode.Ok;
+        case FAILED_PRECONDITION:
+          return ErrorCode.FailedPrecondition;
+        case FAILED_TRACE_VALIDATION:
+          return ErrorCode.FailedTraceValidation;
+        default:
+          return ErrorCode.Invalid;
+      }
+    }
+
+    public boolean passed() {
+      return errorCode == ErrorCode.Ok;
+    }
+
+
+    public boolean passedOrSkipped() {
+      return passed() || skipped;
     }
 
     @Override
     public String toString() {
-      if (this.skipped) {
-        return "skipped";
-      } else if (this.passed) {
-        return "passed";
-      } else {
-        return "failed";
-      }
+      return errorCode.toString() + 
+        (errorCode != ErrorCode.Ok ? " Error" : "") +
+        ": " + validationFailureMsg;
     }
   }
 
@@ -528,7 +562,7 @@ public class Devices {
     }
 
     public DeviceValidationResult add(Device.Instance device, DeviceValidationResult result) {
-      if (result.passed) {
+      if (result.passed()) {
         Key key = new Key(device);
         cache.put(key, stored.addValidationEntriesBuilder()
             .setDevice(key.device)
