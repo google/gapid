@@ -40,7 +40,7 @@ public abstract class ActionTextbox extends Composite {
   public ActionTextbox(Composite parent, String actionLabel, String value) {
     super(parent, SWT.NONE);
 
-    setLayout(Widgets.withMargin(new GridLayout(2, false), 0, 0));
+    setLayout(Widgets.withMarginOnly(new GridLayout(2, false), 0, 0));
     box = createTextbox(this, value);
     box.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
