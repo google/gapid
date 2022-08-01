@@ -25,16 +25,35 @@ from vulkan_generator.vulkan_parser.internal import funcptr_parser
 from vulkan_generator.vulkan_parser.internal import internal_types
 from vulkan_generator.vulkan_parser.internal import defines_parser
 from vulkan_generator.vulkan_parser.internal import basetype_parser
+from vulkan_generator.vulkan_parser.internal import external_type_parser
+from vulkan_generator.vulkan_parser.internal import union_parser
+from vulkan_generator.vulkan_parser.internal import include_parser
+
+
+def process_include(vulkan_types: internal_types.AllVulkanTypes, include_element: ET.Element) -> None:
+    include = include_parser.parse(include_element)
+
+    if isinstance(include, internal_types.ExternalInclude):
+        vulkan_types.includes[include.header] = include
+        return
+
+    raise SyntaxError(f"Unknown Include: {include}")
 
 
 def process_defines(vulkan_types: internal_types.AllVulkanTypes, define_element: ET.Element) -> None:
     vulkan_define = defines_parser.parse(define_element)
 
     if isinstance(vulkan_define, internal_types.VulkanDefine):
-        vulkan_types.defines[vulkan_define.variable_name] = vulkan_define
+        vulkan_types.defines[vulkan_define.key] = vulkan_define
         return
 
     raise SyntaxError(f"Unknown Define: {vulkan_define}")
+
+
+def process_external_type(vulkan_types: internal_types.AllVulkanTypes, external_type_element: ET.Element) -> None:
+    """Parses the C types that Vulkan is relying on"""
+    external_type = external_type_parser.parse(external_type_element)
+    vulkan_types.external_types[external_type.typename] = external_type
 
 
 def process_basetype(vulkan_types: internal_types.AllVulkanTypes, define_element: ET.Element) -> None:
@@ -85,6 +104,16 @@ def process_handle(vulkan_types: internal_types.AllVulkanTypes, handle_element: 
     raise SyntaxError(f"Unknown VulkanType: {handle}")
 
 
+def process_union(vulkan_types: internal_types.AllVulkanTypes, union_element: ET.Element) -> None:
+    vulkan_union = union_parser.parse(union_element)
+
+    if isinstance(vulkan_union, internal_types.VulkanUnion):
+        vulkan_types.unions[vulkan_union.typename] = vulkan_union
+        return
+
+    raise SyntaxError(f"Unknown VulkanType: {vulkan_union}")
+
+
 def process_struct(vulkan_types: internal_types.AllVulkanTypes, struct_element: ET.Element) -> None:
     """ Parse the Vulkan type "Struct". This can be a struct or an alias to another struct"""
     vulkan_struct = struct_parser.parse(struct_element)
@@ -115,6 +144,8 @@ def parse(types_root: ET.Element) -> internal_types.AllVulkanTypes:
             type_category = type_element.attrib["category"]
             if type_category == "define":
                 process_defines(vulkan_types, type_element)
+            if type_category == "include":
+                process_include(vulkan_types, type_element)
             elif type_category == "basetype":
                 process_basetype(vulkan_types, type_element)
             elif type_category == "bitmask":
@@ -125,7 +156,12 @@ def parse(types_root: ET.Element) -> internal_types.AllVulkanTypes:
                 process_handle(vulkan_types, type_element)
             elif type_category == "struct":
                 process_struct(vulkan_types, type_element)
+            elif type_category == "union":
+                process_union(vulkan_types, type_element)
             elif type_category == "funcpointer":
                 process_funcpointer(vulkan_types, type_element)
+        else:
+            if type_element.tag != "comment":
+                process_external_type(vulkan_types, type_element)
 
     return vulkan_types

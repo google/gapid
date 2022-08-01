@@ -49,7 +49,7 @@ def test_vulkan_extension() -> None:
     assert extension.name == "VK_NV_glsl_shader"
     assert extension.number == 13
     assert extension.extension_type == "device"
-    assert not extension.deprecating_extension
+    assert not extension.deprecatedby
     assert not extension.required_extensions
     assert not extension.platform
 
@@ -60,14 +60,16 @@ def test_vulkan_extension() -> None:
     features = requirements.features
 
     ext_name = features["VK_NV_GLSL_SHADER_EXTENSION_NAME"]
+    assert isinstance(ext_name, internal_types.VulkanFeatureExtensionDefine)
     assert ext_name.name == "VK_NV_GLSL_SHADER_EXTENSION_NAME"
     assert ext_name.value == '"VK_NV_glsl_shader"'
-    assert ext_name.feature_type == "type"
+    assert ext_name.feature_type == "enum"
 
     spec_version = features["VK_NV_GLSL_SHADER_SPEC_VERSION"]
+    assert isinstance(spec_version, internal_types.VulkanFeatureExtensionDefine)
     assert spec_version.name == "VK_NV_GLSL_SHADER_SPEC_VERSION"
     assert spec_version.value == "1"
-    assert spec_version.feature_type == "type"
+    assert spec_version.feature_type == "enum"
 
 
 def test_vulkan_extension_adding_enum_field_with_sign() -> None:
@@ -92,10 +94,10 @@ def test_vulkan_extension_adding_enum_field_with_sign() -> None:
     assert new_feature.name == "VK_ERROR_INVALID_SHADER_NV"
     assert new_feature.feature_type == "enum"
 
-    assert isinstance(new_feature.feature_extension, internal_types.VulkanFeatureExtensionEnum)
-    assert new_feature.feature_extension.offset == "0"
-    assert new_feature.feature_extension.basetype == "VkResult"
-    assert new_feature.feature_extension.sign == "-"
+    assert isinstance(new_feature, internal_types.VulkanFeatureExtensionEnum)
+    assert new_feature.offset == "0"
+    assert new_feature.basetype == "VkResult"
+    assert new_feature.sign == "-"
 
 
 def test_vulkan_extension_adding_enum_field_alias() -> None:
@@ -122,7 +124,25 @@ def test_vulkan_extension_adding_enum_field_alias() -> None:
 
     vulkan_extensions = extensions_parser.parse(ET.fromstring(xml))
     features = vulkan_extensions["VK_EXT_sampler_filter_minmax"].requirements[0].features
-    feature_extension = features["VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT"].feature_extension
-    assert isinstance(feature_extension, internal_types.VulkanFeatureExtensionEnum)
-    assert feature_extension.basetype == "VkSamplerReductionMode"
-    assert feature_extension.alias == "VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE"
+    feature = features["VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT"]
+    assert isinstance(feature, internal_types.VulkanFeatureExtensionEnumAlias)
+    assert feature.basetype == "VkSamplerReductionMode"
+    assert feature.alias == "VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE"
+
+
+def test_vulkan_extension_disabled() -> None:
+    """"Test the case for a simple Vulkan extension"""
+
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <extensions comment="Vulkan extension interface definitions">
+        <extension name="VK_NVX_extension_48" number="48" author="NVX"
+            contact="James Jones @cubanismo" supported="disabled">
+            <require>
+                <enum value="0" name="VK_NVX_EXTENSION_48_SPEC_VERSION"/>
+                <enum value="&quot;VK_NVX_extension_48&quot;" name="VK_NVX_EXTENSION_48_EXTENSION_NAME"/>
+            </require>
+        </extension>
+    </extensions>"""
+
+    vulkan_extensions = extensions_parser.parse(ET.fromstring(xml))
+    assert vulkan_extensions["VK_NVX_extension_48"].disabled

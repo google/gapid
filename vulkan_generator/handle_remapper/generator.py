@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import List
 
 from textwrap import dedent
-from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.api import types
 from vulkan_generator.codegen_utils import codegen
 
 
@@ -144,7 +144,7 @@ class NonDispatchableHandleAccessorCodeGenerator(HandleAccessorCodeGenerator):
                       )
 
 
-def generate_handle_remapper_h(file_path: Path, vulkan_metadata: internal_types.VulkanMetadata):
+def generate_handle_remapper_h(file_path: Path, vulkan_metadata: types.VulkanInfo):
     ''' Generates handle_remapper.h '''
     with open(file_path, "w", encoding="ascii") as remapper_h:
 
@@ -207,7 +207,7 @@ def generate_handle_remapper_h(file_path: Path, vulkan_metadata: internal_types.
         """))
 
 
-def generate_handle_remapper_cpp(file_path: Path, vulkan_metadata: internal_types.VulkanMetadata):
+def generate_handle_remapper_cpp(file_path: Path, vulkan_metadata: types.VulkanInfo):
     ''' Generates handle_remapper.cc '''
     with open(file_path, "w", encoding="ascii") as remapper_cpp:
 
@@ -260,7 +260,7 @@ def generate_handle_remapper_cpp(file_path: Path, vulkan_metadata: internal_type
         """))
 
 
-def generate_handle_remapper_tests(file_path: Path, vulkan_metadata: internal_types.VulkanMetadata):
+def generate_handle_remapper_tests(file_path: Path, vulkan_metadata: types.VulkanInfo):
     ''' Generates handle_remapper_tests.cc '''
     with open(file_path, "w", encoding="ascii") as tests_cpp:
 

@@ -16,10 +16,30 @@
 
 
 from pathlib import Path
+import sys
 
+from vulkan_generator.vulkan_parser.api import types
 from vulkan_generator.vulkan_parser.internal import parser as internal_parser
-from vulkan_generator.vulkan_parser.internal import internal_types
+from vulkan_generator.vulkan_parser.postprocess import postprocess
 
 
-def parse(filename: Path) -> internal_types.VulkanMetadata:
-    return internal_parser.parse(filename)
+def parse(filename: Path, dump: bool = False) -> types.VulkanInfo:
+    metadata = postprocess.process(internal_parser.parse(filename))
+
+    if dump:
+        print(metadata)
+
+    return metadata
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        parse(Path(sys.argv[1]))
+        sys.exit(0)
+
+    if len(sys.argv) == 3:
+        if sys.argv[2].strip().lower() == "dump":
+            parse(Path(sys.argv[1]), True)
+            sys.exit(0)
+
+    print("Please use as <xml location> Optional['dump']")

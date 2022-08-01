@@ -14,7 +14,7 @@
 
 """ This module is responsible for parsing Vulkan commands and aliases of them"""
 
-from typing import OrderedDict
+from typing import Dict
 
 import xml.etree.ElementTree as ET
 
@@ -22,10 +22,10 @@ from vulkan_generator.vulkan_parser.internal import parser_utils
 from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, internal_types.VulkanCommandParam]:
+def parse_arguments(command_elem: ET.Element) -> Dict[str, internal_types.VulkanCommandParam]:
     """Parses the arguments of Vulkan Commands"""
 
-    parameters: OrderedDict[str, internal_types.VulkanCommandParam] = OrderedDict()
+    parameters: Dict[str, internal_types.VulkanCommandParam] = {}
 
     for param_elem in command_elem:
         if param_elem.tag == "proto":
@@ -77,14 +77,19 @@ def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, internal_types
         # Is this parameter optional or has to be not null
         # When this field is "false, true"  it's always for the length of the array
         # Therefore it does not give any extra information.
-        optional = parser_utils.try_get_attribute(param_elem, "optional") == "true"
+        optional = param_elem.get("optional") == "true"
 
-        # Is this parameter must be externally synced
-        externally_synced = parser_utils.try_get_attribute(param_elem, "externsync") == "true"
+        # External syncronisation info for the parameter
+        externally_synced_field = param_elem.get("externsync")
+        externally_synced = externally_synced_field is not None
+        # If the externally sync attribute says true, this means entire parameter is synced
+        # not a specific field
+        if externally_synced_field == "true":
+            externally_synced_field = None
 
         # This is useful when the parameter is a pointer to an array
         # with a length given by another parameter
-        array_size_reference = parser_utils.try_get_attribute(param_elem, "len")
+        array_size_reference = param_elem.get("len")
         if array_size_reference:
             # pointer to char array has this property, which is redundant
             array_size_reference = array_size_reference.replace("null-terminated", "")
@@ -95,6 +100,7 @@ def parse_arguments(command_elem: ET.Element) -> OrderedDict[str, internal_types
             parameter_type=parameter_type,
             optional=optional,
             externally_synced=externally_synced,
+            externally_synced_field=externally_synced_field,
             array_size_reference=array_size_reference,
         )
 
@@ -125,7 +131,7 @@ def parse_command(command_elem: ET.Element) -> internal_types.VulkanCommand:
     queues = parser_utils.try_get_attribute_as_list(command_elem, "queues")
     command_buffer_levels = parser_utils.try_get_attribute_as_list(command_elem, "cmdbufferlevel")
 
-    renderpass_allowance = parser_utils.try_get_attribute(command_elem, "renderpass")
+    renderpass_allowance = command_elem.get("renderpass")
 
     name = parser_utils.get_text_from_tag_in_children(command_elem[0], "name")
     return_type = parser_utils.get_text_from_tag_in_children(command_elem[0], "type")

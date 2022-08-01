@@ -34,19 +34,24 @@ def parse(spirv_element: ET.Element) -> internal_types.SpirvCapability:
 
     name = spirv_element.attrib["name"]
     version: Optional[str] = None
-    feature: Optional[str] = None
-    vulkan_property: Optional[str] = None
+    feature: Optional[internal_types.SpirvCapabilityFeature] = None
+    vulkan_property: Optional[internal_types.SpirvCapabilityProperty] = None
     extension: Optional[str] = None
 
     for enable in spirv_element:
         if "version" in enable.attrib:
             version = enable.attrib["version"]
         elif "struct" in enable.attrib:
-            # e.g. VkPhysicalDeviceVulkan11Features::storagePushConstant16
-            feature = f"{enable.attrib['struct']}::{enable.attrib['feature']}"
+            feature = internal_types.SpirvCapabilityFeature(
+                struct=enable.attrib["struct"],
+                feature=enable.attrib["feature"],
+            )
         elif "property" in enable.attrib:
-            # e.g. VkPhysicalDeviceVulkan11Properties::subgroupSupportedOperations::VK_SUBGROUP_FEATURE_BASIC_BIT
-            vulkan_property = f"{enable.attrib['property']}::{enable.attrib['member']}::{enable.attrib['value']}"
+            vulkan_property = internal_types.SpirvCapabilityProperty(
+                struct=enable.attrib["property"],
+                group=enable.attrib["member"],
+                value=enable.attrib["value"],
+            )
         elif "extension" in enable.attrib:
             extension = enable.attrib["extension"]
         else:
@@ -57,4 +62,4 @@ def parse(spirv_element: ET.Element) -> internal_types.SpirvCapability:
         version=version,
         feature=feature,
         property=vulkan_property,
-        extension=extension)
+        vulkan_extension=extension)

@@ -14,13 +14,12 @@
 
 """ This module is responsible for parsing Vulkan Image Formats"""
 
-from typing import OrderedDict
+from typing import Dict
 from typing import List
 from typing import Optional
 
 import xml.etree.ElementTree as ET
 
-from vulkan_generator.vulkan_parser.internal import parser_utils
 from vulkan_generator.vulkan_parser.internal import internal_types
 
 
@@ -60,14 +59,14 @@ def parse_format_planes(format_element: ET.Element) -> List[internal_types.Image
     return planes
 
 
-def parse_format_components(format_element: ET.Element) -> OrderedDict[str, internal_types.ImageFormatComponent]:
+def parse_format_components(format_element: ET.Element) -> Dict[str, internal_types.ImageFormatComponent]:
     """
     Parser for the image formats components
 
     Sample image format component:
     <component name="R" bits="compressed" numericFormat="SRGB"/>
     """
-    components: OrderedDict[str, internal_types.ImageFormatComponent] = OrderedDict()
+    components: Dict[str, internal_types.ImageFormatComponent] = {}
 
     for component in format_element:
         if component.tag == "spirvimageformat":
@@ -122,7 +121,7 @@ def parse_format(format_element: ET.Element) -> internal_types.ImageFormat:
 
     # Pack size for the packed formats
     packed: Optional[int] = None
-    packed_str = parser_utils.try_get_attribute(format_element, "packed")
+    packed_str = format_element.get("packed")
     if packed_str:
         packed = int(format_element.attrib["packed"], 0)
 
@@ -149,11 +148,11 @@ def parse_format(format_element: ET.Element) -> internal_types.ImageFormat:
         planes=planes)
 
 
-def parse(formats_element: ET.Element) -> internal_types.ImageFormatMetadata:
-    format_metadata = internal_types.ImageFormatMetadata()
+def parse(formats_element: ET.Element) -> Dict[str, internal_types.ImageFormat]:
+    image_formats: Dict[str, internal_types.ImageFormat] = {}
 
     for format_element in formats_element:
         image_format = parse_format(format_element)
-        format_metadata.formats[image_format.name] = image_format
+        image_formats[image_format.name] = image_format
 
-    return format_metadata
+    return image_formats

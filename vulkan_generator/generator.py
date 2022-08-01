@@ -17,93 +17,15 @@
 import os
 
 from pathlib import Path
-import pprint
 
-from vulkan_generator.vulkan_parser.internal import parser as vk_parser
-from vulkan_generator.vulkan_parser.internal import internal_types
-
+from vulkan_generator.vulkan_parser import parser as vk_parser
+from vulkan_generator.vulkan_parser.api import types
 from vulkan_generator.handle_remapper import generator as handle_remapper_generator
-
-
-def print_vulkan_metadata(vulkan_metadata: internal_types.VulkanMetadata) -> None:
-    """Prints all the vulkan information that is extracted"""
-
-    pretty_printer = pprint.PrettyPrinter(depth=4)
-
-    vulkan_types = vulkan_metadata.types
-
-    print("=== Vulkan Defines ===")
-    pretty_printer.pprint(vulkan_types.defines)
-
-    print("=== Vulkan Bitmasks ===")
-    pretty_printer.pprint(vulkan_types.bitmasks)
-
-    print("=== Vulkan Bitmask Aliases ===")
-    pretty_printer.pprint(vulkan_types.bitmask_aliases)
-
-    print("=== Vulkan Enums ===")
-    pretty_printer.pprint(vulkan_types.enums)
-
-    print("=== Vulkan Enums Aliases ===")
-    pretty_printer.pprint(vulkan_types.enum_aliases)
-
-    print("=== Vulkan Handles ===")
-    pretty_printer.pprint(vulkan_types.handles)
-
-    print("=== Vulkan Handle Aliases ===")
-    pretty_printer.pprint(vulkan_types.handle_aliases)
-
-    print("=== Vulkan Structs ===")
-    pretty_printer.pprint(vulkan_types.structs)
-
-    print("=== Vulkan Struct Aliases ===")
-    pretty_printer.pprint(vulkan_types.struct_aliases)
-
-    print("=== Vulkan Function Pointers ===")
-    pretty_printer.pprint(vulkan_types.funcpointers)
-
-    vulkan_commands = vulkan_metadata.commands
-
-    print("=== Vulkan Commands ===")
-    pretty_printer.pprint(vulkan_commands.commands)
-
-    print("=== Vulkan Command Aliases ===")
-    pretty_printer.pprint(vulkan_commands.command_aliases)
-
-    versions = vulkan_metadata.core_versions
-    print("=== Vulkan 1.0 ===")
-    pretty_printer.pprint(versions["VK_VERSION_1_0"])
-
-    print("=== Vulkan 1.1 ===")
-    pretty_printer.pprint(versions["VK_VERSION_1_1"])
-
-    print("=== Vulkan 1.2 ===")
-    pretty_printer.pprint(versions["VK_VERSION_1_2"])
-
-    print("=== Vulkan 1.3 ===")
-    pretty_printer.pprint(versions["VK_VERSION_1_3"])
-
-    extension = vulkan_metadata.extensions
-    print("=== Vulkan Extensions ===")
-    pretty_printer.pprint(extension)
-
-    image_format_metadata = vulkan_metadata.image_format_metadata
-
-    print("=== Vulkan Image Formats ===")
-    pretty_printer.pprint(image_format_metadata.formats)
-
-    spirv_metadata = vulkan_metadata.spirv_metadata
-
-    print("=== Spirv Extensions ===")
-    pretty_printer.pprint(spirv_metadata.extensions)
-
-    print("=== Spirv Capabilities ===")
-    pretty_printer.pprint(spirv_metadata.capabilities)
 
 
 def basic_generate(target: str,
                    output_dir: Path,
-                   all_vulkan_types: internal_types.VulkanMetadata,
+                   all_vulkan_types: types.VulkanInfo,
                    generate_header,
                    generate_cpp,
                    generate_test):
@@ -113,10 +35,9 @@ def basic_generate(target: str,
     generate_test(os.path.join(output_dir, target + "_tests.cc"), all_vulkan_types)
 
 
-def generate(target: str, output_dir: Path, vulkan_xml_path: Path) -> bool:
+def generate(vulkan_xml_path: Path, target: str, output_dir: Path) -> bool:
     """ Generator function """
     vulkan_metadata = vk_parser.parse(vulkan_xml_path)
-    print_vulkan_metadata(vulkan_metadata)
 
     if output_dir == "":
         print("No output directory specified. Not generating anything.")

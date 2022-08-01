@@ -33,7 +33,7 @@ from vulkan_generator.vulkan_parser.internal import parser_utils
 def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> internal_types.VulkanBitmaskAlias:
     """Parses a Vulkan Bitmask if it has the attribute "name" and returns it.
 
-    if any bitmask defined like this, they are always an alias of an existing type
+    if any bitmask defined like this, it is always an alias of an existing type
 
     Example from Vk.xml
     <type category="bitmask" name="VkDescriptorUpdateTemplateCreateFlagsKHR"
@@ -46,9 +46,17 @@ def parse_bitmask_by_attribute(bitmask_elem: ET.Element) -> internal_types.Vulka
 
 
 def parse_bitmask_by_tag(bitmask_elem: ET.Element) -> internal_types.VulkanBitmask:
+    """Parses a Vulkan Bitmask if it has the tag "name" and returns it
+
+    If any bitmask defined like this, it is an actual bitmask definition
+
+    A sample Vulkan Bitmask:
+    <type requires="VkFramebufferCreateFlagBits" category="bitmask">typedef
+        <type>VkFlags</type> <name>VkFramebufferCreateFlags</name>;</type>
+    """
     bitmask_name = parser_utils.get_text_from_tag_in_children(bitmask_elem, "name")
     # This is optional because there are flags that are not used but reserved for the future.
-    bitfield_type = parser_utils.try_get_attribute(bitmask_elem, "requires")
+    bitfield_type = bitmask_elem.get("requires")
     bitfield_basetype = parser_utils.get_text_from_tag_in_children(bitmask_elem, "type")
 
     return internal_types.VulkanBitmask(

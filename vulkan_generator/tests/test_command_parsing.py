@@ -162,6 +162,26 @@ def test_vulkan_command_with_externally_synced_parameter() -> None:
     typ = commands_parser.parse(ET.fromstring(xml))
     command = typ.commands["vkCmdEndRenderPass"]
     assert command.parameters["commandBuffer"].externally_synced
+    assert not command.parameters["commandBuffer"].externally_synced_field
+
+
+def test_vulkan_command_with_externally_synced_field() -> None:
+    """"Tests Vulkan command that has a parameter that must be externally synced"""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <commands>
+            <command successcodes="VK_SUCCESS" errorcodes="VK_ERROR_OUT_OF_HOST_MEMORY,VK_ERROR_OUT_OF_DEVICE_MEMORY">
+                <proto><type>VkResult</type> <name>vkAllocateCommandBuffers</name></proto>
+                <param><type>VkDevice</type> <name>device</name></param>
+                <param externsync="pAllocateInfo-&gt;commandPool">const <type>VkCommandBufferAllocateInfo</type>* <name>pAllocateInfo</name></param>
+                <param len="pAllocateInfo-&gt;commandBufferCount"><type>VkCommandBuffer</type>* <name>pCommandBuffers</name></param>
+            </command>
+        </commands>
+    """
+
+    typ = commands_parser.parse(ET.fromstring(xml))
+    command = typ.commands["vkAllocateCommandBuffers"]
+    assert command.parameters["pAllocateInfo"].externally_synced
+    assert command.parameters["pAllocateInfo"].externally_synced_field == "pAllocateInfo->commandPool"
 
 
 def test_vulkan_command_with_an_optional_parameter() -> None:
@@ -205,6 +225,25 @@ def test_vulkan_command_with_an_array() -> None:
 
     assert command.parameters["pProperties"].array_size_reference == "pPropertyCount"
     assert "pPropertyCount" in command.parameters
+
+
+def test_vulkan_command_with_const_and_struct() -> None:
+    """"Tests Vulkan command that has a parameter that is an array"""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <commands>
+            <command successcodes="VK_SUCCESS" errorcodes="VK_ERROR_OUT_OF_HOST_MEMORY,VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR">
+                <proto><type>VkResult</type> <name>vkGetAndroidHardwareBufferPropertiesANDROID</name></proto>
+                <param><type>VkDevice</type> <name>device</name></param>
+                <param>const struct <type>AHardwareBuffer</type>* <name>buffer</name></param>
+                <param><type>VkAndroidHardwareBufferPropertiesANDROID</type>* <name>pProperties</name></param>
+            </command>
+        </commands>
+    """
+
+    typ = commands_parser.parse(ET.fromstring(xml))
+    command = typ.commands["vkGetAndroidHardwareBufferPropertiesANDROID"]
+
+    assert command.parameters["buffer"].parameter_type == "const struct AHardwareBuffer*"
 
 
 def test_vulkan_command_alias() -> None:

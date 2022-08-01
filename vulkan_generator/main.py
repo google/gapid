@@ -23,9 +23,9 @@ from vulkan_generator import generator
 def main() -> None:
     """ Entry point """
     if len(sys.argv) == 4:
-        generator.generate(target=sys.argv[1], output_dir=Path(sys.argv[2]), vulkan_xml_path=Path(sys.argv[3]))
+        generator.generate(vulkan_xml_path=Path(sys.argv[1]), target=sys.argv[2], output_dir=Path(sys.argv[3]))
     elif len(sys.argv) == 2:
-        generator.generate("", Path(), Path(sys.argv[1]))
+        generator.generate(vulkan_xml_path=Path(sys.argv[1]), target="", output_dir=Path())
     else:
         print("""
             Please run this as one of the following:

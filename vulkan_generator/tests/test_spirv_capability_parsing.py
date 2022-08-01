@@ -23,38 +23,7 @@ if they reflect the new XML
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser.internal import spirv_capabilities_parser
-from vulkan_generator.vulkan_parser.internal import spirv_extensions_parser
 from vulkan_generator.vulkan_parser.internal import internal_types
-
-
-def test_spirv_extension() -> None:
-    """""Test the case with a spirv extension enables a Vulkan extension"""
-
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-    <spirvextension name="SPV_AMD_gcn_shader">
-        <enable extension="VK_AMD_gcn_shader"/>
-    </spirvextension>"""
-
-    spirv_extension = spirv_extensions_parser.parse(ET.fromstring(xml))
-
-    assert isinstance(spirv_extension, internal_types.SpirvExtension)
-    assert spirv_extension.name == "SPV_AMD_gcn_shader"
-    assert spirv_extension.extension == "VK_AMD_gcn_shader"
-
-
-def test_spirv_extension_with_version() -> None:
-    """""Test the case with a spirv extension with version"""
-
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-    <spirvextension name="SPV_KHR_variable_pointers">
-        <enable version="VK_VERSION_1_1"/>
-        <enable extension="VK_KHR_variable_pointers"/>
-    </spirvextension>"""
-
-    spirv_extension = spirv_extensions_parser.parse(ET.fromstring(xml))
-
-    assert isinstance(spirv_extension, internal_types.SpirvExtension)
-    assert spirv_extension.version == "VK_VERSION_1_1"
 
 
 def test_spirv_capability_with_version() -> None:
@@ -84,7 +53,7 @@ def test_spirv_capability_with_extension() -> None:
 
     assert isinstance(spirv_capability, internal_types.SpirvCapability)
     assert spirv_capability.name == "ShaderClockKHR"
-    assert spirv_capability.extension == "VK_KHR_shader_clock"
+    assert spirv_capability.vulkan_extension == "VK_KHR_shader_clock"
 
 
 def test_spirv_capability_with_feature() -> None:
@@ -100,7 +69,10 @@ def test_spirv_capability_with_feature() -> None:
 
     assert isinstance(spirv_capability, internal_types.SpirvCapability)
     assert spirv_capability.name == "Int64ImageEXT"
-    assert spirv_capability.feature == "VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT::shaderImageInt64Atomics"
+
+    assert spirv_capability.feature
+    assert spirv_capability.feature.struct == "VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT"
+    assert spirv_capability.feature.feature == "shaderImageInt64Atomics"
 
 
 def test_spirv_capability_with_property() -> None:
@@ -117,5 +89,7 @@ def test_spirv_capability_with_property() -> None:
     assert isinstance(spirv_capability, internal_types.SpirvCapability)
     assert spirv_capability.name == "GroupNonUniform"
 
-    expected = "VkPhysicalDeviceVulkan11Properties::subgroupSupportedOperations::VK_SUBGROUP_FEATURE_BASIC_BIT"
-    assert spirv_capability.property == expected
+    assert spirv_capability.property
+    assert spirv_capability.property.struct == "VkPhysicalDeviceVulkan11Properties"
+    assert spirv_capability.property.group == "subgroupSupportedOperations"
+    assert spirv_capability.property.value == "VK_SUBGROUP_FEATURE_BASIC_BIT"

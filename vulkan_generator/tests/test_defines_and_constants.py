@@ -70,6 +70,7 @@ def test_vulkan_define_with_name_tag() -> None:
 
     assert isinstance(define, internal_types.VulkanDefine)
     assert define.variable_name == "VK_VERSION_MAJOR(version)"
+    assert define.key == "VK_VERSION_MAJOR"
     assert define.value == "((uint32_t)(version) >> 22)"
 
 
@@ -86,6 +87,7 @@ def test_vulkan_define_with_name_tag_multiline() -> None:
 
     assert isinstance(define, internal_types.VulkanDefine)
     assert define.variable_name == "VK_MAKE_VERSION(major, minor, patch)"
+    assert define.key == "VK_MAKE_VERSION"
     assert define.value == """\\
     ((((uint32_t)(major)) << 22) | (((uint32_t)(minor)) << 12) | ((uint32_t)(patch)))"""
 

@@ -17,7 +17,6 @@
 from typing import Optional
 from typing import NamedTuple
 from typing import Union
-from typing import OrderedDict
 from typing import Dict
 
 import xml.etree.ElementTree as ET
@@ -28,8 +27,8 @@ from vulkan_generator.vulkan_parser.internal import internal_types
 
 class EnumInformation(NamedTuple):
     """Temporary class to return argument information"""
-    fields: OrderedDict[str, internal_types.VulkanEnumField]
-    aliases: Dict[str, str]
+    fields: Dict[str, internal_types.VulkanEnumField]
+    aliases: dict[str, internal_types.VulkanEnumFieldAlias]
 
 
 def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
@@ -42,8 +41,10 @@ def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
     </enums>
     """
 
-    fields: OrderedDict[str, internal_types.VulkanEnumField] = OrderedDict()
-    aliases: Dict[str, str] = {}
+    fields: Dict[str, internal_types.VulkanEnumField] = {}
+    aliases: dict[str, internal_types.VulkanEnumFieldAlias] = {}
+
+    parent = enum_elem.attrib["name"]
 
     for field_element in enum_elem:
         if field_element.tag == "comment":
@@ -56,9 +57,14 @@ def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
             continue
 
         name = field_element.attrib["name"]
-        alias = parser_utils.try_get_attribute(field_element, "alias")
+        alias = field_element.get("alias")
         if alias:
-            aliases[name] = alias
+            aliases[name] = internal_types.VulkanEnumFieldAlias(
+                typename=name,
+                aliased_typename=alias,
+                parent=parent,
+                extension=False,
+            )
             continue
 
         field = parser_utils.get_enum_field_from_value(field_element.attrib["value"])
@@ -66,11 +72,14 @@ def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
         fields[name] = internal_types.VulkanEnumField(
             name=name,
             value=field.value,
-            representation=field.representation)
+            representation=field.representation,
+            parent=parent,
+            extension=False,
+        )
 
     return EnumInformation(
         fields=fields,
-        aliases=aliases
+        aliases=aliases,
     )
 
 
@@ -79,18 +88,18 @@ class BitfieldInfo(NamedTuple):
     representation: str
 
 
-def get_bitfield_info(field_elem: ET.Element, bit64: bool) -> BitfieldInfo:
+def get_bitfield_info(field_element: ET.Element, bit64: bool) -> BitfieldInfo:
     """Parses the value and representation of a bitfield in an enum"""
 
     # Sometimes instead of a bitpos, bitfield has a direct value
-    value_string = parser_utils.try_get_attribute(field_elem, "value")
+    value_string = field_element.get("value")
     if value_string:
         return BitfieldInfo(
             value=int(value_string, 0),
             representation=value_string
         )
 
-    field = parser_utils.get_enum_field_from_bitpos(field_elem.attrib["bitpos"], bit64)
+    field = parser_utils.get_enum_field_from_bitpos(field_element.attrib["bitpos"], bit64)
 
     return BitfieldInfo(
         value=field.value,
@@ -107,15 +116,22 @@ def parse_bitmask_fields(enum_elem: ET.Element, bit64: bool) -> EnumInformation:
                            comment="If set, heap represents device memory"/>
     </enums>
     """
-    fields: OrderedDict[str, internal_types.VulkanEnumField] = OrderedDict()
-    aliases: Dict[str, str] = {}
+    fields: Dict[str, internal_types.VulkanEnumField] = {}
+    aliases: Dict[str, internal_types.VulkanEnumFieldAlias] = {}
+
+    parent = enum_elem.attrib["name"]
 
     for field_element in enum_elem:
         name = field_element.attrib["name"]
 
-        alias = parser_utils.try_get_attribute(field_element, "alias")
+        alias = field_element.get("alias")
         if alias:
-            aliases[name] = alias
+            aliases[name] = internal_types.VulkanEnumFieldAlias(
+                typename=name,
+                aliased_typename=alias,
+                parent=parent,
+                extension=False,
+            )
             continue
 
         bitfield_info = get_bitfield_info(field_element, bit64)
@@ -123,30 +139,30 @@ def parse_bitmask_fields(enum_elem: ET.Element, bit64: bool) -> EnumInformation:
         fields[name] = internal_types.VulkanEnumField(
             name=name,
             value=bitfield_info.value,
-            representation=bitfield_info.representation
+            representation=bitfield_info.representation,
+            parent=parent,
+            extension=False,
         )
 
     return EnumInformation(
         fields=fields,
-        aliases=aliases
+        aliases=aliases,
     )
 
 
-def parse_api_constants(enum_elem: ET.Element) -> OrderedDict[str, internal_types.VulkanDefine]:
-    constants: OrderedDict[str, internal_types.VulkanDefine] = OrderedDict()
+def parse_api_constants(enum_elem: ET.Element) -> Dict[str, internal_types.VulkanDefine]:
+    constants: Dict[str, internal_types.VulkanDefine] = {}
 
     for enum in enum_elem:
         name = enum.attrib["name"]
         value = enum.attrib["value"] if "value" in enum.attrib else enum.attrib["alias"]
-        constants[name] = internal_types.VulkanDefine(variable_name=name, value=value)
+        constants[name] = internal_types.VulkanDefine(key=name, variable_name=name, value=value, extension=False)
 
     return constants
 
 
 # We have to return union because api constants are defined under Enums, even though they are not enum
-def parse(enum_elem: ET.Element) -> Union[
-        OrderedDict[str, internal_types.VulkanDefine],
-        Optional[internal_types.VulkanEnum]]:
+def parse(enum_elem: ET.Element) -> Union[Dict[str, internal_types.VulkanDefine], Optional[internal_types.VulkanEnum]]:
     """Returns a Vulkan enum from the XML element that defines it"""
 
     enum_name = enum_elem.attrib["name"]
@@ -158,7 +174,7 @@ def parse(enum_elem: ET.Element) -> Union[
     if enum_type not in ("enum", "bitmask"):
         raise SyntaxError(f"Unknown enum type : {ET.tostring(enum_elem)!r}")
 
-    bitwidth = parser_utils.try_get_attribute(enum_elem, "bitwidth")
+    bitwidth = enum_elem.get("bitwidth")
     if bitwidth and bitwidth != "64":
         raise SyntaxError(f"Unknown bitwidth: {ET.tostring(enum_elem)!r}")
 

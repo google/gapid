@@ -46,4 +46,4 @@ def parse(spirv_element: ET.Element) -> internal_types.SpirvExtension:
         raise SyntaxError(
             f"Vulkan extension for the Spirv extension could not found:{ET.tostring(spirv_element, 'utf-8')!r}")
 
-    return internal_types.SpirvExtension(name=name, version=version, extension=extension)
+    return internal_types.SpirvExtension(name=name, version=version, vulkan_extension=extension)

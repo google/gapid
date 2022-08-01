@@ -126,10 +126,14 @@ def test_enum_with_value_fields() -> None:
     assert field_names[0] == "VK_COMMAND_BUFFER_LEVEL_PRIMARY"
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_PRIMARY"].value == 0
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_PRIMARY"].representation == "0"
+    assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_PRIMARY"].parent == "VkCommandBufferLevel"
+    assert not vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_PRIMARY"].extension
 
     assert field_names[1] == "VK_COMMAND_BUFFER_LEVEL_SECONDARY"
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_SECONDARY"].value == 1
     assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_SECONDARY"].representation == "1"
+    assert vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_SECONDARY"].parent == "VkCommandBufferLevel"
+    assert not vulkan_enum.fields["VK_COMMAND_BUFFER_LEVEL_SECONDARY"].extension
 
 
 def test_enum_with_bitmask_fields() -> None:
@@ -232,4 +236,8 @@ def test_enum_with_aliased_fields() -> None:
     field_names = list(vulkan_enum.fields.keys())
 
     assert field_names[0] == "VK_COLOR_SPACE_SRGB_NONLINEAR_KHR"
-    assert vulkan_enum.aliases["VK_COLORSPACE_SRGB_NONLINEAR_KHR"] == "VK_COLOR_SPACE_SRGB_NONLINEAR_KHR"
+
+    alias = vulkan_enum.aliases["VK_COLORSPACE_SRGB_NONLINEAR_KHR"]
+    assert alias.aliased_typename == "VK_COLOR_SPACE_SRGB_NONLINEAR_KHR"
+    assert alias.parent == "VkColorSpaceKHR"
+    assert not alias.extension

@@ -14,16 +14,16 @@
 
 """ This module is responsible for parsing Vulkan function pointers"""
 
-from typing import OrderedDict
+from typing import Dict
 import xml.etree.ElementTree as ET
 
 from vulkan_generator.vulkan_parser.internal import internal_types
 from vulkan_generator.vulkan_parser.internal import parser_utils
 
 
-def parse_arguments(function_ptr_elem: ET.Element) -> OrderedDict[str, internal_types.VulkanFunctionArgument]:
+def parse_arguments(function_ptr_elem: ET.Element) -> Dict[str, internal_types.VulkanFunctionArgument]:
     """Parses the arguments of a Vulkan Function Pointer"""
-    arguments: OrderedDict[str, internal_types.VulkanFunctionArgument] = OrderedDict()
+    arguments: Dict[str, internal_types.VulkanFunctionArgument] = {}
 
     # In the XML const modifier of the type is part of the
     # previous argument of the function

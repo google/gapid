@@ -36,10 +36,10 @@ def test_vulkan_image_format() -> None:
         </format>
     </formats>"""
 
-    image_format_metadata = formats_parser.parse(ET.fromstring(xml))
-    assert "VK_FORMAT_R8_USCALED" in image_format_metadata.formats
+    image_formats = formats_parser.parse(ET.fromstring(xml))
+    assert "VK_FORMAT_R8_USCALED" in image_formats
 
-    image_format = image_format_metadata.formats["VK_FORMAT_R8_USCALED"]
+    image_format = image_formats["VK_FORMAT_R8_USCALED"]
 
     assert isinstance(image_format, internal_types.ImageFormat)
     assert image_format.name == "VK_FORMAT_R8_USCALED"
@@ -59,8 +59,8 @@ def test_vulkan_image_format_with_spirv_format() -> None:
         </format>
     </formats>"""
 
-    image_format_metadata = formats_parser.parse(ET.fromstring(xml))
-    image_format = image_format_metadata.formats["VK_FORMAT_R8_UNORM"]
+    image_formats = formats_parser.parse(ET.fromstring(xml))
+    image_format = image_formats["VK_FORMAT_R8_UNORM"]
     assert image_format.spirv_format == "R8"
 
 
@@ -75,8 +75,8 @@ def test_vulkan_image_format_with_packed() -> None:
         </format>
     </formats>"""
 
-    image_format_metadata = formats_parser.parse(ET.fromstring(xml))
-    image_format = image_format_metadata.formats["VK_FORMAT_R4G4_UNORM_PACK8"]
+    image_formats = formats_parser.parse(ET.fromstring(xml))
+    image_format = image_formats["VK_FORMAT_R4G4_UNORM_PACK8"]
     assert image_format.packed == 8
 
 
@@ -93,8 +93,8 @@ def test_vulkan_image_format_components() -> None:
         </format>
     </formats>"""
 
-    image_format_metadata = formats_parser.parse(ET.fromstring(xml))
-    image_format = image_format_metadata.formats["VK_FORMAT_A1R5G5B5_UNORM_PACK16"]
+    image_formats = formats_parser.parse(ET.fromstring(xml))
+    image_format = image_formats["VK_FORMAT_A1R5G5B5_UNORM_PACK16"]
 
     components = list(image_format.components.values())
 
@@ -128,8 +128,8 @@ def test_vulkan_image_format_uncompressed_components() -> None:
         </format>
     </formats>"""
 
-    image_format_metadata = formats_parser.parse(ET.fromstring(xml))
-    image_format = image_format_metadata.formats["VK_FORMAT_A1R5G5B5_UNORM_PACK16"]
+    image_formats = formats_parser.parse(ET.fromstring(xml))
+    image_format = image_formats["VK_FORMAT_A1R5G5B5_UNORM_PACK16"]
 
     components = list(image_format.components.values())
     assert not components[0].compressed
@@ -150,8 +150,8 @@ def test_vulkan_image_format_compressed_components() -> None:
         </format>
     </formats>"""
 
-    image_format_metadata = formats_parser.parse(ET.fromstring(xml))
-    image_format = image_format_metadata.formats["VK_FORMAT_BC5_SNORM_BLOCK"]
+    image_formats = formats_parser.parse(ET.fromstring(xml))
+    image_format = image_formats["VK_FORMAT_BC5_SNORM_BLOCK"]
 
     components = list(image_format.components.values())
 
@@ -174,8 +174,8 @@ def test_vulkan_image_format_planes() -> None:
         </format>
     </formats>"""
 
-    image_format_metadata = formats_parser.parse(ET.fromstring(xml))
-    image_format = image_format_metadata.formats["VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16"]
+    image_formats = formats_parser.parse(ET.fromstring(xml))
+    image_format = image_formats["VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16"]
 
     assert image_format.planes[0].index == 0
     assert image_format.planes[0].width_divisor == 1

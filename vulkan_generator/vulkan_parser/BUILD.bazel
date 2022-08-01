@@ -22,6 +22,22 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         "//vulkan_generator/vulkan_parser/internal",
+        "//vulkan_generator/vulkan_parser/postprocess",
+    ],
+)
+
+py_binary(
+    name = "parser",
+    srcs = ["parser.py"],
+    args = [
+        "$(location @vulkan-headers//:vk.xml)",
+    ],
+    data = [
+        "@vulkan-headers//:vk.xml",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":vulkan_parser",
     ],
 )
 

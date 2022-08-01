@@ -27,34 +27,32 @@ def parse(extensions_element: ET.Element) -> Dict[str, internal_types.VulkanExte
     extensions: Dict[str, internal_types.VulkanExtension] = {}
 
     for extension_element in extensions_element:
-        if extension_element.attrib["supported"] == "disabled":
-            # Apps should not use disabled extensions.
-            # Therefore log them for now and if we need we can add them in the future
-            print(f"Disabled Extension : {extension_element.attrib['name']}")
-            continue
-
-        if extension_element.attrib["supported"] != "vulkan":
+        if extension_element.attrib["supported"] not in ["vulkan", "disabled"]:
             raise SyntaxError(f"Unexpected Support: {ET.tostring(extension_element, 'utf-8')!r}")
 
         name = extension_element.attrib["name"]
         number = int(extension_element.attrib["number"])
 
-        # if this extension promoted to a core version which version it is
-        promoted = parser_utils.try_get_attribute(extension_element, "promotedto")
+        # if this extension promoted to a core version or to another extension, this is the
+        # version or name of the promoted extension
+        promoted = extension_element.get("promotedto")
 
         # if another extension deprecated this extension
-        deprecated = parser_utils.try_get_attribute(extension_element, "deprecatedby")
+        deprecated = extension_element.get("deprecatedby")
         if deprecated == "":
             deprecated = None
 
+        # Is this extension disabled
+        disabled = extension_element.attrib["supported"] == "disabled"
+
         # Is this a device or instance extension
-        extension_type = extension_element.attrib["type"]
+        extension_type = extension_element.get("type")
 
         # Which extensions this extension requires
         required_extensions = parser_utils.try_get_attribute_as_list(extension_element, "requires")
 
         # If this extension is limited to a platform, which platform it is
-        platform = parser_utils.try_get_attribute(extension_element, "platform")
+        platform = extension_element.get("platform")
 
         requirements: List[internal_types.VulkanExtensionRequirement] = []
         for requirement_element in extension_element:
@@ -63,8 +61,9 @@ def parse(extensions_element: ET.Element) -> Dict[str, internal_types.VulkanExte
         extensions[name] = internal_types.VulkanExtension(
             name=name,
             number=number,
-            promoted_version=promoted,
-            deprecating_extension=deprecated,
+            promotedto=promoted,
+            disabled=disabled,
+            deprecatedby=deprecated,
             extension_type=extension_type,
             required_extensions=required_extensions,
             platform=platform,

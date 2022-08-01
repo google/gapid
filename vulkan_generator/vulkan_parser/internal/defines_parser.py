@@ -34,8 +34,10 @@ def parse_define_by_attribute(define_elem: ET.Element) -> internal_types.VulkanD
         raise SyntaxError(f"Vulkan define does not have definition: {ET.tostring(define_elem, 'utf-8')!r}")
 
     return internal_types.VulkanDefine(
+        key=name,
         variable_name=name,
-        value=value
+        value=value,
+        extension=False,
     )
 
 
@@ -79,6 +81,10 @@ def parse_define_by_tag(define_elem: ET.Element) -> internal_types.VulkanDefine:
     if not value:
         raise SyntaxError(f"Define value could not be parsed: {ET.tostring(define_elem, 'utf-8')}")
 
+    key = name
+    if "(" in key:
+        key = key[0:key.find("(")]
+
     # If define is a macro, macro's argument are part of the text
     if macro:
         macro_value = value.split(")", 1)
@@ -93,8 +99,11 @@ def parse_define_by_tag(define_elem: ET.Element) -> internal_types.VulkanDefine:
     value = value.lstrip(" ")
 
     return internal_types.VulkanDefine(
+        key=key,
         variable_name=name,
-        value=value
+        value=value,
+        extension=False,
+
     )
 
 
