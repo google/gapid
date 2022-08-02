@@ -20,6 +20,7 @@
 *ycm_extra_conf.py*
 gapir.log
 gapis.log
+hs_err_pid*.log
 
 # MacOS
 .DS_Store

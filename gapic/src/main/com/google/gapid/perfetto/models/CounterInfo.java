@@ -23,12 +23,14 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.Unit;
 import com.google.gapid.proto.device.GpuProfiling;
 import com.google.gapid.util.Range;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -108,7 +110,7 @@ public class CounterInfo {
   public final Range range;
 
   public CounterInfo(long id, Type type, long ref, String name, String description, Unit unit,
-      Interpolation interpolation, long count, double min, double max, double avg) {
+      Interpolation interpolation, long count, double min, double max, double avg, Range range) {
     this.id = id;
     this.type = type;
     this.ref = ref;
@@ -120,7 +122,14 @@ public class CounterInfo {
     this.min = min;
     this.max = max;
     this.avg = avg;
-    this.range = computeRange(unit, min, max);
+    this.range = range;
+  }
+
+  public CounterInfo(long id, Type type, long ref, String name, String description, Unit unit,
+      Interpolation interpolation, long count, double min, double max, double avg) {
+
+    this(id, type, ref, name, description, unit, 
+        interpolation, count, min, max, avg, computeRange(unit, min, max));
   }
 
   private CounterInfo(QueryEngine.Row row) {
@@ -177,7 +186,33 @@ public class CounterInfo {
     return transformAsync(listCounterGroups(data), $1 -> transform(
       data.qe.query(LIST_SQL), res -> {
         ImmutableMap.Builder<Long, CounterInfo> counters = ImmutableMap.builder();
-        res.forEachRow((i, r) -> counters.put(r.getLong(0), new CounterInfo(r)));
+        List<CounterInfo> gpufreqCounters = Lists.newArrayList();
+        res.forEachRow(
+            (i, r) ->
+            {
+              CounterInfo newCounter = new CounterInfo(r);
+              // Save references to "gpufreq" counters for range adjustment
+              if ("gpufreq".equals(newCounter.name))
+                gpufreqCounters.add(newCounter);
+              else
+                counters.put(newCounter.id, newCounter);
+            }
+          );
+
+        // Use maximum range for gpufreq counters to visualize them with correct proportion to each other.
+        if (gpufreqCounters.size() > 0) {
+          double gpufreqMax = 0;
+          for (CounterInfo c : gpufreqCounters) {
+            gpufreqMax = Math.max(gpufreqMax, c.max);
+          }
+          for (CounterInfo c : gpufreqCounters) {
+            CounterInfo newCounter = new CounterInfo(c.id, c.type, c.ref, c.name,
+                c.description, c.unit, c.interpolation, c.count, c.min, c.max, c.avg, 
+                computeRange(c.unit, c.min, gpufreqMax));
+            counters.put(newCounter.id, newCounter);
+          }
+        }
+
         return data.setCounters(counters.build());
       }));
   }
