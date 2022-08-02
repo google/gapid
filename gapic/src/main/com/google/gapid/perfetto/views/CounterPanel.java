@@ -95,7 +95,10 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       }
 
       CounterInfo counter = track.getCounter();
-      double min = counter.range.min, range = counter.range.range();
+
+      //TODO: Move all the calculations below in the backend
+      double min = counter.min;
+      double range = counter.range.range() - min;
 
       Selection<?> selected = state.getSelection(Selection.Kind.Counter);
       List<Integer> visibleSelected = Lists.newArrayList();
@@ -315,7 +318,6 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       this.minLabel = isTotal ? "Trace Min:" : "Range Min:";
       this.maxLabel = isTotal ? "Trace Max:" : "Range Max:";
       this.avgLabel = isTotal ? "Trace Avg:" : "Range Avg:";
-
 
       Size valueSize = tm.measure(Fonts.Style.Normal, label);
       Size minSize = tm.measure(Fonts.Style.Normal, min);
