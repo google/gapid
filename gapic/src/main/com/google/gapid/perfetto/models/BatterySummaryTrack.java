@@ -63,7 +63,6 @@ public class BatterySummaryTrack
     List<CounterInfo> powerRails = counters.entries().stream()
         .filter(entry -> entry.getKey().startsWith("power.rails"))
         .map(Map.Entry::getValue)
-        .map(value -> trimPowerRailTrackName(value))
         .collect(Collectors.toList());
     if (((battCap == null) || (battCharge  == null) || (battCurrent  == null))
         && powerRails.size() == 0) {
@@ -96,14 +95,6 @@ public class BatterySummaryTrack
 
   private static CounterInfo onlyOne(ImmutableList<CounterInfo> counters) {
     return (counters.size() != 1) ? null : counters.get(0);
-  }
-
-  private static CounterInfo trimPowerRailTrackName(CounterInfo powerRailTrack) {
-    String powerRailTrackName = powerRailTrack.name.replace("power.rails.","").replace(".", "-");
-    CounterInfo trimmedPowerRailTrack = new CounterInfo(powerRailTrack.id, powerRailTrack.type, powerRailTrack.ref,
-    powerRailTrackName, powerRailTrack.description, powerRailTrack.unit,
-      powerRailTrack.interpolation, powerRailTrack.count, powerRailTrack.min, powerRailTrack.max, powerRailTrack.avg);
-    return trimmedPowerRailTrack;
   }
 
   @Override
