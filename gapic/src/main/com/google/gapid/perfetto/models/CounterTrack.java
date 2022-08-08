@@ -47,6 +47,9 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   private static final String VIEW_SQL_EVENT =
       "select ts, lead(ts, 1, (select end_ts from trace_bounds)) over win - ts dur, value, id " +
       "from counter where track_id = %d window win as (order by ts)";
+  private static final String VIEW_SQL_MONOTONIC =
+      "select ts + 1 ts, lead(ts) over win - ts dur, lead(value) over win - value value, lead(id) over win id " +
+      "from counter where track_id = %d window win as (order by ts)";
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), avg(value), best_id from " +
         "(select *, first_value(id) over (partition by quantum_ts order by dur desc) as best_id from %s) " +
@@ -91,6 +94,7 @@ public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
     switch (counter.interpolation) {
       case Delta: return format(VIEW_SQL_DELTA, counter.id);
       case Event: return format(VIEW_SQL_EVENT, counter.id);
+      case Monotonic: return format(VIEW_SQL_MONOTONIC, counter.id);
       default: throw new AssertionError();
     }
   }

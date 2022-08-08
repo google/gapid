@@ -98,9 +98,8 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       CounterInfo counter = track.getCounter();
 
-      //TODO: Move all the calculations below in the backend
-      double min = counter.min;
-      double range = counter.range.range() - min;
+      double min = counter.range.min;
+      double range = counter.range.range();
 
       Selection<?> selected = state.getSelection(Selection.Kind.Counter);
       List<Integer> visibleSelected = Lists.newArrayList();
