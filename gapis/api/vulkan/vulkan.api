@@ -318,6 +318,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_load_store_op_none"] = true
   supported.ExtensionNames["VK_KHR_imageless_framebuffer"] = true
   supported.ExtensionNames["VK_KHR_depth_stencil_resolve"] = true
+  supported.ExtensionNames["VK_EXT_descriptor_indexing"] = true
   return supported
 }
 

@@ -73,6 +73,7 @@
   @unused ref!PhysicalDeviceSeparateDepthStencilLayoutsFeatures PhysicalDeviceSeparateDepthStencilLayoutsFeatures
   @unused ref!PhysicalDeviceUniformBufferStandardLayoutFeatures PhysicalDeviceUniformBufferStandardLayoutFeatures
   @unused ref!PhysicalDeviceImagelessFramebufferFeatures PhysicalDeviceImagelessFramebufferFeatures
+  @unused ref!PhysicalDeviceDescriptorIndexingFeatures PhysicalDeviceDescriptorIndexingFeatures
 
   // @extension("VK_EXT_line_rasterization")
   @unused ref!PhysicalDeviceLineRasterizationFeaturesEXT PhysicalDeviceLineRasterizationFeaturesEXT
@@ -365,6 +366,31 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           ext := as!VkPhysicalDeviceImagelessFramebufferFeatures*(next.Ptr)[0]
           object.PhysicalDeviceImagelessFramebufferFeatures = new!PhysicalDeviceImagelessFramebufferFeatures(
             ImagelessFramebuffer: ext.imagelessFramebuffer,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
+          ext := as!VkPhysicalDeviceDescriptorIndexingFeatures*(next.Ptr)[0]
+          object.PhysicalDeviceDescriptorIndexingFeatures = new!PhysicalDeviceDescriptorIndexingFeatures(
+            ShaderInputAttachmentArrayDynamicIndexing:          ext.shaderInputAttachmentArrayDynamicIndexing,
+            ShaderUniformTexelBufferArrayDynamicIndexing:       ext.shaderUniformTexelBufferArrayDynamicIndexing,
+            ShaderStorageTexelBufferArrayDynamicIndexing:       ext.shaderStorageTexelBufferArrayDynamicIndexing,
+            ShaderUniformBufferArrayNonUniformIndexing:         ext.shaderUniformBufferArrayNonUniformIndexing,
+            ShaderSampledImageArrayNonUniformIndexing:          ext.shaderSampledImageArrayNonUniformIndexing,
+            ShaderStorageBufferArrayNonUniformIndexing:         ext.shaderStorageBufferArrayNonUniformIndexing,
+            ShaderStorageImageArrayNonUniformIndexing:          ext.shaderStorageImageArrayNonUniformIndexing,
+            ShaderInputAttachmentArrayNonUniformIndexing:       ext.shaderInputAttachmentArrayNonUniformIndexing,
+            ShaderUniformTexelBufferArrayNonUniformIndexing:    ext.shaderUniformTexelBufferArrayNonUniformIndexing,
+            ShaderStorageTexelBufferArrayNonUniformIndexing:    ext.shaderStorageTexelBufferArrayNonUniformIndexing,
+            DescriptorBindingUniformBufferUpdateAfterBind:      ext.descriptorBindingUniformBufferUpdateAfterBind,
+            DescriptorBindingSampledImageUpdateAfterBind:       ext.descriptorBindingSampledImageUpdateAfterBind,
+            DescriptorBindingStorageImageUpdateAfterBind:       ext.descriptorBindingStorageImageUpdateAfterBind,
+            DescriptorBindingStorageBufferUpdateAfterBind:      ext.descriptorBindingStorageBufferUpdateAfterBind,
+            DescriptorBindingUniformTexelBufferUpdateAfterBind: ext.descriptorBindingUniformTexelBufferUpdateAfterBind,
+            DescriptorBindingStorageTexelBufferUpdateAfterBind: ext.descriptorBindingStorageTexelBufferUpdateAfterBind,
+            DescriptorBindingUpdateUnusedWhilePending:          ext.descriptorBindingUpdateUnusedWhilePending,
+            DescriptorBindingPartiallyBound:                    ext.descriptorBindingPartiallyBound,
+            DescriptorBindingVariableDescriptorCount:           ext.descriptorBindingVariableDescriptorCount,
+            RuntimeDescriptorArray:                             ext.runtimeDescriptorArray,
           )
         }
       }

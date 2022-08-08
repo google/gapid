@@ -2284,13 +2284,24 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 			smp,        // pImmutableSamplers
 		))
 	}
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !dsl.BindingFlags().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkDescriptorSetLayoutBindingFlagsCreateInfo(
+				VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO, // sType
+				pNext, // pNext
+				uint32(dsl.BindingFlags().BindingFlags().Len()),                                                    // bindingCount
+				NewVkDescriptorBindingFlagsᶜᵖ(sb.MustUnpackReadMap(dsl.BindingFlags().BindingFlags().All()).Ptr()), // pBindingFlags
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDescriptorSetLayout(
 		dsl.Device(),
 		sb.MustAllocReadData(NewVkDescriptorSetLayoutCreateInfo(
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // sType
-			0,                     // pNext
-			0,                     // flags
+			pNext,                 // pNext
+			dsl.Flags(),           // flags
 			uint32(len(bindings)), // bindingCount
 			NewVkDescriptorSetLayoutBindingᶜᵖ( // pBindings
 				sb.MustAllocReadData(bindings).Ptr(),
@@ -3486,24 +3497,42 @@ func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp Descrip
 
 	descSetHandles := make([]VkDescriptorSet, 0, dp.DescriptorSets().Len())
 	descSetLayoutHandles := make([]VkDescriptorSetLayout, 0, dp.DescriptorSets().Len())
+	descSetVariableDescriptorCounts := make([]uint32, 0, dp.DescriptorSets().Len())
 	for _, vkDescSet := range dp.DescriptorSets().Keys() {
 		descSetObj := dp.DescriptorSets().Get(vkDescSet)
 		if vkDescSet != VkDescriptorSet(0) && sb.s.DescriptorSets().Contains(vkDescSet) && sb.s.DescriptorSetLayouts().Contains(descSetObj.Layout().VulkanHandle()) {
 			descSetHandles = append(descSetHandles, vkDescSet)
 			descSetLayoutHandles = append(descSetLayoutHandles, descSetObj.Layout().VulkanHandle())
+			descSetVariableDescriptorCounts = append(descSetVariableDescriptorCounts, descSetObj.VariableDescriptorCount())
 		}
 	}
 
-	sb.allocateDescriptorSets(dp, descSetHandles, descSetLayoutHandles)
+	sb.allocateDescriptorSets(dp, descSetHandles, descSetLayoutHandles, descSetVariableDescriptorCounts)
 }
 
-func (sb *stateBuilder) allocateDescriptorSets(dp DescriptorPoolObjectʳ, descSetHandles []VkDescriptorSet, descSetLayoutHandles []VkDescriptorSetLayout) {
+func (sb *stateBuilder) allocateDescriptorSets(dp DescriptorPoolObjectʳ, descSetHandles []VkDescriptorSet, descSetLayoutHandles []VkDescriptorSetLayout,
+	descSetVariableDescriptorCounts []uint32) {
 	if len(descSetHandles) != 0 && len(descSetLayoutHandles) != 0 {
+		// Add VkDescriptorSetVariableDescriptorCountAllocateInfo if any of the descriptor sets have a variable count
+		pNext := NewVoidᶜᵖ(memory.Nullptr)
+		for _, count := range descSetVariableDescriptorCounts {
+			if count > 0 {
+				pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+					NewVkDescriptorSetVariableDescriptorCountAllocateInfo(
+						VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO, // sType
+						pNext, // pNext
+						uint32(len(descSetVariableDescriptorCounts)),                          // descriptorSetCount
+						NewU32ᶜᵖ(sb.MustAllocReadData(descSetVariableDescriptorCounts).Ptr()), // pDescriptorCounts
+					),
+				).Ptr())
+				break
+			}
+		}
 		sb.write(sb.cb.VkAllocateDescriptorSets(
 			dp.Device(),
 			sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(
 				VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, // sType
-				0,                           // pNext
+				pNext,                       // pNext
 				dp.VulkanHandle(),           // descriptorPool
 				uint32(len(descSetHandles)), // descriptorSetCount
 				NewVkDescriptorSetLayoutᶜᵖ(sb.MustAllocReadData(descSetLayoutHandles).Ptr()), // pSetLayouts

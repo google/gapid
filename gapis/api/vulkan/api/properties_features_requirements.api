@@ -426,6 +426,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
             _ = as!VkPhysicalDeviceImagelessFramebufferFeatures*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
+            _ = as!VkPhysicalDeviceDescriptorIndexingFeatures*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -519,6 +522,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
             write(as!VkPhysicalDeviceImagelessFramebufferFeatures*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
+            write(as!VkPhysicalDeviceDescriptorIndexingFeatures*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
@@ -698,7 +704,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
             _ = as!VkPhysicalDeviceDepthStencilResolveProperties*(next.Ptr)[0]
           }
-
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+            _ = as!VkPhysicalDeviceDescriptorIndexingProperties*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
       }
@@ -888,6 +896,34 @@ sub void GetPhysicalDeviceProperties2(
                 SupportedStencilResolveModes: ext.supportedStencilResolveModes,
                 IndependentResolveNone: ext.independentResolveNone,
                 IndependentResolve: ext.independentResolve,
+              )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+              ext := as!VkPhysicalDeviceDescriptorIndexingProperties*(next.Ptr)[0]
+              phyDev.PhysicalDeviceDescriptorIndexingProperties = new!PhysicalDeviceDescriptorIndexingProperties(
+                MaxUpdateAfterBindDescriptorsInAllPools:              ext.maxUpdateAfterBindDescriptorsInAllPools,
+                ShaderUniformBufferArrayNonUniformIndexingNative:     ext.shaderUniformBufferArrayNonUniformIndexingNative,
+                ShaderSampledImageArrayNonUniformIndexingNative:      ext.shaderSampledImageArrayNonUniformIndexingNative,
+                ShaderStorageBufferArrayNonUniformIndexingNative:     ext.shaderStorageBufferArrayNonUniformIndexingNative,
+                ShaderStorageImageArrayNonUniformIndexingNative:      ext.shaderStorageImageArrayNonUniformIndexingNative,
+                ShaderInputAttachmentArrayNonUniformIndexingNative:   ext.shaderInputAttachmentArrayNonUniformIndexingNative,
+                RobustBufferAccessUpdateAfterBind:                    ext.robustBufferAccessUpdateAfterBind,
+                QuadDivergentImplicitLod:                             ext.quadDivergentImplicitLod,
+                MaxPerStageDescriptorUpdateAfterBindSamplers:         ext.maxPerStageDescriptorUpdateAfterBindSamplers,
+                MaxPerStageDescriptorUpdateAfterBindUniformBuffers:   ext.maxPerStageDescriptorUpdateAfterBindUniformBuffers,
+                MaxPerStageDescriptorUpdateAfterBindStorageBuffers:   ext.maxPerStageDescriptorUpdateAfterBindStorageBuffers,
+                MaxPerStageDescriptorUpdateAfterBindSampledImages:    ext.maxPerStageDescriptorUpdateAfterBindSampledImages,
+                MaxPerStageDescriptorUpdateAfterBindStorageImages:    ext.maxPerStageDescriptorUpdateAfterBindStorageImages,
+                MaxPerStageDescriptorUpdateAfterBindInputAttachments: ext.maxPerStageDescriptorUpdateAfterBindInputAttachments,
+                MaxPerStageUpdateAfterBindResources:                  ext.maxPerStageUpdateAfterBindResources,
+                MaxDescriptorSetUpdateAfterBindSamplers:              ext.maxDescriptorSetUpdateAfterBindSamplers,
+                MaxDescriptorSetUpdateAfterBindUniformBuffers:        ext.maxDescriptorSetUpdateAfterBindUniformBuffers,
+                MaxDescriptorSetUpdateAfterBindUniformBuffersDynamic: ext.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic,
+                MaxDescriptorSetUpdateAfterBindStorageBuffers:        ext.maxDescriptorSetUpdateAfterBindStorageBuffers,
+                MaxDescriptorSetUpdateAfterBindStorageBuffersDynamic: ext.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic,
+                MaxDescriptorSetUpdateAfterBindSampledImages:         ext.maxDescriptorSetUpdateAfterBindSampledImages,
+                MaxDescriptorSetUpdateAfterBindStorageImages:         ext.maxDescriptorSetUpdateAfterBindStorageImages,
+                MaxDescriptorSetUpdateAfterBindInputAttachments:      ext.maxDescriptorSetUpdateAfterBindInputAttachments,
               )
             }
           }

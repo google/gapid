@@ -260,3 +260,132 @@ class VkSubpassDescriptionDepthStencilResolve {
     VkResolveModeFlagBits            stencilResolveMode
     const VkAttachmentReference2*    pDepthStencilResolveAttachment
 }
+
+class VkDescriptorSetVariableDescriptorCountAllocateInfo {
+    VkStructureType sType
+    const void*     pNext
+    u32             descriptorSetCount
+    const u32*      pDescriptorCounts
+}
+
+class VkDescriptorSetLayoutBindingFlagsCreateInfo {
+    VkStructureType                 sType
+    const void*                     pNext
+    u32                             bindingCount
+    const VkDescriptorBindingFlags* pBindingFlags
+}
+
+@internal
+class DescriptorSetLayoutBindingFlagsInfo {
+    map!(u32, VkDescriptorBindingFlags) BindingFlags
+}
+
+class VkDescriptorSetVariableDescriptorCountLayoutSupport {
+    VkStructureType sType
+    void*           pNext
+    u32             maxVariableDescriptorCount
+}
+
+class VkPhysicalDeviceDescriptorIndexingFeatures {
+    VkStructureType sType
+    void*           pNext
+    VkBool32        shaderInputAttachmentArrayDynamicIndexing
+    VkBool32        shaderUniformTexelBufferArrayDynamicIndexing
+    VkBool32        shaderStorageTexelBufferArrayDynamicIndexing
+    VkBool32        shaderUniformBufferArrayNonUniformIndexing
+    VkBool32        shaderSampledImageArrayNonUniformIndexing
+    VkBool32        shaderStorageBufferArrayNonUniformIndexing
+    VkBool32        shaderStorageImageArrayNonUniformIndexing
+    VkBool32        shaderInputAttachmentArrayNonUniformIndexing
+    VkBool32        shaderUniformTexelBufferArrayNonUniformIndexing
+    VkBool32        shaderStorageTexelBufferArrayNonUniformIndexing
+    VkBool32        descriptorBindingUniformBufferUpdateAfterBind
+    VkBool32        descriptorBindingSampledImageUpdateAfterBind
+    VkBool32        descriptorBindingStorageImageUpdateAfterBind
+    VkBool32        descriptorBindingStorageBufferUpdateAfterBind
+    VkBool32        descriptorBindingUniformTexelBufferUpdateAfterBind
+    VkBool32        descriptorBindingStorageTexelBufferUpdateAfterBind
+    VkBool32        descriptorBindingUpdateUnusedWhilePending
+    VkBool32        descriptorBindingPartiallyBound
+    VkBool32        descriptorBindingVariableDescriptorCount
+    VkBool32        runtimeDescriptorArray
+}
+
+@internal
+class PhysicalDeviceDescriptorIndexingFeatures {
+    VkBool32        ShaderInputAttachmentArrayDynamicIndexing
+    VkBool32        ShaderUniformTexelBufferArrayDynamicIndexing
+    VkBool32        ShaderStorageTexelBufferArrayDynamicIndexing
+    VkBool32        ShaderUniformBufferArrayNonUniformIndexing
+    VkBool32        ShaderSampledImageArrayNonUniformIndexing
+    VkBool32        ShaderStorageBufferArrayNonUniformIndexing
+    VkBool32        ShaderStorageImageArrayNonUniformIndexing
+    VkBool32        ShaderInputAttachmentArrayNonUniformIndexing
+    VkBool32        ShaderUniformTexelBufferArrayNonUniformIndexing
+    VkBool32        ShaderStorageTexelBufferArrayNonUniformIndexing
+    VkBool32        DescriptorBindingUniformBufferUpdateAfterBind
+    VkBool32        DescriptorBindingSampledImageUpdateAfterBind
+    VkBool32        DescriptorBindingStorageImageUpdateAfterBind
+    VkBool32        DescriptorBindingStorageBufferUpdateAfterBind
+    VkBool32        DescriptorBindingUniformTexelBufferUpdateAfterBind
+    VkBool32        DescriptorBindingStorageTexelBufferUpdateAfterBind
+    VkBool32        DescriptorBindingUpdateUnusedWhilePending
+    VkBool32        DescriptorBindingPartiallyBound
+    VkBool32        DescriptorBindingVariableDescriptorCount
+    VkBool32        RuntimeDescriptorArray
+}
+
+class VkPhysicalDeviceDescriptorIndexingProperties {
+    VkStructureType    sType
+    void*              pNext
+    u32                maxUpdateAfterBindDescriptorsInAllPools
+    VkBool32           shaderUniformBufferArrayNonUniformIndexingNative
+    VkBool32           shaderSampledImageArrayNonUniformIndexingNative
+    VkBool32           shaderStorageBufferArrayNonUniformIndexingNative
+    VkBool32           shaderStorageImageArrayNonUniformIndexingNative
+    VkBool32           shaderInputAttachmentArrayNonUniformIndexingNative
+    VkBool32           robustBufferAccessUpdateAfterBind
+    VkBool32           quadDivergentImplicitLod
+    u32                maxPerStageDescriptorUpdateAfterBindSamplers
+    u32                maxPerStageDescriptorUpdateAfterBindUniformBuffers
+    u32                maxPerStageDescriptorUpdateAfterBindStorageBuffers
+    u32                maxPerStageDescriptorUpdateAfterBindSampledImages
+    u32                maxPerStageDescriptorUpdateAfterBindStorageImages
+    u32                maxPerStageDescriptorUpdateAfterBindInputAttachments
+    u32                maxPerStageUpdateAfterBindResources
+    u32                maxDescriptorSetUpdateAfterBindSamplers
+    u32                maxDescriptorSetUpdateAfterBindUniformBuffers
+    u32                maxDescriptorSetUpdateAfterBindUniformBuffersDynamic
+    u32                maxDescriptorSetUpdateAfterBindStorageBuffers
+    u32                maxDescriptorSetUpdateAfterBindStorageBuffersDynamic
+    u32                maxDescriptorSetUpdateAfterBindSampledImages
+    u32                maxDescriptorSetUpdateAfterBindStorageImages
+    u32                maxDescriptorSetUpdateAfterBindInputAttachments
+}
+
+@internal
+class PhysicalDeviceDescriptorIndexingProperties {
+    u32                MaxUpdateAfterBindDescriptorsInAllPools
+    VkBool32           ShaderUniformBufferArrayNonUniformIndexingNative
+    VkBool32           ShaderSampledImageArrayNonUniformIndexingNative
+    VkBool32           ShaderStorageBufferArrayNonUniformIndexingNative
+    VkBool32           ShaderStorageImageArrayNonUniformIndexingNative
+    VkBool32           ShaderInputAttachmentArrayNonUniformIndexingNative
+    VkBool32           RobustBufferAccessUpdateAfterBind
+    VkBool32           QuadDivergentImplicitLod
+    u32                MaxPerStageDescriptorUpdateAfterBindSamplers
+    u32                MaxPerStageDescriptorUpdateAfterBindUniformBuffers
+    u32                MaxPerStageDescriptorUpdateAfterBindStorageBuffers
+    u32                MaxPerStageDescriptorUpdateAfterBindSampledImages
+    u32                MaxPerStageDescriptorUpdateAfterBindStorageImages
+    u32                MaxPerStageDescriptorUpdateAfterBindInputAttachments
+    u32                MaxPerStageUpdateAfterBindResources
+    u32                MaxDescriptorSetUpdateAfterBindSamplers
+    u32                MaxDescriptorSetUpdateAfterBindUniformBuffers
+    u32                MaxDescriptorSetUpdateAfterBindUniformBuffersDynamic
+    u32                MaxDescriptorSetUpdateAfterBindStorageBuffers
+    u32                MaxDescriptorSetUpdateAfterBindStorageBuffersDynamic
+    u32                MaxDescriptorSetUpdateAfterBindSampledImages
+    u32                MaxDescriptorSetUpdateAfterBindStorageImages
+    u32                MaxDescriptorSetUpdateAfterBindInputAttachments
+}

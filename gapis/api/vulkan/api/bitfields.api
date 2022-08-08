@@ -368,11 +368,17 @@ type VkFlags VkPipelineLayoutCreateFlags
 
 type VkFlags VkSamplerCreateFlags
 
+bitfield VkDescriptorSetLayoutCreateFlagBits {
+  // Vulkan 1.2 core
+  VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT = 0x00000002,
+}
 type VkFlags VkDescriptorSetLayoutCreateFlags
 
 @unused
 bitfield VkDescriptorPoolCreateFlagBits {
   VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT = 0x00000001,
+  // Vulkan 1.2 core
+  VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT = 0x00000002,
 }
 type VkFlags VkDescriptorPoolCreateFlags
 
@@ -599,3 +605,12 @@ type VkFlags VkSemaphoreWaitFlags
 
 //@extension("VK_KHR_depth_stencil_resolve")
 type VkFlags VkResolveModeFlags
+
+// Vulkan 1.2 core
+bitfield VkDescriptorBindingFlagBits {
+  VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT           = 0x00000001,
+  VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT = 0x00000002,
+  VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT             = 0x00000004,
+  VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT   = 0x00000008,
+}
+type VkFlags VkDescriptorBindingFlags

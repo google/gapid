@@ -3109,7 +3109,8 @@ func (f *loopingVulkanControlFlowGenerator) resetDescriptorSets(ctx context.Cont
 
 		descSetHandles := []VkDescriptorSet{descSetObj.VulkanHandle()}
 		descSetLayoutHandles := []VkDescriptorSetLayout{descSetObj.Layout().VulkanHandle()}
-		stateBuilder.allocateDescriptorSets(descPoolObj, descSetHandles, descSetLayoutHandles)
+		descSetVariableDescriptorCounts := []uint32{descSetObj.VariableDescriptorCount()}
+		stateBuilder.allocateDescriptorSets(descPoolObj, descSetHandles, descSetLayoutHandles, descSetVariableDescriptorCounts)
 	}
 
 	// Update the map of changed descriptorset due to the buffer/image recreation etc.
