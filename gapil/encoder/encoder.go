@@ -384,7 +384,7 @@ func (e *encoder) encodeValue(buf buffer, val value, ty semantic.Type) {
 		e.encodeValue(buf, val, ty.NumberType)
 		return
 	case *semantic.Pointer:
-		e.Line("write_zig_zag(%P, reinterpret_cast<intptr_t>(%s));", buf, val)
+		e.Line("write_zig_zag(%P, reinterpret_cast<uintptr_t>(%s));", buf, val)
 		return
 	case *semantic.StaticArray:
 		panic("Must be handled in encodeField")
