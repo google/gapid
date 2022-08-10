@@ -295,7 +295,8 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 	gpuName := d.Instance().GetConfiguration().GetHardware().GetGPU().GetName()
 	if strings.Contains(gpuName, "Adreno") {
 		if err := d.enableAdrenoGpuCounters(ctx); err != nil {
-			return d, err
+			// Only log here instead of returning an error to make sure that device still gets registered
+			log.E(ctx, "Unable to enable Adreno GPU counters: %v", err)
 		}
 	}
 
@@ -427,7 +428,7 @@ func (b *binding) IsLocal(ctx context.Context) (bool, error) {
 func (b *binding) enableAdrenoGpuCounters(ctx context.Context) error {
 	lsResult, err := b.Shell(fmt.Sprintf("ls %s", adrenoGpuCounterPath)).Call(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to access sysfs node: %v", err)
 	}
 
 	// If the file does not exist, then counters are enabled by default on this
@@ -437,7 +438,7 @@ func (b *binding) enableAdrenoGpuCounters(ctx context.Context) error {
 	}
 
 	_, err = b.Shell(fmt.Sprintf("echo 1 > %s", adrenoGpuCounterPath)).Call(ctx)
-	return err
+	return fmt.Errorf("Unable to write to sysfs node: %v", err)
 }
 
 var abiToISAs = []struct {
