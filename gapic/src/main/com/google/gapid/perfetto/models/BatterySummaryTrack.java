@@ -60,12 +60,8 @@ public class BatterySummaryTrack
     CounterInfo battCap = onlyOne(counters.get("batt.capacity_pct"));
     CounterInfo battCharge = onlyOne(counters.get("batt.charge_uah"));
     CounterInfo battCurrent = onlyOne(counters.get("batt.current_ua"));
-    List<CounterInfo> powerRails = counters.entries().stream()
-        .filter(entry -> entry.getKey().startsWith("power.rails"))
-        .map(Map.Entry::getValue)
-        .collect(Collectors.toList());
-    if (((battCap == null) || (battCharge  == null) || (battCurrent  == null))
-        && powerRails.size() == 0) {
+
+    if ((battCap == null) || (battCharge  == null) || (battCurrent  == null)){
       return data;
     }
     // Battery Group
@@ -78,18 +74,7 @@ public class BatterySummaryTrack
       data.tracks.addTrack(batteryGroup, track.getId(), "Battery Usage",
           single(state -> new BatterySummaryPanel(state, track), true, false));
     }
-    // Power Rails tracks.
-    if (powerRails.size() > 0) {
-      String powerRailsGroup = "power_rails_group";
-      data.tracks.addLabelGroup(batteryGroup, powerRailsGroup, "Power Rails",
-          group(state -> new TitlePanel("Power Rails"), false));
-      for (CounterInfo powerRail : powerRails) {
-        CounterTrack powerRailTrack = new CounterTrack(data.qe, powerRail);
-        data.tracks.addTrack(powerRailsGroup, powerRailTrack.getId(), powerRail.name,
-            single(state -> new CounterPanel(state, powerRailTrack, POWER_RAIL_COUNTER_TRACK_HEIGHT),
-                true, true));
-      }
-    }
+
     return data;
   }
 

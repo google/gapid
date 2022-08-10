@@ -130,6 +130,7 @@ public class Tracks {
   public static Perfetto.Data.Builder enumerateCounters(Perfetto.Data.Builder data) {
     MemorySummaryTrack.enumerate(data);
     BatterySummaryTrack.enumerate(data);
+    PowerSummaryTrack.enumerate(data);
     return data;
   }
 
