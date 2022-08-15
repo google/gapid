@@ -21,13 +21,13 @@ import (
 // OneOf returns the value of a oneof proto field.
 // For example, given the proto:
 //
-//   message M {
-//     oneof o {
-//       A a = 1;
-//       B b = 2;
-//       C c = 3;
-//     }
-//   }
+//	message M {
+//	  oneof o {
+//	    A a = 1;
+//	    B b = 2;
+//	    C c = 3;
+//	  }
+//	}
 //
 // OneOf(m.o) will return either a, b, c or nil, skipping the wrapper struct.
 func OneOf(v interface{}) interface{} {

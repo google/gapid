@@ -16,19 +16,21 @@
 //
 // gofuse will create a new 'fused' directory in the project root which
 // contains:
-//  • Symlinks to authored files in the GAPID source tree.
-//  • Symlinks to bazel-generated files (bazel-out/[config]/{bin,genfiles}).
-//  • Symlinks to external 3rd-party .go files.
+//   - Symlinks to authored files in the GAPID source tree.
+//   - Symlinks to bazel-generated files (bazel-out/[config]/{bin,genfiles}).
+//   - Symlinks to external 3rd-party .go files.
+//
 // These symlinks are 'fused' into a single, common directory structure that
 // is expected by the typical GOPATH rules used by go tooling.
 //
 // Note: the extensive use of symlinks makes Windows support unlikely.
 //
 // Examples:
-//   bazel run //cmd/gofuse
-//   bazel run //cmd/gofuse -- --bazelout=k8-fastbuild
-//   bazel run //cmd/gofuse -- --bazelout=k8-dbg
-//   bazel run //cmd/gofuse -- --bazelout=darwin-fastbuild
+//
+//	bazel run //cmd/gofuse
+//	bazel run //cmd/gofuse -- --bazelout=k8-fastbuild
+//	bazel run //cmd/gofuse -- --bazelout=k8-dbg
+//	bazel run //cmd/gofuse -- --bazelout=darwin-fastbuild
 package main
 
 import (

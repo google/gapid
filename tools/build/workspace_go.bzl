@@ -26,9 +26,9 @@ def gapid_go_dependencies():
         name = "com_github_google_go_github",
         organization = "google",
         project = "go-github",
-        commit = "fee04e8d84e09e4404f740aef498cead5a9e56fc",  # 38.1.0
+        commit = "8309da114464ce3686f71058945ff561a6189b24",  # 45.2.0
         importpath = "github.com/google/go-github",
-        sha256 = "e6219a28e136689d5277c3f44139e6117f4eeeb3922c725bbf2e49b9e924777d",
+        sha256 = "7f0bc1cfbe14cd6684385576a4835969f182200c784ab81db24ce0cfa934e2b7",
     )
 
     # Dependency of com_github_google_go_github.
@@ -36,9 +36,9 @@ def gapid_go_dependencies():
         name = "com_github_google_go_querystring",
         organization = "google",
         project = "go-querystring",
-        commit = "f76b16e611e840d52c50bd66dabeef5fe3b5e74d",
+        commit = "934da1706275a38ef4d8647320f723db0c208595",
         importpath = "github.com/google/go-querystring",
-        sha256 = "de4c24364adca4716fcb04213e62142c6530798ee691f9f2045204fd33af601b",
+        sha256 = "dec5519b2c4f3d8b2370d539d13ad22d688743df9a19b1fabc42217c00f02505",
     )
 
     _maybe(_github_go_repository,
@@ -54,57 +54,27 @@ def gapid_go_dependencies():
         name = "org_golang_google_grpc",
         organization = "grpc",
         project = "grpc-go",
-        commit = "41e044e1c82fcf6a5801d6cbd7ecf952505eecb1",  # 1.40.0
+        commit = "64174955202ffb5ea4122e25d1aaece49cc5a3ed",  # 1.48.0
         importpath = "google.golang.org/grpc",
-        sha256 = "e23f4f49f1a431baa8577b48ab8d2b9a0ce1ac76b03439210605f2d87ea19070",
+        sha256 = "bd68eca5fd6d61f163a947184047375572a2e6976f13cb24ef05d02b4f4c5f2e",
     )
 
     _maybe(_github_go_repository,
         name = "org_golang_x_crypto",
         organization = "golang",
         project = "crypto",
-        commit = "32db794688a5a24a23a43f2a984cecd5b3d8da58",
+        commit = "630584e8d5aaa1472863b49679b2d5548d80dcba",
         importpath = "golang.org/x/crypto",
-        sha256 = "f6f36d5112831f3e965aeb4f22856fb91a17ea156938f1a4b90d516fef95f2cd",
-    )
-
-    # Dependency of org_golang_x_tools.
-    _maybe(_github_go_repository,
-        name = "org_golang_x_mod",
-        organization = "golang",
-        project = "mod",
-        commit = "6ce8bb3f08e0e47592fe93e007071d86dcf214bb",  # 0.4.1
-        importpath = "golang.org/x/mod",
-        sha256 = "7b5008b98e341459375f1de23007b09339d1fe5d6f3c5e4b4ed7d12a002471de",
+        sha256 = "4f7dfb4db2a7f31711dfbbf6f299070501e34a6872d00750e2ba85661632fbde",
     )
 
     _maybe(_github_go_repository,
         name = "org_golang_x_net",
         organization = "golang",
         project = "net",
-        commit = "60bc85c4be6d32924bcfddb728394cb8713f2c78",
+        commit = "3211cb9802344f37a243bc81d005fb6e97f4f8f5",
         importpath = "golang.org/x/net",
-        sha256 = "7b87068a90d3f1092ec728c73a582d5221ce8a0838ea48f7b53b5654dcb8ec6b",
-    )
-
-    # Dependency of org_golang_x_net.
-    _maybe(_github_go_repository,
-        name = "org_golang_x_text",
-        organization = "golang",
-        project = "text",
-        commit = "383b2e75a7a4198c42f8f87833eefb772868a56f",
-        importpath = "golang.org/x/text",
-        sha256 = "c9194e8839a8be0a29a53efc7fadfa0da54c35d0f0114fb705e1b2179fe4bb36",
-    )
-
-    # Dependency of org_golang_x_mod.
-    _maybe(_github_go_repository,
-        name = "org_golang_x_xerrors",
-        organization = "golang",
-        project = "xerrors",
-        commit = "5ec99f83aff198f5fbd629d6c8d8eb38a04218ca",
-        importpath = "golang.org/x/xerrors",
-        sha256 = "cd9de801daf63283be91a76d7f91e8a9541798c5c0e8bcfb7ee804b78a493b02",
+        sha256 = "cfd01f207c96eeeb5657b9fbf04cf2a41b4313379208c87a538d028b89838a24",
     )
 
 

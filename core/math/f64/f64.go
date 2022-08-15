@@ -40,11 +40,12 @@ func MaxOf(a float64, b ...float64) float64 {
 
 // Round rounds v to the nearest integer.
 // Examples:
-//   Round(-0.9) = -1
-//   Round(-0.1) = 0
-//   Round(0.0) = 0
-//   Round(0.1) = 0
-//   Round(0.9) = 1
+//
+//	Round(-0.9) = -1
+//	Round(-0.1) = 0
+//	Round(0.0) = 0
+//	Round(0.1) = 0
+//	Round(0.9) = 1
 func Round(v float64) int {
 	if v < 0 {
 		return int(math.Ceil(v - 0.5))

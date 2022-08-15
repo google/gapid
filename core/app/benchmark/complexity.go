@@ -39,8 +39,9 @@ func (linearTime) String() string { return "O(n)" }
 
 // Fit calculates simple linear regression
 // See https://en.wikipedia.org/wiki/Simple_linear_regression
-//   https://en.wikipedia.org/wiki/Covariance
-//   https://en.wikipedia.org/wiki/Variance
+//
+//	https://en.wikipedia.org/wiki/Covariance
+//	https://en.wikipedia.org/wiki/Variance
 func (linearTime) Fit(samples Samples) (fit Fit, err float64) {
 	if len(samples) < 2 {
 		return nil, math.MaxFloat64

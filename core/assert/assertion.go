@@ -246,7 +246,8 @@ func (a *Assertion) TestDeepDiff(value, expect interface{}) bool {
 }
 
 // TestCustomDeepDiff is equivalent to TestCustomDeepEqual except it also prints
-//  a diff.
+//
+//	a diff.
 func (a *Assertion) TestCustomDeepDiff(value, expect interface{}, c compare.Custom) bool {
 	diff := c.Diff(value, expect, 10)
 	if len(diff) == 0 {

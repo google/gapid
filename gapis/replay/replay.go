@@ -116,7 +116,7 @@ type RequestAndResult struct {
 	Result  Result
 }
 
-//TODO(apbodnar) move this into whatever eventually calls Profile()
+// TODO(apbodnar) move this into whatever eventually calls Profile()
 type SignalHandler struct {
 	StartSignal task.Signal
 	StartFunc   task.Task

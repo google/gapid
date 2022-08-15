@@ -39,7 +39,7 @@ fuchsia_sdk_dependencies(locals = LOCALS)
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 go_rules_dependencies()
-go_register_toolchains("1.17")
+go_register_toolchains("1.19")
 
 # gazelle:repo bazel_gazelle
 gazelle_dependencies()

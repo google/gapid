@@ -306,7 +306,9 @@ func (n *stn) buildChildren(ctx context.Context, tree *stateTree) {
 
 // isNil returns true if v is a nil pointer or interface, or is a type that
 // implements the method:
-//   IsNil() bool
+//
+//	IsNil() bool
+//
 // which returns true when called.
 func isNil(v reflect.Value) bool {
 	if (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil() {

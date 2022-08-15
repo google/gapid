@@ -13,5 +13,4 @@
 // limitations under the License.
 
 // Package app provides an opinionated common infrastructure to application structure.
-//
 package app

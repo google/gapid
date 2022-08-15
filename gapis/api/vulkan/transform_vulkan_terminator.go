@@ -28,16 +28,17 @@ import (
 
 // vulkanTerminator is very similar to EarlyTerminator.
 // It has 2 additional properties.
-//   1) If a VkQueueSubmit is found, and it contains an event that will be
-//      signaled after the final request, we remove the event from the
-//      command-list, and remove any subsequent events
-//   2) If a request is made to replay until the MIDDLE of a vkQueueSubmit,
-//      then it will patch that command-list to remove any commands after
-//      the command in question.
-//      Furthermore it will continue the replay until that command can be run
-//      i.e. it will make sure to continue to mutate the trace until
-//      all pending events have been successfully completed.
-//      TODO(awoloszyn): Handle #2
+//  1. If a VkQueueSubmit is found, and it contains an event that will be
+//     signaled after the final request, we remove the event from the
+//     command-list, and remove any subsequent events
+//  2. If a request is made to replay until the MIDDLE of a vkQueueSubmit,
+//     then it will patch that command-list to remove any commands after
+//     the command in question.
+//     Furthermore it will continue the replay until that command can be run
+//     i.e. it will make sure to continue to mutate the trace until
+//     all pending events have been successfully completed.
+//     TODO(awoloszyn): Handle #2
+//
 // This takes advantage of the fact that all commands will be in order.
 type vulkanTerminator struct {
 	lastRequest       api.CmdID

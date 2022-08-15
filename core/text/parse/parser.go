@@ -125,9 +125,13 @@ func (p *Parser) ParseBranch(b *cst.Branch, do BranchParser) {
 // the newly insterted branch.
 //
 // Extend will transform:
-//     n.parent ──> n
+//
+//	n.parent ──> n
+//
 // to:
-//     n.parent ──> b ──> n
+//
+//	n.parent ──> b ──> n
+//
 // where b is passed as the second argument to do().
 func (p *Parser) Extend(n cst.Node, do BranchParser) {
 	if n == nil {

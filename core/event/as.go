@@ -23,9 +23,11 @@ import (
 
 // AsHandler wraps a destination into an event handler.
 // The destination can be one of
-//     func(context.Context, T, error) error
-//     chan T
-//     chan<- T
+//
+//	func(context.Context, T, error) error
+//	chan T
+//	chan<- T
+//
 // If it is not, this function will panic, as this is assumed to be a programming error.
 // If the handler is invoked with an event that is not of type T the handler will return an error.
 func AsHandler(ctx context.Context, f interface{}) Handler {
@@ -52,12 +54,14 @@ func AsHandler(ctx context.Context, f interface{}) Handler {
 
 // AsProducer wraps an event generator into an event producer.
 // The generator can be one of
-//     func(context.Context) T
-//     Source
-//     chan T
-//     <-chan T
-//     []T
-//     [n]T
+//
+//	func(context.Context) T
+//	Source
+//	chan T
+//	<-chan T
+//	[]T
+//	[n]T
+//
 // If it is not, this function will panic, as this is assumed to be a programming error.
 func AsProducer(ctx context.Context, f interface{}) Producer {
 	switch src := f.(type) {
@@ -94,7 +98,9 @@ func AsProducer(ctx context.Context, f interface{}) Producer {
 
 // AsPredicate wraps a function into an event predicate.
 // The function must be a function of the form
-//     func(context.Context, T) bool
+//
+//	func(context.Context, T) bool
+//
 // If it is not, this function will panic, as this is assumed to be a programming error.
 // If the handler is invoked with an event that is not of type T the handler will return an error.
 func AsPredicate(ctx context.Context, f interface{}) Predicate {

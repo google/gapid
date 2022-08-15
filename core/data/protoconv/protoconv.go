@@ -93,9 +93,13 @@ func (e ErrNoConverterRegistered) Error() string {
 
 // Register registers the converters toProto and toObject.
 // toProto must be a function with the signature:
-//   func(context.Context, O) (P, error)
+//
+//	func(context.Context, O) (P, error)
+//
 // toObject must be a function with the signature:
-//   func(context.Context, P) (O, error)
+//
+//	func(context.Context, P) (O, error)
+//
 // Where P is the proto message type and O is the object type.
 func Register(toProto, toObject interface{}) {
 	type (

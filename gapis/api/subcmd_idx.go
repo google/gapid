@@ -75,8 +75,9 @@ func (s SubCmdIdx) Equals(s2 SubCmdIdx) bool {
 // Decrement returns the subcommand that preceded this subcommand.
 // Decrement will decrement its way UP subcommand chains.
 // Eg: {0, 1}.Decrement() == {0, 0}
-//     {1, 0}.Decrement() == {0}
-//     {0}.Decrement() == {}
+//
+//	{1, 0}.Decrement() == {0}
+//	{0}.Decrement() == {}
 func (s *SubCmdIdx) Decrement() {
 	for len(*s) > 0 {
 		if (*s)[len(*s)-1] > 0 {

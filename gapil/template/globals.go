@@ -39,8 +39,9 @@ func initGlobals(f *Functions, globalList []string) {
 
 // Gets or sets a template global variable
 // Example:
-//  {{Global "CatSays" "Meow"}}
-//  The cat says: {{Global "CatSays"}}
+//
+//	{{Global "CatSays" "Meow"}}
+//	The cat says: {{Global "CatSays"}}
 func (f *Functions) Global(name string, values ...interface{}) (interface{}, error) {
 	switch len(values) {
 	case 0:
@@ -60,8 +61,9 @@ func (f *Functions) Global(name string, values ...interface{}) (interface{}, err
 
 // Increments and returns a global variable
 // Example:
-//  {{Global "ProtoID" 0}}
-//  bool field = {{Inc "ProtoID"}}
+//
+//	{{Global "ProtoID" 0}}
+//	bool field = {{Inc "ProtoID"}}
 func (f *Functions) Inc(name string) (interface{}, error) {
 	g, found := f.globals[name]
 	if !found {

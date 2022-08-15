@@ -42,9 +42,10 @@ func (p TCPPort) adbForwardString() string {
 
 // LocalFreeTCPPort returns a currently free TCP port on the localhost.
 // There are two potential issues with using this for ADB port forwarding:
-// * There is the potential for the port to be taken between the function
-//   returning and the port being used by ADB.
-// * The system _may_ hold on to the socket after it has been told to close.
+//   - There is the potential for the port to be taken between the function
+//     returning and the port being used by ADB.
+//   - The system _may_ hold on to the socket after it has been told to close.
+//
 // Because of these issues, there is a potential for flakiness.
 func LocalFreeTCPPort() (TCPPort, error) {
 	socket, err := net.Listen("tcp", ":0")

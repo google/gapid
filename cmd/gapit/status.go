@@ -126,8 +126,6 @@ func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	totalBlocked := 0
 	currentMemoryUsage := uint64(0)
 	maxMemoryUsage := uint64(0)
-	replayTotalInstrs := uint32(0)
-	replayFinishedInstrs := uint32(0)
 
 	var findTask func(map[uint64]*tsk, []uint64) *tsk
 
@@ -314,8 +312,6 @@ func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				}
 				currentMemoryUsage = tu.TotalHeap
 			}, func(tu *service.ReplayUpdate) {
-				replayTotalInstrs = tu.TotalInstrs
-				replayFinishedInstrs = tu.FinishedInstrs
 			})
 		ec <- err
 	})

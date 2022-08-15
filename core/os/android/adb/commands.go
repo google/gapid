@@ -389,9 +389,9 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 
 // QueryPerfettoGpuProfilingDataSources queries and returns the data sources
 // that support the GPU profiling functionailities, it includes:
-//     1) gpu.counters
-//     2) gpu.renderstages
-//     3) android.gpu.memory
+//  1. gpu.counters
+//  2. gpu.renderstages
+//  3. android.gpu.memory
 func (b *binding) QueryPerfettoGpuProfilingDataSources(ctx context.Context) (*device.GPUProfiling, error) {
 	gpu := &device.GPUProfiling{}
 	encoded, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)

@@ -255,7 +255,9 @@ func (g *dependencyGraph) GetCmdAncestorNodeIDs(cmdID api.CmdID, idx api.SubCmdI
 // If IncludeInitialCommands is true, this includes the initial commands
 // which reconstruct the initial state.
 // CmdIDs for initial commands are:
-//   CmdID(0).Derived(), CmdID(1).Derived(), ...
+//
+//	CmdID(0).Derived(), CmdID(1).Derived(), ...
+//
 // Whether or not IncludeInitialCommands is true, the CmdIDs for captured
 // commands are: 0, 1, 2, ...
 func (g *dependencyGraph) ForeachCmd(ctx context.Context, cb func(context.Context, api.CmdID, api.Cmd) error) error {

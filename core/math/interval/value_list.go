@@ -102,10 +102,10 @@ func (l *ValueSpanList) Delete(index int, count int) {
 }
 
 // Update modifies the values in `span` by applying the function `f`.
-// - Parts of `span` that are outside the intervals in `l` are inserted with
-//   value `f(nil)`.
-// - If `f` returns `nil`, the corresponding span is removed.
-// - Adjacent intervals with the same value are merged.
+//   - Parts of `span` that are outside the intervals in `l` are inserted with
+//     value `f(nil)`.
+//   - If `f` returns `nil`, the corresponding span is removed.
+//   - Adjacent intervals with the same value are merged.
 func Update(l ValueList, span U64Span, f func(interface{}) interface{}) {
 	k := Search(l, func(test U64Span) bool {
 		return span.Start < test.End

@@ -43,8 +43,9 @@ var (
 )
 
 // filterTypedRanges takes a list of typed ranges and
-//   combines ranges that have identical bases and types, and
-//   filters some highly correlated structs into smaller number.
+//
+//	combines ranges that have identical bases and types, and
+//	filters some highly correlated structs into smaller number.
 func filterTypedRanges(ranges []*service.TypedMemoryRange) ([]*service.TypedMemoryRange, error) {
 	if len(ranges) == 0 {
 		return ranges, nil

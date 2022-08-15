@@ -33,9 +33,10 @@ import (
 )
 
 // ForReplay returns three lists of the same size, at each index:
-//  - path.Device references a device
-//  - a bool indicates if that device is compatible (can replay) the capture
-//  - a stringtable.Msg gives the reason for a device to not be compatible
+//   - path.Device references a device
+//   - a bool indicates if that device is compatible (can replay) the capture
+//   - a stringtable.Msg gives the reason for a device to not be compatible
+//
 // These lists are sorted such that compatible devices are returned at the front
 // of the list, in the preferred device order.
 func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, []bool, []*stringtable.Msg, error) {

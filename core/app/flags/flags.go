@@ -272,7 +272,7 @@ func (s *Set) Args() []string {
 }
 
 // ForceCommandLine is an ugly hack for things that try to directly use the flag package
-//TODO: remove this
+// TODO: remove this
 func (s *Set) ForceCommandLine() {
 	flag.CommandLine = &s.Raw
 }

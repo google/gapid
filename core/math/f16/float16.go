@@ -19,11 +19,11 @@ import "unsafe"
 // Number represents a 16-bit floating point number, containing a single sign bit, 5 exponent bits
 // and 10 fractional bits. This corresponds to IEEE 754-2008 binary16 (or half precision float) type.
 //
-//    MSB                                                                         LSB
-//   ╔════╦════╤════╤════╤════╤════╦════╤════╤════╤════╤════╤════╤════╤════╤════╤════╗
-//   ║Sign║ E₄ │ E₃ │ E₂ │ E₁ │ E₀ ║ F₉ │ F₈ │ F₇ │ F₆ │ F₅ │ F₄ │ F₃ │ F₂ │ F₁ │ F₀ ║
-//   ╚════╩════╧════╧════╧════╧════╩════╧════╧════╧════╧════╧════╧════╧════╧════╧════╝
-//   Where E is the exponent bits and F is the fractional bits.
+//	 MSB                                                                         LSB
+//	╔════╦════╤════╤════╤════╤════╦════╤════╤════╤════╤════╤════╤════╤════╤════╤════╗
+//	║Sign║ E₄ │ E₃ │ E₂ │ E₁ │ E₀ ║ F₉ │ F₈ │ F₇ │ F₆ │ F₅ │ F₄ │ F₃ │ F₂ │ F₁ │ F₀ ║
+//	╚════╩════╧════╧════╧════╧════╩════╧════╧════╧════╧════╧════╧════╧════╧════╧════╝
+//	Where E is the exponent bits and F is the fractional bits.
 type Number uint16
 
 const (

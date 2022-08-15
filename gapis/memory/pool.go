@@ -38,12 +38,13 @@ import (
 //
 // OnRead and OnWrite functions take 3 parameters. The first is
 // the range of memory. The second is the root of the read.
-//   that is, the pointer from which the range was derived. For
-//   example:
-//      uint32_t* foo;
-//      foo[2]; Range(Base: foo+2, Size 4), Root foo
-//  Last is the service.type ID of the observations. This will
-//      always be a slice at this point.
+//
+//	 that is, the pointer from which the range was derived. For
+//	 example:
+//	    uint32_t* foo;
+//	    foo[2]; Range(Base: foo+2, Size 4), Root foo
+//	Last is the service.type ID of the observations. This will
+//	    always be a slice at this point.
 type Pool struct {
 	writes  poolWriteList
 	OnRead  func(rng Range, root uint64, t uint64, api id.ID)

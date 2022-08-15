@@ -22,5 +22,4 @@
 // attempt is made to align them.
 //
 // Strings are encoded in C style null terminated form.
-//
 package endian

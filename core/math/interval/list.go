@@ -56,14 +56,16 @@ func IndexOf(l List, value uint64) int {
 // For example, consider the merging of intervals [0, 2] and [3, 5]:
 //
 // When joinAdj == false:
-//   ╭       ╮       ╭       ╮   ╭       ╮╭       ╮
-//   │0  1  2│ merge │3  4  5│ = │0  1  2││3  4  5│
-//   ╰       ╯       ╰       ╯   ╰       ╯╰       ╯
+//
+//	╭       ╮       ╭       ╮   ╭       ╮╭       ╮
+//	│0  1  2│ merge │3  4  5│ = │0  1  2││3  4  5│
+//	╰       ╯       ╰       ╯   ╰       ╯╰       ╯
 //
 // When join == true:
-//   ╭       ╮       ╭       ╮   ╭                ╮
-//   │0  1  2│ merge │3  4  5│ = │0  1  2  3  4  5│
-//   ╰       ╯       ╰       ╯   ╰                ╯
+//
+//	╭       ╮       ╭       ╮   ╭                ╮
+//	│0  1  2│ merge │3  4  5│ = │0  1  2  3  4  5│
+//	╰       ╯       ╰       ╯   ╰                ╯
 func Merge(l MutableList, span U64Span, joinAdj bool) int {
 	return merge(l, span, joinAdj)
 }

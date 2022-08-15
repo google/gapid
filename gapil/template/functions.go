@@ -165,13 +165,15 @@ func (f *Functions) IsNil(v interface{}) bool {
 }
 
 // Error raises an error terminating execution of the template.
-//   {{Error "Foo returned error: %s" $err}}
+//
+//	{{Error "Foo returned error: %s" $err}}
 func (f *Functions) Error(s string, args ...interface{}) (string, error) {
 	return "", fmt.Errorf(s, args...)
 }
 
 // Log prints s and optional format arguments to stdout. Example:
-//   {{Log "%s %s" "Hello" "world}}
+//
+//	{{Log "%s %s" "Hello" "world}}
 func (f *Functions) Log(s string, args ...interface{}) string {
 	fmt.Printf(s+"\n", args...)
 	return ""
@@ -213,22 +215,23 @@ func (*Functions) buildArgs(values ...interface{}) (map[string]interface{}, erro
 // be augmented.
 // Remaining arguments must come in name-value pairs.
 // For example:
-//  {{define "SingleParameterMacro"}}
-//      $ is: {{$}}
-//  {{end}}
 //
-//  {{define "MultipleParameterMacro"}}
-//      $.ArgA is: {{$.ArgA}}, $.ArgB is: {{$.ArgB}}
-//  {{end}}
+//	{{define "SingleParameterMacro"}}
+//	    $ is: {{$}}
+//	{{end}}
 //
-//  {{template "SingleParameterMacro" (Args)}}
-//  {{/* Returns "$ is: nil" */}}
+//	{{define "MultipleParameterMacro"}}
+//	    $.ArgA is: {{$.ArgA}}, $.ArgB is: {{$.ArgB}}
+//	{{end}}
 //
-//  {{template "SingleParameterMacro" (Args 42)}}
-//  {{/* Returns "$ is: 42" */}}
+//	{{template "SingleParameterMacro" (Args)}}
+//	{{/* Returns "$ is: nil" */}}
 //
-//  {{template "MultipleParameterMacro" (Args "ArgA" 4 "ArgB" 2)}}
-//  {{/* Returns "$.ArgA is: 4, $.ArgB is: 2" */}}
+//	{{template "SingleParameterMacro" (Args 42)}}
+//	{{/* Returns "$ is: 42" */}}
+//
+//	{{template "MultipleParameterMacro" (Args "ArgA" 4 "ArgB" 2)}}
+//	{{/* Returns "$.ArgA is: 4, $.ArgB is: 2" */}}
 func (f *Functions) Args(arguments ...interface{}) (interface{}, error) {
 	switch len(arguments) {
 	case 0:
@@ -317,10 +320,12 @@ func (f *Functions) node(writer io.Writer, prefix string, node semantic.Node, ar
 // the "Default" template is used if present.
 // If no possible template could be matched, and error is generated.
 // eg: {{Node "TypeName" $}} where $ is a boolean and expression would try
-//   "TypeName#Bool"
-//   "TypeName.Builtin"
-//   "TypeName.BinaryOp"
-//   "TypeName_Default"
+//
+//	"TypeName#Bool"
+//	"TypeName.Builtin"
+//	"TypeName.BinaryOp"
+//	"TypeName_Default"
+//
 // See Args for how the arguments are processed, in addition the Node arg will
 // be added in and have the value of node, and if the node had a type
 // discovered, the Type arg will be added in as well.

@@ -35,12 +35,12 @@ var _ = Value(&MapValue{})
 //
 // All insertions and merges use the following method when merging the key value
 // pair (k, v) into the map:
-//  • If m contains an equivalent key to k, then change the existing value to be
-//    a union of the existing value and v.
-//  • If m contains an equivalent value to v, then change the existing key to be
-//    a union of the existing key and k.
-//  • If m does not contain an equivalent key to k or an equivalent value to v
-//    then add a new entry to m.
+//   - If m contains an equivalent key to k, then change the existing value to be
+//     a union of the existing value and v.
+//   - If m contains an equivalent value to v, then change the existing key to be
+//     a union of the existing key and k.
+//   - If m does not contain an equivalent key to k or an equivalent value to v
+//     then add a new entry to m.
 type MapValue struct {
 	// The map type.
 	Map *semantic.Map

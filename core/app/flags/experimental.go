@@ -15,9 +15,9 @@
 package flags
 
 // Experimental features are hidden behind the flags. All experimental feature flags must:
-//     1) be named --experimental-enable-<feature-name>
-//     2) be by default false/off
-//     3) be removed once the feature is no longer in experiment
+//  1. be named --experimental-enable-<feature-name>
+//  2. be by default false/off
+//  3. be removed once the feature is no longer in experiment
 var (
 // None at this time.
 )
