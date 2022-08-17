@@ -35,7 +35,7 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
   private static Unit unit;
 
   protected final PowerSummaryTrack track;
-  protected static final double trackHeight = 80;
+  protected static final double TRACK_HEIGHT = 80;
   protected HoverCard hovered = null;
 
   public PowerSummaryPanel(State state, PowerSummaryTrack track) {
@@ -49,7 +49,7 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
         (track.minValue == track.maxValue && track.minValue == 0)
             ? 1
             : (track.maxValue - track.minValue);
-    return (trackHeight - 1) * (1 - (value - track.minValue) / range);
+    return (TRACK_HEIGHT - 1) * (1 - (value - track.minValue) / range);
   }
 
   @Override
@@ -74,7 +74,7 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
 
   @Override
   public double getHeight() {
-    return trackHeight;
+    return TRACK_HEIGHT;
   }
 
   @Override
@@ -93,7 +93,8 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
           mainGradient().applyBaseAndBorder(ctx);
           ctx.path(
               path -> {
-                double lastX = state.timeToPx(data.ts[0]), lastY = h;
+                double lastX = state.timeToPx(data.ts[0]);
+                double lastY = h;
                 path.moveTo(lastX, lastY);
                 for (int i = 0; i < data.ts.length; i++) {
                   double nextX = state.timeToPx(data.ts[i]);
@@ -112,12 +113,12 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
           if (hovered != null) {
             double y = calculateYCoordinate(hovered.value);
             ctx.setBackgroundColor(mainGradient().highlight);
-            ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, trackHeight - y + 1);
+            ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, TRACK_HEIGHT - y + 1);
             ctx.setForegroundColor(colors().textMain);
             ctx.drawCircle(hovered.mouseX, y, CURSOR_SIZE / 2);
 
             ctx.setBackgroundColor(colors().hoverBackground);
-            double bgH = Math.max(hovered.size.h, trackHeight);
+            double bgH = Math.max(hovered.size.h, TRACK_HEIGHT);
             // The left x-axis coordinate of HoverCard.
             double hx = hovered.mouseX + CURSOR_SIZE / 2 + HOVER_MARGIN;
             if (hx >= w - (2 * HOVER_PADDING + hovered.size.w)) {
@@ -129,11 +130,11 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
                       - hovered.size.w;
             }
             ctx.fillRect(
-                hx, Math.min((trackHeight - bgH) / 2, 0), 2 * HOVER_PADDING + hovered.size.w, bgH);
+                hx, Math.min((TRACK_HEIGHT - bgH) / 2, 0), 2 * HOVER_PADDING + hovered.size.w, bgH);
             ctx.setForegroundColor(colors().textMain);
             // The left x-axis coordinate of the left labels.
             double x = hx + HOVER_PADDING;
-            y = (trackHeight - hovered.size.h) / 2;
+            y = (TRACK_HEIGHT - hovered.size.h) / 2;
             // The difference between the x-axis coordinate of the left labels and the right labels.
             double dx = hovered.leftWidth + HOVER_PADDING, dy = hovered.size.h / 2;
             ctx.drawText(Fonts.Style.Normal, "Value:", x, y);
@@ -225,7 +226,7 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
           redrawW = redrawRx - redrawLx + CURSOR_SIZE / 2;
         }
 
-        return new Area(redrawLx, -TRACK_MARGIN, redrawW, trackHeight + 2 * TRACK_MARGIN);
+        return new Area(redrawLx, -TRACK_MARGIN, redrawW, TRACK_HEIGHT + 2 * TRACK_MARGIN);
       }
 
       @Override
