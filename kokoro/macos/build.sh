@@ -52,9 +52,9 @@ unzip -q $JRE_NAME.zip
 export JRE_HOME=$PWD/$JRE_NAME/zulu-11.jre/Contents/Home
 
 # Get bazel.
-BAZEL_VERSION=4.2.0
+BAZEL_VERSION=5.2.0
 $CURL -O https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh
-echo "ee86e5bcf8661af7a08ea49378db1977bedb9a391841158b0610d27c4f601ad1  bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh" | shasum --check
+echo "645e7c335efc3207905e98f0c56a598b7cb0282d54d9470e80f38fb698064fb3  bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh" | shasum --check
 mkdir bazel
 sh bazel-${BAZEL_VERSION}-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 

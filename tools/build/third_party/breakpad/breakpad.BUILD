@@ -81,9 +81,7 @@ cc_library(
         "@gapid//tools/build:darwin": LIB_MACOS,
         "@gapid//tools/build:windows": LIB_WINDOWS,
         # Android.
-        "//conditions:default": LIB_LINUX + [
-            "src/common/android/breakpad_getcontext.S",
-        ],
+        "//conditions:default": LIB_LINUX,
     }),
     hdrs = glob(["src/**/*.h"]),
     copts = cc_copts() + select({
