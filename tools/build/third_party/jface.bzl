@@ -14,31 +14,31 @@
 
 # Repository rule to download the JFace jars.
 
-_BASE = "https://download.eclipse.org/eclipse/updates/4.21/R-4.21-202109060500/plugins/"
+_BASE = "https://download.eclipse.org/eclipse/updates/4.24/R-4.24-202206070700/plugins/"
 _LIBS = [
     struct(
         name = "org.eclipse.core.commands",
-        version = "3.10.100.v20210722-1426",
-        sha = "177c605efd78681e28765b869a2ff5284a79b02d133007a6169a64317cee8633",
-        sha_src = "767ffe3b4c9e345d82666cc27d0453df487fbe69e3df3b871d2eaa33e395da7a",
+        version = "3.10.200.v20220512-0851",
+        sha = "35af2254a0b6d8d5b328853739882ff4baae734b6d19e82c955426e470890a25",
+        sha_src = "7cd3d55fbeec09178e635dd22074a22c9c984e1c12f499cc5063ef6252e48432",
     ),
     struct(
         name = "org.eclipse.core.runtime",
-        version = "3.23.0.v20210730-2035",
-        sha = "c81c0fd5c3cb632c93586c80f31461749f43104e3499f53e0cf33525bd606ce3",
-        sha_src = "c90874b9868149603e4370431db9f87565b47aa566a88001854a9a7cbaad012b",
+        version = "3.25.0.v20220506-1157",
+        sha = "a6f61da3c508c618ea805188a84db9d798528ad5f3039c1d594833db7412897e",
+        sha_src = "35336312aa5182afa4bd987b5d1fc0c4425ca225f6ed4e0182c0c6a64866650b",
     ),
     struct(
         name = "org.eclipse.equinox.common",
-        version = "3.15.0.v20210518-0604",
-        sha = "90e1b2a17b6e9256e3bfae0fc12b287cd96bc1481d64d83e0c7c30f4c12b248b",
-        sha_src = "25632e7df81e57696223a844d826323c62e46403e0baa21a2c2546c80578a1c3",
+        version = "3.16.100.v20220315-2327",
+        sha = "8b9d998c2ed00e05cbca44b6b8464586ca362a6d347790289e3602566c607c7e",
+        sha_src = "797f439cd37d76589a85e402ba52f79e5300e094e3030da26dd823bd0a7766f2",
     ),
     struct(
         name = "org.eclipse.jface",
-        version = "3.23.0.v20210723-1324",
-        sha = "14150fd90a0b095ee45051c94764e8f9908f58578398055e40adcb33a4242798",
-        sha_src = "6050d1d29f9d76782d3c2afc34895cac77acf23f59e7fc826da4aca0f87516fe",
+        version = "3.26.0.v20220513-0449",
+        sha = "7d13ef252ccf2e12b4afc80b3dd18066aa1b3d9783cc87daeb6d70a6445ec8db",
+        sha_src = "8e974a8f4be4b7a8434aef420b3fc402f0c3558cce50abfe54e3f2f742a6d5fa",
     ),
     struct(
         name = "org.eclipse.jface.databinding",
@@ -48,21 +48,21 @@ _LIBS = [
     ),
     struct(
         name = "org.eclipse.jface.text",
-        version = "3.18.100.v20210820-1651",
-        sha = "bac1aea8eb813eaca2da9212c1079b577611f5010d6f93cd509ae346356bee29",
-        sha_src = "c9ebb5b99ce8a023b4bad86cd1f80fe0be8f3210938eb285c9a7d8510f7b55c3",
+        version = "3.20.100.v20220516-0819",
+        sha = "1be756b8f7f2ec4ab3c1c4e1b0887175cf2a57594d54b1287032438026ec0f91",
+        sha_src = "089d13957165bbf9a4d922c852c2944433552d426bc6637ed6ed127e00a8d799",
     ),
     struct(
         name = "org.eclipse.osgi",
-        version = "3.17.0.v20210823-1805",
-        sha = "b9b5cf6bb057b94be55f3510bdd831cdbaef16f2d1cab6b3770b72452811e538",
-        sha_src = "c42096fadeb3367dfdc63fec3ddc1da161310c6f70f16c2e2b30958b9a8e1d30",
+        version = "3.18.0.v20220516-2155",
+        sha = "e4feacfbe8843b67608beeaff8a9513654902767999d6e3de941c6d4b85c9a1e",
+        sha_src = "6c17c695faf39039229148f756c50a720c5367c47297ea1722d75f71725948d7",
     ),
     struct(
         name = "org.eclipse.text",
-        version = "3.12.0.v20210512-1644",
-        sha = "56d3c997d0c60916012f71cdb7d4b25245fe1eb82775d2d0dc83e432e71f220a",
-        sha_src = "49067b4537181a43ab2883944d82ec8c102aff72e1b54f77f75179dd8480269b",
+        version = "3.12.100.v20220506-1404",
+        sha = "d8f34bda39d3917c06817cc5bb98b382bc8c395777d92f611339f8c01acbaa73",
+        sha_src = "834bb6b725cdd047a04ddfd09a3d978cf12a1b4ce7ea0baf00efdaec2fddc973",
     ),
 ]
 
