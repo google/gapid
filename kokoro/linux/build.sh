@@ -27,12 +27,16 @@ echo "7d9ef51beab5726c55725fb36675c6fed0518576d3ba51fb4067580ddf7627c4  bazel-${
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
-# Get GCC 9.
-sudo rm /etc/apt/sources.list.d/cuda.list*
-sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-sudo apt-get -q update
-sudo apt-get -qy install gcc-9 g++-9
-export CC=/usr/bin/gcc-9
+# Get Clang-12.
+sudo add-apt-repository 'deb http://apt.llvm.org/xenial/  llvm-toolchain-xenial-12 main'
+sudo apt-get update
+sudo apt-get install -y clang-12
+export CC=/usr/bin/clang-12
+
+# Upgrade libstdc++6 for Swiftshader
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+sudo apt-get upgrade -y libstdc++6
 
 # Get the Android NDK.
 $CURL -O https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip

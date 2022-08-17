@@ -21,6 +21,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct instruction_counters_t {

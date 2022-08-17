@@ -27,12 +27,12 @@ echo "7d9ef51beab5726c55725fb36675c6fed0518576d3ba51fb4067580ddf7627c4  bazel-${
 mkdir bazel
 bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
-# Get GCC 9.
-sudo rm /etc/apt/sources.list.d/cuda.list*
-sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-sudo apt-get -q update
-sudo apt-get -qy install gcc-9 g++-9
-export CC=/usr/bin/gcc-9
+# Get Clang-12.
+wget https://apt.llvm.org/llvm.sh
+chmod +x llvm.sh
+sudo ./llvm.sh 12
+clang-12 --version
+export CC=/usr/bin/clang-12
 
 # Get the Android NDK.
 $CURL -O https://dl.google.com/android/repository/android-ndk-r21d-linux-x86_64.zip

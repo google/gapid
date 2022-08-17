@@ -94,7 +94,7 @@ cc_library(
     hdrs = glob(["src/**/*.h"]),
     copts = cc_copts() + select({
         "@gapid//tools/build:linux": [
-            "-Wno-maybe-uninitialized",
+            "-Wno-uninitialized",
             "-Wno-deprecated",
             "-Wno-array-bounds",
         ],
@@ -239,7 +239,7 @@ cc_library(
         "-DN_UNDF=0x0",
     ] + select({
         "@gapid//tools/build:windows": ["-DNO_STABS_SUPPORT"],
-        "@gapid//tools/build:linux": ["-Wno-maybe-uninitialized"],
+        "@gapid//tools/build:linux": ["-Wno-uninitialized"],
         "//conditions:default": [],
     }),
     linkopts = select({

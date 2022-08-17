@@ -336,7 +336,7 @@ TEST_F(WrapperTest, WithSpinLockGuardedWrapper) {
       // Initiated secondly
       [this, &counter, &LockedDoTask]() {
         m_.lock();
-        LockedDoTask([this, &counter]() {
+        LockedDoTask([&counter]() {
           counter++;
           EXPECT_EQ(2u, counter);
         });
@@ -777,7 +777,7 @@ namespace {
 template <int SIG>
 class SilentSignal {
  public:
-  SilentSignal() : succeeded_(false), old_sigaction_{0} {
+  SilentSignal() : succeeded_(false), old_sigaction_{} {
     succeeded_ = RegisterSignalHandler(SIG, IgnoreSignal, &old_sigaction_);
   }
   ~SilentSignal() {
@@ -982,14 +982,13 @@ TEST(MemoryTrackerTest, ManyPagesMultithread) {
   threads.reserve(num_threads);
   // Every thread is responsible for 4 continuous pages.
   for (uint32_t ti = 0; ti < num_threads; ti++) {
-    threads.emplace_back(std::thread(
-        [mem_start_addr, num_pages_per_thread, ti, page_size, &t]() {
-          size_t thread_range_size = num_pages_per_thread * page_size;
-          void* thread_range_start =
-              VoidPointerAdd(mem_start_addr, ti * thread_range_size);
-          EXPECT_TRUE(t.TrackRange(thread_range_start, thread_range_size));
-          memset(thread_range_start, 0xFF, thread_range_size);
-        }));
+    threads.emplace_back(std::thread([mem_start_addr, ti, page_size, &t]() {
+      size_t thread_range_size = num_pages_per_thread * page_size;
+      void* thread_range_start =
+          VoidPointerAdd(mem_start_addr, ti * thread_range_size);
+      EXPECT_TRUE(t.TrackRange(thread_range_start, thread_range_size));
+      memset(thread_range_start, 0xFF, thread_range_size);
+    }));
   }
   std::for_each(threads.begin(), threads.end(),
                 [](std::thread& t) { t.join(); });
@@ -997,8 +996,7 @@ TEST(MemoryTrackerTest, ManyPagesMultithread) {
   // All the pages should have been recorded.
   std::vector<void*> dirty_pages;
   t.HandleAndClearDirtyIntersects(
-      m.mem(), num_pages * page_size,
-      [&dirty_pages, page_size](void* addr, size_t size) {
+      m.mem(), num_pages * page_size, [&dirty_pages](void* addr, size_t size) {
         uintptr_t casted_addr = reinterpret_cast<uintptr_t>(addr);
         for (size_t i = 0; i < size / GetPageSize(); i++) {
           dirty_pages.push_back(

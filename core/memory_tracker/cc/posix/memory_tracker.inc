@@ -22,10 +22,10 @@ namespace track_memory {
 class PosixMemoryTracker {
 public:
   PosixMemoryTracker(std::function<bool(void *)> segfault_function)
-      : orig_action_{0}, handle_segfault_(segfault_function) {}
+      : orig_action_(), handle_segfault_(segfault_function) {}
 
   bool IsInstalled() const {
-    struct sigaction orig_action = {0};
+    struct sigaction orig_action = {};
     sigaction(SIGSEGV, nullptr, &orig_action);
     return orig_action.sa_sigaction == &SegfaultHandlerFunction;
   }
@@ -77,9 +77,7 @@ bool inline PosixMemoryTracker::EnableMemoryTrackerImpl() {
   }
 
   unique_tracker = this;
-  struct sigaction sa {
-    0
-  };
+  struct sigaction sa = {};
   sa.sa_flags = SA_SIGINFO;
   sigemptyset(&sa.sa_mask);
   sa.sa_sigaction = &SegfaultHandlerFunction;

@@ -14,11 +14,14 @@
 
 cc_library(
     name = "spirv-cross",
-    srcs = glob([
-        "*.h",
-        "*.cpp",
-        "*.hpp",
-    ]),
+    srcs = glob(
+        [
+            "*.h",
+            "*.cpp",
+            "*.hpp",
+        ],
+        exclude = ["main.cpp"],
+    ),
     hdrs = [
         "spirv_glsl.hpp",
         "spirv_hlsl.hpp",

@@ -145,7 +145,7 @@ into the /Applications/ folder, and set the `ANDROID_NDK_HOME` environment point
 export ANDROID_NDK_HOME=/Applications/AndroidNDK6528147.app/Contents/NDK
 ```
 
-### Install the XCode command line tools
+### Install the XCode 12 command line tools
 
 After installing, ensure the XCode license is signed with:
 
@@ -153,6 +153,16 @@ After installing, ensure the XCode license is signed with:
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 sudo xcodebuild -license
 ```
+
+### Install Clang-12
+
+We use Clang-12 to build AGI on Linux which should be part of XCode 12. If there is no clang on the system it and can be downloaded from https://apt.llvm.org/. After downloading and installing Clang-12, add it to environment.
+
+```
+export CC=clang-12
+```
+
+Alternatively, GCC can also be used for compiling AGI but we cannot guarantee that every GCC version will be able to compile AGI.
 
 ### Increase the maximum number of OS file handles
 
@@ -186,6 +196,17 @@ The following environment variables will need to be set prior to building:
 Follow the [Ubuntu Bazel Install](https://docs.bazel.build/versions/master/install-ubuntu.html) or the[Fedora/CentOS Bazel Install](https://docs.bazel.build/versions/master/install-redhat.html) directions to install bazel.
 
 Alternatively, bazel can be downloaded from its [GitHub Releases Page](https://github.com/bazelbuild/bazel/releases).
+
+### Install Clang-12
+
+We use Clang-12 to build AGI on Linux which can be downloaded from https://apt.llvm.org/ After downloading and installing Clang-12,
+add it to environment.
+
+```
+export CC=clang-12
+```
+
+Alternatively, GCC can also be used for compiling AGI but we cannot guarantee that every GCC version will be able to compile AGI.
 
 ### Install Java Development Kit 11
 
