@@ -33,8 +33,8 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         locals = locals,
         organization = "grpc",
         project = "grpc-java",
-        commit = "474a03527bb54c754fb21e586d81ff43234d24c4",  # 1.40.0
-        sha256 = "b4c9bf06d4adaa6fb6c57faf71dd6dc834f3c1109241042fd63fcf9139f21789"
+        commit = "6e2e18bb728793df32b2ba195a954ad380e546de",  # 1.48.1
+        sha256 = "b4d9b7827470e1cb9b2ce2dced0cfa6caed3d0a76cfb6f32eb41f2e54c88805f"
     )
 
     if not no_maven:

@@ -82,8 +82,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "google",
         project = "protobuf",
-        commit = "909a0f36a10075c4b4bc70fdee2c7e32dd612a72",  # 3.17.3
-        sha256 = "e1853700543f5dfccf05648bb54f16e0add0154a03024334e8b0abd96655f652",
+        commit = "ab840345966d0fa8e7100d771c92a73bfbadd25c",  # 3.21.5
+        sha256 = "0025119f5c97871436b4b271fee48bd6bfdc99956023e0d4fd653dd8eaaeff52",
         repo_mapping = {"@zlib": "@net_zlib"},
     )
 
@@ -93,9 +93,13 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "grpc",
         project = "grpc",
-        commit = "2d6b8f61cfdd1c4d2d7c1aae65a4fbf00e3e0981",  # 1.39.1
-        sha256 = "64d8b30a3390e1b1b85158643e3206f5bd6ae8d8f74af729f45a5cb5f6bafbbc",
+        commit = "d2054ec6c6e8abcecf0e24b0b4ee75035d80c3cc",  # 1.48.0
+        sha256 = "ea0da456d849eafa5287dc1e9d53c065896dca2cd896a984101ebe0708979dca",
         repo_mapping = {"@zlib": "@net_zlib"},
+        patches = [
+            # Remove calling the go dependencies, since we do that ourselves.
+            "@gapid//tools/build/third_party:com_github_grpc_grpc.patch",
+        ],
     )
 
     ###########################################
