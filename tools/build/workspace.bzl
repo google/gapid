@@ -203,21 +203,26 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
     )
 
     maybe_repository(
-        git_repository,
+        github_repository,
         name = "perfetto",
         locals = locals,
-        remote = "https://android.googlesource.com/platform/external/perfetto",
-        commit = "d1a7b031bbded67e0d67957974e85a83e0b815c0",
-        shallow_since = "1619185617 +0100",
+        organization = "google",
+        project = "perfetto",
+        commit = "99ead408d98eaa25b7819c7e059734bea42fa148",  # 28.0
+        sha256 = "24440b99bd8400be7bca44b767488641d15f099eebb4e09715a5c0b9bf6c8d68",
+        patches = [
+            # Fix a Windows MinGW build issue.
+            "@gapid//tools/build/third_party:perfetto.patch",
+        ]
     )
 
     maybe_repository(
         http_archive,
         name = "sqlite",
         locals = locals,
-        url = "https://storage.googleapis.com/perfetto/sqlite-amalgamation-3250300.zip",
-        sha256 = "2ad5379f3b665b60599492cc8a13ac480ea6d819f91b1ef32ed0e1ad152fafef",
-        strip_prefix = "sqlite-amalgamation-3250300",
+        url = "https://storage.googleapis.com/perfetto/sqlite-amalgamation-3350400.zip",
+        sha256 = "f3bf0df69f5de0675196f4644e05d07dbc698d674dc563a12eff17d5b215cdf5",
+        strip_prefix = "sqlite-amalgamation-3350400",
         build_file = "@perfetto//bazel:sqlite.BUILD",
     )
 
@@ -225,9 +230,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         http_archive,
         name = "sqlite_src",
         locals = locals,
-        url = "https://storage.googleapis.com/perfetto/sqlite-src-3250300.zip",
-        sha256 = "c7922bc840a799481050ee9a76e679462da131adba1814687f05aa5c93766421",
-        strip_prefix = "sqlite-src-3250300",
+        url = "https://storage.googleapis.com/perfetto/sqlite-src-3320300.zip",
+        sha256 = "9312f0865d3692384d466048f746d18f88e7ffd1758b77d4f07904e03ed5f5b9",
+        strip_prefix = "sqlite-src-3320300",
         build_file = "@perfetto//bazel:sqlite.BUILD",
     )
 

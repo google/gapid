@@ -334,8 +334,8 @@ VulkanMemoryEventPtr BindMemoryInfo::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
   // event->source will be set by the object that this bind memory info is
   // attached to, which can be a buffer or an image.
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_BIND;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_BIND;
   event->timestamp = timestamp_;
   event->has_device_memory = true;
   event->device_memory = device_memory_handle_;
@@ -365,10 +365,10 @@ CreateBufferInfo::CreateBufferInfo(VkBufferCreateInfo const* create_buffer_info,
 
 VulkanMemoryEventPtr CreateBufferInfo::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_BUFFER;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_CREATE;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_BUFFER;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_CREATE;
   event->timestamp = timestamp;
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -412,8 +412,8 @@ VulkanMemoryEventContainerPtr Buffer::GetVulkanMemoryEvents() {
 
   if (is_bound) {
     auto bind_event = bind_buffer_info->GetVulkanMemoryEvent();
-    bind_event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-        VulkanMemoryEvent_Source_SOURCE_BUFFER;
+    bind_event->source =
+        perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_BUFFER;
     bind_event->has_memory_size = true;
     bind_event->memory_size = memory_size;
     bind_event->has_object_handle = true;
@@ -448,10 +448,10 @@ CreateImageInfo::CreateImageInfo(VkImageCreateInfo const* create_image_info,
 
 VulkanMemoryEventPtr CreateImageInfo::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_IMAGE;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_CREATE;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_IMAGE;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_CREATE;
   event->timestamp = timestamp;
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -516,8 +516,8 @@ VulkanMemoryEventContainerPtr Image::GetVulkanMemoryEvents() {
 
   if (is_bound) {
     auto bind_event = bind_image_info->GetVulkanMemoryEvent();
-    bind_event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-        VulkanMemoryEvent_Source_SOURCE_IMAGE;
+    bind_event->source =
+        perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_IMAGE;
     bind_event->has_memory_size = true;
     bind_event->memory_size = memory_size;
     events->push_back(std::move(bind_event));
@@ -538,10 +538,10 @@ DeviceMemory::DeviceMemory(VkDeviceMemory memory_,
 
 VulkanMemoryEventPtr DeviceMemory::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DEVICE_MEMORY;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_CREATE;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DEVICE_MEMORY;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_CREATE;
   event->timestamp = timestamp;
   event->has_object_handle = true;
   event->object_handle = unique_handle;
@@ -888,10 +888,10 @@ void PhysicalDevice::DestroyImage(VkImage vk_image) {
 
 VulkanMemoryEventPtr PhysicalDevice::GetVulkanMemoryEvent(VkDevice device) {
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DEVICE;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_ANNOTATIONS;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DEVICE;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_ANNOTATIONS;
   event->timestamp = timestamp;
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
@@ -1015,10 +1015,10 @@ VulkanMemoryEventContainerSetPtr Device::GetVulkanMemoryEvents() {
   auto events = make_unique<VulkanMemoryEventContainer>();
   // Add an event for the device itself
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DEVICE;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_CREATE;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DEVICE;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_CREATE;
   event->timestamp = timestamp;
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
@@ -1066,10 +1066,10 @@ VulkanMemoryEventContainerSetPtr Device::GetVulkanMemoryEvents() {
 
 VulkanMemoryEventPtr HostAllocation::GetVulkanMemoryEvent() {
   auto event = make_unique<core::VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DRIVER;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_CREATE;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DRIVER;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_CREATE;
   event->timestamp = timestamp;
   event->has_memory_address = true;
   event->memory_address = ptr;
@@ -1304,10 +1304,10 @@ void MemoryTracker::EmitCreateDeviceEvent(VkPhysicalDevice physical_device,
         make_unique<Device>(device, physical_devices[physical_device]);
   }
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DEVICE;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_CREATE;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DEVICE;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_CREATE;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
@@ -1317,10 +1317,10 @@ void MemoryTracker::EmitCreateDeviceEvent(VkPhysicalDevice physical_device,
 void MemoryTracker::EmitDestoryDeviceEvent(VkDevice device) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DEVICE;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_DESTROY;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DEVICE;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
@@ -1354,10 +1354,10 @@ void MemoryTracker::EmitFreeMemoryEvent(VkDevice device,
                                         VkDeviceMemory device_memory) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DEVICE_MEMORY;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_DESTROY;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DEVICE_MEMORY;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -1401,8 +1401,8 @@ void MemoryTracker::EmitBindBufferEvent(VkDevice device, VkBuffer buffer,
       device_memory, global_unique_handles[(uint64_t)(device_memory)], offset,
       memory_type);
   auto event = bindinfo.GetVulkanMemoryEvent();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_BUFFER;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_BUFFER;
   event->has_device = true;
   event->device = (uint64_t)(device);
   event->has_heap = true;
@@ -1425,10 +1425,10 @@ void MemoryTracker::EmitBindBufferEvent(VkDevice device, VkBuffer buffer,
 void MemoryTracker::EmitDestroyBufferEvent(VkDevice device, VkBuffer buffer) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_BUFFER;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_DESTROY;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_BUFFER;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -1472,8 +1472,8 @@ void MemoryTracker::EmitBindImageEvent(VkDevice device, VkImage image,
       device_memory, global_unique_handles[(uint64_t)(device_memory)], offset,
       memory_type);
   auto event = bindinfo.GetVulkanMemoryEvent();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_IMAGE;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_IMAGE;
   event->has_device = true;
   event->device = (uint64_t)(device);
   event->has_heap = true;
@@ -1496,10 +1496,10 @@ void MemoryTracker::EmitBindImageEvent(VkDevice device, VkImage image,
 void MemoryTracker::EmitDestroyImageEvent(VkDevice device, VkImage image) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_IMAGE;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_DESTROY;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_IMAGE;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -1536,10 +1536,10 @@ void MemoryTracker::EmitHostMemoryReallocationEvent(
 void MemoryTracker::EmitHostMemoryFreeEvent(uintptr_t ptr) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<core::VulkanMemoryEvent>();
-  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_SOURCE_DRIVER;
-  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
-      VulkanMemoryEvent_Operation_OP_DESTROY;
+  event->source =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Source::SOURCE_DRIVER;
+  event->operation =
+      perfetto::protos::pbzero::VulkanMemoryEvent_Operation::OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_memory_address = true;
   event->memory_address = ptr;

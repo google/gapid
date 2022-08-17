@@ -337,12 +337,12 @@ void ThreadlocalEmitter<T>::EmitVulkanMemoryUsageEvent(
         packet->set_timestamp(event->timestamp);
         if (is_reset) {
           packet->set_sequence_flags(
-              perfetto::protos::pbzero::
-                  TracePacket_SequenceFlags_SEQ_INCREMENTAL_STATE_CLEARED);
+              perfetto::protos::pbzero::TracePacket_SequenceFlags::
+                  SEQ_INCREMENTAL_STATE_CLEARED);
         } else {
           packet->set_sequence_flags(
-              perfetto::protos::pbzero::
-                  TracePacket_SequenceFlags_SEQ_NEEDS_INCREMENTAL_STATE);
+              perfetto::protos::pbzero::TracePacket_SequenceFlags::
+                  SEQ_NEEDS_INCREMENTAL_STATE);
         }
 
         perfetto::protos::pbzero::InternedData* interned_data = nullptr;
