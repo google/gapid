@@ -44,63 +44,63 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             maven_jar,
             name = "io_grpc_api",
             locals = locals,
-            artifact = "io.grpc:grpc-api:1.40.0",
-            sha256 = "e8996c17a0ff6665c3463f6800259a3755aa3d4863c5d51737b93b11e818a0bd",
-            sha256_src = "16e6764b3f631bc19313d68eee0f2185d16893bfc3eed77783460be22467560a",
+            artifact = "io.grpc:grpc-api:1.48.1",
+            sha256 = "aeb8d7a1361aa3d8f5a191580fa7f8cbc5ceb53137a4a698590f612f791e2c45",
+            sha256_src = "f6c8ee8aea763e2b4c9d3e392e4d05438e0d8d641230667a4e551b4e4f4ce959",
         )
 
         maybe_repository(
             maven_jar,
             name = "io_grpc_context",
             locals = locals,
-            artifact = "io.grpc:grpc-context:1.40.0",
-            sha256 = "31882abfcecc8d09ca87a4f514414c3abe0d8cd2a62b379249eb56d63edb9974",
-            sha256_src = "9fe71a310ff57b980c8d54c7c5669b65481211a5cc8e89a4b73a50851d672273",
+            artifact = "io.grpc:grpc-context:1.48.1",
+            sha256 = "2fb9007e12f768e9c968f9db292be4ea9cba2ef40fb8d179f3f8746ebdc73c1b",
+            sha256_src = "c6e63958d0d8050ff8c2669ba19516f4bbe8f9a8cf78c9da0acaf71c8d71e908",
         )
 
         maybe_repository(
             maven_jar,
             name = "io_grpc_core",
             locals = locals,
-            artifact = "io.grpc:grpc-core:1.40.0",
-            sha256 = "8d712597726a0478ed0a5e05cc5662e1a6b7b9efbe2d585d43c947ec94275b8b",
-            sha256_src = "a3ba9faa0317c5c49fad7ce3f29fea906c2a4d28c67648916cfffc4d176802c5",
+            artifact = "io.grpc:grpc-core:1.48.1",
+            sha256 = "6d472ee6d2b60ef3f3e6801e7cd4dbec5fbbef81e883a0de1fbc55e6defe1cb7",
+            sha256_src = "00a76915e3bcab4bfa5332b2087e2b591b5dc1892305ca9463da2e02a6e0ad38",
         )
 
         maybe_repository(
             maven_jar,
             name = "io_grpc_okhttp",
             locals = locals,
-            artifact = "io.grpc:grpc-okhttp:1.40.0",
-            sha256 = "0c60bc57ba811696283f3c7d72f41967b6bc359d49e1d3fde091d9a6c3d5191d",
-            sha256_src = "891fbb30337a71d83c429637769751cf9b39a11210c4a5001117eb65d49aec3d",
+            artifact = "io.grpc:grpc-okhttp:1.48.1",
+            sha256 = "2b771a645967ddcac4950a9c068c98dbfcf3678fddb5c7719f79f6c3cc1323df",
+            sha256_src = "2efc0d12a55b88ba148f3152ae3b175b55dc1ba34b197ed2704ffc911b8b4312",
         )
 
         maybe_repository(
             maven_jar,
             name = "io_grpc_protobuf",
             locals = locals,
-            artifact = "io.grpc:grpc-protobuf:1.40.0",
-            sha256 = "f6598354276a1511320e452a18483732632c9a73a2372b9ec0a66c9a8248f298",
-            sha256_src = "da5c81d0e7f60ae0d8314d9e77a6fbf96fa9a48915a96b8bcbdf6e60b7e4410e",
+            artifact = "io.grpc:grpc-protobuf:1.48.1",
+            sha256 = "6ab68b0a3bb3834af44208df058be4631425b56ef95f9b9412aa21df3311e8d3",
+            sha256_src = "7707101da1ff2a88814ab73c2c8b63e99d447da507a1b78906d5eb5a244b46b2",
         )
 
         maybe_repository(
             maven_jar,
             name = "io_grpc_protobuf_lite",
             locals = locals,
-            artifact = "io.grpc:grpc-protobuf-lite:1.40.0",
-            sha256 = "8bfc88d763eab03e7278ee3679e5c6ac0e8263c74eeaec3925dd1125a2bddade",
-            sha256_src = "d062c9070c3a5d6fe97b09438217b8493db6d828fe69316b32864f393ab1e29d",
+            artifact = "io.grpc:grpc-protobuf-lite:1.48.1",
+            sha256 = "0a4c735bb80e342d418c0ef7d2add7793aaf72b91c449bde2769ea81f1869737",
+            sha256_src = "d93a6cc1089cf65d059a46bf986ce326edc47273e462ee89825aceb209735f2f",
         )
 
         maybe_repository(
             maven_jar,
             name = "io_grpc_stub",
             locals = locals,
-            artifact = "io.grpc:grpc-stub:1.40.0",
-            sha256 = "fbb5cede6583efc9c3b74ba934f49fbb82c9f0e5f9dab45bcfb2f1835c0545cb",
-            sha256_src = "9b484fdf5170158be45e130d40c9fe7f0c9dee22bd1792a361989cb385ce942e",
+            artifact = "io.grpc:grpc-stub:1.48.1",
+            sha256 = "6436f19cef264fd949fb7a41e11424e373aa3b1096cad0b7e518f1c81aa60f23",
+            sha256_src = "d2ab4864568f63059942a914802808a7c9aa99f4d1071267e9817c4c63687057",
         )
 
         # OKHttp used by gRPC.
@@ -127,18 +127,18 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             maven_jar,
             name = "io_opencensus_api",
             locals = locals,
-            artifact = "io.opencensus:opencensus-api:0.28.3",
-            sha256 = "16a67b0996c327482e539c5194f246d7aa3cfd80a9d0e2440014db3d4a089246",
-            sha256_src = "f53f9b719016d4b976e219106c37a48ecf35a2b4b2ff059e8bbe6940c623ad3c",
+            artifact = "io.opencensus:opencensus-api:0.31.1",
+            sha256 = "f1474d47f4b6b001558ad27b952e35eda5cc7146788877fc52938c6eba24b382",
+            sha256_src = "6748d57aaae81995514ad3e2fb11a95aa88e158b3f93450288018eaccf31e86b",
         )
 
         maybe_repository(
             maven_jar,
             name = "io_opencensus_contrib_grpc_metrics",
             locals = locals,
-            artifact = "io.opencensus:opencensus-contrib-grpc-metrics:0.28.3",
-            sha256 = "965d3d2f82f7fe54f26428c419fea466f0de037c92d03060c04a471e28ee6834",
-            sha256_src = "c3b4eb41ec20aa6f25238a1f35c7577dfc223d9fa1122ea29770d0601bd21bcd",
+            artifact = "io.opencensus:opencensus-contrib-grpc-metrics:0.31.1",
+            sha256 = "c862a1d783652405512e26443f6139e6586f335086e5e1f1dca2b0c4e338a174",
+            sha256_src = "c2b4d7c9928b7bf40c65008c4966f9fe00b4a0fe9150f21f43d6e4e85c7f3767",
         )
 
         # Perfmark used by gRPC.
@@ -146,18 +146,18 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             maven_jar,
             name = "io_perfmark_api",
             locals = locals,
-            artifact = "io.perfmark:perfmark-api:0.24.0",
-            sha256 = "9b4d1d63ad9eae90192d706c80f6242509a8c677395f46149b208599f8a7b1a7",
-            sha256_src = "4cebc85a53db1f7dabc2fe7d34f429fd1220331200b3be50b6cc3979ec041f52",
+            artifact = "io.perfmark:perfmark-api:0.25.0",
+            sha256 = "2044542933fcdf40ad18441bec37646d150c491871157f288847e29cb81de4cb",
+            sha256_src = "007b6b6beaba11fabb025d79b8774b6a7583596a8ec0a28157570304642b0e72",
         )
 
         maybe_repository(
             maven_jar,
             name = "javax_annotation_api",
             locals = locals,
-            artifact = "javax.annotation:javax.annotation-api:1.2",
-            sha256 = "5909b396ca3a2be10d0eea32c74ef78d816e1b4ead21de1d78de1f890d033e04",
-            sha256_src = "8bd08333ac2c195e224cc4063a72f4aab3c980cf5e9fb694130fad41689689d0",
+            artifact = "javax.annotation:javax.annotation-api:1.3.2",
+            sha256 = "e04ba5195bcd555dc95650f7cc614d151e4bcd52d29a10b8aa2197f3ab89ab9b",
+            sha256_src = "128971e52e0d84a66e3b6e049dab8ad7b2c58b7e1ad37fa2debd3d40c2947b95",
         )
 
         # LWJGL.
@@ -166,24 +166,24 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             maven_jar,
             name = "org_lwjgl_core",
             locals = locals,
-            artifact = "org.lwjgl:lwjgl:3.2.3",
-            sha256 = "f9928c3b4b540643a1bbd59286d3c7175e470849261a0c29a81389f52265ad8b",
-            sha256_src = "97b9c693337f76a596b86b07db26a0a8022e3a4e0a0360edb9bb87bc9b172cda",
-            sha256_linux = "002810129fc6ac4cdfcdf190e18a643a5021b6300f489c1026bbc5d00140ca2e",
-            sha256_windows = "bdf519b9aa90f799954113a15dfa84b273ee4781876b3ecdebf192ce4f88a26c",
-            sha256_macos = "5c520c465a84034b8bc23e1d7ecd621bb99c437cd254ea46b53197448d1b8128",
+            artifact = "org.lwjgl:lwjgl:3.3.1",
+            sha256 = "cf83f90e32fb973ff5edfca4ef35f55ca51bb70a579b6a1f290744f552e8e484",
+            sha256_src = "30cb8190660bcbe9ce5761690a5abbf45735c9af4d58f61bd568203025fd3a36",
+            sha256_linux = "22ef2afa31a1740a337ec9c6806c6b8d97e931a63e2c43270cbaf14fb3f6fc4e",
+            sha256_windows = "093d13d62a6434bc656bf10a3b37e2530fd9af3b0bc20f8e9545be58659d1443",
+            sha256_macos = "f48e610a981dca515b9bbe7345cc76e3450c13404b052d8ac357ef0af8e90abf",
         )
 
         maybe_repository(
             maven_jar,
             name = "org_lwjgl_opengl",
             locals = locals,
-            artifact = "org.lwjgl:lwjgl-opengl:3.2.3",
-            sha256 = "10bcc37506e01d1477d65f1fcf0aa672c95eb785265b28b7f321c8381093eda2",
-            sha256_src = "6082a81f350dfc0e390a9ceb4347fa2a28cd07dfd54dc757fb05fa6f3350314e",
-            sha256_linux = "466e8bae1818c4c584771ee093c8a735e26f56fb25a81dde5675160aaa2fa045",
-            sha256_windows = "c08e3de31632163ac5f746fa945f1924142e08520bd9c81b7dd1b5dbd1b0b8bb",
-            sha256_macos = "e4b4d0cd9138d52271c1d5c18e43c9ac5d36d1a727c47e5ee4031cb45ce730ca",
+            artifact = "org.lwjgl:lwjgl-opengl:3.3.1",
+            sha256 = "e436d2144f3a36fff772fd64233316809b795f390defd4d55660fc686e7c2834",
+            sha256_src = "42434482dffbcdbc5716c53b33eb0475c13e2c34106e0e1d0766cae20386e092",
+            sha256_linux = "bcfcd9f8dfd229488ad9ec353d48c7b02de5ca21badd4092f1902239a1ed0690",
+            sha256_windows = "851b9b593cac21e3af51dd4c303e8df3fe6a344a3f81d6b9bcc186e7e540bfda",
+            sha256_macos = "711f29972888509262a957f1b3138bfa9b505519d11df6e5763d1c9a3f8b3c5d",
         )
 
         # Other dependencies.
@@ -192,9 +192,9 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             maven_jar,
             name = "com_google_guava",
             locals = locals,
-            artifact = "com.google.guava:guava:30.1-jre",
-            sha256 = "e6dd072f9d3fe02a4600688380bd422bdac184caf6fe2418cfdd0934f09432aa",
-            sha256_src = "b17d4974b591e7e45d982d04ce400c424fa95288cbddce17394b65f65bfdec0f",
+            artifact = "com.google.guava:guava:31.1-jre",
+            sha256 = "a42edc9cab792e39fe39bb94f3fca655ed157ff87a8af78e1d6ba5b07c4a00ab",
+            sha256_src = "8ab1853cdaf936ec88be80c17302b7c20abafbd4f54d4fb54d7011c529e3a44a",
         )
 
         maybe_repository(
