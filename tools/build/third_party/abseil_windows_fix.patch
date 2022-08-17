@@ -1,0 +1,10 @@
+--- a/absl/random/internal/BUILD.bazel
++++ b/absl/random/internal/BUILD.bazel
+@@ -80,6 +80,7 @@
+     linkopts = ABSL_DEFAULT_LINKOPTS + select({
+         "//absl:msvc_compiler": ["-DEFAULTLIB:bcrypt.lib"],
+         "//absl:clang-cl_compiler": ["-DEFAULTLIB:bcrypt.lib"],
++        "@gapid//tools/build:windows": ["-lbcrypt"],
+         "//conditions:default": [],
+     }),
+     deps = [
