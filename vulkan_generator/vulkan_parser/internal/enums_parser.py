@@ -28,7 +28,7 @@ from vulkan_generator.vulkan_parser.internal import internal_types
 class EnumInformation(NamedTuple):
     """Temporary class to return argument information"""
     fields: Dict[str, internal_types.VulkanEnumField]
-    aliases: dict[str, internal_types.VulkanEnumFieldAlias]
+    aliases: Dict[str, internal_types.VulkanEnumFieldAlias]
 
 
 def parse_value_fields(enum_elem: ET.Element) -> EnumInformation:
