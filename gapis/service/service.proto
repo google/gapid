@@ -1384,7 +1384,8 @@ message TraceOptions {
   uint32 start_frame = 12;
   // How many frames should we capture
   uint32 frames_to_capture = 13;
-  reserved 14;
+  // Set whether to ignore the ANDROID_frame_boundary extension
+  bool ignore_frame_boundary_delimiters = 14;
   // Insert extra commands to record error state
   bool record_error_state = 15;
   // Wait for an event to start tracing

@@ -322,7 +322,8 @@ type (
 		Capture struct {
 			Frames int `help:"only capture the given number of frames. 0 for all"`
 		}
-		No struct {
+		IgnoreAndroidFrameBoundary bool `help:"If true: ignore the ANDROID_frame_boundary extension. If false: respect it."`
+		No                         struct {
 			Buffer bool `help:"Do not buffer the output, this helps if the application crashes"`
 		}
 		API   string `help:"only capture the given API valid options are vulkan, angle and perfetto"`

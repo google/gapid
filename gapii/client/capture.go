@@ -52,6 +52,8 @@ const (
 	DisableCoherentMemoryTracker Flags = 0x000000100
 	// WaitForDebugger makes gapii wait for a debugger to connect
 	WaitForDebugger Flags = 0x000000200
+	// FLAG_IGNORE_ANDROID_FRAME_BOUNDARY
+	IgnoreFrameBoundaryDelimiters Flags = 0x00001000
 
 	// VulkanAPI is hard-coded bit mask for Vulkan API, it needs to be kept in sync
 	// with the api_index in the vulkan.api file.

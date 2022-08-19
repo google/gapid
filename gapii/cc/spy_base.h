@@ -110,6 +110,9 @@ class SpyBase {
   void set_record_timestamps(bool record) { mRecordTimestamps = record; }
   bool should_record_timestamps() const { return mRecordTimestamps; }
 
+  // If true, ignore frame delimiter extensions, eg ANDROID_frame_boundary
+  virtual bool ignoreFrameBoundaryDelimiters() { return true; }
+
   // Ends the current trace if requested by client.
   virtual void endTraceIfRequested() {}
 

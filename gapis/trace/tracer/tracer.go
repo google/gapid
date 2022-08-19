@@ -127,6 +127,9 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 	if o.WaitForDebugger {
 		flags |= gapii.WaitForDebugger
 	}
+	if o.IgnoreFrameBoundaryDelimiters {
+		flags |= gapii.IgnoreFrameBoundaryDelimiters
+	}
 
 	return gapii.Options{
 		o.ObserveFrameFrequency,

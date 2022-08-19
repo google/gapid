@@ -35,7 +35,7 @@
 @extension("VK_ANDROID_frame_boundary")
 @indirect("VkDevice")
 @override
-@frame_end
+@frame_delimiter
 @no_replay
 cmd void vkFrameBoundaryANDROID(
     VkDevice                device,
