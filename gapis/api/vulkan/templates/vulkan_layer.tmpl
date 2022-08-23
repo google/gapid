@@ -586,9 +586,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vkGetDeviceProcAddr(VkDevice device, const char *pName);
 
+VKAPI_ATTR void VKAPI_CALL vkDestroyInstance(VkInstance instance, AllocationCallbacks pAllocator);
+
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
     const VkInstance  instance,
     const char* pName) {
+
+    if (strcmp(pName, "vkDestroyInstance") == 0) {
+      return (PFN_vkVoidFunction)(internal::vkDestroyInstance);
+    }
     if (strcmp(pName, "vkCreateInstance") == 0) {
       return (PFN_vkVoidFunction)(internal::vkCreateInstance);
     }
