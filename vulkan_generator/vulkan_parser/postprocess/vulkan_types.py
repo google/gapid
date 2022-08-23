@@ -19,7 +19,9 @@ All the stringly typed references will be linked during this stage.
 """
 
 
+from curses.ascii import isdigit
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Union
 
@@ -84,12 +86,16 @@ def process_union(
             return member.member_type
 
         typ = new_types.all_types[member.member_type]
+        fullname = parser_utils.get_full_static_array_name(member.member_name, member.size)
+        new_sizes = [int(s) for s in member.size] if member.size else None
+
         new_members[member.member_name] = types.VulkanUnionMember(
             type=typ,
             name=member.member_name,
+            full_member_name=fullname,
             no_auto_validity=member.no_auto_validity,
             selection=member.selection,
-            array_length=member.array_length
+            size=new_sizes
         )
 
     return types.VulkanUnion(
@@ -116,7 +122,8 @@ def process_funcptr(
 
         new_arguments[argument.argument_name] = types.VulkanFunctionArgument(
             type=typ,
-            name=argument.argument_name
+            name=argument.argument_name,
+            full_typename=argument.argument_type,
         )
 
     plain_return_typename = parser_utils.get_plain_typename(internal_funcptr.return_type)
@@ -129,6 +136,20 @@ def process_funcptr(
         return_type=return_type,
         arguments=new_arguments,
     )
+
+
+def convert_size(size: List[str]) -> Union[str, List[int]]:
+    """Convert simple arrays with non referencing sizes"""
+
+    # Multidimensional arrays does not refer other types
+    if len(size) > 1:
+        return [int(s) for s in size]
+
+    if size[0].isdigit():
+        return [int(size[0])]
+
+    # return the plain size reference for linking
+    return parser_utils.clean_size_reference(size[0])
 
 
 def process_struct(
@@ -149,17 +170,24 @@ def process_struct(
         if member.expected_value:
             expected_value = new_types.enums[member.member_type].fields[member.expected_value]
 
-        size: Optional[Union[types.VulkanDefine, types.VulkanStructMember]] = None
+        size: Optional[Union[types.VulkanDefine, types.VulkanStructMember, List[int]]] = None
+        static = True
+
+        if member.size:
+            new_size = convert_size(member.size)
+            if isinstance(new_size, list):
+                size = new_size
+            else:
+                size = new_defines.get(new_size)
+                if not size:
+                    new_struct.members.get(new_size)
+                    static = False
+
+        # Sometimes size has a calculation
         size_calculation: Optional[str] = None
         if member.size:
-            size_str = member.size
-            if any(sign in size_str for sign in ["*", "/", "+", "-"]):
-                size_calculation = size_str
-                size_str = parser_utils.clean_size_reference(size_str)
-
-            size = new_struct.members.get(size_str)
-            if not size:
-                size = new_defines[size_str]
+            if any(sign in member.size[0] for sign in ["*", "/", "+", "-"]):
+                size_calculation = member.size[0]
 
         typ: Optional[types.VulkanType] = None
         plain_typename = parser_utils.get_plain_typename(member.member_type)
@@ -170,15 +198,24 @@ def process_struct(
         if not typ:
             return plain_typename
 
+        # Get the full variable name if it's a C bitfield or static array
+        full_member_name = member.member_name
+        if member.c_bitfield_size:
+            full_member_name = parser_utils.get_full_c_bitfield_name(member.member_name, member.c_bitfield_size)
+        elif static:
+            full_member_name = parser_utils.get_full_static_array_name(member.member_name, member.size)
+
         new_struct.members[member.member_name] = types.VulkanStructMember(
             type=typ,
             name=member.member_name,
             parent=new_struct,
             full_typename=member.member_type,
+            full_member_name=full_member_name,
             no_auto_validity=member.no_auto_validity,
             expected_value=expected_value,
             size=size,
             size_calculation=size_calculation,
+            c_bitfield_size=member.c_bitfield_size,
             optional=member.optional,
         )
 
@@ -257,10 +294,12 @@ def process_vk_base_in_out_structure(
         name=stype.member_name,
         parent=new_struct,
         full_typename=stype.member_type,
+        full_member_name=stype.member_name,
         expected_value=None,
         no_auto_validity=None,
         size=None,
         size_calculation=None,
+        c_bitfield_size=None,
         optional=None,
     )
 
@@ -271,10 +310,12 @@ def process_vk_base_in_out_structure(
         name=pnext.member_name,
         parent=new_struct,
         full_typename=pnext.member_type,
+        full_member_name=pnext.member_name,
         expected_value=None,
         no_auto_validity=None,
         size=None,
         size_calculation=None,
+        c_bitfield_size=None,
         optional=None,
     )
 

@@ -166,10 +166,11 @@ def test_vulkan_struct_with_dynamic_array() -> None:
     assert isinstance(typ, internal_types.VulkanStruct)
 
     reference = typ.members["pBinds"].size
-    assert reference in typ.members
+    assert reference
+    assert len(reference) == 1
 
     member_names = list(typ.members.keys())
-    assert reference == member_names[1]
+    assert reference[0] == member_names[1]
 
 
 def test_vulkan_struct_with_dynamic_array_alternative_length() -> None:
@@ -188,7 +189,9 @@ def test_vulkan_struct_with_dynamic_array_alternative_length() -> None:
     assert isinstance(typ, internal_types.VulkanStruct)
 
     reference = typ.members["pVersionData"].size
-    assert reference == "2*VK_UUID_SIZE"
+    assert reference
+    assert len(reference) == 1
+    assert reference[0] == "2*VK_UUID_SIZE"
 
 
 def test_vulkan_struct_with_static_array() -> None:
@@ -219,7 +222,50 @@ def test_vulkan_struct_with_static_array() -> None:
     typ = struct_parser.parse(ET.fromstring(xml))
     assert isinstance(typ, internal_types.VulkanStruct)
 
-    assert typ.members["deviceName"].size == "VK_MAX_PHYSICAL_DEVICE_NAME_SIZE"
+    reference = typ.members["deviceName"].size
+    assert reference
+    assert len(reference) == 1
+    assert reference[0] == "VK_MAX_PHYSICAL_DEVICE_NAME_SIZE"
+
+
+def test_vulkan_struct_with_multidimensional_array() -> None:
+    """"Tests a Vulkan struct with a static array as a member"""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <type category="struct" name="VkTransformMatrixKHR">
+            <member><type>float</type><name>matrix</name>[3][4]</member>
+        </type>
+    """
+
+    typ = struct_parser.parse(ET.fromstring(xml))
+    assert isinstance(typ, internal_types.VulkanStruct)
+
+    size = typ.members["matrix"].size
+    assert size
+    assert len(size) == 2
+
+    assert size[0] == "3"
+    assert size[1] == "4"
+
+
+def test_vulkan_struct_with_bitfield_size() -> None:
+    """"Tests a Vulkan struct with a static array as a member"""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <type category="struct" name="VkAccelerationStructureInstanceKHR">
+        <comment>The bitfields in this structure are non-normative since bitfield ordering is implementation-defined in C.
+            The specification defines the normative layout.</comment>
+        <member><type>VkTransformMatrixKHR</type>                                    <name>transform</name></member>
+        <member><type>uint32_t</type>                                                <name>instanceCustomIndex</name>:24</member>
+        <member><type>uint32_t</type>                                                <name>mask</name>:8</member>
+        <member><type>uint32_t</type>                                                <name>instanceShaderBindingTableRecordOffset</name>:24</member>
+        <member optional="true"><type>VkGeometryInstanceFlagsKHR</type>              <name>flags</name>:8</member>
+        <member><type>uint64_t</type>                                                <name>accelerationStructureReference</name></member>
+    </type>
+    """
+
+    typ = struct_parser.parse(ET.fromstring(xml))
+    assert isinstance(typ, internal_types.VulkanStruct)
+
+    assert typ.members["mask"].c_bitfield_size == 8
 
 
 def test_vulkan_struct_with_multiple_base_struct() -> None:

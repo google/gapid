@@ -141,6 +141,18 @@ def test_vulkan_union_with_array() -> None:
     typ = union_parser.parse(ET.fromstring(xml))
 
     assert isinstance(typ, internal_types.VulkanUnion)
-    assert typ.members["float32"].array_length == 4
-    assert typ.members["int32"].array_length == 4
-    assert typ.members["uint32"].array_length == 4
+
+    size_float32 = typ.members["float32"].size
+    assert size_float32
+    assert len(size_float32) == 1
+    assert size_float32[0] == "4"
+
+    size_int32 = typ.members["int32"].size
+    assert size_int32
+    assert len(size_int32) == 1
+    assert size_int32[0] == "4"
+
+    size_uint32 = typ.members["float32"].size
+    assert size_uint32
+    assert len(size_uint32) == 1
+    assert size_uint32[0] == "4"

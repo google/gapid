@@ -15,6 +15,8 @@
 """ This module is responsible for parsing Vulkan structs and aliases of them"""
 
 from typing import Dict
+from typing import Optional
+from typing import List
 
 import xml.etree.ElementTree as ET
 
@@ -106,6 +108,13 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, internal_types
         # This is useful for the sType where the correct value is already known
         expected_value = member_element.get("values")
 
+        size = parser_utils.parse_member_sizes(member_element)
+
+        c_bitfield_size: Optional[int] = None
+        bitfield_str = parser_utils.try_get_tail_from_tag_in_children(member_element, "name")
+        if bitfield_str and bitfield_str.startswith(":"):
+            c_bitfield_size = int(bitfield_str[1:])
+
         # Is this field optional or has to be set
         # When this field is "false, true"  it's always for the length of the array
         # Therefore it does not give any extra information.
@@ -118,31 +127,6 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, internal_types
         # Melih TODO: Check if VkDescriptorBindingFlags is buggy in the XML
         optional = member_element.get("optional") == "true"
 
-        # Member size is optional
-        size = parser_utils.try_get_text_from_tag_in_children(member_element, "enum")
-
-        if not size:
-            # This is useful when the member is an pointer to an array
-            # with a length given by another member
-            # It's either stored in len or if the len has latex formatting then in altlen
-            # If it's an altlen size, it's mostly a calculation instead of a direct reference
-            size = member_element.get("altlen")
-            if not size:
-                size = member_element.get("len")
-
-            if size:
-                # pointer to char array has this property, which is redundant
-                size = size.replace(",null-terminated", "")
-                size = size.replace("null-terminated", "")
-
-                # This happens only in one case: VkAccelerationStructureBuildGeometryInfoKHR
-                # for ppGeometries. If pGeometries is null it has to be in size of geometryCount
-                # if pGeometries is not null then it has to be null. This notation does not give
-                # any meaningful insight. Therefore we need to support that manually if we need
-                # to support the particular extension
-                if "," in size:
-                    size = size[0:size.find(",")]
-
         members[member_name] = internal_types.VulkanStructMember(
             member_type=member_type,
             member_name=member_name,
@@ -150,7 +134,8 @@ def parse_struct_members(struct_element: ET.Element) -> Dict[str, internal_types
             no_auto_validity=no_auto_validity,
             expected_value=expected_value,
             size=size,
-            optional=optional
+            c_bitfield_size=c_bitfield_size,
+            optional=optional,
         )
 
     return members

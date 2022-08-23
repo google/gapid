@@ -203,6 +203,9 @@ class VulkanFunctionArgument:
     type: VulkanType
     name: str
 
+    # Full typename of the function argument. This would include modifiers e.g. const and *
+    full_typename: str
+
 
 @dataclass
 class VulkanFunctionPtr(VulkanType):
@@ -224,6 +227,9 @@ class VulkanStructMember:
     # Full typename of the member. This would include modifiers e.g. const and *
     full_typename: str
 
+    # Full field name of the member. This would include modifiers e.g. arrays
+    full_member_name: str
+
     # Some members have this property which states if that particular
     # member has to be valid if they are not null
     no_auto_validity: Optional[bool]
@@ -232,11 +238,14 @@ class VulkanStructMember:
     expected_value: Optional[VulkanEnumField]
 
     # Some member variables are static arrays with a default size
-    size: Optional[Union[VulkanDefine, VulkanStructMember]]
+    size: Optional[Union[VulkanDefine, VulkanStructMember, List[int]]]
 
     # Sometimes size is a calculation based on another member or a define
     # in that case we need the calculation text as well
     size_calculation: Optional[str]
+
+    # If the field is a C sytle bitfield, this will be the size of it
+    c_bitfield_size: Optional[int]
 
     # Is this field has to be set and/or not-null
     optional: Optional[bool]
@@ -300,6 +309,10 @@ class VulkanUnionMember:
     type: VulkanType
     name: str
 
+    # Full member name of the member required for declaration.
+    # This would include modifiers e.g. arrays
+    full_member_name: str
+
     # Some members have this property which states if that particular
     # member has to be valid if they are not null
     no_auto_validity: Optional[bool]
@@ -309,7 +322,7 @@ class VulkanUnionMember:
     selection: Optional[str]
 
     # If this member is a static array, what is the length
-    array_length: Optional[int]
+    size: Optional[List[int]]
 
 
 @dataclass

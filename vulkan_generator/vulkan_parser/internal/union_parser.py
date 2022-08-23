@@ -1,6 +1,6 @@
 # Copyright (C) 2022 Google Inc.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under the Apache License, Verlon 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -23,27 +23,22 @@ from vulkan_generator.vulkan_parser.internal import parser_utils
 from vulkan_generator.vulkan_parser.internal import internal_types
 
 
-def parse_member(member_element) -> internal_types.VulkanUnionMember:
+def parse_member(member_element: ET.Element) -> internal_types.VulkanUnionMember:
     """Parses a Vulkan Union Member"""
     typ = parser_utils.get_text_from_tag_in_children(member_element, "type")
     name = parser_utils.get_text_from_tag_in_children(member_element, "name")
 
     # Currently if this attribute exists, it's always true
     no_auto_validity = member_element.get("noautovalidity") == "true"
-
     selection = member_element.get("selection")
-
-    length_str = parser_utils.try_get_tail_from_tag_in_children(member_element, "name")
-    if length_str:
-        length_str = length_str.replace("[", "").replace("]", "")
-    length = int(length_str) if length_str else None
+    size = parser_utils.parse_member_sizes(member_element)
 
     return internal_types.VulkanUnionMember(
         member_type=typ,
         member_name=name,
         no_auto_validity=no_auto_validity,
         selection=selection,
-        array_length=length
+        size=size,
     )
 
 

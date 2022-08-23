@@ -109,7 +109,12 @@ class VulkanStructMember:
 
     # If the member is an array, it's size is defined by another
     # member in the struct or a define if it's a static array
-    size: Optional[str]
+    # If the array is multidimensional, sizes of each dimention will be
+    # listed in order.
+    size: Optional[List[str]]
+
+    # Some structs uses C bitfield sizes
+    c_bitfield_size: Optional[int]
 
     # Is this field has to be set and/or not-null
     optional: Optional[bool]
@@ -149,7 +154,7 @@ class VulkanUnionMember:
     selection: Optional[str]
 
     # If this member is a static array, what is the length
-    array_length: Optional[int]
+    size: Optional[List[str]]
 
 
 @dataclass

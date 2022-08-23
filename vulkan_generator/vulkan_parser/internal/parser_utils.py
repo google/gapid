@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 import os
 import xml.etree.ElementTree as ET
@@ -320,3 +321,93 @@ def parse_requirement(require_element: ET.Element) -> internal_types.VulkanExten
         required_extension=extension,
         features=features,
     )
+
+
+################################
+#                              #
+#         Array Utils          #
+#                              #
+################################
+
+def parse_static_array(member_element: ET.Element) -> Optional[List[str]]:
+    """Parses a static array from a struct or union member otherwise returns None"""
+    # If it's a static array then the length will be in the tail of the member name
+
+    size = try_get_tail_from_tag_in_children(member_element, "name")
+    if not size:
+        raise SyntaxError(f"No static array reference found: {ET.tostring(member_element, 'utf-8')}")
+
+    # Clean whitespace
+    size = size.replace("\n", "").replace(" ", "")
+
+    # This is a bitfield syntax therefore skip it
+    if size.startswith(":"):
+        return None
+
+    # If the tail is just '[' then it means it's referencing a Vulkan define  with enum tag
+    if size == "[":
+        size = try_get_text_from_tag_in_children(member_element, "enum")
+        if not size:
+            raise SyntaxError(f"Unexpected array size, {ET.tostring(member_element, 'utf-8')}")
+
+        return [size]
+
+    # Split the array dimensions and return all the sizes
+    return size[1:-1].split("][")
+
+
+def parse_dynamic_array(member_element: ET.Element) -> Optional[List[str]]:
+    """Parses a dynamic array from a struct or union member otherwise returns None"""
+    # When the member is an pointer to an array with a length given by another member
+    # It's size reference will be in "len" attribute
+    # If it also has a latex fomatting then it will be in "altlen" attribute
+    size = member_element.get("altlen")
+    if not size:
+        size = member_element.get("len")
+
+    if not size:
+        raise SyntaxError(f"No dynamic array reference found: {ET.tostring(member_element, 'utf-8')}")
+
+    # pointer to char array has this property, which is redundant
+    size = size.replace(",null-terminated", "")
+    size = size.replace("null-terminated", "")
+
+    # This happens only in one case: VkAccelerationStructureBuildGeometryInfoKHR
+    # for ppGeometries. If pGeometries is null it has to be in size of geometryCount
+    # if pGeometries is not null then it has to be null. This notation does not give
+    # any meaningful insight. Therefore we need to support that manually if we need
+    # to support the particular extension
+    if "," in size:
+        size = size[0:size.find(",")]
+
+    # If it's a char array return None instead of empty size
+    if not size:
+        return None
+
+    return [size]
+
+
+def parse_member_sizes(member_element: ET.Element) -> Optional[List[str]]:
+    """Parses a struct or union member's array size if they are arrays otherwise returns None"""
+    if "len" in member_element.attrib or "altlen" in member_element.attrib:
+        return parse_dynamic_array(member_element)
+
+    if try_get_tail_from_tag_in_children(member_element, "name"):
+        return parse_static_array(member_element)
+
+    return None
+
+
+def get_full_static_array_name(name: str, size: Optional[List[str]]) -> str:
+    """Generate array declaration mame from the variable name and size"""
+    if not size:
+        return name
+
+    # For the input (name: arr, size:[3,4]) this will return
+    # arr[3][4]
+    return name.join([f"[{s}]" for s in size])
+
+
+def get_full_c_bitfield_name(name: str, size: int) -> str:
+    """Generate C style bitfield variable name"""
+    return f"{name}:{size}"
