@@ -19,7 +19,6 @@ All the stringly typed references will be linked during this stage.
 """
 
 
-from curses.ascii import isdigit
 from typing import Dict
 from typing import List
 from typing import Optional
