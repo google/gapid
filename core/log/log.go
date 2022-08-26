@@ -150,7 +150,7 @@ func (l *Logger) Message(s Severity, stopProcess bool, text string) *Message {
 
 	m := &Message{
 		Text:        text,
-		Time:        t.In(time.UTC),
+		Time:        t.In(time.Local),
 		Severity:    s,
 		StopProcess: stopProcess,
 		Tag:         l.tag,
