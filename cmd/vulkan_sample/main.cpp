@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <math.h>
-
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>

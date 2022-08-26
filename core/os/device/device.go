@@ -26,6 +26,7 @@ const (
 	X86_64              = Architecture_X86_64
 	MIPS                = Architecture_MIPS
 	MIPS64              = Architecture_MIPS64
+	ARM64               = Architecture_ARM64
 )
 
 const (

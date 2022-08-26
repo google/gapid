@@ -150,7 +150,7 @@ func newConfig() *config {
 
 	c.console = c.console || c.help
 
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "darwin_arm64" {
 		c.vmArgs = append(c.vmArgs, "-XstartOnFirstThread")
 	}
 

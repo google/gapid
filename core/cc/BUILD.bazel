@@ -36,6 +36,10 @@ cc_library(
             "osx/*.cpp",
             "posix/*.cpp",
         ]),
+        "//tools/build:darwin_arm64": glob([
+            "osx/*.cpp",
+            "posix/*.cpp",
+        ]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
         "//conditions:default": glob([
             "android/*.cpp",
@@ -48,6 +52,7 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": ["-ldl"],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         "//tools/build:fuchsia-arm64": [],
         "//tools/build:windows": [
             "-lws2_32",

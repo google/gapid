@@ -25,6 +25,7 @@ cc_library(
             "-DVK_USE_PLATFORM_XCB_KHR",
         ],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         "//tools/build:windows": ["-DVK_USE_PLATFORM_WIN32_KHR"],
         # Android
         "//conditions:default": ["-DVK_USE_PLATFORM_ANDROID_KHR"],
@@ -35,6 +36,7 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": ["-lpthread"],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         "//tools/build:windows": ["-lpthread"],
         # Android
         "//conditions:default": [
@@ -59,6 +61,7 @@ cc_library(
             "-DVK_USE_PLATFORM_XCB_KHR",
         ],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         "//tools/build:windows": ["-DVK_USE_PLATFORM_WIN32_KHR"],
         # Android
         "//conditions:default": ["-DVK_USE_PLATFORM_ANDROID_KHR"],

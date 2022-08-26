@@ -25,6 +25,7 @@ go_library(
     clinkopts = select({
         "//tools/build:linux": ["-ldl"],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         "//tools/build:windows": [],
     }),  # keep
     importpath = "github.com/google/gapid/core/app/linker",

@@ -24,6 +24,7 @@ cc_library(
         "//tools/build:linux": [],
         "//tools/build:windows": [],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         # Android
         "//conditions:default": [
             "@android_native_app_glue//:native_app_glue",

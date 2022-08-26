@@ -19,6 +19,7 @@ java_library(
     srcs = select({
         "//tools/build:linux": glob(["linux/**/*.java"]),
         "//tools/build:darwin": glob(["osx/**/*.java"]),
+        "//tools/build:darwin_arm64": glob(["osx/**/*.java"]),
         "//tools/build:windows": glob(["windows/**/*.java"]),
     }),
     resource_strip_prefix = "gapic/src/platform/",

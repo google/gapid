@@ -59,14 +59,21 @@ cc_library(
     ],
     copts = [
         "-Wno-c++11-narrowing",
-        "-mfpmath=sse",
-        "-msse2",
-        "-DASTCENC_SSE=20",
         "-DASTCENC_POPCNT=0",
         "-DASTCENC_AVX=0",
         "-DASTCENC_ISA_INVARIANCE=0",
         "-DASTCENC_VECALIGN=16",
-    ],
+    ] + select({
+        # Melih TODO: We may need to update this for performance
+        # in the future. Currently SIMD options for compilers
+        # are a bit of issue.
+        "@gapid//tools/build:darwin_arm64": ["-ffast-math"],
+        "//conditions:default": [
+            "-mfpmath=sse",
+            "-msse2",
+            "-DASTCENC_SSE=20",
+        ],
+    }),
     include_prefix = "third_party/astc-encoder",
     visibility = ["//visibility:public"],
 )

@@ -63,6 +63,10 @@ cc_library(
             "-framework Cocoa",
             "-framework OpenGL",
         ],
+        "//tools/build:darwin_arm64": [
+            "-framework Cocoa",
+            "-framework OpenGL",
+        ],
         "//tools/build:windows": [],
         "//tools/build:fuchsia-arm64": [],
         # Android

@@ -160,6 +160,8 @@ func hostOS(ctx context.Context) device.OSKind {
 		dev = device.Linux
 	case "darwin":
 		dev = device.OSX
+	case "darwin_arm64":
+		dev = device.OSX
 	}
 	return dev
 }

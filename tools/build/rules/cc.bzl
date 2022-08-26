@@ -28,6 +28,7 @@ def cc_copts():
     return ["-Werror"] + select({
         "@gapid//tools/build:linux": ["-DGAPID_TARGET_OS_LINUX"],
         "@gapid//tools/build:darwin": ["-DGAPID_TARGET_OS_OSX"],
+        "@gapid//tools/build:darwin_arm64": ["-DGAPID_TARGET_OS_OSX"],
         "@gapid//tools/build:windows": ["-DGAPID_TARGET_OS_WINDOWS"],
         "@gapid//tools/build:android-armeabi-v7a": _ANDROID_COPTS,
         "@gapid//tools/build:android-arm64-v8a": _ANDROID_COPTS,
@@ -53,7 +54,8 @@ def _strip_impl(ctx):
     cc_toolchain = find_cpp_toolchain(ctx)
     if cc_toolchain.cpu == "k8" or cc_toolchain.cpu == "x64_windows" or cc_toolchain.cpu == "aarch64":
         flags = ["--strip-unneeded", "-p"]
-    elif cc_toolchain.cpu == "darwin_x86_64":
+    elif cc_toolchain.cpu == "darwin_x86_64" or cc_toolchain.cpu == "darwin_arm64":
+        # Melih TODO: Ensure that this flag has not changed for the Arm processor compilers for Apple
         flags = ["-x"]
     elif cc_toolchain.cpu == "darwin":
         fail("Please install Xcode and setup the path using xcode-select. You need Xcode, the CLI tools are not enough.")

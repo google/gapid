@@ -34,6 +34,7 @@ def _always_optimize_cc_library(**kwargs):
     linkopts = select({
       "@gapid//tools/build:linux": ["-ldl", "-lrt", "-lpthread"],
       "@gapid//tools/build:darwin": [],
+      "@gapid//tools/build:darwin_arm64": [],
       "@gapid//tools/build:windows": [],
       # Android.
       "//conditions:default": ["-ldl"],

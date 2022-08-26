@@ -37,6 +37,7 @@ enum Architecture {
   X86_64 = 4;
   MIPS = 5;
   MIPS64 = 6;
+  ARM64 = 7;
 }
 
 // Endian represents a byte ordering specification for multi-yte values.

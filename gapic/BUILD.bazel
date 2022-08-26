@@ -16,6 +16,7 @@ java_binary(
     name = "gapic",
     jvm_flags = select({
         "//tools/build:darwin": ["-XstartOnFirstThread"],
+        "//tools/build:darwin_arm64": ["-XstartOnFirstThread"],
         "//tools/build:linux": [
             "-DSWT_GTK3=0",
             "-DLIBOVERLAY_SCROLLBAR=0",

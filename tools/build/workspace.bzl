@@ -141,7 +141,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         breakpad,
         name = "breakpad",
         locals = locals,
-        commit = "a61afe7a3e865f1da7ff7185184fe23977c2adca",
+        commit = "335e61656fa6034fabc3431a91e5800ba6fc3dc9",
         build_file = "@gapid//tools/build/third_party/breakpad:breakpad.BUILD",
     )
 

@@ -298,6 +298,8 @@ func dllExt(n string) string {
 		return n + ".dll"
 	case "darwin":
 		return n + ".dylib"
+	case "darwin_arm64":
+		return n + ".dylib"
 	default:
 		return n + ".so"
 	}

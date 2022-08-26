@@ -63,6 +63,7 @@ cc_library(
     ) + select({
         "//tools/build:linux": glob(["linux/*.cpp"]),
         "//tools/build:darwin": glob(["osx/*.cpp"]),
+        "//tools/build:darwin_arm64": glob(["osx/*.cpp"]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
         # Android
         "//conditions:default": glob([
@@ -78,6 +79,10 @@ cc_library(
         "//tools/build:linux": [
         ],
         "//tools/build:darwin": [
+            "-framework Cocoa",
+            "-framework OpenGL",
+        ],
+        "//tools/build:darwin_arm64": [
             "-framework Cocoa",
             "-framework OpenGL",
         ],
@@ -102,6 +107,7 @@ cc_library(
         "//core/vulkan/vk_virtual_swapchain/cc:headers",
     ] + select({
         "//tools/build:darwin": [":darwin_renderer"],
+        "//tools/build:darwin_arm64": [":darwin_renderer"],
         "//conditions:default": [],
     }),
 )

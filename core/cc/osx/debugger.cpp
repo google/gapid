@@ -52,6 +52,7 @@ static bool AmIBeingDebugged(void)
   size = sizeof(info);
   junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
   assert(junk == 0);
+  (void)junk;
 
   // We're being debugged if the P_TRACED flag is set.
 

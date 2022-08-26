@@ -88,6 +88,8 @@ func run() error {
 			break
 		case "darwin":
 			*bazelOutDirectory = "darwin-fastbuild"
+		case "darwin_arm64":
+			*bazelOutDirectory = "darwin_arm64-fastbuild"
 		default:
 		}
 

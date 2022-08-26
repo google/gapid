@@ -29,6 +29,7 @@ cc_library(
             "-lpthread",  # Needed to run on Swiftshader (Nov. 2019)
         ],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         "//tools/build:windows": [],
         # Android
         "//conditions:default": [
@@ -44,6 +45,7 @@ cc_library(
         "//tools/build:linux": [],
         "//tools/build:windows": [],
         "//tools/build:darwin": [],
+        "//tools/build:darwin_arm64": [],
         # Android
         "//conditions:default": [
             "@android_native_app_glue//:native_app_glue",

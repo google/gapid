@@ -60,6 +60,10 @@ java_library(
             "{{org_lwjgl_core_natives_macos}}",
             "{{org_lwjgl_opengl_natives_macos}}",
         ],
+        "@gapid//tools/build:darwin_arm64": [
+            "{{org_lwjgl_core_natives_macos}}",
+            "{{org_lwjgl_opengl_natives_macos}}",
+        ],
     }),
 )
 
