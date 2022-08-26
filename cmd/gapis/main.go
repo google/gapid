@@ -97,6 +97,16 @@ func run(ctx context.Context) error {
 		adb.ADB = file.Abs(*adbPath)
 	}
 
+	// Check if FFX SDK path is set, which is necessary to scan Fuchsia devices
+	if *scanFuchsiaDevs {
+		_, ffxFound := os.LookupEnv("FUCHSIA_FFX_PATH")
+		if !ffxFound {
+			// Disable Fuchsia device scanning when there is no SDK, to avoid runtime errors
+			log.W(ctx, "FUCHSIA_FFX_PATH is not set, disabling Fuchsia device monitoring.")
+			*scanFuchsiaDevs = false
+		}
+	}
+
 	r := bind.NewRegistry()
 	ctx = bind.PutRegistry(ctx, r)
 	m := replay.New(ctx)

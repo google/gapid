@@ -87,7 +87,7 @@ func Monitor(ctx context.Context, r *bind.Registry, interval time.Duration) erro
 		err := scanDevices(ctx)
 		if err != nil {
 			if time.Since(lastErrorPrinted).Seconds() > printScanErrorsEveryNSeconds {
-				log.E(ctx, "Couldn't scan devices: %v", err)
+				log.E(ctx, "Couldn't scan Fuchsia devices: %v", err)
 				lastErrorPrinted = time.Now()
 			}
 		} else {
