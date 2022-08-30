@@ -79,6 +79,12 @@ Do the following to contribute to the AGI project:
     ```
     bazel test tests
     ```
+    To skip test that requires a GPU, run:
+    
+    ```
+    bazel test tests --test_tag_filters=needs_gpu
+    ```
+    
 1.  Push to your GitHub repo:
     ```
     git push
