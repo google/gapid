@@ -9,9 +9,9 @@ def _basic_vulkan_generator_impl(ctx):
         inputs = [ctx.file._xml],
         outputs = outs,
         arguments = [
+            ctx.file._xml.path,
             ctx.attr.target,
             outs[0].dirname,
-            ctx.file._xml.path,
         ],
         mnemonic = ("".join(["BasicVulkanGenerator", ctx.attr.target])).replace("_", ""),
         executable = ctx.executable._generator,

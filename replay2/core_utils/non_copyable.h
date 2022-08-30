@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef REPLAY2_CORE_UTILS_NON_COPYABLE_H
+#define REPLAY2_CORE_UTILS_NON_COPYABLE_H
+
 namespace agi {
 namespace replay2 {
 
@@ -24,3 +27,5 @@ class NonCopyable {
 
 }  // namespace replay2
 }  // namespace agi
+
+#endif

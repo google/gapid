@@ -23,7 +23,7 @@ cc_library(
 )
 
 cc_test(
-    name = "memory_remapper_test",
+    name = "memory_remapper_tests",
     srcs = glob(["tests/*.cc"]),
     deps = [
         "memory_remapper",

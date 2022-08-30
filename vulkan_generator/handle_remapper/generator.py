@@ -193,7 +193,7 @@ def generate_handle_remapper_h(file_path: Path, vulkan_metadata: types.VulkanInf
                                                                         arguments={"captureHandle": "VulkanHandle"}))
             public_functions.append("")
 
-        remapper_class_def = codegen.create_class_definition("VulkanHandleRemapper",
+        remapper_class_def = codegen.create_class_definition("HandleRemapper",
                                                              public_inheritance=["NonCopyable"],
                                                              public_functions=public_functions,
                                                              public_members=public_members,
@@ -230,18 +230,18 @@ def generate_handle_remapper_cpp(file_path: Path, vulkan_metadata: types.VulkanI
             implgenerator = dispatchable_implgen if dispatchable else nondispatchable_implgen
 
             add_definition = codegen.create_function_definition(
-                f"""VulkanHandleRemapper::{handle_add_name(handle)}""",
+                f"""HandleRemapper::{handle_add_name(handle)}""",
                 arguments={"captureHandle": "VulkanHandle",
                            "replayHandle": "VulkanHandle"},
                 code=implgenerator.handle_add_code(handle))
 
             remove_definition = codegen.create_function_definition(
-                f"""VulkanHandleRemapper::{handle_remove_name(handle)}""",
+                f"""HandleRemapper::{handle_remove_name(handle)}""",
                 arguments={"captureHandle": "VulkanHandle"},
                 code=implgenerator.handle_remove_code(handle))
 
             remap_definition = codegen.create_function_definition(
-                f"""VulkanHandleRemapper::{handle_remap_name(handle)}""",
+                f"""HandleRemapper::{handle_remap_name(handle)}""",
                 arguments={"captureHandle": "VulkanHandle"},
                 return_type="VulkanHandle",
                 code=implgenerator.handle_remap_code(handle))
@@ -275,51 +275,51 @@ def generate_handle_remapper_tests(file_path: Path, vulkan_metadata: types.Vulka
 
         for handle in vulkan_metadata.types.handles:
             tests_cpp.write(dedent(f"""
-            TEST(VulkanHandleRemapper, {handle}BasicRemap) {{
-                VulkanHandleRemapper mapper;
-                EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), VulkanHandleRemapper::RemapNonExistantHandleException);
+            TEST(HandleRemapper, {handle}BasicRemap) {{
+                HandleRemapper mapper;
+                EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), HandleRemapper::RemapNonExistantHandleException);
                 EXPECT_NO_THROW(mapper.{handle_add_name(handle)}(1234, 5678));
                 EXPECT_NO_THROW(EXPECT_EQ(mapper.{handle_remap_name(handle)}(1234), 5678));
                 EXPECT_NO_THROW(mapper.{handle_remove_name(handle)}(1234));
-                EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), VulkanHandleRemapper::RemapNonExistantHandleException);
+                EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), HandleRemapper::RemapNonExistantHandleException);
             }}"""))
 
             tests_cpp.write(dedent(f"""
-            TEST(VulkanHandleRemapper, {handle}UnknownRemap) {{
-                VulkanHandleRemapper mapper;
+            TEST(HandleRemapper, {handle}UnknownRemap) {{
+                HandleRemapper mapper;
                 EXPECT_NO_THROW(mapper.{handle_add_name(handle)}(1234, 5678));
-                EXPECT_THROW(mapper.{handle_remap_name(handle)}(5678), VulkanHandleRemapper::RemapNonExistantHandleException);
+                EXPECT_THROW(mapper.{handle_remap_name(handle)}(5678), HandleRemapper::RemapNonExistantHandleException);
             }}"""))
 
             if vulkan_metadata.types.handles[handle].dispatchable:
                 tests_cpp.write(dedent(f"""
-                TEST(VulkanHandleRemapper, Dispatchable{handle}Redefinition) {{
-                    VulkanHandleRemapper mapper;
+                TEST(HandleRemapper, Dispatchable{handle}Redefinition) {{
+                    HandleRemapper mapper;
                     EXPECT_NO_THROW(mapper.{handle_add_name(handle)}(1234, 5678));
-                    EXPECT_THROW(mapper.{handle_add_name(handle)}(1234, 5678), VulkanHandleRemapper::HandleCollisionException);
-                    EXPECT_THROW(mapper.{handle_add_name(handle)}(1234, 8765), VulkanHandleRemapper::HandleCollisionException);
+                    EXPECT_THROW(mapper.{handle_add_name(handle)}(1234, 5678), HandleRemapper::HandleCollisionException);
+                    EXPECT_THROW(mapper.{handle_add_name(handle)}(1234, 8765), HandleRemapper::HandleCollisionException);
                     EXPECT_NO_THROW(EXPECT_EQ(mapper.{handle_remap_name(handle)}(1234), 5678));
                     EXPECT_NO_THROW(mapper.{handle_remove_name(handle)}(1234));
-                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), VulkanHandleRemapper::RemapNonExistantHandleException);
-                    EXPECT_THROW(mapper.{handle_remove_name(handle)}(1234), VulkanHandleRemapper::RemoveNonExistantHandleException);
-                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), VulkanHandleRemapper::RemapNonExistantHandleException);
-                    EXPECT_THROW(mapper.{handle_remove_name(handle)}(1234), VulkanHandleRemapper::RemoveNonExistantHandleException);
-                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), VulkanHandleRemapper::RemapNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), HandleRemapper::RemapNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remove_name(handle)}(1234), HandleRemapper::RemoveNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), HandleRemapper::RemapNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remove_name(handle)}(1234), HandleRemapper::RemoveNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), HandleRemapper::RemapNonExistantHandleException);
                 }}"""))
             else:
                 tests_cpp.write(dedent(f"""
-                TEST(VulkanHandleRemapper, NonDispatchable{handle}Redefinition) {{
-                    VulkanHandleRemapper mapper;
+                TEST(HandleRemapper, NonDispatchable{handle}Redefinition) {{
+                    HandleRemapper mapper;
                     EXPECT_NO_THROW(mapper.{handle_add_name(handle)}(1234, 5678));
                     EXPECT_NO_THROW(mapper.{handle_add_name(handle)}(1234, 5678));
-                    EXPECT_THROW(mapper.{handle_add_name(handle)}(1234, 8765), VulkanHandleRemapper::NonDispatchableHandleRedefinitionException);
+                    EXPECT_THROW(mapper.{handle_add_name(handle)}(1234, 8765), HandleRemapper::NonDispatchableHandleRedefinitionException);
                     EXPECT_NO_THROW(EXPECT_EQ(mapper.{handle_remap_name(handle)}(1234), 5678));
                     EXPECT_NO_THROW(mapper.{handle_remove_name(handle)}(1234));
                     EXPECT_NO_THROW(EXPECT_EQ(mapper.{handle_remap_name(handle)}(1234), 5678));
                     EXPECT_NO_THROW(mapper.{handle_remove_name(handle)}(1234));
-                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), VulkanHandleRemapper::RemapNonExistantHandleException);
-                    EXPECT_THROW(mapper.{handle_remove_name(handle)}(1234), VulkanHandleRemapper::RemoveNonExistantHandleException);
-                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), VulkanHandleRemapper::RemapNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), HandleRemapper::RemapNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remove_name(handle)}(1234), HandleRemapper::RemoveNonExistantHandleException);
+                    EXPECT_THROW(mapper.{handle_remap_name(handle)}(1234), HandleRemapper::RemapNonExistantHandleException);
                 }}"""))
 
         tests_cpp.write(dedent("""
