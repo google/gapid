@@ -237,7 +237,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		StartFrame:                    uint32(verb.Start.At.Frame),
 		FramesToCapture:               uint32(verb.Capture.Frames),
 		DeferStart:                    verb.Start.Defer,
-		IgnoreFrameBoundaryDelimiters: verb.IgnoreAndroidFrameBoundary,
+		IgnoreFrameBoundaryDelimiters: !verb.UseAndroidFrameBoundary,
 		NoBuffer:                      verb.No.Buffer,
 		HideUnknownExtensions:         verb.Disable.Unknown.Extensions,
 		RecordTraceTimes:              verb.Record.TraceTimes,
