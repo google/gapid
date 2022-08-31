@@ -65,12 +65,17 @@ Do the following to contribute to the AGI project:
     git checkout -b <my-branch>
     ```
 1.  Make changes, commit the changes, and squash them into a single commit.
-1.  Use the presubmit script to check code formatting and other things:
+1.  Make sure you've setup your environment correctly before running the presubmit tests:
     ```
     # Install clang-format 6.0
     sudo apt-get install -y clang-format-6.0
     export CLANG_FORMAT=clang-format-6.0
-    # Run the script
+
+    # Provide path for the autopep8 binary (or you can add its location to your PATH)
+    export AUTOPEP8=~/.local/bin/autopep8
+    ```
+1.  Run the presubmit script to check code formatting and other things:
+    ```
     ./kokoro/presubmit/presubmit.sh
     ```
 1.  Fix potential issues, commit the fix, squash into a single commit again.
@@ -79,10 +84,10 @@ Do the following to contribute to the AGI project:
     ```
     bazel test tests
     ```
-    To skip test that requires a GPU, run:
+    To skip the tests that require a GPU/device connected, run:
     
     ```
-    bazel test tests --test_tag_filters=needs_gpu
+    bazel test tests --test_tag_filters=-needs_gpu
     ```
     
 1.  Push to your GitHub repo:
