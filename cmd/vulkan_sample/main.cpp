@@ -764,6 +764,10 @@ int main(int argc, const char** argv) {
   }
 
   LOAD_INSTANCE_FUNCTION(vkGetDeviceProcAddr, instance)
+
+  // This is part of VK_EXT_debug_utils
+  // which is actually an instance extension
+  LOAD_INSTANCE_FUNCTION(vkSetDebugUtilsObjectNameEXT, instance);
 #undef LOAD_INSTANCE_FUNCTION
 
 #define LOAD_DEVICE_FUNCTION(name) \
@@ -862,7 +866,6 @@ int main(int argc, const char** argv) {
   LOAD_DEVICE_FUNCTION(vkCreateFramebuffer);
   LOAD_DEVICE_FUNCTION(vkAcquireNextImageKHR);
   LOAD_DEVICE_FUNCTION(vkQueuePresentKHR);
-  LOAD_DEVICE_FUNCTION(vkSetDebugUtilsObjectNameEXT);
 #undef LOAD_DEVICE_FUNCTION
 
 #define SET_DEBUG_LABEL(handle, type, label)                  \
