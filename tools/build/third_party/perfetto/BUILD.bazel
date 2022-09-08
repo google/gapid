@@ -48,6 +48,7 @@ go_proto_library(
         "@perfetto//:protos_perfetto_config_protos",
         "@perfetto//:protos_perfetto_config_statsd_protos",
         "@perfetto//:protos_perfetto_config_sys_stats_protos",
+        "@perfetto//:protos_perfetto_config_system_info_protos",
         "@perfetto//:protos_perfetto_config_track_event_protos",
     ],
     visibility = ["//visibility:public"],
