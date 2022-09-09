@@ -336,7 +336,7 @@ public class TracerDialog {
       private final Spinner duration;
       private final Label durationUnit;
       private final Label startUnit;
-      private final Button ignoreAndroidFrameBoundary;
+      private final Button useAndroidFrameBoundaryExtension;
       private final Button withoutBuffering;
       private final Button includeUnsupportedExtensions;
       private final Button loadValidationLayer;
@@ -490,8 +490,9 @@ public class TracerDialog {
         duration.setVisible(DURATION_FRAMES_MAX > 1);
         durationUnit = createLabel(durGroup, DURATION_FRAMES_UNIT);
         durationUnit.setVisible(DURATION_FRAMES_MAX > 1);
-        ignoreAndroidFrameBoundary = createCheckbox(durGroup, "Ignore ANDROID_frame_boundary extension", true);
-        ignoreAndroidFrameBoundary.setEnabled(true);
+        useAndroidFrameBoundaryExtension = createCheckbox(durGroup, "Use ANDROID_frame_boundary extension", false,
+         "Enables using ANDROID_frame_boundary extension to define the frame boundaries. Otherwise, the present calls are used.");
+        useAndroidFrameBoundaryExtension.setEnabled(true);
 
         Group optGroup  = withLayoutData(
             createGroup(this, "Trace Options", new GridLayout(2, false)),
@@ -1031,7 +1032,7 @@ public class TracerDialog {
             .setUri(traceTarget.getText())
             .setAdditionalCommandLineArgs(arguments.getText())
             .setFramesToCapture(duration.getSelection())
-            .setIgnoreFrameBoundaryDelimiters(ignoreAndroidFrameBoundary.getSelection())
+            .setIgnoreFrameBoundaryDelimiters(!useAndroidFrameBoundaryExtension.getSelection())
             .setNoBuffer(withoutBuffering.getSelection())
             .setHideUnknownExtensions(!includeUnsupportedExtensions.getSelection())
             .setServerLocalSavePath(output.getAbsolutePath())

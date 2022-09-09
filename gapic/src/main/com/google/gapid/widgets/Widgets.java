@@ -380,6 +380,15 @@ public class Widgets {
     return button;
   }
 
+  public static Button createCheckbox(Composite parent, String label, boolean checked, String tooltipText) {
+    // Workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=561592 - set label first.
+    Button button = new Button(parent, SWT.CHECK);
+    button.setText(label);
+    button.setSelection(checked);
+    button.setToolTipText(tooltipText);
+    return button;
+  }
+
   public static Button createCheckbox(
       Composite parent, String label, boolean checked, Listener listener) {
     // Workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=561592 - set label first.
