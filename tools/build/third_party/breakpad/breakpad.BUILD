@@ -214,7 +214,7 @@ DUMP_SYMS_MACOS = DUMP_SYMS_POSIX + [
 ]
 
 DUMP_SYMS_WINDOWS = [
-    "src/tools/windows/dump_syms/dump_syms_pe.cc",
+    "src/tools/windows/dump_syms/dump_syms.cc",
     "src/common/module.cc",
     "src/common/path_helper.cc",
     "src/common/dwarf/bytereader.cc",
