@@ -168,10 +168,7 @@ void handleWindow(uint32_t width, uint32_t height) {
   }
 }
 
-static const int32_t stream_index = 0;
-
 void* createXcbWindow(uint32_t width, uint32_t height) {
-  (void)stream_index;
   window_thread = std::thread(handleWindow, width, height);
   window_create_flag.Wait();
   return window_info.window ? (void*)&window_info : nullptr;
