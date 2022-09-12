@@ -90,6 +90,7 @@ public class ThreadState {
       case "K":
         return WAKE_KILL;
       case "r":
+      case "Running":
         return RUNNING;
       case "R":
       case "R+":

@@ -176,8 +176,8 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           }
         }
 
-        if (data.isSched[i] && selectedCpu.contains(data.ids[i])
-            || !data.isSched[i] && selectedThreadState.contains(data.ids[i])) {
+        if (data.schedIds[i] != 0 && selectedCpu.contains(data.schedIds[i])
+            || selectedThreadState.contains(data.ids[i])) {
           visibleSelected.add(
               new Highlight(data.schedStates[i].color.get().border, rectStart, 0, rectWidth));
         }
@@ -307,21 +307,21 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
             public boolean click() {
               if ((mods & SWT.MOD1) == SWT.MOD1) {
                 state.addSelection(Selection.Kind.ThreadState,
-                    new ThreadTrack.StateSlices(data.schedStarts[index],
-                        data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                        data.isSched[index], data.schedStates[index], data.ids[index]));
+                    new ThreadTrack.StateSlices(data.ids[index], data.schedIds[index],
+                        data.schedStarts[index], data.schedEnds[index] - data.schedStarts[index],
+                        track.getThread().utid, data.schedStates[index]));
               } else {
                 state.setSelection(Selection.Kind.ThreadState,
-                    new ThreadTrack.StateSlices(data.schedStarts[index],
-                        data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                        data.isSched[index], data.schedStates[index], data.ids[index]));
+                    new ThreadTrack.StateSlices(data.ids[index], data.schedIds[index],
+                        data.schedStarts[index], data.schedEnds[index] - data.schedStarts[index],
+                        track.getThread().utid, data.schedStates[index]));
               }
-              if (data.isSched[index]) {
+              if (data.schedIds[index] != 0) {
                 if ((mods & SWT.MOD1) == SWT.MOD1) {
-                  state.addSelection(Selection.Kind.Cpu, track.getCpuSlice(data.ids[index]));
+                  state.addSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
                   state.addSelectedThread(state.getThreadInfo(track.getThread().utid));
                 } else {
-                  state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.ids[index]));
+                  state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
                   state.setSelectedThread(state.getThreadInfo(track.getThread().utid));
                 }
               }

@@ -16,7 +16,6 @@
 package com.google.gapid.perfetto.models;
 
 import static com.google.gapid.perfetto.models.QueryEngine.createSpan;
-import static com.google.gapid.perfetto.models.QueryEngine.createSpanLeftJoin;
 import static com.google.gapid.perfetto.models.QueryEngine.createView;
 import static com.google.gapid.perfetto.models.QueryEngine.createWindow;
 import static com.google.gapid.perfetto.models.QueryEngine.dropTable;
@@ -47,34 +46,15 @@ import java.util.function.Consumer;
  * {@link Track} containing thread state and slices of a thread.
  */
 public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
-  private static final String SCHED_VIEW =
-      "select ts, dur, end_state, id from sched where utid = %d";
-  private static final String INSTANT_VIEW =
-      "with" +
-      "  events as (select ts from instants where name = 'sched_wakeup' and ref = %d)," +
-      "  wakeup as (select " +
-      "    min(" +
-      "      coalesce((select min(ts) from events), (select end_ts from trace_bounds))," +
-      "      (select min(ts) from %s)" +
-      "    ) ts union select ts from events)" +
-      "select ts, lead(ts, 1, (select end_ts from trace_bounds)) over (order by ts) - ts dur " +
-      "from wakeup";
-  private static final String STATE_SPAN_VIEW =
-      "select ts, dur, case when end_state is null then false else true end is_sched, case " +
-      "  when end_state is not null then 'r'" +
-      "  when lag(end_state) over ts_win is not null then lag(end_state) over ts_win" +
-      "  else 'R'" +
-      "end as state, case " +
-      "  when id is not null then id " +                       // Sched id, for slices of 'Running'.
-      "  else rank() over ts_win + (select max(id) from %s)" + // Assigned unique id, for other state slices like 'Waking', 'Runnable', etc.
-      "end as id " +
-      "from %s window ts_win as (order by ts)";
+  private static final String THREAD_STATE_VIEW =
+      "select st.ts ts, st.dur dur, st.state state, st.id id, s.id sched_id " +
+      "from thread_state st left join sched s on (s.cpu = st.cpu and s.ts = st.ts) " +
+      "where st.utid = %d";
 
-  private static final String SCHED_SQL =
-      "select ts, dur, is_sched, state, id from %s where state != 'S' and state != 'x'";
-  private static final String SCHED_RANGE_SQL =
-      "select ts, dur, is_sched, state, id from %s where ts < %d and ts + dur >= %d";
-
+  private static final String THREAD_STATE_SQL =
+      "select ts, dur, state, id, sched_id from %s where state != 'S' and state != 'x'";
+  private static final String THREAD_STATE_RANGE_SQL =
+      "select ts, dur, state, id, sched_id from %s where ts < %d and ts + dur >= %d";
 
   private final ThreadInfo thread;
   private final SliceFetcher sliceTrack;
@@ -91,25 +71,16 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
 
   @Override
   protected ListenableFuture<?> initialize() {
-    String wakeup = tableName("wakeup");
-    String sched = tableName("sched");
-    String spanJoin = tableName("span_join");
-    String spanView = tableName("span_view");
+    String state = tableName("state");
     String span = tableName("span");
     String window = tableName("window");
     return transformAsync(sliceTrack.initialize(), $ -> qe.queries(
         dropTable(span),
-        dropView(spanView),
-        dropTable(spanJoin),
-        dropView(sched),
-        dropView(wakeup),
+        dropView(state),
         dropTable(window),
         createWindow(window),
-        createView(sched, format(SCHED_VIEW, thread.utid)),
-        createView(wakeup, format(INSTANT_VIEW, thread.utid, sched)),
-        createSpanLeftJoin(spanJoin, wakeup + ", " + sched),
-        createView(spanView, format(STATE_SPAN_VIEW, spanJoin, spanJoin)),
-        createSpan(span, window + ", " + spanView)));
+        createView(state, format(THREAD_STATE_VIEW, thread.utid)),
+        createSpan(span, window + ", " + state)));
   }
 
   @Override
@@ -117,28 +88,28 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     Window window = Window.compute(req);
     return transformAsync(sliceTrack.computeData(req), slices ->
         transformAsync(window.update(qe, tableName("window")), $ ->
-            computeSched(req, slices)));
+            computeState(req, slices)));
   }
 
-  private ListenableFuture<Data> computeSched(DataRequest req, SliceTrack.Data slices) {
-    return transform(qe.query(schedSql()), res -> {
+  private ListenableFuture<Data> computeState(DataRequest req, SliceTrack.Data slices) {
+    return transform(qe.query(stateSql()), res -> {
       int rows = res.getNumRows();
-      Data data = new Data(req, new boolean[rows], new long[rows], new long[rows], new long[rows],
+      Data data = new Data(req, new long[rows], new long[rows], new long[rows], new long[rows],
           new ThreadState[rows], slices);
       res.forEachRow((i, row) -> {
         long start = row.getLong(0);
         data.schedStarts[i] = start;
         data.schedEnds[i] = start + row.getLong(1);
-        data.isSched[i] = row.getInt(2) != 0;
-        data.schedStates[i] = ThreadState.of(row.getString(3));
-        data.ids[i] = row.getLong(4);
+        data.schedStates[i] = ThreadState.of(row.getString(2));
+        data.ids[i] = row.getLong(3);
+        data.schedIds[i] = row.getLong(4);
       });
       return data;
     });
   }
 
-  private String schedSql() {
-    return format(SCHED_SQL, tableName("span"));
+  private String stateSql() {
+    return format(THREAD_STATE_SQL, tableName("span"));
   }
 
   public ListenableFuture<Slices> getSlice(long id) {
@@ -166,24 +137,22 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
   }
 
   private String stateRangeSql(TimeSpan ts) {
-    return format(SCHED_RANGE_SQL, tableName("span_view"), ts.end, ts.start);
+    return format(THREAD_STATE_RANGE_SQL, tableName("state"), ts.end, ts.start);
   }
 
   public static class Data extends Track.Data {
-    // sched
-    public final boolean[] isSched;
-    public final long[] ids; // Sched id for sched slice, generated unique id for other state slice.
+    public final long[] ids;
+    public final long[] schedIds; // only set for Running states.
     public final long[] schedStarts;
     public final long[] schedEnds;
     public final ThreadState[] schedStates;
-    // slices
     public final SliceTrack.Data slices;
 
-    public Data(DataRequest request, boolean[] isSched, long[] ids, long[] schedStarts, long[] schedEnds,
-        ThreadState[] schedStates, SliceTrack.Data slices) {
+    public Data(DataRequest request, long[] ids, long[] schedIds, long[] schedStarts,
+        long[] schedEnds, ThreadState[] schedStates, SliceTrack.Data slices) {
       super(request);
-      this.isSched = isSched;
       this.ids = ids;
+      this.schedIds = schedIds;
       this.schedStarts = schedStarts;
       this.schedEnds = schedEnds;
       this.schedStates = schedStates;
@@ -192,36 +161,36 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
   }
 
   public static class StateSlices implements Selection<StateSlices> {
-    private int count = 0;
+    protected int count = 0;
     public final List<Long> ids = Lists.newArrayList();
+    public final List<Long> schedIds = Lists.newArrayList();
     public final List<Long> times = Lists.newArrayList();
     public final List<Long> durs = Lists.newArrayList();
     public final List<Long> utids = Lists.newArrayList();
-    public final List<Boolean> isScheds = Lists.newArrayList();
     public final List<ThreadState> states = Lists.newArrayList();
     public final Set<Long> sliceKeys = Sets.newHashSet();
 
-    public StateSlices(long time, long dur, long utid, boolean isSched, ThreadState state, long id) {
-      this.add(id, time, dur, utid, isSched, state);
+    public StateSlices(long id, long schedId, long time, long dur, long utid, ThreadState state) {
+      add(id, schedId, time, dur, utid, state);
     }
 
     public StateSlices(QueryEngine.Row row, long utid) {
-      this.add(row.getLong(4), row.getLong(0), row.getLong(1), utid, row.getInt(2) != 0,
-          ThreadState.of(row.getString(3)));
+      add(row.getLong(3), row.getLong(4), row.getLong(0), row.getLong(1), utid,
+          ThreadState.of(row.getString(2)));
     }
 
     public StateSlices(QueryEngine.Result result, long utid) {
-      result.forEachRow((i, row) -> this.add(row.getLong(4), row.getLong(0), row.getLong(1), utid, row.getInt(2) != 0,
-          ThreadState.of(row.getString(3))));
+      result.forEachRow((i, row) -> this.add(row.getLong(3), row.getLong(4), row.getLong(0),
+          row.getLong(1), utid, ThreadState.of(row.getString(2))));
     }
 
-    private void add(long id, long time, long dur, long utid, boolean isSched, ThreadState state) {
+    private void add(long id, long schedId, long time, long dur, long utid, ThreadState state) {
       this.count++;
       this.ids.add(id);
+      this.schedIds.add(schedId);
       this.times.add(time);
       this.durs.add(dur);
       this.utids.add(utid);
-      this.isScheds.add(isSched);
       this.states.add(state);
       this.sliceKeys.add(id);
     }
@@ -258,8 +227,8 @@ public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
     public StateSlices combine(StateSlices other) {
       for (int i = 0; i < other.count; i++) {
         if (!this.sliceKeys.contains(other.ids.get(i))) {
-          add(other.ids.get(i), other.times.get(i), other.durs.get(i), other.utids.get(i),
-              other.isScheds.get(i), other.states.get(i));
+          add(other.ids.get(i), other.schedIds.get(i), other.times.get(i), other.durs.get(i),
+              other.utids.get(i), other.states.get(i));
         }
       }
       return this;
