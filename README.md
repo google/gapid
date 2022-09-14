@@ -23,10 +23,14 @@ developers. See also the README files under some source directories.
 
 *Unstable* developer releases are [here](https://github.com/google/agi-dev-releases/releases).
 
-> Dependencies for Linux builds in zip archives: AGI depends on openjdk-11-jre,
-> libgtk-3-0, and libwebkit2gtk. These are marked as dependencies in the deb
-> package. If you install AGI via a zip archive, make sure to install these
-> dependencies as well.
+Dependencies for Linux builds in zip archives:
+- openjdk-11-jre 
+- libgtk-3-0
+- libwebkit2gtk
+
+These are marked as dependencies in the .deb package. 
+
+If you install AGI via a zip archive, make sure to install these dependencies as well.
 
 ## Building
 
