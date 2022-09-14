@@ -26,7 +26,6 @@ import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.models.QueryEngine.Row;
 import com.google.gapid.perfetto.views.BatterySelectionView;
 import com.google.gapid.perfetto.views.BatterySummaryPanel;
-import com.google.gapid.perfetto.views.CounterPanel;
 import com.google.gapid.perfetto.views.State;
 import com.google.gapid.perfetto.views.TitlePanel;
 
@@ -74,7 +73,6 @@ public class BatterySummaryTrack
       data.tracks.addTrack(batteryGroup, track.getId(), "Battery Usage",
           single(state -> new BatterySummaryPanel(state, track), true, false));
     }
-
     return data;
   }
 

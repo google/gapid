@@ -19,106 +19,125 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.perfetto.views.StyleConstants.mainGradient;
+import static com.google.gapid.util.MoreFutures.transform;
 
-import com.google.gapid.perfetto.Unit;
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
-import com.google.gapid.perfetto.models.PowerSummaryTrack;
+import com.google.gapid.perfetto.models.CounterInfo;
+import com.google.gapid.perfetto.models.EnergyBreakdownTrack;
 import com.google.gapid.perfetto.models.Selection;
+import java.util.List;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.widgets.Display;
 
-public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
+public class EnergyBreakdownPanel extends TrackPanel<EnergyBreakdownPanel> implements Selectable {
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
-  private static final double TRACK_HEIGHT = 80;
-  private static Unit unit;
 
-  protected final PowerSummaryTrack track;
+  protected final EnergyBreakdownTrack track;
+  protected final double trackHeight;
   protected HoverCard hovered = null;
+  private EnergyBreakdownTrack.Stats cachedStats;
 
-  public PowerSummaryPanel(State state, PowerSummaryTrack track) {
+  public EnergyBreakdownPanel(State state, EnergyBreakdownTrack track, double trackHeight) {
     super(state);
     this.track = track;
-    this.unit = track.unit;
-  }
-
-  private double calculateYCoordinate(double value) {
-    double range =
-        (track.minValue == track.maxValue && track.minValue == 0)
-            ? 1
-            : (track.maxValue - track.minValue);
-    return (TRACK_HEIGHT - 1) * (1 - (value - track.minValue) / range);
+    this.trackHeight = trackHeight;
+    this.cachedStats = new EnergyBreakdownTrack.Stats(track.getCounter());
   }
 
   @Override
-  public PowerSummaryPanel copy() {
-    return new PowerSummaryPanel(state, track);
+  public EnergyBreakdownPanel copy() {
+    return new EnergyBreakdownPanel(state, track, trackHeight);
   }
 
   @Override
   public String getTitle() {
-    return "Power Usage";
-  }
-
-  @Override
-  public String getSubTitle() {
-    return track.getNumPowerRailTracks() + " power rail tracks";
+    return track.getCounter().name;
   }
 
   @Override
   public String getTooltip() {
-    return "Total Power Usage";
+    CounterInfo counter = track.getCounter();
+    StringBuilder sb = new StringBuilder().append("\\b").append(counter.name);
+    if (!counter.description.isEmpty()) {
+      sb.append("\n").append(counter.description);
+    }
+    return sb.toString();
   }
 
   @Override
   public double getHeight() {
-    return TRACK_HEIGHT;
+    return trackHeight;
   }
 
   @Override
   protected void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace(
-        "PowerSummary",
+        "Energy Counter",
         () -> {
-          PowerSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
+          EnergyBreakdownTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
           drawLoading(ctx, data, state, h);
 
           if (data == null || data.ts.length == 0) {
             return;
           }
 
+          CounterInfo counter = track.getCounter();
+
+          double min = counter.range.min;
+          double range = counter.range.range();
+
           Selection<?> selected = state.getSelection(Selection.Kind.Counter);
+          List<Integer> visibleSelected = Lists.newArrayList();
           mainGradient().applyBaseAndBorder(ctx);
           ctx.path(
               path -> {
-                double lastX = state.timeToPx(data.ts[0]);
-                double lastY = h;
+                double lastX = state.timeToPx(data.ts[0]), lastY = h;
                 path.moveTo(lastX, lastY);
                 for (int i = 0; i < data.ts.length; i++) {
                   double nextX = state.timeToPx(data.ts[i]);
-                  double nextY = calculateYCoordinate(data.values[i]);
+                  double nextY = (trackHeight - 1) * (1 - (data.values[i] - min) / range);
                   path.lineTo(nextX, lastY);
                   path.lineTo(nextX, nextY);
                   lastX = nextX;
                   lastY = nextY;
+                  if (selected.contains(data.ids[i])) {
+                    visibleSelected.add(i);
+                  }
                 }
-
                 path.lineTo(lastX, h);
                 ctx.fillPath(path);
                 ctx.drawPath(path);
               });
 
+          // Draw highlight line after the whole graph is rendered, so that the highlight is on the
+          // top.
+          ctx.setBackgroundColor(mainGradient().highlight);
+          for (int index : visibleSelected) {
+            double startX = state.timeToPx(data.ts[index]);
+            double endX =
+                (index >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[index + 1]);
+            double y = (trackHeight - 1) * (1 - (data.values[index] - min) / range);
+            ctx.fillRect(startX, y - 1, endX - startX, 3);
+          }
+
           if (hovered != null) {
-            double y = calculateYCoordinate(hovered.value);
+            double y = (trackHeight - 1) * (1 - (hovered.value - min) / range);
             ctx.setBackgroundColor(mainGradient().highlight);
-            ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, TRACK_HEIGHT - y + 1);
+            ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, trackHeight - y + 1);
             ctx.setForegroundColor(colors().textMain);
             ctx.drawCircle(hovered.mouseX, y, CURSOR_SIZE / 2);
 
             ctx.setBackgroundColor(colors().hoverBackground);
-            double bgH = Math.max(hovered.size.h, TRACK_HEIGHT);
+            double bgH = Math.max(hovered.size.h, trackHeight);
             // The left x-axis coordinate of HoverCard.
             double hx = hovered.mouseX + CURSOR_SIZE / 2 + HOVER_MARGIN;
             if (hx >= w - (2 * HOVER_PADDING + hovered.size.w)) {
@@ -130,23 +149,12 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
                       - hovered.size.w;
             }
             ctx.fillRect(
-                hx, Math.min((TRACK_HEIGHT - bgH) / 2, 0), 2 * HOVER_PADDING + hovered.size.w, bgH);
+                hx, Math.min((trackHeight - bgH) / 2, 0), 2 * HOVER_PADDING + hovered.size.w, bgH);
             ctx.setForegroundColor(colors().textMain);
-            // The left x-axis coordinate of the left labels.
+            // The left x-axis coordinate of the  label.
             double x = hx + HOVER_PADDING;
-            y = (TRACK_HEIGHT - hovered.size.h) / 2;
-            // The difference between the x-axis coordinate of the left labels and the right labels.
-            double dx = hovered.leftWidth + HOVER_PADDING, dy = hovered.size.h / 2;
-            ctx.drawText(Fonts.Style.Normal, "Value:", x, y);
-            ctx.drawText(Fonts.Style.Normal, hovered.minLabel, x + dx, y);
-            ctx.drawText(Fonts.Style.Normal, hovered.maxLabel, x + dx, y + dy);
-
-            x = hx + HOVER_PADDING + hovered.leftWidth;
-            ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.valueLabel, x, y, dy);
-
-            x = hx + HOVER_PADDING + hovered.size.w;
-            ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.min, x, y, dy);
-            ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.max, x, y + dy, dy);
+            y = (trackHeight - hovered.size.h) / 2;
+            ctx.drawText(Fonts.Style.Normal, hovered.text, x, y);
           }
         });
   }
@@ -154,13 +162,13 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
   @Override
   protected Hover onTrackMouseMove(
       Fonts.TextMeasurer m, Repainter repainter, double x, double y, int mods) {
-    PowerSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
+    EnergyBreakdownTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
     }
 
     long time = state.pxToTime(x);
-    if (time < data.ts[0]) {
+    if (time < data.ts[0] || time > data.ts[data.ts.length - 1]) {
       return Hover.NONE;
     }
 
@@ -175,12 +183,10 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
       return Hover.NONE;
     }
 
+    long id = data.ids[idx];
     double startX = state.timeToPx(data.ts[idx]);
-    double endX =
-        (idx >= data.ts.length - 1)
-            ? startX
-            : state.timeToPx(data.ts[idx + 1]); // Moving endX to startX when
-    hovered = new HoverCard(m, track.minValue, track.maxValue, data.values[idx], startX, endX, x);
+    double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
+    hovered = new HoverCard(m, track.getCounter(), data.values[idx], startX, endX, x);
 
     return new Hover() {
       @Override
@@ -211,12 +217,12 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
 
         if (defaultX >= state.getWidth() - defaultW) {
 
-          // Re-calculate the left boundary of the redrawn area by comparing the start of the
+          // re-calculate the left boundary of the redrawn area by comparing the start end of the
           // sample with the left boundary of the default redrawn area when the hover card is drawn
           // on the left side of the hover point.
           redrawLx = Math.min(startX, hovered.mouseX + CURSOR_SIZE / 2 - defaultW);
 
-          // Re-calculate the right boundary of the redrawn area by comparing the end of the sample
+          // re-calculate the right boundary of the redrawn area by comparing the end of the sample
           // with the right boundary of the default redrawn area when the hover card is drawn on
           // the left side of the hover point.
           redrawRx = Math.max(hovered.mouseX + CURSOR_SIZE / 2, endX);
@@ -226,30 +232,61 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
           redrawW = redrawRx - redrawLx + CURSOR_SIZE / 2;
         }
 
-        return new Area(redrawLx, -TRACK_MARGIN, redrawW, TRACK_HEIGHT + 2 * TRACK_MARGIN);
+        return new Area(redrawLx, -TRACK_MARGIN, redrawW, trackHeight + 2 * TRACK_MARGIN);
       }
 
       @Override
       public void stop() {
         hovered = null;
       }
+
+      @Override
+      public Cursor getCursor(Display display) {
+        return display.getSystemCursor(SWT.CURSOR_HAND);
+      }
+
+      @Override
+      public boolean click() {
+        if ((mods & SWT.MOD1) == SWT.MOD1) {
+          state.addSelection(
+              Selection.Kind.Counter,
+              transform(
+                  track.getValue(id, track.getCounter().id),
+                  d -> new EnergyBreakdownTrack.Values(track.getCounter().name, d)));
+        } else {
+          state.setSelection(
+              Selection.Kind.Counter,
+              transform(
+                  track.getValue(id, track.getCounter().id),
+                  d -> new EnergyBreakdownTrack.Values(track.getCounter().name, d)));
+        }
+        return true;
+      }
     };
+  }
+
+  @Override
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
+    builder.add(Selection.Kind.Counter, computeSelection(ts));
+  }
+
+  private ListenableFuture<EnergyBreakdownTrack.Values> computeSelection(TimeSpan ts) {
+    return transform(
+        track.getValues(ts),
+        data -> new EnergyBreakdownTrack.Values(track.getCounter().name, data));
   }
 
   private static class HoverCard {
     public final double value;
     public final double startX, endX;
     public final double mouseX;
-    public final String valueLabel;
-    public final String min, max;
-    public final String minLabel, maxLabel;
-    public final double leftWidth;
+    public final double width;
     public final Size size;
+    public final String text;
 
     public HoverCard(
         Fonts.TextMeasurer tm,
-        Double minValue,
-        Double maxValue,
+        CounterInfo counter,
         double value,
         double startX,
         double endX,
@@ -258,28 +295,10 @@ public class PowerSummaryPanel extends TrackPanel<PowerSummaryPanel> {
       this.startX = startX;
       this.endX = endX;
       this.mouseX = mouseX;
-      this.valueLabel = unit.format(value);
-      this.min = unit.format(minValue);
-      this.max = unit.format(maxValue);
-
-      this.minLabel = "Trace Min:";
-      this.maxLabel = "Trace Max:";
-
-      Size valueSize = tm.measure(Fonts.Style.Normal, valueLabel);
-      Size minSize = tm.measure(Fonts.Style.Normal, min);
-      Size maxSize = tm.measure(Fonts.Style.Normal, max);
-
-      double leftLabel = tm.measure(Fonts.Style.Normal, "Value:").w;
-      double rightLabel =
-          Math.max(
-                  tm.measure(Fonts.Style.Normal, minLabel).w,
-                  tm.measure(Fonts.Style.Normal, maxLabel).w)
-              + HOVER_PADDING;
-      this.leftWidth = leftLabel + valueSize.w;
-      this.size =
-          new Size(
-              leftWidth + HOVER_PADDING + rightLabel + Math.max(minSize.w, maxSize.w),
-              Math.max(valueSize.h, minSize.h + maxSize.h) + HOVER_PADDING);
+      text = counter.unit.format(value) + " uws";
+      Size valueSize = tm.measure(Fonts.Style.Normal, text);
+      this.width = valueSize.w;
+      this.size = new Size(width + HOVER_PADDING, valueSize.h + HOVER_PADDING);
     }
   }
 }

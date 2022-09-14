@@ -34,7 +34,9 @@ import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.Unit;
 import com.google.gapid.perfetto.models.TrackConfig.Group;
 import com.google.gapid.perfetto.views.CounterPanel;
+import com.google.gapid.perfetto.views.EnergyBreakdownPanel;
 import com.google.gapid.perfetto.views.PowerSummaryPanel;
+import com.google.gapid.perfetto.views.TitlePanel;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -95,6 +97,27 @@ public class PowerSummaryTrack extends Track.WithQueryEngine<PowerSummaryTrack.D
     powerSummaryTrack.minValue = Math.min(0, powerSummaryTrack.minValue);
     Group.UiFactory ui = group(state -> new PowerSummaryPanel(state, powerSummaryTrack), false);
     data.tracks.addLabelGroup(null, powerSummaryTrack.getId(), "Power Usage", ui);
+
+    // Energy Breakdown
+    List<CounterInfo> energyTracks =
+        data.getCounters(CounterInfo.Type.Energy).entries().stream()
+            .map(Map.Entry::getValue)
+            .collect(Collectors.toList());
+
+    String energyBreakdownGroup = "energy_breakdown_group";
+    data.tracks.addLabelGroup(
+        null,
+        energyBreakdownGroup,
+        "Energy Breakdown",
+        group(state -> new TitlePanel("Energy Breakdown"), true));
+    for (CounterInfo energy : energyTracks) {
+      EnergyBreakdownTrack energyTrack = new EnergyBreakdownTrack(data.qe, energy);
+      data.tracks.addTrack(
+          energyBreakdownGroup,
+          energyTrack.getId(),
+          energy.name,
+          single(state -> new EnergyBreakdownPanel(state, energyTrack, 50), true, true));
+    }
     return data;
   }
 

@@ -256,7 +256,7 @@ public class CounterInfo {
   }
 
   public static enum Type {
-    Global, Cpu, Gpu, Process, Thread;
+    Global, Cpu, Gpu, Process, Thread, Energy, Uid;
 
     public static Type of(String string) {
       switch (string) {
@@ -264,6 +264,8 @@ public class CounterInfo {
         case "gpu_counter_track": return Gpu;
         case "process_counter_track": return Process;
         case "thread_counter_track": return Thread;
+        case "energy_counter_track": return Energy;
+        case "uid_counter_track": return Uid;
         default:
           return Global; // Treat unknowns as global counters.
       }
@@ -299,7 +301,7 @@ public class CounterInfo {
       // TODO: this should be part of the counter definition in the backend.
       if ("gpu_counter_track".equals(row.getString(1)) && (!"gpufreq".equals(row.getString(3)))) {
         return Delta;
-      } else if (row.getString(3).startsWith("power.rails")) {
+      } else if ((row.getString(3).startsWith("power.rails")) || ("energy_counter_track".equals(row.getString(1)))) {
         return Monotonic;
       } else {
         return Event;
