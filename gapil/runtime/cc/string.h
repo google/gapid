@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include <functional>
+#include <initializer_list>
 
 namespace core {
 class Arena;
