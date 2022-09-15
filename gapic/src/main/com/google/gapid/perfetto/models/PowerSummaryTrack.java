@@ -104,20 +104,23 @@ public class PowerSummaryTrack extends Track.WithQueryEngine<PowerSummaryTrack.D
             .map(Map.Entry::getValue)
             .collect(Collectors.toList());
 
-    String energyBreakdownGroup = "energy_breakdown_group";
-    data.tracks.addLabelGroup(
-        null,
-        energyBreakdownGroup,
-        "Energy Breakdown",
-        group(state -> new TitlePanel("Energy Breakdown"), true));
-    for (CounterInfo energy : energyTracks) {
-      EnergyBreakdownTrack energyTrack = new EnergyBreakdownTrack(data.qe, energy);
-      data.tracks.addTrack(
+    if(energyTracks.size() > 0) { //TODO: handle in a better way
+      String energyBreakdownGroup = "energy_breakdown_group";
+      data.tracks.addLabelGroup(
+          null,
           energyBreakdownGroup,
-          energyTrack.getId(),
-          energy.name,
-          single(state -> new EnergyBreakdownPanel(state, energyTrack, 50), true, true));
+          "Energy Breakdown",
+          group(state -> new TitlePanel("Energy Breakdown"), true));
+      for (CounterInfo energy : energyTracks) {
+        EnergyBreakdownTrack energyTrack = new EnergyBreakdownTrack(data.qe, energy);
+        data.tracks.addTrack(
+            energyBreakdownGroup,
+            energyTrack.getId(),
+            energy.name,
+            single(state -> new EnergyBreakdownPanel(state, energyTrack, 50), true, true));
+      }
     }
+    
     return data;
   }
 
