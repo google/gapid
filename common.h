@@ -15,7 +15,13 @@
  */
 
 #pragma once
+#include <array>
 #include <cassert>
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 #define GAPID2_ERROR(x) assert(0 == x)
 #define GAPID2_ASSERT(x, y) \
@@ -32,3 +38,28 @@ struct block {
   char* data = 0;
   size_t left = 0;
 };
+
+inline int run_system(const char* cmd, std::string& out) {
+  std::array<char, 128> buffer;
+  FILE* pipe = _popen(cmd, "r");
+  if (!pipe) {
+    throw std::runtime_error("popen() failed!");
+  }
+  while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+    out += buffer.data();
+  }
+
+  return _pclose(pipe);
+}
+
+enum class message_type {
+  debug = 0,
+  info = 1,
+  error = 2,
+  critical = 3,
+  object = 4
+};
+
+void output_message(message_type type, const std::string& str, uint32_t layer_index = static_cast<uint32_t>(-1));
+void send_layer_data(const char* str, size_t length, uint64_t layer_index);
+void send_layer_log(message_type type, const char* str, size_t length, uint64_t layer_index);

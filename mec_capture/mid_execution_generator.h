@@ -65,10 +65,10 @@ class mid_execution_generator {
     capture_descriptor_set_contents(state_block, mid_execution_serializer, bypass_caller);
 
     capture_query_pools(state_block, mid_execution_serializer, bypass_caller);
-    capture_command_pools(state_block, mid_execution_serializer, bypass_caller);
+    capture_synchronization(state_block, mid_execution_serializer, bypass_caller);
+    capture_command_pools(state_block, mid_execution_serializer, bypass_caller);    
     capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_SECONDARY, cbr);
     capture_command_buffers(state_block, mid_execution_serializer, bypass_caller, VK_COMMAND_BUFFER_LEVEL_PRIMARY, cbr);
-    capture_synchronization(state_block, mid_execution_serializer, bypass_caller);
 
     mid_execution_serializer->insert_annotation("Mec Finished");
   }

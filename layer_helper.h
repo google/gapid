@@ -19,4 +19,14 @@ inline std::vector<std::string> get_layers() {
   }
   return ret;
 }
+
+inline std::string get_user_config() {
+  std::vector<std::string> ret;
+  char* e = getenv("GAPID2_USER_CONFIG");
+  if (!e) {
+    return "";
+  }
+  return std::string(e);
 }
+
+}  // namespace gapid2

@@ -14,6 +14,7 @@ def main(args):
     with open(os.path.join(args.output_location, "transform_base.h"), mode="w") as transform_base:
         g = generator.generator(transform_base)
         g.print(standard.HEADER)
+        g.print("#include \"data_provider.h\"")
         g.print('namespace gapid2 {')
         g.print(f'class state_block;')
         g.enter_scope('class transform_base {')
@@ -28,6 +29,11 @@ def main(args):
             g.print(f'transform_base* {cmd.name}_next = nullptr;')
         g.line()
         g.print(f'state_block* state_block_ = nullptr;')
+        g.enter_scope("uint64_t get_current_command_index() const {")
+        g.print(
+            "return data_provider_? data_provider_->get_current_command_index(): 0;")
+        g.leave_scope("}")
+        g.print(f'const transform_data_provider* data_provider_ = nullptr;')
         g.leave_scope('};')
         g.print('}  // namespace gapid2')
 

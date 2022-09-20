@@ -31,6 +31,7 @@ struct VkRenderPassWrapper : handle_base<VkRenderPass> {
   void set_create_info(VkDevice device_, state_block* state_block_,
                        const VkRenderPassCreateInfo* pCreateInfo);
   void set_create_info2(VkDevice device_, state_block* state_block_, const VkRenderPassCreateInfo2* pCreateInfo);
+  void set_create_info2_khr(VkDevice device_, state_block* state_block_, const VkRenderPassCreateInfo2* pCreateInfo);
 
   const VkRenderPassCreateInfo* get_create_info() const {
     return create_info;
@@ -40,9 +41,14 @@ struct VkRenderPassWrapper : handle_base<VkRenderPass> {
     return create_info2;
   }
 
+  const VkRenderPassCreateInfo2* get_create_info2_khr() const {
+    return create_info2_khr;
+  }
+
   VkDevice device = VK_NULL_HANDLE;
   VkRenderPassCreateInfo* create_info = nullptr;
   VkRenderPassCreateInfo2* create_info2 = nullptr;
+  VkRenderPassCreateInfo2* create_info2_khr = nullptr;
   temporary_allocator mem;
 };
 }  // namespace gapid2

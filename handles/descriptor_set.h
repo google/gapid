@@ -27,12 +27,12 @@
 
 namespace gapid2 {
 class state_block;
-class VkDescriptorSetLayoutWrapper;
+struct VkDescriptorSetLayoutWrapper;
 struct VkDescriptorSetWrapper : handle_base<VkDescriptorSet> {
   VkDescriptorSetWrapper(VkDescriptorSet descriptor_set)
       : handle_base<VkDescriptorSet>(descriptor_set) {}
   ~VkDescriptorSetWrapper() {}
-  void set_layout(VkDescriptorSetLayoutWrapper* layout);
+  void set_layout(std::shared_ptr<VkDescriptorSetLayoutWrapper> layout);
 
   void set_allocate_info(VkDevice device_,
                          state_block* state_block_, const VkDescriptorSetAllocateInfo* pAllocateInfo,
@@ -46,7 +46,7 @@ struct VkDescriptorSetWrapper : handle_base<VkDescriptorSet> {
   uint32_t idx = 0;
   temporary_allocator mem;
 
-  VkDescriptorSetLayoutWrapper* _layout;
+  std::shared_ptr<VkDescriptorSetLayoutWrapper> _layout;
   union binding_type {
     VkDescriptorImageInfo image_info;
     VkDescriptorBufferInfo buffer_info;

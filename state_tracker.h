@@ -317,6 +317,49 @@ class state_tracker : public creation_data_tracker<> {
                                   pDescriptorCopies);
   }
 
+  void vkUpdateDescriptorSetWithTemplate(VkDevice device, VkDescriptorSet descriptorSet, VkDescriptorUpdateTemplate descriptorUpdateTemplate, const void* pData) override {
+    auto set = state_block_->get(descriptorSet);
+    auto templ = state_block_->get(descriptorUpdateTemplate);
+    auto ci = templ->get_create_info();
+    for (uint32_t i = 0; i < ci->descriptorUpdateEntryCount; ++i) {
+      auto& entry = ci->pDescriptorUpdateEntries[i];
+      auto elem = entry.dstArrayElement;
+      auto it = set->bindings.lower_bound(entry.dstBinding);
+      for (size_t j = 0; j < entry.descriptorCount; ++j) {
+        while (elem >= it->second.descriptors.size()) {
+          ++it;
+          elem = 0;
+        }
+        switch (entry.descriptorType) {
+          case VK_DESCRIPTOR_TYPE_SAMPLER:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+            it->second.descriptors[elem++].image_info = *reinterpret_cast<const VkDescriptorImageInfo*>(reinterpret_cast<const uint8_t*>(pData) + entry.offset + j * entry.stride);
+            break;
+          }
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+            it->second.descriptors[elem++].buffer_view_info = *reinterpret_cast<const VkBufferView*>(reinterpret_cast<const uint8_t*>(pData) + entry.offset + j * entry.stride);
+            break;
+          }
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+            it->second.descriptors[elem++].buffer_info = *reinterpret_cast<const VkDescriptorBufferInfo*>(reinterpret_cast<const uint8_t*>(pData) + entry.offset + j * entry.stride);
+            break;
+          }
+          default:
+            GAPID2_ERROR("Unknown descriptor type");
+        }
+      }
+    }
+    super::vkUpdateDescriptorSetWithTemplate(device, descriptorSet,
+                                             descriptorUpdateTemplate, pData);
+  }
+
   VkResult vkQueueSubmit(VkQueue queue,
                          uint32_t submitCount,
                          const VkSubmitInfo* pSubmits,
@@ -508,6 +551,42 @@ class state_tracker : public creation_data_tracker<> {
         });
   }
 
+  void handle_renderpass_begin(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer) {
+    auto cb = state_block_->get(commandBuffer);
+
+    cb->_pre_run_functions.push_back(
+        [this, cFb = std::move(framebuffer)](VkQueue queue) {
+          auto fb = state_block_->get(cFb);
+          auto q = state_block_->get(queue);
+          for (uint32_t i = 0; i < fb->get_create_info()->attachmentCount; ++i) {
+            auto iview = state_block_->get(fb->get_create_info()->pAttachments[i]);
+            auto ivci = iview->get_create_info();
+            auto img = state_block_->get(ivci->image);
+
+            img->for_each_subresource_in(ivci->subresourceRange, [cQ = q, cImg = img](uint32_t mip_level, uint32_t array_layer, VkImageAspectFlagBits aspect) {
+              auto subresource_idx = cImg->get_subresource_idx(mip_level, array_layer, aspect);
+              cImg->sr_data[subresource_idx].src_queue_idx = cQ->queue_family_index;
+              cImg->sr_data[subresource_idx].dst_queue_idx = cQ->queue_family_index;
+            });
+          }
+        });
+  }
+
+  void vkCmdBeginRenderPass2(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, const VkSubpassBeginInfo* pSubpassBeginInfo) {
+    handle_renderpass_begin(commandBuffer, pRenderPassBegin->framebuffer);
+    return super::vkCmdBeginRenderPass2(commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
+  }
+
+  void vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents) {
+    handle_renderpass_begin(commandBuffer, pRenderPassBegin->framebuffer);
+    return super::vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, contents);
+  }
+
+  void vkCmdBeginRenderPass2KHR(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, const VkSubpassBeginInfo* pSubpassBeginInfo) {
+    handle_renderpass_begin(commandBuffer, pRenderPassBegin->framebuffer);
+    return super::vkCmdBeginRenderPass2KHR(commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
+  }
+
   void vkCmdPipelineBarrier(VkCommandBuffer commandBuffer,
                             VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,
@@ -537,17 +616,17 @@ class state_tracker : public creation_data_tracker<> {
 
     std::vector<buffer_barrier> buffers;
     for (uint32_t i = 0; i < bufferMemoryBarrierCount; ++i) {
-      // If we have not assigned a queue family index OR 
+      // If we have not assigned a queue family index OR
       //   if that queue family index is changing, then we should record this.
       if (state_block_->get(pBufferMemoryBarriers[i].buffer)->src_queue ==
-          VK_QUEUE_FAMILY_IGNORED || pBufferMemoryBarriers[i].srcQueueFamilyIndex != 
-        pBufferMemoryBarriers[i].dstQueueFamilyIndex) {
+              VK_QUEUE_FAMILY_IGNORED ||
+          pBufferMemoryBarriers[i].srcQueueFamilyIndex !=
+              pBufferMemoryBarriers[i].dstQueueFamilyIndex) {
         buffers.push_back(
-          buffer_barrier{
+            buffer_barrier{
                 .src_queue_index = pBufferMemoryBarriers[i].srcQueueFamilyIndex,
                 .dst_queue_index = pBufferMemoryBarriers[i].dstQueueFamilyIndex,
-                .buffer = pBufferMemoryBarriers[i].buffer
-          });
+                .buffer = pBufferMemoryBarriers[i].buffer});
       }
     }
 
@@ -587,7 +666,6 @@ class state_tracker : public creation_data_tracker<> {
       }
     }
 
-
     auto cb = state_block_->get(commandBuffer);
     if (!images.empty() || !buffers.empty()) {
       cb->_post_run_functions.push_back([this, cB = std::move(buffers), cI = std::move(images)](VkQueue queue) {
@@ -626,7 +704,6 @@ class state_tracker : public creation_data_tracker<> {
                 srdata.dst_queue_idx = cI.dst_queue_index;
               }
             }
-
           });
         }
       });
@@ -699,7 +776,7 @@ class state_tracker : public creation_data_tracker<> {
     }
     auto view = state_block_->get(pView[0]);
     auto buffer = state_block_->get(pCreateInfo->buffer);
-    buffer->invalidates(view);
+    buffer->invalidates(view.get());
 
     return res;
   }
@@ -715,9 +792,17 @@ class state_tracker : public creation_data_tracker<> {
     }
     auto view = state_block_->get(pView[0]);
     auto image = state_block_->get(pCreateInfo->image);
-    image->invalidates(view);
+    image->invalidates(view.get());
 
     return res;
+  }
+
+  VkResult vkCreateFramebuffer(VkDevice device, const VkFramebufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkFramebuffer* pFramebuffer) {
+    auto ret = super::vkCreateFramebuffer(device, pCreateInfo, pAllocator, pFramebuffer);
+    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; ++i) {
+      state_block_->get(pCreateInfo->pAttachments[i])->invalidates(state_block_->get(*pFramebuffer).get());
+    }
+    return ret;
   }
 
  protected:

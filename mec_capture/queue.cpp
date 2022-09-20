@@ -27,7 +27,7 @@ void mid_execution_generator::capture_queues(const state_block* state_block, com
   serializer->insert_annotation("MecQueues");
   for (auto& it : state_block->VkQueues) {
     VkQueue queue = it.first;
-    const VkQueueWrapper* wrapper = it.second.second;
+    auto wrapper = it.second.second;
     if (wrapper->get_info_2()) {
       serializer->vkGetDeviceQueue2(
           wrapper->device,

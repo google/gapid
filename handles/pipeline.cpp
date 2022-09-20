@@ -24,7 +24,6 @@
 #include "struct_clone.h"
 
 namespace gapid2 {
-
 void VkPipelineWrapper::set_create_info(VkDevice device_, state_block* state_block_, VkPipelineCache pipelineCache,
                                         const VkGraphicsPipelineCreateInfo* info) {
   device = device_;
@@ -53,7 +52,7 @@ void VkPipelineWrapper::set_create_info(VkDevice device_, state_block* state_blo
       _VkGraphicsPipelineCreateInfo_VkPipelineColorBlendStateCreateInfo_logicOp_valid,
       _VkGraphicsPipelineCreateInfo_basePipelineHandle_valid);
   for (uint32_t i = 0; i < info->stageCount; ++i) {
-    shader_code.push_back(state_block_->get(info->pStages[i].module)->words);
+    shaders.push_back(state_block_->get(info->pStages[i].module));
   }
 }
 
@@ -69,7 +68,7 @@ void VkPipelineWrapper::set_create_info(VkDevice device_, state_block* state_blo
       _VkComputePipelineCreateInfo_VkPipelineShaderStageCreateInfo_VkSpecializationInfo_pData_clone,
       _VkComputePipelineCreateInfo_basePipelineHandle_valid);
 
-  shader_code.push_back(state_block_->get(info->stage.module)->words);
+  shaders.push_back(state_block_->get(info->stage.module));
 }
 
 }  // namespace gapid2

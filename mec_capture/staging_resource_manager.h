@@ -18,6 +18,7 @@
 #include <functional>
 #include <list>
 
+#include "command_serializer.h"
 #include "device.h"
 #include "queue.h"
 #include "transform_base.h"
@@ -27,7 +28,7 @@ class shader_manager;
 class staging_resource_manager {
  public:
   staging_resource_manager(transform_base* callee,
-                           transform_base* serializer,
+                           command_serializer* serializer,
                            const VkPhysicalDeviceWrapper* physical_device,
                            const VkDeviceWrapper* device,
                            VkDeviceSize maximum_size,
@@ -92,7 +93,7 @@ class staging_resource_manager {
       uint32_t requirement_type_bits);
 
   transform_base* callee;
-  transform_base* serializer;
+  command_serializer* serializer;
   const VkDeviceWrapper* device;
   VkBuffer dest_buffer;
   VkDeviceMemory device_memory;

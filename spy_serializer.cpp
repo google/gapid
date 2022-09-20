@@ -21,15 +21,14 @@
 namespace gapid2 {
 
 encoder_handle spy_serializer::get_encoder(uintptr_t ptr) {
-  if (!enabled_) {
-    return encoder_handle(nullptr);
-  }
-  
   while (tid_ != std::thread::id()) {
     if (tid_ == std::this_thread::get_id()) {
       break;
     }
     std::this_thread::yield();
+  }
+  if (!enabled_) {
+    return encoder_handle(nullptr);
   }
 
   encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
@@ -71,27 +70,27 @@ encoder_handle spy_serializer::get_encoder(uintptr_t ptr) {
 }
 
 encoder_handle spy_serializer::get_locked_encoder(uintptr_t) {
+  while (tid_ != std::thread::id()) {
+    if (tid_ == std::this_thread::get_id()) {
+      break;
+    }
+    std::this_thread::yield();
+  }
   if (!enabled_) {
     return encoder_handle(nullptr);
-  }
-  while (tid_ != std::thread::id()) {
-    if (tid_ == std::this_thread::get_id()) {
-      break;
-    }
-    std::this_thread::yield();
-  }
-  bool waited = false;
-  while (tid_ != std::thread::id()) {
-    if (tid_ == std::this_thread::get_id()) {
-      break;
-    }
-    std::this_thread::yield();
   }
 
   encoder* enc = reinterpret_cast<encoder*>(TlsGetValue(encoder_tls_key));
   if (!enc) {
     enc = new encoder();
     TlsSetValue(encoder_tls_key, enc);
+  }
+  // Well this is just insane :D 
+  // The nvidia driver calls DXGI (which might be DXVK) which calls vulkan, which calls gapii
+  // which calls this function... which is already in flight. This screws everything up.
+  // Solution? I guess we dont serialize re-entrant calls :(
+  if (enc->current_->left != enc->current_->size) {
+    return encoder_handle(nullptr);
   }
 
   call_mutex.lock();

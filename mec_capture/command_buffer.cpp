@@ -31,7 +31,7 @@ void mid_execution_generator::capture_command_buffers(const state_block* state_b
     serializer->insert_annotation("MecSecondaryCommandBuffers");
   }
   for (auto& it : state_block->VkCommandBuffers) {
-    VkCommandBufferWrapper* buff = it.second.second;
+    auto buff = it.second.second;
     if (buff->get_allocate_info()->level != level) {
       continue;
     }
@@ -41,6 +41,7 @@ void mid_execution_generator::capture_command_buffers(const state_block* state_b
     serializer->vkAllocateCommandBuffers(buff->device,
                                          &inf, &command_buffer);
     if (buff->invalidated) {
+      serializer->insert_annotation(std::format("CommandBuffer - {} - Invalid", reinterpret_cast<uintptr_t>(buff->_handle)).c_str());
       continue;
     }
     cbr->RerecordCommandBuffer(command_buffer, serializer);

@@ -25,7 +25,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_image_views(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecImageViews");
   for (auto& it : state_block->VkImageViews) {
-    VkImageViewWrapper* imgview = it.second.second;
+    auto imgview = it.second.second;
     VkImageView image_view = it.first;
     serializer->vkCreateImageView(imgview->device,
                                   imgview->get_create_info(), nullptr, &image_view);

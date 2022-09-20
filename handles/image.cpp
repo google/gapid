@@ -122,8 +122,8 @@ void VkImageWrapper::for_each_subresource_in(VkImageSubresourceRange range, cons
     if (!(aspect & all_aspects)) {
       continue;
     }
-    for (uint32_t i = range.baseArrayLayer; i < range.layerCount; ++i) {
-      for (uint32_t j = range.baseMipLevel; j < range.levelCount; ++j) {
+    for (uint32_t i = range.baseArrayLayer; i < range.baseArrayLayer + range.layerCount; ++i) {
+      for (uint32_t j = range.baseMipLevel; j < range.baseMipLevel + range.levelCount; ++j) {
         fn(j, i, static_cast<VkImageAspectFlagBits>(aspect));
       }
     }

@@ -16,7 +16,7 @@ def output_deserializer(definition, g):
     g.print('#include "custom.h"')
     g.print('namespace gapid2 {')
     g.enter_scope(
-        'class command_buffer_deserializer : public transform_base {')
+        'class command_buffer_deserializer : public t ransform_base {')
     g.print_scoping('public:')
     for cmd in definition.commands.values():
         if cmd.args[0].name != "commandBuffer":
@@ -26,22 +26,33 @@ def output_deserializer(definition, g):
         arg_serialization.output_command_deserializer(
             cmd, definition, g, False, True)
         g.leave_scope('}')
-    g.print(
-        "void DeserializeStream(decoder* decoder_, bool raw_stream = false) {")
-    g.print("do {")
-    g.print("if (!raw_stream) {")
+    g.print("  std::function<void(uint64_t)> notify_pre_command_fn;")
+    g.enter_scope(
+        "virtual void notify_pre_command(uint64_t command_number) {")
+    g.enter_scope("if (notify_pre_command_fn) {")
+    g.print("notify_pre_command_fn(command_number);")
+    g.leave_scope("}")
+    g.leave_scope("}")
+    g.enter_scope(
+        "virtual void DeserializeStream(decoder* decoder_, bool raw_stream = false) {")
+    g.print("uint64_t command_number = 0;")
+    g.enter_scope("do {")
+    g.print("command_number++;")
+    g.enter_scope("if (!raw_stream) {")
     g.print("const uint64_t data_left = decoder_->data_left();")
     g.print("if (data_left < sizeof(uint64_t)) { return; }")
+    g.print("auto needed = decoder_->decode<uint64_t>();")
     g.print(
-        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>() * 2) { return; } ")
-    g.print("} else {")
+        "if (data_left - sizeof(uint64_t) < needed) { return; } ")
+    g.leave_enter_scope("} else {")
     g.print(
         "if (!decoder_->has_data_left()) { return; } ")
-    g.print("}")
+    g.leave_scope("}")
     g.print("uint64_t command_idx = decoder_->decode<uint64_t>();")
     g.print("uint64_t flags = decoder_->decode<uint64_t>();")
     g.print("(void)flags;")
-    g.print("switch(command_idx) {")
+    g.print("notify_pre_command(command_number-1);")
+    g.enter_scope("switch(command_idx) {")
 
     for cmd in definition.commands.values():
         if cmd.args[0].name != 'commandBuffer':
@@ -50,11 +61,11 @@ def output_deserializer(definition, g):
             cmd.name.encode('utf-8')).digest()[:8], 'little')
         g.print(
             f"case {sha}u: call_{cmd.name}(decoder_); continue;")
-    g.print('default:')
-    g.print('std::abort();')
-    g.print("}")
-    g.print("} while(true);")
-    g.print("}")
+    g.enter_scope('default:')
+    g.post_leave_scope('std::abort();')
+    g.leave_scope("}")
+    g.leave_scope("} while(true);")
+    g.leave_scope("}")
     g.print("transform_base* next = nullptr;")
     g.leave_scope('};')
     g.print('} // namespace gapid2')

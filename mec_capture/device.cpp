@@ -23,7 +23,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_devices(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecDevices");
   for (auto& it : state_block->VkDevices) {
-    VkDeviceWrapper* dev = it.second.second;
+    auto dev = it.second.second;
     VkDevice device = it.first;
     serializer->vkCreateDevice(
         dev->get_physical_device(),

@@ -509,6 +509,24 @@ class creation_data_tracker : public transform_base {
                                         pRenderPass);
     }
   }
+  VkResult vkCreateRenderPass2KHR(VkDevice device,
+                               const VkRenderPassCreateInfo2* pCreateInfo,
+                               const VkAllocationCallbacks* pAllocator,
+                               VkRenderPass* pRenderPass) override {
+    if constexpr (args_contain<VkRenderPass, Args...>()) {
+      auto res = super::vkCreateRenderPass2KHR(device, pCreateInfo, pAllocator,
+                                            pRenderPass);
+      if (res != VK_SUCCESS) {
+        return res;
+      }
+      auto pl = state_block_->get(pRenderPass[0]);
+      pl->set_create_info2_khr(device, state_block_, pCreateInfo);
+      return res;
+    } else {
+      return super::vkCreateRenderPass2KHR(device, pCreateInfo, pAllocator,
+                                        pRenderPass);
+    }
+  }
 
   VkResult vkCreateCommandPool(VkDevice device,
                                const VkCommandPoolCreateInfo* pCreateInfo,

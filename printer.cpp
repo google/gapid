@@ -67,7 +67,7 @@ class trace_printer : public command_deserializer {
     VkResult current_return_ = decoder_->decode<VkResult>();
 
     super::vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount,
-                                             pPhysicalDevices);
+                                      pPhysicalDevices);
     if (!pPhysicalDevices) {
       return;
     }
@@ -89,13 +89,14 @@ class trace_printer : public command_deserializer {
     }
   }
 
-  void* get_memory_write_location(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size) override {
+  void* get_memory_write_location(VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, size_t data_offset) override {
     printer->begin_object("");
     printer->print_string("name", "MemoryObservation");
     printer->print("tracer_flags", last_flag);
     printer->print("deviceMemory", reinterpret_cast<uintptr_t>(memory));
     printer->print("size", size);
     printer->print("offset", offset);
+    printer->print("file_offset", data_offset);
     printer->end_object();
     return nullptr;
   }
@@ -124,7 +125,7 @@ class trace_printer : public command_deserializer {
 const std::string version_string = "1";
 
 int main(int argc, const char** argv) {
-  HANDLE file = CreateFileA(argv[1], GENERIC_READ, 0, nullptr, OPEN_ALWAYS,
+  HANDLE file = CreateFileA(argv[1], GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_ALWAYS,
                             FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (!file) {

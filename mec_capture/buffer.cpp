@@ -26,7 +26,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecBufferCreation");
   for (auto& it : state_block->VkBuffers) {
-    VkBufferWrapper* buff = it.second.second;
+    auto buff = it.second.second;
     VkBuffer buffer = it.first;
     serializer->vkCreateBuffer(buff->device,
                                buff->get_create_info(), nullptr, &buffer);
@@ -36,7 +36,7 @@ void mid_execution_generator::capture_buffers(const state_block* state_block, co
 void mid_execution_generator::capture_bind_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecBufferBinds");
   for (auto& it : state_block->VkBuffers) {
-    VkBufferWrapper* buff = it.second.second;
+    auto buff = it.second.second;
     GAPID2_ASSERT(0 == buff->get_create_info()->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT, "We do not support sparse images yet");
     GAPID2_ASSERT(buff->bindings.size() <= 1, "Invalid number of binds");
 
@@ -95,7 +95,7 @@ void mid_execution_generator::capture_buffer_data(const state_block* state_block
   serializer->insert_annotation("MecBufferData");
   for (auto& dev : state_block->VkDevices) {
     auto device = dev.second.second;
-    staging_resource_manager staging(bypass_caller, serializer, state_block->get(device->get_physical_device()), device, max_copy_overhead_bytes_, shader_manager);
+    staging_resource_manager staging(bypass_caller, serializer, state_block->get(device->get_physical_device()), device.get(), max_copy_overhead_bytes_, shader_manager);
     auto phys_dev = state_block->get(device->get_physical_device());
     VkPhysicalDeviceMemoryProperties mem_props;
     bypass_caller->vkGetPhysicalDeviceMemoryProperties(phys_dev->_handle, &mem_props);
@@ -103,7 +103,7 @@ void mid_execution_generator::capture_buffer_data(const state_block* state_block
       if (it.second.second->device != dev.first) {
         continue;
       }
-      VkBufferWrapper* buff = it.second.second;
+      auto buff = it.second.second;
       GAPID2_ASSERT(0 == buff->get_create_info()->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT, "We do not support sparse images yet");
       GAPID2_ASSERT(buff->bindings.size() <= 1, "Invalid number of binds");
 
@@ -118,16 +118,16 @@ void mid_execution_generator::capture_buffer_data(const state_block* state_block
       // If the memory is host-visible, we can just map it here.
       if (false && mem_props.memoryTypes[mem->allocate_info->memoryTypeIndex].propertyFlags &
                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        capture_host_mapped_buffer_data(state_block, serializer, bypass_caller, device, binding, mem_props);
+        capture_host_mapped_buffer_data(state_block, serializer, bypass_caller, device.get(), binding, mem_props);
         continue;
       }
 
       // If this is not host-visible AND this has not been used on a queue, then
       // this cannot have any useful data in it :)
 #pragma TODO(awoloszyyn, "Handle aliased memory here")
-      if (buff->src_queue == VK_QUEUE_FAMILY_IGNORED) {
-        break;
-      }
+      //if (buff->src_queue == VK_QUEUE_FAMILY_IGNORED) {
+      //  break;
+      //}
 
       for (VkDeviceSize offset = 0; offset < binding.size;) {
         staging_resource_manager::staging_resources* res = new staging_resource_manager::staging_resources;

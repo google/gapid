@@ -49,7 +49,7 @@ class mec_controller : public transform_base {
       while (GetMessage(&msg, NULL, 0, 0) != 0) {
         if (msg.message == WM_HOTKEY) {
           capture_frame = 1;
-          frames_to_capture = 10;
+          frames_to_capture = 100;
         }
       }
     });

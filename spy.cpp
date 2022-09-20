@@ -358,9 +358,10 @@ VkResult spy::vkMapMemory(VkDevice device,
       size = new_mem->_size - offset;
     }
     // tracker.AddTrackedRange(memory, reinterpret_cast<char*>(mi.v1) + offset, offset, size, reinterpret_cast<char*>(mi.v2) + offset);
-    if (new_mem->_is_coherent) {
-      mapped_coherent_memories.insert(memory);
-    }
+    //if (new_mem->_is_coherent) {
+
+    mapped_coherent_memories.insert(memory);
+    //}
     return VK_SUCCESS;
   } else {
     auto res = super::vkMapMemory(device, memory, offset, size, flags, ppData);
@@ -373,9 +374,9 @@ VkResult spy::vkMapMemory(VkDevice device,
     }
     ppData[0] = tracker.AddTrackedRange(memory, ppData[0], offset, size);
     std::unique_lock<std::mutex> l(memory_mutex);
-    if (new_mem->_is_coherent) {
-      mapped_coherent_memories.insert(memory);
-    }
+    //if (new_mem->_is_coherent) {
+    mapped_coherent_memories.insert(memory);
+    //}
     return res;
   }
 }
@@ -407,7 +408,31 @@ VkResult spy::vkEnumeratePhysicalDevices(
 
 void spy::vkUnmapMemory(VkDevice device, VkDeviceMemory memory) {
   tracker.RemoveTrackedRange(memory);
+
   std::unique_lock<std::mutex> l(memory_mutex);
+  std::shared_lock<std::shared_mutex> l2(memory_alloc_info_mutex);
+  auto enc = encoding_serializer_->get_encoder(0);
+  for (auto m : mapped_coherent_memories) {
+    auto new_mem = state_block_->get(m);
+    auto& nn = memory_infos[m];
+    ULONG_PTR l = nn.dirty_page_cache.size();
+    DWORD ps = 0;
+    GetWriteWatch(WRITE_WATCH_FLAG_RESET, nn.v1, nn.size, nn.dirty_page_cache.data(), &l, &ps);
+    for (size_t i = 0; i < l; ++i) {
+      auto offset =
+          reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
+      enc->encode<uint64_t>(0);
+      enc->encode<uint64_t>(encoding_serializer_->get_flags());
+      enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(m));
+      enc->encode<uint64_t>(offset);
+      enc->encode<uint64_t>(4096);
+      enc->encode_primitive_array<char>(
+          reinterpret_cast<const char*>(nn.dirty_page_cache[i]), 4096);
+      // reset the encoder to flush
+      enc = encoding_serializer_->get_encoder(0);
+    }
+  }
+
   mapped_coherent_memories.erase(memory);
   super::vkUnmapMemory(device, memory);
 }
@@ -440,27 +465,24 @@ VkResult spy::vkFlushMappedMemoryRanges(
   std::unique_lock<std::mutex> l(memory_mutex);
   std::shared_lock<std::shared_mutex> l2(memory_alloc_info_mutex);
   auto enc = encoding_serializer_->get_encoder(0);
-  if (enc) {
-    for (uint32_t i = 0; i < memoryRangeCount; ++i) {
-      auto& mr = pMemoryRanges[i];
-      auto new_mem = state_block_->get(mr.memory);
-      auto& nn = memory_infos[mr.memory];
-      ULONG_PTR l = nn.dirty_page_cache.size();
-      DWORD ps = 0;
-      GetWriteWatch(WRITE_WATCH_FLAG_RESET, nn.v1, nn.size, nn.dirty_page_cache.data(), &l, &ps);
-      for (size_t i = 0; i < l; ++i) {
-        auto offset =
-            reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
-        enc->encode<uint64_t>(0);
-        enc->encode<uint64_t>(encoding_serializer_->get_flags());
-        enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(mr.memory));
-        enc->encode<uint64_t>(offset);
-        enc->encode<uint64_t>(4096);
-        enc->encode_primitive_array<char>(
-            reinterpret_cast<const char*>(nn.dirty_page_cache[i]), 4096);
-        // reset the encoder to flush the write
-        enc = encoding_serializer_->get_encoder(0);
-      }
+  for (auto m : mapped_coherent_memories) {
+    auto new_mem = state_block_->get(m);
+    auto& nn = memory_infos[m];
+    ULONG_PTR l = nn.dirty_page_cache.size();
+    DWORD ps = 0;
+    GetWriteWatch(WRITE_WATCH_FLAG_RESET, nn.v1, nn.size, nn.dirty_page_cache.data(), &l, &ps);
+    for (size_t i = 0; i < l; ++i) {
+      auto offset =
+          reinterpret_cast<char*>(nn.dirty_page_cache[i]) - new_mem->_mapped_location;
+      enc->encode<uint64_t>(0);
+      enc->encode<uint64_t>(encoding_serializer_->get_flags());
+      enc->encode<uint64_t>(reinterpret_cast<uintptr_t>(m));
+      enc->encode<uint64_t>(offset);
+      enc->encode<uint64_t>(4096);
+      enc->encode_primitive_array<char>(
+          reinterpret_cast<const char*>(nn.dirty_page_cache[i]), 4096);
+      // reset the encoder to flush
+      enc = encoding_serializer_->get_encoder(0);
     }
   }
   return res;

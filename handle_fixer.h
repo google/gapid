@@ -22,39 +22,39 @@
 namespace gapid2 {
 class handle_fixer {
  public:
-#define PROCESS_HANDLE(Type)                                                                                             \
-  std::unordered_map<Type, Type> Type##_map;                                                                             \
-  void fix_handle(const Type* t) {                                                                                       \
-    if (!*t) {                                                                                                           \
-      return;                                                                                                            \
-    }                                                                                                                    \
-    if constexpr (sizeof(Type) == sizeof(uint32_t)) {                                                                              \
-      uint32_t p = *reinterpret_cast<const uint32_t*>(t);\
+#define PROCESS_HANDLE(Type)                                                                       \
+  std::unordered_map<Type, Type> Type##_map;                                                       \
+  void fix_handle(const Type* t) {                                                                 \
+    if (!*t) {                                                                                     \
+      return;                                                                                      \
+    }                                                                                              \
+    if constexpr (sizeof(Type) == sizeof(uint32_t)) {                                              \
+      uint32_t p = *reinterpret_cast<const uint32_t*>(t);                                          \
       fixed_handles_32.push_back(std::make_pair<void*, const uint32_t&>(const_cast<Type*>(t), p)); \
-    } else {                                                    \
-      uint64_t p = *reinterpret_cast<const uint64_t*>(t);\
+    } else {                                                                                       \
+      uint64_t p = *reinterpret_cast<const uint64_t*>(t);                                          \
       fixed_handles_64.push_back(std::make_pair<void*, const uint64_t&>(const_cast<Type*>(t), p)); \
-    }                                                                                                                    \
-                                                                                                                         \
-    auto it = Type##_map.find(*t);                                                                                       \
-    GAPID2_ASSERT(it != Type##_map.end(), "Cannot find handle to fix");                                                  \
-    *const_cast<Type*>(t) = it->second;                                                                                  \
-  }                                                                                                                      \
-                                                                                                                         \
-  std::unordered_map<Type*, Type>                                                                                        \
-      Type##_registered_handles_;                                                                                        \
-  void register_handle(Type* t) {                                                                                        \
-    if (t[0] == VK_NULL_HANDLE) {                                                                                        \
-      t[0] = reinterpret_cast<Type>(next_unassigned_handle--);                                                           \
-    }                                                                                                                    \
-    Type##_registered_handles_[t] = t[0];                                                                                \
-  }                                                                                                                      \
-  void process_handle(Type* t) {                                                                                         \
-    auto it = Type##_registered_handles_.find(t);                                                                        \
-    GAPID2_ASSERT(it != Type##_registered_handles_.end(), "Unknown handle address");                                     \
-    Type##_map[it->second] = t[0];                                                                                       \
-    t[0] = it->second;                                                                                                   \
-    Type##_registered_handles_.erase(it);                                                                                \
+    }                                                                                              \
+                                                                                                   \
+    auto it = Type##_map.find(*t);                                                                 \
+    GAPID2_ASSERT(it != Type##_map.end(), "Cannot find handle to fix");                            \
+    *const_cast<Type*>(t) = it->second;                                                            \
+  }                                                                                                \
+                                                                                                   \
+  std::unordered_map<Type*, Type>                                                                  \
+      Type##_registered_handles_;                                                                  \
+  void register_handle(Type* t) {                                                                  \
+    if (t[0] == VK_NULL_HANDLE) {                                                                  \
+      t[0] = reinterpret_cast<Type>(next_unassigned_handle--);                                     \
+    }                                                                                              \
+    Type##_registered_handles_[t] = t[0];                                                          \
+  }                                                                                                \
+  void process_handle(Type* t) {                                                                   \
+    auto it = Type##_registered_handles_.find(t);                                                  \
+    GAPID2_ASSERT(it != Type##_registered_handles_.end(), "Unknown handle address");               \
+    Type##_map[it->second] = t[0];                                                                 \
+    t[0] = it->second;                                                                             \
+    Type##_registered_handles_.erase(it);                                                          \
   }
 #include "handle_defines.inl"
 #undef PROCESS_HANDLE

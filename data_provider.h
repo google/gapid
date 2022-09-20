@@ -14,22 +14,19 @@
  * limitations under the License.
  */
 
-#include "buffer_view.h"
-
-#include "mid_execution_generator.h"
-#include "state_block.h"
-#include "utils.h"
+#pragma once
 
 namespace gapid2 {
-
-void mid_execution_generator::capture_buffer_views(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
-  serializer->insert_annotation("MecBufferViews");
-  for (auto& it : state_block->VkBufferViews) {
-    auto buff = it.second.second;
-    VkBufferView buffer_view = it.first;
-    serializer->vkCreateBufferView(buff->device,
-                                   buff->get_create_info(), nullptr, &buffer_view);
+class transform_data_provider {
+ public:
+  const uint64_t get_current_command_index() const {
+    return m_current_command_index;
   }
-}
+  void set_current_command_index(uint64_t idx) {
+    m_current_command_index = idx;
+  }
 
+ private:
+  uint64_t m_current_command_index = 0;
+};
 }  // namespace gapid2

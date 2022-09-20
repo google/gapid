@@ -46,7 +46,7 @@ struct VkShaderModuleWrapper : handle_base<VkShaderModule> {
 
   VkDevice device = VK_NULL_HANDLE;
   VkShaderModuleCreateInfo* create_info = nullptr;
-  std::shared_ptr<std::vector<uint32_t>> words;
+  std::vector<uint32_t> words;
   temporary_allocator mem;
 
   std::unordered_map<std::string, std::vector<descriptor_usage>> _usage;

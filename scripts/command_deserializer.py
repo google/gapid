@@ -25,14 +25,15 @@ def output_deserializer(definition, g):
             cmd, definition, g, True)
         g.leave_scope('}')
     g.enter_scope(
-        "void DeserializeStream(decoder* decoder_, bool raw_stream = false) {")
+        "virtual void DeserializeStream(decoder* decoder_, bool raw_stream = false) {")
     g.print("uint64_t current_command_index = 0; // For debugging")
     g.enter_scope("do {")
     g.print("if (!raw_stream) {")
     g.print("const uint64_t data_left = decoder_->data_left();")
     g.print("if (data_left < sizeof(uint64_t) * 2) { return; }")
+    g.print("auto needed = decoder_->decode<uint64_t>();")
     g.print(
-        "if (data_left - sizeof(uint64_t) < decoder_->decode<uint64_t>()) { return; } ")
+        "if (data_left - sizeof(uint64_t) < needed) { return; } ")
     g.print("} else {")
     g.print(
         "if (!decoder_->has_data_left()) { return; } ")
@@ -40,8 +41,8 @@ def output_deserializer(definition, g):
     g.print("uint64_t command_idx = decoder_->decode<uint64_t>();")
     g.print("uint64_t flags = decoder_->decode<uint64_t>();")
     g.print("notify_flag(flags);")
+    g.print("notify_command(current_command_index);")
     g.print("switch(command_idx) {")
-
     for cmd in definition.commands.values():
         sha = int.from_bytes(hashlib.sha256(
             cmd.name.encode('utf-8')).digest()[:8], 'little')
@@ -54,7 +55,7 @@ def output_deserializer(definition, g):
         'VkDeviceMemory mem = reinterpret_cast<VkDeviceMemory>(decoder_->decode<uint64_t>()); ')
     g.print('VkDeviceSize offset = decoder_->decode<VkDeviceSize>();')
     g.print('VkDeviceSize size = decoder_->decode<VkDeviceSize>();')
-    g.print('void* data_loc = get_memory_write_location(mem, offset, size);')
+    g.print('void* data_loc = get_memory_write_location(mem, offset, size, decoder_->get_data_offset());')
     g.enter_scope('if (data_loc) {')
     g.print(
         'decoder_->decode_primitive_array(reinterpret_cast<char*>(data_loc), size);')
@@ -78,8 +79,10 @@ def output_deserializer(definition, g):
     g.leave_scope("}")
     g.print(
         'virtual void notify_flag(uint64_t flag) {}')
+    g.print(
+        'virtual void notify_command(uint64_t command) {}')
     g.enter_scope(
-        'virtual void *get_memory_write_location(VkDeviceMemory, VkDeviceSize, VkDeviceSize) {')
+        'virtual void *get_memory_write_location(VkDeviceMemory, VkDeviceSize, VkDeviceSize, size_t) {')
     g.print('return nullptr;')
     g.leave_scope('}')
     g.enter_scope(

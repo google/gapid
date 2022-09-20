@@ -55,5 +55,4 @@
 
 namespace gapid2 {
 
-
 }  // namespace gapid2

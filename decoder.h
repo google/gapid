@@ -26,6 +26,12 @@ struct decoder {
     memory_blocks_.push_back(block{4096, (char*)malloc(4096), 4096});
   }
 
+  ~decoder() {
+    for (auto& m : memory_blocks_) {
+      free(m.data);
+    }
+  }
+
   decoder(std::vector<block> data) : decoder() { data_ = std::move(data); }
 
   void* get_memory(size_t _sz) {
@@ -117,6 +123,17 @@ struct decoder {
       }
     }
     return false;
+  }
+
+  size_t get_data_offset() {
+    size_t data_offset = 0;
+    for (size_t i = 0; i < read_offset; ++i) {
+      if (i != read_offset - 1) {
+        data_offset = data_[i].size;
+      }
+    }
+    data_offset += read_head;
+    return data_offset;
   }
 
   std::vector<block> memory_blocks_;

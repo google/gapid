@@ -785,7 +785,7 @@ class api_definition:
     def extend_enum(self, ee, ext_num):
         base_enum = ee.attrib['extends']
         if not base_enum in self.types:
-            error("error trying to extend an enum that has not been included")
+            error(f"error trying to extend an enum that has not been included: {base_enum}")
         be = self.types[base_enum]
 
         if type(be) == alias:

@@ -16,3 +16,9 @@
 [submodule "externals/glslang"]
 	path = externals/glslang
 	url = https://github.com/KhronosGroup/glslang.git
+[submodule "externals/json"]
+	path = externals/json
+	url = https://github.com/nlohmann/json.git
+[submodule "externals/base64"]
+	path = externals/base64
+	url = https://github.com/ReneNyffenegger/cpp-base64

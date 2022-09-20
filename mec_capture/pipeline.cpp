@@ -25,7 +25,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_pipelines(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecPipelines");
   for (auto& it : state_block->VkPipelines) {
-    VkPipelineWrapper* pipe = it.second.second;
+    auto pipe = it.second.second;
     VkPipeline pipeline = it.first;
     if (pipe->bind == VK_PIPELINE_BIND_POINT_COMPUTE) {
       auto create_info = *pipe->get_compute_create_info();
@@ -33,14 +33,17 @@ void mid_execution_generator::capture_pipelines(const state_block* state_block, 
       create_info.basePipelineHandle = VK_NULL_HANDLE;
       create_info.basePipelineIndex = -1;
 
-      if (state_block->VkShaderModules.count(create_info.stage.module) == 0) {
+      
+      if (state_block->VkShaderModules.count(create_info.stage.module) == 0 ||
+          state_block->VkShaderModules.find(create_info.stage.module)->second.second != pipe->shaders[0]) {
+
         // The shader module was removed, create a temporary one.
         VkShaderModuleCreateInfo inf{
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0,
-            .codeSize = pipe->shader_code[0]->size() * sizeof(uint32_t),
-            .pCode = pipe->shader_code[0]->data()};
+            .codeSize = pipe->shaders[0]->words.size() * sizeof(uint32_t),
+            .pCode = pipe->shaders[0]->words.data()};
 
         GAPID2_ASSERT(VK_SUCCESS == bypass_caller->vkCreateShaderModule(pipe->device, &inf, nullptr, &create_info.stage.module),
                       "Could not create shader module");
@@ -64,14 +67,15 @@ void mid_execution_generator::capture_pipelines(const state_block* state_block, 
           create_info.pStages, create_info.pStages + create_info.stageCount);
       create_info.pStages = stages.data();
       for (uint32_t i = 0; i < create_info.stageCount; ++i) {
-        if (0 == state_block->VkShaderModules.count(stages[i].module)) {
+        if (state_block->VkShaderModules.count(stages[i].module) == 0 ||
+            state_block->VkShaderModules.find(stages[i].module)->second.second != pipe->shaders[i]) {
           // The shader module was removed, create a temporary one.
           VkShaderModuleCreateInfo inf{
               .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
               .pNext = nullptr,
               .flags = 0,
-              .codeSize = pipe->shader_code[i]->size() * sizeof(uint32_t),
-              .pCode = pipe->shader_code[i]->data()};
+              .codeSize = pipe->shaders[i]->words.size() * sizeof(uint32_t),
+              .pCode = pipe->shaders[i]->words.data()};
 
           GAPID2_ASSERT(VK_SUCCESS == bypass_caller->vkCreateShaderModule(pipe->device, &inf, nullptr, &stages[i].module),
                         "Could not create shader module");

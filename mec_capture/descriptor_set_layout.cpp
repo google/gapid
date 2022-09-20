@@ -25,7 +25,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_descriptor_set_layouts(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecDescriptorSetLayouts");
   for (auto& it : state_block->VkDescriptorSetLayouts) {
-    VkDescriptorSetLayoutWrapper* dsl = it.second.second;
+    auto dsl = it.second.second;
     VkDescriptorSetLayout descriptor_set_layout = it.first;
     serializer->vkCreateDescriptorSetLayout(dsl->device,
                                             dsl->get_create_info(), nullptr, &descriptor_set_layout);

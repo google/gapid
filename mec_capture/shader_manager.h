@@ -34,16 +34,16 @@ static const uint32_t k_render_output_attachment_index = 1;
 class shader_manager {
  public:
   shader_manager();
-  const std::vector<uint32_t>& get_quad_shader();
-  const std::vector<uint32_t>& get_prime_by_rendering_color_shader(VkFormat format);
-  const std::vector<uint32_t>& get_prime_by_rendering_depth_shader(VkFormat format);
-  const std::vector<uint32_t>& get_copy_by_rendering_color_shader(VkFormat format);
-  const std::vector<uint32_t>& get_copy_stencil_by_render_shader(VkFormat format);
-  const std::vector<uint32_t>& get_prime_by_rendering_stencil_shader();
+  const std::vector<uint32_t>& get_quad_shader(std::string* created_name);
+  const std::vector<uint32_t>& get_prime_by_rendering_color_shader(VkFormat format, std::string* created_name);
+  const std::vector<uint32_t>& get_prime_by_rendering_depth_shader(VkFormat format, std::string* created_name);
+  const std::vector<uint32_t>& get_copy_by_rendering_color_shader(VkFormat format, std::string* created_name);
+  const std::vector<uint32_t>& get_copy_stencil_by_render_shader(VkFormat format, std::string* created_name);
+  const std::vector<uint32_t>& get_prime_by_rendering_stencil_shader(std::string* created_name);
 
   const std::vector<uint32_t>& get_prime_by_compute_copy_shader(VkFormat format,
-                                                                VkImageAspectFlagBits aspect, VkImageType type);
-  const std::vector<uint32_t>& get_prime_by_compute_store_shader(VkFormat output_format, VkImageAspectFlagBits output_aspect, VkFormat input_format, VkImageAspectFlagBits input_aspect, VkImageType type);
+                                                                VkImageAspectFlagBits aspect, VkImageType type, std::string* created_name);
+  const std::vector<uint32_t>& get_prime_by_compute_store_shader(VkFormat output_format, VkImageAspectFlagBits output_aspect, VkFormat input_format, VkImageAspectFlagBits input_aspect, VkImageType type, std::string* created_name);
 
  private:
   std::vector<uint32_t> quad_vertex_shader_spirv;

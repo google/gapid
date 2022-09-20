@@ -20,6 +20,7 @@ def main(args):
         layerer.print('#include <iostream>')
         layerer.print('#include <fstream>')
         layerer.print('#include <list>')
+        layerer.print('#include <utility>')
         layerer.print('#include "algorithm/sha1.hpp"')
         layerer.print('#include "common.h"')
         layerer.print('#include "transform_base.h"')
@@ -27,7 +28,7 @@ def main(args):
         layerer.print('#include "indirect_functions.h"')
         layerer.print('#include "indirect_functions.h"')
         layerer.print('#include "handle_fixer.h"')
-        layerer.print('#include "command_buffer_recorder.h"')
+        layerer.print('#include "command_buffer_splitter.h"')
         layerer.print('''namespace gapid2 {
   const std::string version_string = "1";
   
@@ -88,16 +89,21 @@ def main(args):
 
         layerer.print(
             '''        
+        void RunUserSetup(const std::string& layer_name, HMODULE module);
+        void RunUserShutdown(HMODULE module);
+        void* ResolveHelperFunction(uint64_t layer_idx, const char* name, void** fout);
+
         ~layerer() {
             for (auto& mod: modules) {
+                RunUserShutdown(mod);
                 FreeLibrary(mod);
             }
         }
         indirect_functions f;
-        void RunUserSetup(HMODULE module);
-        void* ResolveHelperFunction(const char* name, void** fout);
+        std::string user_config_;
 ''')
-        layerer.print('''        bool initializeLayers(std::vector<std::string> layers) {
+        layerer.print('''        bool initializeLayers(std::vector<std::string> layers, std::string user_config) {
+          user_config_ = user_config;
           char cp[MAX_PATH];
           HMODULE hm = NULL;
           GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | 
@@ -105,7 +111,7 @@ def main(args):
                     (LPCSTR) &get_file_sha, &hm);
           GetModuleFileName(hm, cp, MAX_PATH);
           std::filesystem::path fsp = cp;
-          std::vector<std::string> layer_dlls;
+          std::vector<std::pair<std::string, std::string>> layer_dlls;
           char cwd[MAX_PATH];
           GetCurrentDirectoryA(MAX_PATH, cwd);
           digestpp::sha1 hasher;
@@ -130,8 +136,8 @@ def main(args):
                  layer[layer.size() - 3] == 'd' && 
                  layer[layer.size() - 2] == 'l' && 
                  layer[layer.size() - 1] == 'l') {
-                layer_dlls.push_back(layer);
-                std::cout << "Using prebuilt dll: " << layer_dlls.back() << std::endl;
+                layer_dlls.push_back(std::make_pair(layer, layer));
+                output_message(message_type::info, std::format("Using prebuilt dll: {}", layer_dlls.back().first));
                 continue;
             }
             auto file = std::filesystem::absolute(layer);
@@ -143,10 +149,11 @@ def main(args):
             std::string dll(t);
             dll += std::string("\\\\") + work_path + "\\\\" + sha + ".dll";
             if (std::filesystem::exists(dll)) {
-              std::cout << "Using existing layer " << dll << std::endl;
-              layer_dlls.push_back(dll);
+              output_message(message_type::info, std::format("Using existing layer for {} : {}", layer, dll));
+              layer_dlls.push_back(std::make_pair(layer, dll));
               continue;
             }
+            output_message(message_type::info, std::format("Building layer: {}", layer));
             std::string v = "cmd /c ";
             v += build_path.string();
             v += " ";
@@ -160,12 +167,14 @@ def main(args):
 #endif
             v += std::string(" ") + t + std::string("\\\\") + work_path + "\\\\";
 
-            int ret = system(v.c_str());
+            std::string output;
+            int ret = run_system(v.c_str(), output);
             if (ret != 0) {
+              output_message(message_type::error, output);
               GAPID2_ERROR("Could not build layer");
             }
-            layer_dlls.push_back(dll);
-            std::cout << "Built and readied layer " << layer_dlls.back() << std::endl;
+            layer_dlls.push_back(std::make_pair(layer, dll));
+            output_message(message_type::info, std::format("Built and readied layer for {}: {}", layer, dll));
           }                
             ''')
         for cmd in definition.commands.values():
@@ -174,19 +183,20 @@ def main(args):
             layerer.print(
                 f'            f.{cmd.name}_user_data = this;')
         layerer.print('''
-        for (const auto& layer: layer_dlls) {
+        for (const auto& layer_inf: layer_dlls) {
+          auto layer = layer_inf.second;
           auto lib = LoadLibraryA(layer.c_str());
           if (!lib) {
-              std::cerr << "Could not load library " << layer << std::endl;
+              output_message(message_type::error, std::format("Could not load library: {}", layer));
               return false;
           }
           modules.push_back(lib);
           auto setup = (void (*)(void*, void* (*)(void*, const char*, void**), void*(tf)(void*, const char*)))GetProcAddress(lib, "SetupLayerInternal");
           if (!setup) {
-              std::cerr << "Could not find library setup for " << layer << std::endl;
+              output_message(message_type::error, std::format( "Could not find library setup for {}", layer));
               return false;
           }
-          std::cerr << "Setting up library " << layer << std::endl;
+          output_message(message_type::info, std::format( "Setting up library {}", layer_inf.first));
           setup(this, [](void* this__, const char* fn, void** fout) -> void* {
             layerer* this_ = reinterpret_cast<layerer*>(this__);''')
         for cmd in definition.commands.values():
@@ -197,9 +207,9 @@ def main(args):
                 f'              return reinterpret_cast<void*>(this_->f.fn_{cmd.name});')
             layerer.print(f'            }}')
         layerer.print('''
-            auto ret = this_->ResolveHelperFunction(fn, fout);
+            auto ret = this_->ResolveHelperFunction(this_->layer_idx, fn, fout);
             if (!ret) {
-                std::cerr << "Could not resolve function " << fn << std::endl;
+                output_message(message_type::error, std::format("Could not resolve function  {}", fn));
             }
             return ret;
           }, [](void* this__, const char* tp) -> void* {''')
@@ -212,7 +222,7 @@ def main(args):
                 layerer.print(f'              return r;')
                 layerer.print(f'            }}')
         layerer.print(
-            '''            std::cerr << "Could not resolve handle type " << tp << std::endl;''')
+            '''            output_message(message_type::error, std::format("Could not resolve handle type {}", tp));''')
         layerer.print(
             '''            return nullptr;''')
         layerer.print('''          });''')
@@ -227,11 +237,12 @@ def main(args):
             layerer.print(
                 f'              f.fn_{cmd.name} = &forward_{cmd.name};')
             layerer.print(
-                f'              std::cerr << "Found function override_{cmd.name} in layer, setting up chain" << std::endl;')
+                f'              output_message(message_type::info, "Found function override_{cmd.name} in layer, setting up chain");')
             layerer.print(f'            }}')
         layerer.print(
             '''
-          RunUserSetup(lib);
+          RunUserSetup(layer_inf.first, lib);
+          layer_idx++;
         }
         return true;
       }
@@ -245,8 +256,9 @@ def main(args):
             return f.fn_{cmd.name}(f.{cmd.name}_user_data, {", ".join(args)});
         }}''')
         layerer.print('''
-      std::vector<std::unique_ptr<transform<command_buffer_recorder>>> recorders;
+      std::vector<std::unique_ptr<command_buffer_splitter_layers>> splitters;
       std::vector<HMODULE> modules;
+      uint64_t layer_idx = 0;
   };
 }
 #include "layerer.inl"

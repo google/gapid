@@ -22,6 +22,7 @@
 
 #include "common.h"
 #include "descriptor_set.h"
+#include "descriptor_set_layout.h"
 #include "physical_device.h"
 #include "state_block.h"
 #include "transform_base.h"
@@ -484,6 +485,23 @@ class creation_tracker : public transform_base {
     }
   }
 
+  VkResult vkCreateRenderPass2KHR(VkDevice device,
+                                  const VkRenderPassCreateInfo2* pCreateInfo,
+                                  const VkAllocationCallbacks* pAllocator,
+                                  VkRenderPass* pRenderPass) override {
+    if constexpr (args_contain<VkRenderPass, Args...>()) {
+      auto res = super::vkCreateRenderPass2KHR(device, pCreateInfo, pAllocator,
+                                               pRenderPass);
+      if (res != VK_SUCCESS) {
+        return res;
+      }
+      GAPID2_ASSERT(state_block_->create(*pRenderPass), "RenderPass already exists");
+      return res;
+    } else {
+      return super::vkCreateRenderPass2KHR(device, pCreateInfo, pAllocator,
+                                           pRenderPass);
+    }
+  }
   VkResult vkCreateCommandPool(VkDevice device,
                                const VkCommandPoolCreateInfo* pCreateInfo,
                                const VkAllocationCallbacks* pAllocator,
@@ -640,11 +658,15 @@ class creation_tracker : public transform_base {
     }
 
     if constexpr (args_contain<VkPhysicalDevice, Args...>()) {
-      for (auto& it : state_block_->VkPhysicalDevices) {
-        if (it.second.second->instance == instance) {
-          state_block_->erase(it.first);
+      state_block_->VkPhysicalDevicemut.lock();
+      for (auto it = state_block_->VkPhysicalDevices.begin(); it != state_block_->VkPhysicalDevices.end();) {
+        if (it->second.second->instance == instance) {
+          it = state_block_->VkPhysicalDevices.erase(it);
+          continue;
         }
+        it++;
       }
+      state_block_->VkPhysicalDevicemut.unlock();
     }
 
     return super::vkDestroyInstance(instance, pAllocator);

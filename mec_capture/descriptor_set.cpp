@@ -30,7 +30,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_descriptor_sets(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecDescriptorSets");
   for (auto& it : state_block->VkDescriptorSets) {
-    VkDescriptorSetWrapper* ds = it.second.second;
+    auto ds = it.second.second;
     VkDescriptorSet descriptor_set = it.first;
     serializer->vkAllocateDescriptorSets(ds->device,
                                          ds->get_allocate_info(), &descriptor_set);
@@ -40,7 +40,7 @@ void mid_execution_generator::capture_descriptor_sets(const state_block* state_b
 void mid_execution_generator::capture_descriptor_set_contents(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecDescriptorSetContents");
   for (auto& it : state_block->VkDescriptorSets) {
-    VkDescriptorSetWrapper* ds = it.second.second;
+    auto ds = it.second.second;
     VkDescriptorSet descriptor_set = it.first;
     std::vector<VkWriteDescriptorSet> writes;
     std::list<VkDescriptorImageInfo> image_infos;
@@ -59,29 +59,29 @@ void mid_execution_generator::capture_descriptor_set_contents(const state_block*
         dws.descriptorCount = 1;
         switch (dws.descriptorType) {
           case VK_DESCRIPTOR_TYPE_SAMPLER:
-            if (!b.second.descriptors[i].image_info.sampler) {
+            if (!b.second.descriptors[i].image_info.sampler ||
+                !state_block->get(b.second.descriptors[i].image_info.sampler)) {
               continue;
             }
-            if (state_block->get(b.second.descriptors[i].image_info.sampler) &&
-                state_block->get(b.second.descriptors[i].image_info.sampler)->invalidated) {
+            if (state_block->get(b.second.descriptors[i].image_info.sampler)->invalidated) {
               continue;
             }
             image_infos.push_back(b.second.descriptors[i].image_info);
             dws.pImageInfo = &image_infos.back();
             break;
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            if (!b.second.descriptors[i].image_info.sampler) {
+            if (!b.second.descriptors[i].image_info.sampler 
+                || !state_block->get(b.second.descriptors[i].image_info.sampler)) {
               continue;
             }
-            if (!b.second.descriptors[i].image_info.imageView) {
+            if (!b.second.descriptors[i].image_info.imageView
+                || !state_block->get(b.second.descriptors[i].image_info.imageView)) {
               continue;
             }
-            if (state_block->get(b.second.descriptors[i].image_info.sampler) &&
-                state_block->get(b.second.descriptors[i].image_info.sampler)->invalidated) {
+            if (state_block->get(b.second.descriptors[i].image_info.sampler)->invalidated) {
               continue;
             }
-            if (state_block->get(b.second.descriptors[i].image_info.imageView) &&
-                state_block->get(b.second.descriptors[i].image_info.imageView)->invalidated) {
+            if (state_block->get(b.second.descriptors[i].image_info.imageView)->invalidated) {
               continue;
             }
             image_infos.push_back(b.second.descriptors[i].image_info);
@@ -90,11 +90,11 @@ void mid_execution_generator::capture_descriptor_set_contents(const state_block*
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
           case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            if (!b.second.descriptors[i].image_info.imageView) {
+            if (!b.second.descriptors[i].image_info.imageView ||
+                !state_block->get(b.second.descriptors[i].image_info.imageView)) {
               continue;
             }
-            if (state_block->get(b.second.descriptors[i].image_info.imageView) &&
-                state_block->get(b.second.descriptors[i].image_info.imageView)->invalidated) {
+            if (state_block->get(b.second.descriptors[i].image_info.imageView)->invalidated) {
               continue;
             }
             image_infos.push_back(b.second.descriptors[i].image_info);
@@ -104,11 +104,11 @@ void mid_execution_generator::capture_descriptor_set_contents(const state_block*
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            if (!b.second.descriptors[i].buffer_info.buffer) {
+            if (!b.second.descriptors[i].buffer_info.buffer ||
+                !state_block->get(b.second.descriptors[i].buffer_info.buffer)) {
               continue;
             }
-            if (state_block->get(b.second.descriptors[i].buffer_info.buffer) &&
-                state_block->get(b.second.descriptors[i].buffer_info.buffer)->invalidated) {
+            if (state_block->get(b.second.descriptors[i].buffer_info.buffer)->invalidated) {
               continue;
             }
 
@@ -117,11 +117,11 @@ void mid_execution_generator::capture_descriptor_set_contents(const state_block*
             break;
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            if (!b.second.descriptors[i].buffer_view_info) {
+            if (!b.second.descriptors[i].buffer_view_info ||
+                !state_block->get(b.second.descriptors[i].buffer_view_info)) {
               continue;
             }
-            if (state_block->get(b.second.descriptors[i].buffer_view_info) &&
-                state_block->get(b.second.descriptors[i].buffer_view_info)->invalidated) {
+            if (state_block->get(b.second.descriptors[i].buffer_view_info)->invalidated) {
               continue;
             }
             buffer_views.push_back(b.second.descriptors[i].buffer_view_info);

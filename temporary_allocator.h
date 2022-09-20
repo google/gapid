@@ -15,14 +15,31 @@
  */
 
 #pragma once
-#include <vector>
 #include <malloc.h>
+
+#include <vector>
+
 #include "common.h"
 
 namespace gapid2 {
 
 struct temporary_allocator {
   temporary_allocator() { memory_blocks_.push_back(block{4096, init, 4096}); }
+
+  ~temporary_allocator() {
+    for (auto& i : memory_blocks_) {
+      if (i.data != init) {
+        free(i.data);
+      }
+    }
+  }
+
+  void reset() {
+    data_offset = 0;
+    for (auto& i : memory_blocks_) {
+      i.left = i.size;
+    }
+  }
 
   void* get_memory(size_t _sz) {
     _sz = (_sz + 7) & (~7);  // Make sure we are at least 8-byte aligned

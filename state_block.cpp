@@ -48,17 +48,10 @@
 
 namespace gapid2 {
 state_block::~state_block() {
-#define PROCESS_HANDLE(Type) \
-  for (auto& it : Type##s) { \
-    delete it.second.second; \
-  }
-
-#include "handle_defines.inl"
-#undef PROCESS_HANDLE
 }
 
 #define PROCESS_HANDLE(Type)                                               \
-  Type##Wrapper* state_block::create(Type t) {                             \
+  std::shared_ptr<Type##Wrapper> state_block::create(Type t) {             \
     Type##mut.lock_shared();                                               \
     auto it = Type##s.find(t);                                             \
     if (it != Type##s.end()) {                                             \
@@ -67,12 +60,12 @@ state_block::~state_block() {
     }                                                                      \
     Type##mut.unlock_shared();                                             \
     Type##mut.lock();                                                      \
-    auto ret = new Type##Wrapper(t);                                       \
+    auto ret = std::make_shared<Type##Wrapper>(t);                         \
     Type##s[t] = std::make_pair(1, ret);                                   \
     Type##mut.unlock();                                                    \
     return ret;                                                            \
   }                                                                        \
-  Type##Wrapper* state_block::get_or_create(Type t) {                      \
+  std::shared_ptr<Type##Wrapper> state_block::get_or_create(Type t) {      \
     Type##mut.lock_shared();                                               \
     auto it = Type##s.find(t);                                             \
     if (it != Type##s.end()) {                                             \
@@ -81,13 +74,13 @@ state_block::~state_block() {
       return i;                                                            \
     }                                                                      \
     Type##mut.unlock_shared();                                             \
-    auto ret = new Type##Wrapper(t);                                       \
+    auto ret = std::make_shared<Type##Wrapper>(t);                         \
     Type##mut.lock();                                                      \
     Type##s[t] = std::make_pair(1, ret);                                   \
     Type##mut.unlock();                                                    \
     return ret;                                                            \
   }                                                                        \
-  Type##Wrapper* state_block::get(Type t) {                                \
+  std::shared_ptr<Type##Wrapper> state_block::get(Type t) {                \
     Type##mut.lock_shared();                                               \
     auto it = Type##s.find(t);                                             \
     if (it != Type##s.end()) {                                             \
@@ -104,7 +97,7 @@ state_block::~state_block() {
     if (it != Type##s.end()) {                                             \
       auto i = it->second.second;                                          \
       Type##mut.unlock_shared();                                           \
-      return i;                                                            \
+      return i.get();                                                      \
     }                                                                      \
     Type##mut.unlock_shared();                                             \
     return nullptr;                                                        \
@@ -117,7 +110,7 @@ state_block::~state_block() {
       return false;                                                        \
     }                                                                      \
     if (!--it->second.first) {                                             \
-      delete it->second.second;                                            \
+      it->second.second->invalidate();                                     \
       Type##s.erase(it);                                                   \
     }                                                                      \
     Type##mut.unlock();                                                    \
@@ -126,9 +119,9 @@ state_block::~state_block() {
   void state_block::erase_if(std::function<bool(Type##Wrapper * w)> fun) { \
     Type##mut.lock();                                                      \
     for (auto it = Type##s.begin(); it != Type##s.end();) {                \
-      if (fun(it->second.second)) {                                        \
+      if (fun(it->second.second.get())) {                                  \
         if (0 == --it->second.first) {                                     \
-          delete it->second.second;                                        \
+          it->second.second->invalidate();                                 \
           it = Type##s.erase(it);                                          \
           continue;                                                        \
         }                                                                  \

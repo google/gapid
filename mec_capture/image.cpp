@@ -28,7 +28,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_images(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecImageCreation");
   for (auto& it : state_block->VkImages) {
-    VkImageWrapper* img = it.second.second;
+    auto img = it.second.second;
     // Swapchain images are already created for us during swapchain creation.
     if (img->get_swapchain() != VK_NULL_HANDLE) {
       continue;
@@ -43,13 +43,13 @@ void mid_execution_generator::capture_bind_images(const state_block* state_block
   serializer->insert_annotation("MecImageBinds");
   for (auto& dev : state_block->VkDevices) {
     auto device = dev.second.second;
-    staging_resource_manager staging(bypass_caller, serializer, state_block->get(device->get_physical_device()), device, max_copy_overhead_bytes_, shader_manager);
+    staging_resource_manager staging(bypass_caller, serializer, state_block->get(device->get_physical_device()), device.get(), max_copy_overhead_bytes_, shader_manager);
     image_copier copier(&staging, state_block);
     for (auto& it : state_block->VkImages) {
       if (it.second.second->device != dev.first) {
         continue;
       }
-      VkImageWrapper* img = it.second.second;
+      auto img = it.second.second;
       if (img->get_swapchain() != VK_NULL_HANDLE) {
         continue;
       }
@@ -61,7 +61,7 @@ void mid_execution_generator::capture_bind_images(const state_block* state_block
         continue;
       }
       serializer->vkBindImageMemory(img->device, it.first, img->bindings[0].memory, img->bindings[0].offset);
-
+      serializer->insert_annotation(std::format("Priming {}", reinterpret_cast<uintptr_t>(img->_handle)).c_str());
       img->for_each_subresource_in(VkImageSubresourceRange{
                                        .aspectMask = 0xFFFFFFFF,
                                        .baseMipLevel = 0,
@@ -70,10 +70,12 @@ void mid_execution_generator::capture_bind_images(const state_block* state_block
                                        .layerCount = VK_REMAINING_ARRAY_LAYERS,
                                    },
                                    [&staging, device, img, state_block, serializer, bypass_caller, &copier](uint32_t mip_level, uint32_t array_layer, VkImageAspectFlagBits aspect) {
+                                     serializer->insert_annotation(std::format("Priming {}-{}-{}-{}", reinterpret_cast<uintptr_t>(img->_handle), mip_level, array_layer, static_cast<uint32_t>(aspect)).c_str());
                                      const auto& dat = img->sr_data[img->get_subresource_idx(mip_level, array_layer, aspect)];
         // This has never been used on a queue, so we can ignore this for now.
 #pragma TODO(awoloszyn, "Some images might end up without a queue but with real data, specifically preinitialized, special-case that")
                                      if (dat.src_queue_idx == VK_QUEUE_FAMILY_IGNORED) {
+                                       serializer->insert_annotation(std::format("NoPrime {}-{}-{}-{}", reinterpret_cast<uintptr_t>(img->_handle), mip_level, array_layer, static_cast<uint32_t>(aspect)).c_str());
                                        return;
                                      }
                                      VkCommandBuffer cb = staging.get_command_buffer_for_queue(state_block->get(get_queue_for_family(state_block, device->_handle, dat.src_queue_idx)));
@@ -106,9 +108,9 @@ void mid_execution_generator::capture_bind_images(const state_block* state_block
                                          .depth = get_mip_size(img->get_create_info()->extent.depth, mip_level),
                                      };
                                      VkOffset3D offs{0, 0, 0};
-                                     copier.get_image_content(img, array_layer, mip_level, serializer, bypass_caller, offs, xe, aspect);
-
+                                     copier.get_image_content(img.get(), array_layer, mip_level, serializer, bypass_caller, offs, xe, aspect);
                                    });
+      serializer->insert_annotation(std::format("Done priming {}", reinterpret_cast<uintptr_t>(img->_handle)).c_str());
     }
   }
 }

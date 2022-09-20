@@ -24,7 +24,7 @@ namespace gapid2 {
 void mid_execution_generator::capture_surfaces(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller) const {
   serializer->insert_annotation("MecSurfaces");
   for (auto& it : state_block->VkSurfaceKHRs) {
-    VkSurfaceKHRWrapper* surf = it.second.second;
+    auto surf = it.second.second;
     VkSurfaceKHR surface = it.first;
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)

@@ -25,10 +25,19 @@ namespace gapid2 {
 
 namespace {
 const uint32_t kInvalidMemoryTypeIndex = 0xFFFFFFFF;
+void annotate(gapid2::command_serializer* serializer, std::string str) {
+  if (!str.empty()) {
+    auto enc = serializer->get_encoder(0);
+    enc->encode<uint64_t>(1);
+    enc->encode<uint64_t>(1);
+    enc->encode<uint64_t>(str.size() + 1);
+    enc->encode_primitive_array(str.c_str(), str.size() + 1);
+  }
+}
 }
 
 staging_resource_manager::staging_resource_manager(transform_base* callee,
-                                                   transform_base* serializer,
+                                                   command_serializer* serializer,
                                                    const VkPhysicalDeviceWrapper* physical_device,
                                                    const VkDeviceWrapper* device,
                                                    VkDeviceSize maximum_size,
@@ -284,7 +293,8 @@ staging_resource_manager::staging_resources staging_resource_manager::get_stagin
 VkQueue get_queue_for_family(const state_block* sb, VkDevice device, uint32_t queue_family) {
   for (auto& q : sb->VkQueues) {
     if (q.second.second->device == device &&
-        q.second.second->queue_family_index == queue_family) {
+        (q.second.second->queue_family_index == queue_family ||
+         queue_family == VK_QUEUE_FAMILY_IGNORED)) {
       return q.first;
     }
   }
@@ -504,7 +514,7 @@ staging_resource_manager::render_pipeline_data staging_resource_manager::get_pip
           .preserveAttachmentCount = 0,
           .pPreserveAttachments = nullptr};
 
-      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT || aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT || aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
         output_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         descs[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         descs[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -578,8 +588,15 @@ staging_resource_manager::render_pipeline_data staging_resource_manager::get_pip
     VkShaderModule fragment_module;
 
     static const std::vector<uint32_t> empty;
-    const auto& vertex_shader_data = s_manager->get_quad_shader();
-    const auto& fragment_shader = (aspect == VK_IMAGE_ASPECT_COLOR_BIT) ? s_manager->get_prime_by_rendering_color_shader(oFormat) : (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) ? s_manager->get_prime_by_rendering_depth_shader(oFormat) : (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) ? s_manager->get_prime_by_rendering_stencil_shader() : empty;
+    std::string created_name;
+    const auto& vertex_shader_data = s_manager->get_quad_shader(&created_name);
+    annotate(serializer, created_name);
+    created_name.clear();
+
+    const auto& fragment_shader = (aspect == VK_IMAGE_ASPECT_COLOR_BIT) ? s_manager->get_prime_by_rendering_color_shader(oFormat, &created_name) : (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) ? s_manager->get_prime_by_rendering_depth_shader(oFormat, &created_name)
+                                                                                                                                               : (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) ? s_manager->get_prime_by_rendering_stencil_shader(&created_name)
+                                                                                                                                                                                         : empty;
+    annotate(serializer, created_name);
     GAPID2_ASSERT(!fragment_shader.empty(), "Could not get proper shader for rendering");
 
     {
@@ -877,7 +894,9 @@ staging_resource_manager::copy_pipeline_data staging_resource_manager::get_pipel
     VkShaderModule compute_shader;
 
     static const std::vector<uint32_t> empty;
-    const auto& shader_data = s_manager->get_prime_by_compute_store_shader(oFormat, output_aspect, iaFormat, input_aspect, type);
+    std::string created_name;
+    const auto& shader_data = s_manager->get_prime_by_compute_store_shader(oFormat, output_aspect, iaFormat, input_aspect, type, &created_name);
+    annotate(serializer, created_name);
     GAPID2_ASSERT(!shader_data.empty(), "Could not get proper shader for copying");
 
     {

@@ -55,9 +55,9 @@ bool image_copier::get_image_content(
   element_and_block_size sz = get_element_and_block_size_for_aspect(image->get_create_info()->format, aspect);
 
   const uint32_t bytes_per_row = ((sz.element_size * extent.width) / sz.texel_block_size.width) * extent.depth;
-  const uint32_t rows_per_depth_layer = extent.height / sz.texel_block_size.height;
+  const uint32_t rows_per_depth_layer = std::max(extent.height / sz.texel_block_size.height, 1u);
 
-  uint32_t row = 0;
+  uint32_t row = 0; 
   uint32_t remaining_rows = rows_per_depth_layer;
 
   if (!remaining_rows) {

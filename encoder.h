@@ -22,12 +22,30 @@
 #include "common.h"
 
 namespace gapid2 {
+
+
+inline std::vector<block> clone_blocks(const std::vector<block>& blocks) {
+  std::vector<block> new_blocks;
+  
+  for (auto& block : blocks) {
+    new_blocks.push_back({block.size, (char*)malloc(block.size), block.left});
+    memcpy(new_blocks.back().data, block.data, block.size);
+  }
+  return new_blocks;
+}
+
 struct encoder {
 #define INITIAL_SIZE 4096
   encoder() {
     data_.push_back(
         block{INITIAL_SIZE, (char*)malloc(INITIAL_SIZE), INITIAL_SIZE});
     current_ = &data_[0];
+  }
+  
+  ~encoder() {
+    for (auto& x : data_) {
+      free(x.data);
+    }
   }
 
   void ensure_large_enough(const size_t _sz) {

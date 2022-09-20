@@ -25,6 +25,8 @@
 #include "base_caller.h"
 #include "command_deserializer.h"
 #include "command_inline_fixer.h"
+#include "creation_data_tracker.h"
+#include "data_provider.h"
 #include "decoder.h"
 #include "handle_fixer.h"
 #include "layer_helper.h"
@@ -32,7 +34,6 @@
 #include "minimal_state_tracker.h"
 #include "null_caller.h"
 #include "transform_base.h"
-#include "creation_data_tracker.h"
 
 namespace gapid2 {
 
@@ -42,6 +43,7 @@ class replayer : public command_deserializer {
  public:
   transform_base* call_through;
   handle_fixer* fixer;
+  transform_data_provider* data_to_update_;
 
   // Custom vkEnumeratePhysicalDevices to handle the case where a vendor
   // or system may re-order physical devices based on certain
@@ -228,7 +230,7 @@ class replayer : public command_deserializer {
 
   void* get_memory_write_location(VkDeviceMemory memory,
                                   VkDeviceSize offset,
-                                  VkDeviceSize size) override {
+                                  VkDeviceSize size, size_t) override {
     if (dummy_runner) {
       return nullptr;
     }
@@ -243,6 +245,25 @@ class replayer : public command_deserializer {
                   "Writing over the end of mapped memory");
     return static_cast<void*>(retval);
   }
+
+  void notify_flag(uint64_t flag) {
+    if (flag == 0 && mec_end == std::chrono::steady_clock::time_point()) {
+      mec_end = std::chrono::high_resolution_clock::now();
+    }
+  }
+
+  void notify_command(uint64_t command) override {
+    if (data_to_update_) {
+      data_to_update_->set_current_command_index(command);
+    }
+  }
+  void DeserializeStream(decoder* decoder_, bool raw_stream = false) override {
+    stream_start = std::chrono::high_resolution_clock::now();
+    super::DeserializeStream(decoder_, raw_stream);
+  }
+
+  std::chrono::steady_clock::time_point stream_start;
+  std::chrono::steady_clock::time_point mec_end;
 
   bool dummy_runner = false;
 };
@@ -260,7 +281,7 @@ int main(int argc, const char** argv) {
     }
   }
 
-  HANDLE file = CreateFileA(argv[argc - 1], GENERIC_READ, 0, nullptr, OPEN_ALWAYS,
+  HANDLE file = CreateFileA(argv[argc - 1], GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_ALWAYS,
                             FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (!file) {
@@ -286,21 +307,23 @@ int main(int argc, const char** argv) {
     OutputDebugStringA("Could not map view of file");
     return -1;
   }
-
+  gapid2::transform_data_provider provider;
   gapid2::transform<gapid2::replayer>
       replayer(nullptr);
+  replayer.data_to_update_ = &provider;
   gapid2::transform<gapid2::base_caller> base_caller(dummy ? nullptr : &replayer);
   gapid2::transform<gapid2::null_caller> null_caller(dummy ? &replayer : nullptr);
   // Unfortunately we need the next 3 transforms for the descriptorupdatetemplates
-  gapid2::transform<gapid2::state_block> fixer_state_block(&replayer); 
+  gapid2::transform<gapid2::state_block> fixer_state_block(&replayer);
   gapid2::transform<gapid2::creation_tracker<VkDescriptorUpdateTemplate>> fixer_creation_tracker(&replayer);
   gapid2::transform<gapid2::creation_data_tracker<VkDescriptorUpdateTemplate>> fixer_data_tracker(&replayer);
   gapid2::transform<gapid2::command_inline_fixer> inline_fixer(&replayer);
   gapid2::transform<gapid2::state_block> state_block_(&replayer);
   gapid2::transform<gapid2::minimal_state_tracker> minimal_state_tracker_(&replayer);
   gapid2::transform<gapid2::layerer> layerer_(&replayer);
+  layerer_.data_provider_ = &provider;
 
-  layerer_.initializeLayers(gapid2::get_layers());
+  layerer_.initializeLayers(gapid2::get_layers(), gapid2::get_user_config());
 
   if (!dummy) {
     auto vk = LoadLibraryA("vulkan-1.dll");
@@ -323,14 +346,16 @@ int main(int argc, const char** argv) {
   auto res = std::chrono::high_resolution_clock::now();
   replayer.DeserializeStream(&dec);
   auto end = std::chrono::high_resolution_clock::now();
-  auto elapsed = end - res;
-  OutputDebugString(("Initializing time:: " +
-                     std::to_string(std::chrono::duration<float>(res - begin).count()) +
-                     "\n")
+  output_message(message_type::info, ("Initializing time:: " +
+                     std::to_string(std::chrono::duration<float>(res - begin).count()))
                         .c_str());
+
+  auto mec_elapsed = replayer.mec_end - replayer.stream_start;
+  output_message(message_type::info, std::format("Mec Time:: {}", std::chrono::duration<float>(mec_elapsed).count()).c_str());
+
+  auto elapsed = end - replayer.mec_end;
   auto str = "Run time:: " +
-             std::to_string(std::chrono::duration<float>(elapsed).count()) +
-             "\n";
-  OutputDebugString(str.c_str());
+             std::to_string(std::chrono::duration<float>(elapsed).count());
+  output_message(message_type::info, str.c_str());
   return 0;
 }

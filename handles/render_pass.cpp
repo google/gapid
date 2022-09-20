@@ -40,4 +40,14 @@ void VkRenderPassWrapper::set_create_info2(VkDevice device_, state_block* state_
         _VkRenderPassCreateInfo2_VkSubpassDescription2_VkAttachmentReference2_aspectMask_valid);
 }
 
+void VkRenderPassWrapper::set_create_info2_khr(VkDevice device_, state_block* state_block_, const VkRenderPassCreateInfo2* pCreateInfo) {
+  device = device_;
+  create_info2_khr = mem.get_typed_memory<VkRenderPassCreateInfo2>(1);
+  clone(state_block_, pCreateInfo[0], create_info2_khr[0], &mem,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_depthResolveMode_valid,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_stencilResolveMode_valid,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkSubpassDescriptionDepthStencilResolve_VkAttachmentReference2_aspectMask_valid,
+        _VkRenderPassCreateInfo2_VkSubpassDescription2_VkAttachmentReference2_aspectMask_valid);
+}
+
 }  // namespace gapid2

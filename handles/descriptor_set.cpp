@@ -25,7 +25,7 @@
 
 namespace gapid2 {
 
-void VkDescriptorSetWrapper::set_layout(VkDescriptorSetLayoutWrapper* layout) {
+void VkDescriptorSetWrapper::set_layout(std::shared_ptr<VkDescriptorSetLayoutWrapper> layout) {
   _layout = layout;
   for (size_t i = 0; i < _layout->create_info->bindingCount; ++i) {
     auto& inf = _layout->create_info->pBindings[i];

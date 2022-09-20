@@ -43,7 +43,7 @@ class spy_serializer : public command_serializer {
   std::recursive_mutex call_mutex;
   DWORD encoder_tls_key;
   std::fstream out_file;
-  bool enabled_;
+  std::atomic<bool> enabled_;
   std::atomic<std::thread::id> tid_ = std::thread::id();
 };
 }  // namespace gapid2

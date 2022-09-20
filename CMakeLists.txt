@@ -11,6 +11,14 @@ endif()
 
 include_directories(${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include)
 include_directories(${gapid2_SOURCE_DIR}/externals/digestpp)
+include_directories(${gapid2_SOURCE_DIR}/externals/json/single_include/nlohmann)
+
+add_library(base64
+    externals/base64/base64.h    
+    externals/base64/base64.cpp
+)
+target_include_directories(base64 PUBLIC ${gapid2_SOURCE_DIR}/externals/base64)
+
 add_subdirectory(externals/vk_callback_swapchain)
 
 ## Glslang options, disable as much as we can
@@ -65,6 +73,12 @@ configure_file(
 )
 
 configure_file(
+    externals/json/single_include/nlohmann/json.hpp
+    ${gapid2_BINARY_DIR}/scripts/json.hpp
+    COPYONLY
+)
+
+configure_file(
     scripts/CMakeLists.txt
     ${gapid2_BINARY_DIR}/scripts/CMakeLists.txt
     COPYONLY
@@ -100,6 +114,23 @@ configure_file(
     COPYONLY
 )
 
+function(copy_external_to_scripts dir)
+    file(GLOB_RECURSE files "${dir}/*")
+    file(RELATIVE_PATH rel_path ${gapid2_SOURCE_DIR} ${dir})
+    foreach (src ${files})
+        file(RELATIVE_PATH nm ${dir} ${src})
+        string(SUBSTRING ${nm} 0 1 first_char)
+        if ("${first_char}" STREQUAL ".")
+            continue()
+        endif()        
+        configure_file(
+            ${src}
+            ${gapid2_BINARY_DIR}/scripts/${rel_path}/${nm}
+            COPYONLY
+        )
+    endforeach()
+endfunction()
+copy_external_to_scripts(${gapid2_SOURCE_DIR}/externals/base64)
 
 file(COPY externals/Vulkan-Headers DESTINATION ${gapid2_BINARY_DIR}/scripts/)
 
@@ -110,6 +141,7 @@ function(generate_file SOURCE)
     endforeach()
     add_custom_command(OUTPUT
         ${of}
+        COMMAND ${CMAKE_COMMAND} -E echo "Generating ${of} from ${gapid2_SOURCE_DIR}/${SOURCE}"
         COMMAND ${Python3_EXECUTABLE} 
             ${gapid2_SOURCE_DIR}/${SOURCE}
             ${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/registry/vk.xml
@@ -328,6 +360,8 @@ add_library(HANDLE_TYPES STATIC
     handles/swapchain.cpp
     handles/swapchain.h
     ${gapid2_BINARY_DIR}/forwards.h
+    ${gapid2_BINARY_DIR}/transform_base.h
+    ${gapid2_BINARY_DIR}/handle_defines.inl
 )
 
 add_library(BASE_FILES STATIC
@@ -337,6 +371,8 @@ add_library(BASE_FILES STATIC
     minimal_state_tracker.h
     custom.h
     custom.cpp
+    common.cpp
+    common.h
     creation_data_tracker.h
     creation_tracker.h
     state_block.cpp
@@ -370,8 +406,10 @@ add_library(LAYER_FILES OBJECT
     ${gapid2_BINARY_DIR}/call_forwards.cpp
 )
 
+target_link_libraries(BASE_FILES PUBLIC base64)
+
 target_link_libraries(LAYER_FILES PUBLIC 
-    BASE_FILES)
+    BASE_FILES base64)
 
 add_library(test SHARED
     passthrough_layer.cpp
@@ -379,7 +417,7 @@ add_library(test SHARED
     layer_setup.cpp
 )
 
-target_link_libraries(test BASE_FILES HANDLE_TYPES LAYER_FILES)
+target_link_libraries(test BASE_FILES HANDLE_TYPES LAYER_FILES base64)
 
 add_library(gapii SHARED
     spy.h
@@ -435,10 +473,11 @@ add_library(gapii SHARED
     ${glslang_SOURCE_DIR}/Standalone/resource_limits_c.cpp
 )
 
-target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect glslang SPIRV)
+target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect glslang SPIRV base64)
 target_compile_definitions(gapii PRIVATE MEC=1)
 
 add_executable(gapir
+    command_buffer_splitter.h
     replayer.cpp
     ${gapid2_BINARY_DIR}/handle_replacer.h
     ${gapid2_BINARY_DIR}/handle_replacer.cpp
@@ -446,14 +485,14 @@ add_executable(gapir
     ${gapid2_BINARY_DIR}/command_inline_fixer.cpp
     ${gapid2_BINARY_DIR}/fix_handles.h
 )
-target_link_libraries(gapir BASE_FILES HANDLE_TYPES )
+target_link_libraries(gapir BASE_FILES HANDLE_TYPES base64)
 
 add_executable(printer
     printer.cpp
     ${gapid2_BINARY_DIR}/struct_print.h
     ${gapid2_BINARY_DIR}/command_printer.h
 )
-target_link_libraries(printer BASE_FILES HANDLE_TYPES)
+target_link_libraries(printer BASE_FILES HANDLE_TYPES base64)
 
 foreach(L test gapii gapir printer BASE_FILES HANDLE_TYPES LAYER_FILES)
     target_include_directories(${L} PRIVATE
@@ -492,6 +531,7 @@ function(set_directories target)
         
     endforeach()
 endfunction()
+
 
 set_directories(test)
 set_directories(gapii)

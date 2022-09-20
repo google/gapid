@@ -321,7 +321,7 @@ std::vector<uint32_t> compile_shader_to_spirv(glslang_stage_t stage, const char*
   return outShaderModule;
 }
 
-const std::vector<uint32_t>& shader_manager::get_quad_shader() {
+const std::vector<uint32_t>& shader_manager::get_quad_shader(std::string* created_name) {
   if (quad_vertex_shader_spirv.empty()) {
     const auto shader =
         quad_vertex_shader_spirv = compile_shader_to_spirv(glslang_stage_t::GLSLANG_STAGE_VERTEX,
@@ -339,12 +339,13 @@ void main() {{
 	gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 }})")
                                                                .c_str());
+    created_name[0] = "quad_shader";
   }
 
   return quad_vertex_shader_spirv;
 }
 
-const std::vector<uint32_t>& shader_manager::get_copy_by_rendering_color_shader(VkFormat format) {
+const std::vector<uint32_t>& shader_manager::get_copy_by_rendering_color_shader(VkFormat format, std::string* created_name) {
   if (!copy_by_rendering_color_shaders.count(format)) {
     auto name = std::format("copy_render_by_color{}", static_cast<uint32_t>(format));
 
@@ -362,12 +363,13 @@ const std::vector<uint32_t>& shader_manager::get_copy_by_rendering_color_shader(
 	}})",
                                             unit, unit)
                                     .c_str());
+    created_name[0] = name;
   }
 
   return copy_by_rendering_color_shaders[format];
 }
 
-const std::vector<uint32_t>& shader_manager::get_copy_stencil_by_render_shader(VkFormat format) {
+const std::vector<uint32_t>& shader_manager::get_copy_stencil_by_render_shader(VkFormat format, std::string* created_name) {
   if (!copy_stencil_by_render_shaders.count(format)) {
     auto name = std::format("copy_render_by_stencil{}", static_cast<uint32_t>(format));
 
@@ -386,12 +388,13 @@ const std::vector<uint32_t>& shader_manager::get_copy_stencil_by_render_shader(V
 		}
 	}})")
                                     .c_str());
+    created_name[0] = name;
   }
 
   return copy_stencil_by_render_shaders[format];
 }
 
-const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_color_shader(VkFormat format) {
+const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_color_shader(VkFormat format, std::string* created_name) {
   if (!prime_by_rendering_color_shaders.count(format)) {
     auto name = std::format("render_by_color{}", static_cast<uint32_t>(format));
     switch (format) {
@@ -426,6 +429,7 @@ void main() {{
 	out_color.a = subpassLoad(in_color).a;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R8_SINT:
       case VK_FORMAT_R8G8_SINT:
@@ -458,6 +462,7 @@ void main() {{
 	out_color.a = int(subpassLoad(in_color).a);
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R8_UNORM:
       case VK_FORMAT_R8G8_UNORM:
@@ -488,6 +493,7 @@ void main() {{
 	out_color.a = subpassLoad(in_color).a/255.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R16_UNORM:
       case VK_FORMAT_R16G16_UNORM:
@@ -508,6 +514,7 @@ void main() {{
 	out_color.a = subpassLoad(in_color).a/65535.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R4G4_UNORM_PACK8:
       case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
@@ -527,6 +534,7 @@ void main() {{
 	out_color.a = subpassLoad(in_color).a/15.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R5G6B5_UNORM_PACK16:
       case VK_FORMAT_B5G6R5_UNORM_PACK16:
@@ -544,6 +552,7 @@ void main() {{
 	out_color.b = subpassLoad(in_color).b/31.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
       case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
@@ -563,6 +572,7 @@ void main() {{
 	out_color.a = subpassLoad(in_color).a/1.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
       case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
@@ -581,6 +591,7 @@ void main() {{
 	out_color.a = subpassLoad(in_color).a/3.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R8_SNORM:
       case VK_FORMAT_R8G8_SNORM:
@@ -607,6 +618,7 @@ void main() {{
 	out_color.a = snorm(subpassLoad(in_color).a, 255.0);
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R16_SNORM:
       case VK_FORMAT_R16G16_SNORM:
@@ -630,6 +642,7 @@ void main() {{
 	out_color.a = snorm(subpassLoad(in_color).a, 65535.0);
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
       case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
@@ -651,6 +664,7 @@ void main() {{
 	out_color.a = snorm(subpassLoad(in_color).a, 1.0);
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_R16_SFLOAT:
       case VK_FORMAT_R16G16_SFLOAT:
@@ -677,6 +691,7 @@ void main() {{
 	out_color.a = uintBitsToFloat(subpassLoad(in_color).a);
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       default:
         GAPID2_ERROR("Unsupported format for prime_by_rendering");
@@ -686,7 +701,7 @@ void main() {{
   return prime_by_rendering_color_shaders[format];
 }
 
-const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_depth_shader(VkFormat format) {
+const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_depth_shader(VkFormat format, std::string* created_name) {
   if (!prime_by_rendering_depth_shaders.count(format)) {
     auto name = std::format("render_by_depth{}", static_cast<uint32_t>(format));
     switch (format) {
@@ -704,6 +719,7 @@ void main() {{
 	gl_FragDepth = subpassLoad(in_depth).r / 65535.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_D24_UNORM_S8_UINT:
       case VK_FORMAT_X8_D24_UNORM_PACK32:
@@ -719,6 +735,7 @@ void main() {{
 	gl_FragDepth = (subpassLoad(in_depth).r & 0x00FFFFFF) / 16777215.0;
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       case VK_FORMAT_D32_SFLOAT:
       case VK_FORMAT_D32_SFLOAT_S8_UINT:
@@ -734,6 +751,7 @@ void main() {{
 	gl_FragDepth = uintBitsToFloat(subpassLoad(in_depth).r);
 }})")
                                         .c_str());
+        created_name[0] = name;
         break;
       default:
         GAPID2_ERROR("Unsupported format for prime_by_rendering_depth");
@@ -743,7 +761,7 @@ void main() {{
   return prime_by_rendering_depth_shaders[format];
 }
 
-const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_stencil_shader() {
+const std::vector<uint32_t>& shader_manager::get_prime_by_rendering_stencil_shader(std::string* created_name) {
   if (prime_by_rendering_stencil_shader_spirv.empty()) {
     prime_by_rendering_stencil_shader_spirv =
         compile_shader_to_spirv(glslang_stage_t::GLSLANG_STAGE_FRAGMENT,
@@ -759,11 +777,12 @@ void main() {{
   }}
 }})")
                                     .c_str());
+    created_name[0] = "prime_by_render_stencil";
   }
   return prime_by_rendering_stencil_shader_spirv;
 }
 
-const std::vector<uint32_t>& shader_manager::get_prime_by_compute_copy_shader(VkFormat format, VkImageAspectFlagBits aspect, VkImageType type) {
+const std::vector<uint32_t>& shader_manager::get_prime_by_compute_copy_shader(VkFormat format, VkImageAspectFlagBits aspect, VkImageType type, std::string* created_name) {
   GAPID2_ASSERT(aspect == VK_IMAGE_ASPECT_COLOR_BIT, "Invalid aspect for compute copy");
   compute_copy_key cck{format, format, aspect, aspect, type};
 
@@ -801,12 +820,13 @@ const std::vector<uint32_t>& shader_manager::get_prime_by_compute_copy_shader(Vk
                                                                              fmtStr, k_store_input_image_binding, unit, imgTypeStr,
                                                                              pos)
                                                                      .c_str());
+    created_name[0] = name;
   }
 
   return prime_by_compute_copy_shaders[cck];
 }
 
-const std::vector<uint32_t>& shader_manager::get_prime_by_compute_store_shader(VkFormat output_format, VkImageAspectFlagBits output_aspect, VkFormat input_format, VkImageAspectFlagBits input_aspect, VkImageType type) {
+const std::vector<uint32_t>& shader_manager::get_prime_by_compute_store_shader(VkFormat output_format, VkImageAspectFlagBits output_aspect, VkFormat input_format, VkImageAspectFlagBits input_aspect, VkImageType type, std::string* created_name) {
   GAPID2_ASSERT(input_aspect == VK_IMAGE_ASPECT_COLOR_BIT, "Invalid aspect for compute copy");
   GAPID2_ASSERT(output_aspect == VK_IMAGE_ASPECT_COLOR_BIT, "Invalid aspect for compute copy");
 
@@ -963,6 +983,7 @@ const std::vector<uint32_t>& shader_manager::get_prime_by_compute_store_shader(V
                                                                              input_fmt_str, k_store_input_image_binding, input_g, image_type_str,
                                                                              pos, color)
                                                                      .c_str());
+    created_name[0] = name;
   }
 
   return prime_by_compute_store_shaders[cck];

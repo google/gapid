@@ -15,7 +15,8 @@
 namespace gapid2 {
 class command_buffer_recorder : public transform_base {
  public:
-  void RerecordCommandBuffer(VkCommandBuffer cb, transform_base* next) {
+  void RerecordCommandBuffer(VkCommandBuffer cb, transform_base* next,
+                             std::function<void(uint64_t)> notify_pre_command = nullptr) {
     std::shared_lock<std::shared_mutex> l(command_buffers_mutex);
     std::unordered_map<VkCommandBuffer,
                        std::unique_ptr<command_buffer_recording>>::iterator it;
@@ -25,11 +26,12 @@ class command_buffer_recorder : public transform_base {
       return;
     }
     // Clone the contents in case we want to re-record AGAIN later.
-    std::vector v = it->second->enc.data_;
+    std::vector v = clone_blocks(it->second->enc.data_);
     decoder dec(std::move(v));
 
     command_buffer_deserializer deserializer;
     deserializer.next = next;
+    deserializer.notify_pre_command_fn = notify_pre_command;
     deserializer.DeserializeStream(&dec, true);
   }
 
@@ -47,14 +49,16 @@ class command_buffer_recorder : public transform_base {
     if (command_buffers_to_track.empty()) {
       for (size_t i = 0; i < pAllocateInfo->commandBufferCount; ++i) {
         cbrs.insert(std::make_pair(
-            pCommandBuffers[i], std::make_unique<command_buffer_recording>()));
+            pCommandBuffers[i], std::make_unique<command_buffer_recording>(
+                                    pAllocateInfo->commandPool)));
       }
     } else {
       for (size_t i = 0; i < pAllocateInfo->commandBufferCount; ++i) {
         if (command_buffers_to_track.count(pCommandBuffers[i])) {
           cbrs.insert(
               std::make_pair(pCommandBuffers[i],
-                             std::make_unique<command_buffer_recording>()));
+                             std::make_unique<command_buffer_recording>(
+                                 pAllocateInfo->commandPool)));
         }
       }
     }
@@ -78,6 +82,18 @@ class command_buffer_recorder : public transform_base {
                                          pCommandBuffers);
   }
 
+  VkResult vkResetCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolResetFlags flags) {
+    auto ret = transform_base::vkResetCommandPool(device, commandPool, flags);
+    command_buffers_mutex.lock();
+    for (auto& it : cbrs) {
+      if (it.second->pool == commandPool) {
+        it.second->enc.reset();
+      }
+    }
+    command_buffers_mutex.unlock();
+    return ret;
+  }
+
   void do_begin_command_buffer(VkCommandBuffer commandBuffer) {
     std::unordered_map<VkCommandBuffer,
                        std::unique_ptr<command_buffer_recording>>::iterator it;
@@ -91,6 +107,8 @@ class command_buffer_recorder : public transform_base {
   }
 
   struct command_buffer_recording {
+    explicit command_buffer_recording(VkCommandPool _pool) : pool(_pool){};
+    VkCommandPool pool;
     encoder enc;
   };
 

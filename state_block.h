@@ -35,15 +35,22 @@ class state_block : public transform_base {
  public:
   ~state_block();
 
-#define PROCESS_HANDLE(Type)                                 \
-  Type##Wrapper* get_or_create(Type t);                      \
-  Type##Wrapper* create(Type t);                             \
-  Type##Wrapper* get(Type t);                                \
-  const Type##Wrapper* get(Type t) const;                    \
-  bool erase(Type t);                                        \
-  void erase_if(std::function<bool(Type##Wrapper * w)> fun); \
-  mutable std::shared_mutex Type##mut;                       \
-  std::unordered_map<Type, std::pair<uint64_t, Type##Wrapper*>> Type##s;
+#define PROCESS_HANDLE(Type)                                                             \
+  std::shared_ptr<Type##Wrapper> get_or_create(Type t);                                  \
+  std::shared_ptr<Type##Wrapper> create(Type t);                                         \
+  std::shared_ptr<Type##Wrapper> get(Type t);                                            \
+  const Type##Wrapper* get(Type t) const;                                                \
+  bool erase(Type t);                                                                    \
+  void erase_if(std::function<bool(Type##Wrapper * w)> fun);                             \
+  mutable std::shared_mutex Type##mut;                                                   \
+  std::unordered_map<Type, std::pair<uint64_t, std::shared_ptr<Type##Wrapper>>> Type##s; \
+  Type get_unused_##Type() const {                                                       \
+    Type t;                                                                              \
+    do {                                                                                 \
+      t = reinterpret_cast<Type>(static_cast<uintptr_t>(std::rand()));                   \
+    } while (Type##s.contains(t));                                                       \
+    return t;                                                                            \
+  }
 
 #include "handle_defines.inl"
 #undef PROCESS_HANDLE

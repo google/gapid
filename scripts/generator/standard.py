@@ -55,7 +55,7 @@ def exts(plat):
         "VK_EXT_sample_locations",
         "VK_NV_shader_sm_builtins",
 
-        #Helpers
+        # Helpers
         "VK_KHR_external_memory_capabilities",
         "VK_KHR_external_memory",
         "VK_EXT_external_memory_host"

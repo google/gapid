@@ -17,32 +17,42 @@
 #pragma once
 #include <chrono>
 #include <string>
+#include <thread>
 
 #include "layer.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <atomic>
 #include <vector>
 
 #include "externals/stb/stb_image_write.h"
+#include "json.hpp"
 
 using PFN_vkSetSwapchainCallback = void(VKAPI_PTR*)(VkSwapchainKHR swapchain,
                                                     void callback(void*,
                                                                   uint8_t*,
                                                                   size_t),
                                                     void* user_data);
+std::atomic<uint32_t> waiting_images;
+
+void send_diagnostic(const std::string& str) {
+  auto obj = nlohmann::json::object();
+  obj["message"] = str;
+  SendJson(obj.dump());
+}
 
 struct foo {
   ~foo() {
     if (last_data.empty()) {
       return;
     }
-    output_image();
-    OutputDebugString("Image has been output\n");
+    while (waiting_images)
+      ;
   }
 
   void output_image() {
     stbi_write_png_compression_level = 0;
     stbi_write_force_png_filter = 0;
-    OutputDebugString("Dumping Image\n");
+    send_diagnostic("Dumping Image");
     if (format == VK_FORMAT_B8G8R8A8_UNORM) {
       for (size_t i = 0; i < last_data.size() / 4; ++i) {
         const size_t offs = i * 4;
@@ -55,6 +65,7 @@ struct foo {
     image_name += std::to_string(i);
     image_name += ".png";
     stbi_write_png(image_name.data(), width, height, 4, last_data.data(), 0);
+    waiting_images--;
   }
 
   size_t i = 0;
@@ -72,10 +83,9 @@ override_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
   auto begin = std::chrono::high_resolution_clock::now();
   auto ret = vkCreateInstance(pCreateInfo, pAllocator, instance);
   auto end = std::chrono::high_resolution_clock::now();
-  OutputDebugString(("Create Instance time:: " +
-                     std::to_string(std::chrono::duration<float>(end - begin).count()) +
-                     "\n")
-                        .c_str());
+  send_diagnostic(("Create Instance time:: " +
+                   std::to_string(std::chrono::duration<float>(end - begin).count()))
+                      .c_str());
   return ret;
 }
 
@@ -89,14 +99,15 @@ override_vkCreateSwapchainKHR(VkDevice device,
     return res;
   }
   if (pCreateInfo->imageFormat != VK_FORMAT_R8G8B8A8_UNORM &&
-      pCreateInfo->imageFormat != VK_FORMAT_B8G8R8A8_UNORM) {
+      pCreateInfo->imageFormat != VK_FORMAT_B8G8R8A8_UNORM &&
+      pCreateInfo->imageFormat != VK_FORMAT_R8G8B8A8_SRGB) {
     return res;
   }
   static foo f;
   f.width = pCreateInfo->imageExtent.width;
   f.height = pCreateInfo->imageExtent.height;
   f.format = pCreateInfo->imageFormat;
-  OutputDebugString("Setting callback swapchain\n");
+  OutputDebugString("Setting callback swapchain");
 
   auto set_callback = reinterpret_cast<PFN_vkSetSwapchainCallback>(
       vkGetDeviceProcAddr(device, "vkSetSwapchainCallback"));
@@ -112,4 +123,11 @@ override_vkCreateSwapchainKHR(VkDevice device,
         nullptr);
   }
   return res;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL override_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
+  waiting_images++;
+  auto ret = vkQueuePresentKHR(queue, pPresentInfo);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  return ret;
 }
