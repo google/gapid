@@ -210,8 +210,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "google",
         project = "perfetto",
-        commit = "169fe169444569a720daff9826d5af347967a435",  # 29.0
-        sha256 = "c0a4b6f774fdccad43aedc6860a1f85dcc3624335e6a3467a4ba7a11e42deb25",
+        commit = "0ff403688efce9d5de43d69cae3c835e993e4730",  # 29+
+        sha256 = "e609a91a6d64caf9a4e4b64f1826d160eba8fd84f7e5e94025ba287374e78e30",
         patches = [
             # Fix a Windows MinGW build issue.
             "@gapid//tools/build/third_party:perfetto.patch",
