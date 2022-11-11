@@ -21,6 +21,7 @@
 #include <sstream>
 
 #include "base64.h"
+#include "json.hpp"
 
 namespace {
 struct foo {
@@ -38,8 +39,8 @@ struct foo {
       std::cout << ",";
     }
     needs_comma = true;
-    std::cout << s << std::endl
-              << std::flush;
+    std::cout << s << std::endl;
+    std::cout << std::flush;
   }
   bool needs_comma = false;
 };
@@ -83,23 +84,20 @@ void output_message(message_type type, const std::string& str, uint32_t layer_in
   if (layer_index != static_cast<uint32_t>(-1)) {
     ss << ", \"LayerIndex\" : " << layer_index;
   }
-  ss << ", \"Content\":\"";
-  auto e = base64_encode(str, false);
-  ss << e.c_str();
-  ss << "\" }";
+  ss << ", \"Content\": ";
+  auto j = nlohmann::json::basic_json(str);
+  ss << j.dump();
+  ss << " }";
   send(ss.str());
 }
 
 void send_layer_data(const char* str, size_t length, uint64_t layer_index) {
-  std::stringstream ss;
-  ss << "{ \"Message\":\"Object\",";
-  ss << "\"LayerIndex\" : " << layer_index << ",";
-  ss << "\"Time\":" << get_time() << ",";
-  ss << "\"Content\":\"";
-  auto e = base64_encode(reinterpret_cast<const unsigned char*>(str), length, false);
-  ss << e.c_str();
-  ss << "\" }";
-  send(ss.str());
+  auto nobj = nlohmann::json::object();
+  nobj["Message"] = "Object";
+  nobj["LayerIndex"] = layer_index;
+  nobj["Time"] = get_time();
+  nobj["Content"] = nlohmann::json::parse(str, str + length);
+  send(nobj.dump());
 }
 
 void send_layer_log(message_type type, const char* str, size_t length, uint64_t layer_index) {

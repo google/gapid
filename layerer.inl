@@ -101,9 +101,9 @@ void call_rerecord(void* data, VkCommandBuffer cb) {
   return f->cbr->RerecordCommandBuffer(cb, f->layerer);
 }
 
-void call_split(void* data, VkCommandBuffer cb, uint64_t idx) {
+void call_split(void* data, VkCommandBuffer cb, uint64_t* indices, uint32_t index) {
   auto* f = reinterpret_cast<fs*>(data);
-  return f->cbs->SplitCommandBuffer(cb, f->layerer, idx);
+  return f->cbs->SplitCommandBuffer(cb, f->layerer, indices, index);
 }
 
 inline void layerer::RunUserSetup(const std::string& layer_name, HMODULE module) {
@@ -133,6 +133,8 @@ inline void layerer::RunUserSetup(const std::string& layer_name, HMODULE module)
     OutputDebugStringA("Setting up command buffer recorder for layer\n");
     cbr = cb->command_buffer_recorder_.get();
     cbs = cb->command_buffer_splitter_.get();
+    auto setup = (void (*)(VkCommandBuffer))GetProcAddress(module, "OnCommandBufferSplit");
+    cbs->on_command_buffer_split_ = setup;
     splitters.push_back(std::move(cb));
   }
 

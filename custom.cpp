@@ -361,6 +361,14 @@ void custom_process_pPhysicalDeviceGroupProperties(VkPhysicalDeviceGroupProperti
   }
 }
 
+void custom_generate_pPhysicalDeviceGroupProperties(state_block* state_block, VkPhysicalDeviceGroupProperties* props) {
+  for (size_t i = 0; i < VK_MAX_DEVICE_GROUP_SIZE; ++i) {
+    if (props->physicalDevices[i] == VK_NULL_HANDLE) {
+      props->physicalDevices[i] = state_block->get_unused_VkPhysicalDevice();
+    }
+  }
+}
+
 void custom_fix_vkGetQueryPoolResults_pData(state_block*, handle_fixer&, VkDevice, VkQueryPool, uint32_t, uint32_t, size_t, void*, VkDeviceSize, VkQueryResultFlags) {
 }
 void custom_fix_vkGetPipelineCacheData_pData(state_block*, handle_fixer&, VkDevice, VkPipelineCache, size_t*, void*) {

@@ -45,12 +45,30 @@ class command_buffer_splitter : public transform_base {
   using super = transform_base;
 
  public:
-  void SplitCommandBuffer(VkCommandBuffer cb, transform_base* next, uint64_t command_to_split) {
-    command_to_split_ = command_to_split;
-    recorder->RerecordCommandBuffer(cb, next, [this](uint64_t c) {
-      notify_command(c);
+  void SplitCommandBuffer(VkCommandBuffer cb, transform_base* next, uint64_t* indices, uint32_t num_indices) {
+    commands_to_split_ = std::vector<uint64_t>(indices, indices + num_indices);
+    recorder->RerecordCommandBuffer(cb, next, [this, cb, next](uint64_t c) {
+      if (std::find(commands_to_split_.begin(), commands_to_split_.end(), c) != commands_to_split_.end()) {
+        if (on_command_buffer_split_) {
+          if (current_render_pass_) {
+            output_message(message_type::debug, std::format("Temporarily leaving renderpass {}",
+                                                            reinterpret_cast<uintptr_t>(current_render_pass_)));
+            super::vkCmdEndRenderPass(cb);
+          }
+          on_command_buffer_split_(cb);
+          if (current_render_pass_) {
+            VkRenderPassBeginInfo begin_info = original_begin_info;
+            begin_info.renderPass =
+                split_renderpasses[current_render_pass_].subpasses[current_subpass_].post_split_render_pass;
+
+            output_message(message_type::debug, std::format("Re-entering renderpass {}",
+                                                            reinterpret_cast<uintptr_t>(current_render_pass_)));
+            super::vkCmdBeginRenderPass(cb, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+          }
+        }
+      }
     });
-    command_to_split_ = no_command;
+    commands_to_split_.clear();
     current_render_pass_ = VK_NULL_HANDLE;
     current_subpass_ = 0;
   }
@@ -93,6 +111,8 @@ class command_buffer_splitter : public transform_base {
   std::unordered_map<VkRenderPass, renderpasses> split_renderpasses;
 
   renderpasses* split_renderpass(VkRenderPass render_pass) {
+    output_message(message_type::debug, std::format("Splitting renderpass {}",
+                                                    reinterpret_cast<uintptr_t>(render_pass)));
     if (split_renderpasses.contains(render_pass)) {
       return &split_renderpasses[render_pass];
     }
@@ -138,11 +158,7 @@ class command_buffer_splitter : public transform_base {
     };
 
     for (size_t i = 0; i < ci->subpassCount; ++i) {
-      VkRenderPass subpass_handles[3] = {
-        state_block_->get_unused_VkRenderPass(),
-        state_block_->get_unused_VkRenderPass(),
-        state_block_->get_unused_VkRenderPass()
-      };
+      VkRenderPass subpass_handles[3] = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
       bool is_last_subpass = (i == (ci->subpassCount - 1));
       bool is_first_subpass = (i == 0);
 
@@ -264,12 +280,14 @@ class command_buffer_splitter : public transform_base {
   }
 
   void vkCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo* pRenderPassBegin, VkSubpassContents contents) {
-    if (command_to_split_ == no_command) {
+    if (commands_to_split_.empty()) {
       return super::vkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, contents);
     }
     stage = current_stage::eFirstStage;
     current_render_pass_ = pRenderPassBegin->renderPass;
     auto new_rp = split_renderpass(pRenderPassBegin->renderPass)->subpasses[0].pre_split_render_pass;
+    output_message(message_type::debug, std::format("Entering temporary renderpass {} instead of {}", reinterpret_cast<uintptr_t>(new_rp),
+                                                    reinterpret_cast<uintptr_t>(current_render_pass_)));
     VkRenderPassBeginInfo rpb = *pRenderPassBegin;
     rpb.renderPass = new_rp;
     begin_info_allocator.reset();
@@ -286,7 +304,7 @@ class command_buffer_splitter : public transform_base {
       VkRenderPassBeginInfo begin_info = original_begin_info;
       begin_info.renderPass =
           split_renderpasses[current_render_pass_].subpasses[current_subpass_].post_split_render_pass;
-      
+
       super::vkCmdBeginRenderPass(commandBuffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
       stage = current_stage::eSecondStage;
     }
@@ -303,7 +321,7 @@ class command_buffer_splitter : public transform_base {
     return super::vkCmdEndRenderPass(commandBuffer);
   }
   void vkCmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents) {
-    if (command_to_split_ == no_command) {
+    if (commands_to_split_.empty()) {
       return super::vkCmdNextSubpass(commandBuffer, contents);
     }
     if (stage == current_stage::eFirstStage) {
@@ -337,32 +355,27 @@ class command_buffer_splitter : public transform_base {
   }
 
   void vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) {
-    if (command_to_split_ == no_command) {
+    if (commands_to_split_.empty()) {
       return super::vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
     }
     return super::vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
   }
   void vkCmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) {
-    if (command_to_split_ == no_command) {
+    if (commands_to_split_.empty()) {
       return super::vkCmdExecuteCommands(commandBuffer, commandBufferCount, pCommandBuffers);
     }
     return super::vkCmdExecuteCommands(commandBuffer, commandBufferCount, pCommandBuffers);
   }
-
-  void notify_command(uint64_t command) {
-  }
-
   static const uint64_t no_command = ~static_cast<uint64_t>(0);
 
-  uint64_t command_to_split_ = no_command;
+  std::vector<uint64_t> commands_to_split_;
   transform<command_buffer_recorder>* recorder;
-
+  void (*on_command_buffer_split_)(VkCommandBuffer);
   enum class current_stage {
     eFirstStage,
     eSecondStage,
     eLastStage
   };
-
 
   VkRenderPassBeginInfo original_begin_info;
   temporary_allocator begin_info_allocator;

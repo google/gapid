@@ -5,3 +5,4 @@ b2/
 .vscode
 *.pyc
 */__pycache__/*
+.vs/

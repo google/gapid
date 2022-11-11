@@ -18,16 +18,11 @@ if (NOT (EXISTS "${LIB_SRC}"))
     message(FATAL_ERROR "Invalid file ${LIB_SRC}")
 endif()
 file(TO_CMAKE_PATH "${LIB_SRC}" LIB_SRC)
-
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/externals/miniz)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Vulkan-Headers/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_library(base64
-    externals/base64/base64.h    
-    externals/base64/base64.cpp
-)
-target_include_directories(base64 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/externals/base64)
 
 function(generate_file SOURCE)
     set(of)
@@ -59,5 +54,6 @@ add_library(${LIB_NAME} SHARED
     "${LIB_SRC}"
     ${CMAKE_CURRENT_BINARY_DIR}/layer_internal.inl
 )
-target_link_libraries(${LIB_NAME} PRIVATE base64)
+
 target_compile_definitions(${LIB_NAME} PRIVATE VK_USE_PLATFORM_WIN32_KHR=1 NOMINMAX=1)
+target_link_libraries(${LIB_NAME} PRIVATE miniz)

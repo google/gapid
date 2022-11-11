@@ -52,12 +52,12 @@ bool image_copier::get_image_content(
     extent.depth = get_mip_size(image->get_create_info()->extent.depth, mip_level) - offset.z;
   }
 
-  element_and_block_size sz = get_element_and_block_size_for_aspect(image->get_create_info()->format, aspect);
+  const element_and_block_size sz = get_element_and_block_size_for_aspect(image->get_create_info()->format, aspect);
 
   const uint32_t bytes_per_row = ((sz.element_size * extent.width) / sz.texel_block_size.width) * extent.depth;
   const uint32_t rows_per_depth_layer = std::max(extent.height / sz.texel_block_size.height, 1u);
 
-  uint32_t row = 0; 
+  uint32_t row = 0;
   uint32_t remaining_rows = rows_per_depth_layer;
 
   if (!remaining_rows) {
@@ -98,7 +98,7 @@ bool image_copier::get_image_content(
 
     *res = m_resource_manager->get_staging_buffer_for_queue(
         m_state_block->get(q),
-        size, [this, mip_level, array_layer, aspect, cImage = image, cRes = res, cOffs = offset, cE = extent, cS = next_serializer, cB = bypass_caller, cA = aspect, cBytes_per_row = bytes_per_row](const char* data, VkDeviceSize size, std::vector<std::function<void()>>* cleanups) {
+        size, [this, mip_level, array_layer, aspect, cSz = sz, cImage = image, cRes = res, cOffs = offset, cE = extent, cS = next_serializer, cB = bypass_caller, cA = aspect, cBytes_per_row = bytes_per_row](const char* data, VkDeviceSize size, std::vector<std::function<void()>>* cleanups) {
           VkBuffer copy_source = cRes->buffer;
           VkDeviceSize offset = cRes->buffer_offset;
           VkDeviceSize copy_size = size;
@@ -120,7 +120,7 @@ bool image_copier::get_image_content(
           std::vector<char> dat;
           VkExtent3D ext = cE;
           const uint32_t num_rows = cRes->returned_size / cBytes_per_row;
-          ext.height = num_rows;
+          ext.height = num_rows * cSz.texel_block_size.height;
           const auto ci = cImage->get_create_info();
           // Deterimine how to prime this image.
           const bool is_depth = ci->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -601,12 +601,12 @@ bool image_copier::get_image_content(
             .baseArrayLayer = array_layer,
             .layerCount = 1},
         .imageOffset = offset,
-        .imageExtent = VkExtent3D(extent.width, num_rows, extent.depth)};
+        .imageExtent = VkExtent3D(extent.width, num_rows * sz.texel_block_size.height, extent.depth)};
 
     bypass_caller->vkCmdCopyImageToBuffer(res->cb, image->_handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, res->buffer, 1, &copy);
 
-    extent.height -= num_rows;
-    offset.y += num_rows;
+    extent.height -= num_rows * sz.texel_block_size.height;
+    offset.y += num_rows * sz.texel_block_size.height;
   }
 
   cb = m_resource_manager->get_command_buffer_for_queue(m_state_block->get(q));

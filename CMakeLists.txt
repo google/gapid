@@ -13,12 +13,6 @@ include_directories(${gapid2_SOURCE_DIR}/externals/Vulkan-Headers/include)
 include_directories(${gapid2_SOURCE_DIR}/externals/digestpp)
 include_directories(${gapid2_SOURCE_DIR}/externals/json/single_include/nlohmann)
 
-add_library(base64
-    externals/base64/base64.h    
-    externals/base64/base64.cpp
-)
-target_include_directories(base64 PUBLIC ${gapid2_SOURCE_DIR}/externals/base64)
-
 add_subdirectory(externals/vk_callback_swapchain)
 
 ## Glslang options, disable as much as we can
@@ -130,8 +124,13 @@ function(copy_external_to_scripts dir)
         )
     endforeach()
 endfunction()
-copy_external_to_scripts(${gapid2_SOURCE_DIR}/externals/base64)
 
+configure_file(
+    base64.h
+    ${gapid2_BINARY_DIR}/scripts/base64.h
+    COPYONLY
+)
+copy_external_to_scripts("${gapid2_SOURCE_DIR}/externals/miniz")
 file(COPY externals/Vulkan-Headers DESTINATION ${gapid2_BINARY_DIR}/scripts/)
 
 function(generate_file SOURCE)
@@ -255,6 +254,12 @@ generate_file(
     scripts/command_inline_fixer.py
     command_inline_fixer.h
     command_inline_fixer.cpp
+)
+
+generate_file(
+    scripts/handle_generator.py
+    handle_generator.h
+    handle_generator.cpp
 )
 
 generate_file(
@@ -406,10 +411,6 @@ add_library(LAYER_FILES OBJECT
     ${gapid2_BINARY_DIR}/call_forwards.cpp
 )
 
-target_link_libraries(BASE_FILES PUBLIC base64)
-
-target_link_libraries(LAYER_FILES PUBLIC 
-    BASE_FILES base64)
 
 add_library(test SHARED
     passthrough_layer.cpp
@@ -417,7 +418,7 @@ add_library(test SHARED
     layer_setup.cpp
 )
 
-target_link_libraries(test BASE_FILES HANDLE_TYPES LAYER_FILES base64)
+target_link_libraries(test BASE_FILES HANDLE_TYPES LAYER_FILES)
 
 add_library(gapii SHARED
     spy.h
@@ -473,7 +474,7 @@ add_library(gapii SHARED
     ${glslang_SOURCE_DIR}/Standalone/resource_limits_c.cpp
 )
 
-target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect glslang SPIRV base64)
+target_link_libraries(gapii BASE_FILES HANDLE_TYPES LAYER_FILES spirv-reflect glslang SPIRV)
 target_compile_definitions(gapii PRIVATE MEC=1)
 
 add_executable(gapir
@@ -483,16 +484,18 @@ add_executable(gapir
     ${gapid2_BINARY_DIR}/handle_replacer.cpp
     ${gapid2_BINARY_DIR}/command_inline_fixer.h
     ${gapid2_BINARY_DIR}/command_inline_fixer.cpp
+    ${gapid2_BINARY_DIR}/handle_generator.h
+    ${gapid2_BINARY_DIR}/handle_generator.cpp
     ${gapid2_BINARY_DIR}/fix_handles.h
 )
-target_link_libraries(gapir BASE_FILES HANDLE_TYPES base64)
+target_link_libraries(gapir BASE_FILES HANDLE_TYPES)
 
 add_executable(printer
     printer.cpp
     ${gapid2_BINARY_DIR}/struct_print.h
     ${gapid2_BINARY_DIR}/command_printer.h
 )
-target_link_libraries(printer BASE_FILES HANDLE_TYPES base64)
+target_link_libraries(printer BASE_FILES HANDLE_TYPES )
 
 foreach(L test gapii gapir printer BASE_FILES HANDLE_TYPES LAYER_FILES)
     target_include_directories(${L} PRIVATE

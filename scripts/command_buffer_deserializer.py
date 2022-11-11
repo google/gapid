@@ -16,7 +16,7 @@ def output_deserializer(definition, g):
     g.print('#include "custom.h"')
     g.print('namespace gapid2 {')
     g.enter_scope(
-        'class command_buffer_deserializer : public t ransform_base {')
+        'class command_buffer_deserializer : public transform_base {')
     g.print_scoping('public:')
     for cmd in definition.commands.values():
         if cmd.args[0].name != "commandBuffer":

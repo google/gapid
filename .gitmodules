@@ -22,3 +22,6 @@
 [submodule "externals/base64"]
 	path = externals/base64
 	url = https://github.com/ReneNyffenegger/cpp-base64
+[submodule "externals/miniz"]
+	path = externals/miniz
+	url = https://github.com/richgel999/miniz.git

@@ -30,7 +30,7 @@ void SetupInternalPointers(void* user_data,
 
 void* Rerecord_CommandBuffer_internal_user_data;
 void (*Rerecord_CommandBuffer_internal)(void* user_data, VkCommandBuffer cb);
-void (*Split_CommandBuffer_internal)(void* user_data, VkCommandBuffer cb, uint64_t index);
+void (*Split_CommandBuffer_internal)(void* user_data, VkCommandBuffer cb, uint64_t* indices, uint32_t num_indices);
 
 extern "C" __declspec(dllexport) void PostSetupInternalPointers(
     void* user_data,
@@ -38,7 +38,7 @@ extern "C" __declspec(dllexport) void PostSetupInternalPointers(
   Rerecord_CommandBuffer_internal = (void (*)(void*, VkCommandBuffer))fn(
       user_data, "Rerecord_CommandBuffer",
       &Rerecord_CommandBuffer_internal_user_data);
-  Split_CommandBuffer_internal = (void (*)(void*, VkCommandBuffer, uint64_t))fn(
+  Split_CommandBuffer_internal = (void (*)(void*, VkCommandBuffer, uint64_t*, uint32_t))fn(
       user_data, "Split_CommandBuffer",
       &Rerecord_CommandBuffer_internal_user_data);
 }
@@ -48,9 +48,9 @@ void Rerecord_CommandBuffer(VkCommandBuffer cb) {
       Rerecord_CommandBuffer_internal_user_data, cb);
 }
 
-void Split_CommandBuffer(VkCommandBuffer cb, uint64_t index) {
+void Split_CommandBuffer(VkCommandBuffer cb, uint64_t* indices, uint32_t num_indices) {
   return (*Split_CommandBuffer_internal)(
-      Rerecord_CommandBuffer_internal_user_data, cb, index);
+      Rerecord_CommandBuffer_internal_user_data, cb, indices, num_indices);
 }
 
 void LayerOptions_CaptureCommands(LayerOptions* o, VkCommandBuffer cb) {

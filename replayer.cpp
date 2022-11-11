@@ -29,6 +29,7 @@
 #include "data_provider.h"
 #include "decoder.h"
 #include "handle_fixer.h"
+#include "handle_generator.h"
 #include "layer_helper.h"
 #include "layerer.h"
 #include "minimal_state_tracker.h"
@@ -320,6 +321,7 @@ int main(int argc, const char** argv) {
   gapid2::transform<gapid2::command_inline_fixer> inline_fixer(&replayer);
   gapid2::transform<gapid2::state_block> state_block_(&replayer);
   gapid2::transform<gapid2::minimal_state_tracker> minimal_state_tracker_(&replayer);
+  gapid2::transform<gapid2::handle_generator> handle_generator(&replayer);
   gapid2::transform<gapid2::layerer> layerer_(&replayer);
   layerer_.data_provider_ = &provider;
 
@@ -347,8 +349,8 @@ int main(int argc, const char** argv) {
   replayer.DeserializeStream(&dec);
   auto end = std::chrono::high_resolution_clock::now();
   output_message(message_type::info, ("Initializing time:: " +
-                     std::to_string(std::chrono::duration<float>(res - begin).count()))
-                        .c_str());
+                                      std::to_string(std::chrono::duration<float>(res - begin).count()))
+                                         .c_str());
 
   auto mec_elapsed = replayer.mec_end - replayer.stream_start;
   output_message(message_type::info, std::format("Mec Time:: {}", std::chrono::duration<float>(mec_elapsed).count()).c_str());
