@@ -168,6 +168,7 @@ def main(args):
 #endif
             v += std::string(" ") + t + std::string("\\\\") + work_path + "\\\\";
 
+            output_message(message_type::info, std::format("Building {} into {}", layer, dll));
             std::string output;
             int ret = run_system(v.c_str(), output);
             if (ret != 0) {

@@ -272,6 +272,7 @@ class replayer : public command_deserializer {
 }  // namespace gapid2
 
 int main(int argc, const char** argv) {
+  std::this_thread::sleep_for(std::chrono::seconds(2));
   auto begin = std::chrono::high_resolution_clock::now();
   if (argc < 2) {
     GAPID2_ERROR("Expected the file as an argument");

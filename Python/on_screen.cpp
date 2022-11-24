@@ -48,19 +48,27 @@ uint32_t indices[3];
 
 VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
   const char* js = options->GetUserConfig();
-  auto setup = nlohmann::json::parse(js, nullptr, false);
-  if (setup.contains("on_screen")) {
-    if (setup["on_screen"].contains("start_idx")) {
-      start_idx = setup["on_screen"]["start_idx"];
+  LogMessage(debug, js);
+  uint32_t width = 1024;
+  uint32_t height = 1024;
+  if (js) {
+    auto setup = nlohmann::json::parse(js, nullptr, false);
+    if (setup.contains("start_idx")) {
+      start_idx = setup["start_idx"];
+    }
+    if (setup.contains("width")) {
+      width = setup["width"];
+    }
+    if (setup.contains("height")) {
+      height = setup["height"];
     }
   }
+  LogMessage(debug, std::format("Width: {} Height {}", width, height));
   indices[0] = (start_idx + 0) % 3;
   indices[1] = (start_idx + 1) % 3;
   indices[2] = (start_idx + 2) % 3;
 
-  thread = std::thread([]() {
-    uint32_t width = 1920;
-    uint32_t height = 1080;
+  thread = std::thread([width, height]() {
     hInstance = GetModuleHandle(NULL);
 
     WNDCLASSEX window_class;

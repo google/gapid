@@ -7,19 +7,31 @@ from importlib import reload
 import socket
 import ijson
 import errno
+import json
 from time import sleep
 
 reload(helpers)
+
+class layer(object):
+    def __init__(self, file, config, callback):
+        self.file = file
+        self.callback = callback
+        self.config = config
+
 
 class replay_options(object):
     def __init__(self, trace):
         self.trace = trace
         self.use_cb = False
+        self.layers = []
 
     def use_callback_swapchain(self):
         self.use_cb = True
         return self
     
+    def add_layer(self, path, config, callback):
+        self.layers.append(layer(path, config, callback))
+
 
 def replay(env, replay_options):
     port = 55554
@@ -45,8 +57,8 @@ def replay(env, replay_options):
             conn.setblocking(0)
             success = True
 
-            conn.send("[]".encode())
-            conn.send("{}".encode())
+            conn.send(json.dumps([x.file for x in replay_options.layers]).encode())
+            conn.send(json.dumps({x.file: x.config for x in replay_options.layers}).encode())
             
             @ijson.coroutine
             def test():

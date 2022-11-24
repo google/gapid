@@ -3,6 +3,9 @@
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+#ifdef __cplusplus
+#include <string>
+#endif
 struct LayerOptions;
 
 enum LogType {

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(gapid2_layer)
+find_package (Python3 COMPONENTS Interpreter REQUIRED)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
