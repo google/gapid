@@ -54,7 +54,7 @@ class trace(object):
             if cmd["name"] == "vkQueueSubmit":
                 cbs = []
                 for j in range(cmd["submitCount"]):
-                    cbs.extend(command_buffer_contents[x] for x in cmd["pSubmits"][j]["pCommandBuffers"]
+                    cbs.extend((x, command_buffer_contents[x]) for x in cmd["pSubmits"][j]["pCommandBuffers"]
                         if x in command_buffer_contents)
                 self.executed_commands[i] = cbs
 

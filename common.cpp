@@ -258,12 +258,19 @@ void output_message(message_type type, const std::string& str, uint32_t layer_in
 }
 
 void send_layer_data(const char* str, size_t length, uint64_t layer_index) {
-  auto nobj = nlohmann::json::object();
-  nobj["Message"] = "Object";
-  nobj["LayerIndex"] = layer_index;
-  nobj["Time"] = get_time();
-  nobj["Content"] = nlohmann::json::parse(str, str + length);
-  send(nobj.dump());
+  std::stringstream ss;
+  ss << "{ \"";
+  ss << "Message\":\"Object\"";
+  ss << ",\"Time\":";
+  ss << get_time();
+  if (layer_index != static_cast<uint32_t>(-1)) {
+    ss << ", \"LayerIndex\" : " << layer_index;
+  }
+  ss << ", \"Content\": ";
+  ss.write(str, length);
+  ss << " }";
+
+  send(ss.str());
 }
 
 void send_layer_log(message_type type, const char* str, size_t length, uint64_t layer_index) {

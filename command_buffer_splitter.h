@@ -46,7 +46,7 @@ class command_buffer_splitter : public transform_base {
   using super = transform_base;
 
  public:
-  void SplitCommandBuffer(VkCommandBuffer cb, transform_base* next, uint64_t* indices, uint32_t num_indices) {
+  void SplitCommandBuffer(VkCommandBuffer cb, transform_base* next, const uint64_t* indices, uint32_t num_indices) {
     commands_to_split_ = std::vector<uint64_t>(indices, indices + num_indices);
     recorder->RerecordCommandBuffer(cb, next, [this, cb, next](uint64_t c) {
       if (std::find(commands_to_split_.begin(), commands_to_split_.end(), c) != commands_to_split_.end()) {

@@ -101,7 +101,7 @@ void call_rerecord(void* data, VkCommandBuffer cb) {
   return f->cbr->RerecordCommandBuffer(cb, f->layerer);
 }
 
-void call_split(void* data, VkCommandBuffer cb, uint64_t* indices, uint32_t index) {
+void call_split(void* data, VkCommandBuffer cb, const uint64_t* indices, uint32_t index) {
   auto* f = reinterpret_cast<fs*>(data);
   return f->cbs->SplitCommandBuffer(cb, f->layerer, indices, index);
 }

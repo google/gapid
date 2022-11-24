@@ -63,7 +63,7 @@ def output_deserializer(definition, g):
     g.print(
         'decoder_->drop_primitive_array<char>(size);')
     g.leave_scope('}')
-    g.print('break;')
+    g.print('continue;')
     g.leave_scope('}')
     g.enter_scope('case 1:  { // annotation')
     g.print('uint64_t annotation_size = decoder_->decode<uint64_t>();')

@@ -18,7 +18,7 @@ enum LogType {
 void LayerOptions_CaptureCommands(LayerOptions*, VkCommandBuffer);
 void LayerOptions_CaptureAllCommands(LayerOptions*);
 void Rerecord_CommandBuffer(VkCommandBuffer cb);
-void Split_CommandBuffer(VkCommandBuffer cb, uint64_t* indices, uint32_t num_indices);
+void Split_CommandBuffer(VkCommandBuffer cb, const uint64_t* indices, uint32_t num_indices);
 void SendJson(const char* json, size_t length);
 void LogMessage(LogType type, const char* json, size_t length);
 uint64_t GetCommandIndex();

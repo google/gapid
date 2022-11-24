@@ -48,7 +48,6 @@ uint32_t indices[3];
 
 VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
   const char* js = options->GetUserConfig();
-  LogMessage(debug, js);
   uint32_t width = 1024;
   uint32_t height = 1024;
   if (js) {
@@ -63,7 +62,6 @@ VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
       height = setup["height"];
     }
   }
-  LogMessage(debug, std::format("Width: {} Height {}", width, height));
   indices[0] = (start_idx + 0) % 3;
   indices[1] = (start_idx + 1) % 3;
   indices[2] = (start_idx + 2) % 3;
@@ -102,11 +100,13 @@ VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
       DispatchMessage(&msg);
     }
   });
+  LogMessage(debug, std::format("Creating window of size {}x{}", width, height));
   while (hwnd == 0) {
   };
 }
 
 VKAPI_ATTR void VKAPI_CALL ShutdownLayer() {
+  LogMessage(debug, "Shutting down window");
   SendNotifyMessage(hwnd, WM_USER, 0, 0);
   thread.join();
 }

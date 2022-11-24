@@ -13,30 +13,39 @@ from time import sleep
 reload(helpers)
 
 class layer(object):
-    def __init__(self, file, config, callback):
+    def __init__(self, file, config, data_callback, message_callback):
         self.file = file
-        self.callback = callback
+        self.data_callback = data_callback
         self.config = config
-
+        self.message_callback = message_callback
 
 class replay_options(object):
-    def __init__(self, trace):
+    def __init__(self, env, trace):
         self.trace = trace
         self.use_cb = False
         self.layers = []
+
+        def default_message_callback(timestamp, level, message):
+            print(f'[{timestamp}] {level}: {message}')
+        self.message_callback = default_message_callback;
 
     def use_callback_swapchain(self):
         self.use_cb = True
         return self
     
-    def add_layer(self, path, config, callback):
-        self.layers.append(layer(path, config, callback))
-
+    def add_layer(self, path, config, data_callback=None, message_callback=None):
+        self.layers.append(layer(path, config, data_callback, message_callback))
+    
+    def set_message_callback(self, callback):
+        self.message_callback = callback
 
 def replay(env, replay_options):
     port = 55554
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(12) # timeout for listening
         sock.bind(('localhost', port))
+
         sock.listen(1)
         command = [env.gapir, "--socket", "localhost", "--port", str(port), replay_options.trace.file]
         environ = os.environ.copy()
@@ -64,7 +73,15 @@ def replay(env, replay_options):
             def test():
                 while True:
                     it = (yield)
-                    print(f"{it}")
+                    if "LayerIndex" in it and it["Message"] == "Object":
+                        if it["LayerIndex"] < len(replay_options.layers) and replay_options.layers[it["LayerIndex"]].data_callback != None:
+                            replay_options.layers[it["LayerIndex"]].data_callback(float(it['Time']), it["Content"])
+                        continue
+                    if "LayerIndex" in it:
+                        if it["LayerIndex"] < len(replay_options.layers) and replay_options.layers[it["LayerIndex"]].message_callback != None:
+                            replay_options.layers[it["LayerIndex"]].message_callback(float(it['Time']), it['Message'], it["Content"])
+                            continue
+                    replay_options.message_callback(float(it['Time']), it['Message'], it["Content"])
             coro = ijson.items_coro(test(), '', multiple_values=True)
             
             while True:
