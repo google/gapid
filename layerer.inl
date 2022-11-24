@@ -110,11 +110,8 @@ inline void layerer::RunUserSetup(const std::string& layer_name, HMODULE module)
   auto setup = (void* (*)(LayerOptions*))GetProcAddress(module, "SetupLayer");
   LayerOptions lo;
   lo.userConfig = "";
-  if (!user_config_.empty()) {
-    auto setup = nlohmann::json::parse(user_config_, nullptr, false);
-    if (setup.contains(layer_name)) {
-      lo.userConfig = setup[layer_name].dump();
-    }
+  if (user_config_.contains(layer_name)) {
+    lo.userConfig = user_config_[layer_name].dump();
   }
 
   if (setup) {

@@ -19,6 +19,7 @@
 #include <cassert>
 #include <cstdio>
 #include <iostream>
+#include <json.hpp>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -60,6 +61,18 @@ enum class message_type {
   object = 4
 };
 
+class messenger {
+ public:
+  virtual ~messenger() {}
+  virtual void send(const std::string& string) = 0;
+  virtual nlohmann::json recv() = 0;
+};
+
 void output_message(message_type type, const std::string& str, uint32_t layer_index = static_cast<uint32_t>(-1));
 void send_layer_data(const char* str, size_t length, uint64_t layer_index);
 void send_layer_log(message_type type, const char* str, size_t length, uint64_t layer_index);
+
+bool connect_socket(const std::string& addr, const std::string& port);
+void connect_std_streams();
+
+nlohmann::json receive_message();

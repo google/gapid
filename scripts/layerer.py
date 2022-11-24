@@ -100,9 +100,9 @@ def main(args):
             }
         }
         indirect_functions f;
-        std::string user_config_;
+        nlohmann::json user_config_;
 ''')
-        layerer.print('''        bool initializeLayers(std::vector<std::string> layers, std::string user_config) {
+        layerer.print('''        bool initializeLayers(nlohmann::json layers,  nlohmann::json user_config) {
           user_config_ = user_config;
           char cp[MAX_PATH];
           HMODULE hm = NULL;
@@ -127,7 +127,8 @@ def main(args):
             fsp.parent_path() / "scripts" / "build_file.bat";
           std::string work_path("gapid2_");
           work_path += hasher.hexdigest();
-          for (auto& layer : layers) {
+          for (auto& l : layers) {
+            std::string layer = l;
             if (!std::filesystem::exists(layer)) {
               GAPID2_ERROR("Could not find layer file");
             }

@@ -25,6 +25,7 @@
 #include "base_caller.h"
 #include "command_deserializer.h"
 #include "command_inline_fixer.h"
+#include "common.h"
 #include "creation_data_tracker.h"
 #include "data_provider.h"
 #include "decoder.h"
@@ -276,10 +277,35 @@ int main(int argc, const char** argv) {
     GAPID2_ERROR("Expected the file as an argument");
   }
   bool dummy = false;
+  std::string socket = "";
+  std::string port = "55432";
   for (size_t i = 1; i < argc - 1; ++i) {
     if (!strcmp(argv[i], "--dummy")) {
       dummy = true;
     }
+    if (!strcmp(argv[i], "--socket")) {
+      if (i == argc - 2) {
+        GAPID2_ERROR("Need a socket number after --socket");
+      }
+      ++i;
+      socket = argv[i];
+      continue;
+    }
+    if (!strcmp(argv[i], "--port")) {
+      if (i == argc - 2) {
+        GAPID2_ERROR("Need a port number after --port");
+      }
+      ++i;
+      port = argv[i];
+      continue;
+    }
+  }
+  if (!socket.empty()) {
+    if (!connect_socket(socket, port)) {
+      GAPID2_ERROR("Could not connect to socket");
+    }
+  } else {
+    connect_std_streams();
   }
 
   HANDLE file = CreateFileA(argv[argc - 1], GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_ALWAYS,
@@ -325,7 +351,10 @@ int main(int argc, const char** argv) {
   gapid2::transform<gapid2::layerer> layerer_(&replayer);
   layerer_.data_provider_ = &provider;
 
-  layerer_.initializeLayers(gapid2::get_layers(), gapid2::get_user_config());
+  auto layers = gapid2::get_layers();
+  auto user_config = gapid2::get_user_config();
+  // dont inline these as they are order dependent
+  layerer_.initializeLayers(layers, user_config);
 
   if (!dummy) {
     auto vk = LoadLibraryA("vulkan-1.dll");
@@ -346,11 +375,11 @@ int main(int argc, const char** argv) {
                reinterpret_cast<char*>(loc), 0}});
   gapid2::decoder dec(std::move(b));
   auto res = std::chrono::high_resolution_clock::now();
-  replayer.DeserializeStream(&dec);
-  auto end = std::chrono::high_resolution_clock::now();
   output_message(message_type::info, ("Initializing time:: " +
                                       std::to_string(std::chrono::duration<float>(res - begin).count()))
                                          .c_str());
+  replayer.DeserializeStream(&dec);
+  auto end = std::chrono::high_resolution_clock::now();
 
   auto mec_elapsed = replayer.mec_end - replayer.stream_start;
   output_message(message_type::info, std::format("Mec Time:: {}", std::chrono::duration<float>(mec_elapsed).count()).c_str());

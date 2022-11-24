@@ -16,6 +16,8 @@
 
 #include "image.h"
 
+#include <format>
+
 #include "image_copier.h"
 #include "image_helpers.h"
 #include "mid_execution_generator.h"

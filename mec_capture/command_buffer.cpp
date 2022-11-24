@@ -16,15 +16,17 @@
 
 #include "command_buffer.h"
 
+#include <format>
+
+#include "command_buffer_recorder.h"
 #include "mid_execution_generator.h"
 #include "state_block.h"
 #include "utils.h"
-#include "command_buffer_recorder.h"
 
 namespace gapid2 {
 
 void mid_execution_generator::capture_command_buffers(const state_block* state_block, command_serializer* serializer, transform_base* bypass_caller, VkCommandBufferLevel level,
-    command_buffer_recorder* cbr) const {
+                                                      command_buffer_recorder* cbr) const {
   if (level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
     serializer->insert_annotation("MecPrimaryCommandBuffers");
   } else {

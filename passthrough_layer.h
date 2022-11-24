@@ -29,7 +29,10 @@ class passthrough_layer : public layer_base {
     layer_base::initialize(&transform_base_);
     creation_tracker_ = std::make_unique<gapid2::transform<creation_tracker<VkCommandBuffer>>>(&transform_base_);
     layerer_ = std::make_unique<gapid2::transform<gapid2::layerer>>(&transform_base_);
-    layerer_->initializeLayers(gapid2::get_layers(), gapid2::get_user_config());
+    auto layers = gapid2::get_layers();
+    auto user_config = gapid2::get_user_config();
+    // dont inline these as they are order dependent
+    layerer_->initializeLayers(layers, user_config);
   }
 
   gapid2::transform_base* get_top_level_functions() override {

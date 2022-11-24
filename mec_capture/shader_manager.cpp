@@ -376,7 +376,7 @@ const std::vector<uint32_t>& shader_manager::get_copy_stencil_by_render_shader(V
     copy_stencil_by_render_shaders[format] =
         compile_shader_to_spirv(glslang_stage_t::GLSLANG_STAGE_FRAGMENT,
                                 name.c_str(),
-                                std::format(R"(#version 450
+                                R"(#version 450
 	precision highp int;
 	precision highp float;
 	layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_stencil;
@@ -386,8 +386,7 @@ const std::vector<uint32_t>& shader_manager::get_copy_stencil_by_render_shader(V
 		if ((stencil_value & (0x1 << current_bit)) == 0) {
 			discard;
 		}
-	}})")
-                                    .c_str());
+	}})");
     created_name[0] = name;
   }
 

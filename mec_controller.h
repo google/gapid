@@ -19,12 +19,12 @@
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+#include "command_buffer_recorder.h"
 #include "noop_serializer.h"
 #include "null_caller.h"
 #include "spy.h"
 #include "spy_serializer.h"
 #include "transform.h"
-#include "command_buffer_recorder.h"
 
 namespace gapid2 {
 class mec_controller : public transform_base {
@@ -43,13 +43,13 @@ class mec_controller : public transform_base {
     noop_serializer.set_flags(flags::MID_EXECUTION);
     passthrough_caller_ = passthrough_caller;
     cbr_ = cbr;
-    t = std::thread([this]() { 
-      BOOL b = RegisterHotKey(NULL, 1, MOD_CONTROL | MOD_ALT, 0x50); 
+    t = std::thread([this]() {
+      BOOL b = RegisterHotKey(NULL, 1, MOD_CONTROL | MOD_ALT, 0x50);
       MSG msg = {0};
       while (GetMessage(&msg, NULL, 0, 0) != 0) {
         if (msg.message == WM_HOTKEY) {
           capture_frame = 1;
-          frames_to_capture = 1000;
+          frames_to_capture = 10;
         }
       }
     });

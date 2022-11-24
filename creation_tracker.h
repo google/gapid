@@ -20,10 +20,12 @@
 
 #include <type_traits>
 
+#include "command_buffer.h"
 #include "common.h"
 #include "descriptor_set.h"
 #include "descriptor_set_layout.h"
 #include "physical_device.h"
+#include "queue.h"
 #include "state_block.h"
 #include "transform_base.h"
 #include "utils.h"
@@ -677,6 +679,17 @@ class creation_tracker : public transform_base {
       if (device) {
         GAPID2_ASSERT(state_block_->erase(device), "Could not find device to erase");
       }
+    }
+    if constexpr (args_contain<VkQueue, Args...>()) {
+      state_block_->VkQueuemut.lock();
+      for (auto it = state_block_->VkQueues.begin(); it != state_block_->VkQueues.end();) {
+        if (it->second.second->device == device) {
+          it = state_block_->VkQueues.erase(it);
+          continue;
+        }
+        it++;
+      }
+      state_block_->VkQueuemut.unlock();
     }
     return super::vkDestroyDevice(device, pAllocator);
   }

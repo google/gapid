@@ -11,6 +11,7 @@
 #include "creation_data_tracker.h"
 #include "creation_tracker.h"
 #include "struct_clone.h"
+#include "transform.h"
 
 namespace gapid2 {
 

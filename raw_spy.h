@@ -38,7 +38,12 @@ class Spy : public gapid2::Layerer<
   using caller = CommandCaller<HandleWrapperUpdater>;
 
  public:
-  Spy() { initializeLayers(get_layers(), gapid2::get_user_config()); }
+  Spy() {
+    auto layers = gapid2::get_layers();
+    auto user_config = gapid2::get_user_config();
+    // dont inline these as they are order dependent
+    initializeLayers(layers, user_config);
+  }
   void add_instance(VkInstance instance) {
     std::unique_lock l(map_mutex);
     instances.insert(instance);

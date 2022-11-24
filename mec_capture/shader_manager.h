@@ -17,7 +17,9 @@
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace gapid2 {
 
