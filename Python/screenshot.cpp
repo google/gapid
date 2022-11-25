@@ -11,6 +11,9 @@
 
 std::unordered_map<VkFormat, uint64_t> bytes_per_pixel = {
     {VK_FORMAT_R8G8B8A8_UNORM, 4},
+    {VK_FORMAT_R16G16_SFLOAT, 4},
+    {VK_FORMAT_R16G16B16A16_SFLOAT, 8},
+    {VK_FORMAT_D32_SFLOAT_S8_UINT, 4},
     {VK_FORMAT_D16_UNORM, 2}};
 
 struct image_info {
@@ -175,6 +178,7 @@ struct screenshot_locations {
 };
 
 std::unordered_map<uint64_t, std::vector<screenshot_locations>> submit_indices;
+uint64_t num_images_per_draw = static_cast<uint64_t>(-1);
 
 VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
   const char* js = options->GetUserConfig();
@@ -198,6 +202,9 @@ VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
         LogMessage(debug, std::format("Adding!! {}", i));
       }
     }
+    if (setup.contains("num_images_per_draw")) {
+      num_images_per_draw = setup["num_images_per_draw"];
+    }
   }
   options->CaptureAllCommands();
 }
@@ -210,12 +217,16 @@ struct image_copy_data {
   VkFormat format = static_cast<VkFormat>(0);
   uint32_t width = 0;
   uint32_t height = 0;
+  uint64_t split_index = 0;
+  uint64_t current_queue_submit_index = 0;
 };
 
 VkQueue re_recording_queue = VK_NULL_HANDLE;
 std::vector<image_copy_data> images_to_get;
 VkFramebuffer current_framebuffer;
 VkRenderPass current_renderpass;
+uint32_t current_upload_index = 0;
+uint32_t current_queue_submit_index = 0;
 
 VKAPI_ATTR VkResult VKAPI_CALL override_vkQueueSubmit(
     VkQueue queue,
@@ -224,6 +235,8 @@ VKAPI_ATTR VkResult VKAPI_CALL override_vkQueueSubmit(
     VkFence fence) {
   auto current_command_index = GetCommandIndex();
   if (submit_indices.count(current_command_index)) {
+    current_queue_submit_index = current_command_index;
+    current_upload_index = 0;
     current_framebuffer = VK_NULL_HANDLE;
     re_recording_queue = queue;
     const auto& screenshot_locations = submit_indices[current_command_index];
@@ -268,6 +281,8 @@ VKAPI_ATTR VkResult VKAPI_CALL override_vkQueueSubmit(
       data["width"] = img.width;
       data["height"] = img.height;
       data["format"] = img.format;
+      data["split_index"] = img.split_index;
+      data["current_queue_submit_index"] = img.current_queue_submit_index;
 
       auto str = data.dump();
       SendJson(str.c_str(), str.size());
@@ -297,11 +312,11 @@ void dump_image_view(VkDevice device, VkCommandBuffer cb, VkImageView image_view
   // Step 1 create new image to match the old one (ish);
   const auto& image_view_create_info = image_view_infos[image_view];
   if (image_view_create_info.viewType > VK_IMAGE_VIEW_TYPE_3D) {
-    LogMessage(error, std::format("We do not currently handle cube or array views for dumping view: {}", reinterpret_cast<uintptr_t>(image_view)));
+    LogMessage(info, std::format("We do not currently handle cube or array views for dumping view: {}", reinterpret_cast<uintptr_t>(image_view)));
     return;
   }
   if (bytes_per_pixel.count(image_view_create_info.format) == 0) {
-    LogMessage(error, std::format("We do not handle the format: {} yet", static_cast<uint32_t>(image_view_create_info.format)));
+    LogMessage(info, std::format("We do not handle the format: {} yet", static_cast<uint32_t>(image_view_create_info.format)));
     return;
   }
   auto subresource_range = image_view_create_info.subresourceRange;
@@ -392,12 +407,6 @@ void dump_image_view(VkDevice device, VkCommandBuffer cb, VkImageView image_view
       if (!(reqs.memoryTypeBits & (1 << memory_index))) {
         continue;
       }
-      // This one can be device local
-      //  if ((memory_props.memoryTypes[memory_index].propertyFlags &
-      //    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) !=
-      //    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
-      //    continue;
-      //  }
       break;
     }
     VkMemoryAllocateInfo info = {
@@ -504,6 +513,8 @@ void dump_image_view(VkDevice device, VkCommandBuffer cb, VkImageView image_view
   barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
   barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
   vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+  dat.split_index = current_upload_index;
+  dat.current_queue_submit_index = current_queue_submit_index;
   images_to_get.push_back(dat);
 }
 
@@ -512,15 +523,22 @@ VKAPI_ATTR void VKAPI_CALL OnCommandBufferSplit(VkCommandBuffer cb) {
   const auto& rp_data = render_pass_infos[current_renderpass];
   const auto& fb_data = framebuffer_infos[current_framebuffer];
   VkDevice device = queuesToDevices[re_recording_queue];
+  uint64_t num_sent = 0;
   for (auto& x : rp_data.subpasses[0].color_attachments) {
     if (x.attachment == VK_ATTACHMENT_UNUSED) {
       continue;
     }
     dump_image_view(device, cb, fb_data.image_views[x.attachment], x.layout, fb_data.width, fb_data.height);
+    ++num_sent;
+    if (num_sent >= num_images_per_draw) {
+      current_upload_index++;
+      return;
+    }
   }
 
   if (rp_data.subpasses[0].depth_attachment && rp_data.subpasses[0].depth_attachment->attachment != VK_ATTACHMENT_UNUSED) {
     uint32_t attachment = rp_data.subpasses[0].depth_attachment->attachment;
     dump_image_view(device, cb, fb_data.image_views[attachment], rp_data.subpasses[0].depth_attachment->layout, fb_data.width, fb_data.height);
   }
+  current_upload_index++;
 }

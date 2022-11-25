@@ -66,8 +66,8 @@ def replay(env, replay_options):
             conn.setblocking(0)
             success = True
 
-            conn.send(json.dumps([x.file for x in replay_options.layers]).encode())
-            conn.send(json.dumps({x.file: x.config for x in replay_options.layers}).encode())
+            conn.send((json.dumps([x.file for x in replay_options.layers]) + " ").encode())
+            conn.send((json.dumps({x.file: x.config for x in replay_options.layers}) + " ").encode())
             
             @ijson.coroutine
             def test():

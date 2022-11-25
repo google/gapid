@@ -3,6 +3,7 @@ from . import helpers
 import subprocess
 import json
 import time
+import re
 
 MID_EXECUTION = 1 << 0
 
@@ -79,3 +80,17 @@ def load_trace(env, file):
     t = trace(file, sp.stdout)
     helpers.status_message(env, f"Loaded trace {file}")
     return t
+
+
+def find_command_indices(trace, command_name, include_mec=False):
+    return [i for i in range(len(trace.commands)) if trace.commands[i]["name"] == command_name and (include_mec or ((trace.commands[i]["tracer_flags"] & MID_EXECUTION) == 0))]
+
+def get_submitted_commands_matching(trace, queue_submit_index, filter):
+    commands = []
+
+    executed_cbs = trace.executed_commands[queue_submit_index]
+    for y in executed_cbs:
+        matching = [(x, y[1][x]) for x in range(len(y[1])) if filter.match(trace.commands[y[1][x]]["name"]) != None]
+        if len(matching) != 0:
+            commands.append((y[0], matching))
+    return commands
