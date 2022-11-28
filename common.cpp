@@ -145,8 +145,8 @@ class socket_messenger : public messenger {
     return nlohmann::json();
   }
   SOCKET s;
-  char recvbuf[4096];
-  size_t buffer_size = 4096;
+  char recvbuf[32768];
+  size_t buffer_size = 32768;
   size_t buffer_offset = 0;
   size_t buffer_filled = 0;
 };

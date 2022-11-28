@@ -10,3 +10,6 @@ def on_error(gapid_env, message):
 
 def status_message(gapid_env, message):
     print(f"Status: {message}")
+
+def log_message(gapid_env, message):
+    print(f"{message}")

@@ -1,5 +1,6 @@
 import numpy
 from .vulkan import *
+from PIL import Image, ImageDraw, ImageOps
 # From vulkan_core.h with this license header
 #
 # Copyright 2015-2021 The Khronos Group Inc.
@@ -229,11 +230,16 @@ ELEMENT_AND_TEXEL_BLOCK_SIZES = {
 
 def ToNumpyArray(format, width, height, data):
     format_info  = ELEMENT_AND_TEXEL_BLOCK_SIZES[format]
+    if (format_info.type == '?'):
+        p = Image.new('RGB', (256, 256))
+        draw = ImageDraw.Draw(p)
+        draw.text((0, 128), f"Unsupported vulkan format {format}")
+        return numpy.flip(numpy.array(p), 0)
     image = numpy.array(numpy.frombuffer(data, format_info.type))
     image = numpy.reshape(image, (height, width, format_info.channels))
     if format_info.channels == 2: # 1, 3 and 4 are all fine. 2 is not
-        image = image.copy()
-        image.resize((height, width, 3))
+        image = numpy.resize(image, (height, width, 3))
     if format_info.channels == 4: # for now remove the alpha channel
-        image = image[:,:,:3]
+        image2 = image.copy()
+        image = image2[:,:,:3]
     return image

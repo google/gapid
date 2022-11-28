@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <unordered_map>
 
 #include "base64.h"
@@ -14,7 +15,9 @@ std::unordered_map<VkFormat, uint64_t> bytes_per_pixel = {
     {VK_FORMAT_R16G16_SFLOAT, 4},
     {VK_FORMAT_R16G16B16A16_SFLOAT, 8},
     {VK_FORMAT_D32_SFLOAT_S8_UINT, 4},
-    {VK_FORMAT_D16_UNORM, 2}};
+    {VK_FORMAT_D16_UNORM, 2},
+    {VK_FORMAT_B10G11R11_UFLOAT_PACK32, 4},
+    {VK_FORMAT_R8G8B8A8_SRGB, 4}};
 
 struct image_info {
   VkImageType type;
@@ -173,7 +176,7 @@ VKAPI_ATTR VkResult VKAPI_CALL override_vkCreateRenderPass(
 }
 
 struct screenshot_locations {
-  VkCommandBuffer command_buffer;
+  uint64_t command_buffer_index;
   std::vector<uint64_t> cb_indices;
 };
 
@@ -190,16 +193,15 @@ VKAPI_ATTR void VKAPI_CALL SetupLayer(LayerOptions* options) {
       for (auto& val : setup["screenshot_locations"]) {
         std::vector<screenshot_locations> locs;
         uint64_t i = val["submit_index"];
-        auto& command_buffers = val["command_buffers"];
+        auto& command_buffers = val["command_buffer_indices"];
         for (auto& cb : command_buffers) {
-          VkCommandBuffer buff = reinterpret_cast<VkCommandBuffer>(static_cast<uintptr_t>(cb["command_buffer"]));
+          uint64_t cb_idx = cb["command_buffer_index"];
           std::vector<uint64_t> indices = cb["indices"];
           screenshot_locations sl{
-              buff, std::move(indices)};
+              cb_idx, std::move(indices)};
           locs.push_back(std::move(sl));
         }
         submit_indices[i] = std::move(locs);
-        LogMessage(debug, std::format("Adding!! {}", i));
       }
     }
     if (setup.contains("num_images_per_draw")) {
@@ -219,6 +221,7 @@ struct image_copy_data {
   uint32_t height = 0;
   uint64_t split_index = 0;
   uint64_t current_queue_submit_index = 0;
+  std::string error_message = "";
 };
 
 VkQueue re_recording_queue = VK_NULL_HANDLE;
@@ -235,22 +238,20 @@ VKAPI_ATTR VkResult VKAPI_CALL override_vkQueueSubmit(
     VkFence fence) {
   auto current_command_index = GetCommandIndex();
   if (submit_indices.count(current_command_index)) {
-    current_queue_submit_index = current_command_index;
     current_upload_index = 0;
+    current_queue_submit_index = current_command_index;
     current_framebuffer = VK_NULL_HANDLE;
     re_recording_queue = queue;
     const auto& screenshot_locations = submit_indices[current_command_index];
-    for (auto& loc : screenshot_locations) {
-      std::string positions = "[";
-      bool first = true;
-      for (auto& x : loc.cb_indices) {
-        if (!first) {
-          positions += ", ";
+    uint64_t submitted_idx = 0;
+    for (size_t i = 0; i < submitCount; ++i) {
+      for (size_t j = 0; j < pSubmits[i].commandBufferCount; ++j) {
+        auto cb_idx = submitted_idx++;
+        auto loc = std::find_if(screenshot_locations.begin(), screenshot_locations.end(), [cb_idx](auto& x) -> bool { return x.command_buffer_index == cb_idx; });
+        if (loc != screenshot_locations.end()) {
+          Split_CommandBuffer(pSubmits[i].pCommandBuffers[j], loc->cb_indices.data(), static_cast<uint32_t>(loc->cb_indices.size()));
         }
-        positions += int32_t(x);
       }
-      positions += "]";
-      Split_CommandBuffer(loc.command_buffer, loc.cb_indices.data(), static_cast<uint32_t>(loc.cb_indices.size()));
     }
   }
 
@@ -263,27 +264,31 @@ VKAPI_ATTR VkResult VKAPI_CALL override_vkQueueSubmit(
     VkDevice device = queuesToDevices[queue];
 
     for (auto& img : images_to_get) {
-      size_t sz = bytes_per_pixel[img.format] * img.width * img.height;
-      void* image_data;
-      if (VK_SUCCESS != vkMapMemory(device, img.transfer_buffer_memory, 0, VK_WHOLE_SIZE, 0, &image_data)) {
-        LogMessage(error, std::format("Could not map memory for image"));
-        continue;
-      }
+      auto data = nlohmann::json();
+
+      if (img.error_message.empty()) {
+        size_t sz = bytes_per_pixel[img.format] * img.width * img.height;
+        void* image_data;
+        if (VK_SUCCESS != vkMapMemory(device, img.transfer_buffer_memory, 0, VK_WHOLE_SIZE, 0, &image_data)) {
+          LogMessage(error, std::format("Could not map memory for image"));
+          continue;
+        }
 #if 0
       image_data = tdefl_compress_mem_to_heap(image_data, sz, &sz, TDEFL_HUFFMAN_ONLY);
 #endif
-      std::string encoded_buffer;
-      encoded_buffer.resize(sz * 2);
-      size_t d = fast_avx2_base64_encode(encoded_buffer.data(), static_cast<const char*>(image_data), sz);
-      encoded_buffer.resize(d);
-      auto data = nlohmann::json();
-      data["data"] = std::move(encoded_buffer);
-      data["width"] = img.width;
-      data["height"] = img.height;
-      data["format"] = img.format;
-      data["split_index"] = img.split_index;
-      data["current_queue_submit_index"] = img.current_queue_submit_index;
-
+        std::string encoded_buffer;
+        encoded_buffer.resize(sz * 2);
+        size_t d = fast_avx2_base64_encode(encoded_buffer.data(), static_cast<const char*>(image_data), sz);
+        encoded_buffer.resize(d);
+        data["data"] = std::move(encoded_buffer);
+        data["width"] = img.width;
+        data["height"] = img.height;
+        data["format"] = img.format;
+        data["split_index"] = img.split_index;
+        data["current_queue_submit_index"] = img.current_queue_submit_index;
+      } else {
+        data = img.error_message;
+      }
       auto str = data.dump();
       SendJson(str.c_str(), str.size());
 
@@ -313,10 +318,20 @@ void dump_image_view(VkDevice device, VkCommandBuffer cb, VkImageView image_view
   const auto& image_view_create_info = image_view_infos[image_view];
   if (image_view_create_info.viewType > VK_IMAGE_VIEW_TYPE_3D) {
     LogMessage(info, std::format("We do not currently handle cube or array views for dumping view: {}", reinterpret_cast<uintptr_t>(image_view)));
+    image_copy_data icd = {};
+    icd.error_message = std::format("We do not currently handle cube or array views for dumping view: {}", reinterpret_cast<uintptr_t>(image_view));
+    icd.split_index = current_upload_index;
+    icd.current_queue_submit_index = current_queue_submit_index;
+    images_to_get.push_back(icd);
     return;
   }
   if (bytes_per_pixel.count(image_view_create_info.format) == 0) {
     LogMessage(info, std::format("We do not handle the format: {} yet", static_cast<uint32_t>(image_view_create_info.format)));
+    image_copy_data icd = {};
+    icd.error_message = std::format("We do not handle the format: {} yet", static_cast<uint32_t>(image_view_create_info.format));
+    icd.split_index = current_upload_index;
+    icd.current_queue_submit_index = current_queue_submit_index;
+    images_to_get.push_back(icd);
     return;
   }
   auto subresource_range = image_view_create_info.subresourceRange;

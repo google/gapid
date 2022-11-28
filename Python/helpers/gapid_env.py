@@ -8,6 +8,8 @@ class gapid_env(object):
         self.gapir = os.path.join(self.install_dir, "gapir.exe")
         self.printer = os.path.join(self.install_dir, "printer.exe")
         self.current_trace = None
+        self.ignore_debug_messages = False
+        self.ignore_layer_info_messages = False
 
         if not os.path.isfile(self.printer):
             helpers.on_error(self, "Cannot find printer")
