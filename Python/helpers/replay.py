@@ -25,15 +25,15 @@ class layer(object):
 class replay_options(object):
     def __init__(self, env, trace):
         self.trace = trace
-        self.use_cb = False
+        self.use_cb = True
         self.layers = []
 
         def default_message_callback(timestamp, level, message):
             print(f'[{timestamp}] {level}: {message}')
         self.message_callback = default_message_callback;
 
-    def use_callback_swapchain(self):
-        self.use_cb = True
+    def dont_use_callback_swapchain(self):
+        self.use_cb = False
         return self
     
     def add_layer(self, path, config, data_callback=None, message_callback=None):
@@ -155,7 +155,6 @@ def screenshot_helper(env, trace, draws, max_framebuffers_per_draw = 16, before 
         cfg["command_buffer_indices"] = cbis
         config["screenshot_locations"].append(cfg)
     opts = replay_options(env, trace)
-    opts.use_callback_swapchain()
     opts.set_message_callback(on_message)
     imgs = []
     def on_data(timestamp, data):
@@ -203,7 +202,6 @@ def timestamp_helper(env, trace, renderpasses, silent = False, draw_calls=False)
         }
         config["timestamp_locations"].append(cfg)
     opts = replay_options(env, trace)
-    opts.use_callback_swapchain()
     opts.set_message_callback(on_message)
     timestamps = []
     def on_data(timestamp, data):

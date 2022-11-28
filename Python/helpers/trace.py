@@ -53,6 +53,7 @@ class trace(object):
         self.start_time = time.localtime()
         data = json.load(stream)
         self.commands = []
+        
         self.annotations = {}
         self.observations = {}
         self.executed_commands = {}
@@ -71,9 +72,11 @@ class trace(object):
                 else:
                     self.observations[i] = [x]
             else:
+                x['idx'] = i
                 self.commands.append(x)
                 i = i + 1
         self.end_time = time.localtime()
+        self.real_commands = [x for x in self.commands if not (x['tracer_flags'] & MID_EXECUTION)]
         self.compute_command_buffer_contents()
 
     def compute_command_buffer_contents(self):

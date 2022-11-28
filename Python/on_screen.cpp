@@ -146,7 +146,7 @@ VKAPI_ATTR VkResult VKAPI_CALL override_vkQueuePresentKHR(VkQueue queue, const V
   auto present = *pPresentInfo;
   auto index = indices[present.pImageIndices[0]];
   present.pImageIndices = &index;
-
+  std::this_thread::sleep_for(std::chrono::seconds(2));
   return vkQueuePresentKHR(queue, &present);
 }
 
