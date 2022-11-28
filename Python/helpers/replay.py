@@ -1,4 +1,4 @@
-from . import gapid_env
+from . import trace_env
 from . import helpers
 from . import trace
 from . import image_formats

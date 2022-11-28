@@ -292,10 +292,10 @@ VKAPI_ATTR VkResult VKAPI_CALL override_vkQueueSubmit(
       auto str = data.dump();
       SendJson(str.c_str(), str.size());
 
-      vkDestroyImage(device, img.temporary_image, nullptr);
-      vkFreeMemory(device, img.temporary_image_memory, nullptr);
-      vkDestroyBuffer(device, img.transfer_buffer, nullptr);
-      vkFreeMemory(device, img.transfer_buffer_memory, nullptr);
+      // vkDestroyImage(device, img.temporary_image, nullptr);
+      // vkFreeMemory(device, img.temporary_image_memory, nullptr);
+      // vkDestroyBuffer(device, img.transfer_buffer, nullptr);
+      // vkFreeMemory(device, img.transfer_buffer_memory, nullptr);
     }
     images_to_get.clear();
   }
