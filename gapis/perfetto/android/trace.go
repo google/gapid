@@ -201,5 +201,6 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	if err != nil {
 		return 0, log.Err(ctx, err, fmt.Sprintf("Failed to open %s", tmp))
 	}
+	defer fh.Close()
 	return io.Copy(w, fh)
 }
